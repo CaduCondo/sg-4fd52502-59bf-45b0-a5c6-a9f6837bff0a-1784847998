@@ -1,265 +1,348 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
-import { Layout } from "@/components/Layout";
+import Link from "next/link";
+import Layout from "@/components/Layout";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { isAuthenticated } from "@/lib/auth";
-import { tenantStorage } from "@/lib/storage";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Search, Plus, Trash2, Edit, User, Phone, Mail, FileText } from "lucide-react";
 import { Tenant } from "@/types";
-import { Users, Plus, Edit, Trash2, Search, Mail, Phone } from "lucide-react";
-import { SEO } from "@/components/SEO";
+import { storage } from "@/lib/storage";
+import { maskCPF, maskPhone } from "@/lib/masks";
+import { useToast } from "@/hooks/use-toast";
 
-export default function Tenants() {
+export default function TenantsPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [filteredTenants, setFilteredTenants] = useState<Tenant[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
+
+  // Filters
+  const [searchName, setSearchName] = useState("");
+  const [searchCpf, setSearchCpf] = useState("");
+  const [searchEmail, setSearchEmail] = useState("");
+
+  // Form states
   const [formData, setFormData] = useState({
     name: "",
     cpf: "",
+    rg: "",
     phone: "",
-    email: ""
+    email: "",
+    observations: "",
   });
 
   useEffect(() => {
-    if (!isAuthenticated()) {
-      router.push("/login");
-      return;
-    }
     loadTenants();
-  }, [router]);
+  }, []);
 
   useEffect(() => {
-    const filtered = tenants.filter(t =>
-      t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      t.cpf.includes(searchTerm) ||
-      t.email.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-    setFilteredTenants(filtered);
-  }, [searchTerm, tenants]);
+    filterTenants();
+  }, [searchName, searchCpf, searchEmail, tenants]);
 
   const loadTenants = () => {
-    const data = tenantStorage.getAll();
+    const data = storage.tenants.getAll();
     setTenants(data);
-    setFilteredTenants(data);
+  };
+
+  const filterTenants = () => {
+    let filtered = tenants;
+
+    if (searchName) {
+      filtered = filtered.filter(t => t.name.toLowerCase().includes(searchName.toLowerCase()));
+    }
+    if (searchCpf) {
+      filtered = filtered.filter(t => t.cpf.includes(searchCpf));
+    }
+    if (searchEmail) {
+      filtered = filtered.filter(t => t.email.toLowerCase().includes(searchEmail.toLowerCase()));
+    }
+
+    setFilteredTenants(filtered);
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    let finalValue = value;
+
+    if (name === "cpf") finalValue = maskCPF(value);
+    if (name === "phone") finalValue = maskPhone(value);
+
+    setFormData(prev => ({ ...prev, [name]: finalValue }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    const tenant: Tenant = {
-      id: editingTenant?.id || Date.now().toString(),
-      name: formData.name,
-      cpf: formData.cpf,
-      phone: formData.phone,
-      email: formData.email,
-      createdAt: editingTenant?.createdAt || new Date().toISOString()
+    const newTenant: Tenant = {
+      id: crypto.randomUUID(),
+      ...formData,
+      status: "vacant",
+      createdAt: new Date().toISOString(),
     };
 
-    tenantStorage.save(tenant);
-    loadTenants();
+    storage.tenants.save(newTenant);
+    toast({ title: "Sucesso", description: "Inquilino cadastrado com sucesso!" });
+    setIsAddOpen(false);
     resetForm();
+    loadTenants();
   };
 
-  const handleEdit = (tenant: Tenant) => {
-    setEditingTenant(tenant);
+  const handleEditSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTenant) return;
+
+    const updatedTenant: Tenant = {
+      ...selectedTenant,
+      ...formData,
+    };
+
+    storage.tenants.save(updatedTenant);
+    toast({ title: "Sucesso", description: "Inquilino atualizado com sucesso!" });
+    setIsEditOpen(false);
+    setSelectedTenant(null);
+    resetForm();
+    loadTenants();
+  };
+
+  const handleDelete = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent navigation
+    if (confirm("Tem certeza que deseja excluir este inquilino?")) {
+      storage.tenants.delete(id);
+      toast({ title: "Sucesso", description: "Inquilino excluído." });
+      loadTenants();
+    }
+  };
+
+  const openEdit = (tenant: Tenant, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent navigation
+    setSelectedTenant(tenant);
     setFormData({
       name: tenant.name,
       cpf: tenant.cpf,
+      rg: tenant.rg || "",
       phone: tenant.phone,
-      email: tenant.email
+      email: tenant.email,
+      observations: tenant.observations || "",
     });
-    setIsDialogOpen(true);
-  };
-
-  const handleDelete = (id: string) => {
-    if (confirm("Tem certeza que deseja excluir este inquilino?")) {
-      tenantStorage.delete(id);
-      loadTenants();
-    }
+    setIsEditOpen(true);
   };
 
   const resetForm = () => {
     setFormData({
       name: "",
       cpf: "",
+      rg: "",
       phone: "",
-      email: ""
+      email: "",
+      observations: "",
     });
-    setEditingTenant(null);
-    setIsDialogOpen(false);
-  };
-
-  const formatCPF = (cpf: string) => {
-    return cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
-  };
-
-  const formatPhone = (phone: string) => {
-    return phone.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
   };
 
   return (
-    <>
-      <SEO 
-        title="Inquilinos - ImóvelControl"
-        description="Gerenciamento de inquilinos cadastrados"
-      />
-      
-      <Layout>
-        <div className="space-y-6">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-3xl font-bold text-slate-900">Inquilinos</h1>
-              <p className="text-slate-600 mt-2">Gerenciamento de inquilinos cadastrados</p>
+    <Layout>
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-gray-900">Inquilinos</h1>
+            <p className="text-gray-500">Gerencie os inquilinos cadastrados no sistema.</p>
+          </div>
+          <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={resetForm} className="bg-emerald-600 hover:bg-emerald-700">
+                <Plus className="mr-2 h-4 w-4" /> Novo Inquilino
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>Novo Inquilino</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Nome Completo *</Label>
+                  <Input id="name" name="name" required value={formData.name} onChange={handleInputChange} />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="cpf">CPF *</Label>
+                    <Input id="cpf" name="cpf" required value={formData.cpf} onChange={handleInputChange} placeholder="000.000.000-00" maxLength={14} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="rg">RG *</Label>
+                    <Input id="rg" name="rg" required value={formData.rg} onChange={handleInputChange} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Telefone *</Label>
+                    <Input id="phone" name="phone" required value={formData.phone} onChange={handleInputChange} placeholder="(00) 00000-0000" maxLength={15} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email *</Label>
+                    <Input id="email" name="email" type="email" required value={formData.email} onChange={handleInputChange} />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="observations">Observações</Label>
+                  <Textarea id="observations" name="observations" value={formData.observations} onChange={handleInputChange} />
+                </div>
+                <div className="flex justify-end gap-3 pt-4">
+                  <Button type="button" variant="outline" onClick={() => setIsAddOpen(false)}>Cancelar</Button>
+                  <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">Cadastrar</Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        {/* Filters */}
+        <Card>
+          <CardContent className="pt-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label>Nome</Label>
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+                  <Input 
+                    placeholder="Filtrar por nome..." 
+                    className="pl-9"
+                    value={searchName}
+                    onChange={(e) => setSearchName(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>CPF</Label>
+                <Input 
+                  placeholder="Filtrar por CPF..." 
+                  value={searchCpf}
+                  onChange={(e) => setSearchCpf(maskCPF(e.target.value))}
+                  maxLength={14}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Email</Label>
+                <Input 
+                  placeholder="Filtrar por email..." 
+                  value={searchEmail}
+                  onChange={(e) => setSearchEmail(e.target.value)}
+                />
+              </div>
             </div>
-            <Button onClick={() => setIsDialogOpen(true)} className="flex items-center space-x-2">
-              <Plus size={18} />
-              <span>Novo Inquilino</span>
-            </Button>
-          </div>
+          </CardContent>
+        </Card>
 
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={20} />
-            <Input
-              type="text"
-              placeholder="Buscar inquilinos..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 h-12"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredTenants.map((tenant) => (
-              <Card key={tenant.id} className="hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <CardTitle className="text-lg">{tenant.name}</CardTitle>
-                  <CardDescription>CPF: {formatCPF(tenant.cpf)}</CardDescription>
+        {/* List */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredTenants.map((tenant) => (
+            <div 
+              key={tenant.id} 
+              onClick={() => router.push(`/tenants/${tenant.id}`)}
+              className="group cursor-pointer"
+            >
+              <Card className="h-full hover:shadow-md transition-shadow relative overflow-hidden">
+                <div className={`absolute top-0 left-0 w-1 h-full ${tenant.status === 'rented' ? 'bg-emerald-500' : 'bg-gray-300'}`} />
+                <CardHeader className="pb-2 pl-6">
+                  <div className="flex justify-between items-start">
+                    <CardTitle className="text-lg font-semibold truncate pr-2">{tenant.name}</CardTitle>
+                    <Badge variant={tenant.status === 'rented' ? "default" : "secondary"} className={tenant.status === 'rented' ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-100" : ""}>
+                      {tenant.status === 'rented' ? 'Alugando' : 'Sem Locação'}
+                    </Badge>
+                  </div>
+                  <CardDescription className="flex items-center gap-1">
+                    <FileText className="h-3 w-3" /> CPF: {tenant.cpf}
+                  </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <div className="flex items-center space-x-2 text-sm text-slate-600">
-                        <Phone size={16} />
-                        <span>{formatPhone(tenant.phone)}</span>
-                      </div>
-                      <div className="flex items-center space-x-2 text-sm text-slate-600">
-                        <Mail size={16} />
-                        <span className="truncate">{tenant.email}</span>
-                      </div>
-                    </div>
-                    <div className="flex space-x-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => handleEdit(tenant)}
-                        className="flex-1"
-                      >
-                        <Edit size={16} className="mr-2" />
-                        Editar
-                      </Button>
-                      <Button 
-                        variant="destructive" 
-                        size="sm" 
-                        onClick={() => handleDelete(tenant.id)}
-                        className="flex-1"
-                      >
-                        <Trash2 size={16} className="mr-2" />
-                        Excluir
-                      </Button>
-                    </div>
+                <CardContent className="pl-6 text-sm space-y-2 text-gray-600">
+                  <div className="flex items-center gap-2">
+                    <Mail className="h-4 w-4 text-gray-400" />
+                    <span className="truncate">{tenant.email}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Phone className="h-4 w-4 text-gray-400" />
+                    <span>{tenant.phone}</span>
+                  </div>
+                  
+                  <div className="flex justify-end gap-2 mt-4 pt-2 border-t">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                      onClick={(e) => openEdit(tenant, e)}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                      onClick={(e) => handleDelete(tenant.id, e)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
-            ))}
-          </div>
-
+            </div>
+          ))}
           {filteredTenants.length === 0 && (
-            <Card className="p-12">
-              <div className="text-center">
-                <Users className="h-16 w-16 mx-auto text-slate-300 mb-4" />
-                <h3 className="text-xl font-semibold text-slate-900 mb-2">Nenhum inquilino encontrado</h3>
-                <p className="text-slate-600 mb-6">Comece adicionando seu primeiro inquilino</p>
-                <Button onClick={() => setIsDialogOpen(true)}>
-                  <Plus size={18} className="mr-2" />
-                  Adicionar Inquilino
-                </Button>
-              </div>
-            </Card>
+            <div className="col-span-full text-center py-12 text-gray-500">
+              Nenhum inquilino encontrado com os filtros atuais.
+            </div>
           )}
         </div>
 
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        {/* Edit Dialog */}
+        <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
-              <DialogTitle>{editingTenant ? "Editar Inquilino" : "Novo Inquilino"}</DialogTitle>
-              <DialogDescription>
-                {editingTenant ? "Atualize as informações do inquilino" : "Adicione um novo inquilino ao sistema"}
-              </DialogDescription>
+              <DialogTitle>Editar Inquilino</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleSubmit}>
-              <div className="space-y-4 py-4">
+            <form onSubmit={handleEditSubmit} className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-name">Nome Completo *</Label>
+                <Input id="edit-name" name="name" required value={formData.name} onChange={handleInputChange} />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Nome Completo</Label>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="Nome completo do inquilino"
-                    required
-                  />
+                  <Label htmlFor="edit-cpf">CPF *</Label>
+                  <Input id="edit-cpf" name="cpf" required value={formData.cpf} onChange={handleInputChange} placeholder="000.000.000-00" maxLength={14} />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="cpf">CPF</Label>
-                  <Input
-                    id="cpf"
-                    value={formData.cpf}
-                    onChange={(e) => setFormData({ ...formData, cpf: e.target.value.replace(/\D/g, "") })}
-                    placeholder="00000000000"
-                    maxLength={11}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Telefone</Label>
-                  <Input
-                    id="phone"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, "") })}
-                    placeholder="00000000000"
-                    maxLength={11}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">E-mail</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    placeholder="email@exemplo.com"
-                    required
-                  />
+                  <Label htmlFor="edit-rg">RG *</Label>
+                  <Input id="edit-rg" name="rg" required value={formData.rg} onChange={handleInputChange} />
                 </div>
               </div>
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={resetForm}>
-                  Cancelar
-                </Button>
-                <Button type="submit">
-                  {editingTenant ? "Atualizar" : "Adicionar"}
-                </Button>
-              </DialogFooter>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-phone">Telefone *</Label>
+                  <Input id="edit-phone" name="phone" required value={formData.phone} onChange={handleInputChange} placeholder="(00) 00000-0000" maxLength={15} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-email">Email *</Label>
+                  <Input id="edit-email" name="email" type="email" required value={formData.email} onChange={handleInputChange} />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-observations">Observações</Label>
+                <Textarea id="edit-observations" name="observations" value={formData.observations} onChange={handleInputChange} />
+              </div>
+              <div className="flex justify-end gap-3 pt-4">
+                <Button type="button" variant="outline" onClick={() => setIsEditOpen(false)}>Cancelar</Button>
+                <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">Salvar Alterações</Button>
+              </div>
             </form>
           </DialogContent>
         </Dialog>
-      </Layout>
-    </>
+      </div>
+    </Layout>
   );
 }

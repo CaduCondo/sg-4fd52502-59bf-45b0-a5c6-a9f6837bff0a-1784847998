@@ -19,8 +19,11 @@ export interface Tenant {
   id: string;
   name: string;
   cpf: string;
+  rg: string;
   phone: string;
   email: string;
+  observations?: string;
+  status: "vacant" | "rented";
   createdAt: string;
 }
 
