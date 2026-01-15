@@ -36,7 +36,7 @@ export default function Properties() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<"all" | "available" | "occupied">("all");
   const [filterLocal, setFilterLocal] = useState("");
-  const [sortBy, setSortBy] = useState<"local" | "status">("local");
+  const [sortBy, setSortBy] = useState<"local" | "status" | "value">("local");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProperty, setEditingProperty] = useState<Property | null>(null);
   const [viewingProperty, setViewingProperty] = useState<Property | null>(null);
@@ -97,10 +97,13 @@ export default function Properties() {
 
     // Sorting
     filtered.sort((a, b) => {
-      if (sortBy === "status") {
-        return a.status.localeCompare(b.status);
+      if (sortBy === "value") {
+        return a.monthlyRent - b.monthlyRent;
       }
-      return a.location.localeCompare(b.location);
+      if (sortBy === "status") {
+        return (a.status || "").localeCompare(b.status || "");
+      }
+      return (a.location || "").localeCompare(b.location || "");
     });
 
     setFilteredProperties(filtered);
@@ -299,6 +302,7 @@ export default function Properties() {
               <SelectContent>
                 <SelectItem value="local">Local (A-Z)</SelectItem>
                 <SelectItem value="status">Status</SelectItem>
+                <SelectItem value="value">Valor</SelectItem>
               </SelectContent>
             </Select>
           </div>
