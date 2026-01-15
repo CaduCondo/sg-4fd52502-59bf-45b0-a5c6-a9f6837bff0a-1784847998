@@ -152,7 +152,7 @@ export default function TenantsPage() {
       };
 
       if (currentTenant) {
-        await tenantService.update(currentTenant.id, tenantData);
+        await tenantService.update({ ...currentTenant, ...tenantData } as Tenant);
         toast({
           title: "Sucesso",
           description: "Inquilino atualizado com sucesso!",

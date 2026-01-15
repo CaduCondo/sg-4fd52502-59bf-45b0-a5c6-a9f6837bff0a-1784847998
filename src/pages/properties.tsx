@@ -180,7 +180,7 @@ export default function PropertiesPage() {
       };
 
       if (currentProperty) {
-        await propertyService.update(currentProperty.id, propertyData);
+        await propertyService.update({ ...currentProperty, ...propertyData } as Property);
         toast({
           title: "Sucesso",
           description: "Imóvel atualizado com sucesso!",
