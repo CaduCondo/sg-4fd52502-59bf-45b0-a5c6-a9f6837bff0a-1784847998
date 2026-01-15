@@ -87,7 +87,7 @@ export default function Dashboard() {
     const availableProperties = properties.filter(p => p.status === "available").length;
 
     // Total de Inquilinos Ativos (status = 'active')
-    const totalTenants = tenants.filter(t => t.status === 'active').length;
+    const totalTenants = tenants.filter(t => t.status === "active").length;
 
     // Pagamentos Recebidos (status = "paid") - contagem de registros
     const paidThisMonth = currentMonthPayments.filter(p => p.status === "paid").length;

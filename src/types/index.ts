@@ -32,6 +32,7 @@ export interface Tenant {
   id: string;
   name: string;
   cpf: string;
+  document?: string;
   rg?: string;
   documentType: "cpf" | "cnpj";
   email: string;
@@ -42,7 +43,7 @@ export interface Tenant {
 
 export interface Config {
   adminFeePercentage: number;
-  locations: string[]; // Array of location names
+  locations: string[];
 }
 
 export interface Attachment {
@@ -62,7 +63,7 @@ export interface Rental {
   paymentDay: number;
   hasGarage: boolean;
   garageValue?: number;
-  value: number; // Total value (monthlyRent + garageValue)
+  value: number;
   deposit?: string;
   contractAttachments?: Attachment[];
   isActive: boolean;
