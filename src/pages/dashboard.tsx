@@ -70,6 +70,9 @@ export default function Dashboard() {
     
     setSelectedMonth(currentMonth);
     setSelectedYear(currentYear);
+    
+    // Clean orphaned payments on mount
+    cleanOrphanedPayments();
   }, [router]);
 
   useEffect(() => {

@@ -65,14 +65,19 @@ export default function Rentals() {
     setProperties(allProperties);
     setTenants(allTenants);
     
-    // Sort alphabetically
+    // Get active rental tenant IDs
+    const activeRentals = allRentals.filter(r => r.isActive);
+    const tenantsWithActiveRental = new Set(activeRentals.map(r => r.tenantId));
+    
+    // Filter: Active tenants WITHOUT active rentals
+    const availTenants = allTenants
+      .filter(t => t.isActive && !tenantsWithActiveRental.has(t.id))
+      .sort((a, b) => a.name.localeCompare(b.name));
+      
+    // Filter: Available properties
     const availProps = allProperties
       .filter(p => p.status === "available")
       .sort((a, b) => a.local.localeCompare(b.local) || a.address.localeCompare(b.address));
-      
-    const availTenants = allTenants
-      .filter(t => !t.isActive) // Fix: check isActive (false means vacant/available)
-      .sort((a, b) => a.name.localeCompare(b.name));
       
     setAvailableProperties(availProps);
     setAvailableTenants(availTenants);
@@ -131,6 +136,25 @@ export default function Rentals() {
         motorcycleSpotValue: ""
       });
       setAttachments([]);
+      
+      // Refresh available lists when opening new rental dialog
+      const allRentals = rentalStorage.getAll();
+      const allProperties = propertyStorage.getAll();
+      const allTenants = tenantStorage.getAll();
+      
+      const activeRentals = allRentals.filter(r => r.isActive);
+      const tenantsWithActiveRental = new Set(activeRentals.map(r => r.tenantId));
+      
+      const availProps = allProperties
+        .filter(p => p.status === "available" && p.isActive)
+        .sort((a, b) => a.local.localeCompare(b.local));
+        
+      const availTenants = allTenants
+        .filter(t => t.isActive && !tenantsWithActiveRental.has(t.id))
+        .sort((a, b) => a.name.localeCompare(b.name));
+        
+      setAvailableProperties(availProps);
+      setAvailableTenants(availTenants);
     }
     setIsDialogOpen(true);
   };
@@ -328,18 +352,6 @@ export default function Rentals() {
     if (rental.hasGarage && rental.garageValue) total += rental.garageValue;
     if (rental.hasMotorcycleSpot && rental.motorcycleSpotValue) total += rental.motorcycleSpotValue;
     return total;
-  };
-
-  const openNewRentalDialog = () => {
-    const properties = propertyStorage.getAll();
-    const tenants = tenantStorage.getAll();
-    const activeRentals = rentalStorage.getAll().filter(r => r.isActive);
-    const tenantsWithActiveRental = new Set(activeRentals.map(r => r.tenantId));
-
-    setAvailableProperties(properties.filter(p => p.status === "available" && p.isActive));
-    setAvailableTenants(tenants.filter(t => t.isActive && !tenantsWithActiveRental.has(t.id)));
-
-    setIsDialogOpen(true);
   };
 
   return (

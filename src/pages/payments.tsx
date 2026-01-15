@@ -26,8 +26,8 @@ export default function Payments() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [config, setConfig] = useState<SystemConfig | null>(null);
-  const [filterMonth, setFilterMonth] = useState("");
-  const [filterYear, setFilterYear] = useState("");
+  const [filterMonth, setFilterMonth] = useState("all");
+  const [filterYear, setFilterYear] = useState("all");
   const [filterStatus, setFilterStatus] = useState<"all" | "paid" | "pending">("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
@@ -81,8 +81,8 @@ export default function Payments() {
 
   const filteredPayments = payments.filter(payment => {
     // Ensure strict string comparison
-    const matchesMonth = !filterMonth || String(payment.month) === String(filterMonth);
-    const matchesYear = !filterYear || String(payment.year) === String(filterYear);
+    const matchesMonth = filterMonth === "all" || String(payment.month) === String(filterMonth);
+    const matchesYear = filterYear === "all" || String(payment.year) === String(filterYear);
     const matchesStatus = filterStatus === "all" || 
       (filterStatus === "paid" && payment.isPaid) ||
       (filterStatus === "pending" && !payment.isPaid);
@@ -386,7 +386,7 @@ export default function Payments() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Todos</SelectItem>
+                      <SelectItem value="all">Todos</SelectItem>
                       {Array.from({ length: 12 }, (_, i) => {
                         const month = (i + 1).toString().padStart(2, "0");
                         const monthName = new Date(2024, i, 1).toLocaleDateString("pt-BR", { month: "long" });
@@ -407,7 +407,7 @@ export default function Payments() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Todos</SelectItem>
+                      <SelectItem value="all">Todos</SelectItem>
                       {[2024, 2025, 2026].map(year => (
                         <SelectItem key={year} value={year.toString()}>
                           {year}

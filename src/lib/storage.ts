@@ -59,6 +59,17 @@ export function initializeStorage(): void {
   }
 }
 
+// Utility function to clean orphaned payments
+export const cleanOrphanedPayments = () => {
+  const payments = paymentStorage.getAll();
+  const validPayments = payments.filter(p => {
+    const rental = rentalStorage.getAll().find(r => r.id === p.rentalId);
+    return !!rental;
+  });
+  localStorage.setItem(PAYMENTS_KEY, JSON.stringify(validPayments));
+  return validPayments;
+};
+
 export const propertyStorage = {
   getAll: (): Property[] => {
     if (typeof window === "undefined") return [];
