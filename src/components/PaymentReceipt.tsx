@@ -80,7 +80,7 @@ export function PaymentReceipt({ isOpen, onClose, payment, rental, property, ten
 
   const baseRent = rental.monthlyRent;
   const garageValue = rental.hasGarage && rental.garageValue ? rental.garageValue : 0;
-  const lateCharges = (payment.fineAmount || 0) + (payment.interestAmount || 0);
+  const lateCharges = (payment.lateFee || 0) + (payment.interest || 0);
   const totalValue = payment.paidAmount || 0;
 
   const fullAddress = [

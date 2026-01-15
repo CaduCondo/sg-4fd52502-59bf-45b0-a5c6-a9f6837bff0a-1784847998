@@ -38,7 +38,9 @@ export default function ManagePaymentPage() {
     paymentDate: "",
     paymentMethod: "",
     notes: "",
-    attachments: [] as string[]
+    attachments: [] as string[],
+    fineAmount: "",
+    interestAmount: ""
   });
 
   useEffect(() => {
@@ -54,7 +56,7 @@ export default function ManagePaymentPage() {
         paidAmount: formatCurrency(payment.expectedAmount)
       }));
     } else if (payment && waiveFine) {
-      const adjustedAmount = payment.expectedAmount - (payment.fineAmount || 0) - (payment.interestAmount || 0);
+      const adjustedAmount = payment.expectedAmount - (payment.lateFee || 0) - (payment.interest || 0);
       setFormData(prev => ({
         ...prev,
         paidAmount: formatCurrency(adjustedAmount)
@@ -87,12 +89,16 @@ export default function ManagePaymentPage() {
         setTenant(tenantData);
       }
 
+      // Calculate totals
+      const totalPaid = paymentData.paidAmount || 0;
+      const totalAdditions = (paymentData.lateFee || 0) + (paymentData.interest || 0);
+      
       setFormData({
-        paidAmount: paymentData.paidAmount ? formatCurrency(paymentData.paidAmount) : formatCurrency(paymentData.expectedAmount),
-        paymentDate: paymentData.paymentDate ? formatDate(paymentData.paymentDate) : "",
-        paymentMethod: paymentData.paymentMethod || "",
+        paymentDate: paymentData.paymentDate ? new Date(paymentData.paymentDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        paidAmount: totalPaid > 0 ? formatCurrency(totalPaid) : formatCurrency(paymentData.expectedAmount),
+        fineAmount: formatCurrency(paymentData.lateFee || 0),
+        interestAmount: formatCurrency(paymentData.interest || 0),
         notes: paymentData.notes || "",
-        attachments: paymentData.attachments || []
       });
     } catch (error) {
       console.error("Erro ao carregar dados:", error);
@@ -107,21 +113,20 @@ export default function ManagePaymentPage() {
     if (!payment) return;
 
     try {
-      const paidAmount = parseCurrency(formData.paidAmount);
-      const updatedPayment: Payment = {
+      const paymentData: Payment = {
         ...payment,
-        paidAmount,
         paymentDate: formData.paymentDate,
-        paymentMethod: formData.paymentMethod,
+        paidAmount: parseCurrency(formData.paidAmount),
+        lateFee: parseCurrency(formData.fineAmount),
+        interest: parseCurrency(formData.interestAmount),
         notes: formData.notes,
-        attachments: formData.attachments,
-        status: paidAmount >= payment.expectedAmount ? "paid" : paidAmount > 0 ? "partial" : "pending"
+        status: "paid",
       };
 
-      await paymentService.update(updatedPayment);
+      await paymentService.update(paymentData);
       toast({ title: "Sucesso", description: "Pagamento registrado com sucesso!" });
 
-      if (rental && property && tenant && updatedPayment.status === "paid") {
+      if (rental && property && tenant && paymentData.status === "paid") {
         setShowReceipt(true);
       } else {
         router.push("/payments");
@@ -241,16 +246,16 @@ export default function ManagePaymentPage() {
                   <span className="text-slate-700">Valor Original:</span>
                   <span className="font-semibold">{formatCurrency(rental.monthlyRent)}</span>
                 </div>
-                {payment.fineAmount && payment.fineAmount > 0 && (
+                {payment.lateFee && payment.lateFee > 0 && (
                   <div className="flex justify-between text-red-600">
                     <span>Multa:</span>
-                    <span className="font-semibold">+{formatCurrency(payment.fineAmount)}</span>
+                    <span className="font-semibold">+{formatCurrency(payment.lateFee)}</span>
                   </div>
                 )}
-                {payment.interestAmount && payment.interestAmount > 0 && (
+                {payment.interest && payment.interest > 0 && (
                   <div className="flex justify-between text-red-600">
                     <span>Juros:</span>
-                    <span className="font-semibold">+{formatCurrency(payment.interestAmount)}</span>
+                    <span className="font-semibold">+{formatCurrency(payment.interest)}</span>
                   </div>
                 )}
                 <div className="flex justify-between pt-2 border-t">
@@ -267,7 +272,7 @@ export default function ManagePaymentPage() {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
-                {(payment.fineAmount || 0) > 0 && (
+                {(payment.lateFee || 0) > 0 && (
                   <div className="flex items-center space-x-2 p-4 bg-amber-50 border border-amber-200 rounded-lg">
                     <Checkbox
                       id="waiveFine"
