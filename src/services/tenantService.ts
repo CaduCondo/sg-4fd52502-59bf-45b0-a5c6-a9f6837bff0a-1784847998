@@ -62,7 +62,8 @@ export const tenantService = {
     return {
       id: data.id,
       name: data.name,
-      cpf: data.cpf,
+      cpf: data.cpf || data.document || "",
+      document: data.document || data.cpf || "",
       rg: data.rg,
       documentType: data.document_type || "cpf",
       email: data.email,
@@ -72,24 +73,12 @@ export const tenantService = {
     };
   },
 
-  mapFromSupabase(data: any): Tenant {
-    return {
-      id: data.id,
-      name: data.name,
-      cpf: data.cpf,
-      rg: data.rg,
-      documentType: data.document_type || "cpf",
-      email: data.email,
-      phone: data.phone,
-      status: data.status,
-      createdAt: data.created_at,
-    };
-  },
-
   mapToDB(tenant: any): any {
     return {
       name: tenant.name,
-      cpf: tenant.cpf,
+      cpf: tenant.documentType === "cpf" ? tenant.document : null,
+      document: tenant.document,
+      document_type: tenant.documentType,
       email: tenant.email,
       phone: tenant.phone,
       status: tenant.status

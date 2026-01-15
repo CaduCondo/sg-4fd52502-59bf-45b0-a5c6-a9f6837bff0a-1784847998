@@ -358,8 +358,10 @@ export type Database = {
       }
       tenants: {
         Row: {
-          cpf: string
+          cpf: string | null
           created_at: string | null
+          document: string | null
+          document_type: string | null
           email: string
           id: string
           name: string
@@ -368,8 +370,10 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
-          cpf: string
+          cpf?: string | null
           created_at?: string | null
+          document?: string | null
+          document_type?: string | null
           email: string
           id?: string
           name: string
@@ -378,8 +382,10 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
-          cpf?: string
+          cpf?: string | null
           created_at?: string | null
+          document?: string | null
+          document_type?: string | null
           email?: string
           id?: string
           name?: string
