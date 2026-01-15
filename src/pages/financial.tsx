@@ -33,6 +33,21 @@ import { rentalStorage, paymentStorage, propertyStorage, tenantStorage, configSt
 import { getCurrentUser, hasRole } from "@/lib/auth";
 import { Payment, Rental, Property, Tenant } from "@/types";
 import { formatCurrency } from "@/lib/masks";
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer
+} from 'recharts';
 
 interface PaymentRow {
   paymentId: string;
@@ -51,6 +66,8 @@ interface PaymentRow {
 
 type SortField = "location" | "dueDate" | "expectedAmount" | "paidAmount" | "status";
 type SortOrder = "asc" | "desc";
+
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
 export default function FinancialPage() {
   const router = useRouter();
@@ -77,6 +94,11 @@ export default function FinancialPage() {
   const [totalPaid, setTotalPaid] = useState(0);
   const [difference, setDifference] = useState(0);
   const [adminFee, setAdminFee] = useState(0);
+
+  // Chart Data
+  const [revenueData, setRevenueData] = useState<any[]>([]);
+  const [paymentStatusData, setPaymentStatusData] = useState<any[]>([]);
+  const [revenueByLocationData, setRevenueByLocationData] = useState<any[]>([]);
 
   // Editable payment code
   const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
@@ -134,14 +156,20 @@ export default function FinancialPage() {
 
       rentalPayments.forEach(payment => {
         const dueDate = new Date(rental.startDate);
-        const monthsFromStart = payment.month - 1;
+        // Fix: Ensure payment.month is treated as number
+        const monthNum = parseInt(payment.month.toString());
+        const monthsFromStart = monthNum - 1;
+        
         dueDate.setMonth(dueDate.getMonth() + monthsFromStart);
         dueDate.setDate(rental.paymentDay);
 
         // Calculate expected amount with late fees
         let expectedAmount = rental.monthlyRent;
+        if (rental.hasMotorcycleSpot && rental.motorcycleSpotValue) {
+          expectedAmount += rental.motorcycleSpotValue;
+        }
         if (rental.hasGarage && rental.garageValue) {
-          expectedAmount += rental.garageValue;
+            expectedAmount += rental.garageValue;
         }
 
         // Add late fees if overdue
@@ -160,11 +188,12 @@ export default function FinancialPage() {
         paymentRows.push({
           paymentId: payment.id,
           rentalId: rental.id,
-          location: property.location,
-          complement: property.complement,
+          // Fix: Use 'local' property instead of 'location'
+          location: property.local,
+          complement: property.complement || "",
           tenantName: tenant.name,
           year: payment.year,
-          month: payment.month,
+          month: monthNum,
           status: payment.status === "paid" ? "Pago" : payment.status === "partial" ? "Parcial" : "Não Pago",
           paymentCode: payment.paymentCode || "",
           dueDate: dueDate.toISOString().split('T')[0],
@@ -238,6 +267,53 @@ export default function FinancialPage() {
     setTotalPaid(paid);
     setDifference(diff);
     setAdminFee(fee);
+
+    // Update Chart Data based on filtered rows
+    updateChartData(filtered, config.adminFeePercentage);
+  };
+
+  const updateChartData = (data: PaymentRow[], adminFeePercent: number) => {
+    // 1. Revenue by Month (for Line Chart) - Aggregate across filtered data
+    const monthlyData: Record<number, { revenue: number; adminFee: number }> = {};
+    data.forEach(row => {
+      if (!monthlyData[row.month]) {
+        monthlyData[row.month] = { revenue: 0, adminFee: 0 };
+      }
+      monthlyData[row.month].revenue += row.paidAmount;
+      monthlyData[row.month].adminFee += row.paidAmount * (adminFeePercent / 100);
+    });
+
+    const revData = Object.keys(monthlyData).map(m => ({
+        month: new Date(0, parseInt(m) - 1).toLocaleString('pt-BR', { month: 'long' }),
+        revenue: monthlyData[parseInt(m)].revenue,
+        adminFee: monthlyData[parseInt(m)].adminFee
+    }));
+    setRevenueData(revData);
+
+    // 2. Payment Status
+    const statusCounts = { Pago: 0, Parcial: 0, 'Não Pago': 0 };
+    data.forEach(row => {
+        if (row.status === 'Pago') statusCounts.Pago++;
+        else if (row.status === 'Parcial') statusCounts.Parcial++;
+        else statusCounts['Não Pago']++;
+    });
+    setPaymentStatusData([
+        { name: 'Pago', value: statusCounts.Pago },
+        { name: 'Parcial', value: statusCounts.Parcial },
+        { name: 'Não Pago', value: statusCounts['Não Pago'] }
+    ]);
+
+    // 3. Revenue by Location
+    const locData: Record<string, number> = {};
+    data.forEach(row => {
+        if (!locData[row.location]) locData[row.location] = 0;
+        locData[row.location] += row.paidAmount;
+    });
+    const revLocData = Object.keys(locData).map(k => ({
+        location: k,
+        revenue: locData[k]
+    }));
+    setRevenueByLocationData(revLocData);
   };
 
   const handleSort = (field: SortField) => {
@@ -485,6 +561,83 @@ export default function FinancialPage() {
               )}
             </CardContent>
           </Card>
+
+          {/* Charts Section */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Revenue Trend Chart */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Evolução de Receita Mensal (Filtro Atual)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={revenueData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="month" />
+                      <YAxis />
+                      <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                      <Legend />
+                      <Line type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={2} name="Receita" />
+                      <Line type="monotone" dataKey="adminFee" stroke="#6366f1" strokeWidth={2} name="Taxa Admin" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Payment Status Pie Chart */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Status dos Pagamentos</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={paymentStatusData}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ name, value }) => `${name}: ${value}`}
+                        outerRadius={100}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        {paymentStatusData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Revenue by Location Bar Chart */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Receita por Local</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={revenueByLocationData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="location" />
+                      <YAxis />
+                      <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                      <Legend />
+                      <Bar dataKey="revenue" fill="#10b981" name="Receita" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
           {/* Table */}
           <Card>
