@@ -164,9 +164,6 @@ export default function FinancialPage() {
 
         // Calculate expected amount with late fees
         let expectedAmount = rental.monthlyRent;
-        if (rental.hasMotorcycleSpot && rental.motorcycleSpotValue) {
-          expectedAmount += rental.motorcycleSpotValue;
-        }
         if (rental.hasGarage && rental.garageValue) {
             expectedAmount += rental.garageValue;
         }

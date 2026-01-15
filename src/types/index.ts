@@ -42,21 +42,28 @@ export interface Tenant {
   observations?: string;
 }
 
+export interface Attachment {
+  name: string;
+  url: string;
+  date: string;
+  type?: string;
+}
+
 export interface Rental {
   id: string;
   propertyId: string;
   tenantId: string;
   startDate: string;
   endDate: string;
-  value: number;
-  monthlyRent: number;
+  value: number; // Total value including extras
+  monthlyRent: number; // Base rent
   paymentDay: number;
   hasGarage: boolean;
   garageValue?: number;
-  hasMotorcycleSpot: boolean;
-  motorcycleSpotValue?: number;
+  hasParkingSpot: boolean;
+  parkingSpotValue?: number;
   observations?: string;
-  attachments?: { name: string; url: string; date?: string; type?: string }[];
+  attachments?: Attachment[];
   isActive: boolean;
   createdAt: string;
 }

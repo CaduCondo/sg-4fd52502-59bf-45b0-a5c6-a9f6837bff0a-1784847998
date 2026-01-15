@@ -35,8 +35,8 @@ export default function RentalDetails() {
   const [editMonthlyRent, setEditMonthlyRent] = useState("");
   const [editHasGarage, setEditHasGarage] = useState(false);
   const [editGarageValue, setEditGarageValue] = useState("");
-  const [editHasMotorcycle, setEditHasMotorcycle] = useState(false);
-  const [editMotorcycleValue, setEditMotorcycleValue] = useState("");
+  const [editHasParkingSpot, setEditHasParkingSpot] = useState(false);
+  const [editParkingSpotValue, setEditParkingSpotValue] = useState("");
   const [editObservations, setEditObservations] = useState("");
 
   useEffect(() => {
@@ -71,8 +71,8 @@ export default function RentalDetails() {
     setEditMonthlyRent(rentalData.monthlyRent.toFixed(2).replace(".", ","));
     setEditHasGarage(rentalData.hasGarage);
     setEditGarageValue(rentalData.garageValue?.toFixed(2).replace(".", ",") || "");
-    setEditHasMotorcycle(rentalData.hasMotorcycleSpot);
-    setEditMotorcycleValue(rentalData.motorcycleSpotValue?.toFixed(2).replace(".", ",") || "");
+    setEditHasParkingSpot(rentalData.hasParkingSpot);
+    setEditParkingSpotValue(rentalData.parkingSpotValue?.toFixed(2).replace(".", ",") || "");
     setEditObservations(rentalData.observations || "");
   };
 
@@ -90,7 +90,7 @@ export default function RentalDetails() {
 
     const monthlyRent = parseFloat(editMonthlyRent.replace(",", "."));
     const garageValue = editHasGarage ? parseFloat(editGarageValue.replace(",", ".") || "0") : 0;
-    const motorcycleValue = editHasMotorcycle ? parseFloat(editMotorcycleValue.replace(",", ".") || "0") : 0;
+    const parkingSpotValue = editHasParkingSpot ? parseFloat(editParkingSpotValue.replace(",", ".") || "0") : 0;
 
     const updatedRental: Rental = {
       ...rental,
@@ -98,11 +98,11 @@ export default function RentalDetails() {
       endDate: editEndDate,
       paymentDay: parseInt(editPaymentDay),
       monthlyRent,
-      value: monthlyRent,
+      value: monthlyRent + garageValue + parkingSpotValue,
       hasGarage: editHasGarage,
       garageValue: editHasGarage ? garageValue : undefined,
-      hasMotorcycleSpot: editHasMotorcycle,
-      motorcycleSpotValue: editHasMotorcycle ? motorcycleValue : undefined,
+      hasParkingSpot: editHasParkingSpot,
+      parkingSpotValue: editHasParkingSpot ? parkingSpotValue : undefined,
       observations: editObservations
     };
 
@@ -158,7 +158,7 @@ export default function RentalDetails() {
     );
   }
 
-  const totalValue = rental.monthlyRent + (rental.garageValue || 0) + (rental.motorcycleSpotValue || 0);
+  const totalValue = rental.monthlyRent + (rental.garageValue || 0) + (rental.parkingSpotValue || 0);
 
   return (
     <>
@@ -240,8 +240,8 @@ export default function RentalDetails() {
                   {rental.hasGarage && (
                     <p>Garagem: R$ {(rental.garageValue || 0).toFixed(2).replace(".", ",")}</p>
                   )}
-                  {rental.hasMotorcycleSpot && (
-                    <p>Moto: R$ {(rental.motorcycleSpotValue || 0).toFixed(2).replace(".", ",")}</p>
+                  {rental.hasParkingSpot && (
+                    <p>Vaga Carro: R$ {(rental.parkingSpotValue || 0).toFixed(2).replace(".", ",")}</p>
                   )}
                 </div>
               </CardContent>
@@ -392,20 +392,20 @@ export default function RentalDetails() {
                 <div className="space-y-2">
                   <div className="flex items-center space-x-2">
                     <Checkbox
-                      id="hasMotorcycleSpot"
-                      checked={editHasMotorcycle}
-                      onCheckedChange={(checked) => setEditHasMotorcycle(checked as boolean)}
+                      id="hasParkingSpot"
+                      checked={editHasParkingSpot}
+                      onCheckedChange={(checked) => setEditHasParkingSpot(checked as boolean)}
                       disabled={!isEditing}
                     />
-                    <Label htmlFor="hasMotorcycleSpot" className={!isEditing ? "text-muted-foreground" : ""}>
-                      Possui Vaga de Moto
+                    <Label htmlFor="hasParkingSpot" className={!isEditing ? "text-muted-foreground" : ""}>
+                      Possui Vaga de Carro
                     </Label>
                   </div>
-                  {editHasMotorcycle && (
+                  {editHasParkingSpot && (
                     <Input
-                      id="motorcycleValue"
-                      value={editMotorcycleValue}
-                      onChange={(e) => setEditMotorcycleValue(applyRealMask(e.target.value))}
+                      id="parkingSpotValue"
+                      value={editParkingSpotValue}
+                      onChange={(e) => setEditParkingSpotValue(applyRealMask(e.target.value))}
                       disabled={!isEditing}
                     />
                   )}

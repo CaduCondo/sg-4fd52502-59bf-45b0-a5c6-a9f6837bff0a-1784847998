@@ -880,12 +880,27 @@ export default function Payments() {
                             <p className="font-bold text-lg text-red-600">{formatCurrency(receiptData.lateFee)}</p>
                           </div>
                         )}
-                        {rental?.hasMotorcycleSpot && rental.motorcycleSpotValue && (
-                          <div>
-                            <Label className="text-xs text-slate-500">Vaga de Garagem</Label>
-                            <p className="font-bold text-lg">{formatCurrency(rental.motorcycleSpotValue)}</p>
-                          </div>
-                        )}
+                        <div className="pt-2 border-t border-slate-100 space-y-1">
+                           <div className="flex justify-between text-xs">
+                              <span>Aluguel:</span>
+                              <span>{formatCurrency(rental.monthlyRent || 0)}</span>
+                           </div>
+                           {rental.hasGarage && rental.garageValue && (
+                             <div className="flex justify-between text-xs">
+                                <span>Vaga Garagem:</span>
+                                <span>{formatCurrency(rental.garageValue || 0)}</span>
+                             </div>
+                           )}
+                           {rental.hasParkingSpot && rental.parkingSpotValue && (
+                             <div className="flex justify-between text-xs">
+                                <span>Vaga Carro:</span>
+                                <span>{formatCurrency(rental.parkingSpotValue || 0)}</span>
+                             </div>
+                           )}
+                           <div className="flex justify-between font-bold text-emerald-600 text-base pt-1">
+                              <span>Total Mensal:</span>
+                           </div>
+                        </div>
                         <div className="col-span-2 bg-green-50 p-3 rounded border border-green-200">
                           <Label className="text-xs text-green-700">Valor Total</Label>
                           <p className="font-bold text-2xl text-green-700">{formatCurrency(totalAmount)}</p>

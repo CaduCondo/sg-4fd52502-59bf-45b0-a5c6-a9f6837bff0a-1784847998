@@ -47,9 +47,7 @@ export default function Rentals() {
     observations: "",
     hasGarage: false,
     garageValue: "",
-    hasMotorcycleSpot: false,
-    motorcycleSpotValue: "",
-    parkingSpot: false,
+    hasParkingSpot: false,
     parkingSpotValue: ""
   });
 
@@ -109,9 +107,7 @@ export default function Rentals() {
       observations: "",
       hasGarage: false,
       garageValue: "",
-      hasMotorcycleSpot: false,
-      motorcycleSpotValue: "",
-      parkingSpot: false,
+      hasParkingSpot: false,
       parkingSpotValue: ""
     });
     setAttachments([]);
@@ -163,8 +159,6 @@ export default function Rentals() {
         observations: rental.observations || "",
         hasGarage: rental.hasGarage || false,
         garageValue: rental.garageValue ? formatCurrency(rental.garageValue) : "",
-        hasMotorcycleSpot: rental.hasMotorcycleSpot || false,
-        motorcycleSpotValue: rental.motorcycleSpotValue ? formatCurrency(rental.motorcycleSpotValue) : "",
         hasParkingSpot: rental.hasParkingSpot || false,
         parkingSpotValue: rental.parkingSpotValue ? formatCurrency(rental.parkingSpotValue) : ""
       });
@@ -181,9 +175,7 @@ export default function Rentals() {
         observations: "",
         hasGarage: false,
         garageValue: "",
-        hasMotorcycleSpot: false,
-        motorcycleSpotValue: "",
-        parkingSpot: false,
+        hasParkingSpot: false,
         parkingSpotValue: ""
       });
       setAttachments([]);
@@ -238,8 +230,6 @@ export default function Rentals() {
       paymentDay: paymentDay,
       hasGarage: formData.hasGarage,
       garageValue: formData.hasGarage ? parseFloat(formData.garageValue || "0") : undefined,
-      hasMotorcycleSpot: formData.hasMotorcycleSpot,
-      motorcycleSpotValue: formData.hasMotorcycleSpot ? parseFloat(formData.motorcycleSpotValue || "0") : undefined,
       hasParkingSpot: formData.hasParkingSpot,
       parkingSpotValue: formData.hasParkingSpot ? parseFloat(formData.parkingSpotValue || "0") : undefined,
       observations: formData.observations,
@@ -390,7 +380,7 @@ export default function Rentals() {
     // Note: In form, we might want to separate base rent from total. 
     // Assuming form input 'monthlyRent' is the base rent value for now to match logic
     if (rental.hasGarage && rental.garageValue) total += rental.garageValue;
-    if (rental.hasMotorcycleSpot && rental.motorcycleSpotValue) total += rental.motorcycleSpotValue;
+    if (rental.hasParkingSpot && rental.parkingSpotValue) total += rental.parkingSpotValue;
     return total;
   };
 
@@ -459,21 +449,11 @@ export default function Rentals() {
                       </div>
                     </div>
 
-                    {/* Extras */}
-                    {viewingRental.hasMotorcycleSpot && (
-                      <div className="grid grid-cols-1 gap-4">
-                        <div className="flex justify-between items-center p-2 bg-slate-50 rounded border">
-                          <span className="text-sm">🏍️ Vaga Moto</span>
-                          <span className="font-medium">{formatCurrency(viewingRental.motorcycleSpotValue || 0)}</span>
-                        </div>
-                      </div>
-                    )}
-
                     {/* Parking Spot */}
                     {viewingRental.hasParkingSpot && (
                       <div className="grid grid-cols-1 gap-4">
                         <div className="flex justify-between items-center p-2 bg-slate-50 rounded border">
-                          <span className="text-sm">🚗 Vaga Garagem</span>
+                          <span className="text-sm">🚗 Vaga Carro</span>
                           <span className="font-medium">{formatCurrency(viewingRental.parkingSpotValue || 0)}</span>
                         </div>
                       </div>
@@ -711,46 +691,6 @@ export default function Rentals() {
                           }}
                           placeholder="R$ 0,00"
                           required={formData.hasGarage}
-                        />
-                      </div>
-                    )}
-
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        id="hasMotorcycleSpot"
-                        checked={formData.hasMotorcycleSpot}
-                        onChange={(e) => setFormData({
-                          ...formData, 
-                          hasMotorcycleSpot: e.target.checked,
-                          motorcycleSpotValue: e.target.checked ? formData.motorcycleSpotValue : ""
-                        })}
-                        className="w-4 h-4"
-                      />
-                      <Label htmlFor="hasMotorcycleSpot">Vaga Moto?</Label>
-                    </div>
-
-                    {formData.hasMotorcycleSpot && (
-                      <div className="space-y-2 pl-6">
-                        <Label htmlFor="motorcycleSpotValue">Valor da Vaga *</Label>
-                        <Input
-                          id="motorcycleSpotValue"
-                          type="text"
-                          value={formData.motorcycleSpotValue}
-                          onChange={(e) => {
-                            const value = e.target.value.replace(/\D/g, "");
-                            const formatted = formatCurrency(parseFloat(value) / 100);
-                            setFormData({...formData, motorcycleSpotValue: formatted});
-                          }}
-                          onBlur={(e) => {
-                            // Ensure proper formatting on blur
-                            if (formData.motorcycleSpotValue) {
-                               const val = parseCurrency(formData.motorcycleSpotValue);
-                               setFormData({...formData, motorcycleSpotValue: formatCurrency(val)});
-                            }
-                          }}
-                          placeholder="R$ 0,00"
-                          required={formData.hasMotorcycleSpot}
                         />
                       </div>
                     )}
@@ -1032,15 +972,15 @@ export default function Rentals() {
                                     </span>
                                   </div>
                                   
-                                  {rental.hasMotorcycleSpot && rental.motorcycleSpotValue && (
-                                    <div className="flex justify-between items-center text-xs text-slate-500">
-                                      <span>(Aluguel: {formatCurrency(rental.monthlyRent)} + Vaga: {formatCurrency(rental.motorcycleSpotValue)})</span>
-                                    </div>
-                                  )}
-                                  
                                   {rental.hasParkingSpot && rental.parkingSpotValue && (
                                     <div className="flex justify-between items-center text-xs text-slate-500">
                                       <span>(Aluguel: {formatCurrency(rental.monthlyRent)} + Vaga: {formatCurrency(rental.parkingSpotValue)})</span>
+                                    </div>
+                                  )}
+                                  
+                                  {(rental.hasGarage && rental.garageValue) && (
+                                    <div className="flex justify-between items-center text-xs text-slate-500">
+                                      <span>(Aluguel: {formatCurrency(rental.monthlyRent)} + Vaga: {formatCurrency(rental.garageValue)})</span>
                                     </div>
                                   )}
                                   
@@ -1173,16 +1113,16 @@ export default function Rentals() {
                               <span>Aluguel:</span>
                               <span>{formatCurrency(rental.monthlyRent || 0)}</span>
                            </div>
-                           {rental.hasMotorcycleSpot && rental.motorcycleSpotValue && (
-                             <div className="flex justify-between text-xs">
-                                <span>Vaga Moto:</span>
-                                <span>{formatCurrency(rental.motorcycleSpotValue || 0)}</span>
-                             </div>
-                           )}
                            {rental.hasParkingSpot && rental.parkingSpotValue && (
                              <div className="flex justify-between text-xs">
                                 <span>Vaga Carro:</span>
                                 <span>{formatCurrency(rental.parkingSpotValue || 0)}</span>
+                             </div>
+                           )}
+                           {(rental.hasGarage && rental.garageValue) && (
+                             <div className="flex justify-between text-xs">
+                                <span>Vaga Garagem:</span>
+                                <span>{formatCurrency(rental.garageValue || 0)}</span>
                              </div>
                            )}
                            <div className="flex justify-between font-bold text-emerald-600 text-base pt-1">
