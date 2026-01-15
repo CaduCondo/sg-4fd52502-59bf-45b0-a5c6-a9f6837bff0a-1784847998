@@ -240,7 +240,7 @@ export default function PropertiesPage() {
               <h1 className="text-3xl font-bold">Imóveis</h1>
               <p className="text-muted-foreground">Gerencie seus imóveis</p>
             </div>
-            <Button onClick={() => { setIsEditMode(false); setIsDialogOpen(true); setFormData({ location: "", address: "", number: "", complement: "", monthlyRent: "", description: "" }); }} className="bg-emerald-600 hover:bg-emerald-700">
+            <Button onClick={() => { resetForm(); setIsDialogOpen(true); }} className="bg-emerald-600 hover:bg-emerald-700">
               <Plus className="h-4 w-4 mr-2" />
               Novo Imóvel
             </Button>
