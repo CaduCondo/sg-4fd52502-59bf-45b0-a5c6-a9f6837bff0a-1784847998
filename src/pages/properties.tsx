@@ -205,18 +205,18 @@ export default function Properties() {
   const handleEdit = (property: Property) => {
     setFormData({
       address: property.address,
-      number: property.number,
       complement: property.complement || "",
-      neighborhood: property.neighborhood,
-      city: property.city,
-      state: property.state,
-      cep: property.cep,
-      description: property.description || "",
+      number: property.number,
+      cep: property.cep || "",
       local: property.local || "",
       type: property.type,
-      value: property.value ? formatCurrency(property.value) : "",
-      monthlyRent: property.monthlyRent ? formatCurrency(property.monthlyRent) : "",
+      monthlyRent: property.monthlyRent ? property.monthlyRent.toFixed(2).replace(".", ",") : "",
       status: property.status,
+      neighborhood: property.neighborhood || "",
+      city: property.city || "",
+      state: property.state || "",
+      description: property.description || "",
+      value: property.value ? property.value.toFixed(2).replace(".", ",") : "",
     });
     setEditingProperty(property);
     setIsDialogOpen(true);
@@ -411,35 +411,37 @@ export default function Properties() {
                         </div>
                       </CardHeader>
                       <CardContent className="pt-0">
-                        <div className="space-y-2">
-                          <div className="flex items-center text-sm text-slate-600">
-                            <MapPin className="h-4 w-4 mr-2" />
-                            <span className="truncate">{property.address}</span>
-                          </div>
-                          
-                          {property.local && (
-                            <div className="flex items-center text-sm text-slate-600">
-                              <Building className="h-4 w-4 mr-2" />
-                              <span>{property.local}</span>
+                        <div className="space-y-3">
+                          <div className="flex items-start gap-2">
+                            <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">{property.address}, {property.number}</p>
+                              {property.local && (
+                                <p className="text-xs text-muted-foreground">{property.local}</p>
+                              )}
+                              {property.complement && (
+                                <p className="text-xs text-muted-foreground">{property.complement}</p>
+                              )}
                             </div>
-                          )}
-                          
-                          {property.complement && (
-                            <div className="flex items-center text-sm text-slate-500">
-                              <span className="ml-6 text-xs">{property.complement}</span>
-                            </div>
-                          )}
-                          
-                          <div className="flex items-center text-sm font-semibold text-emerald-600">
-                            <span>Valor: {formatCurrency(property.value)}</span>
                           </div>
-                          
-                          <Badge
-                            variant={property.status === "available" ? "default" : "secondary"}
-                            className="text-xs"
-                          >
-                            {property.status === "available" ? "Disponível" : "Alugado"}
-                          </Badge>
+
+                          <div className="flex items-center justify-between pt-2 border-t">
+                            <div className="flex items-center gap-2">
+                              <Building className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-xs text-muted-foreground">{property.type}</span>
+                            </div>
+                            {property.monthlyRent && (
+                              <span className="text-sm font-semibold text-emerald-600">
+                                {formatCurrency(property.monthlyRent)}
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex items-center justify-between">
+                            <Badge variant={property.status === "available" ? "default" : "secondary"}>
+                              {property.status === "available" ? "Disponível" : "Ocupado"}
+                            </Badge>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
@@ -640,33 +642,30 @@ export default function Properties() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="value">Valor do Aluguel (R$)</Label>
+                <Label htmlFor="value">Valor do Aluguel</Label>
                 <Input
                   id="value"
-                  value={formData.value}
-                  onChange={(e) =>
-                    setFormData({ ...formData, value: e.target.value })
-                  }
-                  onBlur={(e) => {
-                    const formatted = formatCurrencyInput(e.target.value);
-                    setFormData({ ...formData, value: formatted });
-                  }}
                   placeholder="R$ 0,00"
+                  value={formData.monthlyRent}
+                  onChange={(e) => {
+                    const formatted = formatCurrencyInput(e.target.value);
+                    setFormData({ ...formData, monthlyRent: formatted });
+                  }}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="status">Status do Imóvel</Label>
-                <Select 
-                  value={formData.status} 
+                <Label htmlFor="status">Status</Label>
+                <Select
+                  value={formData.status}
                   onValueChange={(value) => setFormData({ ...formData, status: value as "available" | "occupied" })}
                 >
-                  <SelectTrigger id="status">
+                  <SelectTrigger>
                     <SelectValue placeholder="Selecione o status" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="available">Disponível</SelectItem>
-                    <SelectItem value="occupied">Alugado</SelectItem>
+                    <SelectItem value="occupied">Ocupado</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

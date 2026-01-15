@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { Layout } from "@/components/Layout";
 import { SEO } from "@/components/SEO";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FloatingCard } from "@/components/animations/FloatingCard";
@@ -32,7 +32,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Download, Printer, ChevronDown, ChevronUp } from "lucide-react";
+import { Download, Printer, ChevronDown, ChevronUp, FileText } from "lucide-react";
 import { rentalStorage, paymentStorage, propertyStorage, tenantStorage, configStorage } from "@/lib/storage";
 import { getCurrentUser, hasRole } from "@/lib/auth";
 import { Payment, Rental, Property, Tenant } from "@/types";
@@ -395,18 +395,25 @@ export default function FinancialPage() {
 
   // Calculate filtered rentals for the table
   const rentals = rentalStorage.getAll();
+  const allPayments = paymentStorage.getAll();
   const properties = propertyStorage.getAll();
   const tenants = tenantStorage.getAll();
-  
+  const settings = configStorage.get();
+
+  // Filter payments based on page filters (month/year) if possible, or use all for the rental summary
+  // The request implies a summary of rentals. Let's show all payments for the listed rentals in the current filtered view context?
+  // Or just all payments for active rentals?
+  // Let's use all payments to calculate the total paid/pending for each rental correctly.
+  const filteredPayments = allPayments; 
+
   const filteredRentals = rentals.filter(rental => {
-    // Filter by active status if needed, or show all. 
-    // Usually financial reports show active and historical.
-    // Based on user request "planilha com as informações das locações", showing all relevant ones.
-    // Let's reuse the filters if possible, but the user asked for a table ABOVE charts.
-    // Let's show active rentals primarily or all rentals.
-    // Given the context of "active rentals", let's filter active ones or respect the filters.
+    // Show all rentals or filter? Let's show all for the summary table as requested "informations of rentals"
     return true; 
   });
+  
+  // Use state values for totals
+  const totalRevenue = totalPaid;
+  const totalAdminFee = adminFee;
 
   return (
     <>
@@ -573,68 +580,72 @@ export default function FinancialPage() {
           <FloatingCard delay={0.3}>
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Detalhamento de Locações</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  Detalhamento de Locações
+                </CardTitle>
+                <CardDescription>
+                  Visão completa de todas as locações e seus pagamentos
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
-                    <thead className="border-b">
-                      <tr className="text-left">
-                        <th className="pb-2 font-semibold text-slate-700">Imóvel</th>
-                        <th className="pb-2 font-semibold text-slate-700">Inquilino</th>
-                        <th className="pb-2 font-semibold text-slate-700 text-right">Aluguel</th>
-                        <th className="pb-2 font-semibold text-slate-700 text-right">Garagem</th>
-                        <th className="pb-2 font-semibold text-slate-700 text-right">Total</th>
-                        <th className="pb-2 font-semibold text-slate-700 text-center">Status</th>
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left p-2 font-medium">Imóvel</th>
+                        <th className="text-left p-2 font-medium">Inquilino</th>
+                        <th className="text-right p-2 font-medium">Valor</th>
+                        <th className="text-center p-2 font-medium">Status</th>
+                        <th className="text-right p-2 font-medium">Total Pago</th>
+                        <th className="text-right p-2 font-medium">Taxa Admin</th>
                       </tr>
                     </thead>
                     <tbody>
                       {filteredRentals.map((rental) => {
-                        const property = properties.find((p) => p.id === rental.propertyId);
-                        const tenant = tenants.find((t) => t.id === rental.tenantId);
+                        const property = properties.find(p => p.id === rental.propertyId);
+                        const tenant = tenants.find(t => t.id === rental.tenantId);
+                        const rentalPayments = filteredPayments.filter(p => p.rentalId === rental.id);
+                        const totalPaid = rentalPayments
+                          .filter(p => p.status === "paid")
+                          .reduce((sum, p) => sum + (p.paidAmount || 0), 0);
+                        const adminFee = totalPaid * (settings.adminFeePercentage / 100);
                         const totalValue = rental.monthlyRent + (rental.garageValue || 0);
 
                         return (
                           <tr key={rental.id} className="border-b hover:bg-slate-50">
-                            <td className="py-3 text-slate-800">{property?.address || "-"}</td>
-                            <td className="py-3 text-slate-600">{tenant?.name || "-"}</td>
-                            <td className="py-3 text-right text-slate-800">
-                              {formatCurrency(rental.monthlyRent)}
+                            <td className="p-2">
+                              <div>
+                                <p className="font-medium">{property?.address}</p>
+                                <p className="text-xs text-muted-foreground">{property?.local}</p>
+                              </div>
                             </td>
-                            <td className="py-3 text-right text-slate-600">
-                              {rental.hasGarage && rental.garageValue
-                                ? formatCurrency(rental.garageValue)
-                                : "-"}
-                            </td>
-                            <td className="py-3 text-right font-semibold text-emerald-600">
-                              {formatCurrency(totalValue)}
-                            </td>
-                            <td className="py-3 text-center">
-                              <Badge
-                                variant={rental.isActive ? "default" : "secondary"}
-                                className="text-xs"
-                              >
+                            <td className="p-2">{tenant?.name}</td>
+                            <td className="p-2 text-right font-medium">{formatCurrency(totalValue)}</td>
+                            <td className="p-2 text-center">
+                              <Badge variant={rental.isActive ? "default" : "secondary"}>
                                 {rental.isActive ? "Ativa" : "Encerrada"}
                               </Badge>
+                            </td>
+                            <td className="p-2 text-right font-semibold text-green-600">
+                              {formatCurrency(totalPaid)}
+                            </td>
+                            <td className="p-2 text-right font-medium text-rose-600">
+                              {formatCurrency(adminFee)}
                             </td>
                           </tr>
                         );
                       })}
                     </tbody>
-                    <tfoot className="border-t-2 border-slate-300">
-                      <tr>
-                        <td colSpan={4} className="py-3 font-semibold text-slate-700 text-right">
-                          Total Mensal:
+                    <tfoot>
+                      <tr className="border-t-2 font-semibold">
+                        <td colSpan={4} className="p-2 text-right">Totais:</td>
+                        <td className="p-2 text-right text-green-600">
+                          {formatCurrency(totalRevenue)}
                         </td>
-                        <td className="py-3 text-right font-bold text-emerald-600 text-lg">
-                          {formatCurrency(
-                            filteredRentals.reduce(
-                              (sum, r) => sum + r.monthlyRent + (r.garageValue || 0),
-                              0
-                            )
-                          )}
+                        <td className="p-2 text-right text-rose-600">
+                          {formatCurrency(totalAdminFee)}
                         </td>
-                        <td></td>
                       </tr>
                     </tfoot>
                   </table>
