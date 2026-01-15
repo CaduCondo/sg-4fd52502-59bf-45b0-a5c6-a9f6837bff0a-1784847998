@@ -130,7 +130,7 @@ export default function RentalDetails() {
       tenantId: editTenantId,
       startDate: editStartDate,
       endDate: editEndDate,
-      paymentDay: Number(editPaymentDay), // Ensure Number() conversion from string state
+      paymentDay: Number(editPaymentDay),
       monthlyRent: monthlyRent,
       value: monthlyRent,
       hasGarage: false,
