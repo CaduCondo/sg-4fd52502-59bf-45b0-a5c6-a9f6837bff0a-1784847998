@@ -465,7 +465,14 @@ export default function Rentals() {
                   </div>
                 )}
                 <DialogFooter>
-                  <Button onClick={() => setViewingRental(null)}>Fechar</Button>
+                  <Button variant="outline" onClick={() => setViewingRental(null)}>Fechar</Button>
+                  <Button onClick={() => {
+                    handleEdit(viewingRental!);
+                    setViewingRental(null);
+                  }}>
+                    <Edit className="h-4 w-4 mr-2" />
+                    Editar
+                  </Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
@@ -867,29 +874,20 @@ export default function Rentals() {
                                     <Button 
                                       variant="outline" 
                                       size="sm" 
+                                      className="flex-1 h-8 text-xs"
+                                      onClick={() => router.push(`/rentals/${rental.id}`)}
+                                    >
+                                      <Eye className="mr-1 h-3 w-3" />
+                                      Detalhes
+                                    </Button>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm" 
+                                      className="h-8 text-xs px-2"
                                       onClick={() => setViewingRental(rental)}
-                                      className="flex-1 bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-600"
                                     >
-                                      <Eye size={14} className="mr-1" />
-                                      Ver Detalhes
-                                    </Button>
-                                    <Button 
-                                      variant="outline" 
-                                      size="sm" 
-                                      onClick={() => handleEdit(rental)}
-                                      className="flex-1"
-                                    >
-                                      <Edit size={14} className="mr-1" />
-                                      Editar
-                                    </Button>
-                                    <Button 
-                                      variant="destructive" 
-                                      size="sm" 
-                                      onClick={() => handleDelete(rental.id)}
-                                      className="px-2"
-                                      title="Excluir"
-                                    >
-                                      <Trash2 size={14} />
+                                      <FileText className="mr-1 h-3 w-3" />
+                                      Resumo
                                     </Button>
                                   </div>
                                 </div>

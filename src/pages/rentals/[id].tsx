@@ -69,6 +69,17 @@ export default function RentalDetails() {
       
       setProperty(prop || null);
       setTenant(ten || null);
+      
+      // Populate edit form states
+      setEditPropertyId(found.propertyId);
+      setEditTenantId(found.tenantId);
+      setEditStartDate(found.startDate);
+      setEditEndDate(found.endDate);
+      setEditPaymentDay(found.paymentDay.toString()); // Convert number to string
+      setEditMonthlyRent(formatCurrency(found.monthlyRent));
+      setEditObservations(found.observations || "");
+      setEditHasMotorcycleSpot(found.hasMotorcycleSpot || false);
+      setEditMotorcycleSpotValue(found.motorcycleSpotValue ? formatCurrency(found.motorcycleSpotValue) : "");
     }
   };
 
@@ -78,33 +89,19 @@ export default function RentalDetails() {
     const properties = propertyStorage.getAll();
     const tenants = tenantStorage.getAll();
     
-    setAvailableProperties(properties.filter(p => p.isActive || p.id === rental.propertyId)); // Use isActive for availability check base
-    setAvailableTenants(tenants.filter(t => t.isActive || t.id === rental.tenantId)); // Use isActive
+    setAvailableProperties(properties.filter(p => p.isActive || p.id === rental.propertyId));
+    setAvailableTenants(tenants.filter(t => t.isActive || t.id === rental.tenantId));
 
     setEditPropertyId(rental.propertyId);
     setEditTenantId(rental.tenantId);
     setEditStartDate(rental.startDate);
     setEditEndDate(rental.endDate);
-    setEditPaymentDay(rental.paymentDay.toString());
+    setEditPaymentDay(rental.paymentDay.toString()); // Convert number to string
     setEditMonthlyRent(formatCurrency(rental.monthlyRent));
     setEditObservations(rental.observations || "");
     setEditHasMotorcycleSpot(rental.hasMotorcycleSpot || false);
     setEditMotorcycleSpotValue(rental.motorcycleSpotValue ? formatCurrency(rental.motorcycleSpotValue) : "");
     
-    // Removed incorrect formData update if it exists, or fix it if it's needed. 
-    // The error suggests formData.paymentDay expects a number.
-    // But looking at the file structure, we shouldn't rely on formData for the edit dialog which uses editPaymentDay.
-    // I will remove the setFormData block to be safe as it seems redundant/erroneous.
-    
-    /* 
-    setFormData({
-      ...formData,
-      endDate: rental.endDate ? rental.endDate.split('T')[0] : '',
-      monthlyRent: formatCurrency(rental.monthlyRent),
-      paymentDay: rental.paymentDay, // Fix: pass number if expected
-      isActive: rental.isActive
-    });
-    */
     setShowEditDialog(true);
   };
 
@@ -112,9 +109,9 @@ export default function RentalDetails() {
     e.preventDefault();
     if (!rental) return;
 
-    const monthlyRent = parseFloat(editMonthlyRent.replace(/[^\d,]/g, "").replace(",", "."));
-    const motorcycleSpotValue = editHasMotorcycleSpot ? parseFloat(editMotorcycleSpotValue.replace(/[^\d,]/g, "").replace(",", ".")) : 0;
-    const paymentDay = parseInt(editPaymentDay);
+    const monthlyRent: number = parseFloat(editMonthlyRent.replace(/[^\d,]/g, "").replace(",", "."));
+    const motorcycleSpotValue: number = editHasMotorcycleSpot ? parseFloat(editMotorcycleSpotValue.replace(/[^\d,]/g, "").replace(",", ".")) : 0;
+    const paymentDay: number = parseInt(editPaymentDay, 10);
 
     if (paymentDay < 1 || paymentDay > 28) {
       alert("O dia de pagamento deve estar entre 1 e 28");
@@ -133,11 +130,16 @@ export default function RentalDetails() {
       tenantId: editTenantId,
       startDate: editStartDate,
       endDate: editEndDate,
-      paymentDay,
-      monthlyRent,
+      paymentDay: paymentDay,
+      monthlyRent: monthlyRent,
+      value: monthlyRent,
+      hasGarage: false,
       observations: editObservations,
       hasMotorcycleSpot: editHasMotorcycleSpot,
-      motorcycleSpotValue: editHasMotorcycleSpot ? motorcycleSpotValue : undefined
+      motorcycleSpotValue: editHasMotorcycleSpot ? motorcycleSpotValue : undefined,
+      isActive: rental.isActive,
+      attachments: rental.attachments,
+      createdAt: rental.createdAt
     };
 
     // Update statuses if property or tenant changed
@@ -159,7 +161,7 @@ export default function RentalDetails() {
     if (
       rental.startDate !== editStartDate ||
       rental.endDate !== editEndDate ||
-      rental.paymentDay !== paymentDay ||
+      rental.paymentDay !== paymentDay || // Both should be numbers here
       rental.monthlyRent !== monthlyRent ||
       rental.hasMotorcycleSpot !== editHasMotorcycleSpot ||
       rental.motorcycleSpotValue !== motorcycleSpotValue

@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { isAuthenticated } from "@/lib/auth";
 import { paymentStorage, rentalStorage, propertyStorage, tenantStorage } from "@/lib/storage";
 import { Payment, Rental, Property, Tenant } from "@/types";
-import { ArrowLeft, DollarSign, Save, Calendar, MapPin, Hash } from "lucide-react";
+import { ArrowLeft, DollarSign, Save, Calendar, MapPin, Hash, Edit } from "lucide-react";
 import { SEO } from "@/components/SEO";
 import { formatCurrency, formatDate, applyCurrencyMask, parseCurrencyToNumber } from "@/lib/masks";
 
@@ -29,6 +29,7 @@ export default function PaymentDetails() {
   const [paymentLocation, setPaymentLocation] = useState<"CP" | "CD" | "CE">("CP");
   const [paymentCode, setPaymentCode] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -250,7 +251,7 @@ export default function PaymentDetails() {
                   Registrar Pagamento
                 </CardTitle>
                 <CardDescription>
-                  Preencha os dados do pagamento recebido
+                  {isEditing ? "Edite os dados do pagamento" : "Visualize os dados do pagamento. Clique em Editar para alterar."}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -266,6 +267,7 @@ export default function PaymentDetails() {
                       value={paymentDate}
                       onChange={(e) => setPaymentDate(e.target.value)}
                       required
+                      disabled={!isEditing}
                       className="mt-1"
                     />
                   </div>
@@ -278,10 +280,11 @@ export default function PaymentDetails() {
                       onChange={(e) => setAmountPaid(applyCurrencyMask(e.target.value))}
                       placeholder="R$ 0,00"
                       required
+                      disabled={!isEditing}
                       className="mt-1 text-lg font-semibold"
                     />
                     <p className="text-xs text-slate-500 mt-1">
-                      Digite o valor recebido
+                      Valor recebido
                     </p>
                   </div>
 
@@ -289,7 +292,8 @@ export default function PaymentDetails() {
                     <Label htmlFor="paymentMethod">Forma de Pagamento</Label>
                     <Select 
                       value={paymentMethod} 
-                      onValueChange={(value) => setPaymentMethod(value as "Pix" | "Boleto" | "Dinheiro" | "Transferencia")}
+                      onValueChange={(value) => setPaymentMethod(value as any)}
+                      disabled={!isEditing}
                     >
                       <SelectTrigger className="mt-1">
                         <SelectValue />
@@ -311,7 +315,8 @@ export default function PaymentDetails() {
                       </Label>
                       <Select 
                         value={paymentLocation} 
-                        onValueChange={(value) => setPaymentLocation(value as "CP" | "CD" | "CE")}
+                        onValueChange={(value) => setPaymentLocation(value as any)}
+                        disabled={!isEditing}
                       >
                         <SelectTrigger className="mt-1">
                           <SelectValue />
@@ -332,7 +337,11 @@ export default function PaymentDetails() {
                           <MapPin className="h-4 w-4" />
                           Local de Pagamento
                         </Label>
-                        <Select value={paymentLocation} onValueChange={(value) => setPaymentLocation(value as "CP" | "CD" | "CE")}>
+                        <Select 
+                          value={paymentLocation} 
+                          onValueChange={(value) => setPaymentLocation(value as any)}
+                          disabled={!isEditing}
+                        >
                           <SelectTrigger className="mt-1">
                             <SelectValue />
                           </SelectTrigger>
@@ -355,32 +364,51 @@ export default function PaymentDetails() {
                           onChange={(e) => setPaymentCode(e.target.value)}
                           placeholder="06XXXXCP"
                           required
+                          disabled={!isEditing}
                           className="mt-1 font-mono"
                         />
-                        <p className="text-xs text-slate-500 mt-1">
-                          Formato: DiaXXXXLocal (ex: 06XXXXCP)
-                        </p>
                       </div>
                     </>
                   )}
 
                   <div className="pt-4 space-y-2">
-                    <Button 
-                      type="submit" 
-                      className="w-full"
-                      disabled={isSubmitting}
-                    >
-                      <Save className="h-4 w-4 mr-2" />
-                      {isSubmitting ? "Salvando..." : "Salvar Pagamento"}
-                    </Button>
+                    {isEditing ? (
+                      <>
+                        <Button 
+                          type="submit" 
+                          className="w-full"
+                          disabled={isSubmitting}
+                        >
+                          <Save className="h-4 w-4 mr-2" />
+                          {isSubmitting ? "Salvando..." : "Salvar Alterações"}
+                        </Button>
+                        <Button 
+                          type="button"
+                          variant="outline"
+                          className="w-full"
+                          onClick={() => setIsEditing(false)}
+                        >
+                          Cancelar Edição
+                        </Button>
+                      </>
+                    ) : (
+                      <Button 
+                        type="button"
+                        className="w-full"
+                        onClick={() => setIsEditing(true)}
+                      >
+                        <Edit className="h-4 w-4 mr-2" />
+                        Editar Pagamento
+                      </Button>
+                    )}
                     
                     <Button 
                       type="button"
-                      variant="outline"
+                      variant="ghost"
                       className="w-full"
                       onClick={() => router.push("/payments")}
                     >
-                      Cancelar
+                      Voltar para Lista
                     </Button>
                   </div>
                 </form>

@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { isAuthenticated } from "@/lib/auth";
 import { Search, Plus, Trash2, Edit, User, Phone, Mail, FileText, Eye } from "lucide-react";
 import { Tenant } from "@/types";
 import { tenantStorage } from "@/lib/storage";
@@ -17,24 +18,22 @@ import { maskCPF, maskCNPJ, maskPhone } from "@/lib/masks";
 import { useToast } from "@/hooks/use-toast";
 import { StaggerContainer, StaggerItem } from "@/components/animations/ScrollReveal";
 import { FloatingCard } from "@/components/animations/FloatingCard";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export default function TenantsPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [tenants, setTenants] = useState<Tenant[]>([]);
-  const [filteredTenants, setFilteredTenants] = useState<Tenant[]>([]);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [tenantToDelete, setTenantToDelete] = useState<Tenant | null>(null);
   const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
 
   // Filters
-  const [searchName, setSearchName] = useState("");
-  const [searchCpf, setSearchCpf] = useState("");
-  const [searchEmail, setSearchEmail] = useState("");
-  const [searchPhone, setSearchPhone] = useState("");
-  const [filterStatus, setFilterStatus] = useState<"all" | "active" | "vacant">("all");
-  const [sortBy, setSortBy] = useState<"name" | "cpf" | "createdAt">("name");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [searchTerm, setSearchTerm] = useState(""); // Name or Phone
+  const [filterStatus, setFilterStatus] = useState<"all" | "active" | "inactive">("all");
+  const [sortBy, setSortBy] = useState<"name" | "status">("name");
 
   // Form states
   const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
@@ -51,12 +50,12 @@ export default function TenantsPage() {
   });
 
   useEffect(() => {
+    if (!isAuthenticated()) {
+      router.push("/login");
+      return;
+    }
     loadTenants();
-  }, []);
-
-  useEffect(() => {
-    filterTenants();
-  }, [searchName, searchCpf, searchEmail, searchPhone, filterStatus, sortBy, sortOrder, tenants]);
+  }, [router]);
 
   const loadTenants = () => {
     const data = tenantStorage.getAll();
@@ -69,49 +68,23 @@ export default function TenantsPage() {
     setTenants(updated);
   };
 
-  const filterTenants = () => {
-    let filtered = tenants;
+  const filteredTenants = tenants
+    .filter(tenant => {
+      const matchesSearch = tenant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          tenant.phone.includes(searchTerm);
+      
+      const matchesStatus = filterStatus === "all" ||
+        (filterStatus === "active" && tenant.isActive) ||
+        (filterStatus === "inactive" && !tenant.isActive);
 
-    if (searchName) {
-      filtered = filtered.filter(t => t.name.toLowerCase().includes(searchName.toLowerCase()));
-    }
-    if (searchCpf) {
-      filtered = filtered.filter(t => t.cpf.includes(searchCpf));
-    }
-    if (searchEmail) {
-      filtered = filtered.filter(t => t.email.toLowerCase().includes(searchEmail.toLowerCase()));
-    }
-    if (searchPhone) {
-      filtered = filtered.filter(t => t.phone.includes(searchPhone));
-    }
-    // 2. Status filter
-    if (filterStatus !== "all") {
-      if (filterStatus === "active") {
-        filtered = filtered.filter(t => t.isActive);
-      } else if (filterStatus === "vacant") {
-        filtered = filtered.filter(t => !t.isActive);
+      return matchesSearch && matchesStatus;
+    })
+    .sort((a, b) => {
+      if (sortBy === "status") {
+        return (Number(b.isActive) - Number(a.isActive));
       }
-    }
-
-    // Sorting
-    filtered.sort((a, b) => {
-      let aVal: any = a[sortBy];
-      let bVal: any = b[sortBy];
-
-      if (sortBy === "createdAt") {
-        aVal = new Date(aVal).getTime();
-        bVal = new Date(bVal).getTime();
-      }
-
-      if (sortOrder === "asc") {
-        return aVal > bVal ? 1 : -1;
-      } else {
-        return aVal < bVal ? 1 : -1;
-      }
+      return a.name.localeCompare(b.name);
     });
-
-    setFilteredTenants(filtered);
-  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -184,13 +157,17 @@ export default function TenantsPage() {
     loadTenants();
   };
 
-  const handleDelete = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (confirm("Tem certeza que deseja excluir este inquilino?")) {
+  const handleViewTenant = (tenant: Tenant) => {
+    setViewingTenant(tenant);
+  };
+
+  const handleDelete = (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    // if (confirm("Tem certeza que deseja excluir este inquilino?")) { // Moved to Dialog
       tenantStorage.delete(id);
       toast({ title: "Sucesso", description: "Inquilino excluído." });
       loadTenants();
-    }
+    // }
   };
 
   const handleEdit = (tenant: Tenant) => {
@@ -317,186 +294,90 @@ export default function TenantsPage() {
         </div>
 
         {/* Filters */}
-        <Card>
-          <CardContent className="pt-6">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="space-y-2">
-                <Label>Nome</Label>
-                <div className="relative">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-                  <Input 
-                    placeholder="Filtrar por nome..." 
-                    className="pl-9"
-                    value={searchName}
-                    onChange={(e) => setSearchName(e.target.value)}
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>CPF/CNPJ</Label>
-                <Input 
-                  placeholder="Filtrar..." 
-                  value={searchCpf}
-                  onChange={(e) => setSearchCpf(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Email</Label>
-                <Input 
-                  placeholder="Filtrar por email..." 
-                  value={searchEmail}
-                  onChange={(e) => setSearchEmail(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Telefone</Label>
-                <Input 
-                  placeholder="Filtrar por telefone..." 
-                  value={searchPhone}
-                  onChange={(e) => setSearchPhone(maskPhone(e.target.value))}
-                  maxLength={15}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-              <div className="space-y-2">
-                <Label htmlFor="filterStatus">Status</Label>
-                <select
-                  id="filterStatus"
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value as any)}
-                  className="w-full h-10 px-3 rounded-md border border-slate-300 bg-white text-slate-900"
-                >
-                  <option value="all">Todos os Status</option>
-                  <option value="active">Ativos</option>
-                  <option value="vacant">Vagos</option>
-                </select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="sortBy">Ordenar Por</Label>
-                <select
-                  id="sortBy"
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as any)}
-                  className="w-full h-10 px-3 rounded-md border border-slate-300 bg-white text-slate-900"
-                >
-                  <option value="name">Nome</option>
-                  <option value="cpf">CPF/CNPJ</option>
-                  <option value="createdAt">Data de Cadastro</option>
-                </select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="sortOrder">Ordem</Label>
-                <select
-                  id="sortOrder"
-                  value={sortOrder}
-                  onChange={(e) => setSortOrder(e.target.value as "asc" | "desc")}
-                  className="w-full h-10 px-3 rounded-md border border-slate-300 bg-white text-slate-900"
-                >
-                  <option value="asc">Crescente</option>
-                  <option value="desc">Decrescente</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="mt-4 flex items-center justify-between">
-              <Badge variant="outline" className="text-sm">
-                {filteredTenants.length} {filteredTenants.length === 1 ? "inquilino encontrado" : "inquilinos encontrados"}
-              </Badge>
-              {(searchName || searchCpf || searchEmail || searchPhone || filterStatus !== "all") && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setSearchName("");
-                    setSearchCpf("");
-                    setSearchEmail("");
-                    setSearchPhone("");
-                    setFilterStatus("all");
-                    setSortBy("name");
-                    setSortOrder("asc");
-                  }}
-                >
-                  Limpar Filtros
-                </Button>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+            <Input
+              placeholder="Buscar por nome ou telefone..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <Select value={filterStatus} onValueChange={(v: any) => setFilterStatus(v)}>
+            <SelectTrigger className="w-full md:w-[180px]">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="active">Ativos</SelectItem>
+              <SelectItem value="inactive">Inativos</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
+            <SelectTrigger className="w-full md:w-[180px]">
+              <SelectValue placeholder="Ordenar por" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="name">Nome (A-Z)</SelectItem>
+              <SelectItem value="status">Status</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
         {/* List */}
         <StaggerContainer staggerDelay={0.08}>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredTenants.map((tenant, index) => (
-              <StaggerItem key={tenant.id}>
-                <FloatingCard delay={index * 0.05}>
-                  <div 
-                    onClick={() => router.push(`/tenants/${tenant.id}`)}
-                    className="group cursor-pointer"
-                  >
-                    <Card className="h-full hover:shadow-md transition-shadow relative overflow-hidden">
-                      <div className={`absolute top-0 left-0 w-1 h-full ${tenant.isActive ? 'bg-emerald-500' : 'bg-gray-300'}`} />
-                      <CardHeader className="pb-2 pl-6">
-                        <div className="flex justify-between items-start">
-                          <CardTitle className="text-lg font-semibold truncate pr-2">{tenant.name}</CardTitle>
-                          <Badge variant={tenant.isActive ? "default" : "secondary"} className={tenant.isActive ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-100" : ""}>
-                            {tenant.isActive ? 'Ativo' : 'Inativo'}
-                          </Badge>
-                        </div>
-                        <CardDescription className="flex items-center gap-1">
-                          <FileText className="h-3 w-3" /> {tenant.documentType}: {tenant.cpf}
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent className="pl-6 text-sm space-y-2 text-gray-600">
-                        <div className="flex items-center gap-2">
-                          <Mail className="h-4 w-4 text-gray-400" />
-                          <span className="truncate">{tenant.email}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Phone className="h-4 w-4 text-gray-400" />
-                          <span>{tenant.phone}</span>
-                        </div>
-                        {!tenant.isActive && (
-                          <Badge variant="destructive" className="mt-2">Inativo</Badge>
-                        )}
-                        
-                        <div className="flex justify-end gap-2 mt-4 pt-2 border-t">
-                          <div className="flex gap-2 pt-4 mt-auto">
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              onClick={() => setViewingTenant(tenant)}
-                              className="flex-1 bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-600"
-                              title="Visualizar Detalhes"
-                            >
-                              <Eye size={14} className="mr-1" />
-                              Ver
-                            </Button>
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              onClick={() => handleEdit(tenant)}
-                              className="flex-1"
-                            >
-                              <Edit size={14} className="mr-1" />
-                              Editar
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredTenants.map((tenant) => (
+              <Card 
+                key={tenant.id} 
+                className="hover:shadow-lg transition-shadow cursor-pointer group relative"
+                onClick={() => handleViewTenant(tenant)}
+              >
+                <CardHeader className="pb-2">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <CardTitle className="text-xl">{tenant.name}</CardTitle>
+                      <CardDescription>{tenant.phone}</CardDescription>
+                    </div>
+                    <Badge className={tenant.isActive ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-800"}>
+                      {tenant.isActive ? "Ativo" : "Inativo"}
+                    </Badge>
                   </div>
-                </FloatingCard>
-              </StaggerItem>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-1 text-sm text-slate-600">
+                    {tenant.email && (
+                      <div className="flex items-center gap-2">
+                        <Mail className="h-4 w-4" />
+                        <span>{tenant.email}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4" />
+                      <span>{tenant.documentType}: {tenant.cpf}</span>
+                    </div>
+                  </div>
+                  
+                  {/* Actions - Prevent bubbling */}
+                  <div className="flex gap-2 pt-4 mt-2" onClick={(e) => e.stopPropagation()}>
+                     <Button 
+                        variant="destructive" 
+                        size="sm" 
+                        className="w-full opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setTenantToDelete(tenant);
+                          setIsDeleteOpen(true);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Excluir
+                      </Button>
+                  </div>
+                </CardContent>
+              </Card>
             ))}
-            {filteredTenants.length === 0 && (
-              <div className="col-span-full text-center py-12 text-gray-500">
-                Nenhum inquilino encontrado com os filtros atuais.
-              </div>
-            )}
           </div>
         </StaggerContainer>
 
@@ -508,52 +389,55 @@ export default function TenantsPage() {
               <DialogDescription>Ficha cadastral completa</DialogDescription>
             </DialogHeader>
             {viewingTenant && (
-              <div className="space-y-6 py-4">
-                <div className="flex items-center space-x-4 pb-4 border-b">
-                  <div className="h-16 w-16 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 text-2xl font-bold">
-                    {viewingTenant.name.charAt(0)}
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-muted-foreground">Nome</Label>
+                    <p className="font-medium">{viewingTenant.name}</p>
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-slate-900">{viewingTenant.name}</h3>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Badge variant={viewingTenant.isActive ? "default" : "secondary"}>
-                        {viewingTenant.isActive ? "Ativo" : "Inativo"}
-                      </Badge>
-                      <span className="text-sm text-slate-500">
-                        Cadastrado em {new Date(viewingTenant.createdAt).toLocaleDateString()}
-                      </span>
+                    <Label className="text-muted-foreground">Documento ({viewingTenant.documentType})</Label>
+                    <p className="font-medium">{viewingTenant.cpf}</p>
+                  </div>
+                  {viewingTenant.rg && (
+                    <div>
+                      <Label className="text-muted-foreground">RG</Label>
+                      <p className="font-medium">{viewingTenant.rg}</p>
                     </div>
+                  )}
+                  <div>
+                    <Label className="text-muted-foreground">Telefone</Label>
+                    <p className="font-medium">{viewingTenant.phone}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <Label className="text-muted-foreground">Email</Label>
+                    <p className="font-medium">{viewingTenant.email}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Status</Label>
+                    <Badge variant={viewingTenant.isActive ? "default" : "secondary"}>
+                      {viewingTenant.isActive ? "Ativo" : "Inativo"}
+                    </Badge>
                   </div>
                 </div>
-
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-1">
-                    <Label className="text-xs font-semibold text-slate-500 uppercase">Documento ({viewingTenant.documentType || "CPF"})</Label>
-                    <p className="font-medium text-slate-900">{viewingTenant.cpf}</p>
+                
+                {viewingTenant.observations && (
+                  <div>
+                    <Label className="text-muted-foreground">Observações</Label>
+                    <p className="text-sm mt-1 bg-slate-50 p-3 rounded-md">{viewingTenant.observations}</p>
                   </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs font-semibold text-slate-500 uppercase">RG</Label>
-                    <p className="font-medium text-slate-900">{viewingTenant.rg || "-"}</p>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs font-semibold text-slate-500 uppercase">Email</Label>
-                    <p className="font-medium text-slate-900 flex items-center gap-2">
-                      <Mail size={14} className="text-slate-400" />
-                      {viewingTenant.email || "-"}
-                    </p>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs font-semibold text-slate-500 uppercase">Telefone</Label>
-                    <p className="font-medium text-slate-900 flex items-center gap-2">
-                      <Phone size={14} className="text-slate-400" />
-                      {viewingTenant.phone || "-"}
-                    </p>
-                  </div>
-                </div>
+                )}
               </div>
             )}
             <DialogFooter>
-              <Button onClick={() => setViewingTenant(null)}>Fechar</Button>
+              <Button variant="outline" onClick={() => setViewingTenant(null)}>Fechar</Button>
+              <Button onClick={() => {
+                handleEdit(viewingTenant!);
+                setViewingTenant(null);
+              }}>
+                <Edit className="h-4 w-4 mr-2" />
+                Editar
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -637,6 +521,30 @@ export default function TenantsPage() {
                 <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">Salvar Alterações</Button>
               </div>
             </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Confirmar Exclusão</DialogTitle>
+              <DialogDescription>
+                Tem certeza que deseja excluir este inquilino? Esta ação não pode ser desfeita.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsDeleteOpen(false)}>Cancelar</Button>
+              <Button 
+                variant="destructive" 
+                onClick={() => {
+                  if (tenantToDelete) handleDelete(tenantToDelete.id);
+                  setIsDeleteOpen(false);
+                }}
+              >
+                Excluir
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>

@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { isAuthenticated } from "@/lib/auth";
 import { propertyStorage, tenantStorage, rentalStorage, paymentStorage, configStorage } from "@/lib/storage";
 import { Property, Tenant, Rental, Payment, SystemConfig } from "@/types";
-import { DollarSign, Calendar, CheckCircle, XCircle, AlertCircle, Plus, Eye, Download, ExternalLink, FileText } from "lucide-react";
+import { DollarSign, Calendar, CheckCircle, XCircle, AlertCircle, Plus, Eye, Download, ExternalLink, FileText, Edit } from "lucide-react";
 import { SEO } from "@/components/SEO";
 import { formatCurrency, parseCurrency, numberToWords } from "@/lib/masks";
 import { StaggerContainer, StaggerItem } from "@/components/animations/ScrollReveal";
@@ -654,8 +654,18 @@ export default function Payments() {
                   </div>
                 );
               })()}
-              <DialogFooter>
-                <Button onClick={() => setViewingPayment(null)}>Fechar</Button>
+              <DialogFooter className="print:hidden">
+                <Button variant="outline" onClick={() => setViewingPayment(null)}>Fechar</Button>
+                <Button onClick={() => window.print()}>
+                  Imprimir
+                </Button>
+                <Button onClick={() => {
+                   // Navigate to details page for editing
+                   router.push(`/payments/${viewingPayment?.id}`);
+                }}>
+                  <Edit className="h-4 w-4 mr-2" />
+                  Editar
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>

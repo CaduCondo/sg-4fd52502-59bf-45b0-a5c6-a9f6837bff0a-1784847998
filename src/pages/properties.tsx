@@ -18,6 +18,7 @@ import { formatCurrency, parseCurrency, maskCurrency, maskCEP, fetchAddressByCEP
 import { StaggerContainer, StaggerItem } from "@/components/animations/ScrollReveal";
 import { FloatingCard } from "@/components/animations/FloatingCard";
 import { configStorage } from "@/lib/storage";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const STATES = [
   "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA",
@@ -32,15 +33,13 @@ export default function Properties() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<"all" | "available" | "occupied">("all");
   const [filterLocal, setFilterLocal] = useState("");
-  const [filterType, setFilterType] = useState("");
-  const [minPrice, setMinPrice] = useState("");
-  const [maxPrice, setMaxPrice] = useState("");
-  const [sortBy, setSortBy] = useState<"address" | "monthlyRent" | "local" | "createdAt">("createdAt");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [sortBy, setSortBy] = useState<"local" | "status">("local");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProperty, setEditingProperty] = useState<Property | null>(null);
   const [viewingProperty, setViewingProperty] = useState<Property | null>(null);
   const [loadingCEP, setLoadingCEP] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     local: "",
     type: "Apartamento",
@@ -48,7 +47,9 @@ export default function Properties() {
     address: "",
     number: "",
     complement: "",
-    state: "SP",
+    neighborhood: "",
+    city: "",
+    state: "",
     description: "",
     monthlyRent: "",
     status: "available" as "available" | "occupied"
@@ -88,48 +89,19 @@ export default function Properties() {
       filtered = filtered.filter(p => p.local === filterLocal);
     }
 
-    if (filterType) {
-      filtered = filtered.filter(p => p.type === filterType);
-    }
-
-    // Price range filter
-    if (minPrice) {
-      const min = parseCurrency(minPrice);
-      filtered = filtered.filter(p => p.monthlyRent >= min);
-    }
-
-    if (maxPrice) {
-      const max = parseCurrency(maxPrice);
-      filtered = filtered.filter(p => p.monthlyRent <= max);
-    }
-
     // Sorting
     filtered.sort((a, b) => {
-      let aVal: any = a[sortBy];
-      let bVal: any = b[sortBy];
-
-      if (sortBy === "monthlyRent") {
-        aVal = Number(aVal);
-        bVal = Number(bVal);
-      } else if (sortBy === "createdAt") {
-        aVal = new Date(aVal).getTime();
-        bVal = new Date(bVal).getTime();
+      if (sortBy === "status") {
+        return a.status.localeCompare(b.status);
       }
-
-      if (sortOrder === "asc") {
-        return aVal > bVal ? 1 : -1;
-      } else {
-        return aVal < bVal ? 1 : -1;
-      }
+      return a.local.localeCompare(b.local);
     });
 
     setFilteredProperties(filtered);
-  }, [searchTerm, filterStatus, filterLocal, filterType, minPrice, maxPrice, sortBy, sortOrder, properties]);
+  }, [searchTerm, filterStatus, filterLocal, sortBy, properties]);
 
   const loadProperties = () => {
-    const data = propertyStorage.getAll();
-    setProperties(data);
-    setFilteredProperties(data);
+    setProperties(propertyStorage.getAll());
   };
 
   const handleCEPChange = async (cep: string) => {
@@ -148,6 +120,37 @@ export default function Properties() {
           cep: masked,
           address: addressData.logradouro || "",
           state: addressData.uf || "SP"
+        }));
+      }
+    }
+  };
+
+  const handleViewProperty = (property: Property) => {
+    setViewingProperty(property);
+  };
+
+  const getStatusColor = (status: string) => {
+    return status === "available" 
+      ? "bg-emerald-100 text-emerald-800" 
+      : "bg-blue-100 text-blue-800";
+  };
+
+  const getStatusLabel = (status: string) => {
+    return status === "available" ? "Disponível" : "Ocupado";
+  };
+
+  const handleBuscaCEP = async () => {
+    if (formData.cep.length >= 8) {
+      setLoadingCEP(true);
+      const data = await fetchAddressByCEP(formData.cep);
+      setLoadingCEP(false);
+      if (data) {
+        setFormData(prev => ({
+          ...prev,
+          address: data.logradouro || prev.address,
+          neighborhood: data.bairro || prev.neighborhood,
+          city: data.localidade || prev.city,
+          state: data.uf || prev.state
         }));
       }
     }
@@ -204,12 +207,14 @@ export default function Properties() {
   const resetForm = () => {
     setFormData({
       local: "",
-      type: "Apartamento",
+      type: "Apartamento", // Default value, hidden in UI
       cep: "",
       address: "",
       number: "",
       complement: "",
-      state: "SP",
+      neighborhood: "",
+      city: "",
+      state: "",
       description: "",
       monthlyRent: "",
       status: "available"
@@ -243,200 +248,109 @@ export default function Properties() {
             </Button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={20} />
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
               <Input
-                type="text"
-                placeholder="Buscar imóveis..."
+                placeholder="Buscar por local ou endereço..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
               />
             </div>
-
-            <select
-              value={filterLocal}
-              onChange={(e) => setFilterLocal(e.target.value)}
-              className="h-10 px-3 rounded-md border border-slate-300 bg-white text-slate-900"
-            >
-              <option value="">Todos os locais</option>
-              {availableLocals.map(local => (
-                <option key={local} value={local}>{local}</option>
-              ))}
-            </select>
-
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value as "all" | "available" | "occupied")}
-              className="h-10 px-3 rounded-md border border-slate-300 bg-white text-slate-900"
-            >
-              <option value="all">Todos os status</option>
-              <option value="available">Disponível</option>
-              <option value="occupied">Ocupado</option>
-            </select>
+            <Select value={filterStatus} onValueChange={(v: any) => setFilterStatus(v)}>
+              <SelectTrigger className="w-full md:w-[180px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os Status</SelectItem>
+                <SelectItem value="available">Disponível</SelectItem>
+                <SelectItem value="occupied">Ocupado</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
+              <SelectTrigger className="w-full md:w-[180px]">
+                <SelectValue placeholder="Ordenar por" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="local">Local (A-Z)</SelectItem>
+                <SelectItem value="status">Status</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
-          {/* Advanced Filters */}
-          <Card>
-            <CardContent className="pt-6">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="filterType">Tipo de Imóvel</Label>
-                  <select
-                    id="filterType"
-                    value={filterType}
-                    onChange={(e) => setFilterType(e.target.value)}
-                    className="w-full h-10 px-3 rounded-md border border-slate-300 bg-white text-slate-900"
-                  >
-                    <option value="">Todos os tipos</option>
-                    <option value="Apartamento">Apartamento</option>
-                    <option value="Casa">Casa</option>
-                    <option value="Comercial">Comercial</option>
-                    <option value="Terreno">Terreno</option>
-                  </select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="minPrice">Valor Mínimo</Label>
-                  <Input
-                    id="minPrice"
-                    placeholder="R$ 0,00"
-                    value={minPrice}
-                    onChange={(e) => setMinPrice(maskCurrency(e.target.value))}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="maxPrice">Valor Máximo</Label>
-                  <Input
-                    id="maxPrice"
-                    placeholder="R$ 0,00"
-                    value={maxPrice}
-                    onChange={(e) => setMaxPrice(maskCurrency(e.target.value))}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="sortBy">Ordenar Por</Label>
-                  <select
-                    id="sortBy"
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value as any)}
-                    className="w-full h-10 px-3 rounded-md border border-slate-300 bg-white text-slate-900"
-                  >
-                    <option value="createdAt">Data de Cadastro</option>
-                    <option value="monthlyRent">Valor do Aluguel</option>
-                    <option value="address">Endereço</option>
-                    <option value="local">Local</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-1 gap-4 mt-4">
-                <div className="space-y-2">
-                  <Label htmlFor="sortOrder">Ordem</Label>
-                  <select
-                    id="sortOrder"
-                    value={sortOrder}
-                    onChange={(e) => setSortOrder(e.target.value as "asc" | "desc")}
-                    className="w-full h-10 px-3 rounded-md border border-slate-300 bg-white text-slate-900"
-                  >
-                    <option value="desc">Decrescente</option>
-                    <option value="asc">Crescente</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="mt-4 flex items-center justify-between">
-                <Badge variant="outline" className="text-sm">
-                  {filteredProperties.length} {filteredProperties.length === 1 ? "imóvel encontrado" : "imóveis encontrados"}
-                </Badge>
-                {(searchTerm || filterLocal || filterStatus !== "all" || filterType || minPrice || maxPrice) && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setSearchTerm("");
-                      setFilterLocal("");
-                      setFilterStatus("all");
-                      setFilterType("");
-                      setMinPrice("");
-                      setMaxPrice("");
-                      setSortBy("createdAt");
-                      setSortOrder("desc");
-                    }}
-                  >
-                    Limpar Filtros
-                  </Button>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+          {/* Advanced Filters Card Removed */}
+          <div className="mt-4 flex items-center justify-between">
+            <Badge variant="outline" className="text-sm">
+              {filteredProperties.length} {filteredProperties.length === 1 ? "imóvel encontrado" : "imóveis encontrados"}
+            </Badge>
+            {(searchTerm || filterStatus !== "all" || filterLocal) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSearchTerm("");
+                  setFilterLocal("");
+                  setFilterStatus("all");
+                  setSortBy("local");
+                }}
+              >
+                Limpar Filtros
+              </Button>
+            )}
+          </div>
 
           <StaggerContainer staggerDelay={0.08}>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredProperties.map((property, index) => (
-                <StaggerItem key={property.id}>
-                  <FloatingCard delay={index * 0.05}>
-                    <Card className="hover:shadow-lg transition-shadow">
-                      <CardContent className="p-4">
-                        <div className="space-y-3">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
-                                <MapPin size={16} className="text-emerald-600 flex-shrink-0" />
-                                <h3 className="font-semibold text-slate-900">{property.local}</h3>
-                              </div>
-                              {property.complement && (
-                                <p className="text-sm text-slate-600">{property.complement}</p>
-                              )}
-                            </div>
-                            <Badge variant={property.status === "occupied" ? "default" : "secondary"} className="ml-2 flex-shrink-0">
-                              {property.status === "occupied" ? "Ocupado" : "Disponível"}
-                            </Badge>
-                          </div>
-
-                          <div className="pt-2 border-t border-slate-200">
-                            <p className="text-sm text-slate-600 mb-1">Valor Mensal</p>
-                            <p className="text-xl font-bold text-slate-900">{formatCurrency(property.monthlyRent)}</p>
-                          </div>
-
-                          <div className="flex gap-2 pt-2">
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              onClick={() => setViewingProperty(property)}
-                              className="flex-1 bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-600"
-                              title="Visualizar Detalhes"
-                            >
-                              <Eye size={14} className="mr-1" />
-                              Ver
-                            </Button>
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              onClick={() => handleEdit(property)}
-                              className="flex-1"
-                            >
-                              <Edit size={14} className="mr-1" />
-                              Editar
-                            </Button>
-                            <Button 
-                              variant="destructive" 
-                              size="sm" 
-                              onClick={() => handleDelete(property.id)}
-                              className="flex-1"
-                            >
-                              <Trash2 size={14} className="mr-1" />
-                              Excluir
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </FloatingCard>
-                </StaggerItem>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredProperties.map((property) => (
+                <Card 
+                  key={property.id} 
+                  className="hover:shadow-lg transition-shadow cursor-pointer relative group"
+                  onClick={() => handleViewProperty(property)}
+                >
+                  <CardHeader className="pb-2">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <CardTitle className="text-xl">{property.local}</CardTitle>
+                        <CardDescription>{property.address}, {property.number}</CardDescription>
+                      </div>
+                      <Badge className={getStatusColor(property.status)}>
+                        {getStatusLabel(property.status)}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2 text-sm text-slate-600">
+                      <div className="flex justify-between">
+                        <span>Bairro:</span>
+                        <span className="font-medium text-slate-900">{property.neighborhood || "-"}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Valor Aluguel:</span>
+                        <span className="font-bold text-emerald-600">
+                          {formatCurrency(property.monthlyRent)}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    {/* Action buttons - prevent card click propagation */}
+                    <div className="flex gap-2 pt-4 mt-2" onClick={(e) => e.stopPropagation()}>
+                       <Button 
+                          variant="destructive" 
+                          size="sm" 
+                          className="w-full opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeletingId(property.id);
+                            setShowDeleteDialog(true);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Excluir
+                        </Button>
+                    </div>
+                  </CardContent>
+                </Card>
               ))}
             </div>
           </StaggerContainer>
@@ -464,62 +378,64 @@ export default function Properties() {
               <DialogDescription>Visualização completa dos dados</DialogDescription>
             </DialogHeader>
             {viewingProperty && (
-              <div className="space-y-4 py-4">
+              <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-slate-500">Local</Label>
+                    <Label className="text-muted-foreground">Local</Label>
                     <p className="font-medium">{viewingProperty.local}</p>
                   </div>
                   <div>
-                    <Label className="text-slate-500">Tipo</Label>
-                    <p className="font-medium">{viewingProperty.type || "Apartamento"}</p>
+                    <Label className="text-muted-foreground">Tipo</Label>
+                    <p className="font-medium">{viewingProperty.type || "N/A"}</p>
                   </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-slate-500">CEP</Label>
+                    <Label className="text-muted-foreground">Endereço</Label>
+                    <p className="font-medium">{viewingProperty.address}, {viewingProperty.number}</p>
+                  </div>
+                  {viewingProperty.complement && (
+                    <div>
+                      <Label className="text-muted-foreground">Complemento</Label>
+                      <p className="font-medium">{viewingProperty.complement}</p>
+                    </div>
+                  )}
+                  <div>
+                    <Label className="text-muted-foreground">Bairro</Label>
+                    <p className="font-medium">{viewingProperty.neighborhood}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">CEP</Label>
                     <p className="font-medium">{viewingProperty.cep}</p>
                   </div>
                   <div>
-                    <Label className="text-slate-500">Estado</Label>
-                    <p className="font-medium">{viewingProperty.state}</p>
-                  </div>
-                </div>
-
-                <div>
-                  <Label className="text-slate-500">Endereço Completo</Label>
-                  <p className="font-medium">
-                    {viewingProperty.address}, {viewingProperty.number}
-                    {viewingProperty.complement && ` - ${viewingProperty.complement}`}
-                  </p>
-                </div>
-
-                <div>
-                  <Label className="text-slate-500">Descrição</Label>
-                  <div className="p-3 bg-slate-50 rounded-md mt-1 border">
-                    <p className="text-sm text-slate-700 whitespace-pre-wrap">{viewingProperty.description}</p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 pt-4 border-t">
-                  <div>
-                    <Label className="text-slate-500">Valor Mensal</Label>
-                    <p className="text-xl font-bold text-emerald-600">{formatCurrency(viewingProperty.monthlyRent)}</p>
+                    <Label className="text-muted-foreground">Cidade/UF</Label>
+                    <p className="font-medium">{viewingProperty.city}/{viewingProperty.state}</p>
                   </div>
                   <div>
-                    <Label className="text-slate-500">Status Atual</Label>
-                    <div className="mt-1">
-                      <Badge variant={viewingProperty.status === "occupied" ? "default" : "secondary"}>
-                        {viewingProperty.status === "occupied" ? "Ocupado" : "Disponível"}
-                      </Badge>
-                    </div>
+                    <Label className="text-muted-foreground">Valor Aluguel</Label>
+                    <p className="font-medium text-green-600">{formatCurrency(viewingProperty.monthlyRent)}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Status</Label>
+                    <Badge variant={viewingProperty.isActive ? (viewingProperty.status === "available" ? "default" : "secondary") : "outline"}>
+                      {viewingProperty.isActive 
+                        ? (viewingProperty.status === "available" ? "Disponível" : "Ocupado")
+                        : "Inativo"}
+                    </Badge>
                   </div>
                 </div>
+
+                {viewingProperty.description && (
+                  <div>
+                    <Label className="text-muted-foreground">Descrição</Label>
+                    <p className="text-sm mt-1 bg-slate-50 p-3 rounded-md">{viewingProperty.description}</p>
+                  </div>
+                )}
               </div>
             )}
-            <DialogFooter>
-              <Button onClick={() => setViewingProperty(null)}>Fechar</Button>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button variant="outline" onClick={() => setViewingProperty(null)}>
+                Fechar
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -532,149 +448,145 @@ export default function Properties() {
                 {editingProperty ? "Atualize as informações do imóvel" : "Adicione um novo imóvel ao sistema"}
               </DialogDescription>
             </DialogHeader>
-            <form onSubmit={handleSubmit}>
-              <div className="space-y-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="local">Local *</Label>
-                    <select
-                      id="local"
-                      value={formData.local}
-                      onChange={(e) => setFormData({ ...formData, local: e.target.value })}
-                      className="w-full h-10 px-3 rounded-md border border-slate-300 bg-white text-slate-900"
-                      required
-                    >
-                      <option value="">Selecione o local</option>
-                      {availableLocals.map(local => (
-                        <option key={local} value={local}>{local}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="type">Tipo *</Label>
-                    <select
-                      id="type"
-                      value={formData.type}
-                      onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                      className="w-full h-10 px-3 rounded-md border border-slate-300 bg-white text-slate-900"
-                      required
-                    >
-                      <option value="Apartamento">Apartamento</option>
-                      <option value="Casa">Casa</option>
-                      <option value="Comercial">Comercial</option>
-                      <option value="Terreno">Terreno</option>
-                    </select>
-                  </div>
-                </div>
-
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="cep">CEP *</Label>
+                  <Label htmlFor="local">Local (Identificação) *</Label>
                   <Input
-                    id="cep"
-                    value={formData.cep}
-                    onChange={(e) => handleCEPChange(e.target.value)}
-                    placeholder="00000-000"
-                    maxLength={9}
+                    id="local"
+                    value={formData.local}
+                    onChange={(e) => setFormData({ ...formData, local: e.target.value })}
+                    placeholder="Ex: Apt 101, Casa Frente"
                     required
-                    disabled={loadingCEP}
                   />
-                  {loadingCEP && <p className="text-xs text-slate-500">Buscando endereço...</p>}
+                </div>
+                
+                {/* Hidden Type Field */}
+                
+                <div className="space-y-2">
+                  <Label htmlFor="monthlyRent">Valor Aluguel *</Label>
+                  <Input
+                    id="monthlyRent"
+                    value={formData.monthlyRent}
+                    onChange={(e) => setFormData({ ...formData, monthlyRent: applyCurrencyMask(e.target.value) })}
+                    placeholder="R$ 0,00"
+                    required
+                  />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="address">Endereço *</Label>
+                  <Label htmlFor="cep">CEP</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="cep"
+                      value={formData.cep}
+                      onChange={(e) => setFormData({ ...formData, cep: maskCEP(e.target.value) })}
+                      maxLength={9}
+                      placeholder="00000-000"
+                    />
+                    <Button type="button" variant="outline" size="icon" onClick={handleBuscaCEP}>
+                      <Search className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="address">Endereço</Label>
                   <Input
                     id="address"
                     value={formData.address}
                     onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                    placeholder="Rua, avenida"
-                    required
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="number">Número *</Label>
-                    <Input
-                      id="number"
-                      value={formData.number}
-                      onChange={(e) => setFormData({ ...formData, number: e.target.value })}
-                      placeholder="Número"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="state">Estado *</Label>
-                    <select
-                      id="state"
-                      value={formData.state}
-                      onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                      className="w-full h-10 px-3 rounded-md border border-slate-300 bg-white text-slate-900"
-                      required
-                    >
-                      {STATES.map(state => (
-                        <option key={state} value={state}>{state}</option>
-                      ))}
-                    </select>
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="number">Número</Label>
+                  <Input
+                    id="number"
+                    value={formData.number}
+                    onChange={(e) => setFormData({ ...formData, number: e.target.value })}
+                  />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="complement">Complemento</Label>
+                  <Label htmlFor="complement">Complemento *</Label>
                   <Input
                     id="complement"
                     value={formData.complement}
                     onChange={(e) => setFormData({ ...formData, complement: e.target.value })}
-                    placeholder="Apto, bloco, etc."
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="description">Descrição *</Label>
-                  <Textarea
-                    id="description"
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    placeholder="Características do imóvel"
-                    rows={3}
                     required
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="monthlyRent">Valor Mensal *</Label>
-                    <Input
-                      id="monthlyRent"
-                      value={formData.monthlyRent}
-                      onChange={handleMoneyChange}
-                      placeholder="R$ 0,00"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="status">Status *</Label>
-                    <select
-                      id="status"
-                      value={formData.status}
-                      onChange={(e) => setFormData({ ...formData, status: e.target.value as "available" | "occupied" })}
-                      className="w-full h-10 px-3 rounded-md border border-slate-300 bg-white text-slate-900"
-                    >
-                      <option value="available">Disponível</option>
-                      <option value="occupied">Ocupado</option>
-                    </select>
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="neighborhood">Bairro</Label>
+                  <Input
+                    id="neighborhood"
+                    value={formData.neighborhood}
+                    onChange={(e) => setFormData({ ...formData, neighborhood: e.target.value })}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="city">Cidade</Label>
+                  <Input
+                    id="city"
+                    value={formData.city}
+                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="state">Estado</Label>
+                  <Input
+                    id="state"
+                    value={formData.state}
+                    onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                  />
                 </div>
               </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="description">Descrição</Label>
+                <Textarea
+                  id="description"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  rows={3}
+                />
+              </div>
+
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={resetForm}>
+                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                   Cancelar
                 </Button>
-                <Button type="submit">
-                  {editingProperty ? "Salvar" : "Adicionar"}
-                </Button>
+                <Button type="submit">Salvar</Button>
               </DialogFooter>
             </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Confirmar Exclusão</DialogTitle>
+              <DialogDescription>
+                Tem certeza que deseja excluir este imóvel? Esta ação não pode ser desfeita.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>Cancelar</Button>
+              <Button 
+                variant="destructive" 
+                onClick={() => {
+                  if (deletingId) handleDelete(deletingId);
+                  setShowDeleteDialog(false);
+                }}
+              >
+                Excluir
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </Layout>
