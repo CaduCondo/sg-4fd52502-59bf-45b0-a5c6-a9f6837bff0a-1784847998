@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/router";
 import { Layout } from "@/components/Layout";
 import { SEO } from "@/components/SEO";
@@ -41,7 +41,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Textarea } from "@/components/ui/textarea";
 import { 
   Plus, 
   Search, 
@@ -60,13 +59,15 @@ import {
   Edit,
   XCircle,
   Mail,
-  Phone
+  Phone,
+  Camera,
+  Paperclip,
+  Download
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, parseCurrency, formatDate, formatPhone, formatCurrencyInput } from "@/lib/masks";
 import { propertyStorage, tenantStorage, rentalStorage, paymentStorage } from "@/lib/storage";
 import type { Property, Tenant, Rental, Payment } from "@/types";
-import { StaggerContainer, StaggerItem } from "@/components/animations/ScrollReveal";
 import { FloatingCard } from "@/components/animations/FloatingCard";
 
 export default function RentalsPage() {
@@ -82,7 +83,9 @@ export default function RentalsPage() {
   const [selectedRental, setSelectedRental] = useState<Rental | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [rentalToDelete, setRentalToDelete] = useState<string | null>(null);
-  const [attachments, setAttachments] = useState<Array<{ name: string; file: File }>>([]);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [attachments, setAttachments] = useState<Array<{ name: string; url: string }>>([]);
 
   const [formData, setFormData] = useState({
     propertyId: "",
@@ -92,7 +95,6 @@ export default function RentalsPage() {
     monthlyRent: "",
     paymentDay: "",
     deposit: "",
-    observations: "",
     hasGarage: false,
     garageValue: ""
   });
@@ -104,6 +106,25 @@ export default function RentalsPage() {
     loadData();
   }, []);
 
+  useEffect(() => {
+    // Auto-calculate total when property or garage value changes
+    if (formData.propertyId) {
+      const property = properties.find(p => p.id === formData.propertyId);
+      if (property) {
+        const baseRent = property.monthlyRent;
+        const garageVal = formData.hasGarage && formData.garageValue 
+          ? parseCurrency(formData.garageValue) 
+          : 0;
+        
+        const total = baseRent + garageVal;
+        setFormData(prev => ({
+          ...prev,
+          monthlyRent: total.toFixed(2).replace(".", ",")
+        }));
+      }
+    }
+  }, [formData.propertyId, formData.hasGarage, formData.garageValue, properties]);
+
   const loadData = () => {
     const allProperties = propertyStorage.getAll();
     const allTenants = tenantStorage.getAll();
@@ -113,14 +134,33 @@ export default function RentalsPage() {
     setTenants(allTenants);
     setRentals(allRentals);
 
-    const available = allTenants.filter((t) => t.isActive);
+    const available = allTenants.filter((t) => t.isActive).sort((a, b) => a.name.localeCompare(b.name));
     setAvailableTenants(available);
 
-    const vacant = allProperties.filter((p) => p.status === "available");
+    const vacant = allProperties.filter((p) => p.status === "available").sort((a, b) => 
+      (a.location || "").localeCompare(b.location || "")
+    );
     setAvailableProperties(vacant);
 
     const active = allRentals.filter((r) => r.isActive);
     setActiveRentals(active);
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const newFiles = Array.from(e.target.files);
+      if (attachments.length + newFiles.length > 5) {
+        toast({ title: "Limite excedido", description: "Máximo de 5 arquivos permitidos", variant: "destructive" });
+        return;
+      }
+      
+      const newAttachments = newFiles.map(file => ({
+        name: file.name,
+        url: URL.createObjectURL(file)
+      }));
+      
+      setAttachments([...attachments, ...newAttachments]);
+    }
   };
 
   const handleSave = () => {
@@ -140,60 +180,85 @@ export default function RentalsPage() {
       return;
     }
 
-    let calculatedTotalValue = parseCurrency(formData.monthlyRent);
-    if (formData.hasGarage && formData.garageValue) {
-      calculatedTotalValue += parseCurrency(formData.garageValue);
+    const property = properties.find(p => p.id === formData.propertyId);
+    if (!property) return;
+
+    const baseRent = property.monthlyRent;
+    const garageVal = formData.hasGarage && formData.garageValue 
+      ? parseCurrency(formData.garageValue) 
+      : 0;
+    const totalValue = baseRent + garageVal;
+
+    if (isEditMode && selectedRental) {
+      const updatedRental: Rental = {
+        ...selectedRental,
+        propertyId: formData.propertyId,
+        tenantId: formData.tenantId,
+        startDate: formData.startDate,
+        endDate: formData.endDate,
+        value: totalValue,
+        monthlyRent: baseRent,
+        paymentDay: parseInt(formData.paymentDay),
+        deposit: formData.deposit ? parseCurrency(formData.deposit) : undefined,
+        hasGarage: formData.hasGarage,
+        garageValue: formData.hasGarage ? garageVal : undefined,
+      };
+
+      rentalStorage.update(updatedRental);
+      toast({ title: "Sucesso", description: "Locação atualizada com sucesso!" });
+    } else {
+      const newRental: Rental = {
+        id: crypto.randomUUID(),
+        propertyId: formData.propertyId,
+        tenantId: formData.tenantId,
+        startDate: formData.startDate,
+        endDate: formData.endDate,
+        value: totalValue,
+        monthlyRent: baseRent,
+        paymentDay: parseInt(formData.paymentDay),
+        deposit: formData.deposit ? parseCurrency(formData.deposit) : undefined,
+        hasGarage: formData.hasGarage,
+        garageValue: formData.hasGarage ? garageVal : undefined,
+        isActive: true,
+        createdAt: new Date().toISOString(),
+      };
+
+      rentalStorage.save(newRental);
+
+      const propertyToUpdate = properties.find((p) => p.id === formData.propertyId);
+      if (propertyToUpdate) {
+        propertyStorage.update({ ...propertyToUpdate, status: "occupied" });
+      }
+
+      const tenant = tenants.find((t) => t.id === formData.tenantId);
+      if (tenant) {
+        tenantStorage.update({ ...tenant, isActive: false });
+      }
+
+      const currentDate = new Date();
+      const referenceMonth = (currentDate.getMonth() + 1).toString().padStart(2, "0");
+      const referenceYear = currentDate.getFullYear().toString();
+
+      const firstPayment: Payment = {
+        id: crypto.randomUUID(),
+        rentalId: newRental.id,
+        referenceMonth: referenceMonth,
+        referenceYear: referenceYear,
+        dueDate: newRental.startDate,
+        expectedAmount: totalValue,
+        status: "pending",
+        isPaid: false,
+        createdAt: new Date().toISOString(),
+      };
+
+      paymentStorage.save(firstPayment);
+
+      toast({ title: "Sucesso", description: "Locação criada com sucesso!" });
     }
 
-    const newRental: Rental = {
-      id: crypto.randomUUID(),
-      propertyId: formData.propertyId,
-      tenantId: formData.tenantId,
-      startDate: formData.startDate,
-      endDate: formData.endDate,
-      value: calculatedTotalValue,
-      monthlyRent: parseCurrency(formData.monthlyRent),
-      paymentDay: parseInt(formData.paymentDay),
-      deposit: formData.deposit ? parseCurrency(formData.deposit) : undefined,
-      observations: formData.observations,
-      hasGarage: formData.hasGarage,
-      garageValue: formData.hasGarage ? parseCurrency(formData.garageValue) : undefined,
-      isActive: true,
-      createdAt: new Date().toISOString(),
-    };
-
-    rentalStorage.save(newRental);
-
-    const property = properties.find((p) => p.id === formData.propertyId);
-    if (property) {
-      propertyStorage.update({ ...property, status: "occupied" });
-    }
-
-    const tenant = tenants.find((t) => t.id === formData.tenantId);
-    if (tenant) {
-      tenantStorage.update({ ...tenant, isActive: false });
-    }
-
-    const currentDate = new Date();
-    const paymentMonth = currentDate.toISOString().slice(0, 7);
-    const paymentYear = currentDate.getFullYear().toString();
-
-    const firstPayment: Payment = {
-      id: crypto.randomUUID(),
-      rentalId: newRental.id,
-      referenceMonth: paymentMonth,
-      referenceYear: paymentYear,
-      dueDate: newRental.startDate, // Initial due date
-      expectedAmount: calculatedTotalValue,
-      status: "pending",
-      isPaid: false,
-      createdAt: new Date().toISOString(),
-    };
-
-    paymentStorage.save(firstPayment);
-
-    toast({ title: "Sucesso", description: "Locação criada com sucesso!" });
     setIsDialogOpen(false);
+    setIsViewDialogOpen(false);
+    setIsEditMode(false);
     resetForm();
     loadData();
   };
@@ -207,21 +272,39 @@ export default function RentalsPage() {
       monthlyRent: "",
       paymentDay: "",
       deposit: "",
-      observations: "",
       hasGarage: false,
       garageValue: "",
     });
     setAttachments([]);
+    setSelectedRental(null);
+    setIsEditMode(false);
   };
 
   const handleViewRental = (rental: Rental) => {
     setSelectedRental(rental);
     setIsViewDialogOpen(true);
+    setIsEditMode(false);
   };
 
   const handleEditRental = () => {
     if (selectedRental) {
-      router.push(`/rentals/${selectedRental.id}`);
+      const property = properties.find(p => p.id === selectedRental.propertyId);
+      
+      setFormData({
+        propertyId: selectedRental.propertyId,
+        tenantId: selectedRental.tenantId,
+        startDate: selectedRental.startDate,
+        endDate: selectedRental.endDate,
+        monthlyRent: selectedRental.value.toFixed(2).replace(".", ","),
+        paymentDay: selectedRental.paymentDay.toString(),
+        deposit: selectedRental.deposit ? selectedRental.deposit.toString() : "",
+        hasGarage: selectedRental.hasGarage || false,
+        garageValue: selectedRental.garageValue ? selectedRental.garageValue.toFixed(2).replace(".", ",") : "",
+      });
+      
+      setIsEditMode(true);
+      setIsViewDialogOpen(false);
+      setIsDialogOpen(true);
     }
   };
 
@@ -318,27 +401,34 @@ export default function RentalsPage() {
               <h1 className="text-3xl font-bold">Locações</h1>
               <p className="text-muted-foreground">Gerencie suas locações de imóveis</p>
             </div>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <Dialog open={isDialogOpen} onOpenChange={(open) => { if (!open) resetForm(); setIsDialogOpen(open); }}>
               <DialogTrigger asChild>
-                <Button className="w-full sm:w-auto">
+                <Button className="w-full sm:w-auto" onClick={resetForm}>
                   <Plus className="mr-2 h-4 w-4" />
                   Nova Locação
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                  <DialogTitle>Nova Locação</DialogTitle>
-                  <DialogDescription>Crie uma nova locação de imóvel</DialogDescription>
+                  <DialogTitle>{isEditMode ? "Editar Locação" : "Nova Locação"}</DialogTitle>
+                  <DialogDescription>
+                    {isEditMode ? "Atualize os dados da locação" : "Crie uma nova locação de imóvel"}
+                  </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="propertyId">Imóvel *</Label>
+                      <Label htmlFor="propertyId">Imóvel Disponível *</Label>
                       <Select
                         value={formData.propertyId}
-                        onValueChange={(value) =>
-                          setFormData({ ...formData, propertyId: value })
-                        }
+                        onValueChange={(value) => {
+                          const property = properties.find(p => p.id === value);
+                          setFormData({ 
+                            ...formData, 
+                            propertyId: value,
+                            monthlyRent: property ? property.monthlyRent.toFixed(2).replace(".", ",") : ""
+                          });
+                        }}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione um imóvel" />
@@ -346,7 +436,7 @@ export default function RentalsPage() {
                         <SelectContent>
                           {availableProperties.map((property) => (
                             <SelectItem key={property.id} value={property.id}>
-                              {property.address} - {property.location}
+                              {property.location} - {property.complement} - {formatCurrency(property.monthlyRent)}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -354,7 +444,7 @@ export default function RentalsPage() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="tenantId">Inquilino *</Label>
+                      <Label htmlFor="tenantId">Inquilinos Disponíveis *</Label>
                       <Select
                         value={formData.tenantId}
                         onValueChange={(value) =>
@@ -408,10 +498,8 @@ export default function RentalsPage() {
                         id="monthlyRent"
                         placeholder="0,00"
                         value={formData.monthlyRent}
-                        onChange={(e) => {
-                          const value = formatCurrencyInput(e.target.value);
-                          setFormData({ ...formData, monthlyRent: value });
-                        }}
+                        disabled
+                        className="bg-slate-50"
                       />
                     </div>
 
@@ -474,17 +562,16 @@ export default function RentalsPage() {
                             💰 Valor Total do Aluguel:
                           </span>
                           <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
-                            {formatCurrency(
-                              parseCurrency(formData.monthlyRent) +
-                                parseCurrency(formData.garageValue)
-                            )}
+                            {formatCurrency(parseCurrency(formData.monthlyRent))}
                           </span>
                         </div>
                         <div className="text-xs text-muted-foreground space-y-1 pt-2 border-t border-emerald-200 dark:border-emerald-800">
                           <div className="flex justify-between">
                             <span>Aluguel:</span>
                             <span>
-                              {formatCurrency(parseCurrency(formData.monthlyRent))}
+                              {formatCurrency(
+                                parseCurrency(formData.monthlyRent) - parseCurrency(formData.garageValue)
+                              )}
                             </span>
                           </div>
                           <div className="flex justify-between">
@@ -498,35 +585,71 @@ export default function RentalsPage() {
                     )}
 
                   <div className="space-y-2">
-                    <Label htmlFor="deposit">Caução (R$)</Label>
+                    <Label htmlFor="deposit">Caução</Label>
                     <Input
                       id="deposit"
-                      placeholder="0,00"
+                      placeholder="Digite o valor ou informação da caução"
                       value={formData.deposit}
-                      onChange={(e) => {
-                        const value = formatCurrencyInput(e.target.value);
-                        setFormData({ ...formData, deposit: value });
-                      }}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="observations">Observações</Label>
-                    <Textarea
-                      id="observations"
-                      placeholder="Informações adicionais sobre a locação"
-                      value={formData.observations}
                       onChange={(e) =>
-                        setFormData({ ...formData, observations: e.target.value })
+                        setFormData({ ...formData, deposit: e.target.value })
                       }
                     />
                   </div>
+
+                  <div className="space-y-2 pt-4 border-t">
+                    <Label className="flex justify-between">
+                      <span>Contrato ({attachments.length}/5)</span>
+                    </Label>
+                    
+                    <div className="flex gap-2 flex-wrap">
+                      {attachments.map((file, i) => (
+                        <Badge key={i} variant="secondary" className="flex gap-1 items-center py-1">
+                          {file.name}
+                          <X 
+                            className="h-3 w-3 cursor-pointer" 
+                            onClick={() => setAttachments(attachments.filter((_, idx) => idx !== i))} 
+                          />
+                        </Badge>
+                      ))}
+                    </div>
+
+                    <div className="flex gap-2">
+                      <input 
+                        type="file" 
+                        ref={fileInputRef} 
+                        className="hidden" 
+                        onChange={handleFileSelect} 
+                        multiple 
+                        accept="image/*,.pdf"
+                      />
+                      <Button 
+                        type="button"
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        <Paperclip className="h-4 w-4 mr-2" />
+                        Adicionar Contrato
+                      </Button>
+                      <Button 
+                        type="button"
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        <Camera className="h-4 w-4 mr-2" />
+                        Tirar Foto
+                      </Button>
+                    </div>
+                  </div>
                 </div>
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                  <Button variant="outline" onClick={() => { setIsDialogOpen(false); resetForm(); }}>
                     Cancelar
                   </Button>
-                  <Button onClick={handleSave}>Salvar</Button>
+                  <Button onClick={handleSave}>
+                    {isEditMode ? "Atualizar" : "Salvar"}
+                  </Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
@@ -610,14 +733,10 @@ export default function RentalsPage() {
                       >
                         <CardHeader className="pb-3">
                           <CardTitle className="text-base">
-                            {property.address}, {property.number}
+                            {property.location}
                           </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-2 text-sm">
-                          <div className="flex items-center gap-2 text-muted-foreground">
-                            <MapPin className="h-4 w-4 flex-shrink-0" />
-                            <span>{property.location}</span>
-                          </div>
                           {property.complement && (
                             <div className="flex items-center gap-2 text-muted-foreground">
                               <Building className="h-4 w-4 flex-shrink-0" />
@@ -663,17 +782,13 @@ export default function RentalsPage() {
                         >
                           <CardHeader className="pb-3">
                             <CardTitle className="text-base">
-                              {property.address}, {property.number}
+                              {property.location}
                             </CardTitle>
                             <CardDescription className="text-sm">
                               {tenant.name}
                             </CardDescription>
                           </CardHeader>
                           <CardContent className="space-y-2 text-sm">
-                            <div className="flex items-center gap-2 text-muted-foreground">
-                              <MapPin className="h-4 w-4 flex-shrink-0" />
-                              <span>{property.location}</span>
-                            </div>
                             {property.complement && (
                               <div className="flex items-center gap-2 text-muted-foreground">
                                 <Building className="h-4 w-4 flex-shrink-0" />
@@ -740,7 +855,7 @@ export default function RentalsPage() {
 
         {/* View Rental Dialog */}
         <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Detalhes da Locação</DialogTitle>
               <DialogDescription>Informações completas da locação</DialogDescription>
@@ -754,7 +869,7 @@ export default function RentalsPage() {
                       {(() => {
                         const property = getPropertyById(selectedRental.propertyId);
                         return property
-                          ? `${property.address}, ${property.number} - ${property.location}`
+                          ? `${property.location}${property.complement ? ' - ' + property.complement : ''}`
                           : "N/A";
                       })()}
                     </div>
@@ -808,16 +923,27 @@ export default function RentalsPage() {
                 {selectedRental.deposit && (
                   <div className="space-y-2">
                     <Label>Caução</Label>
-                    <div className="p-3 bg-muted rounded-md">
-                      {formatCurrency(selectedRental.deposit)}
+                    <div className="p-3 bg-muted rounded-md whitespace-pre-wrap">
+                      {selectedRental.deposit}
                     </div>
                   </div>
                 )}
-                {selectedRental.observations && (
+                
+                {attachments.length > 0 && (
                   <div className="space-y-2">
-                    <Label>Observações</Label>
-                    <div className="p-3 bg-muted rounded-md whitespace-pre-wrap">
-                      {selectedRental.observations}
+                    <Label>Contratos Anexados</Label>
+                    <div className="flex gap-2 flex-wrap">
+                      {attachments.map((file, i) => (
+                        <Button
+                          key={i}
+                          variant="outline"
+                          size="sm"
+                          onClick={() => window.open(file.url, '_blank')}
+                        >
+                          <Download className="h-4 w-4 mr-2" />
+                          {file.name}
+                        </Button>
+                      ))}
                     </div>
                   </div>
                 )}
