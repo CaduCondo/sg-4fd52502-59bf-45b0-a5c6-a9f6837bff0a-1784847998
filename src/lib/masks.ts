@@ -124,20 +124,23 @@ export const applyPhoneMask = (value: string): string => {
 
 // CEP formatting
 export const applyCepMask = (value: string): string => {
-  return value
-    .replace(/\D/g, "")
-    .replace(/(\d{5})(\d)/, "$1-$2")
-    .replace(/(-\d{3})\d+?$/, "$1");
+  if (!value) return "";
+  value = value.replace(/\D/g, "");
+  
+  if (value.length <= 5) return value;
+  return `${value.slice(0, 5)}-${value.slice(5, 8)}`;
 };
 
 // CNPJ Mask
 export const applyCnpjMask = (value: string): string => {
-  return value
-    .replace(/\D/g, "")
-    .replace(/^(\d{2})(\d)/, "$1.$2")
-    .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
-    .replace(/\.(\d{3})(\d)/, ".$1/$2")
-    .replace(/(\d{4})(\d)/, "$1-$2");
+  if (!value) return "";
+  value = value.replace(/\D/g, "");
+  
+  if (value.length <= 2) return value;
+  if (value.length <= 5) return `${value.slice(0, 2)}.${value.slice(2)}`;
+  if (value.length <= 8) return `${value.slice(0, 2)}.${value.slice(2, 5)}.${value.slice(5)}`;
+  if (value.length <= 12) return `${value.slice(0, 2)}.${value.slice(2, 5)}.${value.slice(5, 8)}/${value.slice(8)}`;
+  return `${value.slice(0, 2)}.${value.slice(2, 5)}.${value.slice(5, 8)}/${value.slice(8, 12)}-${value.slice(12, 14)}`;
 };
 
 // Date Formatting
@@ -202,3 +205,7 @@ export const maskCEP = applyCepMask;
 export const maskCPF = applyCpfMask;
 export const maskPhone = applyPhoneMask;
 export const maskCNPJ = applyCnpjMask;
+
+export const unformatCep = (value: string): string => {
+  return value.replace(/\D/g, "").slice(0, 8);
+};

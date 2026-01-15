@@ -81,8 +81,8 @@ export const paymentService = {
       paymentDate: data.payment_date,
       paymentMethod: data.payment_method,
       status: data.status,
-      fineAmount: parseFloat(data.fine_amount || 0),
-      interestAmount: parseFloat(data.interest_amount || 0),
+      lateFee: parseFloat(data.late_fee || 0),
+      interest: parseFloat(data.interest || 0),
       notes: data.notes,
       attachments: data.attachments || [],
       partialPayments: data.partial_payments || [],
@@ -102,8 +102,8 @@ export const paymentService = {
       status: payment.status,
       payment_method: payment.paymentMethod,
       notes: payment.notes,
-      fine_amount: payment.fineAmount,
-      interest_amount: payment.interestAmount,
+      late_fee: payment.lateFee || 0,
+      interest: payment.interest || 0,
       attachments: payment.attachments || [],
       partial_payments: []
     };

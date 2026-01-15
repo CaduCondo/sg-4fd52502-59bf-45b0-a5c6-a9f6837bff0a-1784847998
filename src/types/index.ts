@@ -15,16 +15,16 @@ export interface Property {
   id: string;
   location: string;
   address: string;
-  number: string;
-  complement?: string;
-  neighborhood: string;
-  city: string;
-  state: string;
-  zipCode: string;
+  number?: string;
+  complement: string;
+  neighborhood?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
   monthlyRent: number;
-  type?: string;
-  description?: string;
+  type: string;
   status: "available" | "occupied";
+  description?: string;
   createdAt: string;
 }
 
@@ -82,8 +82,8 @@ export interface Payment {
   paymentMethod?: string;
   notes?: string;
   attachments?: string[];
-  fineAmount?: number;
-  interestAmount?: number;
+  lateFee?: number;
+  interest?: number;
   partialPayments?: any[];
   createdAt: string;
 }

@@ -69,8 +69,8 @@ export const propertyService = {
       city: data.city,
       state: data.state,
       zipCode: data.zip_code,
-      type: data.type,
       monthlyRent: parseFloat(data.monthly_rent),
+      type: data.type,
       status: data.status,
       description: data.description,
       createdAt: data.created_at
@@ -87,8 +87,8 @@ export const propertyService = {
       city: property.city,
       state: property.state,
       zip_code: property.zipCode,
-      type: property.type,
       monthly_rent: property.monthlyRent,
+      type: property.type,
       status: property.status,
       description: property.description
     };
