@@ -152,6 +152,7 @@ export default function FinancialPage() {
 
   const paymentsWithDetails: PaymentWithDetails[] = payments
     .filter(p => p.referenceMonth === parseInt(selectedMonth) && p.referenceYear === parseInt(selectedYear))
+    // No status filtering here, so it shows all receipts (paid, pending, partial, overdue)
     .map(payment => {
       const rental = rentals.find(r => r.id === payment.rentalId);
       const property = rental ? properties.find(p => p.id === rental.propertyId) : undefined;

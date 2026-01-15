@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Users, Plus, Search, Trash2, LayoutGrid, List } from "lucide-react";
 import { Tenant } from "@/types";
 import { tenantService } from "@/services";
+import { getCurrentUser } from "@/lib/auth";
 import { applyCpfMask, applyCnpjMask, applyPhoneMask, applyCepMask, removeMask } from "@/lib/masks";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
 import { FloatingCard } from "@/components/animations/FloatingCard";
@@ -228,6 +229,17 @@ export default function TenantsPage() {
   const handleDelete = async (e: React.MouseEvent, tenant: Tenant) => {
     e.preventDefault();
     e.stopPropagation();
+    
+    // Check if corretor is trying to delete rented tenant
+    const currentUser = getCurrentUser();
+    if (currentUser?.role === "corretor" && tenant.status === "rented") {
+      toast({
+        title: "Ação não permitida",
+        description: "Corretores não podem deletar inquilinos com status locador.",
+        variant: "destructive",
+      });
+      return;
+    }
     
     if (!confirm("Tem certeza que deseja excluir este inquilino?")) return;
 

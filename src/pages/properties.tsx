@@ -15,6 +15,7 @@ import { Building2, Plus, Search, Trash2, LayoutGrid, List } from "lucide-react"
 import { Property } from "@/types";
 import { propertyService } from "@/services";
 import { configService } from "@/services/configService";
+import { getCurrentUser } from "@/lib/auth";
 import { applyCepMask, applyRealMask, removeMask } from "@/lib/masks";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
 import { FloatingCard } from "@/components/animations/FloatingCard";
@@ -213,6 +214,17 @@ export default function PropertiesPage() {
   const handleDelete = async (e: React.MouseEvent, property: Property) => {
     e.preventDefault();
     e.stopPropagation();
+    
+    // Check if corretor is trying to delete occupied property
+    const currentUser = getCurrentUser();
+    if (currentUser?.role === "corretor" && property.status === "occupied") {
+      toast({
+        title: "Ação não permitida",
+        description: "Corretores não podem deletar imóveis ocupados.",
+        variant: "destructive",
+      });
+      return;
+    }
     
     if (!confirm("Tem certeza que deseja excluir este imóvel?")) return;
 
