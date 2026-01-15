@@ -412,7 +412,7 @@ export default function TenantsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredTenants.map((tenant) => (
+                {filteredTenants.sort((t1, t2) => t1.name.localeCompare(t2.name)).map((tenant) => (
                   <TableRow 
                     key={tenant.id}
                     onClick={() => handleViewTenant(tenant)}

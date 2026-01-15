@@ -139,7 +139,7 @@ export default function Rentals() {
   };
 
   const getTotalValue = (rental: Rental) => {
-    return rental.monthlyRent + (rental.parkingSpotValue || 0);
+    return rental.monthlyRent + (rental.garageValue || 0);
   };
 
   const handleOpenDialog = (rental?: Rental) => {
@@ -207,9 +207,6 @@ export default function Rentals() {
     if (formData.hasGarage && formData.garageValue) {
       calculatedTotalValue += parseFloat(formData.garageValue);
     }
-    if (formData.hasParkingSpot && formData.parkingSpotValue) {
-      calculatedTotalValue += parseFloat(formData.parkingSpotValue);
-    }
 
     const newRental: Rental = {
       id: crypto.randomUUID(),
@@ -222,8 +219,6 @@ export default function Rentals() {
       paymentDay: paymentDay,
       hasGarage: formData.hasGarage,
       garageValue: formData.hasGarage ? parseFloat(formData.garageValue || "0") : undefined,
-      hasParkingSpot: formData.hasParkingSpot,
-      parkingSpotValue: formData.hasParkingSpot ? parseFloat(formData.parkingSpotValue || "0") : undefined,
       observations: formData.observations,
       attachments: attachments.map(a => ({
         name: a.name,
@@ -361,24 +356,21 @@ export default function Rentals() {
 
   const calculateTotalValue = () => {
     const rent = parseCurrency(formData.monthlyRent);
-    const spot = formData.hasParkingSpot && formData.parkingSpotValue 
-      ? parseCurrency(formData.parkingSpotValue) 
-      : 0;
-    return formatCurrency(rent + spot);
+    const garage = formData.hasGarage && formData.garageValue ? parseCurrency(formData.garageValue) : 0;
+    return formatCurrency(rent + garage);
   };
 
   const calculateTotal = (rental: Partial<Rental>) => {
-    let total = parseCurrency(rental.monthlyRent?.toString() || "0"); // Base rent (using monthlyRent as base input in form)
-    // Note: In form, we might want to separate base rent from total. 
-    // Assuming form input 'monthlyRent' is the base rent value for now to match logic
+    let total = parseCurrency(rental.monthlyRent?.toString() || "0");
     if (rental.hasGarage && rental.garageValue) total += rental.garageValue;
-    if (rental.hasParkingSpot && rental.parkingSpotValue) total += rental.parkingSpotValue;
     return total;
   };
 
-  const sortedProperties = [...availableProperties].sort((a, b) =>
-    a.address.localeCompare(b.address)
-  );
+  const sortedProperties = [...availableProperties].sort((a, b) => {
+    const aLabel = `${a.local}${a.complement ? ` - ${a.complement}` : ""}`.toLowerCase();
+    const bLabel = `${b.local}${b.complement ? ` - ${b.complement}` : ""}`.toLowerCase();
+    return aLabel.localeCompare(bLabel);
+  });
 
   const sortedTenants = [...availableTenants].sort((a, b) =>
     a.name.localeCompare(b.name)
@@ -443,21 +435,13 @@ export default function Rentals() {
                         <p className="font-bold text-blue-700">
                           {formatCurrency(
                             viewingRental.monthlyRent + 
-                            (viewingRental.hasParkingSpot ? (viewingRental.parkingSpotValue || 0) : 0)
+                            (viewingRental.hasGarage ? (viewingRental.garageValue || 0) : 0)
                           )}
                         </p>
                       </div>
                     </div>
 
-                    {/* Parking Spot */}
-                    {viewingRental.hasParkingSpot && (
-                      <div className="grid grid-cols-1 gap-4">
-                        <div className="flex justify-between items-center p-2 bg-slate-50 rounded border">
-                          <span className="text-sm">🚗 Vaga Carro</span>
-                          <span className="font-medium">{formatCurrency(viewingRental.parkingSpotValue || 0)}</span>
-                        </div>
-                      </div>
-                    )}
+                    {/* Parking Spot removed */}
 
                     {/* Caução */}
                     <div>
@@ -781,6 +765,142 @@ export default function Rentals() {
             >
               <LayoutList className="h-4 w-4" />
             </Button>
+          </div>
+
+          <div className="flex flex-col gap-6">
+            {/* Inquilinos Disponíveis */}
+            <FloatingCard delay={0.1}>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Users className="h-5 w-5" />
+                    <span>Inquilinos Disponíveis ({availableTenants.length})</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                    {availableTenants.length === 0 ? (
+                      <p className="text-sm text-slate-500">Nenhum inquilino disponível</p>
+                    ) : (
+                      availableTenants.map((tenant) => (
+                        <div key={tenant.id} className="p-3 bg-slate-50 rounded-lg border hover:bg-slate-100 transition-colors">
+                          <p className="font-medium">{tenant.name}</p>
+                          <p className="text-sm text-slate-600">{tenant.cpf}</p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </FloatingCard>
+
+            {/* Imóveis Vagos */}
+            <FloatingCard delay={0.2}>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Building2 className="h-5 w-5" />
+                    <span>Imóveis Vagos ({availableProperties.length})</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                    {availableProperties.length === 0 ? (
+                      <p className="text-sm text-slate-500">Nenhum imóvel disponível</p>
+                    ) : (
+                      availableProperties.map((property) => (
+                        <div key={property.id} className="p-3 bg-slate-50 rounded-lg border hover:bg-slate-100 transition-colors">
+                          <p className="font-medium">{property.local} {property.complement && `- ${property.complement}`}</p>
+                          <p className="text-sm text-slate-600">{property.address}, {property.number}</p>
+                          <p className="text-sm font-semibold text-emerald-600">{formatCurrency(property.monthlyRent)}/mês</p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </FloatingCard>
+
+            {/* Locações Ativas */}
+            <FloatingCard delay={0.3}>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <FileText className="h-5 w-5" />
+                    <span>Locações Ativas ({filteredRentals.length})</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {filteredRentals.length === 0 ? (
+                      <p className="text-sm text-slate-500">Nenhuma locação ativa</p>
+                    ) : (
+                      filteredRentals.map((rental) => {
+                        const property = getProperty(rental.propertyId);
+                        const tenant = getTenant(rental.tenantId);
+                        const totalValue = rental.monthlyRent + (rental.garageValue || 0);
+                        
+                        return (
+                          <div key={rental.id} className="p-4 bg-gradient-to-br from-slate-50 to-slate-100 rounded-lg border border-slate-200 hover:shadow-md transition-all">
+                            <div className="flex justify-between items-start mb-3">
+                              <div className="flex-1">
+                                <h4 className="font-semibold text-lg text-slate-900">
+                                  {property?.local} {property?.complement && `- ${property.complement}`}
+                                </h4>
+                                <p className="text-sm text-slate-600">{tenant?.name}</p>
+                              </div>
+                              <Badge className={getStatusColor(rental.isActive)}>
+                                {getStatusLabel(rental.isActive)}
+                              </Badge>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3 mb-3">
+                              <div className="bg-white p-2 rounded border">
+                                <p className="text-xs text-slate-500">Vencimento</p>
+                                <p className="font-semibold text-slate-900">Dia {rental.paymentDay}</p>
+                              </div>
+                              <div className="bg-white p-2 rounded border">
+                                <p className="text-xs text-slate-500">Valor Mensal</p>
+                                <p className="font-semibold text-emerald-600">{formatCurrency(totalValue)}</p>
+                              </div>
+                            </div>
+
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleViewRental(rental)}
+                                className="flex-1"
+                              >
+                                <Eye className="h-4 w-4 mr-1" />
+                                Ver Detalhes
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => router.push(`/rentals/${rental.id}`)}
+                                className="flex-1 border-amber-500 text-amber-600 hover:bg-amber-50"
+                              >
+                                <XCircle className="h-4 w-4 mr-1" />
+                                Encerrar
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleDelete(rental.id)}
+                                className="border-red-500 text-red-600 hover:bg-red-50"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </FloatingCard>
           </div>
 
           {/* Bottom list view removed as requested */}

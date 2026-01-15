@@ -35,8 +35,6 @@ export default function RentalDetails() {
   const [editMonthlyRent, setEditMonthlyRent] = useState("");
   const [editHasGarage, setEditHasGarage] = useState(false);
   const [editGarageValue, setEditGarageValue] = useState("");
-  const [editHasParkingSpot, setEditHasParkingSpot] = useState(false);
-  const [editParkingSpotValue, setEditParkingSpotValue] = useState("");
   const [editObservations, setEditObservations] = useState("");
 
   useEffect(() => {
@@ -68,11 +66,9 @@ export default function RentalDetails() {
     setEditStartDate(rentalData.startDate);
     setEditEndDate(rentalData.endDate);
     setEditPaymentDay(rentalData.paymentDay.toString());
-    setEditMonthlyRent(rentalData.monthlyRent.toFixed(2).replace(".", ","));
-    setEditHasGarage(rentalData.hasGarage);
+    setEditMonthlyRent(rentalData.monthlyRent.toFixed(2).replace(".", ",") || "");
+    setEditHasGarage(rentalData.hasGarage || false);
     setEditGarageValue(rentalData.garageValue?.toFixed(2).replace(".", ",") || "");
-    setEditHasParkingSpot(rentalData.hasParkingSpot);
-    setEditParkingSpotValue(rentalData.parkingSpotValue?.toFixed(2).replace(".", ",") || "");
     setEditObservations(rentalData.observations || "");
   };
 
@@ -90,19 +86,13 @@ export default function RentalDetails() {
 
     const monthlyRent = parseFloat(editMonthlyRent.replace(",", "."));
     const garageValue = editHasGarage ? parseFloat(editGarageValue.replace(",", ".") || "0") : 0;
-    const parkingSpotValue = editHasParkingSpot ? parseFloat(editParkingSpotValue.replace(",", ".") || "0") : 0;
 
     const updatedRental: Rental = {
       ...rental,
-      startDate: editStartDate,
-      endDate: editEndDate,
       paymentDay: parseInt(editPaymentDay),
       monthlyRent,
-      value: monthlyRent + garageValue + parkingSpotValue,
       hasGarage: editHasGarage,
       garageValue: editHasGarage ? garageValue : undefined,
-      hasParkingSpot: editHasParkingSpot,
-      parkingSpotValue: editHasParkingSpot ? parkingSpotValue : undefined,
       observations: editObservations
     };
 
@@ -158,7 +148,7 @@ export default function RentalDetails() {
     );
   }
 
-  const totalValue = rental.monthlyRent + (rental.garageValue || 0) + (rental.parkingSpotValue || 0);
+  const totalValue = rental.monthlyRent + (rental.garageValue || 0);
 
   return (
     <>
@@ -239,9 +229,6 @@ export default function RentalDetails() {
                   <p>Aluguel: R$ {rental.monthlyRent.toFixed(2).replace(".", ",")}</p>
                   {rental.hasGarage && (
                     <p>Garagem: R$ {(rental.garageValue || 0).toFixed(2).replace(".", ",")}</p>
-                  )}
-                  {rental.hasParkingSpot && (
-                    <p>Vaga Carro: R$ {(rental.parkingSpotValue || 0).toFixed(2).replace(".", ",")}</p>
                   )}
                 </div>
               </CardContent>
@@ -391,23 +378,14 @@ export default function RentalDetails() {
 
                 <div className="space-y-2">
                   <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="hasParkingSpot"
-                      checked={editHasParkingSpot}
-                      onCheckedChange={(checked) => setEditHasParkingSpot(checked as boolean)}
-                      disabled={!isEditing}
-                    />
-                    <Label htmlFor="hasParkingSpot" className={!isEditing ? "text-muted-foreground" : ""}>
-                      Possui Vaga de Carro
-                    </Label>
+                    <span className="text-slate-600">Aluguel:</span>
+                    <span className="font-semibold text-slate-900">R$ {rental.monthlyRent.toFixed(2).replace(".", ",")}</span>
                   </div>
-                  {editHasParkingSpot && (
-                    <Input
-                      id="parkingSpotValue"
-                      value={editParkingSpotValue}
-                      onChange={(e) => setEditParkingSpotValue(applyRealMask(e.target.value))}
-                      disabled={!isEditing}
-                    />
+                  {rental.hasGarage && (
+                    <div className="flex items-center space-x-2">
+                      <span className="text-slate-600">Vaga Garagem:</span>
+                      <span className="font-semibold text-slate-900">R$ {rental.garageValue?.toFixed(2).replace(".", ",")}</span>
+                    </div>
                   )}
                 </div>
               </div>

@@ -534,15 +534,15 @@ export default function Properties() {
                 <Label htmlFor="local">Local *</Label>
                 <Select
                   value={formData.local}
-                  onValueChange={(v) => setFormData({ ...formData, local: v })}
+                  onValueChange={(value) => setFormData({ ...formData, local: value })}
                 >
                   <SelectTrigger id="local">
                     <SelectValue placeholder="Selecione um local" />
                   </SelectTrigger>
                   <SelectContent>
-                    {availableLocations.map((local) => (
-                      <SelectItem key={local} value={local}>
-                        {local}
+                    {availableLocations.map((location) => (
+                      <SelectItem key={location} value={location}>
+                        {location}
                       </SelectItem>
                     ))}
                   </SelectContent>

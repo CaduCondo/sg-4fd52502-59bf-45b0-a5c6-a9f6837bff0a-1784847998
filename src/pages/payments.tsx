@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { isAuthenticated } from "@/lib/auth";
+import { isAuthenticated, getCurrentUser } from "@/lib/auth";
 import { propertyStorage, tenantStorage, rentalStorage, paymentStorage, configStorage } from "@/lib/storage";
 import { Property, Tenant, Rental, Payment, SystemConfig } from "@/types";
 import { DollarSign, Calendar, CheckCircle, XCircle, AlertCircle, Plus, Eye, Download, ExternalLink, FileText, Edit, LayoutList, Grid } from "lucide-react";
@@ -49,7 +49,8 @@ export default function Payments() {
   const [selectedRental, setSelectedRental] = useState<Rental | null>(null);
 
   useEffect(() => {
-    if (!isAuthenticated()) {
+    const user = getCurrentUser();
+    if (!user) {
       router.push("/login");
       return;
     }
@@ -66,13 +67,11 @@ export default function Payments() {
     const allRentals = rentalStorage.getAll();
     const allProperties = propertyStorage.getAll();
     const allTenants = tenantStorage.getAll();
-    const systemConfig = configStorage.get();
     
     setPayments(allPayments);
     setRentals(allRentals);
     setProperties(allProperties);
     setTenants(allTenants);
-    setConfig(systemConfig);
   };
 
   const getRental = (id: string) => rentals.find(r => r.id === id);
@@ -889,12 +888,6 @@ export default function Payments() {
                              <div className="flex justify-between text-xs">
                                 <span>Vaga Garagem:</span>
                                 <span>{formatCurrency(rental.garageValue || 0)}</span>
-                             </div>
-                           )}
-                           {rental.hasParkingSpot && rental.parkingSpotValue && (
-                             <div className="flex justify-between text-xs">
-                                <span>Vaga Carro:</span>
-                                <span>{formatCurrency(rental.parkingSpotValue || 0)}</span>
                              </div>
                            )}
                            <div className="flex justify-between font-bold text-emerald-600 text-base pt-1">

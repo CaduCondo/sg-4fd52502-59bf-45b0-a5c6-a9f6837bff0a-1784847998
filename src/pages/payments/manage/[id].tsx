@@ -46,7 +46,6 @@ export default function ManagePayment() {
   const calculateTotalValue = (rental: Rental) => {
     let total = rental.monthlyRent;
     if (rental.hasGarage && rental.garageValue) total += rental.garageValue;
-    if (rental.hasParkingSpot && rental.parkingSpotValue) total += rental.parkingSpotValue;
     return total;
   };
 
@@ -319,7 +318,6 @@ export default function ManagePayment() {
                   <div className="text-right text-xs text-muted-foreground space-y-1">
                     <p>Aluguel: {formatCurrency(String(rental.monthlyRent))}</p>
                     {rental.hasGarage && <p>Garagem: {formatCurrency(String(rental.garageValue || 0))}</p>}
-                    {rental.hasParkingSpot && <p>Estacionamento: {formatCurrency(String(rental.parkingSpotValue || 0))}</p>}
                   </div>
                 </div>
 

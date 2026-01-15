@@ -55,13 +55,11 @@ export interface Rental {
   tenantId: string;
   startDate: string;
   endDate: string;
-  value: number; // Total value including extras
-  monthlyRent: number; // Base rent
+  value: number;
+  monthlyRent: number;
   paymentDay: number;
   hasGarage: boolean;
   garageValue?: number;
-  hasParkingSpot: boolean;
-  parkingSpotValue?: number;
   observations?: string;
   attachments?: Attachment[];
   isActive: boolean;

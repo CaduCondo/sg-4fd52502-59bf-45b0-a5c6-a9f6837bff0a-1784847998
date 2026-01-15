@@ -47,6 +47,10 @@ export default function Settings() {
 
   // Location State
   const [newLocation, setNewLocation] = useState("");
+  const [editingLocation, setEditingLocation] = useState<string | null>(null);
+  const [tempLocationName, setTempLocationName] = useState("");
+
+  const sortedLocations = [...locations].sort((a, b) => a.localeCompare(b));
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -335,54 +339,61 @@ export default function Settings() {
                   <CardDescription>Adicione ou remova locais disponíveis para cadastro de imóveis</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex gap-4 mb-8 items-end max-w-lg">
-                    <div className="flex-1 space-y-2">
-                      <Label htmlFor="new-location">Novo Local</Label>
-                      <Input 
-                        id="new-location"
-                        placeholder="Nome do condomínio ou bairro..." 
-                        value={newLocation}
-                        onChange={(e) => setNewLocation(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleAddLocation()}
-                      />
-                    </div>
-                    <Button onClick={handleAddLocation} disabled={!newLocation} className="bg-emerald-600 hover:bg-emerald-700">
-                      <Plus className="mr-2 h-4 w-4" /> Adicionar
-                    </Button>
-                  </div>
-                  
-                  <div className="bg-slate-50 rounded-lg p-6 border">
-                    <h3 className="text-sm font-medium text-slate-500 mb-4 uppercase tracking-wider">Locais Cadastrados</h3>
-                    <StaggerContainer staggerDelay={0.05}>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {locations.map((loc, index) => (
-                          <StaggerItem key={loc}>
-                            <div className="group flex items-center justify-between p-3 bg-white border rounded-md shadow-sm hover:shadow-md transition-all">
-                              <div className="flex items-center gap-3">
-                                <div className="p-2 bg-slate-100 rounded-full text-slate-600 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
-                                  <MapPin className="h-4 w-4" />
-                                </div>
-                                <span className="font-medium text-slate-700">{loc}</span>
-                              </div>
-                              {loc !== "Outros" && (
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm" 
-                                  onClick={() => handleRemoveLocation(index)}
-                                  className="opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-700 hover:bg-red-50"
-                                  title="Excluir local"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              )}
-                              {loc === "Outros" && (
-                                <span className="text-xs text-slate-400 px-2 italic">Padrão</span>
-                              )}
-                            </div>
-                          </StaggerItem>
-                        ))}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold">Locais Cadastrados</h3>
+                    <div className="flex gap-4 mb-8 items-end max-w-lg">
+                      <div className="flex-1 space-y-2">
+                        <Label htmlFor="new-location">Novo Local</Label>
+                        <Input 
+                          id="new-location"
+                          placeholder="Nome do condomínio ou bairro..." 
+                          value={newLocation}
+                          onChange={(e) => setNewLocation(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && handleAddLocation()}
+                        />
                       </div>
-                    </StaggerContainer>
+                      <Button onClick={handleAddLocation} disabled={!newLocation} className="bg-emerald-600 hover:bg-emerald-700">
+                        <Plus className="mr-2 h-4 w-4" /> Adicionar
+                      </Button>
+                    </div>
+                    
+                    <div className="bg-slate-50 rounded-lg p-6 border">
+                      <h3 className="text-sm font-medium text-slate-500 mb-4 uppercase tracking-wider">Locais Cadastrados</h3>
+                      <StaggerContainer staggerDelay={0.05}>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                          {sortedLocations.length === 0 ? (
+                            <p className="text-sm text-slate-500 italic">Nenhum local cadastrado</p>
+                          ) : (
+                            sortedLocations.map((location) => (
+                              <StaggerItem key={location}>
+                                <div className="group flex items-center justify-between p-3 bg-white border rounded-md shadow-sm hover:shadow-md transition-all">
+                                  <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-slate-100 rounded-full text-slate-600 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
+                                      <MapPin className="h-4 w-4" />
+                                    </div>
+                                    <span className="font-medium text-slate-700">{location}</span>
+                                  </div>
+                                  {location !== "Outros" && (
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm" 
+                                      onClick={() => handleRemoveLocation(sortedLocations.indexOf(location))}
+                                      className="opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                      title="Excluir local"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  )}
+                                  {location === "Outros" && (
+                                    <span className="text-xs text-slate-400 px-2 italic">Padrão</span>
+                                  )}
+                                </div>
+                              </StaggerItem>
+                            ))
+                          )}
+                        </div>
+                      </StaggerContainer>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
