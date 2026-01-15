@@ -169,6 +169,7 @@ export default function Properties() {
     const propertyData: Property = {
       id: editingProperty ? editingProperty.id : crypto.randomUUID(),
       local: formData.local,
+      type: formData.type || "Residencial", // Default or from form
       cep: formData.cep,
       address: formData.address,
       number: formData.number,
