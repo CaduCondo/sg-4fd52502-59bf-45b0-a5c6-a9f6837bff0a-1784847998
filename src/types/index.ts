@@ -32,14 +32,14 @@ export interface Property {
 export interface Tenant {
   id: string;
   name: string;
-  documentType?: "CPF" | "CNPJ";
-  cpf: string;
+  documentType: "CPF" | "CNPJ";
+  cpf: string; // Used for both CPF and CNPJ value
   rg?: string;
-  email?: string;
-  phone?: string;
-  observations?: string;
-  isActive?: boolean;
+  email: string;
+  phone: string;
+  isActive: boolean; // Replaces status
   createdAt: string;
+  observations?: string;
 }
 
 export interface Rental {
@@ -49,16 +49,16 @@ export interface Rental {
   startDate: string;
   endDate?: string;
   value: number; // Base rent value
-  monthlyRent: number; // Redundant but kept for compatibility
+  monthlyRent: number; // Total value
   paymentDay: number;
   hasGarage: boolean;
   garageValue?: number;
   hasMotorcycleSpot?: boolean;
   motorcycleSpotValue?: number;
-  observations?: string;
+  observations?: string; // Caução / Notes
   attachments?: { name: string; url: string; date?: string; type?: string }[];
-  isActive: boolean;
-  createdAt: string; // Add createdAt
+  isActive: boolean; // Replaces status
+  createdAt: string;
 }
 
 export interface Payment {
@@ -69,12 +69,16 @@ export interface Payment {
   amount: number;
   dueDate: string;
   isPaid: boolean;
+  paidAmount?: number; // Replaces partialAmount
   paidDate?: string;
-  paidAmount?: number;
-  lateFee?: number;
   paymentMethod?: string;
+  lateFee?: number;
   notes?: string;
-  attachments?: { name: string; url: string; type: string }[];
+  attachments?: { name: string; url: string; date?: string; type?: string }[];
+  // Fields used in legacy/other components, keeping for compatibility if needed
+  paymentCode?: string; 
+  paymentLocation?: string; 
+  status?: string; // Deprecated, mapped to isPaid
 }
 
 export interface SystemConfig {

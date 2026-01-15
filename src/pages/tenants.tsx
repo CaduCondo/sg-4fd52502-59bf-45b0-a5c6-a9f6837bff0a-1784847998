@@ -87,11 +87,9 @@ export default function TenantsPage() {
     // 2. Status filter
     if (filterStatus !== "all") {
       if (filterStatus === "active") {
-        filtered = filtered.filter(t => t.isActive !== false);
-      } else if (filterStatus === "vacant") { // Assuming 'vacant' means inactive here for tenants or free? 
-        // User requirement: "status só precisam saber se ele esta disponivel para realizar uma locação"
-        // But for filter list:
-        filtered = filtered.filter(t => t.isActive === false);
+        filtered = filtered.filter(t => t.isActive);
+      } else if (filterStatus === "vacant") {
+        filtered = filtered.filter(t => !t.isActive);
       }
     }
 
@@ -146,15 +144,13 @@ export default function TenantsPage() {
     const newTenant: Tenant = {
       id: crypto.randomUUID(),
       name: formData.name,
-      documentType: formData.documentType,
+      documentType: formData.documentType as "CPF" | "CNPJ",
       cpf: formData.cpf,
       rg: formData.rg,
-      phone: formData.phone,
       email: formData.email,
-      observations: formData.observations,
-      status: "vacant",
-      isActive: formData.isActive,
-      createdAt: new Date().toISOString(),
+      phone: formData.phone,
+      isActive: true,
+      createdAt: new Date().toISOString()
     };
 
     tenantStorage.save(newTenant);
@@ -442,12 +438,12 @@ export default function TenantsPage() {
                     className="group cursor-pointer"
                   >
                     <Card className="h-full hover:shadow-md transition-shadow relative overflow-hidden">
-                      <div className={`absolute top-0 left-0 w-1 h-full ${tenant.status === 'active' ? 'bg-emerald-500' : 'bg-gray-300'}`} />
+                      <div className={`absolute top-0 left-0 w-1 h-full ${tenant.isActive ? 'bg-emerald-500' : 'bg-gray-300'}`} />
                       <CardHeader className="pb-2 pl-6">
                         <div className="flex justify-between items-start">
                           <CardTitle className="text-lg font-semibold truncate pr-2">{tenant.name}</CardTitle>
-                          <Badge variant={tenant.status === 'active' ? "default" : "secondary"} className={tenant.status === 'active' ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-100" : ""}>
-                            {tenant.status === 'active' ? 'Ativo' : 'Vago'}
+                          <Badge variant={tenant.isActive ? "default" : "secondary"} className={tenant.isActive ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-100" : ""}>
+                            {tenant.isActive ? 'Ativo' : 'Inativo'}
                           </Badge>
                         </div>
                         <CardDescription className="flex items-center gap-1">

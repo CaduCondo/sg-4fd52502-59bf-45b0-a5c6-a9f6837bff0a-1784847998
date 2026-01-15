@@ -14,10 +14,12 @@ import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, Cart
 import { FloatingCard } from "@/components/animations/FloatingCard";
 import { StaggerContainer, StaggerItem } from "@/components/animations/ScrollReveal";
 import { AnimatedCounter } from "@/components/animations/FloatingCard";
+import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 
 export default function Dashboard() {
   const router = useRouter();
-  const currentUser = getCurrentUser();
+  const [currentUser, setCurrentUser] = useState<any>(null); // Initialize as null to match server render
   const [selectedMonth, setSelectedMonth] = useState("");
   const [selectedYear, setSelectedYear] = useState("");
   const [stats, setStats] = useState<DashboardStats>({
@@ -58,6 +60,9 @@ export default function Dashboard() {
       router.push("/login");
       return;
     }
+    
+    // Load user only on client side after mount
+    setCurrentUser(getCurrentUser());
 
     const now = new Date();
     const currentMonth = (now.getMonth() + 1).toString().padStart(2, "0");
@@ -77,18 +82,18 @@ export default function Dashboard() {
     const config = configStorage.get();
 
     const currentMonthPayments = payments.filter(
-      p => p.month === selectedMonth && p.year === parseInt(selectedYear)
+      p => p.month === selectedMonth && p.year === selectedYear
     );
 
-    const paidCount = currentMonthPayments.filter(p => p.status === "paid").length;
-    const unpaidCount = currentMonthPayments.filter(p => p.status === "unpaid" || p.status === "partial").length;
+    const paidCount = currentMonthPayments.filter(p => p.isPaid).length;
+    const unpaidCount = currentMonthPayments.filter(p => !p.isPaid).length;
     const totalRevenue = currentMonthPayments
-      .filter(p => p.status === "paid" || p.status === "partial")
-      .reduce((sum, p) => sum + (p.partialAmount || p.amount), 0);
+      .filter(p => p.isPaid)
+      .reduce((sum, p) => sum + (p.paidAmount || p.amount), 0);
     const adminFee = totalRevenue * (config.adminFeePercentage / 100);
     const dueThisMonth = currentMonthPayments
-      .filter(p => p.status === "unpaid" || p.status === "partial")
-      .reduce((sum, p) => sum + (p.amount - (p.partialAmount || 0)), 0);
+      .filter(p => !p.isPaid)
+      .reduce((sum, p) => sum + (p.amount - (p.paidAmount || 0)), 0);
 
     const rentedCount = properties.filter(p => p.status === "occupied").length;
 
@@ -105,7 +110,7 @@ export default function Dashboard() {
     });
 
     const upcoming = currentMonthPayments
-      .filter(p => p.status === "unpaid" || p.status === "partial")
+      .filter(p => !p.isPaid)
       .map(payment => {
         const rental = rentals.find(r => r.id === payment.rentalId);
         const property = rental ? properties.find(p => p.id === rental.propertyId) : undefined;
@@ -136,10 +141,10 @@ export default function Dashboard() {
       const year = date.getFullYear();
       
       const monthPayments = payments.filter(
-        p => p.month === month && p.year === year && (p.status === "paid" || p.status === "partial")
+        p => p.month === month && p.year === String(year) && p.isPaid
       );
       
-      const revenue = monthPayments.reduce((sum, p) => sum + (p.partialAmount || p.amount), 0);
+      const revenue = monthPayments.reduce((sum, p) => sum + (p.paidAmount || p.amount), 0);
       const fee = revenue * (config.adminFeePercentage / 100);
       
       revenueData.push({
@@ -572,7 +577,7 @@ export default function Dashboard() {
                             <p className="text-sm text-gray-600">Inquilino: {tenant.name} • Venc: {formatDate(payment.dueDate)}</p>
                           </div>
                           <div className="text-right flex-shrink-0">
-                            <p className="text-lg font-bold text-amber-700 whitespace-nowrap">{formatCurrency(payment.amount - (payment.partialAmount || 0))}</p>
+                            <p className="text-lg font-bold text-amber-700 whitespace-nowrap">{formatCurrency(payment.amount - (payment.paidAmount || 0))}</p>
                           </div>
                         </div>
                       </Link>

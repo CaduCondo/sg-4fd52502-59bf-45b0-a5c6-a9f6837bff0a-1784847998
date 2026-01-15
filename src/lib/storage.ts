@@ -19,16 +19,27 @@ export function initializeStorage(): void {
     localStorage.setItem(CONFIG_KEY, JSON.stringify(defaultConfig));
   }
   
+  // Initialize Users if empty
   if (!localStorage.getItem(USERS_KEY)) {
-    const defaultUser: User = {
-      id: "1",
-      username: "cadu.pires",
-      password: "teste123",
-      name: "Cadu Pires",
-      role: "admin",
-      createdAt: new Date().toISOString()
-    };
-    localStorage.setItem(USERS_KEY, JSON.stringify([defaultUser]));
+    const defaultUsers: User[] = [
+      {
+        id: "1",
+        username: "admin",
+        password: "123", // In a real app, this should be hashed
+        name: "Administrador",
+        role: "admin",
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: "2",
+        username: "cadu.pires",
+        password: "teste123",
+        name: "Cadu Pires",
+        role: "admin", // Assuming admin role for full access
+        createdAt: new Date().toISOString()
+      }
+    ];
+    localStorage.setItem(USERS_KEY, JSON.stringify(defaultUsers));
   }
   
   if (!localStorage.getItem(PROPERTIES_KEY)) {
@@ -70,12 +81,12 @@ export const propertyStorage = {
     propertyStorage.save(property);
   },
 
-  updateStatus: (id: string, status: "available" | "occupied"): void => {
+  updateStatus: (id: string, isActive: boolean): void => {
     if (typeof window === "undefined") return;
     const properties = propertyStorage.getAll();
     const property = properties.find(p => p.id === id);
     if (property) {
-      property.status = status;
+      property.isActive = isActive;
       propertyStorage.save(property);
     }
   },
@@ -109,11 +120,11 @@ export const tenantStorage = {
     tenantStorage.save(tenant);
   },
 
-  updateStatus: (id: string, status: "vacant" | "active" | "inactive") => {
+  updateStatus: (id: string, isActive: boolean) => {
     const tenants = tenantStorage.getAll();
     const index = tenants.findIndex((t) => t.id === id);
     if (index !== -1) {
-      tenants[index].status = status;
+      tenants[index].isActive = isActive;
       localStorage.setItem(TENANTS_KEY, JSON.stringify(tenants));
     }
   },
@@ -147,12 +158,12 @@ export const rentalStorage = {
     rentalStorage.save(rental);
   },
 
-  updateStatus: (id: string, status: "active" | "ended" | "expired"): void => {
+  updateStatus: (id: string, isActive: boolean): void => {
     if (typeof window === "undefined") return;
     const rentals = rentalStorage.getAll();
     const rental = rentals.find(r => r.id === id);
     if (rental) {
-      rental.status = status;
+      rental.isActive = isActive;
       rentalStorage.save(rental);
     }
   },

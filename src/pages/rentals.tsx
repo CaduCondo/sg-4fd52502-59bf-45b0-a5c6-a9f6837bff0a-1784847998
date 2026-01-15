@@ -17,6 +17,7 @@ import { SEO } from "@/components/SEO";
 import { formatCurrency, parseCurrency, formatDate } from "@/lib/masks";
 import { StaggerContainer, StaggerItem } from "@/components/animations/ScrollReveal";
 import { FloatingCard } from "@/components/animations/FloatingCard";
+import { Payment } from "@/types";
 
 export default function Rentals() {
   const router = useRouter();
@@ -158,20 +159,34 @@ export default function Rentals() {
     }));
 
     const newRental: Rental = {
-      id: editingRental?.id || crypto.randomUUID(),
+      id: crypto.randomUUID(),
       propertyId: formData.propertyId,
       tenantId: formData.tenantId,
-      startDate: new Date(formData.startDate).toISOString(),
-      endDate: new Date(formData.endDate).toISOString(),
-      paymentDay,
-      monthlyRent,
-      observations: formData.observations,
+      startDate: formData.startDate,
+      endDate: formData.endDate,
+      value: parseCurrency(formData.monthlyRent), 
+      monthlyRent: parseCurrency(formData.monthlyRent),
+      paymentDay: Number(formData.paymentDay),
+      hasGarage: formData.hasMotorcycleSpot, // Map generic garage flag if needed or fix logic
+      garageValue: 0,
       hasMotorcycleSpot: formData.hasMotorcycleSpot,
-      motorcycleSpotValue,
-      attachments: attachmentObjects,
+      motorcycleSpotValue: formData.motorcycleSpotValue ? parseCurrency(formData.motorcycleSpotValue) : 0,
+      observations: formData.observations,
+      attachments: attachments.map(a => ({
+        name: a.name,
+        url: URL.createObjectURL(a.file),
+        date: new Date().toISOString(),
+        type: a.file.type
+      })),
       isActive: true,
       createdAt: new Date().toISOString()
     };
+    
+    // Recalculate total monthly rent
+    let totalRent = newRental.value;
+    if (newRental.hasGarage) totalRent += (newRental.garageValue || 0);
+    if (newRental.hasMotorcycleSpot) totalRent += (newRental.motorcycleSpotValue || 0);
+    newRental.monthlyRent = totalRent;
 
     rentalStorage.save(newRental);
 
@@ -268,22 +283,14 @@ export default function Rentals() {
     setAttachments(attachments.filter((_, i) => i !== index));
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "active": return "bg-green-100 text-green-800 border-green-200";
-      case "ended": return "bg-gray-100 text-gray-800 border-gray-200";
-      case "expired": return "bg-red-100 text-red-800 border-red-200";
-      default: return "bg-blue-100 text-blue-800 border-blue-200";
-    }
+  const getStatusColor = (isActive: boolean) => {
+    return isActive 
+      ? "bg-green-100 text-green-800 border-green-200"
+      : "bg-gray-100 text-gray-800 border-gray-200";
   };
 
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case "active": return "Ativa";
-      case "ended": return "Encerrada";
-      case "expired": return "Vencida";
-      default: return status;
-    }
+  const getStatusLabel = (isActive: boolean) => {
+    return isActive ? "Ativa" : "Encerrada";
   };
 
   const calculateTotalValue = () => {
@@ -292,6 +299,15 @@ export default function Rentals() {
       ? parseCurrency(formData.motorcycleSpotValue) 
       : 0;
     return formatCurrency(rent + spot);
+  };
+
+  const calculateTotal = (rental: Partial<Rental>) => {
+    let total = parseCurrency(rental.monthlyRent?.toString() || "0"); // Base rent (using monthlyRent as base input in form)
+    // Note: In form, we might want to separate base rent from total. 
+    // Assuming form input 'monthlyRent' is the base rent value for now to match logic
+    if (rental.hasGarage && rental.garageValue) total += rental.garageValue;
+    if (rental.hasMotorcycleSpot && rental.motorcycleSpotValue) total += rental.motorcycleSpotValue;
+    return total;
   };
 
   return (
@@ -796,8 +812,8 @@ export default function Rentals() {
                                       <p className="text-xs text-slate-600 truncate">{property.complement}</p>
                                     )}
                                   </div>
-                                  <Badge className={`${getStatusColor(rental.status)} text-xs px-1.5 py-0.5`}>
-                                    {getStatusLabel(rental.status)}
+                                  <Badge className={`${getStatusColor(rental.isActive)} text-xs px-1.5 py-0.5`}>
+                                    {getStatusLabel(rental.isActive)}
                                   </Badge>
                                 </div>
                                 
