@@ -112,6 +112,20 @@ export default function RentalsPage() {
   }, []);
 
   useEffect(() => {
+    // Filter active rentals
+    const active = rentals.filter(r => r.isActive);
+    setActiveRentals(active);
+    
+    // Filter available properties (status = "available")
+    const availProps = properties.filter(p => p.status === "available");
+    setAvailableProperties(availProps);
+    
+    // Filter available tenants (status = "active")
+    const availTenants = tenants.filter(t => t.status === "active");
+    setAvailableTenants(availTenants);
+  }, [rentals, properties, tenants]);
+
+  useEffect(() => {
     // Auto-calculate total when property or garage value changes
     if (formData.propertyId) {
       const property = properties.find(p => p.id === formData.propertyId);
@@ -223,14 +237,16 @@ export default function RentalsPage() {
 
       const createdRental = await rentalService.create(newRental);
 
+      // Update property status to "occupied"
       const propertyToUpdate = properties.find((p) => p.id === formData.propertyId);
       if (propertyToUpdate) {
-        propertyService.update({ ...propertyToUpdate, status: "occupied" });
+        await propertyService.update({ ...propertyToUpdate, status: "occupied" });
       }
 
+      // Update tenant status to "rented"
       const tenant = tenants.find((t) => t.id === formData.tenantId);
       if (tenant) {
-        tenantService.update({ ...tenant, status: "inactive" });
+        await tenantService.update({ ...tenant, status: "rented" });
       }
 
       const currentDate = new Date();
@@ -501,9 +517,9 @@ export default function RentalsPage() {
                           <SelectValue placeholder="Selecione um imóvel" />
                         </SelectTrigger>
                         <SelectContent>
-                          {properties.filter(p => p.status === "available").map((property) => (
+                          {availableProperties.map((property) => (
                             <SelectItem key={property.id} value={property.id}>
-                              {property.location} - {property.address} - {formatCurrency(property.monthlyRent)}
+                              {property.location} - {property.complement} - {formatCurrency(property.monthlyRent)}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -520,7 +536,7 @@ export default function RentalsPage() {
                           <SelectValue placeholder="Selecione um inquilino" />
                         </SelectTrigger>
                         <SelectContent>
-                          {tenants.filter(t => t.status === "active").map((tenant) => (
+                          {availableTenants.map((tenant) => (
                             <SelectItem key={tenant.id} value={tenant.id}>
                               {tenant.name}
                             </SelectItem>
@@ -725,7 +741,7 @@ export default function RentalsPage() {
             <div>
               <h2 className="text-xl font-semibold text-slate-900 mb-4">Inquilinos Disponíveis</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {tenants.filter(t => t.status === "active").map((tenant) => (
+                {availableTenants.map((tenant) => (
                   <Card key={tenant.id} className="hover:shadow-md transition-shadow">
                     <CardContent className="p-4">
                       <div className="flex items-center gap-3">
@@ -740,7 +756,7 @@ export default function RentalsPage() {
                     </CardContent>
                   </Card>
                 ))}
-                {tenants.filter(t => t.status === "active").length === 0 && (
+                {availableTenants.length === 0 && (
                   <Card className="col-span-full">
                     <CardContent className="p-6 text-center text-slate-500">
                       Nenhum inquilino ativo disponível
@@ -754,7 +770,7 @@ export default function RentalsPage() {
             <div>
               <h2 className="text-xl font-semibold text-slate-900 mb-4">Imóveis Vagos</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {properties.filter(p => p.status === "available").map((property) => (
+                {availableProperties.map((property) => (
                   <Card key={property.id} className="hover:shadow-md transition-shadow">
                     <CardContent className="p-4">
                       <div className="flex items-center gap-3">
@@ -763,7 +779,7 @@ export default function RentalsPage() {
                         </div>
                         <div className="flex-1">
                           <p className="font-medium text-sm text-slate-900">{property.location}</p>
-                          <p className="text-xs text-slate-500">{property.address}</p>
+                          <p className="text-xs text-slate-500">{property.complement}</p>
                           <p className="text-xs font-semibold text-emerald-600 mt-1">
                             {formatCurrency(property.monthlyRent)}
                           </p>
@@ -772,7 +788,7 @@ export default function RentalsPage() {
                     </CardContent>
                   </Card>
                 ))}
-                {properties.filter(p => p.status === "available").length === 0 && (
+                {availableProperties.length === 0 && (
                   <Card className="col-span-full">
                     <CardContent className="p-6 text-center text-slate-500">
                       Nenhum imóvel vago disponível
