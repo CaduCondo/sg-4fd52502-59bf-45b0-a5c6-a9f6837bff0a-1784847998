@@ -10,14 +10,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { isAuthenticated } from "@/lib/auth";
-import { propertyStorage } from "@/lib/storage";
-import { Property } from "@/types";
+import { propertyStorage, configStorage } from "@/lib/storage";
+import { Property, Config } from "@/types";
 import { Building2, Plus, Edit, Trash2, Search, MapPin, Eye, LayoutList, Grid, Building, DollarSign } from "lucide-react";
 import { SEO } from "@/components/SEO";
 import { formatCurrency, parseCurrency, maskCurrency, maskCEP, fetchAddressByCEP, applyCurrencyMask, formatCurrencyInput } from "@/lib/masks";
 import { StaggerContainer, StaggerItem } from "@/components/animations/ScrollReveal";
 import { FloatingCard } from "@/components/animations/FloatingCard";
-import { configStorage } from "@/lib/storage";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/hooks/use-toast";
@@ -390,79 +389,80 @@ export default function Properties() {
             <StaggerContainer staggerDelay={0.08}>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredProperties.map((property) => (
-                  <StaggerItem key={property.id}>
-                    <Card key={property.id} className="group hover:shadow-lg transition-all duration-300 hover:border-emerald-200">
-                      <CardHeader className="pb-3">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <CardTitle className="text-lg font-semibold text-slate-800 group-hover:text-emerald-600 transition-colors">
-                              {property.address}, {property.number}
-                            </CardTitle>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleViewProperty(property);
-                            }}
-                            className="h-8 w-8 text-slate-400 hover:text-emerald-600"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
+                  <Card 
+                    key={property.id} 
+                    className="group hover:shadow-lg transition-all duration-200 cursor-pointer"
+                    onClick={() => router.push(`/properties/${property.id}`)}
+                  >
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <CardTitle className="text-lg font-semibold text-slate-800 group-hover:text-emerald-600 transition-colors">
+                            {property.address}, {property.number}
+                          </CardTitle>
                         </div>
-                      </CardHeader>
-                      
-                      <CardContent className="pt-0 pb-4">
-                        <div className="space-y-3">
-                          {/* Local */}
-                          <div className="flex items-center gap-2 text-muted-foreground">
-                            <MapPin className="h-4 w-4 flex-shrink-0" />
-                            <span>{property.location}</span>
-                          </div>
-
-                          {/* Complemento */}
-                          {property.complement && (
-                            <div className="flex items-center gap-2 text-sm">
-                              <Building className="h-4 w-4 text-slate-400" />
-                              <span className="text-slate-500">{property.complement}</span>
-                            </div>
-                          )}
-
-                          {/* Valor do Aluguel */}
-                          <div className="flex items-center gap-2 text-sm">
-                            <DollarSign className="h-4 w-4 text-emerald-600" />
-                            <span className="text-slate-700 font-semibold">
-                              {formatCurrency(property.monthlyRent)}/mês
-                            </span>
-                          </div>
-
-                          {/* Status Badge */}
-                          <div className="pt-2">
-                            <Badge variant={property.status === "available" ? "default" : "secondary"}>
-                              {property.status === "available" ? "Disponível" : "Ocupado"}
-                            </Badge>
-                          </div>
-                        </div>
-                      </CardContent>
-
-                      {/* Card Footer with Delete Button */}
-                      <CardFooter className="pt-0 pb-4 flex justify-end border-t border-slate-100">
                         <Button
                           variant="ghost"
-                          size="sm"
+                          size="icon"
                           onClick={(e) => {
                             e.stopPropagation();
-                            confirmDelete(property.id);
+                            handleViewProperty(property);
                           }}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
                         >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Excluir
+                          <Eye className="h-4 w-4" />
                         </Button>
-                      </CardFooter>
-                    </Card>
-                  </StaggerItem>
+                      </div>
+                    </CardHeader>
+                    
+                    <CardContent className="pt-0 pb-4">
+                      <div className="space-y-3">
+                        {/* Local */}
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <MapPin className="h-4 w-4 flex-shrink-0" />
+                          <span>{property.location}</span>
+                        </div>
+
+                        {/* Complemento */}
+                        {property.complement && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <Building className="h-4 w-4 text-slate-400" />
+                            <span className="text-slate-500">{property.complement}</span>
+                          </div>
+                        )}
+
+                        {/* Valor do Aluguel */}
+                        <div className="flex items-center gap-2 text-sm">
+                          <DollarSign className="h-4 w-4 text-emerald-600" />
+                          <span className="text-slate-700 font-semibold">
+                            {formatCurrency(property.monthlyRent)}/mês
+                          </span>
+                        </div>
+
+                        {/* Status Badge */}
+                        <div className="pt-2">
+                          <Badge variant={property.status === "available" ? "default" : "secondary"}>
+                            {property.status === "available" ? "Disponível" : "Ocupado"}
+                          </Badge>
+                        </div>
+                      </div>
+                    </CardContent>
+
+                    {/* Card Footer with Delete Button */}
+                    <CardFooter className="pt-4 border-t">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full text-red-600 hover:text-red-700 hover:bg-red-50"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          confirmDelete(property.id);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Excluir
+                      </Button>
+                    </CardFooter>
+                  </Card>
                 ))}
               </div>
             </StaggerContainer>
@@ -554,14 +554,28 @@ export default function Properties() {
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="location">Local *</Label>
-                <Input
-                  id="location"
+                <Label htmlFor="location">Local</Label>
+                <Select
                   value={formData.location}
-                  onChange={(e) =>
-                    setFormData({ ...formData, location: e.target.value })
-                  }
-                />
+                  onValueChange={(value) => setFormData({ ...formData, location: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o local" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {configStorage.get().locations.length === 0 ? (
+                      <SelectItem value="none" disabled>
+                        Cadastre locais nas Configurações
+                      </SelectItem>
+                    ) : (
+                      configStorage.get().locations.map((location) => (
+                        <SelectItem key={location} value={location}>
+                          {location}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="grid grid-cols-2 gap-4">

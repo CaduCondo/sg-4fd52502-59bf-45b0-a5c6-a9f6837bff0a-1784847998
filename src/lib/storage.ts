@@ -1,4 +1,4 @@
-import { Property, Tenant, Rental, Payment, SystemConfig, User } from "@/types";
+import { Property, Tenant, Rental, Payment, SystemConfig, User, Config } from "@/types";
 
 const PROPERTIES_KEY = "rental_properties";
 const TENANTS_KEY = "rental_tenants";
@@ -285,43 +285,37 @@ export const userStorage = {
   }
 };
 
+// Config Storage
 export const configStorage = {
-  get: (): SystemConfig => {
-    if (typeof window === "undefined") return { 
-      adminFeePercentage: 6, 
-      lastUpdated: new Date().toISOString(),
-      locations: ["Jd. Colombo", "Signore", "Lemos", "Marrom", "Cinza", "Dora", "Acacias", "Outros"]
-    };
-    const stored = JSON.parse(localStorage.getItem(CONFIG_KEY) || "null");
-    if (!stored) {
-      return { 
-        adminFeePercentage: 6, 
-        lastUpdated: new Date().toISOString(),
-        locations: ["Jd. Colombo", "Signore", "Lemos", "Marrom", "Cinza", "Dora", "Acacias", "Outros"]
-      };
-    }
-    // Ensure 'Outros' is always in locations
-    if (stored.locations && !stored.locations.includes("Outros")) {
-      stored.locations.push("Outros");
-    }
-    return stored;
+  KEY: "imovcontrol_config",
+  
+  get(): Config {
+    if (typeof window === "undefined") return { adminFeePercentage: 6, locations: [] };
+    const data = localStorage.getItem(this.KEY);
+    return data ? JSON.parse(data) : { adminFeePercentage: 6, locations: [] };
   },
   
-  update: (newConfig: SystemConfig): void => {
+  save(config: Config): void {
     if (typeof window === "undefined") return;
-    
-    localStorage.setItem(CONFIG_KEY, JSON.stringify(newConfig));
-    
-    const now = new Date();
-    const currentMonth = now.getMonth() + 1;
-    const currentYear = now.getFullYear();
-    const payments = paymentStorage.getAll();
-    
-    payments.forEach(payment => {
-      const paymentDate = new Date(payment.dueDate);
-      if (paymentDate.getMonth() + 1 === currentMonth && paymentDate.getFullYear() === currentYear) {
-        paymentStorage.save(payment);
-      }
-    });
+    localStorage.setItem(this.KEY, JSON.stringify(config));
+  },
+
+  update(config: Partial<Config>): void {
+    const current = this.get();
+    this.save({ ...current, ...config });
+  },
+
+  addLocation(location: string): void {
+    const config = this.get();
+    if (!config.locations.includes(location)) {
+      config.locations.push(location);
+      this.save(config);
+    }
+  },
+
+  removeLocation(location: string): void {
+    const config = this.get();
+    config.locations = config.locations.filter(l => l !== location);
+    this.save(config);
   }
 };

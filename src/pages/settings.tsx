@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { configStorage, userStorage } from "@/lib/storage";
-import { SystemConfig, User } from "@/types";
+import { SystemConfig, User, Config } from "@/types";
 import { Trash2, Edit, Key, Plus, Save, MapPin, X } from "lucide-react";
 import { isAuthenticated } from "@/lib/auth";
 import { StaggerContainer, StaggerItem } from "@/components/animations/ScrollReveal";
@@ -20,7 +20,7 @@ import { FloatingCard } from "@/components/animations/FloatingCard";
 export default function Settings() {
   const router = useRouter();
   const { toast } = useToast();
-  const [config, setConfig] = useState<SystemConfig | null>(null);
+  const [config, setConfig] = useState<Config>({ adminFeePercentage: 6, locations: [] });
   const [users, setUsers] = useState<User[]>([]);
   const [locations, setLocations] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -178,22 +178,24 @@ export default function Settings() {
   };
 
   const handleAddLocation = () => {
-    if (!newLocation.trim()) return;
-    
-    const settings = configStorage.get();
-    const updatedLocations = [...(settings.locations || []), newLocation.trim()];
-    
-    configStorage.update({ ...settings, locations: updatedLocations });
-    setLocations(updatedLocations);
-    setNewLocation("");
+    if (newLocation.trim()) {
+      configStorage.addLocation(newLocation.trim());
+      setConfig(configStorage.get());
+      setNewLocation("");
+      toast({
+        title: "Sucesso",
+        description: `Local "${newLocation}" adicionado`,
+      });
+    }
   };
 
-  const handleRemoveLocation = (index: number) => {
-    const settings = configStorage.get();
-    const updatedLocations = settings.locations?.filter((_, i) => i !== index) || [];
-    
-    configStorage.update({ ...settings, locations: updatedLocations });
-    setLocations(updatedLocations);
+  const handleRemoveLocation = (location: string) => {
+    configStorage.removeLocation(location);
+    setConfig(configStorage.get());
+    toast({
+      title: "Sucesso",
+      description: `Local "${location}" removido`,
+    });
   };
 
   const handleUpdateAdminFee = () => {
@@ -377,7 +379,7 @@ export default function Settings() {
                                     <Button 
                                       variant="ghost" 
                                       size="sm" 
-                                      onClick={() => handleRemoveLocation(sortedLocations.indexOf(location))}
+                                      onClick={() => handleRemoveLocation(location)}
                                       className="opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-700 hover:bg-red-50"
                                       title="Excluir local"
                                     >

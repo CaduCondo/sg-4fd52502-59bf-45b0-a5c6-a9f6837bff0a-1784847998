@@ -42,6 +42,11 @@ export interface Tenant {
   observations?: string;
 }
 
+export interface Config {
+  adminFeePercentage: number;
+  locations: string[]; // Array of location names
+}
+
 export interface Attachment {
   name: string;
   url: string;

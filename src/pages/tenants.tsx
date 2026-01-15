@@ -440,66 +440,68 @@ export default function TenantsPage() {
           <StaggerContainer staggerDelay={0.08}>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredTenants.map((tenant) => (
-                <StaggerItem key={tenant.id}>
-                  <Card key={tenant.id} className="group hover:shadow-lg transition-all duration-300 hover:border-emerald-200">
-                    <CardHeader className="pb-3">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <CardTitle className="text-lg font-semibold text-slate-800 group-hover:text-emerald-600 transition-colors">
-                            {tenant.name}
-                          </CardTitle>
-                          <p className="text-sm text-slate-500 mt-1">{tenant.cpf}</p>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleViewTenant(tenant);
-                          }}
-                          className="h-8 w-8 text-slate-400 hover:text-emerald-600"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
+                <Card 
+                  key={tenant.id} 
+                  className="group hover:shadow-lg transition-all duration-200 cursor-pointer"
+                  onClick={() => router.push(`/tenants/${tenant.id}`)}
+                >
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <CardTitle className="text-lg font-semibold text-slate-800 group-hover:text-emerald-600 transition-colors">
+                          {tenant.name}
+                        </CardTitle>
+                        <p className="text-sm text-slate-500 mt-1">{tenant.cpf}</p>
                       </div>
-                    </CardHeader>
-                    
-                    <CardContent className="pt-0 pb-4">
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-sm">
-                          <Mail className="h-4 w-4 text-emerald-600" />
-                          <span className="text-slate-600">{tenant.email}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm">
-                          <Phone className="h-4 w-4 text-emerald-600" />
-                          <span className="text-slate-600">{tenant.phone}</span>
-                        </div>
-                        <div className="pt-2">
-                          <Badge variant={tenant.isActive ? "default" : "secondary"}>
-                            {tenant.isActive ? "Ativo" : "Inativo"}
-                          </Badge>
-                        </div>
-                      </div>
-                    </CardContent>
-
-                    {/* Card Footer with Delete Button */}
-                    <CardFooter className="pt-0 pb-4 flex justify-end border-t border-slate-100">
                       <Button
                         variant="ghost"
-                        size="sm"
+                        size="icon"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setTenantToDelete(tenant);
-                          setIsDeleteOpen(true);
+                          handleViewTenant(tenant);
                         }}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        className="h-8 w-8 text-slate-400 hover:text-emerald-600"
                       >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Excluir
+                        <Eye className="h-4 w-4" />
                       </Button>
-                    </CardFooter>
-                  </Card>
-                </StaggerItem>
+                    </div>
+                  </CardHeader>
+                  
+                  <CardContent className="pt-0 pb-4">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm">
+                        <Mail className="h-4 w-4 text-emerald-600" />
+                        <span className="text-slate-600">{tenant.email}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm">
+                        <Phone className="h-4 w-4 text-emerald-600" />
+                        <span className="text-slate-600">{tenant.phone}</span>
+                      </div>
+                      <div className="pt-2">
+                        <Badge variant={tenant.isActive ? "default" : "secondary"}>
+                          {tenant.isActive ? "Ativo" : "Inativo"}
+                        </Badge>
+                      </div>
+                    </div>
+                  </CardContent>
+
+                  {/* Card Footer with Delete Button */}
+                  <CardFooter className="pt-4 border-t">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full text-red-600 hover:text-red-700 hover:bg-red-50"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setTenantToDelete(tenant);
+                        setIsDeleteOpen(true);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Excluir
+                    </Button>
+                  </CardFooter>
+                </Card>
               ))}
             </div>
           </StaggerContainer>
