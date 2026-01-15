@@ -71,7 +71,8 @@ export default function Properties() {
 
   const loadLocations = () => {
     const settings = configStorage.get();
-    setAvailableLocations(settings.locations || []);
+    const sortedLocations = (settings.locations || []).sort((a, b) => a.localeCompare(b));
+    setAvailableLocations(sortedLocations);
   };
 
   useEffect(() => {
@@ -388,15 +389,20 @@ export default function Properties() {
                       className="hover:shadow-lg transition-shadow cursor-pointer relative group"
                       onClick={() => handleViewProperty(property)}
                     >
-                      <CardHeader className="pb-2">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <CardTitle className="text-xl">{property.local}</CardTitle>
-                            <CardDescription>{property.address}, {property.number}</CardDescription>
-                          </div>
-                          <Badge className={getStatusColor(property.status)}>
-                            {getStatusLabel(property.status)}
-                          </Badge>
+                      <CardHeader className="pb-3">
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-lg">{property.address}</CardTitle>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(property.id);
+                            }}
+                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
                       </CardHeader>
                       <CardContent>
@@ -418,7 +424,7 @@ export default function Properties() {
                            <Button 
                               variant="destructive" 
                               size="sm" 
-                              className="w-full opacity-0 group-hover:opacity-100 transition-opacity"
+                              className="w-full"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setDeletingId(property.id);
@@ -503,6 +509,13 @@ export default function Properties() {
             <DialogFooter className="gap-2 sm:gap-0">
               <Button variant="outline" onClick={() => setViewingProperty(null)}>
                 Fechar
+              </Button>
+              <Button onClick={() => {
+                setViewingProperty(null);
+                handleEdit(viewingProperty);
+              }}>
+                <Edit className="h-4 w-4 mr-2" />
+                Editar
               </Button>
             </DialogFooter>
           </DialogContent>

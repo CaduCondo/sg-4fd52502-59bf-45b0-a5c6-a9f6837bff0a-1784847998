@@ -153,49 +153,45 @@ export default function PropertyDetails() {
       
       <Layout>
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => router.push("/properties")}
-                className="flex items-center space-x-2"
-              >
-                <ArrowLeft size={16} />
-                <span>Voltar</span>
-              </Button>
-              <div>
-                <h1 className="text-3xl font-bold text-slate-900 flex items-center space-x-3">
-                  <MapPin className="text-emerald-600" />
-                  <span>{property.local}</span>
-                </h1>
-                <p className="text-slate-600 mt-2">{property.address}, {property.number}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <Badge variant={property.status === "occupied" ? "default" : "secondary"} className="text-base px-4 py-2">
-                {property.status === "occupied" ? "Ocupado" : "Disponível"}
-              </Badge>
+          <div className="flex items-center justify-between mb-6">
+            <Button
+              variant="ghost"
+              onClick={() => router.back()}
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Voltar
+            </Button>
+            
+            <div className="flex items-center space-x-2">
               {!isEditing ? (
                 <>
-                  <Button onClick={handleEdit} variant="outline">
-                    <Edit className="h-4 w-4 mr-2" />
+                  <Button onClick={handleEdit} className="flex items-center gap-2">
+                    <Edit className="h-4 w-4" />
                     Editar
                   </Button>
-                  <Button onClick={handleDelete} variant="destructive">
-                    <Trash2 className="h-4 w-4 mr-2" />
+                  <Button
+                    variant="destructive"
+                    onClick={handleDelete}
+                    className="flex items-center gap-2"
+                  >
+                    <Trash2 className="h-4 w-4" />
                     Excluir
                   </Button>
                 </>
               ) : (
                 <>
-                  <Button onClick={handleSave} className="bg-emerald-600 hover:bg-emerald-700">
-                    <Save className="h-4 w-4 mr-2" />
-                    Salvar
-                  </Button>
-                  <Button onClick={handleCancelEdit} variant="outline">
-                    <X className="h-4 w-4 mr-2" />
+                  <Button
+                    variant="outline"
+                    onClick={handleCancelEdit}
+                    className="flex items-center gap-2"
+                  >
+                    <X className="h-4 w-4" />
                     Cancelar
+                  </Button>
+                  <Button onClick={handleSave} className="flex items-center gap-2">
+                    <Save className="h-4 w-4" />
+                    Salvar
                   </Button>
                 </>
               )}

@@ -46,9 +46,7 @@ export default function Rentals() {
     monthlyRent: "",
     observations: "",
     hasGarage: false,
-    garageValue: "",
-    hasParkingSpot: false,
-    parkingSpotValue: ""
+    garageValue: ""
   });
 
   const [attachments, setAttachments] = useState<Array<{ name: string; file: File }>>([]);
@@ -106,9 +104,7 @@ export default function Rentals() {
       monthlyRent: "",
       observations: "",
       hasGarage: false,
-      garageValue: "",
-      hasParkingSpot: false,
-      parkingSpotValue: ""
+      garageValue: ""
     });
     setAttachments([]);
     setEditingRental(null);
@@ -158,9 +154,7 @@ export default function Rentals() {
         monthlyRent: formatCurrency(rental.monthlyRent),
         observations: rental.observations || "",
         hasGarage: rental.hasGarage || false,
-        garageValue: rental.garageValue ? formatCurrency(rental.garageValue) : "",
-        hasParkingSpot: rental.hasParkingSpot || false,
-        parkingSpotValue: rental.parkingSpotValue ? formatCurrency(rental.parkingSpotValue) : ""
+        garageValue: rental.garageValue ? formatCurrency(rental.garageValue) : ""
       });
       setAttachments([]);
     } else {
@@ -174,9 +168,7 @@ export default function Rentals() {
         monthlyRent: "",
         observations: "",
         hasGarage: false,
-        garageValue: "",
-        hasParkingSpot: false,
-        parkingSpotValue: ""
+        garageValue: ""
       });
       setAttachments([]);
       
@@ -384,6 +376,14 @@ export default function Rentals() {
     return total;
   };
 
+  const sortedProperties = [...availableProperties].sort((a, b) =>
+    a.address.localeCompare(b.address)
+  );
+
+  const sortedTenants = [...availableTenants].sort((a, b) =>
+    a.name.localeCompare(b.name)
+  );
+
   return (
     <>
       <SEO 
@@ -559,7 +559,7 @@ export default function Rentals() {
                       <Label htmlFor="propertyId">Imóveis Vagos *</Label>
                       <Select value={formData.propertyId} onValueChange={(val) => {
                         setFormData({...formData, propertyId: val});
-                        const prop = availableProperties.find(p => p.id === val);
+                        const prop = sortedProperties.find(p => p.id === val);
                         if (prop) {
                           setFormData(prev => ({
                             ...prev, 
@@ -572,7 +572,7 @@ export default function Rentals() {
                           <SelectValue placeholder="Selecione um imóvel" />
                         </SelectTrigger>
                         <SelectContent>
-                          {availableProperties.map((property) => (
+                          {sortedProperties.map((property) => (
                             <SelectItem key={property.id} value={property.id}>
                               {property.local} {property.complement ? `- ${property.complement}` : ""} - {formatCurrency(property.monthlyRent)}
                             </SelectItem>
@@ -592,7 +592,7 @@ export default function Rentals() {
                           <SelectValue placeholder="Selecione o inquilino" />
                         </SelectTrigger>
                         <SelectContent>
-                          {availableTenants.map(tenant => (
+                          {sortedTenants.map(tenant => (
                             <SelectItem key={tenant.id} value={tenant.id}>
                               {tenant.name}
                             </SelectItem>
@@ -661,86 +661,19 @@ export default function Rentals() {
                     />
                   </div>
 
-                  <div className="space-y-3">
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        id="hasGarage"
-                        checked={formData.hasGarage}
-                        onChange={(e) => setFormData({
-                          ...formData, 
-                          hasGarage: e.target.checked,
-                          garageValue: e.target.checked ? formData.garageValue : ""
-                        })}
-                        className="w-4 h-4"
-                      />
-                      <Label htmlFor="hasGarage">Vaga de Garagem?</Label>
-                    </div>
-
-                    {formData.hasGarage && (
-                      <div className="space-y-2 pl-6">
-                        <Label htmlFor="garageValue">Valor da Garagem *</Label>
-                        <Input
-                          id="garageValue"
-                          type="text"
-                          value={formData.garageValue}
-                          onChange={(e) => {
-                            const value = e.target.value.replace(/\D/g, "");
-                            const formatted = formatCurrency(parseFloat(value) / 100);
-                            setFormData({...formData, garageValue: formatted});
-                          }}
-                          placeholder="R$ 0,00"
-                          required={formData.hasGarage}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-3">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="hasGarage"
+                          checked={formData.hasGarage}
+                          onCheckedChange={(checked) =>
+                            setFormData({ ...formData, hasGarage: checked as boolean })
+                          }
                         />
+                        <Label htmlFor="hasGarage">Vaga Garagem</Label>
                       </div>
-                    )}
-
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        id="hasParkingSpot"
-                        checked={formData.hasParkingSpot}
-                        onChange={(e) => setFormData({
-                          ...formData, 
-                          hasParkingSpot: e.target.checked,
-                          parkingSpotValue: e.target.checked ? formData.parkingSpotValue : ""
-                        })}
-                        className="w-4 h-4"
-                      />
-                      <Label htmlFor="hasParkingSpot">Vaga Carro?</Label>
                     </div>
-
-                    {formData.hasParkingSpot && (
-                      <div className="space-y-2 pl-6">
-                        <Label htmlFor="parkingSpotValue">Valor da Vaga *</Label>
-                        <Input
-                          id="parkingSpotValue"
-                          type="text"
-                          value={formData.parkingSpotValue}
-                          onChange={(e) => {
-                            const value = e.target.value.replace(/\D/g, "");
-                            const formatted = formatCurrency(parseFloat(value) / 100);
-                            setFormData({...formData, parkingSpotValue: formatted});
-                          }}
-                          onBlur={(e) => {
-                            // Ensure proper formatting on blur
-                            if (formData.parkingSpotValue) {
-                               const val = parseCurrency(formData.parkingSpotValue);
-                               setFormData({...formData, parkingSpotValue: formatCurrency(val)});
-                            }
-                          }}
-                          placeholder="R$ 0,00"
-                          required={formData.hasParkingSpot}
-                        />
-                      </div>
-                    )}
-
-                    {(formData.monthlyRent || formData.parkingSpotValue) && (
-                      <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                        <p className="text-sm text-slate-600">Valor Total Mensal:</p>
-                        <p className="text-2xl font-bold text-blue-700">{calculateTotalValue()}</p>
-                      </div>
-                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -850,341 +783,7 @@ export default function Rentals() {
             </Button>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <FloatingCard delay={0.1}>
-              <Card className="border-green-200 bg-green-50">
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center space-x-2 text-green-800 text-base">
-                    <Users size={18} />
-                    <span>Inquilinos Disponíveis</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <StaggerContainer staggerDelay={0.05}>
-                    <div className="space-y-2">
-                      {availableTenants.length === 0 ? (
-                        <p className="text-sm text-green-600">Nenhum inquilino disponível</p>
-                      ) : (
-                        availableTenants.map((tenant, index) => (
-                          <StaggerItem key={tenant.id}>
-                            <div
-                              onClick={() => router.push(`/tenants/${tenant.id}`)}
-                              className="p-2 bg-white rounded border border-green-200 hover:border-green-400 cursor-pointer transition-colors"
-                            >
-                              <p className="font-medium text-slate-900 text-sm">{tenant.name}</p>
-                              <p className="text-xs text-slate-600">{tenant.phone}</p>
-                            </div>
-                          </StaggerItem>
-                        ))
-                      )}
-                    </div>
-                  </StaggerContainer>
-                </CardContent>
-              </Card>
-            </FloatingCard>
-
-            <FloatingCard delay={0.2}>
-              <Card className="border-blue-200 bg-blue-50">
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center space-x-2 text-blue-800 text-base">
-                    <Building2 size={18} />
-                    <span>Imóveis Vagos</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <StaggerContainer staggerDelay={0.05}>
-                    <div className="space-y-2">
-                      {availableProperties.length === 0 ? (
-                        <p className="text-sm text-blue-600">Nenhum imóvel disponível</p>
-                      ) : (
-                        availableProperties.map((property, index) => (
-                          <StaggerItem key={property.id}>
-                            <div
-                              onClick={() => router.push(`/properties/${property.id}`)}
-                              className="p-2 bg-white rounded border border-blue-200 hover:border-blue-400 cursor-pointer transition-colors"
-                            >
-                              <p className="font-medium text-slate-900 text-sm">{property.local}</p>
-                              <p className="text-xs text-slate-600">
-                                {property.address}, {property.number}
-                              </p>
-                              <p className="text-xs text-blue-700 font-medium mt-1">
-                                {formatCurrency(property.monthlyRent)}
-                              </p>
-                            </div>
-                          </StaggerItem>
-                        ))
-                      )}
-                    </div>
-                  </StaggerContainer>
-                </CardContent>
-              </Card>
-            </FloatingCard>
-
-            <FloatingCard delay={0.3}>
-              <Card className="border-amber-200 bg-amber-50">
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center space-x-2 text-amber-800 text-base">
-                    <FileText size={18} />
-                    <span>Locações Ativas</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <StaggerContainer staggerDelay={0.05}>
-                    <div className="space-y-2">
-                      {filteredRentals.length === 0 ? (
-                        <p className="text-sm text-amber-600">Nenhuma locação encontrada</p>
-                      ) : (
-                        filteredRentals.map((rental, index) => {
-                          const property = getProperty(rental.propertyId);
-                          const tenant = getTenant(rental.tenantId);
-                          const totalValue = rental.monthlyRent + (rental.parkingSpotValue || 0);
-                          
-                          return (
-                            <StaggerItem key={rental.id}>
-                              <div
-                                className="p-2.5 bg-white rounded border border-amber-200 hover:border-amber-400 cursor-pointer transition-colors space-y-1.5"
-                                onClick={() => router.push(`/rentals/${rental.id}`)}
-                              >
-                                <div className="flex items-start justify-between gap-2">
-                                  <div className="flex-1 min-w-0">
-                                    <p className="font-semibold text-slate-900 text-sm truncate">
-                                      {property?.local}
-                                    </p>
-                                    {property?.complement && (
-                                      <p className="text-xs text-slate-600 truncate">{property.complement}</p>
-                                    )}
-                                  </div>
-                                  <Badge className={`${getStatusColor(rental.isActive)} text-xs px-1.5 py-0.5`}>
-                                    {getStatusLabel(rental.isActive)}
-                                  </Badge>
-                                </div>
-                                
-                                <div className="space-y-0.5 text-xs pt-1 border-t border-slate-100">
-                                  <div className="flex items-center gap-1 text-slate-700">
-                                    <User size={11} />
-                                    <span className="font-medium truncate">{tenant?.name}</span>
-                                  </div>
-                                  
-                                  <div className="flex justify-between items-center">
-                                    <span className="text-slate-600">Valor Mensal Total:</span>
-                                    <span className="font-bold text-slate-900">
-                                      {formatCurrency(totalValue)}
-                                    </span>
-                                  </div>
-                                  
-                                  {rental.hasParkingSpot && rental.parkingSpotValue && (
-                                    <div className="flex justify-between items-center text-xs text-slate-500">
-                                      <span>(Aluguel: {formatCurrency(rental.monthlyRent)} + Vaga: {formatCurrency(rental.parkingSpotValue)})</span>
-                                    </div>
-                                  )}
-                                  
-                                  {(rental.hasGarage && rental.garageValue) && (
-                                    <div className="flex justify-between items-center text-xs text-slate-500">
-                                      <span>(Aluguel: {formatCurrency(rental.monthlyRent)} + Vaga: {formatCurrency(rental.garageValue)})</span>
-                                    </div>
-                                  )}
-                                  
-                                  <div className="flex justify-between items-center pt-0.5 border-t border-slate-200">
-                                    <span className="text-slate-600 font-medium">Total:</span>
-                                    <span className="font-bold text-green-700">
-                                      {formatCurrency(totalValue)}
-                                    </span>
-                                  </div>
-                                </div>
-
-                                <div className="flex justify-end gap-1 pt-1">
-                                  <div className="flex gap-2 pt-2 border-t mt-2">
-                                    <Button 
-                                      variant="outline" 
-                                      size="sm" 
-                                      className="flex-1 h-8 text-xs"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleOpenDialog(rental);
-                                      }}
-                                    >
-                                      <Eye className="mr-1 h-3 w-3" />
-                                      Detalhes
-                                    </Button>
-                                    <Button 
-                                      variant="ghost" 
-                                      size="sm" 
-                                      className="h-8 text-xs px-2"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setViewingRental(rental);
-                                      }}
-                                    >
-                                      <FileText className="mr-1 h-3 w-3" />
-                                      Resumo
-                                    </Button>
-                                  </div>
-                                </div>
-                              </div>
-                            </StaggerItem>
-                          );
-                        })
-                      )}
-                    </div>
-                  </StaggerContainer>
-                </CardContent>
-              </Card>
-            </FloatingCard>
-          </div>
-
-          {filteredRentals.length === 0 ? (
-            <div className="text-center py-12 bg-slate-50 rounded-lg border border-dashed border-slate-300">
-              <p className="text-slate-500">Nenhuma locação encontrada.</p>
-            </div>
-          ) : viewMode === "list" ? (
-            <div className="bg-white rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Imóvel</TableHead>
-                    <TableHead>Inquilino</TableHead>
-                    <TableHead>Vencimento</TableHead>
-                    <TableHead>Valor Total</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredRentals.map((rental) => {
-                    const property = properties.find(p => p.id === rental.propertyId);
-                    const tenant = tenants.find(t => t.id === rental.tenantId);
-                    return (
-                      <TableRow 
-                        key={rental.id}
-                        onClick={() => handleViewRental(rental)}
-                        className="list-item-hover cursor-pointer"
-                      >
-                        <TableCell className="font-medium">{property?.local}</TableCell>
-                        <TableCell>{tenant?.name}</TableCell>
-                        <TableCell>Dia {rental.paymentDay}</TableCell>
-                        <TableCell className="text-emerald-600 font-bold">{formatCurrency(getTotalValue(rental))}</TableCell>
-                        <TableCell>
-                           <Badge className={getStatusColor(rental.isActive)}>
-                            {getStatusLabel(rental.isActive)}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                           {/* Actions */}
-                        </TableCell>
-                      </TableRow>
-                     );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredRentals.map((rental) => {
-                const property = getProperty(rental.propertyId);
-                const tenant = getTenant(rental.tenantId);
-                const totalValue = rental.monthlyRent + (rental.parkingSpotValue || 0);
-
-                return (
-                  <Card 
-                    key={rental.id}
-                    onClick={() => handleViewRental(rental)}
-                    className="card-hover-effect cursor-pointer relative"
-                  >
-                    <CardHeader className="pb-3">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <CardTitle className="text-xl">{property?.local || "Imóvel removido"}</CardTitle>
-                          <CardDescription>{tenant?.name || "Inquilino removido"}</CardDescription>
-                        </div>
-                        <Badge className={`${getStatusColor(rental.isActive)} text-white`}>
-                          {getStatusLabel(rental.isActive)}
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3 text-sm text-slate-600">
-                        <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4" />
-                          <span>Vence dia {rental.paymentDay}</span>
-                        </div>
-                        
-                        <div className="pt-2 border-t border-slate-100 space-y-1">
-                           <div className="flex justify-between text-xs">
-                              <span>Aluguel:</span>
-                              <span>{formatCurrency(rental.monthlyRent || 0)}</span>
-                           </div>
-                           {rental.hasParkingSpot && rental.parkingSpotValue && (
-                             <div className="flex justify-between text-xs">
-                                <span>Vaga Carro:</span>
-                                <span>{formatCurrency(rental.parkingSpotValue || 0)}</span>
-                             </div>
-                           )}
-                           {(rental.hasGarage && rental.garageValue) && (
-                             <div className="flex justify-between text-xs">
-                                <span>Vaga Garagem:</span>
-                                <span>{formatCurrency(rental.garageValue || 0)}</span>
-                             </div>
-                           )}
-                           <div className="flex justify-between font-bold text-emerald-600 text-base pt-1">
-                              <span>Total Mensal:</span>
-                              <span>{formatCurrency(totalValue)}</span>
-                           </div>
-                        </div>
-
-                        {/* Actions */}
-                        <div className="flex gap-2 pt-2 mt-2" onClick={(e) => e.stopPropagation()}>
-                           {/* View is implicit via card click, but we can keep buttons if needed, prompt says "deve ter os botões visualizar, encerrar locação e deletar" */}
-                           <Button 
-                              variant="secondary" 
-                              size="sm" 
-                              className="flex-1"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleOpenDialog(rental);
-                              }}
-                           >
-                              <Eye className="h-4 w-4 mr-1" />
-                              Ver
-                           </Button>
-                           
-                           {rental.isActive && (
-                             <Button 
-                                variant="outline" 
-                                size="sm" 
-                                className="flex-1 border-amber-500 text-amber-600 hover:bg-amber-50"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  // Navigate to details page for End action logic which is complex, 
-                                  // OR open a local dialog. The prompt says "Visualização da locação... deve ter botão editar e encerrar".
-                                  // So here maybe just delete? Prompt says "card... deve ter os botões visualizar, encerrar locação e deletar"
-                                  // I'll implement End logic redirection or simple toggle
-                                  router.push(`/rentals/${rental.id}`);
-                                }}
-                             >
-                                <XCircle className="h-4 w-4 mr-1" />
-                                Encerrar
-                             </Button>
-                           )}
-
-                           <Button 
-                              variant="destructive" 
-                              size="sm" 
-                              className="w-10 px-0"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDelete(rental.id);
-                              }}
-                           >
-                              <Trash2 className="h-4 w-4" />
-                           </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          )}
+          {/* Bottom list view removed as requested */}
         </div>
       </Layout>
     </>

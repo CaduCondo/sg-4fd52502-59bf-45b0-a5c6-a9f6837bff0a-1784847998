@@ -480,7 +480,7 @@ export default function TenantsPage() {
                          <Button 
                             variant="destructive" 
                             size="sm" 
-                            className="w-full opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="w-full"
                             onClick={(e) => {
                               e.stopPropagation();
                               setTenantToDelete(tenant);
