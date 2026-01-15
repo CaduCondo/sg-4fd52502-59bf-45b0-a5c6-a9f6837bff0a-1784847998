@@ -1,3 +1,4 @@
+// Currency formatting
 export const formatCurrency = (value: number | string): string => {
   const numValue = typeof value === "string" ? parseFloat(value) : value;
   if (isNaN(numValue)) return "R$ 0,00";
@@ -8,170 +9,164 @@ export const formatCurrency = (value: number | string): string => {
   });
 };
 
-export function maskCurrency(value: string): string {
+export const parseCurrency = (value: string): number => {
+  if (!value) return 0;
+  return parseFloat(value.replace(/[^\d,]/g, "").replace(/\./g, "").replace(",", "."));
+};
+
+export const applyRealMask = (value: string): string => {
+  if (!value) return "";
+  
+  // Remove tudo exceto números
   const numbers = value.replace(/\D/g, "");
+  
+  // Converte para número e formata
   const amount = parseFloat(numbers) / 100;
   
-  if (isNaN(amount)) return "R$ 0,00";
+  if (isNaN(amount)) return "";
   
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  }).format(amount);
-}
+  return amount.toLocaleString("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+};
 
-export function maskCPF(value: string): string {
+export const numberToWords = (value: number): string => {
+  const units = ["", "um", "dois", "três", "quatro", "cinco", "seis", "sete", "oito", "nove"];
+  const teens = ["dez", "onze", "doze", "treze", "quatorze", "quinze", "dezesseis", "dezessete", "dezoito", "dezenove"];
+  const tens = ["", "", "vinte", "trinta", "quarenta", "cinquenta", "sessenta", "setenta", "oitenta", "noventa"];
+  const hundreds = ["", "cento", "duzentos", "trezentos", "quatrocentos", "quinhentos", "seiscentos", "setecentos", "oitocentos", "novecentos"];
+
+  if (value === 0) return "zero";
+  if (value === 100) return "cem";
+
+  let result = "";
+  const integerPart = Math.floor(value);
+  const decimalPart = Math.round((value - integerPart) * 100);
+
+  // Processar parte inteira
+  if (integerPart >= 1000) {
+    const thousands = Math.floor(integerPart / 1000);
+    if (thousands === 1) {
+      result += "mil";
+    } else {
+      result += numberToWords(thousands) + " mil";
+    }
+    const remainder = integerPart % 1000;
+    if (remainder > 0) {
+      result += " " + (remainder < 100 ? "e " : "") + numberToWords(remainder);
+    }
+  } else {
+    // Centenas
+    if (integerPart >= 100) {
+      result += hundreds[Math.floor(integerPart / 100)];
+      const remainder = integerPart % 100;
+      if (remainder > 0) {
+        result += " e " + numberToWords(remainder);
+      }
+    } else if (integerPart >= 20) {
+      // Dezenas
+      result += tens[Math.floor(integerPart / 10)];
+      const remainder = integerPart % 10;
+      if (remainder > 0) {
+        result += " e " + units[remainder];
+      }
+    } else if (integerPart >= 10) {
+      // Teens
+      result += teens[integerPart - 10];
+    } else if (integerPart > 0) {
+      // Unidades
+      result += units[integerPart];
+    }
+  }
+
+  result += integerPart === 1 ? " real" : " reais";
+
+  // Processar parte decimal
+  if (decimalPart > 0) {
+    result += " e ";
+    if (decimalPart >= 20) {
+      result += tens[Math.floor(decimalPart / 10)];
+      const remainder = decimalPart % 10;
+      if (remainder > 0) {
+        result += " e " + units[remainder];
+      }
+    } else if (decimalPart >= 10) {
+      result += teens[decimalPart - 10];
+    } else {
+      result += units[decimalPart];
+    }
+    result += decimalPart === 1 ? " centavo" : " centavos";
+  }
+
+  return result;
+};
+
+// CPF formatting
+export const applyCpfMask = (value: string): string => {
   return value
     .replace(/\D/g, "")
     .replace(/(\d{3})(\d)/, "$1.$2")
     .replace(/(\d{3})(\d)/, "$1.$2")
-    .replace(/(\d{3})(\d{1,2})/, "$1-$2")
-    .replace(/(-\d{2})\d+?$/, "$1");
-}
+    .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+};
 
-export function maskCNPJ(value: string): string {
-  return value
-    .replace(/\D/g, "")
-    .replace(/(\d{2})(\d)/, "$1.$2")
-    .replace(/(\d{3})(\d)/, "$1.$2")
-    .replace(/(\d{3})(\d)/, "$1/$2")
-    .replace(/(\d{4})(\d)/, "$1-$2")
-    .replace(/(-\d{2})\d+?$/, "$1");
-}
-
-export function maskPhone(value: string): string {
+// Phone formatting
+export const applyPhoneMask = (value: string): string => {
   return value
     .replace(/\D/g, "")
     .replace(/(\d{2})(\d)/, "($1) $2")
     .replace(/(\d{5})(\d)/, "$1-$2")
     .replace(/(-\d{4})\d+?$/, "$1");
-}
+};
 
-export function formatDate(dateString: string): string {
-  const date = new Date(dateString);
-  return date.toLocaleDateString("pt-BR");
-}
-
-export function maskCEP(value: string): string {
+// CEP formatting
+export const applyCepMask = (value: string): string => {
   return value
     .replace(/\D/g, "")
     .replace(/(\d{5})(\d)/, "$1-$2")
     .replace(/(-\d{3})\d+?$/, "$1");
-}
+};
 
-export function applyCurrencyMask(value: string | number): string {
-  if (!value) return "";
-  
-  const val = value.toString().replace(/\D/g, "");
-  
-  // Converter para número com 2 casas decimais
-  const numberValue = parseInt(val) / 100;
-  
-  return numberValue.toLocaleString("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  });
-}
+// CNPJ Mask
+export const applyCnpjMask = (value: string): string => {
+  return value
+    .replace(/\D/g, "")
+    .replace(/^(\d{2})(\d)/, "$1.$2")
+    .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
+    .replace(/\.(\d{3})(\d)/, ".$1/$2")
+    .replace(/(\d{4})(\d)/, "$1-$2");
+};
 
-export function parseCurrencyToNumber(value: string): number {
-  if (!value) return 0;
-  // Remove R$, espaços e pontos de milhar, substitui vírgula decimal por ponto
-  const cleanValue = value.replace(/[R$\s.]/g, "").replace(",", ".");
-  return parseFloat(cleanValue) || 0;
-}
+// Date Formatting
+export const formatDate = (date: string | Date): string => {
+  if (!date) return "";
+  const d = typeof date === "string" ? new Date(date) : date;
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("pt-BR");
+};
 
-export async function fetchAddressByCEP(cep: string): Promise<{
-  logradouro: string;
-  bairro: string;
-  localidade: string;
-  uf: string;
-  erro?: boolean;
-} | null> {
-  const cleanCEP = cep.replace(/\D/g, "");
-  if (cleanCEP.length !== 8) return null;
+// Address fetch stub (would typically be in a service)
+export const fetchAddressByCEP = async (cep: string): Promise<any> => {
+  const cleanCep = cep.replace(/\D/g, "");
+  if (cleanCep.length !== 8) return null;
   
   try {
-    const response = await fetch(`https://viacep.com.br/ws/${cleanCEP}/json/`);
+    const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
     const data = await response.json();
     if (data.erro) return null;
     return data;
   } catch (error) {
+    console.error("Error fetching CEP", error);
     return null;
   }
-}
-
-export function numberToWords(value: number): string {
-  const units = ["", "um", "dois", "três", "quatro", "cinco", "seis", "sete", "oito", "nove"];
-  const teens = ["dez", "onze", "doze", "treze", "quatorze", "quinze", "dezesseis", "dezessete", "dezoito", "dezenove"];
-  const tens = ["", "", "vinte", "trinta", "quarenta", "cinquenta", "sessenta", "setenta", "oitenta", "noventa"];
-  const hundreds = ["", "cento", "duzentos", "trezentos", "quatrocentos", "quinhentos", "seiscentos", "setecentos", "oitocentos", "novecentos"];
-  
-  if (value === 0) return "zero";
-  if (value === 100) return "cem";
-  
-  let result = "";
-  const integerPart = Math.floor(value);
-  const decimalPart = Math.round((value - integerPart) * 100);
-  
-  // Thousands
-  const thousands = Math.floor(integerPart / 1000);
-  if (thousands > 0) {
-    if (thousands === 1) {
-      result += "mil";
-    } else {
-      result += convertHundreds(thousands) + " mil";
-    }
-    if (integerPart % 1000 > 0) result += " e ";
-  }
-  
-  // Hundreds, tens and units
-  const remainder = integerPart % 1000;
-  if (remainder > 0) {
-    result += convertHundreds(remainder);
-  }
-  
-  result += " reais";
-  
-  if (decimalPart > 0) {
-    result += " e " + convertHundreds(decimalPart) + " centavos";
-  }
-  
-  return result;
-  
-  function convertHundreds(n: number): string {
-    let str = "";
-    const h = Math.floor(n / 100);
-    const t = Math.floor((n % 100) / 10);
-    const u = n % 10;
-    
-    if (h > 0) {
-      str += hundreds[h];
-      if (t > 0 || u > 0) str += " e ";
-    }
-    
-    if (t === 1) {
-      str += teens[u];
-    } else {
-      if (t > 0) {
-        str += tens[t];
-        if (u > 0) str += " e ";
-      }
-      if (u > 0 && t !== 1) {
-        str += units[u];
-      }
-    }
-    
-    return str;
-  }
-}
-
-export const parseCurrency = (value: string): number => {
-  if (!value) return 0;
-  return parseFloat(value.replace(/\./g, "").replace(",", "."));
 };
 
-export const applyRealMask = (value: string): string => {
-  const cleanValue = value.replace(/\D/g, "");
-  const numberValue = parseFloat(cleanValue) / 100;
-  return numberValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 });
-};
+// Aliases for backward compatibility
+export const maskCurrency = applyRealMask;
+export const applyCurrencyMask = applyRealMask;
+export const parseCurrencyToNumber = parseCurrency;
+export const maskCEP = applyCepMask;
+export const maskCPF = applyCpfMask;
+export const maskPhone = applyPhoneMask;
+export const maskCNPJ = applyCnpjMask;

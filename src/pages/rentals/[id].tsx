@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { isAuthenticated } from "@/lib/auth";
-import { rentalStorage, propertyStorage, tenantStorage, configStorage } from "@/lib/storage";
+import { rentalStorage, propertyStorage, tenantStorage } from "@/lib/storage";
 import { Rental, Property, Tenant } from "@/types";
 import { ArrowLeft, Edit, Save, X, Calendar, DollarSign, User, Home, FileText, Trash2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
@@ -106,7 +106,7 @@ export default function RentalDetails() {
       observations: editObservations
     };
 
-    rentalStorage.update(rental.id, updatedRental);
+    rentalStorage.update(updatedRental);
     setRental(updatedRental);
     setIsEditing(false);
     toast({ title: "Sucesso!", description: "Locação atualizada com sucesso" });
@@ -121,11 +121,12 @@ export default function RentalDetails() {
       endDate: new Date().toISOString().split("T")[0]
     };
 
-    rentalStorage.update(rental.id, updatedRental);
+    rentalStorage.update(updatedRental);
 
     // Update property status
     if (property) {
-      propertyStorage.update(property.id, { ...property, status: "available" });
+      const updatedProperty = { ...property, status: "available" as const };
+      propertyStorage.update(updatedProperty);
     }
 
     toast({ title: "Sucesso!", description: "Contrato encerrado com sucesso" });
@@ -139,7 +140,8 @@ export default function RentalDetails() {
 
     // Update property status
     if (property) {
-      propertyStorage.update(property.id, { ...property, status: "available" });
+      const updatedProperty = { ...property, status: "available" as const };
+      propertyStorage.update(updatedProperty);
     }
 
     toast({ title: "Sucesso!", description: "Locação excluída com sucesso" });
