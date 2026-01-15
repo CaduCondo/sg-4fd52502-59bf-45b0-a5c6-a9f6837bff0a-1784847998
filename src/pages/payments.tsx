@@ -473,7 +473,10 @@ export default function Payments() {
                             return (
                               <TableRow 
                                 key={payment.id}
-                                onClick={() => handleViewPayment(payment)}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  router.push(`/payments/manage/${payment.id}`);
+                                }}
                                 className="list-item-hover cursor-pointer"
                               >
                                 <TableCell className="font-medium">{property?.local}</TableCell>

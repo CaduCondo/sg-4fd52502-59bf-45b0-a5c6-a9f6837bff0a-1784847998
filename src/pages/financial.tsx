@@ -156,7 +156,6 @@ export default function FinancialPage() {
 
       rentalPayments.forEach(payment => {
         const dueDate = new Date(rental.startDate);
-        // Fix: Ensure payment.month is treated as number
         const monthNum = payment.referenceMonth;
         const monthsFromStart = monthNum - 1;
         
@@ -180,25 +179,24 @@ export default function FinancialPage() {
 
         if (today > dueDateObj && payment.status !== "paid") {
           const daysLate = Math.floor((today.getTime() - dueDateObj.getTime()) / (1000 * 60 * 60 * 24));
-          const lateFee = expectedAmount * 0.10; // 10% multa
-          const dailyInterest = expectedAmount * 0.02 * daysLate; // 2% ao dia
+          const lateFee = expectedAmount * 0.10;
+          const dailyInterest = expectedAmount * 0.02 * daysLate;
           expectedAmount += lateFee + dailyInterest;
         }
 
         paymentRows.push({
           paymentId: payment.id,
           rentalId: rental.id,
-          // Fix: Use 'local' property instead of 'location'
           location: property.local,
           complement: property.complement || "",
           tenantName: tenant.name,
-          year: parseInt(payment.referenceYear), // Ensure number
+          year: parseInt(String(payment.referenceYear)),
           month: monthNum,
           status: payment.isPaid ? "Pago" : (payment.paidAmount && payment.paidAmount > 0) ? "Parcial" : "Não Pago",
           paymentCode: payment.paymentCode || "",
           dueDate: dueDate.toISOString().split('T')[0],
           expectedAmount,
-          paidAmount: payment.paidAmount || payment.expectedAmount || 0, // Ensure number
+          paidAmount: payment.paidAmount || payment.expectedAmount || 0,
         });
       });
     });
@@ -209,15 +207,12 @@ export default function FinancialPage() {
   const applyFilters = () => {
     let filtered = [...rows];
 
-    // Filter by year
     filtered = filtered.filter(row => row.year === selectedYear);
 
-    // Filter by month
     if (selectedMonth !== "all") {
       filtered = filtered.filter(row => row.month === selectedMonth);
     }
 
-    // Filter by property type
     if (selectedPropertyType !== "all") {
       const rentals = rentalStorage.getAll();
       const properties = propertyStorage.getAll();
@@ -231,12 +226,10 @@ export default function FinancialPage() {
       filtered = filtered.filter(row => filteredRentalIds.includes(row.rentalId));
     }
 
-    // Filter by locations
     if (selectedLocations.length > 0) {
       filtered = filtered.filter(row => selectedLocations.includes(row.location));
     }
 
-    // Sort
     filtered.sort((a, b) => {
       let aVal: any = a[sortField];
       let bVal: any = b[sortField];
@@ -255,7 +248,6 @@ export default function FinancialPage() {
 
     setFilteredRows(filtered);
 
-    // Calculate totals
     const expected = filtered.reduce((sum, row) => sum + row.expectedAmount, 0);
     const paid = filtered.reduce((sum, row) => sum + row.paidAmount, 0);
     const diff = expected - paid;
@@ -268,12 +260,10 @@ export default function FinancialPage() {
     setDifference(diff);
     setAdminFee(fee);
 
-    // Update Chart Data based on filtered rows
     updateChartData(filtered, config.adminFeePercentage);
   };
 
   const updateChartData = (data: PaymentRow[], adminFeePercent: number) => {
-    // 1. Revenue by Month (for Line Chart) - Aggregate across filtered data
     const monthlyData: Record<number, { revenue: number; adminFee: number }> = {};
     data.forEach(row => {
       if (!monthlyData[row.month]) {
@@ -290,7 +280,6 @@ export default function FinancialPage() {
     }));
     setRevenueData(revData);
 
-    // 2. Payment Status
     const statusCounts = { Pago: 0, Parcial: 0, 'Não Pago': 0 };
     data.forEach(row => {
         if (row.status === 'Pago') statusCounts.Pago++;
@@ -303,7 +292,6 @@ export default function FinancialPage() {
         { name: 'Não Pago', value: statusCounts['Não Pago'] }
     ]);
 
-    // 3. Revenue by Location
     const locData: Record<string, number> = {};
     data.forEach(row => {
         if (!locData[row.location]) locData[row.location] = 0;
@@ -442,7 +430,7 @@ export default function FinancialPage() {
                 <CardTitle className="text-sm font-medium text-slate-600">Total Esperado</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold text-slate-900">{formatCurrency(String(totalExpected))}</p>
+                <p className="text-2xl font-bold text-slate-900">{formatCurrency(totalExpected)}</p>
               </CardContent>
             </Card>
             <Card>
@@ -450,7 +438,7 @@ export default function FinancialPage() {
                 <CardTitle className="text-sm font-medium text-slate-600">Total Pago</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold text-green-600">{formatCurrency(String(totalPaid))}</p>
+                <p className="text-2xl font-bold text-green-600">{formatCurrency(totalPaid)}</p>
               </CardContent>
             </Card>
             <Card>
@@ -458,7 +446,7 @@ export default function FinancialPage() {
                 <CardTitle className="text-sm font-medium text-slate-600">Diferença</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold text-red-600">{formatCurrency(String(difference))}</p>
+                <p className="text-2xl font-bold text-red-600">{formatCurrency(difference)}</p>
               </CardContent>
             </Card>
             <Card className="bg-blue-50 border-blue-200">
@@ -466,7 +454,7 @@ export default function FinancialPage() {
                 <CardTitle className="text-sm font-medium text-blue-600">Taxa Administração</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold text-blue-700">{formatCurrency(String(adminFee))}</p>
+                <p className="text-2xl font-bold text-blue-700">{formatCurrency(adminFee)}</p>
               </CardContent>
             </Card>
           </div>
@@ -564,7 +552,6 @@ export default function FinancialPage() {
 
           {/* Charts Section */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Revenue Trend Chart */}
             <Card>
               <CardHeader>
                 <CardTitle>Evolução de Receita Mensal (Filtro Atual)</CardTitle>
@@ -586,7 +573,6 @@ export default function FinancialPage() {
               </CardContent>
             </Card>
 
-            {/* Payment Status Pie Chart */}
             <Card>
               <CardHeader>
                 <CardTitle>Status dos Pagamentos</CardTitle>
@@ -617,7 +603,6 @@ export default function FinancialPage() {
               </CardContent>
             </Card>
 
-            {/* Revenue by Location Bar Chart */}
             <Card>
               <CardHeader>
                 <CardTitle>Receita por Local</CardTitle>
@@ -721,8 +706,8 @@ export default function FinancialPage() {
                     <TableRow className="bg-slate-50 font-bold">
                       <TableCell colSpan={isAdmin ? 7 : 6}>TOTAL</TableCell>
                       {isAdmin && <TableCell></TableCell>}
-                      <TableCell className="text-right">{formatCurrency(String(totalExpected))}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(String(totalPaid))}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(totalExpected)}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(totalPaid)}</TableCell>
                     </TableRow>
                   </TableBody>
                 </Table>

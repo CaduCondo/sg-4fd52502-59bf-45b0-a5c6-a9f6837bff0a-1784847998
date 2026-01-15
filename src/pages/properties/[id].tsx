@@ -11,10 +11,12 @@ import { Badge } from "@/components/ui/badge";
 import { isAuthenticated } from "@/lib/auth";
 import { propertyStorage, configStorage } from "@/lib/storage";
 import { Property } from "@/types";
-import { ArrowLeft, Edit, Trash2, MapPin, Building2, DollarSign } from "lucide-react";
+import { ArrowLeft, Edit, Trash2, MapPin, Building2, DollarSign, Save, X, Home, Calendar, FileText, User } from "lucide-react";
 import { SEO } from "@/components/SEO";
 import { formatCurrency, formatDate, parseCurrency, maskCurrency } from "@/lib/masks";
-import { Select, SelectContent } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { applyRealMask } from "@/lib/masks";
+import { toast } from "@/hooks/use-toast";
 
 const LOCALS = [
   "Jd. Colombo",
@@ -37,6 +39,7 @@ export default function PropertyDetails() {
   const { id } = router.query;
   const [property, setProperty] = useState<Property | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [availableLocations, setAvailableLocations] = useState<string[]>([]);
   const [formData, setFormData] = useState({ 
@@ -50,6 +53,15 @@ export default function PropertyDetails() {
     monthlyRent: "",
     status: "available" as "available" | "occupied"
   }); 
+
+  // Form state for editing
+  const [editData, setEditData] = useState({
+    local: "",
+    address: "",
+    complement: "",
+    type: "",
+    value: ""
+  });
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -89,7 +101,11 @@ export default function PropertyDetails() {
   };
 
   const handleEdit = () => {
-    setIsEditDialogOpen(true);
+    setIsEditing(true);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -171,37 +187,56 @@ export default function PropertyDetails() {
       
       <Layout>
         <div className="space-y-6">
-          <div className="flex items-center space-x-4">
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => router.push("/properties")}
-              className="flex items-center space-x-2"
-            >
-              <ArrowLeft size={16} />
-              <span>Voltar</span>
-            </Button>
-            <div className="flex-1">
-              <h1 className="text-3xl font-bold text-slate-900 flex items-center space-x-3">
-                <MapPin className="text-emerald-600" />
-                <span>{property.local}</span>
-              </h1>
-              <p className="text-slate-600 mt-2">{property.address}, {property.number}</p>
-            </div>
-            <Badge variant={property.status === "occupied" ? "default" : "secondary"} className="text-base px-4 py-2">
-              {property.status === "occupied" ? "Ocupado" : "Disponível"}
-            </Badge>
-          </div>
-
-          <div className="flex justify-end mb-4">
-            {!isEditing ? (
-              <Button onClick={() => setIsEditing(true)}>Editar</Button>
-            ) : (
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setIsEditing(false)}>Cancelar</Button>
-                <Button onClick={handleSave}>Salvar</Button>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => router.push("/properties")}
+                className="flex items-center space-x-2"
+              >
+                <ArrowLeft size={16} />
+                <span>Voltar</span>
+              </Button>
+              <div className="flex-1">
+                <h1 className="text-3xl font-bold text-slate-900 flex items-center space-x-3">
+                  <MapPin className="text-emerald-600" />
+                  <span>{property.local}</span>
+                </h1>
+                <p className="text-slate-600 mt-2">{property.address}, {property.number}</p>
               </div>
-            )}
+              <Badge variant={property.status === "occupied" ? "default" : "secondary"} className="text-base px-4 py-2">
+                {property.status === "occupied" ? "Ocupado" : "Disponível"}
+              </Badge>
+            </div>
+            <div className="flex gap-2">
+              {!isEditing ? (
+                <>
+                  <Button onClick={handleEdit} variant="outline">
+                    <Edit className="h-4 w-4 mr-2" />
+                    Editar
+                  </Button>
+                  <Button 
+                    onClick={() => setIsDeleteDialogOpen(true)} 
+                    variant="destructive"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Excluir
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button onClick={handleSave} className="bg-emerald-600 hover:bg-emerald-700">
+                    <Save className="h-4 w-4 mr-2" />
+                    Salvar
+                  </Button>
+                  <Button onClick={handleCancelEdit} variant="outline">
+                    <X className="h-4 w-4 mr-2" />
+                    Cancelar
+                  </Button>
+                </>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
