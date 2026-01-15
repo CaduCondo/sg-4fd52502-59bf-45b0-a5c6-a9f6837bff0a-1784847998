@@ -442,7 +442,7 @@ export default function FinancialPage() {
                 <CardTitle className="text-sm font-medium text-slate-600">Total Esperado</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold text-slate-900">{formatCurrency(totalExpected)}</p>
+                <p className="text-2xl font-bold text-slate-900">{formatCurrency(String(totalExpected))}</p>
               </CardContent>
             </Card>
             <Card>
@@ -450,7 +450,7 @@ export default function FinancialPage() {
                 <CardTitle className="text-sm font-medium text-slate-600">Total Pago</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold text-green-600">{formatCurrency(totalPaid)}</p>
+                <p className="text-2xl font-bold text-green-600">{formatCurrency(String(totalPaid))}</p>
               </CardContent>
             </Card>
             <Card>
@@ -458,7 +458,7 @@ export default function FinancialPage() {
                 <CardTitle className="text-sm font-medium text-slate-600">Diferença</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold text-red-600">{formatCurrency(difference)}</p>
+                <p className="text-2xl font-bold text-red-600">{formatCurrency(String(difference))}</p>
               </CardContent>
             </Card>
             <Card className="bg-blue-50 border-blue-200">
@@ -466,7 +466,7 @@ export default function FinancialPage() {
                 <CardTitle className="text-sm font-medium text-blue-600">Taxa Administração</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold text-blue-700">{formatCurrency(adminFee)}</p>
+                <p className="text-2xl font-bold text-blue-700">{formatCurrency(String(adminFee))}</p>
               </CardContent>
             </Card>
           </div>
