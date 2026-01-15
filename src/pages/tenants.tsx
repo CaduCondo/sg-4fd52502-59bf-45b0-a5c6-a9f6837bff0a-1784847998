@@ -81,7 +81,7 @@ export default function TenantsPage() {
     setFilteredTenants(filtered);
   };
 
-  const handleOpenDialog = (tenant?: Tenant, viewMode = false) => {
+  const handleOpenDialog = (tenant?: Tenant, viewMode?: boolean) => {
     if (tenant) {
       setCurrentTenant(tenant);
       setFormData({
@@ -91,7 +91,7 @@ export default function TenantsPage() {
         documentType: tenant.documentType,
         document: tenant.document,
       });
-      setIsViewMode(viewMode);
+      setIsViewMode(!!viewMode);
     } else {
       setCurrentTenant(null);
       setFormData({

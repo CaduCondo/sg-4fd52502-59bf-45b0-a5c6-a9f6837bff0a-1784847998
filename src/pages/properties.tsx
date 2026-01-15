@@ -92,7 +92,7 @@ export default function PropertiesPage() {
     setFilteredProperties(filtered);
   };
 
-  const handleOpenDialog = (property?: Property, viewMode = false) => {
+  const handleOpenDialog = (property?: Property, viewMode?: boolean) => {
     if (locations.length === 0) {
       toast({
         title: "Atenção",
@@ -115,7 +115,7 @@ export default function PropertiesPage() {
         rentValue: property.rentValue.toString(),
         description: property.description || "",
       });
-      setIsViewMode(viewMode);
+      setIsViewMode(!!viewMode);
     } else {
       setCurrentProperty(null);
       setFormData({
