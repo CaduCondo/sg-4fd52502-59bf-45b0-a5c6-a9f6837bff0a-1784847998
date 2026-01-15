@@ -41,6 +41,7 @@ export default function Properties() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<"all" | "available" | "occupied">("all");
   const [filterLocal, setFilterLocal] = useState("");
+  const [filterType, setFilterType] = useState("");
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [sortBy, setSortBy] = useState<"address" | "monthlyRent" | "local" | "createdAt">("createdAt");
@@ -88,6 +89,10 @@ export default function Properties() {
       filtered = filtered.filter(p => p.local === filterLocal);
     }
 
+    if (filterType) {
+      filtered = filtered.filter(p => p.type === filterType);
+    }
+
     // Price range filter
     if (minPrice) {
       const min = parseCurrency(minPrice);
@@ -120,7 +125,7 @@ export default function Properties() {
     });
 
     setFilteredProperties(filtered);
-  }, [searchTerm, filterStatus, filterLocal, minPrice, maxPrice, sortBy, sortOrder, properties]);
+  }, [searchTerm, filterStatus, filterLocal, filterType, minPrice, maxPrice, sortBy, sortOrder, properties]);
 
   const loadProperties = () => {
     const data = propertyStorage.getAll();
@@ -274,6 +279,22 @@ export default function Properties() {
             <CardContent className="pt-6">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="space-y-2">
+                  <Label htmlFor="filterType">Tipo de Imóvel</Label>
+                  <select
+                    id="filterType"
+                    value={filterType}
+                    onChange={(e) => setFilterType(e.target.value)}
+                    className="w-full h-10 px-3 rounded-md border border-slate-300 bg-white text-slate-900"
+                  >
+                    <option value="">Todos os tipos</option>
+                    <option value="Apartamento">Apartamento</option>
+                    <option value="Casa">Casa</option>
+                    <option value="Comercial">Comercial</option>
+                    <option value="Terreno">Terreno</option>
+                  </select>
+                </div>
+
+                <div className="space-y-2">
                   <Label htmlFor="minPrice">Valor Mínimo</Label>
                   <Input
                     id="minPrice"
@@ -307,7 +328,9 @@ export default function Properties() {
                     <option value="local">Local</option>
                   </select>
                 </div>
+              </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-1 gap-4 mt-4">
                 <div className="space-y-2">
                   <Label htmlFor="sortOrder">Ordem</Label>
                   <select
@@ -326,7 +349,7 @@ export default function Properties() {
                 <Badge variant="outline" className="text-sm">
                   {filteredProperties.length} {filteredProperties.length === 1 ? "imóvel encontrado" : "imóveis encontrados"}
                 </Badge>
-                {(searchTerm || filterLocal || filterStatus !== "all" || minPrice || maxPrice) && (
+                {(searchTerm || filterLocal || filterStatus !== "all" || filterType || minPrice || maxPrice) && (
                   <Button
                     variant="ghost"
                     size="sm"
@@ -334,6 +357,7 @@ export default function Properties() {
                       setSearchTerm("");
                       setFilterLocal("");
                       setFilterStatus("all");
+                      setFilterType("");
                       setMinPrice("");
                       setMaxPrice("");
                       setSortBy("createdAt");
