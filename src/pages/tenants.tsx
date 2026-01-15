@@ -445,15 +445,28 @@ export default function TenantsPage() {
                     onClick={() => handleViewTenant(tenant)}
                     className="card-hover-effect cursor-pointer"
                   >
-                    <CardHeader>
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <CardTitle className="text-xl">{tenant.name}</CardTitle>
-                          <CardDescription>{tenant.phone}</CardDescription>
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div className="h-12 w-12 rounded-full bg-emerald-100 flex items-center justify-center">
+                            <User className="h-6 w-6 text-emerald-600" />
+                          </div>
+                          <div>
+                            <CardTitle className="text-lg">{tenant.name}</CardTitle>
+                            <p className="text-sm text-slate-600">{tenant.email}</p>
+                          </div>
                         </div>
-                        <Badge className={tenant.isActive ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-800"}>
-                          {tenant.isActive ? "Ativo" : "Inativo"}
-                        </Badge>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(tenant.id);
+                          }}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </CardHeader>
                     <CardContent>
