@@ -11,6 +11,9 @@ import { Building2, Users, DollarSign, CheckCircle, XCircle, TrendingUp, AlertTr
 import { SEO } from "@/components/SEO";
 import { formatCurrency, formatDate } from "@/lib/masks";
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { FloatingCard } from "@/components/animations/FloatingCard";
+import { StaggerContainer, StaggerItem } from "@/components/animations/ScrollReveal";
+import { AnimatedCounter } from "@/components/animations/FloatingCard";
 
 export default function Dashboard() {
   const router = useRouter();
@@ -256,272 +259,334 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-3">
-            <Link href="/properties">
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-l-blue-500 h-full">
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-xs font-medium text-gray-600">TOTAL DE IMÓVEIS</CardTitle>
-                    <Building2 className="h-4 w-4 text-blue-600" />
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-xl font-bold text-gray-900">{stats.totalProperties}</div>
-                </CardContent>
-              </Card>
-            </Link>
+          <StaggerContainer staggerDelay={0.1}>
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-3">
+              <StaggerItem>
+                <FloatingCard delay={0}>
+                  <Link href="/properties">
+                    <Card className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-l-blue-500 h-full">
+                      <CardHeader className="pb-2">
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-xs font-medium text-gray-600">TOTAL DE IMÓVEIS</CardTitle>
+                          <Building2 className="h-4 w-4 text-blue-600" />
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-xl font-bold text-gray-900">
+                          <AnimatedCounter value={stats.totalProperties} duration={1} />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                </FloatingCard>
+              </StaggerItem>
 
-            <Link href="/properties?filter=occupied">
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-l-emerald-500 h-full">
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-xs font-medium text-gray-600">IMÓVEIS OCUPADOS</CardTitle>
-                    <CheckCircle className="h-4 w-4 text-emerald-600" />
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-xl font-bold text-gray-900">{stats.rentedProperties}</div>
-                </CardContent>
-              </Card>
-            </Link>
+              <StaggerItem>
+                <FloatingCard delay={0.1}>
+                  <Link href="/properties?filter=occupied">
+                    <Card className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-l-emerald-500 h-full">
+                      <CardHeader className="pb-2">
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-xs font-medium text-gray-600">IMÓVEIS OCUPADOS</CardTitle>
+                          <CheckCircle className="h-4 w-4 text-emerald-600" />
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-xl font-bold text-gray-900">
+                          <AnimatedCounter value={stats.rentedProperties} duration={1} />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                </FloatingCard>
+              </StaggerItem>
 
-            <Link href="/properties?filter=available">
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-l-amber-500 h-full">
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-xs font-medium text-gray-600">IMÓVEIS VAGOS</CardTitle>
-                    <Building2 className="h-4 w-4 text-amber-600" />
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-xl font-bold text-gray-900">{stats.availableProperties}</div>
-                </CardContent>
-              </Card>
-            </Link>
+              <StaggerItem>
+                <FloatingCard delay={0.2}>
+                  <Link href="/properties?filter=available">
+                    <Card className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-l-amber-500 h-full">
+                      <CardHeader className="pb-2">
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-xs font-medium text-gray-600">IMÓVEIS VAGOS</CardTitle>
+                          <Building2 className="h-4 w-4 text-amber-600" />
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-xl font-bold text-gray-900">
+                          <AnimatedCounter value={stats.availableProperties} duration={1} />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                </FloatingCard>
+              </StaggerItem>
 
-            <Link href="/tenants">
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-l-purple-500 h-full">
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-xs font-medium text-gray-600">TOTAL</CardTitle>
-                    <Users className="h-4 w-4 text-purple-600" />
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-xl font-bold text-gray-900">{stats.totalTenants}</div>
-                </CardContent>
-              </Card>
-            </Link>
-          </div>
+              <StaggerItem>
+                <FloatingCard delay={0.3}>
+                  <Link href="/tenants">
+                    <Card className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-l-purple-500 h-full">
+                      <CardHeader className="pb-2">
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-xs font-medium text-gray-600">TOTAL</CardTitle>
+                          <Users className="h-4 w-4 text-purple-600" />
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-xl font-bold text-gray-900">
+                          <AnimatedCounter value={stats.totalTenants} duration={1} />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                </FloatingCard>
+              </StaggerItem>
+            </div>
+          </StaggerContainer>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-3">
-            <Link href="/payments?filter=paid">
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-l-green-500 h-full">
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-xs font-medium text-gray-600">PAGAMENTOS</CardTitle>
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-xl font-bold text-gray-900">{stats.paidThisMonth}</div>
-                </CardContent>
-              </Card>
-            </Link>
+          <StaggerContainer staggerDelay={0.1}>
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-3">
+              <StaggerItem>
+                <FloatingCard delay={0}>
+                  <Link href="/payments?filter=paid">
+                    <Card className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-l-green-500 h-full">
+                      <CardHeader className="pb-2">
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-xs font-medium text-gray-600">PAGAMENTOS</CardTitle>
+                          <CheckCircle className="h-4 w-4 text-green-600" />
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-xl font-bold text-gray-900">
+                          <AnimatedCounter value={stats.paidThisMonth} duration={1} />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                </FloatingCard>
+              </StaggerItem>
 
-            <Link href="/payments?filter=unpaid">
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-l-red-500 h-full">
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-xs font-medium text-gray-600">PAGAMENTOS PENDENTES</CardTitle>
-                    <XCircle className="h-4 w-4 text-red-600" />
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-xl font-bold text-gray-900">{stats.unpaidThisMonth}</div>
-                </CardContent>
-              </Card>
-            </Link>
+              <StaggerItem>
+                <FloatingCard delay={0.1}>
+                  <Link href="/payments?filter=unpaid">
+                    <Card className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-l-red-500 h-full">
+                      <CardHeader className="pb-2">
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-xs font-medium text-gray-600">PAGAMENTOS PENDENTES</CardTitle>
+                          <XCircle className="h-4 w-4 text-red-600" />
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-xl font-bold text-gray-900">
+                          <AnimatedCounter value={stats.unpaidThisMonth} duration={1} />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                </FloatingCard>
+              </StaggerItem>
 
-            <Card className="border-l-4 border-l-blue-500 bg-blue-50 h-full">
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-xs font-medium text-gray-600">RECEBIDO NO MÊS</CardTitle>
-                  <TrendingUp className="h-4 w-4 text-blue-600" />
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-lg font-bold text-gray-900">{formatCurrency(stats.totalRevenue)}</div>
-              </CardContent>
-            </Card>
+              <StaggerItem>
+                <FloatingCard delay={0.2}>
+                  <Card className="border-l-4 border-l-blue-500 bg-blue-50 h-full">
+                    <CardHeader className="pb-2">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-xs font-medium text-gray-600">RECEBIDO NO MÊS</CardTitle>
+                        <TrendingUp className="h-4 w-4 text-blue-600" />
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-lg font-bold text-gray-900">
+                        <AnimatedCounter value={stats.totalRevenue} prefix="R$ " duration={1.5} />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </FloatingCard>
+              </StaggerItem>
 
-            <Card className="border-l-4 border-l-indigo-500 bg-indigo-50 h-full">
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-xs font-medium text-gray-600">TAXA ADMINISTRAÇÃO</CardTitle>
-                  <DollarSign className="h-4 w-4 text-indigo-600" />
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-lg font-bold text-gray-900">{formatCurrency(stats.adminFee)}</div>
-              </CardContent>
-            </Card>
-          </div>
+              <StaggerItem>
+                <FloatingCard delay={0.3}>
+                  <Card className="border-l-4 border-l-indigo-500 bg-indigo-50 h-full">
+                    <CardHeader className="pb-2">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-xs font-medium text-gray-600">TAXA ADMINISTRAÇÃO</CardTitle>
+                        <DollarSign className="h-4 w-4 text-indigo-600" />
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-lg font-bold text-gray-900">
+                        <AnimatedCounter value={stats.adminFee} prefix="R$ " duration={1.5} />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </FloatingCard>
+              </StaggerItem>
+            </div>
+          </StaggerContainer>
 
           {/* Seção de Gráficos */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Gráfico de Receita Mensal */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5 text-blue-600" />
-                  Evolução de Receita
-                </CardTitle>
-                <CardDescription>Últimos 6 meses - Receita vs Taxa de Administração</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={revenueChartData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis />
-                    <Tooltip content={<CustomTooltip />} />
-                    <Legend />
-                    <Line type="monotone" dataKey="receita" stroke="#3b82f6" strokeWidth={2} name="Receita" />
-                    <Line type="monotone" dataKey="taxa" stroke="#6366f1" strokeWidth={2} name="Taxa Admin" />
-                  </LineChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
+            <FloatingCard delay={0.1}>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5 text-blue-600" />
+                    Evolução de Receita
+                  </CardTitle>
+                  <CardDescription>Últimos 6 meses - Receita vs Taxa de Administração</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={revenueChartData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="month" />
+                      <YAxis />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Legend />
+                      <Line type="monotone" dataKey="receita" stroke="#3b82f6" strokeWidth={2} name="Receita" />
+                      <Line type="monotone" dataKey="taxa" stroke="#6366f1" strokeWidth={2} name="Taxa Admin" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </FloatingCard>
 
             {/* Gráfico de Receita por Mês em Barras */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <DollarSign className="h-5 w-5 text-green-600" />
-                  Receita Mensal
-                </CardTitle>
-                <CardDescription>Comparativo dos últimos 6 meses</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={revenueChartData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis />
-                    <Tooltip content={<CustomTooltip />} />
-                    <Legend />
-                    <Bar dataKey="receita" fill="#10b981" name="Receita" />
-                    <Bar dataKey="taxa" fill="#6366f1" name="Taxa Admin" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
+            <FloatingCard delay={0.2}>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <DollarSign className="h-5 w-5 text-green-600" />
+                    Receita Mensal
+                  </CardTitle>
+                  <CardDescription>Comparativo dos últimos 6 meses</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={revenueChartData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="month" />
+                      <YAxis />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Legend />
+                      <Bar dataKey="receita" fill="#10b981" name="Receita" />
+                      <Bar dataKey="taxa" fill="#6366f1" name="Taxa Admin" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </FloatingCard>
 
             {/* Gráfico de Pizza - Status de Pagamentos */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <CheckCircle className="h-5 w-5 text-green-600" />
-                  Status de Pagamentos
-                </CardTitle>
-                <CardDescription>Distribuição de pagamentos no mês</CardDescription>
-              </CardHeader>
-              <CardContent className="flex justify-center">
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={paymentStatusData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, value }) => `${name}: ${value}`}
-                      outerRadius={100}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {paymentStatusData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip content={<CustomPieTooltip />} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
+            <FloatingCard delay={0.3}>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <CheckCircle className="h-5 w-5 text-green-600" />
+                    Status de Pagamentos
+                  </CardTitle>
+                  <CardDescription>Distribuição de pagamentos no mês</CardDescription>
+                </CardHeader>
+                <CardContent className="flex justify-center">
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={paymentStatusData}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ name, value }) => `${name}: ${value}`}
+                        outerRadius={100}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        {paymentStatusData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip content={<CustomPieTooltip />} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </FloatingCard>
 
             {/* Gráfico de Pizza - Ocupação */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Building2 className="h-5 w-5 text-amber-600" />
-                  Ocupação de Imóveis
-                </CardTitle>
-                <CardDescription>Distribuição atual dos imóveis</CardDescription>
-              </CardHeader>
-              <CardContent className="flex justify-center">
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={occupancyData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, value }) => `${name}: ${value}`}
-                      outerRadius={100}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {occupancyData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip content={<CustomPieTooltip />} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
+            <FloatingCard delay={0.4}>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Building2 className="h-5 w-5 text-amber-600" />
+                    Ocupação de Imóveis
+                  </CardTitle>
+                  <CardDescription>Distribuição atual dos imóveis</CardDescription>
+                </CardHeader>
+                <CardContent className="flex justify-center">
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={occupancyData}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ name, value }) => `${name}: ${value}`}
+                        outerRadius={100}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        {occupancyData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip content={<CustomPieTooltip />} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </FloatingCard>
           </div>
 
           {upcomingPayments.length > 0 && (
-            <Card className="border-l-4 border-l-amber-500">
-              <CardHeader>
-                <div className="flex items-center space-x-2">
-                  <AlertTriangle className="h-5 w-5 text-amber-600" />
-                  <div>
-                    <CardTitle>Prestes a Vencer</CardTitle>
-                    <CardDescription>Pagamentos pendentes de {getMonthName(selectedMonth)}/{selectedYear}</CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {upcomingPayments.map(({ payment, property, tenant }) => (
-                    <Link 
-                      key={payment.id}
-                      href={`/payments/${payment.id}`}
-                      className="block"
-                    >
-                      <div className="flex items-center justify-between p-3 bg-amber-50 border border-amber-200 rounded-lg hover:shadow-md transition-shadow cursor-pointer">
-                        <div className="flex-1 min-w-0 mr-4">
-                          <p className="font-semibold text-gray-900 truncate">{property.local}</p>
-                          <p className="text-sm text-gray-600">Inquilino: {tenant.name} • Venc: {formatDate(payment.dueDate)}</p>
-                        </div>
-                        <div className="text-right flex-shrink-0">
-                          <p className="text-lg font-bold text-amber-700 whitespace-nowrap">{formatCurrency(payment.amount - (payment.partialAmount || 0))}</p>
-                        </div>
-                      </div>
-                    </Link>
-                  ))}
-                  <div className="mt-4 pt-4 border-t border-amber-200">
-                    <div className="flex justify-between items-center">
-                      <span className="font-semibold text-gray-700">Total a Receber:</span>
-                      <span className="text-xl font-bold text-amber-700">{formatCurrency(stats.dueThisMonth)}</span>
+            <FloatingCard delay={0.5}>
+              <Card className="border-l-4 border-l-amber-500">
+                <CardHeader>
+                  <div className="flex items-center space-x-2">
+                    <AlertTriangle className="h-5 w-5 text-amber-600" />
+                    <div>
+                      <CardTitle>Prestes a Vencer</CardTitle>
+                      <CardDescription>Pagamentos pendentes de {getMonthName(selectedMonth)}/{selectedYear}</CardDescription>
                     </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {upcomingPayments.map(({ payment, property, tenant }) => (
+                      <Link 
+                        key={payment.id}
+                        href={`/payments/${payment.id}`}
+                        className="block"
+                      >
+                        <div className="flex items-center justify-between p-3 bg-amber-50 border border-amber-200 rounded-lg hover:shadow-md transition-shadow cursor-pointer">
+                          <div className="flex-1 min-w-0 mr-4">
+                            <p className="font-semibold text-gray-900 truncate">{property.local}</p>
+                            <p className="text-sm text-gray-600">Inquilino: {tenant.name} • Venc: {formatDate(payment.dueDate)}</p>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <p className="text-lg font-bold text-amber-700 whitespace-nowrap">{formatCurrency(payment.amount - (payment.partialAmount || 0))}</p>
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+                    <div className="mt-4 pt-4 border-t border-amber-200">
+                      <div className="flex justify-between items-center">
+                        <span className="font-semibold text-gray-700">Total a Receber:</span>
+                        <span className="text-xl font-bold text-amber-700">{formatCurrency(stats.dueThisMonth)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </FloatingCard>
           )}
         </div>
       </Layout>
