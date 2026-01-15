@@ -3,6 +3,8 @@ import type { Config } from "@/types";
 
 const DEFAULT_CONFIG: Config = {
   adminFeePercentage: 6,
+  lateFeePercentage: 2,
+  interestRatePercentage: 1,
   locations: [
     "Jd. Colombo",
     "Signore",
@@ -38,6 +40,8 @@ export const configService = {
 
       return {
         adminFeePercentage: Number(config.admin_fee_percentage) || 6,
+        lateFeePercentage: Number(config.late_fee_percentage) || 2,
+        interestRatePercentage: Number(config.interest_rate_percentage) || 1,
         locations: locations.length > 0 ? locations : DEFAULT_CONFIG.locations
       };
     } catch (error) {
@@ -57,6 +61,8 @@ export const configService = {
       
       const configData = {
         admin_fee_percentage: config.adminFeePercentage,
+        late_fee_percentage: config.lateFeePercentage,
+        interest_rate_percentage: config.interestRatePercentage,
         locations: config.locations,
         updated_at: new Date().toISOString()
       };
@@ -78,6 +84,8 @@ export const configService = {
 
         return {
           adminFeePercentage: Number(data.admin_fee_percentage),
+          lateFeePercentage: Number(data.late_fee_percentage),
+          interestRatePercentage: Number(data.interest_rate_percentage),
           locations
         };
       } else {
@@ -96,6 +104,8 @@ export const configService = {
 
         return {
           adminFeePercentage: Number(data.admin_fee_percentage),
+          lateFeePercentage: Number(data.late_fee_percentage),
+          interestRatePercentage: Number(data.interest_rate_percentage),
           locations
         };
       }

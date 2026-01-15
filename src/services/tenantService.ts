@@ -74,14 +74,10 @@ export const tenantService = {
   },
 
   mapToDB(tenant: any): any {
+    // Map for compatibility
     return {
-      name: tenant.name,
-      cpf: tenant.documentType === "cpf" ? tenant.document : null,
-      document: tenant.document,
-      document_type: tenant.documentType,
-      email: tenant.email,
-      phone: tenant.phone,
-      status: tenant.status
+      ...tenant,
+      cpf: tenant.documentType === 'cpf' ? tenant.document : null, // Ensure compatibility
     };
   }
 };

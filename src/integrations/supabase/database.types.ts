@@ -15,11 +15,13 @@ export type Database = {
   }
   public: {
     Tables: {
-      configs: {
+      config: {
         Row: {
           admin_fee_percentage: number
           created_at: string | null
           id: string
+          interest_rate_percentage: number
+          late_fee_percentage: number
           locations: Json | null
           updated_at: string | null
         }
@@ -27,6 +29,8 @@ export type Database = {
           admin_fee_percentage?: number
           created_at?: string | null
           id?: string
+          interest_rate_percentage?: number
+          late_fee_percentage?: number
           locations?: Json | null
           updated_at?: string | null
         }
@@ -34,6 +38,38 @@ export type Database = {
           admin_fee_percentage?: number
           created_at?: string | null
           id?: string
+          interest_rate_percentage?: number
+          late_fee_percentage?: number
+          locations?: Json | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      configs: {
+        Row: {
+          admin_fee_percentage: number
+          created_at: string | null
+          id: string
+          interest_rate_percentage: number | null
+          late_fee_percentage: number | null
+          locations: Json | null
+          updated_at: string | null
+        }
+        Insert: {
+          admin_fee_percentage?: number
+          created_at?: string | null
+          id?: string
+          interest_rate_percentage?: number | null
+          late_fee_percentage?: number | null
+          locations?: Json | null
+          updated_at?: string | null
+        }
+        Update: {
+          admin_fee_percentage?: number
+          created_at?: string | null
+          id?: string
+          interest_rate_percentage?: number | null
+          late_fee_percentage?: number | null
           locations?: Json | null
           updated_at?: string | null
         }

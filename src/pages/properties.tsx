@@ -94,7 +94,7 @@ export default function PropertiesPage() {
   };
 
   const handleOpenDialog = (property?: Property, viewMode?: boolean) => {
-    if (locations.length === 0) {
+    if (locations.length === 0 && !viewMode) {
       toast({
         title: "Atenção",
         description: "Nenhum local cadastrado. Por favor, cadastre os locais nas configurações primeiro.",
@@ -150,6 +150,10 @@ export default function PropertiesPage() {
       rentValue: "",
       description: "",
     });
+  };
+
+  const handleEdit = () => {
+    setIsViewMode(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -229,8 +233,8 @@ export default function PropertiesPage() {
     }
   };
 
-  const handleCardClick = (propertyId: string) => {
-    router.push(`/properties/${propertyId}`);
+  const handleCardClick = (property: Property) => {
+    handleOpenDialog(property, true);
   };
 
   const getStatusColor = (status: string) => {
@@ -256,7 +260,12 @@ export default function PropertiesPage() {
   };
 
   const formatCurrency = (value: number) => {
-    return value.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(value);
   };
 
   return (
@@ -359,7 +368,7 @@ export default function PropertiesPage() {
                 <FloatingCard key={property.id} delay={index * 0.05}>
                   <Card 
                     className="h-full hover:shadow-lg transition-all cursor-pointer group relative"
-                    onClick={() => handleCardClick(property.id)}
+                    onClick={() => handleCardClick(property)}
                   >
                     <CardHeader className="pb-3">
                       <div className="flex justify-between items-start mb-2">
@@ -379,7 +388,7 @@ export default function PropertiesPage() {
                       <div className="flex items-baseline justify-between">
                         <div>
                           <p className="text-xl font-bold text-emerald-600">
-                            R$ {formatCurrency(property.rentValue)}
+                            {formatCurrency(property.rentValue)}
                           </p>
                           <p className="text-xs text-muted-foreground">por mês</p>
                         </div>
@@ -403,7 +412,7 @@ export default function PropertiesPage() {
                 <FloatingCard key={property.id} delay={index * 0.05}>
                   <Card 
                     className="hover:shadow-md transition-all cursor-pointer group"
-                    onClick={() => handleCardClick(property.id)}
+                    onClick={() => handleCardClick(property)}
                   >
                     <CardContent className="py-4">
                       <div className="flex items-center justify-between">
@@ -422,7 +431,7 @@ export default function PropertiesPage() {
                           </Badge>
                           <div className="text-right">
                             <p className="text-xl font-bold text-emerald-600">
-                              R$ {formatCurrency(property.rentValue)}
+                              {formatCurrency(property.rentValue)}
                             </p>
                             <p className="text-xs text-muted-foreground">por mês</p>
                           </div>
@@ -588,6 +597,9 @@ export default function PropertiesPage() {
                   <>
                     <Button type="button" variant="outline" onClick={handleCloseDialog}>
                       Fechar
+                    </Button>
+                    <Button type="button" onClick={handleEdit} className="bg-emerald-600 hover:bg-emerald-700">
+                      Editar
                     </Button>
                   </>
                 ) : (

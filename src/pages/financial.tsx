@@ -298,7 +298,7 @@ export default function FinancialPage() {
                     {paymentsWithDetails.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={10} className="text-center text-slate-500 py-8">
-                          Nenhum pagamento cadastrado para este período
+                          Nenhum recebimento cadastrado para este período
                         </TableCell>
                       </TableRow>
                     ) : (

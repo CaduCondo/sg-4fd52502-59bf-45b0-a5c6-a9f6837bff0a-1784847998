@@ -33,18 +33,27 @@ export interface Property {
 export interface Tenant {
   id: string;
   name: string;
-  cpf: string;
-  document?: string;
+  document: string | null;
+  documentType?: "cpf" | "cnpj";
   rg?: string;
-  documentType: "cpf" | "cnpj";
-  email: string;
-  phone: string;
+  cpf?: string; // Add optional for backward compatibility during migration
+  email: string | null;
+  phone: string | null;
   status: "active" | "inactive" | "rented";
   createdAt: string;
+  cep?: string;
+  address?: string;
+  number?: string;
+  complement?: string;
+  city?: string;
+  state?: string;
+  description?: string;
 }
 
 export interface Config {
   adminFeePercentage: number;
+  lateFeePercentage?: number;
+  interestRatePercentage?: number;
   locations: string[];
 }
 

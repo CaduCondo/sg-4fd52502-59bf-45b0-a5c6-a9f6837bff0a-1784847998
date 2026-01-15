@@ -1,612 +1,468 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
 import { Layout } from "@/components/Layout";
-import { PaymentReceipt } from "@/components/PaymentReceipt";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { formatCurrency, parseCurrency, formatDate } from "@/lib/masks";
-import { paymentService } from "@/services/paymentService";
-import { rentalService } from "@/services/rentalService";
-import { propertyService } from "@/services/propertyService";
-import { tenantService } from "@/services/tenantService";
-import type { Payment, Rental, Property, Tenant } from "@/types";
-import { Camera, Trash2, Clock } from "lucide-react";
+import { ArrowLeft, DollarSign, Calendar, Home, User, X } from "lucide-react";
+import type { Payment, Rental, Property, Tenant, Config } from "@/types";
+import { paymentService, rentalService, propertyService, tenantService, configService } from "@/services";
+import { applyRealMask, removeMask, formatCurrency } from "@/lib/masks";
 
-export default function ManagePaymentPage() {
+interface ManagePaymentContentProps {
+  paymentId: string;
+  onClose?: () => void;
+  embedded?: boolean;
+}
+
+export default function ManagePaymentContent({ paymentId, onClose, embedded = false }: ManagePaymentContentProps) {
   const router = useRouter();
-  const { id } = router.query;
   const { toast } = useToast();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
   const [payment, setPayment] = useState<Payment | null>(null);
   const [rental, setRental] = useState<Rental | null>(null);
   const [property, setProperty] = useState<Property | null>(null);
   const [tenant, setTenant] = useState<Tenant | null>(null);
+  const [config, setConfig] = useState<Config | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showReceipt, setShowReceipt] = useState(false);
-  const [attachments, setAttachments] = useState<string[]>([]);
 
   const [formData, setFormData] = useState({
-    paidAmount: "",
     paymentDate: new Date().toISOString().split("T")[0],
-    paymentMethod: "",
-    paymentLocation: "",
+    paidAmount: "",
+    paymentMethod: "PIX",
+    paymentLocation: "CP",
     paymentCode: "",
     notes: "",
   });
 
   const [calculatedValues, setCalculatedValues] = useState({
-    baseRent: 0,
-    garageValue: 0,
+    baseAmount: 0,
     lateFee: 0,
     interest: 0,
-    previousPartialPayments: 0,
-    expectedAmount: 0,
+    totalAmount: 0,
   });
 
   useEffect(() => {
-    if (id && typeof id === "string") {
+    const id = embedded ? paymentId : (router.query.id as string);
+    if (id) {
       loadData(id);
     }
-  }, [id]);
+  }, [paymentId, router.query.id, embedded]);
 
   useEffect(() => {
-    if (payment && rental && formData.paymentDate) {
+    if (payment && rental && config) {
       calculateValues();
     }
-  }, [formData.paymentDate, payment, rental]);
+  }, [formData.paymentDate, payment, rental, config]);
 
   useEffect(() => {
-    if (formData.paymentMethod === "Pix" && formData.paymentLocation) {
-      generatePixCode();
+    // Auto-generate payment code when method or location changes
+    if (formData.paymentMethod === "PIX") {
+      const day = new Date().getDate().toString().padStart(2, "0");
+      const code = `${day}XXXX${formData.paymentLocation}`;
+      setFormData((prev) => ({ ...prev, paymentCode: code }));
     }
-  }, [formData.paymentMethod, formData.paymentLocation, formData.paymentDate]);
+  }, [formData.paymentMethod, formData.paymentLocation]);
 
-  const loadData = async (paymentId: string) => {
+  const loadData = async (id: string) => {
     try {
       setLoading(true);
-      const paymentData = await paymentService.getById(paymentId);
-      if (!paymentData) {
-        toast({ title: "Erro", description: "Pagamento não encontrado", variant: "destructive" });
-        router.push("/payments");
-        return;
+      const paymentData = await paymentService.getById(id);
+      const configData = await configService.get();
+      setConfig(configData);
+
+      if (paymentData) {
+        setPayment(paymentData);
+
+        const rentalData = await rentalService.getById(paymentData.rentalId);
+        if (rentalData) {
+          setRental(rentalData);
+
+          const [propertyData, tenantData] = await Promise.all([
+            propertyService.getById(rentalData.propertyId),
+            tenantService.getById(rentalData.tenantId),
+          ]);
+
+          setProperty(propertyData);
+          setTenant(tenantData);
+        }
+
+        // Set initial form data
+        setFormData({
+          paymentDate: paymentData.paymentDate || new Date().toISOString().split("T")[0],
+          paidAmount: applyRealMask(paymentData.expectedAmount.toString()),
+          paymentMethod: paymentData.paymentMethod || "PIX",
+          paymentLocation: paymentData.paymentLocation || "CP",
+          paymentCode: paymentData.paymentCode || "",
+          notes: paymentData.notes || "",
+        });
       }
-
-      setPayment(paymentData);
-      setAttachments(paymentData.attachments || []);
-
-      const rentalData = await rentalService.getById(paymentData.rentalId);
-      if (rentalData) {
-        setRental(rentalData);
-
-        const [propertyData, tenantData] = await Promise.all([
-          propertyService.getById(rentalData.propertyId),
-          tenantService.getById(rentalData.tenantId),
-        ]);
-
-        setProperty(propertyData);
-        setTenant(tenantData);
-      }
-
-      setFormData({
-        paymentDate: new Date().toISOString().split("T")[0],
-        paidAmount: "",
-        paymentMethod: "",
-        paymentLocation: "",
-        paymentCode: "",
-        notes: "",
-      });
     } catch (error) {
-      console.error("Erro ao carregar dados:", error);
-      toast({ title: "Erro", description: "Erro ao carregar dados do pagamento", variant: "destructive" });
+      console.error("Error loading payment:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar os dados do recebimento.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
   };
 
   const calculateValues = () => {
-    if (!payment || !rental) return;
+    if (!payment || !rental || !config) return;
 
-    const baseRent = rental.monthlyRent;
-    const garageValue = rental.hasGarage ? rental.garageValue || 0 : 0;
-    
-    const totalPartialPayments = (payment.partialPayments || []).reduce(
-      (sum, p) => sum + p.amount,
-      0
-    );
-
-    const dueDate = new Date(
-      payment.referenceYear,
-      payment.referenceMonth - 1,
-      rental.paymentDay
-    );
+    const baseAmount = payment.expectedAmount;
+    const dueDate = new Date(payment.dueDate);
     const paymentDate = new Date(formData.paymentDate);
-    const diffTime = paymentDate.getTime() - dueDate.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
     let lateFee = 0;
     let interest = 0;
 
-    if (diffDays > 0) {
-      lateFee = (baseRent + garageValue) * 0.02;
-      interest = (baseRent + garageValue) * 0.001 * diffDays;
+    // Calculate late fee and interest if payment is after due date
+    if (paymentDate > dueDate) {
+      const daysLate = Math.ceil((paymentDate.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
+
+      // Late fee (2% of base amount)
+      lateFee = baseAmount * (config.lateFeePercentage || 2) / 100;
+
+      // Interest (1% per month, proportional to days)
+      const monthsLate = daysLate / 30;
+      interest = baseAmount * (config.interestRatePercentage || 1) / 100 * monthsLate;
     }
 
-    const expectedAmount = baseRent + garageValue + lateFee + interest - totalPartialPayments;
+    const totalAmount = baseAmount + lateFee + interest;
 
     setCalculatedValues({
-      baseRent,
-      garageValue,
+      baseAmount,
       lateFee,
       interest,
-      previousPartialPayments: totalPartialPayments,
-      expectedAmount,
+      totalAmount,
     });
 
-    setFormData((prev) => ({
-      ...prev,
-      paidAmount: formatCurrency(expectedAmount),
-    }));
-  };
-
-  const generatePixCode = () => {
-    const day = new Date(formData.paymentDate).getDate().toString().padStart(2, "0");
-    const code = `${day}XXXX${formData.paymentLocation}`;
-    setFormData((prev) => ({ ...prev, paymentCode: code }));
-  };
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files) {
-      const newAttachments: string[] = [];
-      Array.from(files).forEach((file) => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          newAttachments.push(reader.result as string);
-          if (newAttachments.length === files.length) {
-            setAttachments((prev) => [...prev, ...newAttachments]);
-          }
-        };
-        reader.readAsDataURL(file);
-      });
+    // Update paid amount to total if not manually changed
+    if (!formData.paidAmount || parseFloat(removeMask(formData.paidAmount)) === payment.expectedAmount) {
+      setFormData((prev) => ({
+        ...prev,
+        paidAmount: applyRealMask(totalAmount.toFixed(2)),
+      }));
     }
-  };
-
-  const handleRemoveAttachment = (index: number) => {
-    setAttachments((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (!payment) return;
 
     try {
-      const paidAmount = parseCurrency(formData.paidAmount);
-      const expectedAmount = calculatedValues.expectedAmount;
-      const totalPaid = calculatedValues.previousPartialPayments + paidAmount;
+      const paidAmount = parseFloat(removeMask(formData.paidAmount));
 
-      if (paidAmount <= 0) {
-        toast({ 
-          title: "Atenção", 
-          description: "O valor pago deve ser maior que zero", 
-          variant: "destructive" 
-        });
-        return;
-      }
-
-      let newStatus: "paid" | "partial" | "pending" = "pending";
-      const newPartialPayments = [...(payment.partialPayments || [])];
-
-      const fullExpectedAmount = calculatedValues.baseRent + calculatedValues.garageValue + 
-                                  calculatedValues.lateFee + calculatedValues.interest;
-
-      if (totalPaid >= fullExpectedAmount) {
-        newStatus = "paid";
-        newPartialPayments.push({
-          amount: paidAmount,
-          date: formData.paymentDate,
-          method: formData.paymentMethod,
-        });
+      let status: Payment["status"] = "pending";
+      if (paidAmount >= calculatedValues.totalAmount) {
+        status = "paid";
       } else if (paidAmount > 0) {
-        newStatus = "partial";
-        newPartialPayments.push({
-          amount: paidAmount,
-          date: formData.paymentDate,
-          method: formData.paymentMethod,
-        });
+        status = "partial";
       }
 
-      const paymentData: Payment = {
+      const updatedPayment: Payment = {
         ...payment,
-        paymentDate: newStatus === "paid" ? formData.paymentDate : payment.paymentDate,
-        paidAmount: totalPaid,
+        paidAmount,
+        paymentDate: formData.paymentDate,
+        paymentMethod: formData.paymentMethod,
+        paymentLocation: formData.paymentMethod === "PIX" ? formData.paymentLocation : undefined,
+        paymentCode: formData.paymentMethod === "PIX" ? formData.paymentCode : undefined,
+        status,
         lateFee: calculatedValues.lateFee,
         interest: calculatedValues.interest,
-        paymentMethod: newStatus === "paid" ? formData.paymentMethod : payment.paymentMethod,
-        paymentLocation: formData.paymentLocation || payment.paymentLocation,
-        paymentCode: formData.paymentCode || payment.paymentCode,
-        notes: formData.notes || payment.notes,
-        status: newStatus,
-        attachments: attachments,
-        partialPayments: newPartialPayments,
+        notes: formData.notes,
       };
 
-      await paymentService.update(paymentData);
-      
-      if (newStatus === "paid") {
-        toast({ title: "Sucesso", description: "Pagamento registrado como PAGO com sucesso!" });
-        if (rental && property && tenant) {
-          setShowReceipt(true);
-        }
+      await paymentService.update(updatedPayment);
+
+      toast({
+        title: "Sucesso",
+        description: "Recebimento registrado com sucesso!",
+      });
+
+      if (embedded && onClose) {
+        onClose();
       } else {
-        toast({ 
-          title: "Sucesso", 
-          description: `Pagamento parcial registrado! Total pago: ${formatCurrency(totalPaid)} de ${formatCurrency(fullExpectedAmount)}` 
-        });
         router.push("/payments");
       }
     } catch (error) {
-      console.error("Erro ao salvar pagamento:", error);
-      toast({ title: "Erro", description: "Erro ao salvar pagamento", variant: "destructive" });
+      console.error("Error updating payment:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível registrar o recebimento.",
+        variant: "destructive",
+      });
     }
   };
 
-  const handleCloseReceipt = () => {
-    setShowReceipt(false);
-    router.push("/payments");
+  const handleBack = () => {
+    if (embedded && onClose) {
+      onClose();
+    } else {
+      router.push("/payments");
+    }
   };
 
   if (loading) {
-    return (
-      <>
-        <Head>
-          <title>Registrar Pagamento - Sistema de Locações</title>
-        </Head>
-        <Layout>
-          <div className="flex items-center justify-center min-h-screen">
-            <p className="text-slate-600">Carregando...</p>
-          </div>
-        </Layout>
-      </>
+    return embedded ? (
+      <div className="p-8 text-center">
+        <p className="text-muted-foreground">Carregando...</p>
+      </div>
+    ) : (
+      <Layout>
+        <div className="text-center py-12">
+          <p className="text-muted-foreground">Carregando recebimento...</p>
+        </div>
+      </Layout>
     );
   }
 
-  if (!payment || !rental || !property || !tenant) {
-    return (
-      <>
-        <Head>
-          <title>Erro - Sistema de Locações</title>
-        </Head>
-        <Layout>
-          <div className="flex flex-col items-center justify-center min-h-screen gap-4">
-            <p className="text-slate-600">Dados não encontrados</p>
-            <Button onClick={() => router.push("/payments")}>Voltar</Button>
-          </div>
-        </Layout>
-      </>
+  if (!payment || !rental) {
+    return embedded ? (
+      <div className="p-8 text-center">
+        <p className="text-muted-foreground">Recebimento não encontrado.</p>
+      </div>
+    ) : (
+      <Layout>
+        <div className="text-center py-12">
+          <p className="text-muted-foreground">Recebimento não encontrado.</p>
+        </div>
+      </Layout>
     );
   }
 
-  const totalPreviousPaid = calculatedValues.previousPartialPayments;
-  const hasPartialPayments = (payment.partialPayments || []).length > 0;
+  const content = (
+    <div className="space-y-6 p-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Registrar Recebimento</h1>
+          <p className="text-muted-foreground mt-1">
+            {property?.location} - {tenant?.name}
+          </p>
+        </div>
+        {embedded ? (
+          <Button variant="ghost" size="icon" onClick={handleBack}>
+            <X className="h-5 w-5" />
+          </Button>
+        ) : (
+          <Button variant="outline" onClick={handleBack}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Voltar
+          </Button>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Payment Information Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <DollarSign className="h-5 w-5" />
+              Informações do Recebimento
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Home className="h-4 w-4 text-muted-foreground" />
+              <div>
+                <p className="text-sm font-medium">{property?.location}</p>
+                <p className="text-xs text-muted-foreground">{property?.complement}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <User className="h-4 w-4 text-muted-foreground" />
+              <div>
+                <p className="text-sm font-medium">{tenant?.name}</p>
+                <p className="text-xs text-muted-foreground">{tenant?.document}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <p className="text-sm">
+                Vencimento: {new Date(payment.dueDate).toLocaleDateString("pt-BR")}
+              </p>
+            </div>
+
+            <div className="pt-2 border-t">
+              <Badge className={payment.status === "paid" ? "bg-green-500" : "bg-yellow-500"}>
+                {payment.status === "paid" ? "Pago" : payment.status === "partial" ? "Parcial" : "Pendente"}
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Value Composition Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Composição de Valores</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex justify-between">
+              <span className="text-sm text-muted-foreground">Valor do Aluguel:</span>
+              <span className="text-sm font-medium">{formatCurrency(calculatedValues.baseAmount)}</span>
+            </div>
+
+            {calculatedValues.lateFee > 0 && (
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Multa ({config?.lateFeePercentage || 2}%):</span>
+                <span className="text-sm font-medium text-red-600">
+                  {formatCurrency(calculatedValues.lateFee)}
+                </span>
+              </div>
+            )}
+
+            {calculatedValues.interest > 0 && (
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Juros:</span>
+                <span className="text-sm font-medium text-red-600">
+                  {formatCurrency(calculatedValues.interest)}
+                </span>
+              </div>
+            )}
+
+            <div className="pt-3 border-t flex justify-between">
+              <span className="font-medium">Valor Esperado:</span>
+              <span className="text-lg font-bold text-emerald-600">
+                {formatCurrency(calculatedValues.totalAmount)}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Payment Form */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Dados do Recebimento</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="paymentDate">
+                  Data do Recebimento <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="paymentDate"
+                  type="date"
+                  value={formData.paymentDate}
+                  onChange={(e) => setFormData({ ...formData, paymentDate: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="paidAmount">
+                  Valor Recebido <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="paidAmount"
+                  value={formData.paidAmount}
+                  onChange={(e) => setFormData({ ...formData, paidAmount: applyRealMask(e.target.value) })}
+                  placeholder="R$ 0,00"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="paymentMethod">
+                  Método de Pagamento <span className="text-red-500">*</span>
+                </Label>
+                <Select
+                  value={formData.paymentMethod}
+                  onValueChange={(value) => setFormData({ ...formData, paymentMethod: value })}
+                >
+                  <SelectTrigger id="paymentMethod">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="PIX">PIX</SelectItem>
+                    <SelectItem value="Dinheiro">Dinheiro</SelectItem>
+                    <SelectItem value="Boleto">Boleto</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {formData.paymentMethod === "PIX" && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="paymentLocation">
+                      Local do Pagamento <span className="text-red-500">*</span>
+                    </Label>
+                    <Select
+                      value={formData.paymentLocation}
+                      onValueChange={(value) => setFormData({ ...formData, paymentLocation: value })}
+                    >
+                      <SelectTrigger id="paymentLocation">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="CP">CP</SelectItem>
+                        <SelectItem value="CD">CD</SelectItem>
+                        <SelectItem value="CE">CE</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="paymentCode">Código PIX</Label>
+                    <Input
+                      id="paymentCode"
+                      value={formData.paymentCode}
+                      onChange={(e) => setFormData({ ...formData, paymentCode: e.target.value })}
+                      placeholder="Ex: 15XXXXCP"
+                    />
+                  </div>
+                </>
+              )}
+
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="notes">Observações</Label>
+                <Textarea
+                  id="notes"
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  placeholder="Adicione observações sobre este recebimento..."
+                  rows={3}
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2 justify-end pt-4">
+              <Button type="button" variant="outline" onClick={handleBack}>
+                Cancelar
+              </Button>
+              <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">
+                Registrar Recebimento
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  if (embedded) {
+    return content;
+  }
 
   return (
     <>
       <Head>
-        <title>Registrar Pagamento - Sistema de Locações</title>
+        <title>Registrar Recebimento - Gerenciador de Locações</title>
       </Head>
-      <Layout>
-        <div className="max-w-4xl mx-auto space-y-6">
-          <div className="flex items-center justify-between">
-            <h1 className="text-3xl font-bold text-slate-900">Registrar Pagamento</h1>
-            <Button variant="outline" onClick={() => router.push("/payments")}>
-              Voltar
-            </Button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-emerald-700">Informações da Locação</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm">
-                <div>
-                  <p className="font-semibold text-slate-700">Imóvel:</p>
-                  <p className="text-slate-900">
-                    {property.location} - {property.complement}
-                  </p>
-                </div>
-                <div>
-                  <p className="font-semibold text-slate-700">Inquilino:</p>
-                  <p className="text-slate-900">{tenant.name}</p>
-                </div>
-                <div>
-                  <p className="font-semibold text-slate-700">Referência:</p>
-                  <p className="text-slate-900">
-                    {payment.referenceMonth.toString().padStart(2, "0")}/{payment.referenceYear}
-                  </p>
-                </div>
-                <div>
-                  <p className="font-semibold text-slate-700">Status:</p>
-                  <p className={`font-bold ${payment.status === "paid" ? "text-green-600" : payment.status === "partial" ? "text-orange-600" : "text-red-600"}`}>
-                    {payment.status === "paid" ? "PAGO" : payment.status === "partial" ? "PARCIAL" : "PENDENTE"}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-blue-700">Composição dos Valores</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-slate-700">Aluguel:</span>
-                  <span className="font-semibold">{formatCurrency(calculatedValues.baseRent)}</span>
-                </div>
-                {calculatedValues.garageValue > 0 && (
-                  <div className="flex justify-between">
-                    <span className="text-slate-700">Vaga de Garagem:</span>
-                    <span className="font-semibold">
-                      {formatCurrency(calculatedValues.garageValue)}
-                    </span>
-                  </div>
-                )}
-                {calculatedValues.lateFee > 0 && (
-                  <div className="flex justify-between text-red-600">
-                    <span>Multa (2%):</span>
-                    <span className="font-semibold">+{formatCurrency(calculatedValues.lateFee)}</span>
-                  </div>
-                )}
-                {calculatedValues.interest > 0 && (
-                  <div className="flex justify-between text-red-600">
-                    <span>Juros (0,1%/dia):</span>
-                    <span className="font-semibold">
-                      +{formatCurrency(calculatedValues.interest)}
-                    </span>
-                  </div>
-                )}
-                {calculatedValues.previousPartialPayments > 0 && (
-                  <div className="flex justify-between text-green-600">
-                    <span>Já Pago (Parcial):</span>
-                    <span className="font-semibold">
-                      -{formatCurrency(calculatedValues.previousPartialPayments)}
-                    </span>
-                  </div>
-                )}
-                <div className="flex justify-between pt-2 border-t">
-                  <span className="font-bold text-slate-900">Valor Restante:</span>
-                  <span className="font-bold text-emerald-700">
-                    {formatCurrency(calculatedValues.expectedAmount)}
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {hasPartialPayments && (
-            <Card className="border-orange-200 bg-orange-50">
-              <CardHeader>
-                <CardTitle className="text-orange-700 flex items-center gap-2">
-                  <Clock className="w-5 h-5" />
-                  Histórico de Pagamentos Parciais
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {payment.partialPayments?.map((partial, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-white rounded-lg border border-orange-200">
-                      <div>
-                        <p className="font-semibold text-slate-900">
-                          Pagamento {index + 1}
-                        </p>
-                        <p className="text-sm text-slate-600">
-                          {new Date(partial.date).toLocaleDateString("pt-BR")} - {partial.method}
-                        </p>
-                      </div>
-                      <p className="text-lg font-bold text-orange-700">
-                        {formatCurrency(partial.amount)}
-                      </p>
-                    </div>
-                  ))}
-                  <div className="flex items-center justify-between p-3 bg-orange-100 rounded-lg border-2 border-orange-300">
-                    <p className="font-bold text-slate-900">Total Pago até o momento:</p>
-                    <p className="text-xl font-bold text-orange-700">
-                      {formatCurrency(totalPreviousPaid)}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          <Card>
-            <CardHeader>
-              <CardTitle>
-                {payment.status === "paid" ? "Pagamento Completo" : "Registrar Novo Pagamento"}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {payment.status === "paid" ? (
-                <div className="text-center py-8">
-                  <p className="text-lg text-green-600 font-semibold mb-4">
-                    Este pagamento já foi quitado integralmente!
-                  </p>
-                  <Button onClick={() => router.push("/payments")}>
-                    Voltar para Pagamentos
-                  </Button>
-                </div>
-              ) : (
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="paidAmount">Valor a Pagar *</Label>
-                      <Input
-                        id="paidAmount"
-                        value={formData.paidAmount}
-                        onChange={(e) => {
-                          const value = e.target.value.replace(/\D/g, "");
-                          const formatted = formatCurrency(parseFloat(value) / 100);
-                          setFormData((prev) => ({ ...prev, paidAmount: formatted }));
-                        }}
-                        placeholder="R$ 0,00"
-                        required
-                      />
-                      <p className="text-xs text-slate-500 mt-1">
-                        Valor restante: {formatCurrency(calculatedValues.expectedAmount)}
-                      </p>
-                    </div>
-
-                    <div>
-                      <Label htmlFor="paymentDate">Data do Pagamento *</Label>
-                      <Input
-                        id="paymentDate"
-                        type="date"
-                        value={formData.paymentDate}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, paymentDate: e.target.value }))}
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="paymentMethod">Método de Pagamento *</Label>
-                      <Select
-                        value={formData.paymentMethod}
-                        onValueChange={(value) =>
-                          setFormData((prev) => ({ ...prev, paymentMethod: value }))
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o método" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Pix">Pix</SelectItem>
-                          <SelectItem value="Dinheiro">Dinheiro</SelectItem>
-                          <SelectItem value="Boleto">Boleto</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {formData.paymentMethod === "Pix" && (
-                      <>
-                        <div>
-                          <Label htmlFor="paymentLocation">Local Pagamento *</Label>
-                          <Select
-                            value={formData.paymentLocation}
-                            onValueChange={(value) =>
-                              setFormData((prev) => ({ ...prev, paymentLocation: value }))
-                            }
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione o local" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="CP">CP</SelectItem>
-                              <SelectItem value="CD">CD</SelectItem>
-                              <SelectItem value="CE">CE</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="md:col-span-2">
-                          <Label htmlFor="paymentCode">Código PIX</Label>
-                          <Input
-                            id="paymentCode"
-                            value={formData.paymentCode}
-                            readOnly
-                            className="bg-slate-50"
-                          />
-                        </div>
-                      </>
-                    )}
-                  </div>
-
-                  <div>
-                    <Label htmlFor="notes">Observações</Label>
-                    <Textarea
-                      id="notes"
-                      value={formData.notes}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))}
-                      placeholder="Adicione observações sobre o pagamento..."
-                      rows={3}
-                    />
-                  </div>
-
-                  <div>
-                    <Label>Comprovantes de Pagamento</Label>
-                    <div className="mt-2">
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        multiple
-                        accept="image/*,.pdf"
-                        onChange={handleFileUpload}
-                        className="hidden"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="gap-2"
-                      >
-                        <Camera className="w-4 h-4" />
-                        Anexar Comprovante
-                      </Button>
-                    </div>
-
-                    {attachments.length > 0 && (
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-                        {attachments.map((attachment, index) => (
-                          <div key={index} className="relative group">
-                            <img
-                              src={attachment}
-                              alt={`Anexo ${index + 1}`}
-                              className="w-full h-32 object-cover rounded-lg border"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveAttachment(index)}
-                              className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex justify-end gap-3 pt-4 border-t">
-                    <Button type="button" variant="outline" onClick={() => router.push("/payments")}>
-                      Cancelar
-                    </Button>
-                    <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">
-                      Registrar Pagamento
-                    </Button>
-                  </div>
-                </form>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {showReceipt && rental && property && tenant && payment && (
-          <PaymentReceipt
-            isOpen={showReceipt}
-            onClose={handleCloseReceipt}
-            payment={payment}
-            rental={rental}
-            property={property}
-            tenant={tenant}
-          />
-        )}
-      </Layout>
+      <Layout>{content}</Layout>
     </>
   );
 }
