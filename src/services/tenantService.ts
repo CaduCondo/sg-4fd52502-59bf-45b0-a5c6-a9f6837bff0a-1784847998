@@ -6,10 +6,10 @@ export const tenantService = {
     const { data, error } = await supabase
       .from("tenants")
       .select("*")
-      .order("created_at", { ascending: false });
-
+      .order("name", { ascending: true });
+    
     if (error) throw error;
-    return (data || []).map(this.mapFromDatabase);
+    return data.map(this.mapFromDB);
   },
 
   async getById(id: string): Promise<Tenant | null> {
@@ -18,36 +18,35 @@ export const tenantService = {
       .select("*")
       .eq("id", id)
       .single();
-
+    
     if (error) throw error;
-    return data ? this.mapFromDatabase(data) : null;
+    return data ? this.mapFromDB(data) : null;
   },
 
   async create(tenant: Omit<Tenant, "id" | "createdAt">): Promise<Tenant> {
-    const dbTenant = this.mapToDatabase(tenant);
-    
     const { data, error } = await supabase
       .from("tenants")
-      .insert(dbTenant)
+      .insert([this.mapToDB(tenant)])
       .select()
       .single();
-
+    
     if (error) throw error;
-    return this.mapFromDatabase(data);
+    return this.mapFromDB(data);
   },
 
   async update(tenant: Tenant): Promise<Tenant> {
-    const dbTenant = this.mapToDatabase(tenant);
-    
     const { data, error } = await supabase
       .from("tenants")
-      .update(dbTenant)
+      .update({
+        ...this.mapToDB(tenant),
+        updated_at: new Date().toISOString()
+      })
       .eq("id", tenant.id)
       .select()
       .single();
-
+    
     if (error) throw error;
-    return this.mapFromDatabase(data);
+    return this.mapFromDB(data);
   },
 
   async delete(id: string): Promise<void> {
@@ -55,57 +54,30 @@ export const tenantService = {
       .from("tenants")
       .delete()
       .eq("id", id);
-
+    
     if (error) throw error;
   },
 
-  // Map database fields (snake_case) to TypeScript interface (camelCase)
-  mapFromDatabase(dbTenant: any): Tenant {
+  mapFromDB(data: any): Tenant {
     return {
-      id: dbTenant.id,
-      name: dbTenant.name,
-      documentType: dbTenant.document_type || "cpf",
-      document: dbTenant.document || dbTenant.cpf || "",
-      rg: dbTenant.rg || null,
-      email: dbTenant.email,
-      phone: dbTenant.phone,
-      status: dbTenant.status,
-      cep: dbTenant.cep || null,
-      address: dbTenant.address || null,
-      number: dbTenant.number || null,
-      complement: dbTenant.complement || null,
-      city: dbTenant.city || null,
-      state: dbTenant.state || null,
-      description: dbTenant.description || null,
-      createdAt: dbTenant.created_at,
-      cpf: dbTenant.document_type === "cpf" ? dbTenant.document : null,
+      id: data.id,
+      name: data.name,
+      cpf: data.cpf || data.document || "",
+      document: data.document || data.cpf || "",
+      rg: data.rg,
+      documentType: data.document_type || "cpf",
+      email: data.email,
+      phone: data.phone,
+      status: data.status,
+      createdAt: data.created_at
     };
   },
 
-  // Map TypeScript interface (camelCase) to database fields (snake_case)
-  mapToDatabase(tenant: Partial<Tenant>): any {
-    const dbTenant: any = {};
-    
-    if (tenant.name !== undefined) dbTenant.name = tenant.name;
-    if (tenant.documentType !== undefined) dbTenant.document_type = tenant.documentType;
-    if (tenant.document !== undefined) dbTenant.document = tenant.document;
-    if (tenant.rg !== undefined) dbTenant.rg = tenant.rg;
-    if (tenant.email !== undefined) dbTenant.email = tenant.email;
-    if (tenant.phone !== undefined) dbTenant.phone = tenant.phone;
-    if (tenant.status !== undefined) dbTenant.status = tenant.status;
-    if (tenant.cep !== undefined) dbTenant.cep = tenant.cep;
-    if (tenant.address !== undefined) dbTenant.address = tenant.address;
-    if (tenant.number !== undefined) dbTenant.number = tenant.number;
-    if (tenant.complement !== undefined) dbTenant.complement = tenant.complement;
-    if (tenant.city !== undefined) dbTenant.city = tenant.city;
-    if (tenant.state !== undefined) dbTenant.state = tenant.state;
-    if (tenant.description !== undefined) dbTenant.description = tenant.description;
-    
-    // Handle cpf for backward compatibility
-    if (tenant.documentType === "cpf" && tenant.document) {
-      dbTenant.cpf = tenant.document;
-    }
-    
-    return dbTenant;
+  mapToDB(tenant: any): any {
+    // Map for compatibility
+    return {
+      ...tenant,
+      cpf: tenant.documentType === 'cpf' ? tenant.document : null, // Ensure compatibility
+    };
   }
 };

@@ -6,10 +6,10 @@ export const propertyService = {
     const { data, error } = await supabase
       .from("properties")
       .select("*")
-      .order("created_at", { ascending: false });
-
+      .order("location", { ascending: true });
+    
     if (error) throw error;
-    return (data || []).map(this.mapFromDatabase);
+    return data.map(this.mapFromDB);
   },
 
   async getById(id: string): Promise<Property | null> {
@@ -18,36 +18,35 @@ export const propertyService = {
       .select("*")
       .eq("id", id)
       .single();
-
+    
     if (error) throw error;
-    return data ? this.mapFromDatabase(data) : null;
+    return data ? this.mapFromDB(data) : null;
   },
 
   async create(property: Omit<Property, "id" | "createdAt">): Promise<Property> {
-    const dbProperty = this.mapToDatabase(property);
-    
     const { data, error } = await supabase
       .from("properties")
-      .insert(dbProperty)
+      .insert([this.mapToDB(property)])
       .select()
       .single();
-
+    
     if (error) throw error;
-    return this.mapFromDatabase(data);
+    return this.mapFromDB(data);
   },
 
   async update(property: Property): Promise<Property> {
-    const dbProperty = this.mapToDatabase(property);
-    
     const { data, error } = await supabase
       .from("properties")
-      .update(dbProperty)
+      .update({
+        ...this.mapToDB(property),
+        updated_at: new Date().toISOString()
+      })
       .eq("id", property.id)
       .select()
       .single();
-
+    
     if (error) throw error;
-    return this.mapFromDatabase(data);
+    return this.mapFromDB(data);
   },
 
   async delete(id: string): Promise<void> {
@@ -55,49 +54,46 @@ export const propertyService = {
       .from("properties")
       .delete()
       .eq("id", id);
-
+    
     if (error) throw error;
   },
 
-  // Map database fields (snake_case) to TypeScript interface (camelCase)
-  mapFromDatabase(dbProperty: any): Property {
+  mapFromDB(data: any): Property {
     return {
-      id: dbProperty.id,
-      location: dbProperty.location,
-      cep: dbProperty.cep || undefined,
-      address: dbProperty.address,
-      number: dbProperty.number,
-      complement: dbProperty.complement || "",
-      neighborhood: dbProperty.neighborhood || undefined,
-      city: dbProperty.city || undefined,
-      state: dbProperty.state || undefined,
-      type: dbProperty.type,
-      monthlyRent: parseFloat(dbProperty.monthly_rent),
-      rentValue: parseFloat(dbProperty.monthly_rent),
-      status: dbProperty.status,
-      description: dbProperty.description || undefined,
-      createdAt: dbProperty.created_at,
+      id: data.id,
+      location: data.location,
+      address: data.address,
+      number: data.number,
+      complement: data.complement,
+      neighborhood: data.neighborhood,
+      city: data.city,
+      state: data.state,
+      cep: data.zip_code || data.cep || "",
+      zipCode: data.zip_code || data.cep || "",
+      monthlyRent: parseFloat(data.monthly_rent),
+      rentValue: parseFloat(data.monthly_rent),
+      type: data.type,
+      status: data.status,
+      description: data.description,
+      createdAt: data.created_at
     };
   },
 
-  // Map TypeScript interface (camelCase) to database fields (snake_case)
-  mapToDatabase(property: Partial<Property>): any {
-    const dbProperty: any = {};
-    
-    if (property.location !== undefined) dbProperty.location = property.location;
-    if (property.cep !== undefined) dbProperty.cep = property.cep;
-    if (property.address !== undefined) dbProperty.address = property.address;
-    if (property.number !== undefined) dbProperty.number = property.number;
-    if (property.complement !== undefined) dbProperty.complement = property.complement;
-    if (property.neighborhood !== undefined) dbProperty.neighborhood = property.neighborhood;
-    if (property.city !== undefined) dbProperty.city = property.city;
-    if (property.state !== undefined) dbProperty.state = property.state;
-    if (property.type !== undefined) dbProperty.type = property.type;
-    if (property.monthlyRent !== undefined) dbProperty.monthly_rent = property.monthlyRent;
-    if (property.rentValue !== undefined) dbProperty.monthly_rent = property.rentValue;
-    if (property.status !== undefined) dbProperty.status = property.status;
-    if (property.description !== undefined) dbProperty.description = property.description;
-    
-    return dbProperty;
+  mapToDB(property: any): any {
+    return {
+      location: property.location,
+      address: property.address || "",
+      number: property.number || "",
+      complement: property.complement,
+      neighborhood: property.neighborhood,
+      city: property.city,
+      state: property.state,
+      zip_code: property.zipCode || "",
+      cep: property.zipCode || "",
+      monthly_rent: property.monthlyRent,
+      type: property.type,
+      status: property.status,
+      description: property.description
+    };
   }
 };
