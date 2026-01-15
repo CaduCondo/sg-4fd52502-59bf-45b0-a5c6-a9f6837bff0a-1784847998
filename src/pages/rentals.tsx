@@ -917,7 +917,10 @@ export default function Rentals() {
                                       variant="outline" 
                                       size="sm" 
                                       className="flex-1 h-8 text-xs"
-                                      onClick={() => router.push(`/rentals/${rental.id}`)}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleOpenDialog(rental);
+                                      }}
                                     >
                                       <Eye className="mr-1 h-3 w-3" />
                                       Detalhes
@@ -926,7 +929,10 @@ export default function Rentals() {
                                       variant="ghost" 
                                       size="sm" 
                                       className="h-8 text-xs px-2"
-                                      onClick={() => setViewingRental(rental)}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setViewingRental(rental);
+                                      }}
                                     >
                                       <FileText className="mr-1 h-3 w-3" />
                                       Resumo
@@ -964,15 +970,18 @@ export default function Rentals() {
                 </TableHeader>
                 <TableBody>
                   {filteredRentals.map((rental) => {
-                     const property = getProperty(rental.propertyId);
-                     const tenant = getTenant(rental.tenantId);
-                     const total = getTotalValue(rental);
-                     return (
-                      <TableRow key={rental.id} className="cursor-pointer hover:bg-slate-50" onClick={() => handleViewRental(rental)}>
+                    const property = properties.find(p => p.id === rental.propertyId);
+                    const tenant = tenants.find(t => t.id === rental.tenantId);
+                    return (
+                      <TableRow 
+                        key={rental.id}
+                        onClick={() => handleViewRental(rental)}
+                        className="list-item-hover cursor-pointer"
+                      >
                         <TableCell className="font-medium">{property?.local}</TableCell>
                         <TableCell>{tenant?.name}</TableCell>
                         <TableCell>Dia {rental.paymentDay}</TableCell>
-                        <TableCell className="text-emerald-600 font-bold">{formatCurrency(total)}</TableCell>
+                        <TableCell className="text-emerald-600 font-bold">{formatCurrency(getTotalValue(rental))}</TableCell>
                         <TableCell>
                            <Badge className={getStatusColor(rental.isActive)}>
                             {getStatusLabel(rental.isActive)}
@@ -996,11 +1005,11 @@ export default function Rentals() {
 
                 return (
                   <Card 
-                    key={rental.id} 
-                    className="hover:shadow-lg transition-shadow cursor-pointer relative group"
-                    onClick={() => handleOpenDialog(rental)}
+                    key={rental.id}
+                    onClick={() => handleViewRental(rental)}
+                    className="card-hover-effect cursor-pointer relative"
                   >
-                    <CardHeader className="pb-2">
+                    <CardHeader className="pb-3">
                       <div className="flex justify-between items-start">
                         <div>
                           <CardTitle className="text-xl">{property?.local || "Imóvel removido"}</CardTitle>

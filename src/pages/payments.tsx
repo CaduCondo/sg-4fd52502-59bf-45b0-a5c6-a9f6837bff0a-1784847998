@@ -124,6 +124,10 @@ export default function Payments() {
 
   const { totalReceived, totalPending, adminFee, totalFiltered } = calculateTotals();
 
+  const handleViewPayment = (payment: Payment) => {
+    setViewingPayment(payment);
+  };
+
   const handleOpenDialog = (payment: Payment) => {
     setSelectedPayment(payment);
     setFormData({
@@ -458,11 +462,16 @@ export default function Payments() {
                         </TableHeader>
                         <TableBody>
                           {filteredPayments.map((payment) => {
-                            const rental = getRental(payment.rentalId);
-                            const property = rental ? getProperty(rental) : null;
-                            const tenant = rental ? getTenant(rental) : null;
+                            const rental = rentals.find(r => r.id === payment.rentalId);
+                            const tenant = tenants.find(t => t.id === rental?.tenantId);
+                            const property = properties.find(p => p.id === rental?.propertyId);
+                            
                             return (
-                              <TableRow key={payment.id} className="cursor-pointer hover:bg-slate-50" onClick={() => setViewingPayment(payment)}>
+                              <TableRow 
+                                key={payment.id}
+                                onClick={() => handleViewPayment(payment)}
+                                className="list-item-hover cursor-pointer"
+                              >
                                 <TableCell className="font-medium">{property?.local}</TableCell>
                                 <TableCell>{tenant?.name}</TableCell>
                                 <TableCell>{payment.month}/{payment.year}</TableCell>
@@ -489,7 +498,11 @@ export default function Payments() {
                         return (
                           <StaggerItem key={payment.id}>
                             <FloatingCard delay={0}>
-                              <Card className={`hover:shadow-md transition-shadow cursor-pointer ${payment.isPaid ? 'border-green-200 bg-green-50' : ''}`} onClick={() => setViewingPayment(payment)}>
+                              <Card 
+                                key={payment.id}
+                                onClick={() => handleViewPayment(payment)}
+                                className="card-hover-effect cursor-pointer"
+                              >
                                 <CardHeader className="pb-2">
                                   <div className="flex justify-between items-start">
                                     <div>

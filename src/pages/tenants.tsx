@@ -413,7 +413,11 @@ export default function TenantsPage() {
               </TableHeader>
               <TableBody>
                 {filteredTenants.map((tenant) => (
-                  <TableRow key={tenant.id} className="cursor-pointer hover:bg-slate-50" onClick={() => handleViewTenant(tenant)}>
+                  <TableRow 
+                    key={tenant.id}
+                    onClick={() => handleViewTenant(tenant)}
+                    className="list-item-hover cursor-pointer"
+                  >
                     <TableCell className="font-medium">{tenant.name}</TableCell>
                     <TableCell>{tenant.documentType}: {tenant.cpf}</TableCell>
                     <TableCell>{tenant.phone}</TableCell>
@@ -436,54 +440,55 @@ export default function TenantsPage() {
           <StaggerContainer staggerDelay={0.08}>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredTenants.map((tenant) => (
-                <Card 
-                  key={tenant.id} 
-                  className="hover:shadow-lg transition-shadow cursor-pointer group relative"
-                  onClick={() => handleViewTenant(tenant)}
-                >
-                  <CardHeader className="pb-2">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <CardTitle className="text-xl">{tenant.name}</CardTitle>
-                        <CardDescription>{tenant.phone}</CardDescription>
-                      </div>
-                      <Badge className={tenant.isActive ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-800"}>
-                        {tenant.isActive ? "Ativo" : "Inativo"}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-1 text-sm text-slate-600">
-                      {tenant.email && (
-                        <div className="flex items-center gap-2">
-                          <Mail className="h-4 w-4" />
-                          <span>{tenant.email}</span>
+                <StaggerItem key={tenant.id}>
+                  <Card 
+                    onClick={() => handleViewTenant(tenant)}
+                    className="card-hover-effect cursor-pointer"
+                  >
+                    <CardHeader>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <CardTitle className="text-xl">{tenant.name}</CardTitle>
+                          <CardDescription>{tenant.phone}</CardDescription>
                         </div>
-                      )}
-                      <div className="flex items-center gap-2">
-                        <FileText className="h-4 w-4" />
-                        <span>{tenant.documentType}: {tenant.cpf}</span>
+                        <Badge className={tenant.isActive ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-800"}>
+                          {tenant.isActive ? "Ativo" : "Inativo"}
+                        </Badge>
                       </div>
-                    </div>
-                    
-                    {/* Actions - Prevent bubbling */}
-                    <div className="flex gap-2 pt-4 mt-2" onClick={(e) => e.stopPropagation()}>
-                       <Button 
-                          variant="destructive" 
-                          size="sm" 
-                          className="w-full opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setTenantToDelete(tenant);
-                            setIsDeleteOpen(true);
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Excluir
-                        </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-1 text-sm text-slate-600">
+                        {tenant.email && (
+                          <div className="flex items-center gap-2">
+                            <Mail className="h-4 w-4" />
+                            <span>{tenant.email}</span>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-4 w-4" />
+                          <span>{tenant.documentType}: {tenant.cpf}</span>
+                        </div>
+                      </div>
+                      
+                      {/* Actions - Prevent bubbling */}
+                      <div className="flex gap-2 pt-4 mt-2" onClick={(e) => e.stopPropagation()}>
+                         <Button 
+                            variant="destructive" 
+                            size="sm" 
+                            className="w-full opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setTenantToDelete(tenant);
+                              setIsDeleteOpen(true);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Excluir
+                          </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </StaggerItem>
               ))}
             </div>
           </StaggerContainer>
