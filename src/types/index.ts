@@ -97,6 +97,7 @@ export interface Payment {
   status: "paid" | "pending" | "partial" | "overdue";
   lateFee: number;
   interest: number;
+  adminFee?: number;
   notes?: string;
   attachments: string[];
   partialPayments: Array<{

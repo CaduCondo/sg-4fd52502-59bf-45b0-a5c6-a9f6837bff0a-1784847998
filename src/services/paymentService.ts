@@ -83,6 +83,7 @@ export const paymentService = {
       status: data.status,
       lateFee: parseFloat(data.late_fee || 0),
       interest: parseFloat(data.interest || 0),
+      adminFee: parseFloat(data.admin_fee || 0),
       notes: data.notes,
       attachments: data.attachments || [],
       partialPayments: data.partial_payments || [],
@@ -104,6 +105,7 @@ export const paymentService = {
       notes: payment.notes,
       late_fee: payment.lateFee || 0,
       interest: payment.interest || 0,
+      admin_fee: payment.adminFee || 0,
       attachments: payment.attachments || [],
       partial_payments: []
     };
