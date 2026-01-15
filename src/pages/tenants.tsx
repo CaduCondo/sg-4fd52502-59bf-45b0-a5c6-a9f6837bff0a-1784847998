@@ -289,8 +289,9 @@ export default function TenantsPage() {
                 <Label htmlFor="documentType">Tipo de Documento *</Label>
                 <Select
                   value={documentType}
-                  onValueChange={(value: "cpf" | "cnpj") => {
-                    setDocumentType(value);
+                  onValueChange={(value) => {
+                    const type = value as "cpf" | "cnpj";
+                    setDocumentType(type);
                     setFormData({ ...formData, cpf: "", rg: "" });
                   }}
                 >
