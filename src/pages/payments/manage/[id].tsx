@@ -99,7 +99,7 @@ export default function ManagePayment() {
     setNotes(paymentData.notes || "");
     
     // Generate payment code if Pix
-    if (paymentData.paymentMethod === "Pix" && !paymentData.paymentCode) {
+    if (paymentData.paymentMethod === "pix" && !paymentData.paymentCode) {
       generatePaymentCode(today, "CP");
     }
   };
@@ -193,8 +193,10 @@ export default function ManagePayment() {
 
     // Calculate admin fee
     const settings = configStorage.get();
-    const adminFeePercent = settings.adminFeePercent || 6;
+    const adminFeePercent = settings.adminFeePercentage || 6;
     const adminFee = (paidValue * adminFeePercent) / 100;
+
+    const methodLowerCase = paymentMethod.toLowerCase() as "pix" | "boleto" | "dinheiro";
 
     const updatedPayment: Payment = {
       ...payment,
@@ -203,16 +205,17 @@ export default function ManagePayment() {
       status: newStatus,
       isPaid: newStatus === "paid",
       adminFee: payment.adminFee + adminFee,
-      paymentMethod,
+      paymentMethod: methodLowerCase,
       paymentLocation: paymentMethod === "Pix" ? paymentLocation : undefined,
       paymentCode: paymentMethod === "Pix" ? paymentCode : undefined,
       notes,
       partialPayments: [
         ...(payment.partialPayments || []),
         {
+          id: crypto.randomUUID(),
           date: paymentDate,
           amount: paidValue,
-          method: paymentMethod,
+          method: methodLowerCase,
           location: paymentMethod === "Pix" ? paymentLocation : undefined,
           code: paymentMethod === "Pix" ? paymentCode : undefined
         }
