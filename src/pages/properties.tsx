@@ -232,43 +232,39 @@ export default function Properties() {
             </select>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredProperties.map((property) => (
               <Card key={property.id} className="hover:shadow-lg transition-shadow">
-                <Link href={`/properties/${property.id}`}>
-                  <CardHeader className="cursor-pointer">
+                <CardContent className="p-4">
+                  <div className="space-y-3">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <CardTitle className="text-lg flex items-center space-x-2">
-                          <MapPin size={18} className="text-emerald-600" />
-                          <span>{property.local}</span>
-                        </CardTitle>
+                        <div className="flex items-center gap-2 mb-1">
+                          <MapPin size={16} className="text-emerald-600 flex-shrink-0" />
+                          <h3 className="font-semibold text-slate-900">{property.local}</h3>
+                        </div>
                         {property.complement && (
-                          <CardDescription className="mt-2">
-                            {property.complement}
-                          </CardDescription>
+                          <p className="text-sm text-slate-600">{property.complement}</p>
                         )}
                       </div>
-                      <Badge variant={property.status === "occupied" ? "default" : "secondary"}>
+                      <Badge variant={property.status === "occupied" ? "default" : "secondary"} className="ml-2 flex-shrink-0">
                         {property.status === "occupied" ? "Ocupado" : "Disponível"}
                       </Badge>
                     </div>
-                  </CardHeader>
-                </Link>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div>
-                      <p className="text-sm text-slate-600">Valor Mensal</p>
-                      <p className="text-2xl font-bold text-slate-900">{formatCurrency(property.monthlyRent)}</p>
+
+                    <div className="pt-2 border-t border-slate-200">
+                      <p className="text-sm text-slate-600 mb-1">Valor Mensal</p>
+                      <p className="text-xl font-bold text-slate-900">{formatCurrency(property.monthlyRent)}</p>
                     </div>
-                    <div className="flex space-x-2">
+
+                    <div className="flex gap-2 pt-2">
                       <Button 
                         variant="outline" 
                         size="sm" 
                         onClick={() => handleEdit(property)}
                         className="flex-1"
                       >
-                        <Edit size={16} className="mr-2" />
+                        <Edit size={14} className="mr-1" />
                         Editar
                       </Button>
                       <Button 
@@ -277,7 +273,7 @@ export default function Properties() {
                         onClick={() => handleDelete(property.id)}
                         className="flex-1"
                       >
-                        <Trash2 size={16} className="mr-2" />
+                        <Trash2 size={14} className="mr-1" />
                         Excluir
                       </Button>
                     </div>
