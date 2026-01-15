@@ -14,9 +14,12 @@ import { configService } from "@/services/configService";
 import { formatCurrency } from "@/lib/masks";
 import type { Property, Tenant, Rental, Payment } from "@/types";
 import { FloatingCard } from "@/components/animations/FloatingCard";
+import { useToast } from "@/hooks/use-toast";
+import { authService } from "@/services/authService";
 
 export default function DashboardPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [properties, setProperties] = useState<Property[]>([]);
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [rentals, setRentals] = useState<Rental[]>([]);
@@ -38,8 +41,8 @@ export default function DashboardPage() {
         imoveisAlugados: stats.occupiedProperties,
         imoveisDisponiveis: stats.availableProperties,
         totalInquilinos: stats.totalTenants,
-        pagamentosPendentes: stats.pendingPayments,
-        pagamentosAVencer: stats.dueSoon,
+        recebimentosPendentes: stats.pendingPayments,
+        recebimentosRealizados: stats.paidPayments,
       },
       financeiro: {
         receitaMensal: formatCurrency(stats.monthlyRevenue),
@@ -108,8 +111,8 @@ export default function DashboardPage() {
     csvContent += `Imóveis Alugados,${data.resumo.imoveisAlugados}\n`;
     csvContent += `Imóveis Disponíveis,${data.resumo.imoveisDisponiveis}\n`;
     csvContent += `Total de Inquilinos,${data.resumo.totalInquilinos}\n`;
-    csvContent += `Pagamentos Pendentes,${data.resumo.pagamentosPendentes}\n`;
-    csvContent += `Pagamentos a Vencer,${data.resumo.pagamentosAVencer}\n\n`;
+    csvContent += `Recebimentos Pendentes,${data.resumo.recebimentosPendentes}\n`;
+    csvContent += `Recebimentos Realizados,${data.resumo.recebimentosRealizados}\n\n`;
     
     // Financial section
     csvContent += "FINANCEIRO\n";
@@ -194,17 +197,12 @@ export default function DashboardPage() {
     }
   };
 
-  const loadUserName = () => {
-    if (typeof window !== "undefined") {
-      const storedUser = localStorage.getItem("user");
-      if (storedUser) {
-        try {
-          const user = JSON.parse(storedUser);
-          setUserName(user.name || "Administrador");
-        } catch (error) {
-          console.error("Error parsing user data:", error);
-        }
-      }
+  const loadUserName = async () => {
+    try {
+      const name = await authService.getUserProfileName();
+      setUserName(name);
+    } catch (error) {
+      console.error("Error loading user name:", error);
     }
   };
 
@@ -258,7 +256,7 @@ export default function DashboardPage() {
     availableProperties: properties.filter((p) => p.status === "available").length,
     totalTenants: tenants.filter((t) => t.status === "active" || t.status === "rented").length,
     pendingPayments: pendingPayments.length,
-    dueSoon: dueSoonPayments.length,
+    paidPayments: paidPayments.length,
     monthlyRevenue: monthlyRevenue,
     adminFee: adminFee,
     netRevenue: netRevenue,
@@ -435,7 +433,7 @@ export default function DashboardPage() {
                 onClick={() => router.push("/payments")}
               >
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Pagamentos Pendentes</CardTitle>
+                  <CardTitle className="text-sm font-medium">Recebimentos Pendentes</CardTitle>
                   <AlertCircle className="h-4 w-4 text-red-500" />
                 </CardHeader>
                 <CardContent>
@@ -449,17 +447,17 @@ export default function DashboardPage() {
 
             <FloatingCard delay={0.6}>
               <Card
-                className="cursor-pointer hover:shadow-lg transition-shadow border-l-4 border-l-orange-500"
+                className="cursor-pointer hover:shadow-lg transition-shadow border-l-4 border-l-emerald-500"
                 onClick={() => router.push("/payments")}
               >
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Prestes a Vencer</CardTitle>
-                  <Calendar className="h-4 w-4 text-orange-500" />
+                  <CardTitle className="text-sm font-medium">Recebimentos Realizados</CardTitle>
+                  <Calendar className="h-4 w-4 text-emerald-500" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{stats.dueSoon}</div>
+                  <div className="text-2xl font-bold">{stats.paidPayments}</div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Não quitados este mês
+                    Pagos em {monthNames[selectedMonth - 1]}
                   </p>
                 </CardContent>
               </Card>

@@ -177,5 +177,28 @@ export const authService = {
   // Listen to auth state changes
   onAuthStateChange(callback: (event: string, session: Session | null) => void) {
     return supabase.auth.onAuthStateChange(callback);
+  },
+
+  // Get user profile name from user_profiles table
+  async getUserProfileName(): Promise<string> {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return "Administrador";
+
+      const { data, error } = await supabase
+        .from("user_profiles")
+        .select("name")
+        .eq("id", user.id)
+        .single();
+
+      if (error || !data) {
+        return user.email?.split("@")[0] || "Administrador";
+      }
+
+      return data.name || "Administrador";
+    } catch (error) {
+      console.error("Error fetching user profile:", error);
+      return "Administrador";
+    }
   }
 };

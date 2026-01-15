@@ -16,7 +16,7 @@ import { rentalService } from "@/services/rentalService";
 import { propertyService } from "@/services/propertyService";
 import { tenantService } from "@/services/tenantService";
 import type { Payment, Rental, Property, Tenant } from "@/types";
-import { Camera, Trash2 } from "lucide-react";
+import { Camera, Trash2, Clock } from "lucide-react";
 
 export default function ManagePaymentPage() {
   const router = useRouter();
@@ -95,14 +95,12 @@ export default function ManagePaymentPage() {
       }
 
       setFormData({
-        paymentDate: paymentData.paymentDate
-          ? new Date(paymentData.paymentDate).toISOString().split("T")[0]
-          : new Date().toISOString().split("T")[0],
-        paidAmount: paymentData.paidAmount > 0 ? formatCurrency(paymentData.paidAmount) : "",
-        paymentMethod: paymentData.paymentMethod || "",
-        paymentLocation: paymentData.paymentLocation || "",
-        paymentCode: paymentData.paymentCode || "",
-        notes: paymentData.notes || "",
+        paymentDate: new Date().toISOString().split("T")[0],
+        paidAmount: "",
+        paymentMethod: "",
+        paymentLocation: "",
+        paymentCode: "",
+        notes: "",
       });
     } catch (error) {
       console.error("Erro ao carregar dados:", error);
@@ -191,12 +189,30 @@ export default function ManagePaymentPage() {
     try {
       const paidAmount = parseCurrency(formData.paidAmount);
       const expectedAmount = calculatedValues.expectedAmount;
+      const totalPaid = calculatedValues.previousPartialPayments + paidAmount;
+
+      if (paidAmount <= 0) {
+        toast({ 
+          title: "Atenção", 
+          description: "O valor pago deve ser maior que zero", 
+          variant: "destructive" 
+        });
+        return;
+      }
 
       let newStatus: "paid" | "partial" | "pending" = "pending";
       const newPartialPayments = [...(payment.partialPayments || [])];
 
-      if (paidAmount >= expectedAmount) {
+      const fullExpectedAmount = calculatedValues.baseRent + calculatedValues.garageValue + 
+                                  calculatedValues.lateFee + calculatedValues.interest;
+
+      if (totalPaid >= fullExpectedAmount) {
         newStatus = "paid";
+        newPartialPayments.push({
+          amount: paidAmount,
+          date: formData.paymentDate,
+          method: formData.paymentMethod,
+        });
       } else if (paidAmount > 0) {
         newStatus = "partial";
         newPartialPayments.push({
@@ -208,25 +224,31 @@ export default function ManagePaymentPage() {
 
       const paymentData: Payment = {
         ...payment,
-        paymentDate: formData.paymentDate,
-        paidAmount: paidAmount,
+        paymentDate: newStatus === "paid" ? formData.paymentDate : payment.paymentDate,
+        paidAmount: totalPaid,
         lateFee: calculatedValues.lateFee,
         interest: calculatedValues.interest,
-        paymentMethod: formData.paymentMethod,
-        paymentLocation: formData.paymentLocation,
-        paymentCode: formData.paymentCode,
-        notes: formData.notes,
+        paymentMethod: newStatus === "paid" ? formData.paymentMethod : payment.paymentMethod,
+        paymentLocation: formData.paymentLocation || payment.paymentLocation,
+        paymentCode: formData.paymentCode || payment.paymentCode,
+        notes: formData.notes || payment.notes,
         status: newStatus,
         attachments: attachments,
         partialPayments: newPartialPayments,
       };
 
       await paymentService.update(paymentData);
-      toast({ title: "Sucesso", description: "Pagamento registrado com sucesso!" });
-
-      if (newStatus === "paid" && rental && property && tenant) {
-        setShowReceipt(true);
+      
+      if (newStatus === "paid") {
+        toast({ title: "Sucesso", description: "Pagamento registrado como PAGO com sucesso!" });
+        if (rental && property && tenant) {
+          setShowReceipt(true);
+        }
       } else {
+        toast({ 
+          title: "Sucesso", 
+          description: `Pagamento parcial registrado! Total pago: ${formatCurrency(totalPaid)} de ${formatCurrency(fullExpectedAmount)}` 
+        });
         router.push("/payments");
       }
     } catch (error) {
@@ -271,6 +293,9 @@ export default function ManagePaymentPage() {
     );
   }
 
+  const totalPreviousPaid = calculatedValues.previousPartialPayments;
+  const hasPartialPayments = (payment.partialPayments || []).length > 0;
+
   return (
     <>
       <Head>
@@ -305,6 +330,12 @@ export default function ManagePaymentPage() {
                   <p className="font-semibold text-slate-700">Referência:</p>
                   <p className="text-slate-900">
                     {payment.referenceMonth.toString().padStart(2, "0")}/{payment.referenceYear}
+                  </p>
+                </div>
+                <div>
+                  <p className="font-semibold text-slate-700">Status:</p>
+                  <p className={`font-bold ${payment.status === "paid" ? "text-green-600" : payment.status === "partial" ? "text-orange-600" : "text-red-600"}`}>
+                    {payment.status === "paid" ? "PAGO" : payment.status === "partial" ? "PARCIAL" : "PENDENTE"}
                   </p>
                 </div>
               </CardContent>
@@ -343,14 +374,14 @@ export default function ManagePaymentPage() {
                 )}
                 {calculatedValues.previousPartialPayments > 0 && (
                   <div className="flex justify-between text-green-600">
-                    <span>Pagamentos Parciais:</span>
+                    <span>Já Pago (Parcial):</span>
                     <span className="font-semibold">
                       -{formatCurrency(calculatedValues.previousPartialPayments)}
                     </span>
                   </div>
                 )}
                 <div className="flex justify-between pt-2 border-t">
-                  <span className="font-bold text-slate-900">Valor Esperado:</span>
+                  <span className="font-bold text-slate-900">Valor Restante:</span>
                   <span className="font-bold text-emerald-700">
                     {formatCurrency(calculatedValues.expectedAmount)}
                   </span>
@@ -359,156 +390,208 @@ export default function ManagePaymentPage() {
             </Card>
           </div>
 
+          {hasPartialPayments && (
+            <Card className="border-orange-200 bg-orange-50">
+              <CardHeader>
+                <CardTitle className="text-orange-700 flex items-center gap-2">
+                  <Clock className="w-5 h-5" />
+                  Histórico de Pagamentos Parciais
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {payment.partialPayments?.map((partial, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 bg-white rounded-lg border border-orange-200">
+                      <div>
+                        <p className="font-semibold text-slate-900">
+                          Pagamento {index + 1}
+                        </p>
+                        <p className="text-sm text-slate-600">
+                          {new Date(partial.date).toLocaleDateString("pt-BR")} - {partial.method}
+                        </p>
+                      </div>
+                      <p className="text-lg font-bold text-orange-700">
+                        {formatCurrency(partial.amount)}
+                      </p>
+                    </div>
+                  ))}
+                  <div className="flex items-center justify-between p-3 bg-orange-100 rounded-lg border-2 border-orange-300">
+                    <p className="font-bold text-slate-900">Total Pago até o momento:</p>
+                    <p className="text-xl font-bold text-orange-700">
+                      {formatCurrency(totalPreviousPaid)}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardHeader>
-              <CardTitle>Registrar Pagamento</CardTitle>
+              <CardTitle>
+                {payment.status === "paid" ? "Pagamento Completo" : "Registrar Novo Pagamento"}
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="paidAmount">Valor a Pagar *</Label>
-                    <Input
-                      id="paidAmount"
-                      value={formData.paidAmount}
-                      onChange={(e) => {
-                        const value = e.target.value.replace(/\D/g, "");
-                        const formatted = formatCurrency(parseFloat(value) / 100);
-                        setFormData((prev) => ({ ...prev, paidAmount: formatted }));
-                      }}
-                      placeholder="R$ 0,00"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="paymentDate">Data do Pagamento *</Label>
-                    <Input
-                      id="paymentDate"
-                      type="date"
-                      value={formData.paymentDate}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, paymentDate: e.target.value }))}
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="paymentMethod">Método de Pagamento *</Label>
-                    <Select
-                      value={formData.paymentMethod}
-                      onValueChange={(value) =>
-                        setFormData((prev) => ({ ...prev, paymentMethod: value }))
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o método" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Pix">Pix</SelectItem>
-                        <SelectItem value="Dinheiro">Dinheiro</SelectItem>
-                        <SelectItem value="Boleto">Boleto</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {formData.paymentMethod === "Pix" && (
-                    <>
-                      <div>
-                        <Label htmlFor="paymentLocation">Local Pagamento *</Label>
-                        <Select
-                          value={formData.paymentLocation}
-                          onValueChange={(value) =>
-                            setFormData((prev) => ({ ...prev, paymentLocation: value }))
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione o local" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="CP">CP</SelectItem>
-                            <SelectItem value="CD">CD</SelectItem>
-                            <SelectItem value="CE">CE</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="md:col-span-2">
-                        <Label htmlFor="paymentCode">Código PIX</Label>
-                        <Input
-                          id="paymentCode"
-                          value={formData.paymentCode}
-                          readOnly
-                          className="bg-slate-50"
-                        />
-                      </div>
-                    </>
-                  )}
+              {payment.status === "paid" ? (
+                <div className="text-center py-8">
+                  <p className="text-lg text-green-600 font-semibold mb-4">
+                    Este pagamento já foi quitado integralmente!
+                  </p>
+                  <Button onClick={() => router.push("/payments")}>
+                    Voltar para Pagamentos
+                  </Button>
                 </div>
+              ) : (
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="paidAmount">Valor a Pagar *</Label>
+                      <Input
+                        id="paidAmount"
+                        value={formData.paidAmount}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/\D/g, "");
+                          const formatted = formatCurrency(parseFloat(value) / 100);
+                          setFormData((prev) => ({ ...prev, paidAmount: formatted }));
+                        }}
+                        placeholder="R$ 0,00"
+                        required
+                      />
+                      <p className="text-xs text-slate-500 mt-1">
+                        Valor restante: {formatCurrency(calculatedValues.expectedAmount)}
+                      </p>
+                    </div>
 
-                <div>
-                  <Label htmlFor="notes">Observações</Label>
-                  <Textarea
-                    id="notes"
-                    value={formData.notes}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))}
-                    placeholder="Adicione observações sobre o pagamento..."
-                    rows={3}
-                  />
-                </div>
+                    <div>
+                      <Label htmlFor="paymentDate">Data do Pagamento *</Label>
+                      <Input
+                        id="paymentDate"
+                        type="date"
+                        value={formData.paymentDate}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, paymentDate: e.target.value }))}
+                        required
+                      />
+                    </div>
 
-                <div>
-                  <Label>Comprovantes de Pagamento</Label>
-                  <div className="mt-2">
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      multiple
-                      accept="image/*,.pdf"
-                      onChange={handleFileUpload}
-                      className="hidden"
+                    <div>
+                      <Label htmlFor="paymentMethod">Método de Pagamento *</Label>
+                      <Select
+                        value={formData.paymentMethod}
+                        onValueChange={(value) =>
+                          setFormData((prev) => ({ ...prev, paymentMethod: value }))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o método" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Pix">Pix</SelectItem>
+                          <SelectItem value="Dinheiro">Dinheiro</SelectItem>
+                          <SelectItem value="Boleto">Boleto</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {formData.paymentMethod === "Pix" && (
+                      <>
+                        <div>
+                          <Label htmlFor="paymentLocation">Local Pagamento *</Label>
+                          <Select
+                            value={formData.paymentLocation}
+                            onValueChange={(value) =>
+                              setFormData((prev) => ({ ...prev, paymentLocation: value }))
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione o local" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="CP">CP</SelectItem>
+                              <SelectItem value="CD">CD</SelectItem>
+                              <SelectItem value="CE">CE</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="md:col-span-2">
+                          <Label htmlFor="paymentCode">Código PIX</Label>
+                          <Input
+                            id="paymentCode"
+                            value={formData.paymentCode}
+                            readOnly
+                            className="bg-slate-50"
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  <div>
+                    <Label htmlFor="notes">Observações</Label>
+                    <Textarea
+                      id="notes"
+                      value={formData.notes}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))}
+                      placeholder="Adicione observações sobre o pagamento..."
+                      rows={3}
                     />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="gap-2"
-                    >
-                      <Camera className="w-4 h-4" />
-                      Anexar
+                  </div>
+
+                  <div>
+                    <Label>Comprovantes de Pagamento</Label>
+                    <div className="mt-2">
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        multiple
+                        accept="image/*,.pdf"
+                        onChange={handleFileUpload}
+                        className="hidden"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="gap-2"
+                      >
+                        <Camera className="w-4 h-4" />
+                        Anexar Comprovante
+                      </Button>
+                    </div>
+
+                    {attachments.length > 0 && (
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+                        {attachments.map((attachment, index) => (
+                          <div key={index} className="relative group">
+                            <img
+                              src={attachment}
+                              alt={`Anexo ${index + 1}`}
+                              className="w-full h-32 object-cover rounded-lg border"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveAttachment(index)}
+                              className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex justify-end gap-3 pt-4 border-t">
+                    <Button type="button" variant="outline" onClick={() => router.push("/payments")}>
+                      Cancelar
+                    </Button>
+                    <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">
+                      Registrar Pagamento
                     </Button>
                   </div>
-
-                  {attachments.length > 0 && (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-                      {attachments.map((attachment, index) => (
-                        <div key={index} className="relative group">
-                          <img
-                            src={attachment}
-                            alt={`Anexo ${index + 1}`}
-                            className="w-full h-32 object-cover rounded-lg border"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveAttachment(index)}
-                            className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex justify-end gap-3 pt-4 border-t">
-                  <Button type="button" variant="outline" onClick={() => router.push("/payments")}>
-                    Cancelar
-                  </Button>
-                  <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">
-                    Registrar Pagamento
-                  </Button>
-                </div>
-              </form>
+                </form>
+              )}
             </CardContent>
           </Card>
         </div>
