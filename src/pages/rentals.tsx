@@ -134,6 +134,13 @@ export default function Rentals() {
       ? parseCurrency(formData.motorcycleSpotValue) 
       : 0;
 
+    // Convert files to base64 URLs for storage
+    const attachmentObjects = attachments.map(a => ({
+      name: a.name,
+      url: URL.createObjectURL(a.file),
+      type: a.file.type
+    }));
+
     const rental: Rental = {
       id: editingRental?.id || crypto.randomUUID(),
       propertyId: formData.propertyId,
@@ -145,7 +152,7 @@ export default function Rentals() {
       observations: formData.observations,
       hasMotorcycleSpot: formData.hasMotorcycleSpot,
       motorcycleSpotValue,
-      attachments: attachments.map(a => a.name),
+      attachments: attachmentObjects,
       status: "active",
       createdAt: editingRental?.createdAt || new Date().toISOString()
     };

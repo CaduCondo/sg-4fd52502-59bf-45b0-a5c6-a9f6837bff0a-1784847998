@@ -41,7 +41,11 @@ export interface Rental {
   monthlyRent: number;
   paymentDay: number;
   observations?: string;
-  attachments?: string[];
+  attachments?: Array<{
+    name: string;
+    url: string;
+    type: string;
+  }>;
   hasMotorcycleSpot?: boolean;
   motorcycleSpotValue?: number;
   status: "active" | "ended" | "expired";

@@ -69,6 +69,16 @@ export function Layout({ children }: LayoutProps) {
                   </Button>
                 </Link>
                 
+                <Link href="/rentals">
+                  <Button 
+                    variant={isActive("/rentals") ? "default" : "ghost"}
+                    className="flex items-center space-x-2"
+                  >
+                    <Building2 size={18} />
+                    <span>Locações</span>
+                  </Button>
+                </Link>
+                
                 <Link href="/payments">
                   <Button 
                     variant={isActive("/payments") ? "default" : "ghost"}
