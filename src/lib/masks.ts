@@ -148,7 +148,7 @@ export const formatDate = (date: string | Date): string => {
   return d.toLocaleDateString("pt-BR");
 };
 
-// Address fetch stub (would typically be in a service)
+// Address fetch stub
 export const fetchAddressByCEP = async (cep: string): Promise<any> => {
   const cleanCep = cep.replace(/\D/g, "");
   if (cleanCep.length !== 8) return null;
@@ -164,15 +164,6 @@ export const fetchAddressByCEP = async (cep: string): Promise<any> => {
   }
 };
 
-// Aliases for backward compatibility
-export const maskCurrency = applyRealMask;
-export const applyCurrencyMask = applyRealMask;
-export const parseCurrencyToNumber = parseCurrency;
-export const maskCEP = applyCepMask;
-export const maskCPF = applyCpfMask;
-export const maskPhone = applyPhoneMask;
-export const maskCNPJ = applyCnpjMask;
-
 export const formatCurrencyInput = (value: string): string => {
   const numbers = value.replace(/\D/g, "");
   const amount = parseFloat(numbers) / 100;
@@ -183,6 +174,9 @@ export const formatCurrencyInput = (value: string): string => {
   });
 };
 
+// Helpers & Aliases
+export const formatCPF = applyCpfMask;
+export const formatCNPJ = applyCnpjMask;
 export const formatPhone = (value: string) => {
   return value
     .replace(/\D/g, "")
@@ -191,11 +185,15 @@ export const formatPhone = (value: string) => {
     .substring(0, 15);
 };
 
-export const formatCPF = (value: string) => {
-  return value
-    .replace(/\D/g, "")
-    .replace(/(\d{3})(\d)/, "$1.$2")
-    .replace(/(\d{3})(\d)/, "$1.$2")
-    .replace(/(\d{3})(\d{1,2})/, "$1-$2")
-    .replace(/(-\d{2})\d+?$/, "$1");
-};
+export const unformatCPF = (value: string) => value.replace(/\D/g, "");
+export const unformatCNPJ = (value: string) => value.replace(/\D/g, "");
+export const unformatPhone = (value: string) => value.replace(/\D/g, "");
+
+// Compatibility aliases
+export const maskCurrency = applyRealMask;
+export const applyCurrencyMask = applyRealMask;
+export const parseCurrencyToNumber = parseCurrency;
+export const maskCEP = applyCepMask;
+export const maskCPF = applyCpfMask;
+export const maskPhone = applyPhoneMask;
+export const maskCNPJ = applyCnpjMask;

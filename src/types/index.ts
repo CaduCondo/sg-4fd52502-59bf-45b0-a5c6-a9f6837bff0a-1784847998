@@ -36,6 +36,8 @@ export interface Tenant {
   phone: string;
   status: "active" | "inactive";
   createdAt: string;
+  rg?: string;
+  documentType?: string;
 }
 
 export interface Config {
