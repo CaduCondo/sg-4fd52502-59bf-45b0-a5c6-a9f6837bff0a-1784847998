@@ -240,7 +240,8 @@ export default function DashboardPage() {
   const netRevenue = monthlyRevenue - adminFee;
 
   const dueSoonPayments = filteredPayments.filter((p) => {
-    if (p.status === "paid") return false;
+    // Skip paid payments - use negation to avoid type error
+    if (p.status !== "pending" && p.status !== "partial" && p.status !== "overdue") return false;
     
     const rental = rentals.find((r) => r.id === p.rentalId);
     if (!rental) return false;
@@ -248,7 +249,7 @@ export default function DashboardPage() {
     const today = new Date();
     const dueDate = new Date(selectedYear, selectedMonth - 1, rental.paymentDay);
     
-    return p.status !== "paid" && dueDate.getMonth() === today.getMonth() && dueDate.getFullYear() === today.getFullYear();
+    return dueDate.getMonth() === today.getMonth() && dueDate.getFullYear() === today.getFullYear();
   });
 
   const stats = {
