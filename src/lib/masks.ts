@@ -1,7 +1,9 @@
 // Currency formatting
-export const formatCurrency = (value: number | string): string => {
-  const numValue = typeof value === "string" ? parseFloat(value) : value;
-  if (isNaN(numValue)) return "R$ 0,00";
+export const formatCurrency = (value: string | number): string => {
+  const numValue = typeof value === "string" ? parseFloat(value.replace(/[^\d,-]/g, "").replace(",", ".")) : value;
+  
+  // Handle null, undefined, or NaN
+  if (value === null || value === undefined || isNaN(numValue)) return "R$ 0,00";
   
   return numValue.toLocaleString("pt-BR", {
     style: "currency",

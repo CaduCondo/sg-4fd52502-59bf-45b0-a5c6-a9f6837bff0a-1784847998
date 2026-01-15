@@ -19,6 +19,7 @@ import { StaggerContainer, StaggerItem } from "@/components/animations/ScrollRev
 import { FloatingCard } from "@/components/animations/FloatingCard";
 import { Payment } from "@/types";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export default function Rentals() {
   const router = useRouter();
@@ -28,7 +29,9 @@ export default function Rentals() {
   const [availableProperties, setAvailableProperties] = useState<Property[]>([]);
   const [availableTenants, setAvailableTenants] = useState<Tenant[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [filterProperty, setFilterProperty] = useState("all");
+  const [filterStatus, setFilterStatus] = useState<"all" | "active" | "ended">("active");
+  const [sortBy, setSortBy] = useState<"startDate" | "property">("startDate");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingRental, setEditingRental] = useState<Rental | null>(null);
   const [viewingRental, setViewingRental] = useState<Rental | null>(null);
@@ -45,7 +48,9 @@ export default function Rentals() {
     hasGarage: false,
     garageValue: "",
     hasMotorcycleSpot: false,
-    motorcycleSpotValue: ""
+    motorcycleSpotValue: "",
+    parkingSpot: false,
+    parkingSpotValue: ""
   });
 
   const [attachments, setAttachments] = useState<Array<{ name: string; file: File }>>([]);
@@ -105,7 +110,9 @@ export default function Rentals() {
       hasGarage: false,
       garageValue: "",
       hasMotorcycleSpot: false,
-      motorcycleSpotValue: ""
+      motorcycleSpotValue: "",
+      parkingSpot: false,
+      parkingSpotValue: ""
     });
     setAttachments([]);
     setEditingRental(null);
@@ -123,8 +130,8 @@ export default function Rentals() {
       (tenant?.name || "").toLowerCase().includes(searchTerm.toLowerCase());
     
     let matchesStatus = true;
-    if (statusFilter === "active") matchesStatus = rental.isActive;
-    if (statusFilter === "ended") matchesStatus = !rental.isActive;
+    if (filterStatus === "active") matchesStatus = rental.isActive;
+    if (filterStatus === "ended") matchesStatus = !rental.isActive;
     
     // User requested to show active rentals
     // If statusFilter is 'all', we might want to show everything OR just active by default depending on requirement.
@@ -140,7 +147,7 @@ export default function Rentals() {
   };
 
   const getTotalValue = (rental: Rental) => {
-    return rental.monthlyRent + (rental.motorcycleSpotValue || 0);
+    return rental.monthlyRent + (rental.parkingSpotValue || 0);
   };
 
   const handleOpenDialog = (rental?: Rental) => {
@@ -157,7 +164,9 @@ export default function Rentals() {
         hasGarage: rental.hasGarage || false,
         garageValue: rental.garageValue ? formatCurrency(rental.garageValue) : "",
         hasMotorcycleSpot: rental.hasMotorcycleSpot || false,
-        motorcycleSpotValue: rental.motorcycleSpotValue ? formatCurrency(rental.motorcycleSpotValue) : ""
+        motorcycleSpotValue: rental.motorcycleSpotValue ? formatCurrency(rental.motorcycleSpotValue) : "",
+        hasParkingSpot: rental.hasParkingSpot || false,
+        parkingSpotValue: rental.parkingSpotValue ? formatCurrency(rental.parkingSpotValue) : ""
       });
       setAttachments([]);
     } else {
@@ -173,7 +182,9 @@ export default function Rentals() {
         hasGarage: false,
         garageValue: "",
         hasMotorcycleSpot: false,
-        motorcycleSpotValue: ""
+        motorcycleSpotValue: "",
+        parkingSpot: false,
+        parkingSpotValue: ""
       });
       setAttachments([]);
       
@@ -212,8 +223,8 @@ export default function Rentals() {
     if (formData.hasGarage && formData.garageValue) {
       calculatedTotalValue += parseFloat(formData.garageValue);
     }
-    if (formData.hasMotorcycleSpot && formData.motorcycleSpotValue) {
-      calculatedTotalValue += parseFloat(formData.motorcycleSpotValue);
+    if (formData.hasParkingSpot && formData.parkingSpotValue) {
+      calculatedTotalValue += parseFloat(formData.parkingSpotValue);
     }
 
     const newRental: Rental = {
@@ -229,6 +240,8 @@ export default function Rentals() {
       garageValue: formData.hasGarage ? parseFloat(formData.garageValue || "0") : undefined,
       hasMotorcycleSpot: formData.hasMotorcycleSpot,
       motorcycleSpotValue: formData.hasMotorcycleSpot ? parseFloat(formData.motorcycleSpotValue || "0") : undefined,
+      hasParkingSpot: formData.hasParkingSpot,
+      parkingSpotValue: formData.hasParkingSpot ? parseFloat(formData.parkingSpotValue || "0") : undefined,
       observations: formData.observations,
       attachments: attachments.map(a => ({
         name: a.name,
@@ -366,8 +379,8 @@ export default function Rentals() {
 
   const calculateTotalValue = () => {
     const rent = parseCurrency(formData.monthlyRent);
-    const spot = formData.hasMotorcycleSpot && formData.motorcycleSpotValue 
-      ? parseCurrency(formData.motorcycleSpotValue) 
+    const spot = formData.hasParkingSpot && formData.parkingSpotValue 
+      ? parseCurrency(formData.parkingSpotValue) 
       : 0;
     return formatCurrency(rent + spot);
   };
@@ -392,8 +405,8 @@ export default function Rentals() {
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-slate-900">Gestão de Locações</h1>
-              <p className="text-slate-600 mt-2">Gerencie as locações de imóveis</p>
+              <h1 className="text-3xl font-bold tracking-tight text-gray-900">Locações Ativas</h1>
+              <p className="text-gray-500 mt-2">Gerencie as locações ativas no sistema.</p>
             </div>
             
             {/* View Rental Dialog */}
@@ -440,7 +453,7 @@ export default function Rentals() {
                         <p className="font-bold text-blue-700">
                           {formatCurrency(
                             viewingRental.monthlyRent + 
-                            (viewingRental.hasMotorcycleSpot ? (viewingRental.motorcycleSpotValue || 0) : 0)
+                            (viewingRental.hasParkingSpot ? (viewingRental.parkingSpotValue || 0) : 0)
                           )}
                         </p>
                       </div>
@@ -452,6 +465,16 @@ export default function Rentals() {
                         <div className="flex justify-between items-center p-2 bg-slate-50 rounded border">
                           <span className="text-sm">🏍️ Vaga Moto</span>
                           <span className="font-medium">{formatCurrency(viewingRental.motorcycleSpotValue || 0)}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Parking Spot */}
+                    {viewingRental.hasParkingSpot && (
+                      <div className="grid grid-cols-1 gap-4">
+                        <div className="flex justify-between items-center p-2 bg-slate-50 rounded border">
+                          <span className="text-sm">🚗 Vaga Garagem</span>
+                          <span className="font-medium">{formatCurrency(viewingRental.parkingSpotValue || 0)}</span>
                         </div>
                       </div>
                     )}
@@ -732,7 +755,47 @@ export default function Rentals() {
                       </div>
                     )}
 
-                    {(formData.monthlyRent || formData.motorcycleSpotValue) && (
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="hasParkingSpot"
+                        checked={formData.hasParkingSpot}
+                        onChange={(e) => setFormData({
+                          ...formData, 
+                          hasParkingSpot: e.target.checked,
+                          parkingSpotValue: e.target.checked ? formData.parkingSpotValue : ""
+                        })}
+                        className="w-4 h-4"
+                      />
+                      <Label htmlFor="hasParkingSpot">Vaga Carro?</Label>
+                    </div>
+
+                    {formData.hasParkingSpot && (
+                      <div className="space-y-2 pl-6">
+                        <Label htmlFor="parkingSpotValue">Valor da Vaga *</Label>
+                        <Input
+                          id="parkingSpotValue"
+                          type="text"
+                          value={formData.parkingSpotValue}
+                          onChange={(e) => {
+                            const value = e.target.value.replace(/\D/g, "");
+                            const formatted = formatCurrency(parseFloat(value) / 100);
+                            setFormData({...formData, parkingSpotValue: formatted});
+                          }}
+                          onBlur={(e) => {
+                            // Ensure proper formatting on blur
+                            if (formData.parkingSpotValue) {
+                               const val = parseCurrency(formData.parkingSpotValue);
+                               setFormData({...formData, parkingSpotValue: formatCurrency(val)});
+                            }
+                          }}
+                          placeholder="R$ 0,00"
+                          required={formData.hasParkingSpot}
+                        />
+                      </div>
+                    )}
+
+                    {(formData.monthlyRent || formData.parkingSpotValue) && (
                       <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
                         <p className="text-sm text-slate-600">Valor Total Mensal:</p>
                         <p className="text-2xl font-bold text-blue-700">{calculateTotalValue()}</p>
@@ -817,7 +880,7 @@ export default function Rentals() {
                 className="pl-10"
               />
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <Select value={filterStatus} onValueChange={(value) => setFilterStatus(value as "all" | "active" | "ended")}>
               <SelectTrigger className="w-full sm:w-48">
                 <SelectValue />
               </SelectTrigger>
@@ -934,7 +997,7 @@ export default function Rentals() {
                         filteredRentals.map((rental, index) => {
                           const property = getProperty(rental.propertyId);
                           const tenant = getTenant(rental.tenantId);
-                          const totalValue = rental.monthlyRent + (rental.motorcycleSpotValue || 0);
+                          const totalValue = rental.monthlyRent + (rental.parkingSpotValue || 0);
                           
                           return (
                             <StaggerItem key={rental.id}>
@@ -972,6 +1035,12 @@ export default function Rentals() {
                                   {rental.hasMotorcycleSpot && rental.motorcycleSpotValue && (
                                     <div className="flex justify-between items-center text-xs text-slate-500">
                                       <span>(Aluguel: {formatCurrency(rental.monthlyRent)} + Vaga: {formatCurrency(rental.motorcycleSpotValue)})</span>
+                                    </div>
+                                  )}
+                                  
+                                  {rental.hasParkingSpot && rental.parkingSpotValue && (
+                                    <div className="flex justify-between items-center text-xs text-slate-500">
+                                      <span>(Aluguel: {formatCurrency(rental.monthlyRent)} + Vaga: {formatCurrency(rental.parkingSpotValue)})</span>
                                     </div>
                                   )}
                                   
@@ -1073,7 +1142,7 @@ export default function Rentals() {
               {filteredRentals.map((rental) => {
                 const property = getProperty(rental.propertyId);
                 const tenant = getTenant(rental.tenantId);
-                const totalValue = rental.monthlyRent + (rental.motorcycleSpotValue || 0);
+                const totalValue = rental.monthlyRent + (rental.parkingSpotValue || 0);
 
                 return (
                   <Card 
@@ -1102,12 +1171,18 @@ export default function Rentals() {
                         <div className="pt-2 border-t border-slate-100 space-y-1">
                            <div className="flex justify-between text-xs">
                               <span>Aluguel:</span>
-                              <span>{formatCurrency(rental.monthlyRent)}</span>
+                              <span>{formatCurrency(rental.monthlyRent || 0)}</span>
                            </div>
                            {rental.hasMotorcycleSpot && rental.motorcycleSpotValue && (
                              <div className="flex justify-between text-xs">
                                 <span>Vaga Moto:</span>
                                 <span>{formatCurrency(rental.motorcycleSpotValue || 0)}</span>
+                             </div>
+                           )}
+                           {rental.hasParkingSpot && rental.parkingSpotValue && (
+                             <div className="flex justify-between text-xs">
+                                <span>Vaga Carro:</span>
+                                <span>{formatCurrency(rental.parkingSpotValue || 0)}</span>
                              </div>
                            )}
                            <div className="flex justify-between font-bold text-emerald-600 text-base pt-1">

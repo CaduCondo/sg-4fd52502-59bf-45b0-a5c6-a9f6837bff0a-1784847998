@@ -5,28 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { isAuthenticated } from "@/lib/auth";
 import { propertyStorage, configStorage } from "@/lib/storage";
 import { Property } from "@/types";
-import { ArrowLeft, Edit, Trash2, MapPin, Building2, DollarSign, Save, X, Home, Calendar, FileText, User } from "lucide-react";
+import { ArrowLeft, Edit, Trash2, MapPin, DollarSign, Save, X } from "lucide-react";
 import { SEO } from "@/components/SEO";
 import { formatCurrency, formatDate, parseCurrency, maskCurrency } from "@/lib/masks";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { applyRealMask } from "@/lib/masks";
 import { toast } from "@/hooks/use-toast";
-
-const LOCALS = [
-  "Jd. Colombo",
-  "Signore",
-  "Lemos",
-  "Marrom",
-  "Cinza",
-  "Dora",
-  "Acacias"
-];
 
 const STATES = [
   "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA",
@@ -38,8 +25,6 @@ export default function PropertyDetails() {
   const router = useRouter();
   const { id } = router.query;
   const [property, setProperty] = useState<Property | null>(null);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [availableLocations, setAvailableLocations] = useState<string[]>([]);
   const [formData, setFormData] = useState({ 
@@ -53,15 +38,6 @@ export default function PropertyDetails() {
     monthlyRent: "",
     status: "available" as "available" | "occupied"
   }); 
-
-  // Form state for editing
-  const [editData, setEditData] = useState({
-    local: "",
-    address: "",
-    complement: "",
-    type: "",
-    value: ""
-  });
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -105,12 +81,23 @@ export default function PropertyDetails() {
   };
 
   const handleCancelEdit = () => {
+    if (property) {
+      setFormData({
+        local: property.local,
+        cep: property.cep || "",
+        address: property.address,
+        number: property.number,
+        complement: property.complement || "",
+        state: property.state || "",
+        description: property.description || "",
+        monthlyRent: maskCurrency(property.monthlyRent.toString()),
+        status: property.status
+      });
+    }
     setIsEditing(false);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  const handleSave = async () => {
     if (!property) return;
 
     const updatedProperty: Property = {
@@ -128,7 +115,8 @@ export default function PropertyDetails() {
 
     propertyStorage.save(updatedProperty);
     setProperty(updatedProperty);
-    setIsEditDialogOpen(false);
+    setIsEditing(false);
+    toast({ title: "Sucesso", description: "Imóvel atualizado com sucesso!" });
   };
 
   const handleDelete = () => {
@@ -136,6 +124,7 @@ export default function PropertyDetails() {
     
     if (confirm("Tem certeza que deseja excluir este imóvel?")) {
       propertyStorage.delete(property.id);
+      toast({ title: "Sucesso", description: "Imóvel excluído com sucesso!" });
       router.push("/properties");
     }
   };
@@ -143,29 +132,6 @@ export default function PropertyDetails() {
   const handleMoneyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const masked = maskCurrency(e.target.value);
     setFormData({ ...formData, monthlyRent: masked });
-  };
-
-  const handleSave = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    
-    if (!property) return;
-
-    const updatedProperty: Property = {
-      ...property,
-      local: formData.local,
-      cep: formData.cep,
-      address: formData.address,
-      number: formData.number,
-      complement: formData.complement || undefined,
-      state: formData.state,
-      description: formData.description,
-      monthlyRent: parseCurrency(formData.monthlyRent),
-      status: formData.status
-    };
-
-    propertyStorage.save(updatedProperty);
-    setProperty(updatedProperty);
-    setIsEditing(false);
   };
 
   if (!property) {
@@ -198,28 +164,25 @@ export default function PropertyDetails() {
                 <ArrowLeft size={16} />
                 <span>Voltar</span>
               </Button>
-              <div className="flex-1">
+              <div>
                 <h1 className="text-3xl font-bold text-slate-900 flex items-center space-x-3">
                   <MapPin className="text-emerald-600" />
                   <span>{property.local}</span>
                 </h1>
                 <p className="text-slate-600 mt-2">{property.address}, {property.number}</p>
               </div>
+            </div>
+            <div className="flex items-center gap-3">
               <Badge variant={property.status === "occupied" ? "default" : "secondary"} className="text-base px-4 py-2">
                 {property.status === "occupied" ? "Ocupado" : "Disponível"}
               </Badge>
-            </div>
-            <div className="flex gap-2">
               {!isEditing ? (
                 <>
                   <Button onClick={handleEdit} variant="outline">
                     <Edit className="h-4 w-4 mr-2" />
                     Editar
                   </Button>
-                  <Button 
-                    onClick={() => setIsDeleteDialogOpen(true)} 
-                    variant="destructive"
-                  >
+                  <Button onClick={handleDelete} variant="destructive">
                     <Trash2 className="h-4 w-4 mr-2" />
                     Excluir
                   </Button>
@@ -292,16 +255,14 @@ export default function PropertyDetails() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  {property.complement && (
-                    <div>
-                      <p className="text-sm font-medium text-slate-600">Complemento</p>
-                      {isEditing ? (
-                        <Input value={formData.complement} onChange={e => setFormData({...formData, complement: e.target.value})} />
-                      ) : (
-                        <p className="text-lg text-slate-900">{property.complement}</p>
-                      )}
-                    </div>
-                  )}
+                  <div>
+                    <p className="text-sm font-medium text-slate-600">Complemento</p>
+                    {isEditing ? (
+                      <Input value={formData.complement} onChange={e => setFormData({...formData, complement: e.target.value})} />
+                    ) : (
+                      <p className="text-lg text-slate-900">{property.complement || "-"}</p>
+                    )}
+                  </div>
                   <div>
                     <p className="text-sm font-medium text-slate-600">Estado</p>
                     {isEditing ? (
@@ -330,8 +291,42 @@ export default function PropertyDetails() {
                       rows={3}
                     />
                   ) : (
-                    <p className="text-slate-900">{property.description}</p>
+                    <p className="text-slate-900">{property.description || "-"}</p>
                   )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-slate-600">Valor Mensal</p>
+                    {isEditing ? (
+                      <Input
+                        value={formData.monthlyRent}
+                        onChange={handleMoneyChange}
+                        placeholder="R$ 0,00"
+                      />
+                    ) : (
+                      <p className="text-2xl font-bold text-emerald-600">
+                        {formatCurrency(property.monthlyRent)}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-slate-600">Status</p>
+                    {isEditing ? (
+                      <select
+                        value={formData.status}
+                        onChange={(e) => setFormData({ ...formData, status: e.target.value as "available" | "occupied" })}
+                        className="w-full h-10 px-3 rounded-md border border-slate-300 bg-white text-slate-900"
+                      >
+                        <option value="available">Disponível</option>
+                        <option value="occupied">Ocupado</option>
+                      </select>
+                    ) : (
+                      <Badge variant={property.status === "occupied" ? "default" : "secondary"} className="text-base px-4 py-1">
+                        {property.status === "occupied" ? "Ocupado" : "Disponível"}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
 
                 <div className="pt-4 border-t">
@@ -341,186 +336,32 @@ export default function PropertyDetails() {
               </CardContent>
             </Card>
 
-            <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <DollarSign className="text-emerald-600" />
-                    <span>Valor Mensal</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {isEditing ? (
-                    <Input
-                      value={formData.monthlyRent}
-                      onChange={handleMoneyChange}
-                      placeholder="R$ 0,00"
-                    />
-                  ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <DollarSign className="text-emerald-600" />
+                  <span>Resumo Financeiro</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-sm text-slate-600">Valor Mensal</p>
                     <p className="text-3xl font-bold text-emerald-600">
                       {formatCurrency(property.monthlyRent)}
                     </p>
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Ações</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <Button 
-                    onClick={handleEdit}
-                    className="w-full flex items-center justify-center space-x-2"
-                  >
-                    <Edit size={18} />
-                    <span>Editar Imóvel</span>
-                  </Button>
-                  <Button 
-                    variant="destructive"
-                    onClick={handleDelete}
-                    className="w-full flex items-center justify-center space-x-2"
-                  >
-                    <Trash2 size={18} />
-                    <span>Excluir Imóvel</span>
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
+                  </div>
+                  <div className="pt-3 border-t">
+                    <p className="text-sm text-slate-600">Status do Imóvel</p>
+                    <Badge variant={property.status === "occupied" ? "default" : "secondary"} className="mt-1">
+                      {property.status === "occupied" ? "Ocupado" : "Disponível"}
+                    </Badge>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
-
-        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-          <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Editar Imóvel</DialogTitle>
-              <DialogDescription>Atualize as informações do imóvel</DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleSubmit}>
-              <div className="space-y-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="local">Local</Label>
-                    <Select
-                      onValueChange={(value) => setFormData({ ...formData, local: value })}
-                      value={formData.local}
-                    >
-                      <SelectContent>
-                        {availableLocations.map(local => (
-                          <option key={local} value={local}>{local}</option>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="cep">CEP *</Label>
-                    <Input
-                      id="cep"
-                      value={formData.cep}
-                      onChange={(e) => setFormData({ ...formData, cep: e.target.value })}
-                      placeholder="00000-000"
-                      maxLength={9}
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="address">Endereço *</Label>
-                  <Input
-                    id="address"
-                    value={formData.address}
-                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                    placeholder="Rua, avenida"
-                    required
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="number">Número *</Label>
-                    <Input
-                      id="number"
-                      value={formData.number}
-                      onChange={(e) => setFormData({ ...formData, number: e.target.value })}
-                      placeholder="Número"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="state">Estado *</Label>
-                    <select
-                      id="state"
-                      value={formData.state}
-                      onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                      className="w-full h-10 px-3 rounded-md border border-slate-300 bg-white text-slate-900"
-                      required
-                    >
-                      {STATES.map(state => (
-                        <option key={state} value={state}>{state}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="complement">Complemento</Label>
-                  <Input
-                    id="complement"
-                    value={formData.complement}
-                    onChange={(e) => setFormData({ ...formData, complement: e.target.value })}
-                    placeholder="Apto, bloco, etc."
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="description">Descrição *</Label>
-                  <Textarea
-                    id="description"
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    placeholder="Características do imóvel"
-                    rows={3}
-                    required
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="monthlyRent">Valor Mensal *</Label>
-                    <Input
-                      id="monthlyRent"
-                      value={formData.monthlyRent}
-                      onChange={handleMoneyChange}
-                      placeholder="R$ 0,00"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="status">Status *</Label>
-                    <select
-                      id="status"
-                      value={formData.status}
-                      onChange={(e) => setFormData({ ...formData, status: e.target.value as "available" | "occupied" })}
-                      className="w-full h-10 px-3 rounded-md border border-slate-300 bg-white text-slate-900"
-                    >
-                      <option value="available">Disponível</option>
-                      <option value="occupied">Ocupado</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-                  Cancelar
-                </Button>
-                <Button type="submit">
-                  Salvar
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
       </Layout>
     </>
   );

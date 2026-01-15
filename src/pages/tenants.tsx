@@ -446,19 +446,11 @@ export default function TenantsPage() {
                     className="card-hover-effect cursor-pointer"
                   >
                     <CardHeader className="pb-3">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center space-x-3">
-                          <div className="h-12 w-12 rounded-full bg-emerald-100 flex items-center justify-center">
-                            <User className="h-6 w-6 text-emerald-600" />
-                          </div>
-                          <div>
-                            <CardTitle className="text-lg">{tenant.name}</CardTitle>
-                            <p className="text-sm text-slate-600">{tenant.email}</p>
-                          </div>
-                        </div>
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-lg">{tenant.name}</CardTitle>
                         <Button
                           variant="ghost"
-                          size="icon"
+                          size="sm"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleDelete(tenant.id);
