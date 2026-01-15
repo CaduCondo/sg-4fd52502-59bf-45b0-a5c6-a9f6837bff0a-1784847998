@@ -67,6 +67,27 @@
 }
 
 @layer base {
+  /* Interactive Hover Effects */
+  .card-hover-effect {
+    @apply transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer;
+  }
+
+  .list-item-hover {
+    @apply transition-all duration-200 hover:bg-slate-50 hover:scale-[1.02] cursor-pointer;
+  }
+
+  .button-hover-scale {
+    @apply transition-transform duration-200 hover:scale-105 active:scale-95;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .card-hover-effect,
+    .list-item-hover,
+    .button-hover-scale {
+      @apply transition-none hover:transform-none;
+    }
+  }
+
   * {
     @apply border-border;
   }

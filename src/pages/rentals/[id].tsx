@@ -75,7 +75,7 @@ export default function RentalDetails() {
       setEditTenantId(found.tenantId);
       setEditStartDate(found.startDate);
       setEditEndDate(found.endDate);
-      setEditPaymentDay(found.paymentDay.toString()); // Convert number to string
+      setEditPaymentDay(String(found.paymentDay));
       setEditMonthlyRent(formatCurrency(found.monthlyRent));
       setEditObservations(found.observations || "");
       setEditHasMotorcycleSpot(found.hasMotorcycleSpot || false);
@@ -96,7 +96,7 @@ export default function RentalDetails() {
     setEditTenantId(rental.tenantId);
     setEditStartDate(rental.startDate);
     setEditEndDate(rental.endDate);
-    setEditPaymentDay(rental.paymentDay.toString()); // Convert number to string
+    setEditPaymentDay(String(rental.paymentDay));
     setEditMonthlyRent(formatCurrency(rental.monthlyRent));
     setEditObservations(rental.observations || "");
     setEditHasMotorcycleSpot(rental.hasMotorcycleSpot || false);
@@ -109,51 +109,38 @@ export default function RentalDetails() {
     e.preventDefault();
     if (!rental) return;
 
-    const monthlyRent: number = parseFloat(editMonthlyRent.replace(/[^\d,]/g, "").replace(",", "."));
-    const motorcycleSpotValue: number = editHasMotorcycleSpot ? parseFloat(editMotorcycleSpotValue.replace(/[^\d,]/g, "").replace(",", ".")) : 0;
-    const paymentDay: number = parseInt(editPaymentDay, 10);
+    const monthlyRentValue = parseFloat(editMonthlyRent.replace(/[^\d,]/g, "").replace(",", "."));
+    const motorcycleValue = editHasMotorcycleSpot ? parseFloat(editMotorcycleSpotValue.replace(/[^\d,]/g, "").replace(",", ".")) : 0;
+    const paymentDayValue = parseInt(editPaymentDay, 10);
 
-    if (paymentDay < 1 || paymentDay > 28) {
+    if (paymentDayValue < 1 || paymentDayValue > 28) {
       alert("O dia de pagamento deve estar entre 1 e 28");
       return;
     }
 
-    if (editHasMotorcycleSpot && motorcycleSpotValue <= 0) {
+    if (editHasMotorcycleSpot && motorcycleValue <= 0) {
       alert("O valor da vaga de moto é obrigatório quando a opção está marcada");
       return;
     }
 
-    // Update rental - Force type assertion to resolve persistent cache issue
-    const updatedRental = {
-      ...rental,
+    // Create update object with proper types
+    const updatedRental: Rental = {
+      id: rental.id,
       propertyId: editPropertyId,
       tenantId: editTenantId,
       startDate: editStartDate,
       endDate: editEndDate,
-      paymentDay: paymentDay,
-      monthlyRent: monthlyRent,
-      value: monthlyRent,
+      paymentDay: paymentDayValue,
+      monthlyRent: monthlyRentValue,
+      value: monthlyRentValue,
       hasGarage: false,
       observations: editObservations,
       hasMotorcycleSpot: editHasMotorcycleSpot,
-      motorcycleSpotValue: editHasMotorcycleSpot ? motorcycleSpotValue : undefined,
+      motorcycleSpotValue: editHasMotorcycleSpot ? motorcycleValue : undefined,
       isActive: rental.isActive,
       attachments: rental.attachments,
       createdAt: rental.createdAt
-    } as Rental;
-
-    // Update statuses if property or tenant changed
-    // We don't need to manually update status strings anymore if we rely on "Linked to Rental" logic,
-    // BUT the current codebase might still rely on some flags.
-    // However, the prompt asked to use "isActive" for "Soft Delete / Availability toggle".
-    // For now, let's remove the calls to updateStatus that pass strings like "available"/"occupied"
-    // because those methods were removed or changed signature in storage.ts to take boolean.
-    
-    /* 
-    if (rental.propertyId !== editPropertyId) {
-       // logic removed
-    }
-    */
+    };
 
     rentalStorage.update(updatedRental);
     
@@ -161,10 +148,10 @@ export default function RentalDetails() {
     if (
       rental.startDate !== editStartDate ||
       rental.endDate !== editEndDate ||
-      rental.paymentDay !== paymentDay || // Both should be numbers here
-      rental.monthlyRent !== monthlyRent ||
+      rental.paymentDay !== paymentDayValue ||
+      rental.monthlyRent !== monthlyRentValue ||
       rental.hasMotorcycleSpot !== editHasMotorcycleSpot ||
-      rental.motorcycleSpotValue !== motorcycleSpotValue
+      rental.motorcycleSpotValue !== motorcycleValue
     ) {
       regeneratePayments(updatedRental);
     }
@@ -174,11 +161,9 @@ export default function RentalDetails() {
   };
 
   const regeneratePayments = (rental: Rental) => {
-    // Remove old payments for this rental
     const allPayments = paymentStorage.getAll();
     const otherPayments = allPayments.filter(p => p.rentalId !== rental.id);
     
-    // Generate new payments
     const totalAmount = rental.monthlyRent + (rental.motorcycleSpotValue || 0);
     const start = new Date(rental.startDate);
     const end = new Date(rental.endDate);
@@ -192,33 +177,25 @@ export default function RentalDetails() {
         id: `payment-${Date.now()}-${Math.random()}`,
         rentalId: rental.id,
         month: currentDate.toLocaleString("pt-BR", { month: "long" }),
-        year: currentDate.getFullYear(),
+        year: String(currentDate.getFullYear()),
         amount: totalAmount,
         isPaid: false,
-        dueDate: dueDate.toISOString().split("T")[0],
-        createdAt: new Date().toISOString()
+        dueDate: dueDate.toISOString().split("T")[0]
       });
 
       currentDate.setMonth(currentDate.getMonth() + 1);
     }
 
-    // Save all payments
     localStorage.setItem("rentals_payments", JSON.stringify([...otherPayments, ...newPayments]));
   };
 
   const handleDelete = () => {
     if (!rental) return;
-
-    // Update statuses - Removed as per new logic (availability derived or manual toggle)
-    // propertyStorage.updateStatus(rental.propertyId, "available"); 
-    // tenantStorage.updateStatus(rental.tenantId, "vacant");
     
-    // Remove all payments for this rental
     const allPayments = paymentStorage.getAll();
     const filteredPayments = allPayments.filter(p => p.rentalId !== rental.id);
     localStorage.setItem("rentals_payments", JSON.stringify(filteredPayments));
     
-    // Delete rental
     rentalStorage.delete(rental.id);
     
     setShowDeleteDialog(false);
@@ -229,11 +206,7 @@ export default function RentalDetails() {
     e.preventDefault();
     if (!rental) return;
 
-    // Update rental status to ended (isActive = false)
     rentalStorage.updateStatus(rental.id, false);
-    
-    // We don't update property/tenant status automatically anymore 
-    // as they remain "Active" (available for new rent) unless manually deactivated.
 
     setShowEndDialog(false);
     router.push("/rentals");
@@ -260,7 +233,6 @@ export default function RentalDetails() {
     ended: "Encerrada",
   };
   
-  // Helper to get key
   const statusKey = rental.isActive ? 'active' : 'ended';
 
   return (
@@ -288,7 +260,6 @@ export default function RentalDetails() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Property Info */}
             <Card>
               <CardHeader>
                 <div className="flex items-center space-x-2">
@@ -319,7 +290,6 @@ export default function RentalDetails() {
               </CardContent>
             </Card>
 
-            {/* Tenant Info */}
             <Card>
               <CardHeader>
                 <div className="flex items-center space-x-2">
@@ -347,7 +317,6 @@ export default function RentalDetails() {
               </CardContent>
             </Card>
 
-            {/* Contract Info */}
             <Card>
               <CardHeader>
                 <div className="flex items-center space-x-2">
@@ -371,7 +340,6 @@ export default function RentalDetails() {
               </CardContent>
             </Card>
 
-            {/* Financial Info */}
             <Card>
               <CardHeader>
                 <div className="flex items-center space-x-2">
@@ -404,7 +372,6 @@ export default function RentalDetails() {
             </Card>
           </div>
 
-          {/* Observations */}
           {rental.observations && (
             <Card>
               <CardHeader>
@@ -419,7 +386,6 @@ export default function RentalDetails() {
             </Card>
           )}
 
-          {/* Attachments */}
           {rental.attachments && rental.attachments.length > 0 && (
             <Card>
               <CardHeader>
@@ -464,7 +430,6 @@ export default function RentalDetails() {
             </Card>
           )}
 
-          {/* Actions */}
           <div className="flex items-center space-x-3">
             <Button onClick={openEditDialog} className="flex items-center space-x-2">
               <Edit className="h-4 w-4" />
@@ -493,7 +458,6 @@ export default function RentalDetails() {
           </div>
         </div>
 
-        {/* Edit Dialog */}
         <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
@@ -586,7 +550,7 @@ export default function RentalDetails() {
                   id="edit-motorcycle-spot"
                   checked={editHasMotorcycleSpot}
                   onCheckedChange={(checked) => {
-                    setEditHasMotorcycleSpot(checked === true); // Ensure boolean
+                    setEditHasMotorcycleSpot(checked === true);
                     if (!checked) setEditMotorcycleSpotValue("");
                   }}
                 />
@@ -638,7 +602,6 @@ export default function RentalDetails() {
           </DialogContent>
         </Dialog>
 
-        {/* Delete Confirmation Dialog */}
         <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
           <DialogContent>
             <DialogHeader>
@@ -667,7 +630,6 @@ export default function RentalDetails() {
           </DialogContent>
         </Dialog>
 
-        {/* End Contract Dialog */}
         <Dialog open={showEndDialog} onOpenChange={setShowEndDialog}>
           <DialogContent>
             <DialogHeader>
@@ -713,13 +675,12 @@ export default function RentalDetails() {
           </DialogContent>
         </Dialog>
         
-        {/* Lightbox for Attachments */}
         {showLightbox && rental.attachments && (
           <Lightbox
             files={rental.attachments?.map(a => ({
               name: a.name, 
               url: a.url, 
-              type: a.type || 'application/octet-stream' // Ensure type string
+              type: a.type || 'application/octet-stream'
             })) || []}
             initialIndex={lightboxIndex}
             onClose={() => setShowLightbox(false)}
