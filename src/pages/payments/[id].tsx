@@ -287,7 +287,7 @@ export default function PaymentDetails() {
 
                   <div>
                     <Label htmlFor="paymentMethod">Forma de Pagamento</Label>
-                    <Select value={paymentMethod} onValueChange={(value) => setPaymentMethod(value as any)}>
+                    <Select value={paymentMethod} onValueChange={(value) => setPaymentMethod(value as "Pix" | "Boleto" | "Dinheiro")}>
                       <SelectTrigger className="mt-1">
                         <SelectValue />
                       </SelectTrigger>
@@ -306,7 +306,7 @@ export default function PaymentDetails() {
                           <MapPin className="h-4 w-4" />
                           Local de Pagamento
                         </Label>
-                        <Select value={paymentLocation} onValueChange={(value) => setPaymentLocation(value as any)}>
+                        <Select value={paymentLocation} onValueChange={(value) => setPaymentLocation(value as "CP" | "CD" | "CE")}>
                           <SelectTrigger className="mt-1">
                             <SelectValue />
                           </SelectTrigger>

@@ -214,12 +214,12 @@ export default function Rentals() {
     const property = getProperty(newRental.propertyId);
     const tenant = getTenant(newRental.tenantId);
     if (property) {
-      property.status = "occupied";
-      propertyStorage.save(property);
+      // property.status = "occupied"; // Removed: availability is derived or manual
+      // propertyStorage.save(property); // Only update if changing other fields
     }
     if (tenant) {
-      tenant.status = "active";
-      tenantStorage.save(tenant);
+      // tenant.status = "active"; // Removed: isActive is for soft delete
+      // tenantStorage.save(tenant);
     }
 
     if (!editingRental) {

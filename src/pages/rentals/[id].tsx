@@ -78,8 +78,8 @@ export default function RentalDetails() {
     const properties = propertyStorage.getAll();
     const tenants = tenantStorage.getAll();
     
-    setAvailableProperties(properties.filter(p => p.status === "available" || p.id === rental.propertyId));
-    setAvailableTenants(tenants.filter(t => t.status === "vacant" || t.id === rental.tenantId));
+    setAvailableProperties(properties.filter(p => p.isActive || p.id === rental.propertyId)); // Use isActive for availability check base
+    setAvailableTenants(tenants.filter(t => t.isActive || t.id === rental.tenantId)); // Use isActive
 
     setEditPropertyId(rental.propertyId);
     setEditTenantId(rental.tenantId);

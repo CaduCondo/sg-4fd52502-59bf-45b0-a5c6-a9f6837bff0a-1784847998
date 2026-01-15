@@ -192,9 +192,9 @@ export default function FinancialPage() {
           location: property.local,
           complement: property.complement || "",
           tenantName: tenant.name,
-          year: payment.year,
+          year: parseInt(payment.year), // Ensure number
           month: monthNum,
-          status: payment.status === "paid" ? "Pago" : payment.status === "partial" ? "Parcial" : "Não Pago",
+          status: payment.isPaid ? "Pago" : (payment.paidAmount && payment.paidAmount > 0) ? "Parcial" : "Não Pago",
           paymentCode: payment.paymentCode || "",
           dueDate: dueDate.toISOString().split('T')[0],
           expectedAmount,
