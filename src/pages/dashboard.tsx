@@ -1,294 +1,369 @@
-"use client";
-
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
-import Link from "next/link";
 import { Layout } from "@/components/Layout";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { getCurrentUser } from "@/lib/auth";
-import { propertyService, tenantService, rentalService, paymentService, configService } from "@/services";
-import { DashboardStats, Property, Tenant, Rental, Payment, Config } from "@/types";
-import { Building2, Users, DollarSign, TrendingUp, AlertCircle, CheckCircle2, Home, Clock } from "lucide-react";
 import { SEO } from "@/components/SEO";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Home, Users, DollarSign, AlertCircle, Calendar, TrendingUp, Building2 } from "lucide-react";
+import { propertyService } from "@/services/propertyService";
+import { tenantService } from "@/services/tenantService";
+import { rentalService } from "@/services/rentalService";
+import { paymentService } from "@/services/paymentService";
+import { configService } from "@/services/configService";
 import { formatCurrency } from "@/lib/masks";
-import { StaggerContainer, StaggerItem } from "@/components/animations/ScrollReveal";
-import { Badge } from "@/components/ui/badge";
+import type { Property, Tenant, Rental, Payment } from "@/types";
+import { FloatingCard } from "@/components/animations/FloatingCard";
 
-export default function Dashboard() {
+export default function DashboardPage() {
   const router = useRouter();
-  const [stats, setStats] = useState<DashboardStats>({
-    totalProperties: 0,
-    rentedProperties: 0,
-    availableProperties: 0,
-    totalTenants: 0,
-    paidThisMonth: 0,
-    unpaidThisMonth: 0,
-    totalRevenue: 0,
-    adminFee: 0,
-    dueThisMonth: 0,
-  });
-  const [mounted, setMounted] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [rentals, setRentals] = useState<Rental[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [adminFeePercentage, setAdminFeePercentage] = useState(6);
+  const [userName, setUserName] = useState("Administrador");
+  
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
   useEffect(() => {
-    const user = getCurrentUser();
-    if (!user) {
-      router.push("/login");
-      return;
-    }
-    setMounted(true);
     loadData();
-  }, [router]);
+    loadConfig();
+    loadUserName();
+  }, []);
+
+  useEffect(() => {
+    if (properties.length > 0 || tenants.length > 0 || rentals.length > 0 || payments.length > 0) {
+      loadData();
+    }
+  }, [selectedMonth, selectedYear]);
 
   const loadData = async () => {
     try {
-      setLoading(true);
-      const [properties, tenants, rentals, payments, config] = await Promise.all([
+      const [propertiesData, tenantsData, rentalsData, paymentsData] = await Promise.all([
         propertyService.getAll(),
         tenantService.getAll(),
         rentalService.getAll(),
         paymentService.getAll(),
-        configService.get()
       ]);
 
-      calculateStats(properties, tenants, rentals, payments, config);
+      setProperties(propertiesData);
+      setTenants(tenantsData);
+      setRentals(rentalsData);
+      setPayments(paymentsData);
     } catch (error) {
       console.error("Error loading dashboard data:", error);
-    } finally {
-      setLoading(false);
     }
   };
 
-  const calculateStats = (
-    properties: Property[],
-    tenants: Tenant[],
-    rentals: Rental[],
-    payments: Payment[],
-    config: Config
-  ) => {
-    const currentDate = new Date();
-    const currentMonth = currentDate.getMonth() + 1;
-    const currentYear = currentDate.getFullYear();
+  const loadConfig = async () => {
+    try {
+      const config = await configService.get();
+      if (config) {
+        setAdminFeePercentage(config.adminFeePercentage);
+      }
+    } catch (error) {
+      console.error("Error loading config:", error);
+    }
+  };
 
-    // Filtrar pagamentos do mês corrente
-    const currentMonthPayments = payments.filter(
-      (p) =>
-        p.referenceMonth === currentMonth &&
-        p.referenceYear === currentYear
-    );
-
-    // Total de Imóveis Cadastrados (todos, independente do status)
-    const totalProperties = properties.length;
-
-    // Imóveis Ocupados (status = "occupied")
-    const rentedProperties = properties.filter(p => p.status === "occupied").length;
-
-    // Imóveis Vagos (status = "available")
-    const availableProperties = properties.filter(p => p.status === "available").length;
-
-    // Total de Inquilinos Ativos (status = 'active')
-    const totalTenants = tenants.filter(t => t.status === "active").length;
-
-    // Pagamentos Recebidos (status = "paid") - contagem de registros
-    const paidThisMonth = currentMonthPayments.filter(p => p.status === "paid").length;
-
-    // Pagamentos Pendentes (status = "pending" ou "partial") - contagem de registros
-    const unpaidThisMonth = currentMonthPayments.filter(
-      p => p.status === "pending" || p.status === "partial"
-    ).length;
-
-    // Recebidos do Mês - Soma dos valores pagos (status = "paid")
-    const totalRevenue = currentMonthPayments
-      .filter(p => p.status === "paid")
-      .reduce((sum, p) => sum + (p.paidAmount || 0), 0);
-
-    // Taxa de Administração - % sobre pagos (exceto local "Outros")
-    let adminFee = 0;
-    for (const payment of currentMonthPayments.filter(p => p.status === "paid")) {
-      const rental = rentals.find(r => r.id === payment.rentalId);
-      if (rental) {
-        const property = properties.find(p => p.id === rental.propertyId);
-        if (property && property.location.toLowerCase() !== "outros") {
-          const fee = (payment.paidAmount || 0) * (config.adminFeePercentage / 100);
-          adminFee += fee;
+  const loadUserName = () => {
+    if (typeof window !== "undefined") {
+      const storedUser = localStorage.getItem("user");
+      if (storedUser) {
+        try {
+          const user = JSON.parse(storedUser);
+          setUserName(user.name || "Administrador");
+        } catch (error) {
+          console.error("Error parsing user data:", error);
         }
       }
     }
+  };
 
-    // Prestes a Vencer - Locações do mês corrente ainda não quitadas
-    const dueThisMonth = currentMonthPayments.filter(
-      p => p.status !== "paid"
-    ).length;
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Bom dia";
+    if (hour < 18) return "Boa tarde";
+    return "Boa noite";
+  };
 
-    setStats({
-      totalProperties,
-      rentedProperties,
-      availableProperties,
-      totalTenants,
-      paidThisMonth,
-      unpaidThisMonth,
-      totalRevenue,
-      adminFee,
-      dueThisMonth,
+  const getCurrentDate = () => {
+    return new Date().toLocaleDateString("pt-BR", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     });
   };
 
-  if (!mounted || loading) {
-    return null;
-  }
+  const activeRentals = rentals.filter((r) => r.isActive);
 
-  const statCards = [
-    {
-      title: "Total de Imóveis",
-      value: stats.totalProperties,
-      icon: Building2,
-      color: "text-blue-600",
-      bgColor: "bg-blue-50",
-      link: "/properties",
-      description: "Imóveis cadastrados",
-    },
-    {
-      title: "Imóveis Ocupados",
-      value: stats.rentedProperties,
-      icon: Home,
-      color: "text-purple-600",
-      bgColor: "bg-purple-50",
-      link: "/properties?status=occupied",
-      description: "Imóveis alugados",
-    },
-    {
-      title: "Imóveis Vagos",
-      value: stats.availableProperties,
-      icon: Building2,
-      color: "text-emerald-600",
-      bgColor: "bg-emerald-50",
-      link: "/properties?status=available",
-      description: "Disponíveis para locação",
-    },
-    {
-      title: "Total de Inquilinos",
-      value: stats.totalTenants,
-      icon: Users,
-      color: "text-indigo-600",
-      bgColor: "bg-indigo-50",
-      link: "/tenants",
-      description: "Inquilinos ativos",
-    },
-    {
-      title: "Pagamentos Recebidos",
-      value: stats.paidThisMonth,
-      icon: CheckCircle2,
-      color: "text-green-600",
-      bgColor: "bg-green-50",
-      link: "/payments?status=paid",
-      description: "Locações pagas este mês",
-    },
-    {
-      title: "Pagamentos Pendentes",
-      value: stats.unpaidThisMonth,
-      icon: AlertCircle,
-      color: "text-amber-600",
-      bgColor: "bg-amber-50",
-      link: "/payments?status=pending",
-      description: "Aguardando pagamento",
-    },
-    {
-      title: "Recebidos do Mês",
-      value: formatCurrency(stats.totalRevenue),
-      icon: DollarSign,
-      color: "text-emerald-600",
-      bgColor: "bg-emerald-50",
-      link: "/financial",
-      description: "Total recebido",
-      isValue: true,
-    },
-    {
-      title: "Taxa Administração",
-      value: formatCurrency(stats.adminFee),
-      icon: TrendingUp,
-      color: "text-rose-600",
-      bgColor: "bg-rose-50",
-      link: "/financial",
-      description: "Comissão do mês",
-      isValue: true,
-    },
+  const filteredPayments = payments.filter(
+    (p) => p.referenceMonth === selectedMonth && p.referenceYear === selectedYear
+  );
+
+  const paidPayments = filteredPayments.filter((p) => p.status === "paid");
+  const pendingPayments = filteredPayments.filter(
+    (p) => p.status === "pending" || p.status === "partial"
+  );
+
+  const monthlyRevenue = paidPayments.reduce((sum, p) => sum + (p.paidAmount || 0), 0);
+  const adminFee = monthlyRevenue * (adminFeePercentage / 100);
+  const netRevenue = monthlyRevenue - adminFee;
+
+  const dueSoonPayments = filteredPayments.filter((p) => {
+    if (p.status === "paid") return false;
+    
+    const rental = rentals.find((r) => r.id === p.rentalId);
+    if (!rental) return false;
+
+    const today = new Date();
+    const dueDate = new Date(selectedYear, selectedMonth - 1, rental.paymentDay);
+    
+    return p.status !== "paid" && dueDate.getMonth() === today.getMonth() && dueDate.getFullYear() === today.getFullYear();
+  });
+
+  const stats = {
+    totalProperties: properties.length,
+    occupiedProperties: properties.filter((p) => p.status === "occupied").length,
+    availableProperties: properties.filter((p) => p.status === "available").length,
+    totalTenants: tenants.filter((t) => t.status === "active" || t.status === "rented").length,
+    pendingPayments: pendingPayments.length,
+    dueSoon: dueSoonPayments.length,
+    monthlyRevenue: monthlyRevenue,
+    adminFee: adminFee,
+    netRevenue: netRevenue,
+  };
+
+  const monthNames = [
+    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
   ];
+
+  const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i);
 
   return (
     <>
-      <SEO 
-        title="Dashboard - ImóvelControl"
-        description="Painel de controle e métricas do sistema"
+      <SEO
+        title="Dashboard - Gerenciador de Locações"
+        description="Painel de controle do sistema de gerenciamento de locações"
       />
-      
       <Layout>
         <div className="space-y-6">
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900">Dashboard</h1>
-            <p className="text-slate-600 mt-2">Visão geral do sistema de gerenciamento</p>
+          {/* Welcome Section */}
+          <FloatingCard delay={0}>
+            <Card className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white border-none">
+              <CardContent className="pt-6">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                  <div>
+                    <h1 className="text-3xl font-bold mb-2">
+                      {getGreeting()}, {userName}! 👋
+                    </h1>
+                    <p className="text-emerald-50 capitalize">
+                      {getCurrentDate()}
+                    </p>
+                  </div>
+                  
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 text-center">
+                      <p className="text-xs text-emerald-100 mb-1">Receita do Mês</p>
+                      <p className="text-lg font-bold">{formatCurrency(stats.monthlyRevenue)}</p>
+                    </div>
+                    <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 text-center">
+                      <p className="text-xs text-emerald-100 mb-1">Taxa Admin</p>
+                      <p className="text-lg font-bold">{formatCurrency(stats.adminFee)}</p>
+                    </div>
+                    <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 text-center">
+                      <p className="text-xs text-emerald-100 mb-1">Líquido</p>
+                      <p className="text-lg font-bold">{formatCurrency(stats.netRevenue)}</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </FloatingCard>
+
+          {/* Month/Year Filter */}
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+            <h2 className="text-2xl font-bold">Visão Geral</h2>
+            <div className="flex gap-3">
+              <Select
+                value={selectedMonth.toString()}
+                onValueChange={(value) => setSelectedMonth(parseInt(value))}
+              >
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {monthNames.map((month, index) => (
+                    <SelectItem key={index + 1} value={(index + 1).toString()}>
+                      {month}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={selectedYear.toString()}
+                onValueChange={(value) => setSelectedYear(parseInt(value))}
+              >
+                <SelectTrigger className="w-[100px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {years.map((year) => (
+                    <SelectItem key={year} value={year.toString()}>
+                      {year}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
-          <StaggerContainer staggerDelay={0.1}>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {statCards.map((card, index) => (
-                <StaggerItem key={index}>
-                  <Link href={card.link}>
-                    <Card className="hover:shadow-lg transition-all duration-200 cursor-pointer group">
-                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium text-slate-600">
-                          {card.title}
-                        </CardTitle>
-                        <div className={`p-2 rounded-lg ${card.bgColor} group-hover:scale-110 transition-transform`}>
-                          <card.icon className={`h-5 w-5 ${card.color}`} />
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="text-2xl font-bold text-slate-900">
-                          {card.isValue ? card.value : card.value}
-                        </div>
-                        <p className="text-xs text-slate-500 mt-1">{card.description}</p>
-                      </CardContent>
-                    </Card>
-                  </Link>
-                </StaggerItem>
-              ))}
-            </div>
-          </StaggerContainer>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <FloatingCard delay={0.1}>
+              <Card
+                className="cursor-pointer hover:shadow-lg transition-shadow border-l-4 border-l-blue-500"
+                onClick={() => router.push("/properties")}
+              >
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total de Imóveis</CardTitle>
+                  <Building2 className="h-4 w-4 text-blue-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats.totalProperties}</div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {stats.occupiedProperties} alugados, {stats.availableProperties} disponíveis
+                  </p>
+                </CardContent>
+              </Card>
+            </FloatingCard>
 
-          {/* Prestes a Vencer Card */}
-          {stats.dueThisMonth > 0 && (
-            <StaggerContainer staggerDelay={0.1}>
-              <StaggerItem>
-                <Link href="/payments?status=pending">
-                  <Card className="hover:shadow-lg transition-all duration-200 cursor-pointer border-amber-200 bg-amber-50/50">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <div>
-                        <CardTitle className="text-lg font-semibold text-amber-900">
-                          Prestes a Vencer
-                        </CardTitle>
-                        <CardDescription className="text-amber-700">
-                          Locações a vencer no mês corrente que ainda não foram quitadas
-                        </CardDescription>
-                      </div>
-                      <div className="p-3 rounded-lg bg-amber-100">
-                        <Clock className="h-6 w-6 text-amber-600" />
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex items-center justify-between">
-                        <div className="text-3xl font-bold text-amber-900">
-                          {stats.dueThisMonth}
-                        </div>
-                        <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300">
-                          Pendentes
-                        </Badge>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              </StaggerItem>
-            </StaggerContainer>
-          )}
+            <FloatingCard delay={0.2}>
+              <Card
+                className="cursor-pointer hover:shadow-lg transition-shadow border-l-4 border-l-emerald-500"
+                onClick={() => router.push("/properties?filter=occupied")}
+              >
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Imóveis Alugados</CardTitle>
+                  <Home className="h-4 w-4 text-emerald-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats.occupiedProperties}</div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {((stats.occupiedProperties / stats.totalProperties) * 100 || 0).toFixed(0)}% de
+                    ocupação
+                  </p>
+                </CardContent>
+              </Card>
+            </FloatingCard>
+
+            <FloatingCard delay={0.3}>
+              <Card
+                className="cursor-pointer hover:shadow-lg transition-shadow border-l-4 border-l-amber-500"
+                onClick={() => router.push("/properties?filter=available")}
+              >
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Imóveis Disponíveis</CardTitle>
+                  <Home className="h-4 w-4 text-amber-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats.availableProperties}</div>
+                  <p className="text-xs text-muted-foreground mt-1">Prontos para locação</p>
+                </CardContent>
+              </Card>
+            </FloatingCard>
+
+            <FloatingCard delay={0.4}>
+              <Card
+                className="cursor-pointer hover:shadow-lg transition-shadow border-l-4 border-l-indigo-500"
+                onClick={() => router.push("/tenants")}
+              >
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total de Inquilinos</CardTitle>
+                  <Users className="h-4 w-4 text-indigo-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats.totalTenants}</div>
+                  <p className="text-xs text-muted-foreground mt-1">Ativos e locadores</p>
+                </CardContent>
+              </Card>
+            </FloatingCard>
+
+            <FloatingCard delay={0.5}>
+              <Card
+                className="cursor-pointer hover:shadow-lg transition-shadow border-l-4 border-l-red-500"
+                onClick={() => router.push("/payments")}
+              >
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Pagamentos Pendentes</CardTitle>
+                  <AlertCircle className="h-4 w-4 text-red-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats.pendingPayments}</div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Aguardando pagamento em {monthNames[selectedMonth - 1]}
+                  </p>
+                </CardContent>
+              </Card>
+            </FloatingCard>
+
+            <FloatingCard delay={0.6}>
+              <Card
+                className="cursor-pointer hover:shadow-lg transition-shadow border-l-4 border-l-orange-500"
+                onClick={() => router.push("/payments")}
+              >
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Prestes a Vencer</CardTitle>
+                  <Calendar className="h-4 w-4 text-orange-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats.dueSoon}</div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Não quitados este mês
+                  </p>
+                </CardContent>
+              </Card>
+            </FloatingCard>
+
+            <FloatingCard delay={0.7}>
+              <Card
+                className="cursor-pointer hover:shadow-lg transition-shadow border-l-4 border-l-green-500"
+                onClick={() => router.push("/financial")}
+              >
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Receita do Mês</CardTitle>
+                  <DollarSign className="h-4 w-4 text-green-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{formatCurrency(stats.monthlyRevenue)}</div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {monthNames[selectedMonth - 1]} de {selectedYear}
+                  </p>
+                </CardContent>
+              </Card>
+            </FloatingCard>
+
+            <FloatingCard delay={0.8}>
+              <Card
+                className="cursor-pointer hover:shadow-lg transition-shadow border-l-4 border-l-purple-500"
+                onClick={() => router.push("/settings")}
+              >
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Taxa de Administração</CardTitle>
+                  <TrendingUp className="h-4 w-4 text-purple-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{formatCurrency(stats.adminFee)}</div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {adminFeePercentage}% da receita
+                  </p>
+                </CardContent>
+              </Card>
+            </FloatingCard>
+          </div>
         </div>
       </Layout>
     </>
