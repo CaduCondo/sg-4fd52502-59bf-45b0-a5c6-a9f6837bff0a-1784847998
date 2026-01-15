@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Building2, Plus, Search, Edit, Eye, Home, MapPin } from "lucide-react";
+import { Building2, Plus, Search, Trash2, LayoutGrid, List } from "lucide-react";
 import { Property } from "@/types";
 import { propertyService } from "@/services";
 import { configService } from "@/services/configService";
@@ -26,6 +26,7 @@ export default function PropertiesPage() {
   const [filteredProperties, setFilteredProperties] = useState<Property[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "available" | "occupied">("all");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isViewMode, setIsViewMode] = useState(false);
   const [currentProperty, setCurrentProperty] = useState<Property | null>(null);
@@ -112,7 +113,7 @@ export default function PropertiesPage() {
         complement: property.complement,
         city: property.city || "",
         state: property.state || "",
-        rentValue: property.rentValue.toString(),
+        rentValue: applyRealMask(property.rentValue.toString()),
         description: property.description || "",
       });
       setIsViewMode(!!viewMode);
@@ -175,7 +176,7 @@ export default function PropertiesPage() {
         monthlyRent: parseFloat(removeMask(formData.rentValue)),
         rentValue: parseFloat(removeMask(formData.rentValue)),
         type: "residential",
-        status: "available",
+        status: currentProperty?.status || "available",
         description: formData.description || undefined,
       };
 
@@ -205,7 +206,10 @@ export default function PropertiesPage() {
     }
   };
 
-  const handleDelete = async (property: Property) => {
+  const handleDelete = async (e: React.MouseEvent, property: Property) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
     if (!confirm("Tem certeza que deseja excluir este imóvel?")) return;
 
     try {
@@ -223,6 +227,10 @@ export default function PropertiesPage() {
         variant: "destructive",
       });
     }
+  };
+
+  const handleCardClick = (propertyId: string) => {
+    router.push(`/properties/${propertyId}`);
   };
 
   const getStatusColor = (status: string) => {
@@ -247,6 +255,10 @@ export default function PropertiesPage() {
     }
   };
 
+  const formatCurrency = (value: number) => {
+    return value.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
   return (
     <>
       <Head>
@@ -254,7 +266,6 @@ export default function PropertiesPage() {
       </Head>
       <Layout>
         <div className="space-y-8">
-          {/* Header */}
           <ScrollReveal>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
@@ -272,7 +283,6 @@ export default function PropertiesPage() {
             </div>
           </ScrollReveal>
 
-          {/* Filters */}
           <ScrollReveal delay={0.1}>
             <Card>
               <CardContent className="pt-6">
@@ -298,12 +308,27 @@ export default function PropertiesPage() {
                       <SelectItem value="occupied">Alugado</SelectItem>
                     </SelectContent>
                   </Select>
+                  <div className="flex gap-2">
+                    <Button
+                      variant={viewMode === "grid" ? "default" : "outline"}
+                      size="icon"
+                      onClick={() => setViewMode("grid")}
+                    >
+                      <LayoutGrid className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant={viewMode === "list" ? "default" : "outline"}
+                      size="icon"
+                      onClick={() => setViewMode("list")}
+                    >
+                      <List className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
           </ScrollReveal>
 
-          {/* Properties Grid */}
           {loading ? (
             <div className="text-center py-12">
               <p className="text-muted-foreground">Carregando imóveis...</p>
@@ -328,62 +353,86 @@ export default function PropertiesPage() {
                 </CardContent>
               </Card>
             </ScrollReveal>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          ) : viewMode === "grid" ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {filteredProperties.map((property, index) => (
-                <FloatingCard key={property.id} delay={index * 0.1}>
-                  <Card className="h-full hover:shadow-lg transition-shadow cursor-pointer group">
-                    <CardHeader>
+                <FloatingCard key={property.id} delay={index * 0.05}>
+                  <Card 
+                    className="h-full hover:shadow-lg transition-all cursor-pointer group relative"
+                    onClick={() => handleCardClick(property.id)}
+                  >
+                    <CardHeader className="pb-3">
                       <div className="flex justify-between items-start mb-2">
-                        <Building2 className="h-8 w-8 text-emerald-600" />
+                        <Building2 className="h-6 w-6 text-emerald-600" />
                         <Badge className={getStatusColor(property.status)}>
                           {getStatusLabel(property.status)}
                         </Badge>
                       </div>
-                      <CardTitle className="text-xl group-hover:text-emerald-600 transition-colors">
+                      <CardTitle className="text-base group-hover:text-emerald-600 transition-colors">
                         {property.location}
                       </CardTitle>
-                      <p className="text-sm text-muted-foreground font-medium">
+                      <p className="text-sm text-muted-foreground">
                         {property.complement}
                       </p>
                     </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
-                        {property.address && (
-                          <div className="flex items-start gap-2">
-                            <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                            <p className="text-sm text-muted-foreground">
-                              {property.address}
-                              {property.number && `, ${property.number}`}
-                              {property.city && ` - ${property.city}`}
-                              {property.state && `/${property.state}`}
-                            </p>
-                          </div>
-                        )}
-                        <div className="pt-3 border-t">
-                          <p className="text-2xl font-bold text-emerald-600">
-                            R$ {property.rentValue.toFixed(2).replace(".", ",")}
+                    <CardContent className="pt-0">
+                      <div className="flex items-baseline justify-between">
+                        <div>
+                          <p className="text-xl font-bold text-emerald-600">
+                            R$ {formatCurrency(property.rentValue)}
                           </p>
-                          <p className="text-xs text-muted-foreground">Valor do aluguel</p>
+                          <p className="text-xs text-muted-foreground">por mês</p>
                         </div>
-                        <div className="flex gap-2 pt-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50"
+                          onClick={(e) => handleDelete(e, property)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </FloatingCard>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {filteredProperties.map((property, index) => (
+                <FloatingCard key={property.id} delay={index * 0.05}>
+                  <Card 
+                    className="hover:shadow-md transition-all cursor-pointer group"
+                    onClick={() => handleCardClick(property.id)}
+                  >
+                    <CardContent className="py-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4 flex-1">
+                          <Building2 className="h-8 w-8 text-emerald-600 flex-shrink-0" />
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-lg group-hover:text-emerald-600 transition-colors">
+                              {property.location}
+                            </h3>
+                            <p className="text-sm text-muted-foreground">{property.complement}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <Badge className={getStatusColor(property.status)}>
+                            {getStatusLabel(property.status)}
+                          </Badge>
+                          <div className="text-right">
+                            <p className="text-xl font-bold text-emerald-600">
+                              R$ {formatCurrency(property.rentValue)}
+                            </p>
+                            <p className="text-xs text-muted-foreground">por mês</p>
+                          </div>
                           <Button
-                            variant="outline"
-                            size="sm"
-                            className="flex-1"
-                            onClick={() => handleOpenDialog(property, true)}
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50"
+                            onClick={(e) => handleDelete(e, property)}
                           >
-                            <Eye className="h-4 w-4 mr-1" />
-                            Ver
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="flex-1"
-                            onClick={() => handleOpenDialog(property, false)}
-                          >
-                            <Edit className="h-4 w-4 mr-1" />
-                            Editar
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       </div>
@@ -395,7 +444,6 @@ export default function PropertiesPage() {
           )}
         </div>
 
-        {/* Dialog */}
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
@@ -541,32 +589,12 @@ export default function PropertiesPage() {
                     <Button type="button" variant="outline" onClick={handleCloseDialog}>
                       Fechar
                     </Button>
-                    <Button
-                      type="button"
-                      onClick={() => setIsViewMode(false)}
-                      className="bg-emerald-600 hover:bg-emerald-700"
-                    >
-                      <Edit className="h-4 w-4 mr-2" />
-                      Editar
-                    </Button>
                   </>
                 ) : (
                   <>
                     <Button type="button" variant="outline" onClick={handleCloseDialog}>
                       Cancelar
                     </Button>
-                    {currentProperty && (
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        onClick={() => {
-                          handleDelete(currentProperty);
-                          handleCloseDialog();
-                        }}
-                      >
-                        Excluir
-                      </Button>
-                    )}
                     <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">
                       {currentProperty ? "Salvar Alterações" : "Cadastrar Imóvel"}
                     </Button>

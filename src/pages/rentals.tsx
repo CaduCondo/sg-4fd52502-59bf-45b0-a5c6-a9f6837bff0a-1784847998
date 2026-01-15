@@ -120,7 +120,7 @@ export default function RentalsPage() {
     const availProps = properties.filter(p => p.status === "available");
     setAvailableProperties(availProps);
     
-    // Filter available tenants (status = "active")
+    // Filter available tenants (status = "active" only)
     const availTenants = tenants.filter(t => t.status === "active");
     setAvailableTenants(availTenants);
   }, [rentals, properties, tenants]);
