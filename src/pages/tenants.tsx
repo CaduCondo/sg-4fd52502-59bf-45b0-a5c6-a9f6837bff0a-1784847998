@@ -108,7 +108,7 @@ export default function TenantsPage() {
       }
 
       if (formData.id) {
-        await tenantService.update(formData.id, formData as Tenant);
+        await tenantService.update(formData as Tenant);
       } else {
         await tenantService.create(formData as Omit<Tenant, "id" | "createdAt">);
       }

@@ -47,6 +47,7 @@ export default function Properties() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [viewMode, setViewMode] = useState(false);
   const [formData, setFormData] = useState({
     location: "",
     cep: "",
@@ -109,6 +110,7 @@ export default function Properties() {
     });
     setSelectedProperty(null);
     setIsEditing(false);
+    setViewMode(false);
     setIsDialogOpen(true);
   };
 
@@ -126,6 +128,7 @@ export default function Properties() {
       description: property.description || "",
     });
     setIsEditing(false);
+    setViewMode(true);
     setIsDialogOpen(true);
   };
 
@@ -196,6 +199,8 @@ export default function Properties() {
       }
 
       setIsDialogOpen(false);
+      setViewMode(false);
+      setIsEditing(false);
       loadData();
     } catch (error) {
       console.error("Error saving property:", error);
@@ -207,7 +212,8 @@ export default function Properties() {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: string, event: React.MouseEvent) => {
+    event.stopPropagation();
     if (!confirm("Tem certeza que deseja excluir este imóvel?")) return;
 
     try {
@@ -233,6 +239,8 @@ export default function Properties() {
     }
     return <Badge variant="secondary">Ocupado</Badge>;
   };
+
+  const isFormDisabled = viewMode && !isEditing;
 
   if (!isAuthenticated) {
     return null;
@@ -278,7 +286,7 @@ export default function Properties() {
               {properties.map((property) => (
                 <Card
                   key={property.id}
-                  className="hover:shadow-lg transition-shadow cursor-pointer relative"
+                  className="hover:shadow-lg transition-shadow cursor-pointer relative pb-16"
                 >
                   <div onClick={() => handleCardClick(property)}>
                     <CardHeader>
@@ -319,18 +327,13 @@ export default function Properties() {
                       </div>
                     </CardContent>
                   </div>
-                  <CardFooter className="flex justify-end pt-0">
+                  <CardFooter className="absolute bottom-0 right-0 p-4">
                     <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDelete(property.id);
-                      }}
+                      variant="destructive"
+                      size="icon"
+                      onClick={(e) => handleDelete(property.id, e)}
                     >
-                      <Trash2 className="h-4 w-4 mr-1" />
-                      Excluir
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </CardFooter>
                 </Card>
@@ -343,14 +346,14 @@ export default function Properties() {
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
-                {selectedProperty
+                {viewMode
                   ? isEditing
                     ? "Editar Imóvel"
                     : "Detalhes do Imóvel"
                   : "Novo Imóvel"}
               </DialogTitle>
               <DialogDescription>
-                {selectedProperty
+                {viewMode
                   ? isEditing
                     ? "Atualize as informações do imóvel"
                     : "Visualize as informações do imóvel"
@@ -366,7 +369,7 @@ export default function Properties() {
                     onValueChange={(value) =>
                       setFormData({ ...formData, location: value })
                     }
-                    disabled={selectedProperty && !isEditing}
+                    disabled={isFormDisabled}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione o local" />
@@ -393,7 +396,7 @@ export default function Properties() {
                         cep: applyCepMask(e.target.value),
                       })
                     }
-                    disabled={selectedProperty && !isEditing}
+                    disabled={isFormDisabled}
                   />
                 </div>
               </div>
@@ -408,7 +411,7 @@ export default function Properties() {
                     onChange={(e) =>
                       setFormData({ ...formData, address: e.target.value })
                     }
-                    disabled={selectedProperty && !isEditing}
+                    disabled={isFormDisabled}
                   />
                 </div>
 
@@ -421,7 +424,7 @@ export default function Properties() {
                     onChange={(e) =>
                       setFormData({ ...formData, number: e.target.value })
                     }
-                    disabled={selectedProperty && !isEditing}
+                    disabled={isFormDisabled}
                   />
                 </div>
               </div>
@@ -435,7 +438,7 @@ export default function Properties() {
                   onChange={(e) =>
                     setFormData({ ...formData, complement: e.target.value })
                   }
-                  disabled={selectedProperty && !isEditing}
+                  disabled={isFormDisabled}
                 />
               </div>
 
@@ -449,7 +452,7 @@ export default function Properties() {
                     onChange={(e) =>
                       setFormData({ ...formData, city: e.target.value })
                     }
-                    disabled={selectedProperty && !isEditing}
+                    disabled={isFormDisabled}
                   />
                 </div>
 
@@ -466,7 +469,7 @@ export default function Properties() {
                         state: e.target.value.toUpperCase(),
                       })
                     }
-                    disabled={selectedProperty && !isEditing}
+                    disabled={isFormDisabled}
                   />
                 </div>
               </div>
@@ -483,7 +486,7 @@ export default function Properties() {
                       monthlyRent: formatCurrency(e.target.value),
                     })
                   }
-                  disabled={selectedProperty && !isEditing}
+                  disabled={isFormDisabled}
                 />
               </div>
 
@@ -497,12 +500,12 @@ export default function Properties() {
                   onChange={(e) =>
                     setFormData({ ...formData, description: e.target.value })
                   }
-                  disabled={selectedProperty && !isEditing}
+                  disabled={isFormDisabled}
                 />
               </div>
 
               <DialogFooter>
-                {selectedProperty ? (
+                {viewMode ? (
                   isEditing ? (
                     <>
                       <Button
@@ -510,6 +513,7 @@ export default function Properties() {
                         variant="outline"
                         onClick={handleCancelEdit}
                       >
+                        <X className="mr-2 h-4 w-4" />
                         Cancelar
                       </Button>
                       <Button type="submit">Salvar</Button>
@@ -521,6 +525,7 @@ export default function Properties() {
                         variant="outline"
                         onClick={() => setIsDialogOpen(false)}
                       >
+                        <X className="mr-2 h-4 w-4" />
                         Fechar
                       </Button>
                       <Button type="button" onClick={handleEdit}>
