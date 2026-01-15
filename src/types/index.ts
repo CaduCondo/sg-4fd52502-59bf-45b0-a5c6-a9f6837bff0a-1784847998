@@ -37,8 +37,10 @@ export interface Rental {
   propertyId: string;
   tenantId: string;
   startDate: string;
+  endDate: string;
   monthlyRent: number;
-  status: "active" | "terminated";
+  paymentDay: number;
+  status: "active" | "ended" | "expired";
   createdAt: string;
 }
 
