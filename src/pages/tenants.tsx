@@ -31,6 +31,10 @@ export default function TenantsPage() {
   const [searchName, setSearchName] = useState("");
   const [searchCpf, setSearchCpf] = useState("");
   const [searchEmail, setSearchEmail] = useState("");
+  const [searchPhone, setSearchPhone] = useState("");
+  const [filterStatus, setFilterStatus] = useState<"all" | "active" | "vacant">("all");
+  const [sortBy, setSortBy] = useState<"name" | "cpf" | "createdAt">("name");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 
   // Form states
   const [formData, setFormData] = useState({
@@ -48,7 +52,7 @@ export default function TenantsPage() {
 
   useEffect(() => {
     filterTenants();
-  }, [searchName, searchCpf, searchEmail, tenants]);
+  }, [searchName, searchCpf, searchEmail, searchPhone, filterStatus, sortBy, sortOrder, tenants]);
 
   const loadTenants = () => {
     const data = tenantStorage.getAll();
@@ -67,6 +71,29 @@ export default function TenantsPage() {
     if (searchEmail) {
       filtered = filtered.filter(t => t.email.toLowerCase().includes(searchEmail.toLowerCase()));
     }
+    if (searchPhone) {
+      filtered = filtered.filter(t => t.phone.includes(searchPhone));
+    }
+    if (filterStatus !== "all") {
+      filtered = filtered.filter(t => t.status === filterStatus);
+    }
+
+    // Sorting
+    filtered.sort((a, b) => {
+      let aVal: any = a[sortBy];
+      let bVal: any = b[sortBy];
+
+      if (sortBy === "createdAt") {
+        aVal = new Date(aVal).getTime();
+        bVal = new Date(bVal).getTime();
+      }
+
+      if (sortOrder === "asc") {
+        return aVal > bVal ? 1 : -1;
+      } else {
+        return aVal < bVal ? 1 : -1;
+      }
+    });
 
     setFilteredTenants(filtered);
   };
@@ -208,7 +235,7 @@ export default function TenantsPage() {
         {/* Filters */}
         <Card>
           <CardContent className="pt-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="space-y-2">
                 <Label>Nome</Label>
                 <div className="relative">
@@ -238,6 +265,81 @@ export default function TenantsPage() {
                   onChange={(e) => setSearchEmail(e.target.value)}
                 />
               </div>
+              <div className="space-y-2">
+                <Label>Telefone</Label>
+                <Input 
+                  placeholder="Filtrar por telefone..." 
+                  value={searchPhone}
+                  onChange={(e) => setSearchPhone(maskPhone(e.target.value))}
+                  maxLength={15}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+              <div className="space-y-2">
+                <Label htmlFor="filterStatus">Status</Label>
+                <select
+                  id="filterStatus"
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value as any)}
+                  className="w-full h-10 px-3 rounded-md border border-slate-300 bg-white text-slate-900"
+                >
+                  <option value="all">Todos os Status</option>
+                  <option value="active">Ativos</option>
+                  <option value="vacant">Vagos</option>
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="sortBy">Ordenar Por</Label>
+                <select
+                  id="sortBy"
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as any)}
+                  className="w-full h-10 px-3 rounded-md border border-slate-300 bg-white text-slate-900"
+                >
+                  <option value="name">Nome</option>
+                  <option value="cpf">CPF</option>
+                  <option value="createdAt">Data de Cadastro</option>
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="sortOrder">Ordem</Label>
+                <select
+                  id="sortOrder"
+                  value={sortOrder}
+                  onChange={(e) => setSortOrder(e.target.value as "asc" | "desc")}
+                  className="w-full h-10 px-3 rounded-md border border-slate-300 bg-white text-slate-900"
+                >
+                  <option value="asc">Crescente</option>
+                  <option value="desc">Decrescente</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="mt-4 flex items-center justify-between">
+              <Badge variant="outline" className="text-sm">
+                {filteredTenants.length} {filteredTenants.length === 1 ? "inquilino encontrado" : "inquilinos encontrados"}
+              </Badge>
+              {(searchName || searchCpf || searchEmail || searchPhone || filterStatus !== "all") && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setSearchName("");
+                    setSearchCpf("");
+                    setSearchEmail("");
+                    setSearchPhone("");
+                    setFilterStatus("all");
+                    setSortBy("name");
+                    setSortOrder("asc");
+                  }}
+                >
+                  Limpar Filtros
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>

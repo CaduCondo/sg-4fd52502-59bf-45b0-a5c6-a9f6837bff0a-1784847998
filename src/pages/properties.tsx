@@ -41,6 +41,10 @@ export default function Properties() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<"all" | "available" | "occupied">("all");
   const [filterLocal, setFilterLocal] = useState("");
+  const [minPrice, setMinPrice] = useState("");
+  const [maxPrice, setMaxPrice] = useState("");
+  const [sortBy, setSortBy] = useState<"address" | "monthlyRent" | "local" | "createdAt">("createdAt");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProperty, setEditingProperty] = useState<Property | null>(null);
   const [loadingCEP, setLoadingCEP] = useState(false);
@@ -84,8 +88,39 @@ export default function Properties() {
       filtered = filtered.filter(p => p.local === filterLocal);
     }
 
+    // Price range filter
+    if (minPrice) {
+      const min = parseCurrency(minPrice);
+      filtered = filtered.filter(p => p.monthlyRent >= min);
+    }
+
+    if (maxPrice) {
+      const max = parseCurrency(maxPrice);
+      filtered = filtered.filter(p => p.monthlyRent <= max);
+    }
+
+    // Sorting
+    filtered.sort((a, b) => {
+      let aVal: any = a[sortBy];
+      let bVal: any = b[sortBy];
+
+      if (sortBy === "monthlyRent") {
+        aVal = Number(aVal);
+        bVal = Number(bVal);
+      } else if (sortBy === "createdAt") {
+        aVal = new Date(aVal).getTime();
+        bVal = new Date(bVal).getTime();
+      }
+
+      if (sortOrder === "asc") {
+        return aVal > bVal ? 1 : -1;
+      } else {
+        return aVal < bVal ? 1 : -1;
+      }
+    });
+
     setFilteredProperties(filtered);
-  }, [searchTerm, filterStatus, filterLocal, properties]);
+  }, [searchTerm, filterStatus, filterLocal, minPrice, maxPrice, sortBy, sortOrder, properties]);
 
   const loadProperties = () => {
     const data = propertyStorage.getAll();
@@ -233,6 +268,84 @@ export default function Properties() {
               <option value="occupied">Ocupado</option>
             </select>
           </div>
+
+          {/* Advanced Filters */}
+          <Card>
+            <CardContent className="pt-6">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="minPrice">Valor Mínimo</Label>
+                  <Input
+                    id="minPrice"
+                    placeholder="R$ 0,00"
+                    value={minPrice}
+                    onChange={(e) => setMinPrice(maskCurrency(e.target.value))}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="maxPrice">Valor Máximo</Label>
+                  <Input
+                    id="maxPrice"
+                    placeholder="R$ 0,00"
+                    value={maxPrice}
+                    onChange={(e) => setMaxPrice(maskCurrency(e.target.value))}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="sortBy">Ordenar Por</Label>
+                  <select
+                    id="sortBy"
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as any)}
+                    className="w-full h-10 px-3 rounded-md border border-slate-300 bg-white text-slate-900"
+                  >
+                    <option value="createdAt">Data de Cadastro</option>
+                    <option value="monthlyRent">Valor do Aluguel</option>
+                    <option value="address">Endereço</option>
+                    <option value="local">Local</option>
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="sortOrder">Ordem</Label>
+                  <select
+                    id="sortOrder"
+                    value={sortOrder}
+                    onChange={(e) => setSortOrder(e.target.value as "asc" | "desc")}
+                    className="w-full h-10 px-3 rounded-md border border-slate-300 bg-white text-slate-900"
+                  >
+                    <option value="desc">Decrescente</option>
+                    <option value="asc">Crescente</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="mt-4 flex items-center justify-between">
+                <Badge variant="outline" className="text-sm">
+                  {filteredProperties.length} {filteredProperties.length === 1 ? "imóvel encontrado" : "imóveis encontrados"}
+                </Badge>
+                {(searchTerm || filterLocal || filterStatus !== "all" || minPrice || maxPrice) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setSearchTerm("");
+                      setFilterLocal("");
+                      setFilterStatus("all");
+                      setMinPrice("");
+                      setMaxPrice("");
+                      setSortBy("createdAt");
+                      setSortOrder("desc");
+                    }}
+                  >
+                    Limpar Filtros
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
 
           <StaggerContainer staggerDelay={0.08}>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
