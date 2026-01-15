@@ -25,7 +25,7 @@ export default function PaymentDetails() {
   
   const [paymentDate, setPaymentDate] = useState("");
   const [amountPaid, setAmountPaid] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<"Pix" | "Boleto" | "Dinheiro">("Pix");
+  const [paymentMethod, setPaymentMethod] = useState<"Pix" | "Boleto" | "Dinheiro" | "Transferencia">("Pix");
   const [paymentLocation, setPaymentLocation] = useState<"CP" | "CD" | "CE">("CP");
   const [paymentCode, setPaymentCode] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -82,10 +82,10 @@ export default function PaymentDetails() {
 
     // Preencher método e local se já existir
     if (paymentData.paymentMethod) {
-      setPaymentMethod(paymentData.paymentMethod);
+      setPaymentMethod(paymentData.paymentMethod as "Pix" | "Boleto" | "Dinheiro" | "Transferencia");
     }
     if (paymentData.paymentLocation) {
-      setPaymentLocation(paymentData.paymentLocation);
+      setPaymentLocation(paymentData.paymentLocation as "CP" | "CD" | "CE");
     }
     if (paymentData.paymentCode) {
       setPaymentCode(paymentData.paymentCode);
@@ -287,17 +287,43 @@ export default function PaymentDetails() {
 
                   <div>
                     <Label htmlFor="paymentMethod">Forma de Pagamento</Label>
-                    <Select value={paymentMethod} onValueChange={(value) => setPaymentMethod(value as "Pix" | "Boleto" | "Dinheiro")}>
+                    <Select 
+                      value={paymentMethod} 
+                      onValueChange={(value) => setPaymentMethod(value as "Pix" | "Boleto" | "Dinheiro" | "Transferencia")}
+                    >
                       <SelectTrigger className="mt-1">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="Pix">Pix</SelectItem>
-                        <SelectItem value="Boleto">Boleto</SelectItem>
                         <SelectItem value="Dinheiro">Dinheiro</SelectItem>
+                        <SelectItem value="Boleto">Boleto</SelectItem>
+                        <SelectItem value="Transferencia">Transferência</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
+
+                  {paymentMethod === "Dinheiro" && (
+                    <div>
+                      <Label htmlFor="paymentLocation" className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4" />
+                        Local de Pagamento
+                      </Label>
+                      <Select 
+                        value={paymentLocation} 
+                        onValueChange={(value) => setPaymentLocation(value as "CP" | "CD" | "CE")}
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="CP">Casa do Proprietário</SelectItem>
+                          <SelectItem value="CD">Casa do Devedor</SelectItem>
+                          <SelectItem value="CE">Comercial / Escritório</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
 
                   {paymentMethod === "Pix" && (
                     <>

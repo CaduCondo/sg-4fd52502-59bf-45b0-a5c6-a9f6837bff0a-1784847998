@@ -90,6 +90,21 @@ export default function RentalDetails() {
     setEditObservations(rental.observations || "");
     setEditHasMotorcycleSpot(rental.hasMotorcycleSpot || false);
     setEditMotorcycleSpotValue(rental.motorcycleSpotValue ? formatCurrency(rental.motorcycleSpotValue) : "");
+    
+    // Removed incorrect formData update if it exists, or fix it if it's needed. 
+    // The error suggests formData.paymentDay expects a number.
+    // But looking at the file structure, we shouldn't rely on formData for the edit dialog which uses editPaymentDay.
+    // I will remove the setFormData block to be safe as it seems redundant/erroneous.
+    
+    /* 
+    setFormData({
+      ...formData,
+      endDate: rental.endDate ? rental.endDate.split('T')[0] : '',
+      monthlyRent: formatCurrency(rental.monthlyRent),
+      paymentDay: rental.paymentDay, // Fix: pass number if expected
+      isActive: rental.isActive
+    });
+    */
     setShowEditDialog(true);
   };
 
