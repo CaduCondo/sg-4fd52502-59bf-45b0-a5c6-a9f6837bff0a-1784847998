@@ -62,10 +62,11 @@ import {
   Phone,
   Camera,
   Paperclip,
-  Download
+  Download,
+  Users
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { formatCurrency, parseCurrency, formatDate, formatPhone, formatCurrencyInput } from "@/lib/masks";
+import { formatCurrency, parseCurrency, formatDate, formatPhone, formatCurrencyInput, unformatCurrency, maskPhone } from "@/lib/masks";
 import { propertyStorage, tenantStorage, rentalStorage, paymentStorage } from "@/lib/storage";
 import { rentalService } from "@/services/rentalService";
 import { propertyService } from "@/services/propertyService";
@@ -129,29 +130,20 @@ export default function RentalsPage() {
     }
   }, [formData.propertyId, formData.hasGarage, formData.garageValue, properties]);
 
-  const loadData = () => {
-    const allProperties = propertyStorage.getAll();
-    const allTenants = tenantStorage.getAll();
-    const allRentals = rentalStorage.getAll();
+  const loadData = async () => {
+    try {
+      const [propertiesData, tenantsData, rentalsData] = await Promise.all([
+        propertyService.getAll(),
+        tenantService.getAll(),
+        rentalService.getAll(),
+      ]);
 
-    setProperties(allProperties);
-    setTenants(allTenants);
-    setRentals(allRentals);
-
-    // Filter active tenants
-    const activeTenants = tenants
-      .filter(t => t.status === "active")
-      .sort((a, b) => a.name.localeCompare(b.name));
-    setAvailableTenants(activeTenants);
-
-    // Filter available properties (status 'available')
-    const vacant = allProperties.filter((p) => p.status === "available").sort((a, b) => 
-      (a.location || "").localeCompare(b.location || "")
-    );
-    setAvailableProperties(vacant);
-
-    const active = allRentals.filter((r) => r.isActive);
-    setActiveRentals(active);
+      setProperties(propertiesData);
+      setTenants(tenantsData);
+      setRentals(rentalsData);
+    } catch (error) {
+      console.error("Error loading data:", error);
+    }
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -401,6 +393,65 @@ export default function RentalsPage() {
     );
   });
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!formData.propertyId || !formData.tenantId || !formData.startDate || !formData.endDate || !formData.monthlyRent || !formData.paymentDay) {
+      toast({
+        title: "Erro",
+        description: "Preencha todos os campos obrigatórios",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const rentalData: Omit<Rental, "id" | "createdAt"> = {
+        propertyId: formData.propertyId,
+        tenantId: formData.tenantId,
+        startDate: formData.startDate,
+        endDate: formData.endDate,
+        monthlyRent: unformatCurrency(formData.monthlyRent),
+        paymentDay: parseInt(formData.paymentDay),
+        hasGarage: formData.hasGarage,
+        garageValue: formData.hasGarage ? unformatCurrency(formData.garageValue) : undefined,
+        value: unformatCurrency(formData.monthlyRent) + (formData.hasGarage ? unformatCurrency(formData.garageValue) : 0),
+        deposit: formData.deposit,
+        isActive: true,
+      };
+
+      await rentalService.create(rentalData);
+
+      // Update property status to occupied
+      const property = properties.find(p => p.id === formData.propertyId);
+      if (property) {
+        await propertyService.update({ ...property, status: "occupied" });
+      }
+
+      // Update tenant status to rented
+      const tenant = tenants.find(t => t.id === formData.tenantId);
+      if (tenant) {
+        await tenantService.update({ ...tenant, status: "rented" });
+      }
+
+      toast({
+        title: "Sucesso",
+        description: "Locação cadastrada com sucesso",
+      });
+
+      setIsDialogOpen(false);
+      resetForm();
+      loadData();
+    } catch (error) {
+      console.error("Error creating rental:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível cadastrar a locação",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <>
       <SEO
@@ -432,24 +483,27 @@ export default function RentalsPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="propertyId">Imóvel Disponível *</Label>
-                      <Select
-                        value={formData.propertyId}
+                      <Select 
+                        value={formData.propertyId} 
                         onValueChange={(value) => {
+                          setFormData({ ...formData, propertyId: value });
                           const property = properties.find(p => p.id === value);
-                          setFormData({ 
-                            ...formData, 
-                            propertyId: value,
-                            monthlyRent: property ? property.monthlyRent.toFixed(2).replace(".", ",") : ""
-                          });
+                          if (property) {
+                            setFormData(prev => ({ 
+                              ...prev, 
+                              propertyId: value,
+                              monthlyRent: formatCurrency(property.monthlyRent)
+                            }));
+                          }
                         }}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione um imóvel" />
                         </SelectTrigger>
                         <SelectContent>
-                          {availableProperties.map((property) => (
+                          {properties.filter(p => p.status === "available").map((property) => (
                             <SelectItem key={property.id} value={property.id}>
-                              {property.location} - {property.complement} - {formatCurrency(property.monthlyRent)}
+                              {property.location} - {property.address} - {formatCurrency(property.monthlyRent)}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -457,18 +511,16 @@ export default function RentalsPage() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="tenantId">Inquilinos Disponíveis *</Label>
-                      <Select
-                        value={formData.tenantId}
-                        onValueChange={(value) =>
-                          setFormData({ ...formData, tenantId: value })
-                        }
+                      <Label htmlFor="tenantId">Inquilino Disponível *</Label>
+                      <Select 
+                        value={formData.tenantId} 
+                        onValueChange={(value) => setFormData({ ...formData, tenantId: value })}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione um inquilino" />
                         </SelectTrigger>
                         <SelectContent>
-                          {availableTenants.map((tenant) => (
+                          {tenants.filter(t => t.status === "active").map((tenant) => (
                             <SelectItem key={tenant.id} value={tenant.id}>
                               {tenant.name}
                             </SelectItem>
@@ -670,103 +722,65 @@ export default function RentalsPage() {
 
           <div className="flex flex-col gap-6">
             {/* Inquilinos Disponíveis */}
-            <FloatingCard delay={0}>
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <User className="h-5 w-5" />
-                    Inquilinos Disponíveis
-                  </CardTitle>
-                  <CardDescription>
-                    {availableTenants.length} inquilinos disponíveis para locação
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {availableTenants.map((tenant) => (
-                      <Card
-                        key={tenant.id}
-                        className="group hover:shadow-md transition-all duration-200 cursor-pointer"
-                        onClick={() => router.push(`/tenants/${tenant.id}`)}
-                      >
-                        <CardHeader className="pb-3">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <CardTitle className="text-base">{tenant.name}</CardTitle>
-                            </div>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                router.push(`/tenants/${tenant.id}`);
-                              }}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </CardHeader>
-                        <CardContent className="space-y-2 text-sm">
-                          <div className="flex items-center gap-2 text-muted-foreground">
-                            <Mail className="h-4 w-4" />
-                            <span className="truncate">{tenant.email}</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-muted-foreground">
-                            <Phone className="h-4 w-4" />
-                            <span>{formatPhone(tenant.phone)}</span>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </FloatingCard>
+            <div>
+              <h2 className="text-xl font-semibold text-slate-900 mb-4">Inquilinos Disponíveis</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {tenants.filter(t => t.status === "active").map((tenant) => (
+                  <Card key={tenant.id} className="hover:shadow-md transition-shadow">
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-indigo-50 rounded-lg">
+                          <Users className="h-5 w-5 text-indigo-600" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-medium text-sm text-slate-900">{tenant.name}</p>
+                          <p className="text-xs text-slate-500">{formatPhone(tenant.phone)}</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+                {tenants.filter(t => t.status === "active").length === 0 && (
+                  <Card className="col-span-full">
+                    <CardContent className="p-6 text-center text-slate-500">
+                      Nenhum inquilino ativo disponível
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            </div>
 
             {/* Imóveis Vagos */}
-            <FloatingCard delay={0.2}>
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Home className="h-5 w-5" />
-                    Imóveis Vagos
-                  </CardTitle>
-                  <CardDescription>
-                    {availableProperties.length} imóveis disponíveis para locação
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {availableProperties.map((property) => (
-                      <Card
-                        key={property.id}
-                        className="group hover:shadow-md transition-all duration-200 cursor-pointer"
-                        onClick={() => router.push(`/properties/${property.id}`)}
-                      >
-                        <CardHeader className="pb-3">
-                          <CardTitle className="text-base">
-                            {property.location}
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-2 text-sm">
-                          {property.complement && (
-                            <div className="flex items-center gap-2 text-muted-foreground">
-                              <Building className="h-4 w-4 flex-shrink-0" />
-                              <span>{property.complement}</span>
-                            </div>
-                          )}
-                          <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-semibold">
-                            <DollarSign className="h-4 w-4 flex-shrink-0" />
-                            <span>{formatCurrency(property.monthlyRent)}/mês</span>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </FloatingCard>
+            <div>
+              <h2 className="text-xl font-semibold text-slate-900 mb-4">Imóveis Vagos</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {properties.filter(p => p.status === "available").map((property) => (
+                  <Card key={property.id} className="hover:shadow-md transition-shadow">
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-emerald-50 rounded-lg">
+                          <Building2 className="h-5 w-5 text-emerald-600" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-medium text-sm text-slate-900">{property.location}</p>
+                          <p className="text-xs text-slate-500">{property.address}</p>
+                          <p className="text-xs font-semibold text-emerald-600 mt-1">
+                            {formatCurrency(property.monthlyRent)}
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+                {properties.filter(p => p.status === "available").length === 0 && (
+                  <Card className="col-span-full">
+                    <CardContent className="p-6 text-center text-slate-500">
+                      Nenhum imóvel vago disponível
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            </div>
 
             {/* Locações Ativas */}
             <FloatingCard delay={0.4}>

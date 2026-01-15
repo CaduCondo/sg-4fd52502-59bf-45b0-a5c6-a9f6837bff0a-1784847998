@@ -189,6 +189,11 @@ export const unformatCPF = (value: string) => value.replace(/\D/g, "");
 export const unformatCNPJ = (value: string) => value.replace(/\D/g, "");
 export const unformatPhone = (value: string) => value.replace(/\D/g, "");
 
+export const unformatCurrency = (value: string): number => {
+  if (!value) return 0;
+  return Number(value.replace(/[^0-9,]/g, "").replace(",", ".")) || 0;
+};
+
 // Compatibility aliases
 export const maskCurrency = applyRealMask;
 export const applyCurrencyMask = applyRealMask;

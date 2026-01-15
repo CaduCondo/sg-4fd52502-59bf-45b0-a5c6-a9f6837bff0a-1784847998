@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatCurrency } from "@/lib/masks";
 import { paymentService } from "@/services/paymentService";
 import { rentalService } from "@/services/rentalService";
@@ -30,13 +31,24 @@ export default function FinancialPage() {
   const [config, setConfig] = useState<Config>({ adminFeePercentage: 6, locations: [] });
   const [loading, setLoading] = useState(true);
   
+  const [selectedMonth, setSelectedMonth] = useState("");
+  const [selectedYear, setSelectedYear] = useState("");
+  
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [totalAdminFee, setTotalAdminFee] = useState(0);
   const [netRevenue, setNetRevenue] = useState(0);
 
   useEffect(() => {
-    loadData();
+    const currentDate = new Date();
+    setSelectedMonth((currentDate.getMonth() + 1).toString());
+    setSelectedYear(currentDate.getFullYear().toString());
   }, []);
+
+  useEffect(() => {
+    if (selectedMonth && selectedYear) {
+      loadData();
+    }
+  }, [selectedMonth, selectedYear]);
 
   const loadData = async () => {
     try {
@@ -69,12 +81,11 @@ export default function FinancialPage() {
     propertiesData: Property[],
     configData: Config
   ) => {
-    const currentDate = new Date();
-    const currentMonth = currentDate.getMonth() + 1; // 1-12
-    const currentYear = currentDate.getFullYear();
+    const month = parseInt(selectedMonth);
+    const year = parseInt(selectedYear);
 
     const currentMonthPayments = paymentsData.filter(
-      p => p.referenceMonth === currentMonth && p.referenceYear === currentYear && p.status === "paid"
+      p => p.referenceMonth === month && p.referenceYear === year && p.status === "paid"
     );
 
     let totalRev = 0;
@@ -139,12 +150,32 @@ export default function FinancialPage() {
     );
   };
 
-  const paymentsWithDetails: PaymentWithDetails[] = payments.map(payment => {
-    const rental = rentals.find(r => r.id === payment.rentalId);
-    const property = rental ? properties.find(p => p.id === rental.propertyId) : undefined;
-    const tenant = rental ? tenants.find(t => t.id === rental.tenantId) : undefined;
-    return { ...payment, rental, property, tenant };
-  });
+  const paymentsWithDetails: PaymentWithDetails[] = payments
+    .filter(p => p.referenceMonth === parseInt(selectedMonth) && p.referenceYear === parseInt(selectedYear))
+    .map(payment => {
+      const rental = rentals.find(r => r.id === payment.rentalId);
+      const property = rental ? properties.find(p => p.id === rental.propertyId) : undefined;
+      const tenant = rental ? tenants.find(t => t.id === rental.tenantId) : undefined;
+      return { ...payment, rental, property, tenant };
+    });
+
+  const months = [
+    { value: "1", label: "Janeiro" },
+    { value: "2", label: "Fevereiro" },
+    { value: "3", label: "Março" },
+    { value: "4", label: "Abril" },
+    { value: "5", label: "Maio" },
+    { value: "6", label: "Junho" },
+    { value: "7", label: "Julho" },
+    { value: "8", label: "Agosto" },
+    { value: "9", label: "Setembro" },
+    { value: "10", label: "Outubro" },
+    { value: "11", label: "Novembro" },
+    { value: "12", label: "Dezembro" },
+  ];
+
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 5 }, (_, i) => (currentYear - 2 + i).toString());
 
   if (loading) {
     return (
@@ -169,13 +200,51 @@ export default function FinancialPage() {
       <Layout>
         <div className="space-y-6">
           <div className="flex items-center justify-between">
-            <h1 className="text-3xl font-bold text-slate-900">Relatório Financeiro</h1>
+            <div>
+              <h1 className="text-3xl font-bold text-slate-900">Relatório Financeiro</h1>
+              <p className="text-muted-foreground">
+                {getMonthName(parseInt(selectedMonth))} de {selectedYear}
+              </p>
+            </div>
           </div>
+
+          <Card className="p-4">
+            <div className="flex gap-4 items-center">
+              <div className="w-full md:w-1/4">
+                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Mês" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {months.map((month) => (
+                      <SelectItem key={month.value} value={month.value}>
+                        {month.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="w-full md:w-1/4">
+                <Select value={selectedYear} onValueChange={setSelectedYear}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Ano" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {years.map((year) => (
+                      <SelectItem key={year} value={year}>
+                        {year}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </Card>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <Card className="border-emerald-200 bg-gradient-to-br from-emerald-50 to-white">
               <CardHeader>
-                <CardTitle className="text-emerald-700 text-lg">💰 Receita Total do Mês</CardTitle>
+                <CardTitle className="text-emerald-700 text-lg">💰 Valor Bruto Recebido</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-3xl font-bold text-emerald-900">{formatCurrency(totalRevenue)}</p>
@@ -206,7 +275,7 @@ export default function FinancialPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>📋 Detalhamento de Locações - Todos os Pagamentos do Mês</CardTitle>
+              <CardTitle>📋 Detalhamento de Locações - {getMonthName(parseInt(selectedMonth))} {selectedYear}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
@@ -229,7 +298,7 @@ export default function FinancialPage() {
                     {paymentsWithDetails.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={10} className="text-center text-slate-500 py-8">
-                          Nenhum pagamento cadastrado
+                          Nenhum pagamento cadastrado para este período
                         </TableCell>
                       </TableRow>
                     ) : (

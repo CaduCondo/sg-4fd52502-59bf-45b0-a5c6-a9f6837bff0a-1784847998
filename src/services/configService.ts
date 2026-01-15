@@ -105,39 +105,26 @@ export const configService = {
     }
   },
 
-  async addLocation(location: string): Promise<void> {
+  async addLocation(location: string): Promise<Config> {
     try {
       const config = await this.get();
-      
-      // Check if location already exists
-      if (config.locations.includes(location)) {
-        throw new Error("Local já existe");
+      if (!config.locations.includes(location)) {
+        config.locations.push(location);
+        config.locations.sort();
+        return await this.save(config);
       }
-      
-      // Add new location
-      const updatedConfig = {
-        ...config,
-        locations: [...config.locations, location].sort()
-      };
-      
-      await this.save(updatedConfig);
+      return config;
     } catch (error) {
       console.error("Error adding location:", error);
       throw error;
     }
   },
 
-  async removeLocation(location: string): Promise<void> {
+  async removeLocation(location: string): Promise<Config> {
     try {
       const config = await this.get();
-      
-      // Remove location
-      const updatedConfig = {
-        ...config,
-        locations: config.locations.filter(loc => loc !== location)
-      };
-      
-      await this.save(updatedConfig);
+      config.locations = config.locations.filter((l) => l !== location);
+      return await this.save(config);
     } catch (error) {
       console.error("Error removing location:", error);
       throw error;

@@ -2,30 +2,30 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
+import { Badge } from "@/components/ui/badge";
+import { getCurrentUser } from "@/lib/auth";
 import { tenantService } from "@/services";
-import type { Tenant } from "@/types";
-import { Plus, Eye, Pencil, Trash2, User, Mail, Phone, Calendar } from "lucide-react";
+import { Tenant } from "@/types";
+import { UserPlus, Mail, Phone, FileText, Trash2, Edit, X, Save } from "lucide-react";
 import { SEO } from "@/components/SEO";
-import { formatCPF, formatPhone, unformatCPF, unformatPhone, formatCNPJ, unformatCNPJ } from "@/lib/masks";
+import { maskCPF, maskPhone, unformatCPF, unformatPhone, maskCNPJ } from "@/lib/masks";
+import { useToast } from "@/hooks/use-toast";
+import { StaggerContainer, StaggerItem } from "@/components/animations/ScrollReveal";
 
-export default function TenantsPage() {
+export default function Tenants() {
   const router = useRouter();
   const { toast } = useToast();
   const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [mounted, setMounted] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
-  const [tenantToDelete, setTenantToDelete] = useState<Tenant | null>(null);
-  const [isEditMode, setIsEditMode] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [documentType, setDocumentType] = useState<"cpf" | "cnpj">("cpf");
   const [formData, setFormData] = useState({
     name: "",
@@ -33,25 +33,195 @@ export default function TenantsPage() {
     rg: "",
     email: "",
     phone: "",
-    status: "active" as "active" | "inactive",
   });
-  const [activeTab, setActiveTab] = useState("all");
 
   useEffect(() => {
+    const user = getCurrentUser();
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+    setMounted(true);
     loadTenants();
-  }, []);
+  }, [router]);
 
   const loadTenants = async () => {
     try {
       const data = await tenantService.getAll();
       setTenants(data);
     } catch (error) {
+      console.error("Error loading tenants:", error);
       toast({
         title: "Erro",
-        description: "Erro ao carregar inquilinos",
+        description: "Não foi possível carregar os inquilinos",
         variant: "destructive",
       });
     }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!formData.name || !formData.cpf || !formData.email || !formData.phone) {
+      toast({
+        title: "Erro",
+        description: "Todos os campos obrigatórios devem ser preenchidos",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (documentType === "cpf" && !formData.rg) {
+      toast({
+        title: "Erro",
+        description: "RG é obrigatório para CPF",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const tenantData: Omit<Tenant, "id" | "createdAt"> = {
+        name: formData.name,
+        cpf: unformatCPF(formData.cpf),
+        rg: documentType === "cpf" ? formData.rg : "",
+        documentType: documentType,
+        email: formData.email,
+        phone: unformatPhone(formData.phone),
+        status: "active",
+      };
+
+      await tenantService.create(tenantData);
+      
+      toast({
+        title: "Sucesso",
+        description: "Inquilino cadastrado com sucesso",
+      });
+
+      setIsDialogOpen(false);
+      resetForm();
+      loadTenants();
+    } catch (error) {
+      console.error("Error creating tenant:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível cadastrar o inquilino",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleUpdate = async () => {
+    if (!selectedTenant) return;
+
+    if (!formData.name || !formData.cpf || !formData.email || !formData.phone) {
+      toast({
+        title: "Erro",
+        description: "Todos os campos obrigatórios devem ser preenchidos",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (documentType === "cpf" && !formData.rg) {
+      toast({
+        title: "Erro",
+        description: "RG é obrigatório para CPF",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const tenantData: Tenant = {
+        ...selectedTenant,
+        name: formData.name,
+        cpf: unformatCPF(formData.cpf),
+        rg: documentType === "cpf" ? formData.rg : "",
+        documentType: documentType,
+        email: formData.email,
+        phone: unformatPhone(formData.phone),
+        status: selectedTenant.status,
+      };
+
+      await tenantService.update(tenantData);
+      
+      toast({
+        title: "Sucesso",
+        description: "Inquilino atualizado com sucesso",
+      });
+
+      setIsEditing(false);
+      setViewDialogOpen(false);
+      setSelectedTenant(null);
+      resetForm();
+      loadTenants();
+    } catch (error) {
+      console.error("Error updating tenant:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar o inquilino",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (!confirm("Tem certeza que deseja excluir este inquilino?")) {
+      return;
+    }
+
+    try {
+      await tenantService.delete(id);
+      
+      toast({
+        title: "Sucesso",
+        description: "Inquilino excluído com sucesso",
+      });
+
+      loadTenants();
+    } catch (error) {
+      console.error("Error deleting tenant:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível excluir o inquilino",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCardClick = (tenant: Tenant) => {
+    setSelectedTenant(tenant);
+    setDocumentType(tenant.documentType as "cpf" | "cnpj");
+    setFormData({
+      name: tenant.name,
+      cpf: tenant.documentType === "cpf" ? maskCPF(tenant.cpf) : maskCNPJ(tenant.cpf),
+      rg: tenant.rg || "",
+      email: tenant.email,
+      phone: maskPhone(tenant.phone),
+    });
+    setIsEditing(false);
+    setViewDialogOpen(true);
+  };
+
+  const handleEditClick = () => {
+    setIsEditing(true);
+  };
+
+  const handleCancelEdit = () => {
+    if (selectedTenant) {
+      setFormData({
+        name: selectedTenant.name,
+        cpf: selectedTenant.documentType === "cpf" ? maskCPF(selectedTenant.cpf) : maskCNPJ(selectedTenant.cpf),
+        rg: selectedTenant.rg || "",
+        email: selectedTenant.email,
+        phone: maskPhone(selectedTenant.phone),
+      });
+      setDocumentType(selectedTenant.documentType as "cpf" | "cnpj");
+    }
+    setIsEditing(false);
   };
 
   const resetForm = () => {
@@ -61,239 +231,225 @@ export default function TenantsPage() {
       rg: "",
       email: "",
       phone: "",
-      status: "active",
     });
     setDocumentType("cpf");
-    setSelectedTenant(null);
-    setIsEditMode(false);
   };
 
-  const handleSave = async () => {
-    try {
-      if (!formData.name || !formData.cpf || !formData.email || !formData.phone) {
-        toast({
-          title: "Erro",
-          description: "Preencha todos os campos obrigatórios",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Validate RG is required for CPF
-      if (documentType === "cpf" && !formData.rg) {
-        toast({
-          title: "Erro",
-          description: "RG é obrigatório para CPF",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const tenantData = {
-        name: formData.name,
-        cpf: unformatCPF(formData.cpf),
-        rg: documentType === "cpf" ? formData.rg : "",
-        documentType: documentType,
-        email: formData.email,
-        phone: unformatPhone(formData.phone),
-        status: formData.status,
-      };
-
-      if (isEditMode && selectedTenant) {
-        await tenantService.update({
-          ...tenantData,
-          id: selectedTenant.id,
-          createdAt: selectedTenant.createdAt,
-        });
-        toast({
-          title: "Sucesso",
-          description: "Inquilino atualizado com sucesso",
-        });
-      } else {
-        await tenantService.create(tenantData);
-        toast({
-          title: "Sucesso",
-          description: "Inquilino cadastrado com sucesso",
-        });
-      }
-
-      setIsDialogOpen(false);
-      resetForm();
-      loadTenants();
-    } catch (error) {
-      toast({
-        title: "Erro",
-        description: "Erro ao salvar inquilino",
-        variant: "destructive",
-      });
-    }
+  const handleDocumentTypeChange = (value: string) => {
+    const newType = value as "cpf" | "cnpj";
+    setDocumentType(newType);
+    setFormData({ ...formData, cpf: "", rg: "" });
   };
 
-  const handleEdit = (tenant: Tenant) => {
-    setSelectedTenant(tenant);
-    const docType = tenant.documentType || "cpf";
-    setDocumentType(docType);
-    setFormData({
-      name: tenant.name,
-      cpf: docType === "cpf" ? formatCPF(tenant.cpf) : formatCNPJ(tenant.cpf),
-      rg: tenant.rg || "",
-      email: tenant.email,
-      phone: formatPhone(tenant.phone),
-      status: tenant.status,
-    });
-    setIsEditMode(true);
-    setIsDialogOpen(true);
-  };
-
-  const handleView = (tenant: Tenant) => {
-    setSelectedTenant(tenant);
-    setIsViewDialogOpen(true);
-  };
-
-  const handleDelete = async () => {
-    if (!tenantToDelete) return;
-
-    try {
-      await tenantService.delete(tenantToDelete.id);
-      toast({
-        title: "Sucesso",
-        description: "Inquilino excluído com sucesso",
-      });
-      setIsDeleteDialogOpen(false);
-      setTenantToDelete(null);
-      loadTenants();
-    } catch (error) {
-      toast({
-        title: "Erro",
-        description: "Erro ao excluir inquilino",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleDocumentChange = (value: string) => {
-    const formatted = documentType === "cpf" ? formatCPF(value) : formatCNPJ(value);
-    setFormData({ ...formData, cpf: formatted });
-  };
-
-  const filteredTenants = tenants.filter((tenant) => {
-    if (activeTab === "active") return tenant.status === "active";
-    if (activeTab === "inactive") return tenant.status === "inactive";
-    return true;
-  });
+  if (!mounted) {
+    return null;
+  }
 
   return (
-    <Layout>
+    <>
       <SEO 
-        title="Inquilinos - Gerenciador de Locações"
-        description="Gerencie seus inquilinos e contratos de locação"
+        title="Inquilinos - ImóvelControl"
+        description="Gerenciamento de inquilinos"
       />
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold">Inquilinos</h1>
-            <p className="text-muted-foreground">Gerencie seus inquilinos</p>
+      
+      <Layout>
+        <div className="space-y-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold text-slate-900">Inquilinos</h1>
+              <p className="text-slate-600 mt-2">Gerencie os inquilinos cadastrados</p>
+            </div>
+            <Button onClick={() => setIsDialogOpen(true)} size="lg">
+              <UserPlus className="mr-2 h-5 w-5" />
+              Novo Inquilino
+            </Button>
           </div>
-          <Button onClick={() => { resetForm(); setIsDialogOpen(true); }}>
-            <Plus className="h-4 w-4 mr-2" />
-            Novo Inquilino
-          </Button>
-        </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList>
-            <TabsTrigger value="all">Todos ({tenants.length})</TabsTrigger>
-            <TabsTrigger value="active">Ativos ({tenants.filter(t => t.status === "active").length})</TabsTrigger>
-            <TabsTrigger value="inactive">Inativos ({tenants.filter(t => t.status === "inactive").length})</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value={activeTab} className="space-y-4">
-            {filteredTenants.length === 0 ? (
-              <Card>
-                <CardContent className="flex flex-col items-center justify-center py-12">
-                  <User className="h-12 w-12 text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">Nenhum inquilino encontrado</p>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredTenants.map((tenant) => (
-                  <Card key={tenant.id} className="hover:shadow-lg transition-shadow">
-                    <CardHeader>
-                      <div className="flex justify-between items-start">
-                        <CardTitle className="text-lg">{tenant.name}</CardTitle>
-                        <Badge variant={tenant.status === "active" ? "default" : "secondary"}>
-                          {tenant.status === "active" ? "Ativo" : "Inativo"}
-                        </Badge>
+          {tenants.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <UserPlus className="h-12 w-12 text-slate-400 mb-4" />
+                <p className="text-slate-600 text-center">
+                  Nenhum inquilino cadastrado ainda.
+                  <br />
+                  Clique em "Novo Inquilino" para começar.
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <StaggerContainer staggerDelay={0.1}>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {tenants.map((tenant) => (
+                  <StaggerItem key={tenant.id}>
+                    <Card 
+                      className="hover:shadow-lg transition-all duration-200 cursor-pointer relative pb-12"
+                      onClick={() => handleCardClick(tenant)}
+                    >
+                      <CardHeader>
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <CardTitle className="text-lg">{tenant.name}</CardTitle>
+                            <CardDescription className="mt-1">
+                              {tenant.documentType === "cpf" ? maskCPF(tenant.cpf) : maskCNPJ(tenant.cpf)}
+                            </CardDescription>
+                          </div>
+                          <Badge variant={tenant.status === "active" ? "default" : "secondary"}>
+                            {tenant.status === "active" ? "Ativo" : 
+                             tenant.status === "rented" ? "Locador" : "Inativo"}
+                          </Badge>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-2">
+                          <div className="flex items-center text-sm text-slate-600">
+                            <Mail className="h-4 w-4 mr-2" />
+                            {tenant.email}
+                          </div>
+                          <div className="flex items-center text-sm text-slate-600">
+                            <Phone className="h-4 w-4 mr-2" />
+                            {maskPhone(tenant.phone)}
+                          </div>
+                          {tenant.documentType === "cpf" && tenant.rg && (
+                            <div className="flex items-center text-sm text-slate-600">
+                              <FileText className="h-4 w-4 mr-2" />
+                              RG: {tenant.rg}
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                      <div className="absolute bottom-3 right-3">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => handleDelete(tenant.id, e)}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
-                      <CardDescription className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <Mail className="h-3 w-3" />
-                          <span className="text-xs">{tenant.email}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Phone className="h-3 w-3" />
-                          <span className="text-xs">{formatPhone(tenant.phone)}</span>
-                        </div>
-                      </CardDescription>
-                    </CardHeader>
-                    <CardFooter className="flex gap-2">
-                      <Button variant="outline" size="sm" onClick={() => handleView(tenant)}>
-                        <Eye className="h-4 w-4 mr-1" />
-                        Ver
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={() => handleEdit(tenant)}>
-                        <Pencil className="h-4 w-4 mr-1" />
-                        Editar
-                      </Button>
-                      <Button 
-                        variant="destructive" 
-                        size="sm" 
-                        onClick={() => {
-                          setTenantToDelete(tenant);
-                          setIsDeleteDialogOpen(true);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4 mr-1" />
-                        Excluir
-                      </Button>
-                    </CardFooter>
-                  </Card>
+                    </Card>
+                  </StaggerItem>
                 ))}
               </div>
-            )}
-          </TabsContent>
-        </Tabs>
+            </StaggerContainer>
+          )}
+        </div>
 
-        {/* New/Edit Tenant Dialog */}
-        <Dialog open={isDialogOpen} onOpenChange={(open) => { if (!open) resetForm(); setIsDialogOpen(open); }}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        {/* Dialog Novo Inquilino */}
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
-              <DialogTitle>{isEditMode ? "Editar Inquilino" : "Novo Inquilino"}</DialogTitle>
+              <DialogTitle>Novo Inquilino</DialogTitle>
               <DialogDescription>
-                {isEditMode ? "Atualize as informações do inquilino" : "Cadastre um novo inquilino"}
+                Cadastre um novo inquilino no sistema
               </DialogDescription>
             </DialogHeader>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="md:col-span-2">
-                <Label htmlFor="name">Nome Completo *</Label>
+            <form onSubmit={handleSubmit}>
+              <div className="grid gap-4 py-4">
+                <div>
+                  <Label htmlFor="name">Nome Completo *</Label>
+                  <Input
+                    id="name"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="Nome completo do inquilino"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="documentType">Tipo de Documento *</Label>
+                  <Select value={documentType} onValueChange={handleDocumentTypeChange}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cpf">CPF (Pessoa Física)</SelectItem>
+                      <SelectItem value="cnpj">CNPJ (Pessoa Jurídica)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="cpf">{documentType === "cpf" ? "CPF" : "CNPJ"} *</Label>
+                  <Input
+                    id="cpf"
+                    value={formData.cpf}
+                    onChange={(e) => {
+                      const value = documentType === "cpf" 
+                        ? maskCPF(e.target.value)
+                        : maskCNPJ(e.target.value);
+                      setFormData({ ...formData, cpf: value });
+                    }}
+                    placeholder={documentType === "cpf" ? "000.000.000-00" : "00.000.000/0000-00"}
+                  />
+                </div>
+
+                {documentType === "cpf" && (
+                  <div>
+                    <Label htmlFor="rg">RG *</Label>
+                    <Input
+                      id="rg"
+                      value={formData.rg}
+                      onChange={(e) => setFormData({ ...formData, rg: e.target.value })}
+                      placeholder="Número do RG"
+                    />
+                  </div>
+                )}
+
+                <div>
+                  <Label htmlFor="email">E-mail *</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    placeholder="email@exemplo.com"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="phone">Telefone *</Label>
+                  <Input
+                    id="phone"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: maskPhone(e.target.value) })}
+                    placeholder="(00) 00000-0000"
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button type="submit">Cadastrar</Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog Visualizar/Editar Inquilino */}
+        <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>{isEditing ? "Editar Inquilino" : "Detalhes do Inquilino"}</DialogTitle>
+              <DialogDescription>
+                {isEditing ? "Atualize as informações do inquilino" : "Visualize as informações do inquilino"}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div>
+                <Label htmlFor="view-name">Nome Completo *</Label>
                 <Input
-                  id="name"
+                  id="view-name"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Ex: João Silva"
+                  disabled={!isEditing}
                 />
               </div>
 
               <div>
-                <Label htmlFor="documentType">Tipo de Documento *</Label>
-                <Select
-                  value={documentType}
-                  onValueChange={(value) => {
-                    setDocumentType(value as "cpf" | "cnpj");
-                    setFormData({ ...formData, cpf: "", rg: "" });
-                  }}
-                >
+                <Label htmlFor="view-documentType">Tipo de Documento *</Label>
+                <Select value={documentType} onValueChange={handleDocumentTypeChange} disabled={!isEditing}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -305,159 +461,92 @@ export default function TenantsPage() {
               </div>
 
               <div>
-                <Label htmlFor="cpf">{documentType === "cpf" ? "CPF *" : "CNPJ *"}</Label>
+                <Label htmlFor="view-cpf">{documentType === "cpf" ? "CPF" : "CNPJ"} *</Label>
                 <Input
-                  id="cpf"
+                  id="view-cpf"
                   value={formData.cpf}
-                  onChange={(e) => handleDocumentChange(e.target.value)}
-                  placeholder={documentType === "cpf" ? "000.000.000-00" : "00.000.000/0000-00"}
-                  maxLength={documentType === "cpf" ? 14 : 18}
+                  onChange={(e) => {
+                    const value = documentType === "cpf" 
+                      ? maskCPF(e.target.value)
+                      : maskCNPJ(e.target.value);
+                    setFormData({ ...formData, cpf: value });
+                  }}
+                  disabled={!isEditing}
                 />
               </div>
 
               {documentType === "cpf" && (
-                <div className="md:col-span-2">
-                  <Label htmlFor="rg">RG *</Label>
+                <div>
+                  <Label htmlFor="view-rg">RG *</Label>
                   <Input
-                    id="rg"
+                    id="view-rg"
                     value={formData.rg}
                     onChange={(e) => setFormData({ ...formData, rg: e.target.value })}
-                    placeholder="Ex: 12.345.678-9"
+                    disabled={!isEditing}
                   />
                 </div>
               )}
 
-              <div className="md:col-span-2">
-                <Label htmlFor="email">E-mail *</Label>
+              <div>
+                <Label htmlFor="view-email">E-mail *</Label>
                 <Input
-                  id="email"
+                  id="view-email"
                   type="email"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  placeholder="email@exemplo.com"
+                  disabled={!isEditing}
                 />
               </div>
 
               <div>
-                <Label htmlFor="phone">Telefone *</Label>
+                <Label htmlFor="view-phone">Telefone *</Label>
                 <Input
-                  id="phone"
+                  id="view-phone"
                   value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: formatPhone(e.target.value) })}
-                  placeholder="(00) 00000-0000"
-                  maxLength={15}
+                  onChange={(e) => setFormData({ ...formData, phone: maskPhone(e.target.value) })}
+                  disabled={!isEditing}
                 />
               </div>
 
-              <div>
-                <Label htmlFor="status">Status</Label>
-                <Select
-                  value={formData.status}
-                  onValueChange={(value: "active" | "inactive") => setFormData({ ...formData, status: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">Ativo</SelectItem>
-                    <SelectItem value="inactive">Inativo</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => { setIsDialogOpen(false); resetForm(); }}>
-                Cancelar
-              </Button>
-              <Button onClick={handleSave}>
-                {isEditMode ? "Atualizar" : "Cadastrar"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* View Tenant Dialog */}
-        <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Detalhes do Inquilino</DialogTitle>
-            </DialogHeader>
-            {selectedTenant && (
-              <div className="space-y-4">
+              {selectedTenant && (
                 <div>
-                  <Label className="text-muted-foreground">Nome</Label>
-                  <p className="font-medium">{selectedTenant.name}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground">
-                    {selectedTenant.documentType === "cnpj" ? "CNPJ" : "CPF"}
-                  </Label>
-                  <p className="font-medium">
-                    {selectedTenant.documentType === "cnpj" 
-                      ? formatCNPJ(selectedTenant.cpf)
-                      : formatCPF(selectedTenant.cpf)
-                    }
-                  </p>
-                </div>
-                {selectedTenant.documentType === "cpf" && selectedTenant.rg && (
-                  <div>
-                    <Label className="text-muted-foreground">RG</Label>
-                    <p className="font-medium">{selectedTenant.rg}</p>
-                  </div>
-                )}
-                <div>
-                  <Label className="text-muted-foreground">E-mail</Label>
-                  <p className="font-medium">{selectedTenant.email}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground">Telefone</Label>
-                  <p className="font-medium">{formatPhone(selectedTenant.phone)}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground">Status</Label>
-                  <div className="mt-1">
+                  <Label>Status</Label>
+                  <div className="mt-2">
                     <Badge variant={selectedTenant.status === "active" ? "default" : "secondary"}>
-                      {selectedTenant.status === "active" ? "Ativo" : "Inativo"}
+                      {selectedTenant.status === "active" ? "Ativo" : 
+                       selectedTenant.status === "rented" ? "Locador" : "Inativo"}
                     </Badge>
                   </div>
                 </div>
-                <div>
-                  <Label className="text-muted-foreground">Data de Cadastro</Label>
-                  <p className="font-medium">
-                    {new Date(selectedTenant.createdAt).toLocaleDateString("pt-BR")}
-                  </p>
-                </div>
-              </div>
-            )}
+              )}
+            </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsViewDialogOpen(false)}>
-                Fechar
-              </Button>
+              {isEditing ? (
+                <>
+                  <Button type="button" variant="outline" onClick={handleCancelEdit}>
+                    <X className="mr-2 h-4 w-4" />
+                    Cancelar
+                  </Button>
+                  <Button type="button" onClick={handleUpdate}>
+                    <Save className="mr-2 h-4 w-4" />
+                    Salvar
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button type="button" variant="outline" onClick={() => setViewDialogOpen(false)}>
+                    Fechar
+                  </Button>
+                  <Button type="button" onClick={handleEditClick}>
+                    <Edit className="mr-2 h-4 w-4" />
+                    Editar
+                  </Button>
+                </>
+              )}
             </DialogFooter>
           </DialogContent>
         </Dialog>
-
-        {/* Delete Confirmation Dialog */}
-        <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Confirmar Exclusão</DialogTitle>
-              <DialogDescription>
-                Tem certeza que deseja excluir o inquilino <strong>{tenantToDelete?.name}</strong>?
-                Esta ação não pode ser desfeita.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
-                Cancelar
-              </Button>
-              <Button variant="destructive" onClick={handleDelete}>
-                Excluir
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
-    </Layout>
+      </Layout>
+    </>
   );
 }

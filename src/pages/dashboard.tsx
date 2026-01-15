@@ -6,8 +6,8 @@ import Link from "next/link";
 import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentUser } from "@/lib/auth";
-import { propertyStorage, tenantStorage, rentalStorage, paymentStorage, configStorage } from "@/lib/storage";
-import { DashboardStats } from "@/types";
+import { propertyService, tenantService, rentalService, paymentService, configService } from "@/services";
+import { DashboardStats, Property, Tenant, Rental, Payment, Config } from "@/types";
 import { Building2, Users, DollarSign, TrendingUp, AlertCircle, CheckCircle2, Home, Clock } from "lucide-react";
 import { SEO } from "@/components/SEO";
 import { formatCurrency } from "@/lib/masks";
@@ -28,6 +28,7 @@ export default function Dashboard() {
     dueThisMonth: 0,
   });
   const [mounted, setMounted] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const user = getCurrentUser();
@@ -36,35 +37,47 @@ export default function Dashboard() {
       return;
     }
     setMounted(true);
-    calculateStats();
+    loadData();
   }, [router]);
 
-  const calculateStats = () => {
-    const properties = propertyStorage.getAll();
-    const tenants = tenantStorage.getAll();
-    const rentals = rentalStorage.getAll();
-    const payments = paymentStorage.getAll();
-    const config = configStorage.get();
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [properties, tenants, rentals, payments, config] = await Promise.all([
+        propertyService.getAll(),
+        tenantService.getAll(),
+        rentalService.getAll(),
+        paymentService.getAll(),
+        configService.get()
+      ]);
 
-    const activeTenants = tenants.filter(t => t.status === 'active').length;
-    
-    // Calculate financial stats
+      calculateStats(properties, tenants, rentals, payments, config);
+    } catch (error) {
+      console.error("Error loading dashboard data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const calculateStats = (
+    properties: Property[],
+    tenants: Tenant[],
+    rentals: Rental[],
+    payments: Payment[],
+    config: Config
+  ) => {
     const currentDate = new Date();
-    const currentMonthStr = (currentDate.getMonth() + 1).toString().padStart(2, '0');
-    const currentYearStr = currentDate.getFullYear().toString();
-    
-    // Default to current month/year if not selected (or just use current for dashboard stats)
-    const selectedMonth = currentMonthStr;
-    const selectedYear = currentYearStr;
+    const currentMonth = currentDate.getMonth() + 1;
+    const currentYear = currentDate.getFullYear();
 
-    // Filter payments for selected month/year
+    // Filtrar pagamentos do mês corrente
     const currentMonthPayments = payments.filter(
       (p) =>
-        p.referenceMonth === parseInt(selectedMonth) &&
-        p.referenceYear === parseInt(selectedYear)
+        p.referenceMonth === currentMonth &&
+        p.referenceYear === currentYear
     );
 
-    // Total de Imóveis Cadastrados
+    // Total de Imóveis Cadastrados (todos, independente do status)
     const totalProperties = properties.length;
 
     // Imóveis Ocupados (status = "occupied")
@@ -76,10 +89,10 @@ export default function Dashboard() {
     // Total de Inquilinos Ativos (status = 'active')
     const totalTenants = tenants.filter(t => t.status === 'active').length;
 
-    // Pagamentos Recebidos (status = "paid") - contagem de locações
+    // Pagamentos Recebidos (status = "paid") - contagem de registros
     const paidThisMonth = currentMonthPayments.filter(p => p.status === "paid").length;
 
-    // Pagamentos Pendentes (status = "pending" ou "partial") - contagem de locações
+    // Pagamentos Pendentes (status = "pending" ou "partial") - contagem de registros
     const unpaidThisMonth = currentMonthPayments.filter(
       p => p.status === "pending" || p.status === "partial"
     ).length;
@@ -89,9 +102,18 @@ export default function Dashboard() {
       .filter(p => p.status === "paid")
       .reduce((sum, p) => sum + (p.paidAmount || 0), 0);
 
-    // Taxa de Administração - Mesmo cálculo da tela financeiro
-    const adminFeePercentage = config.adminFeePercentage / 100;
-    const adminFee = totalRevenue * adminFeePercentage;
+    // Taxa de Administração - % sobre pagos (exceto local "Outros")
+    let adminFee = 0;
+    for (const payment of currentMonthPayments.filter(p => p.status === "paid")) {
+      const rental = rentals.find(r => r.id === payment.rentalId);
+      if (rental) {
+        const property = properties.find(p => p.id === rental.propertyId);
+        if (property && property.location.toLowerCase() !== "outros") {
+          const fee = (payment.paidAmount || 0) * (config.adminFeePercentage / 100);
+          adminFee += fee;
+        }
+      }
+    }
 
     // Prestes a Vencer - Locações do mês corrente ainda não quitadas
     const dueThisMonth = currentMonthPayments.filter(
@@ -111,7 +133,7 @@ export default function Dashboard() {
     });
   };
 
-  if (!mounted) {
+  if (!mounted || loading) {
     return null;
   }
 

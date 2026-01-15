@@ -32,12 +32,12 @@ export interface Tenant {
   id: string;
   name: string;
   cpf: string;
+  rg?: string;
+  documentType: "cpf" | "cnpj";
   email: string;
   phone: string;
-  status: "active" | "inactive";
+  status: "active" | "inactive" | "rented";
   createdAt: string;
-  rg?: string;
-  documentType?: string;
 }
 
 export interface Config {

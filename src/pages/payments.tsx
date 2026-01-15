@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, DollarSign, Home, User, AlertCircle, CheckCircle, Clock } from "lucide-react";
+import { Calendar, DollarSign, Home, AlertCircle, CheckCircle, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, formatDate } from "@/lib/masks";
 import { paymentService } from "@/services/paymentService";
@@ -77,7 +77,7 @@ export default function PaymentsPage() {
 
       setFilteredPayments(filtered);
 
-      // Split into unpaid and paid
+      // Split into unpaid (pending + partial) and paid
       const unpaid = filtered.filter(p => p.status === "pending" || p.status === "partial");
       const paid = filtered.filter(p => p.status === "paid");
 
@@ -111,6 +111,10 @@ export default function PaymentsPage() {
     
     if (payment.status === "paid") {
       return <Badge variant="default" className="bg-emerald-600"><CheckCircle className="h-3 w-3 mr-1" />Pago</Badge>;
+    }
+    
+    if (payment.status === "partial") {
+      return <Badge variant="warning"><Clock className="h-3 w-3 mr-1" />Parcial</Badge>;
     }
     
     if (currentDate > dueDate) {
@@ -193,7 +197,7 @@ export default function PaymentsPage() {
                 Locações Não Pagas Este Mês ({unpaidPayments.length})
               </TabsTrigger>
               <TabsTrigger value="paid">
-                Todos os Registros dos Pagamentos Realizados ({paidPayments.length})
+                Locações Pagas Este Mês ({paidPayments.length})
               </TabsTrigger>
             </TabsList>
 

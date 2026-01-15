@@ -63,10 +63,26 @@ export const tenantService = {
       id: data.id,
       name: data.name,
       cpf: data.cpf,
+      rg: data.rg,
+      documentType: data.document_type || "cpf",
       email: data.email,
       phone: data.phone,
       status: data.status,
       createdAt: data.created_at
+    };
+  },
+
+  mapFromSupabase(data: any): Tenant {
+    return {
+      id: data.id,
+      name: data.name,
+      cpf: data.cpf,
+      rg: data.rg,
+      documentType: data.document_type || "cpf",
+      email: data.email,
+      phone: data.phone,
+      status: data.status,
+      createdAt: data.created_at,
     };
   },
 
