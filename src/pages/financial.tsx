@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { Layout } from "@/components/Layout";
@@ -71,6 +73,7 @@ const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
 export default function FinancialPage() {
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
   const user = getCurrentUser();
   const isAdmin = hasRole("admin");
   const isFinanceiro = hasRole("financeiro");
@@ -82,8 +85,8 @@ export default function FinancialPage() {
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth() + 1;
   
-  const [selectedYear, setSelectedYear] = useState<number>(currentYear);
-  const [selectedMonth, setSelectedMonth] = useState<number | "all">(currentMonth);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState<number | "all">(new Date().getMonth() + 1);
   const [selectedPropertyType, setSelectedPropertyType] = useState<string>("all");
   const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
   const [sortField, setSortField] = useState<SortField>("dueDate");
@@ -108,19 +111,13 @@ export default function FinancialPage() {
   const [availableLocations, setAvailableLocations] = useState<string[]>([]);
 
   useEffect(() => {
-    if (!user) {
+    if (!getCurrentUser()) {
       router.push("/login");
       return;
     }
-
-    // Only admin and financeiro can access
-    if (!isAdmin && !isFinanceiro) {
-      router.push("/dashboard");
-      return;
-    }
-
+    setMounted(true);
     loadData();
-  }, [user, router, isAdmin, isFinanceiro]);
+  }, [router]);
 
   useEffect(() => {
     applyFilters();
@@ -383,6 +380,14 @@ export default function FinancialPage() {
   };
 
   if (!user || (!isAdmin && !isFinanceiro)) {
+    return null;
+  }
+
+  const totalReceived = filteredRows
+    .filter((p) => p.status === "Pago" || p.status === "Parcial")
+    .reduce((sum, p) => sum + (p.paidAmount || 0), 0);
+
+  if (!mounted) {
     return null;
   }
 
