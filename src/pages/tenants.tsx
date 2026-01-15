@@ -249,12 +249,12 @@ export default function TenantsPage() {
               className="group cursor-pointer"
             >
               <Card className="h-full hover:shadow-md transition-shadow relative overflow-hidden">
-                <div className={`absolute top-0 left-0 w-1 h-full ${tenant.status === 'rented' ? 'bg-emerald-500' : 'bg-gray-300'}`} />
+                <div className={`absolute top-0 left-0 w-1 h-full ${tenant.status === 'active' ? 'bg-emerald-500' : 'bg-gray-300'}`} />
                 <CardHeader className="pb-2 pl-6">
                   <div className="flex justify-between items-start">
                     <CardTitle className="text-lg font-semibold truncate pr-2">{tenant.name}</CardTitle>
-                    <Badge variant={tenant.status === 'rented' ? "default" : "secondary"} className={tenant.status === 'rented' ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-100" : ""}>
-                      {tenant.status === 'rented' ? 'Alugando' : 'Sem Locação'}
+                    <Badge variant={tenant.status === 'active' ? "default" : "secondary"} className={tenant.status === 'active' ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-100" : ""}>
+                      {tenant.status === 'active' ? 'Ativo' : 'Vago'}
                     </Badge>
                   </div>
                   <CardDescription className="flex items-center gap-1">

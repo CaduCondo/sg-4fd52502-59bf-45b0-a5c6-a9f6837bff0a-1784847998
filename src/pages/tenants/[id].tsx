@@ -104,8 +104,8 @@ export default function TenantDetailsPage() {
           <div className="flex-1">
             <h1 className="text-3xl font-bold tracking-tight text-gray-900">{tenant.name}</h1>
             <div className="flex items-center gap-2 mt-1">
-              <Badge variant={tenant.status === 'rented' ? "default" : "secondary"} className={tenant.status === 'rented' ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-100" : ""}>
-                {tenant.status === 'rented' ? 'Alugando Imóvel' : 'Sem Locação Ativa'}
+              <Badge variant={tenant.status === 'active' ? "default" : "secondary"} className={tenant.status === 'active' ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-100" : ""}>
+                {tenant.status === 'active' ? 'Inquilino Ativo' : 'Sem Locação'}
               </Badge>
               <span className="text-sm text-gray-500">Cadastrado em {new Date(tenant.createdAt).toLocaleDateString()}</span>
             </div>

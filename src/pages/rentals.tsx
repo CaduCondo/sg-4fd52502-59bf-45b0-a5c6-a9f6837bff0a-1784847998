@@ -149,11 +149,11 @@ export default function Rentals() {
     const property = getProperty(rental.propertyId);
     const tenant = getTenant(rental.tenantId);
     if (property) {
-      property.status = "rented";
+      property.status = "occupied";
       propertyStorage.save(property);
     }
     if (tenant) {
-      tenant.status = "rented";
+      tenant.status = "active";
       tenantStorage.save(tenant);
     }
 

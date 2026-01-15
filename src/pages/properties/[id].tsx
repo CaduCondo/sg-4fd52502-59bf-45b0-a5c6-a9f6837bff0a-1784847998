@@ -45,7 +45,7 @@ export default function PropertyDetails() {
     state: "SP",
     description: "",
     monthlyRent: "",
-    status: "available" as "available" | "rented"
+    status: "available" as "available" | "occupied"
   });
 
   useEffect(() => {
@@ -156,8 +156,8 @@ export default function PropertyDetails() {
               </h1>
               <p className="text-slate-600 mt-2">{property.address}, {property.number}</p>
             </div>
-            <Badge variant={property.status === "rented" ? "default" : "secondary"} className="text-base px-4 py-2">
-              {property.status === "rented" ? "Alugado" : "Disponível"}
+            <Badge variant={property.status === "occupied" ? "default" : "secondary"} className="text-base px-4 py-2">
+              {property.status === "occupied" ? "Ocupado" : "Disponível"}
             </Badge>
           </div>
 
@@ -368,11 +368,11 @@ export default function PropertyDetails() {
                     <select
                       id="status"
                       value={formData.status}
-                      onChange={(e) => setFormData({ ...formData, status: e.target.value as "available" | "rented" })}
+                      onChange={(e) => setFormData({ ...formData, status: e.target.value as "available" | "occupied" })}
                       className="w-full h-10 px-3 rounded-md border border-slate-300 bg-white text-slate-900"
                     >
                       <option value="available">Disponível</option>
-                      <option value="rented">Alugado</option>
+                      <option value="occupied">Ocupado</option>
                     </select>
                   </div>
                 </div>

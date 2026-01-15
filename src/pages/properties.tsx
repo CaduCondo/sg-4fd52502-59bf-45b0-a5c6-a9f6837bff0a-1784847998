@@ -37,7 +37,7 @@ export default function Properties() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [filteredProperties, setFilteredProperties] = useState<Property[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterStatus, setFilterStatus] = useState<"all" | "available" | "rented">("all");
+  const [filterStatus, setFilterStatus] = useState<"all" | "available" | "occupied">("all");
   const [filterLocal, setFilterLocal] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProperty, setEditingProperty] = useState<Property | null>(null);
@@ -51,7 +51,7 @@ export default function Properties() {
     state: "SP",
     description: "",
     monthlyRent: "",
-    status: "available" as "available" | "rented"
+    status: "available" as "available" | "occupied"
   });
 
   useEffect(() => {
@@ -223,12 +223,12 @@ export default function Properties() {
 
             <select
               value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value as "all" | "available" | "rented")}
+              onChange={(e) => setFilterStatus(e.target.value as "all" | "available" | "occupied")}
               className="h-10 px-3 rounded-md border border-slate-300 bg-white text-slate-900"
             >
               <option value="all">Todos os status</option>
               <option value="available">Disponível</option>
-              <option value="rented">Alugado</option>
+              <option value="occupied">Ocupado</option>
             </select>
           </div>
 
@@ -249,8 +249,8 @@ export default function Properties() {
                           </CardDescription>
                         )}
                       </div>
-                      <Badge variant={property.status === "rented" ? "default" : "secondary"}>
-                        {property.status === "rented" ? "Alugado" : "Disponível"}
+                      <Badge variant={property.status === "occupied" ? "default" : "secondary"}>
+                        {property.status === "occupied" ? "Ocupado" : "Disponível"}
                       </Badge>
                     </div>
                   </CardHeader>
@@ -419,11 +419,11 @@ export default function Properties() {
                     <select
                       id="status"
                       value={formData.status}
-                      onChange={(e) => setFormData({ ...formData, status: e.target.value as "available" | "rented" })}
+                      onChange={(e) => setFormData({ ...formData, status: e.target.value as "available" | "occupied" })}
                       className="w-full h-10 px-3 rounded-md border border-slate-300 bg-white text-slate-900"
                     >
                       <option value="available">Disponível</option>
-                      <option value="rented">Alugado</option>
+                      <option value="occupied">Ocupado</option>
                     </select>
                   </div>
                 </div>

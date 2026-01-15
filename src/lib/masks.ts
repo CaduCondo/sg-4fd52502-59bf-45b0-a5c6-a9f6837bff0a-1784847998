@@ -52,6 +52,18 @@ export function maskCEP(value: string): string {
   return numbers.replace(/(\d{5})(\d)/, "$1-$2");
 }
 
+export function applyCurrencyMask(value: string): string {
+  const numbers = value.replace(/\D/g, "");
+  const amount = parseFloat(numbers) / 100;
+  
+  if (isNaN(amount)) return "";
+  
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(amount);
+}
+
 export async function fetchAddressByCEP(cep: string): Promise<{
   logradouro: string;
   bairro: string;

@@ -60,7 +60,7 @@ export default function Dashboard() {
       .filter(p => !p.isPaid)
       .reduce((sum, p) => sum + p.amount, 0);
 
-    const rentedCount = properties.filter(p => p.status === "rented").length;
+    const rentedCount = properties.filter(p => p.status === "occupied").length;
 
     setStats({
       totalProperties: properties.length,

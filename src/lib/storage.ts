@@ -51,6 +51,20 @@ export const propertyStorage = {
     }
     localStorage.setItem(PROPERTIES_KEY, JSON.stringify(properties));
   },
+
+  update: (property: Property): void => {
+    propertyStorage.save(property);
+  },
+
+  updateStatus: (id: string, status: "available" | "occupied"): void => {
+    if (typeof window === "undefined") return;
+    const properties = propertyStorage.getAll();
+    const property = properties.find(p => p.id === id);
+    if (property) {
+      property.status = status;
+      propertyStorage.save(property);
+    }
+  },
   
   delete: (id: string): void => {
     if (typeof window === "undefined") return;
@@ -76,6 +90,20 @@ export const tenantStorage = {
     }
     localStorage.setItem(TENANTS_KEY, JSON.stringify(tenants));
   },
+
+  update: (tenant: Tenant): void => {
+    tenantStorage.save(tenant);
+  },
+
+  updateStatus: (id: string, status: "vacant" | "active"): void => {
+    if (typeof window === "undefined") return;
+    const tenants = tenantStorage.getAll();
+    const tenant = tenants.find(t => t.id === id);
+    if (tenant) {
+      tenant.status = status;
+      tenantStorage.save(tenant);
+    }
+  },
   
   delete: (id: string): void => {
     if (typeof window === "undefined") return;
@@ -100,6 +128,20 @@ export const rentalStorage = {
       rentals.push(rental);
     }
     localStorage.setItem(RENTALS_KEY, JSON.stringify(rentals));
+  },
+
+  update: (rental: Rental): void => {
+    rentalStorage.save(rental);
+  },
+
+  updateStatus: (id: string, status: "active" | "ended" | "expired"): void => {
+    if (typeof window === "undefined") return;
+    const rentals = rentalStorage.getAll();
+    const rental = rentals.find(r => r.id === id);
+    if (rental) {
+      rental.status = status;
+      rentalStorage.save(rental);
+    }
   },
   
   delete: (id: string): void => {
