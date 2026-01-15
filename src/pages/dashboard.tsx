@@ -10,6 +10,7 @@ import { DashboardStats, Property, Tenant, Rental, Payment } from "@/types";
 import { Building2, Users, DollarSign, CheckCircle, XCircle, TrendingUp, AlertTriangle } from "lucide-react";
 import { SEO } from "@/components/SEO";
 import { formatCurrency, formatDate } from "@/lib/masks";
+import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
 export default function Dashboard() {
   const router = useRouter();
@@ -32,6 +33,21 @@ export default function Dashboard() {
     rental: Rental;
     property: Property;
     tenant: Tenant;
+  }>>([]);
+  const [revenueChartData, setRevenueChartData] = useState<Array<{
+    month: string;
+    receita: number;
+    taxa: number;
+  }>>([]);
+  const [paymentStatusData, setPaymentStatusData] = useState<Array<{
+    name: string;
+    value: number;
+    color: string;
+  }>>([]);
+  const [occupancyData, setOccupancyData] = useState<Array<{
+    name: string;
+    value: number;
+    color: string;
   }>>([]);
 
   useEffect(() => {
@@ -61,15 +77,15 @@ export default function Dashboard() {
       p => p.month === selectedMonth && p.year === parseInt(selectedYear)
     );
 
-    const paidCount = currentMonthPayments.filter(p => p.isPaid).length;
-    const unpaidCount = currentMonthPayments.filter(p => !p.isPaid).length;
+    const paidCount = currentMonthPayments.filter(p => p.status === "paid").length;
+    const unpaidCount = currentMonthPayments.filter(p => p.status === "unpaid" || p.status === "partial").length;
     const totalRevenue = currentMonthPayments
-      .filter(p => p.isPaid)
-      .reduce((sum, p) => sum + p.amount, 0);
+      .filter(p => p.status === "paid" || p.status === "partial")
+      .reduce((sum, p) => sum + (p.partialAmount || p.amount), 0);
     const adminFee = totalRevenue * (config.adminFeePercentage / 100);
     const dueThisMonth = currentMonthPayments
-      .filter(p => !p.isPaid)
-      .reduce((sum, p) => sum + p.amount, 0);
+      .filter(p => p.status === "unpaid" || p.status === "partial")
+      .reduce((sum, p) => sum + (p.amount - (p.partialAmount || 0)), 0);
 
     const rentedCount = properties.filter(p => p.status === "occupied").length;
 
@@ -86,7 +102,7 @@ export default function Dashboard() {
     });
 
     const upcoming = currentMonthPayments
-      .filter(p => !p.isPaid)
+      .filter(p => p.status === "unpaid" || p.status === "partial")
       .map(payment => {
         const rental = rentals.find(r => r.id === payment.rentalId);
         const property = rental ? properties.find(p => p.id === rental.propertyId) : undefined;
@@ -105,6 +121,44 @@ export default function Dashboard() {
       }>;
 
     setUpcomingPayments(upcoming);
+
+    // Gerar dados para gráfico de receita mensal (últimos 6 meses)
+    const revenueData: Array<{ month: string; receita: number; taxa: number }> = [];
+    const currentDate = new Date(parseInt(selectedYear), parseInt(selectedMonth) - 1);
+    
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date(currentDate);
+      date.setMonth(date.getMonth() - i);
+      const month = (date.getMonth() + 1).toString().padStart(2, "0");
+      const year = date.getFullYear();
+      
+      const monthPayments = payments.filter(
+        p => p.month === month && p.year === year && (p.status === "paid" || p.status === "partial")
+      );
+      
+      const revenue = monthPayments.reduce((sum, p) => sum + (p.partialAmount || p.amount), 0);
+      const fee = revenue * (config.adminFeePercentage / 100);
+      
+      revenueData.push({
+        month: `${getMonthName(month).substring(0, 3)}/${year}`,
+        receita: revenue,
+        taxa: fee
+      });
+    }
+    
+    setRevenueChartData(revenueData);
+
+    // Dados para gráfico de pizza - Status de Pagamentos
+    setPaymentStatusData([
+      { name: "Pagos", value: paidCount, color: "#3b82f6" },
+      { name: "Pendentes", value: unpaidCount, color: "#ef4444" }
+    ]);
+
+    // Dados para gráfico de pizza - Ocupação
+    setOccupancyData([
+      { name: "Ocupados", value: rentedCount, color: "#eab308" },
+      { name: "Disponíveis", value: properties.length - rentedCount, color: "#3b82f6" }
+    ]);
   }, [selectedMonth, selectedYear]);
 
   const getMonthName = (month: string) => {
@@ -126,6 +180,34 @@ export default function Dashboard() {
       const year = currentYear - 2 + i;
       return { value: year.toString(), label: year.toString() };
     });
+  };
+
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
+          <p className="font-semibold text-gray-900">{payload[0].payload.month}</p>
+          {payload.map((entry: any, index: number) => (
+            <p key={index} className="text-sm" style={{ color: entry.color }}>
+              {entry.name}: {formatCurrency(entry.value)}
+            </p>
+          ))}
+        </div>
+      );
+    }
+    return null;
+  };
+
+  const CustomPieTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
+          <p className="font-semibold text-gray-900">{payload[0].name}</p>
+          <p className="text-sm text-gray-600">{payload[0].value} registros</p>
+        </div>
+      );
+    }
+    return null;
   };
 
   return (
@@ -174,106 +256,229 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-3">
             <Link href="/properties">
               <Card className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-l-blue-500 h-full">
-                <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                  <CardTitle className="text-sm font-medium text-gray-600">Total de Imóveis</CardTitle>
-                  <Building2 className="h-4 w-4 text-blue-600" />
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-xs font-medium text-gray-600">TOTAL DE IMÓVEIS</CardTitle>
+                    <Building2 className="h-4 w-4 text-blue-600" />
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-gray-900">{stats.totalProperties}</div>
-                  <p className="text-xs text-gray-500 mt-1">Total</p>
+                  <div className="text-xl font-bold text-gray-900">{stats.totalProperties}</div>
                 </CardContent>
               </Card>
             </Link>
 
             <Link href="/properties?filter=occupied">
               <Card className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-l-emerald-500 h-full">
-                <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                  <CardTitle className="text-sm font-medium text-gray-600">Imóveis Ocupados</CardTitle>
-                  <CheckCircle className="h-4 w-4 text-emerald-600" />
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-xs font-medium text-gray-600">IMÓVEIS OCUPADOS</CardTitle>
+                    <CheckCircle className="h-4 w-4 text-emerald-600" />
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-gray-900">{stats.rentedProperties}</div>
-                  <p className="text-xs text-gray-500 mt-1">Com inquilinos</p>
+                  <div className="text-xl font-bold text-gray-900">{stats.rentedProperties}</div>
                 </CardContent>
               </Card>
             </Link>
 
             <Link href="/properties?filter=available">
               <Card className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-l-amber-500 h-full">
-                <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                  <CardTitle className="text-sm font-medium text-gray-600">Imóveis Vagos</CardTitle>
-                  <Building2 className="h-4 w-4 text-amber-600" />
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-xs font-medium text-gray-600">IMÓVEIS VAGOS</CardTitle>
+                    <Building2 className="h-4 w-4 text-amber-600" />
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-gray-900">{stats.availableProperties}</div>
-                  <p className="text-xs text-gray-500 mt-1">Para locação</p>
+                  <div className="text-xl font-bold text-gray-900">{stats.availableProperties}</div>
                 </CardContent>
               </Card>
             </Link>
 
             <Link href="/tenants">
               <Card className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-l-purple-500 h-full">
-                <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                  <CardTitle className="text-sm font-medium text-gray-600">Total de Inquilinos</CardTitle>
-                  <Users className="h-4 w-4 text-purple-600" />
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-xs font-medium text-gray-600">TOTAL</CardTitle>
+                    <Users className="h-4 w-4 text-purple-600" />
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-gray-900">{stats.totalTenants}</div>
-                  <p className="text-xs text-gray-500 mt-1">Cadastrados</p>
+                  <div className="text-xl font-bold text-gray-900">{stats.totalTenants}</div>
                 </CardContent>
               </Card>
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-3">
             <Link href="/payments?filter=paid">
               <Card className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-l-green-500 h-full">
-                <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                  <CardTitle className="text-sm font-medium text-gray-600">Pagamentos no Mês</CardTitle>
-                  <CheckCircle className="h-4 w-4 text-green-600" />
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-xs font-medium text-gray-600">PAGAMENTOS</CardTitle>
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-gray-900">{stats.paidThisMonth}</div>
-                  <p className="text-xs text-gray-500 mt-1">Confirmados</p>
+                  <div className="text-xl font-bold text-gray-900">{stats.paidThisMonth}</div>
                 </CardContent>
               </Card>
             </Link>
 
             <Link href="/payments?filter=unpaid">
               <Card className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-l-red-500 h-full">
-                <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                  <CardTitle className="text-sm font-medium text-gray-600">Pagamentos Pendentes</CardTitle>
-                  <XCircle className="h-4 w-4 text-red-600" />
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-xs font-medium text-gray-600">PAGAMENTOS PENDENTES</CardTitle>
+                    <XCircle className="h-4 w-4 text-red-600" />
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-gray-900">{stats.unpaidThisMonth}</div>
-                  <p className="text-xs text-gray-500 mt-1">Aguardando</p>
+                  <div className="text-xl font-bold text-gray-900">{stats.unpaidThisMonth}</div>
                 </CardContent>
               </Card>
             </Link>
 
             <Card className="border-l-4 border-l-blue-500 bg-blue-50 h-full">
-              <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                <CardTitle className="text-sm font-medium text-gray-600">Recebido no Mês</CardTitle>
-                <TrendingUp className="h-4 w-4 text-blue-600" />
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-xs font-medium text-gray-600">RECEBIDO NO MÊS</CardTitle>
+                  <TrendingUp className="h-4 w-4 text-blue-600" />
+                </div>
               </CardHeader>
               <CardContent>
-                <div className="text-xl font-bold text-gray-900">{formatCurrency(stats.totalRevenue)}</div>
-                <p className="text-xs text-gray-500 mt-1">Total recebido</p>
+                <div className="text-lg font-bold text-gray-900">{formatCurrency(stats.totalRevenue)}</div>
               </CardContent>
             </Card>
 
             <Card className="border-l-4 border-l-indigo-500 bg-indigo-50 h-full">
-              <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                <CardTitle className="text-sm font-medium text-gray-600">Taxa Administração</CardTitle>
-                <DollarSign className="h-4 w-4 text-indigo-600" />
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-xs font-medium text-gray-600">TAXA ADMINISTRAÇÃO</CardTitle>
+                  <DollarSign className="h-4 w-4 text-indigo-600" />
+                </div>
               </CardHeader>
               <CardContent>
-                <div className="text-xl font-bold text-gray-900">{formatCurrency(stats.adminFee)}</div>
-                <p className="text-xs text-gray-500 mt-1">Comissão</p>
+                <div className="text-lg font-bold text-gray-900">{formatCurrency(stats.adminFee)}</div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Seção de Gráficos */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Gráfico de Receita Mensal */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-blue-600" />
+                  Evolução de Receita
+                </CardTitle>
+                <CardDescription>Últimos 6 meses - Receita vs Taxa de Administração</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={revenueChartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" />
+                    <YAxis />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Legend />
+                    <Line type="monotone" dataKey="receita" stroke="#3b82f6" strokeWidth={2} name="Receita" />
+                    <Line type="monotone" dataKey="taxa" stroke="#6366f1" strokeWidth={2} name="Taxa Admin" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            {/* Gráfico de Receita por Mês em Barras */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <DollarSign className="h-5 w-5 text-green-600" />
+                  Receita Mensal
+                </CardTitle>
+                <CardDescription>Comparativo dos últimos 6 meses</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={revenueChartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" />
+                    <YAxis />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Legend />
+                    <Bar dataKey="receita" fill="#10b981" name="Receita" />
+                    <Bar dataKey="taxa" fill="#6366f1" name="Taxa Admin" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            {/* Gráfico de Pizza - Status de Pagamentos */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                  Status de Pagamentos
+                </CardTitle>
+                <CardDescription>Distribuição de pagamentos no mês</CardDescription>
+              </CardHeader>
+              <CardContent className="flex justify-center">
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={paymentStatusData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, value }) => `${name}: ${value}`}
+                      outerRadius={100}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {paymentStatusData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip content={<CustomPieTooltip />} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            {/* Gráfico de Pizza - Ocupação */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Building2 className="h-5 w-5 text-amber-600" />
+                  Ocupação de Imóveis
+                </CardTitle>
+                <CardDescription>Distribuição atual dos imóveis</CardDescription>
+              </CardHeader>
+              <CardContent className="flex justify-center">
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={occupancyData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, value }) => `${name}: ${value}`}
+                      outerRadius={100}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {occupancyData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip content={<CustomPieTooltip />} />
+                  </PieChart>
+                </ResponsiveContainer>
               </CardContent>
             </Card>
           </div>
@@ -294,18 +499,16 @@ export default function Dashboard() {
                   {upcomingPayments.map(({ payment, property, tenant }) => (
                     <Link 
                       key={payment.id}
-                      href={`/payments?payment=${payment.id}`}
+                      href={`/payments/${payment.id}`}
                       className="block"
                     >
                       <div className="flex items-center justify-between p-3 bg-amber-50 border border-amber-200 rounded-lg hover:shadow-md transition-shadow cursor-pointer">
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-gray-900 truncate">{property.address}</p>
-                          <p className="text-sm text-gray-600 truncate">Inquilino: {tenant.name}</p>
-                          <p className="text-xs text-gray-500">Vencimento: {formatDate(payment.dueDate)}</p>
+                        <div className="flex-1 min-w-0 mr-4">
+                          <p className="font-semibold text-gray-900 truncate">{property.local}</p>
+                          <p className="text-sm text-gray-600">Inquilino: {tenant.name} • Venc: {formatDate(payment.dueDate)}</p>
                         </div>
-                        <div className="text-right ml-4 flex-shrink-0">
-                          <p className="text-lg font-bold text-amber-700 whitespace-nowrap">{formatCurrency(payment.amount)}</p>
-                          <p className="text-xs text-gray-500">Pendente</p>
+                        <div className="text-right flex-shrink-0">
+                          <p className="text-lg font-bold text-amber-700 whitespace-nowrap">{formatCurrency(payment.amount - (payment.partialAmount || 0))}</p>
                         </div>
                       </div>
                     </Link>

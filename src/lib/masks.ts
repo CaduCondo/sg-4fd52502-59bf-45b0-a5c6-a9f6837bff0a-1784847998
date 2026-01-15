@@ -52,16 +52,25 @@ export function maskCEP(value: string): string {
   return numbers.replace(/(\d{5})(\d)/, "$1-$2");
 }
 
-export function applyCurrencyMask(value: string): string {
-  const numbers = value.replace(/\D/g, "");
-  const amount = parseFloat(numbers) / 100;
+export function applyCurrencyMask(value: string | number): string {
+  if (!value) return "";
   
-  if (isNaN(amount)) return "";
+  const val = value.toString().replace(/\D/g, "");
   
-  return new Intl.NumberFormat("pt-BR", {
+  // Converter para número com 2 casas decimais
+  const numberValue = parseInt(val) / 100;
+  
+  return numberValue.toLocaleString("pt-BR", {
     style: "currency",
     currency: "BRL",
-  }).format(amount);
+  });
+}
+
+export function parseCurrencyToNumber(value: string): number {
+  if (!value) return 0;
+  // Remove R$, espaços e pontos de milhar, substitui vírgula decimal por ponto
+  const cleanValue = value.replace(/[R$\s.]/g, "").replace(",", ".");
+  return parseFloat(cleanValue) || 0;
 }
 
 export async function fetchAddressByCEP(cep: string): Promise<{
