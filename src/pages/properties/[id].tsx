@@ -9,11 +9,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { isAuthenticated } from "@/lib/auth";
-import { propertyStorage } from "@/lib/storage";
+import { propertyStorage, configStorage } from "@/lib/storage";
 import { Property } from "@/types";
 import { ArrowLeft, Edit, Trash2, MapPin, Building2, DollarSign } from "lucide-react";
 import { SEO } from "@/components/SEO";
 import { formatCurrency, formatDate, parseCurrency, maskCurrency } from "@/lib/masks";
+import { Select, SelectContent } from "@/components/ui/select";
 
 const LOCALS = [
   "Jd. Colombo",
@@ -37,6 +38,7 @@ export default function PropertyDetails() {
   const [property, setProperty] = useState<Property | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [availableLocations, setAvailableLocations] = useState<string[]>([]);
   const [formData, setFormData] = useState({ 
     local: "",
     cep: "",
@@ -56,8 +58,14 @@ export default function PropertyDetails() {
     }
     if (id) {
       loadProperty();
+      loadLocations();
     }
-  }, [id, router]);
+  }, [router, id]);
+
+  const loadLocations = () => {
+    const settings = configStorage.get();
+    setAvailableLocations(settings.locations || []);
+  };
 
   const loadProperty = () => {
     const properties = propertyStorage.getAll();
@@ -206,7 +214,15 @@ export default function PropertyDetails() {
                   <div>
                     <p className="text-sm font-medium text-slate-600">Local</p>
                     {isEditing ? (
-                      <Input value={formData.local} onChange={e => setFormData({...formData, local: e.target.value})} />
+                      <select
+                        value={formData.local}
+                        onChange={(e) => setFormData({ ...formData, local: e.target.value })}
+                        className="w-full h-10 px-3 rounded-md border border-slate-300 bg-white text-slate-900"
+                      >
+                        {availableLocations.map(local => (
+                          <option key={local} value={local}>{local}</option>
+                        ))}
+                      </select>
                     ) : (
                       <p className="text-lg text-slate-900">{property.local}</p>
                     )}
@@ -349,19 +365,17 @@ export default function PropertyDetails() {
               <div className="space-y-4 py-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="local">Local *</Label>
-                    <select
-                      id="local"
+                    <Label htmlFor="local">Local</Label>
+                    <Select
+                      onValueChange={(value) => setFormData({ ...formData, local: value })}
                       value={formData.local}
-                      onChange={(e) => setFormData({ ...formData, local: e.target.value })}
-                      className="w-full h-10 px-3 rounded-md border border-slate-300 bg-white text-slate-900"
-                      required
                     >
-                      <option value="">Selecione o local</option>
-                      {LOCALS.map(local => (
-                        <option key={local} value={local}>{local}</option>
-                      ))}
-                    </select>
+                      <SelectContent>
+                        {availableLocations.map(local => (
+                          <option key={local} value={local}>{local}</option>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="cep">CEP *</Label>

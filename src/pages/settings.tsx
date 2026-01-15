@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { configStorage, userStorage } from "@/lib/storage";
 import { SystemConfig, User } from "@/types";
 import { Trash2, Edit, Key, Plus, Save, MapPin, X } from "lucide-react";
+import { isAuthenticated } from "@/lib/auth";
 import { StaggerContainer, StaggerItem } from "@/components/animations/ScrollReveal";
 import { FloatingCard } from "@/components/animations/FloatingCard";
 
@@ -23,6 +24,7 @@ export default function Settings() {
   const [users, setUsers] = useState<User[]>([]);
   const [locations, setLocations] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [adminFee, setAdminFee] = useState(6);
 
   // User Form State
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
@@ -47,19 +49,24 @@ export default function Settings() {
   const [newLocation, setNewLocation] = useState("");
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (!isAuthenticated()) {
+      router.push("/login");
+      return;
+    }
+    loadSettings();
+  }, [router]);
 
-  const loadData = () => {
-    const loadedConfig = configStorage.get();
-    const loadedUsers = userStorage.getAll();
+  const loadSettings = () => {
+    const config = configStorage.get();
+    setAdminFee(config.adminFeePercentage);
+    const users = userStorage.getAll();
     
     // Ensure "Outros" is always present
-    const locs = loadedConfig.locations || ["Jd. Colombo", "Signore", "Lemos", "Marrom", "Cinza", "Dora", "Acacias", "Outros"];
+    const locs = config.locations || ["Jd. Colombo", "Signore", "Lemos", "Marrom", "Cinza", "Dora", "Acacias", "Outros"];
     if (!locs.includes("Outros")) locs.push("Outros");
     
-    setConfig(loadedConfig);
-    setUsers(loadedUsers);
+    setConfig(config);
+    setUsers(users);
     setLocations(locs);
     setIsLoading(false);
   };
@@ -130,7 +137,7 @@ export default function Settings() {
       email: "",
       phone: ""
     });
-    loadData();
+    loadSettings();
   };
 
   const handleEditUser = (user: User) => {
@@ -151,7 +158,7 @@ export default function Settings() {
   const handleDeleteUser = (id: string) => {
     if (confirm("Tem certeza que deseja excluir este usuário?")) {
       userStorage.delete(id);
-      loadData();
+      loadSettings();
       toast({ title: "Usuário excluído" });
     }
   };
@@ -167,34 +174,31 @@ export default function Settings() {
   };
 
   const handleAddLocation = () => {
-    if (newLocation && !locations.includes(newLocation)) {
-      const updatedLocations = [...locations, newLocation];
-      // Sort alphabetically, keep "Outros" at end logic if needed, but simple sort is fine
-      updatedLocations.sort();
-      
-      setLocations(updatedLocations);
-      if (config) {
-        configStorage.update({ ...config, locations: updatedLocations });
-      }
-      setNewLocation("");
-      toast({ title: "Local adicionado" });
-    }
+    if (!newLocation.trim()) return;
+    
+    const settings = configStorage.get();
+    const updatedLocations = [...(settings.locations || []), newLocation.trim()];
+    
+    configStorage.update({ ...settings, locations: updatedLocations });
+    setLocations(updatedLocations);
+    setNewLocation("");
   };
 
-  const handleDeleteLocation = (loc: string) => {
-    if (loc === "Outros") {
-      toast({ title: "Erro", description: "O local 'Outros' não pode ser excluído.", variant: "destructive" });
-      return;
-    }
+  const handleRemoveLocation = (index: number) => {
+    const settings = configStorage.get();
+    const updatedLocations = settings.locations?.filter((_, i) => i !== index) || [];
     
-    if (confirm(`Excluir definitivamente o local "${loc}"?`)) {
-      const updatedLocations = locations.filter(l => l !== loc);
-      setLocations(updatedLocations);
-      if (config) {
-        configStorage.update({ ...config, locations: updatedLocations });
-      }
-      toast({ title: "Local excluído" });
-    }
+    configStorage.update({ ...settings, locations: updatedLocations });
+    setLocations(updatedLocations);
+  };
+
+  const handleUpdateAdminFee = () => {
+    if (!config) return;
+    const newAdminFee = Number((document.getElementById("adminFee") as HTMLInputElement).value);
+    if (isNaN(newAdminFee) || newAdminFee < 0 || newAdminFee > 100) return;
+    configStorage.update({ ...config, adminFeePercentage: newAdminFee });
+    setAdminFee(newAdminFee);
+    toast({ title: "Taxa de administração atualizada" });
   };
 
   if (isLoading) return null;
@@ -351,7 +355,7 @@ export default function Settings() {
                     <h3 className="text-sm font-medium text-slate-500 mb-4 uppercase tracking-wider">Locais Cadastrados</h3>
                     <StaggerContainer staggerDelay={0.05}>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {locations.map((loc) => (
+                        {locations.map((loc, index) => (
                           <StaggerItem key={loc}>
                             <div className="group flex items-center justify-between p-3 bg-white border rounded-md shadow-sm hover:shadow-md transition-all">
                               <div className="flex items-center gap-3">
@@ -364,7 +368,7 @@ export default function Settings() {
                                 <Button 
                                   variant="ghost" 
                                   size="sm" 
-                                  onClick={() => handleDeleteLocation(loc)}
+                                  onClick={() => handleRemoveLocation(index)}
                                   className="opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-700 hover:bg-red-50"
                                   title="Excluir local"
                                 >

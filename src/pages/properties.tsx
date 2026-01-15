@@ -31,6 +31,7 @@ const STATES = [
 export default function Properties() {
   const router = useRouter();
   const [properties, setProperties] = useState<Property[]>([]);
+  const [availableLocations, setAvailableLocations] = useState<string[]>([]);
   const [filteredProperties, setFilteredProperties] = useState<Property[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<"all" | "available" | "occupied">("all");
@@ -65,12 +66,13 @@ export default function Properties() {
       return;
     }
     loadProperties();
-    // Load locals from config
-    const config = configStorage.get();
-    if (config.locations) {
-      setAvailableLocals(config.locations);
-    }
+    loadLocations();
   }, [router]);
+
+  const loadLocations = () => {
+    const settings = configStorage.get();
+    setAvailableLocations(settings.locations || []);
+  };
 
   useEffect(() => {
     let filtered = properties;
@@ -380,54 +382,56 @@ export default function Properties() {
             <StaggerContainer staggerDelay={0.08}>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredProperties.map((property) => (
-                  <Card 
-                    key={property.id} 
-                    className="hover:shadow-lg transition-shadow cursor-pointer relative group"
-                    onClick={() => handleViewProperty(property)}
-                  >
-                    <CardHeader className="pb-2">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <CardTitle className="text-xl">{property.local}</CardTitle>
-                          <CardDescription>{property.address}, {property.number}</CardDescription>
+                  <StaggerItem key={property.id}>
+                    <Card 
+                      key={property.id} 
+                      className="hover:shadow-lg transition-shadow cursor-pointer relative group"
+                      onClick={() => handleViewProperty(property)}
+                    >
+                      <CardHeader className="pb-2">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <CardTitle className="text-xl">{property.local}</CardTitle>
+                            <CardDescription>{property.address}, {property.number}</CardDescription>
+                          </div>
+                          <Badge className={getStatusColor(property.status)}>
+                            {getStatusLabel(property.status)}
+                          </Badge>
                         </div>
-                        <Badge className={getStatusColor(property.status)}>
-                          {getStatusLabel(property.status)}
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2 text-sm text-slate-600">
-                        <div className="flex justify-between">
-                          <span>Bairro:</span>
-                          <span className="font-medium text-slate-900">{property.neighborhood || "-"}</span>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-2 text-sm text-slate-600">
+                          <div className="flex justify-between">
+                            <span>Bairro:</span>
+                            <span className="font-medium text-slate-900">{property.neighborhood || "-"}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Valor Aluguel:</span>
+                            <span className="font-bold text-emerald-600">
+                              {formatCurrency(property.monthlyRent)}
+                            </span>
+                          </div>
                         </div>
-                        <div className="flex justify-between">
-                          <span>Valor Aluguel:</span>
-                          <span className="font-bold text-emerald-600">
-                            {formatCurrency(property.monthlyRent)}
-                          </span>
+                        
+                        {/* Action buttons - prevent card click propagation */}
+                        <div className="flex gap-2 pt-4 mt-2" onClick={(e) => e.stopPropagation()}>
+                           <Button 
+                              variant="destructive" 
+                              size="sm" 
+                              className="w-full opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeletingId(property.id);
+                                setShowDeleteDialog(true);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Excluir
+                            </Button>
                         </div>
-                      </div>
-                      
-                      {/* Action buttons - prevent card click propagation */}
-                      <div className="flex gap-2 pt-4 mt-2" onClick={(e) => e.stopPropagation()}>
-                         <Button 
-                            variant="destructive" 
-                            size="sm" 
-                            className="w-full opacity-0 group-hover:opacity-100 transition-opacity"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setDeletingId(property.id);
-                              setShowDeleteDialog(true);
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Excluir
-                          </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
+                      </CardContent>
+                    </Card>
+                  </StaggerItem>
                 ))}
               </div>
             </StaggerContainer>
@@ -513,18 +517,26 @@ export default function Properties() {
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="local">Local (Identificação) *</Label>
-                  <Input
-                    id="local"
-                    value={formData.local}
-                    onChange={(e) => setFormData({ ...formData, local: e.target.value })}
-                    placeholder="Ex: Apt 101, Casa Frente"
-                    required
-                  />
-                </div>
-                
+              <div className="space-y-2">
+                <Label htmlFor="local">Local *</Label>
+                <Select
+                  value={formData.local}
+                  onValueChange={(v) => setFormData({ ...formData, local: v })}
+                >
+                  <SelectTrigger id="local">
+                    <SelectValue placeholder="Selecione um local" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableLocations.map((local) => (
+                      <SelectItem key={local} value={local}>
+                        {local}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 {/* Hidden Type Field */}
                 
                 <div className="space-y-2">
