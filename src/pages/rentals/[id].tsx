@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { Layout } from "@/components/Layout";
+import { Lightbox } from "@/components/Lightbox";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -42,6 +43,10 @@ export default function RentalDetails() {
 
   // End contract state
   const [endDate, setEndDate] = useState("");
+  
+  // Lightbox state
+  const [showLightbox, setShowLightbox] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -407,13 +412,36 @@ export default function RentalDetails() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="space-y-2">
-                  {rental.attachments.map((file, index) => (
-                    <div key={index} className="flex items-center space-x-2 p-2 bg-slate-50 rounded">
-                      <Paperclip className="h-4 w-4 text-slate-500" />
-                      <span className="text-sm text-slate-700">{file}</span>
-                    </div>
-                  ))}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {rental.attachments.map((file, index) => {
+                    const isImage = file.type?.startsWith("image/");
+                    return (
+                      <button
+                        key={index}
+                        onClick={() => {
+                          setLightboxIndex(index);
+                          setShowLightbox(true);
+                        }}
+                        className="group relative aspect-square bg-slate-100 rounded-lg overflow-hidden border-2 border-slate-200 hover:border-blue-500 transition-all cursor-pointer"
+                      >
+                        {isImage ? (
+                          <img
+                            src={file.url}
+                            alt={file.name}
+                            className="w-full h-full object-cover group-hover:scale-110 transition-transform"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex flex-col items-center justify-center">
+                            <Paperclip className="h-8 w-8 text-slate-400 mb-2" />
+                            <span className="text-xs text-slate-600 font-medium px-2 text-center">
+                              {file.name}
+                            </span>
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+                      </button>
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
@@ -667,6 +695,15 @@ export default function RentalDetails() {
             </form>
           </DialogContent>
         </Dialog>
+        
+        {/* Lightbox for Attachments */}
+        {showLightbox && rental.attachments && (
+          <Lightbox
+            files={rental.attachments}
+            initialIndex={lightboxIndex}
+            onClose={() => setShowLightbox(false)}
+          />
+        )}
       </Layout>
     </>
   );
