@@ -97,6 +97,15 @@ export default function Properties() {
   };
 
   const handleOpenDialog = () => {
+    if (!config || !config.locations || config.locations.length === 0) {
+      toast({
+        title: "Aviso",
+        description: "Nenhum local cadastrado. Por favor, cadastre os locais nas configurações primeiro.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setFormData({
       location: "",
       cep: "",
