@@ -172,18 +172,20 @@ export default function Rentals() {
 
     while (currentDate <= end) {
       const year = currentDate.getFullYear();
-      const month = currentDate.getMonth();
-      const dueDate = new Date(year, month, rental.paymentDay);
+      const month = currentDate.getMonth() + 1;
+      const dueDate = new Date(year, currentDate.getMonth(), rental.paymentDay);
 
       if (dueDate >= start && dueDate <= end) {
         const totalValue = rental.monthlyRent + (rental.motorcycleSpotValue || 0);
+        const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
         const payment = {
           id: crypto.randomUUID(),
           rentalId: rental.id,
-          dueDate: dueDate.toISOString(),
+          month: monthNames[currentDate.getMonth()],
+          year: year,
           amount: totalValue,
-          status: "pending" as const,
-          paidDate: null,
+          isPaid: false,
+          dueDate: dueDate.toISOString(),
           createdAt: new Date().toISOString()
         };
         paymentStorage.save(payment);
