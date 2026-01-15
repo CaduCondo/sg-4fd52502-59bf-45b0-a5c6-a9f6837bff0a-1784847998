@@ -11,8 +11,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { configStorage, userStorage } from "@/lib/storage";
+import { configService } from "@/services/configService";
 import { SystemConfig, User, Config } from "@/types";
-import { Trash2, Edit, Key, Plus, Save, MapPin, X } from "lucide-react";
+import { Trash2, Edit, Key, Plus, Save, MapPin } from "lucide-react";
 import { isAuthenticated } from "@/lib/auth";
 import { StaggerContainer, StaggerItem } from "@/components/animations/ScrollReveal";
 import { FloatingCard } from "@/components/animations/FloatingCard";
@@ -24,7 +25,6 @@ export default function Settings() {
   const [users, setUsers] = useState<User[]>([]);
   const [locations, setLocations] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [adminFee, setAdminFee] = useState(6);
 
   // User Form State
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
@@ -47,8 +47,6 @@ export default function Settings() {
 
   // Location State
   const [newLocation, setNewLocation] = useState("");
-  const [editingLocation, setEditingLocation] = useState<string | null>(null);
-  const [tempLocationName, setTempLocationName] = useState("");
 
   const sortedLocations = [...locations].sort((a, b) => a.localeCompare(b));
 
@@ -60,34 +58,52 @@ export default function Settings() {
     loadSettings();
   }, [router]);
 
-  const loadSettings = () => {
-    const config = configStorage.get();
-    setAdminFee(config.adminFeePercentage);
-    const users = userStorage.getAll();
-    
-    // Ensure "Outros" is always present
-    const locs = config.locations || ["Jd. Colombo", "Signore", "Lemos", "Marrom", "Cinza", "Dora", "Acacias", "Outros"];
-    if (!locs.includes("Outros")) locs.push("Outros");
-    
-    setConfig(config);
-    setUsers(users);
-    setLocations(locs);
-    setIsLoading(false);
+  const loadSettings = async () => {
+    try {
+      const configData = await configService.get();
+      const users = userStorage.getAll();
+      
+      // Ensure "Outros" is always present
+      const locs = configData.locations || ["Jd. Colombo", "Signore", "Lemos", "Marrom", "Cinza", "Dora", "Acacias", "Outros"];
+      if (!locs.includes("Outros")) locs.push("Outros");
+      
+      setConfig(configData);
+      setUsers(users);
+      setLocations(locs);
+      setIsLoading(false);
+    } catch (error) {
+      console.error("Error loading settings:", error);
+      toast({
+        title: "Erro",
+        description: "Erro ao carregar configurações",
+        variant: "destructive"
+      });
+      setIsLoading(false);
+    }
   };
 
-  const handleUpdateConfig = (e: React.FormEvent) => {
+  const handleUpdateConfig = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!config) return;
 
-    configStorage.update({
-      ...config,
-      locations: locations
-    });
+    try {
+      await configService.save({
+        ...config,
+        locations: locations
+      });
 
-    toast({
-      title: "Sucesso",
-      description: "Configurações atualizadas com sucesso.",
-    });
+      toast({
+        title: "Sucesso",
+        description: "Configurações atualizadas com sucesso.",
+      });
+    } catch (error) {
+      console.error("Error saving config:", error);
+      toast({
+        title: "Erro",
+        description: "Erro ao salvar configurações",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleSaveUser = () => {
@@ -177,34 +193,62 @@ export default function Settings() {
     }
   };
 
-  const handleAddLocation = () => {
+  const handleAddLocation = async () => {
     if (newLocation.trim()) {
-      configStorage.addLocation(newLocation.trim());
-      setConfig(configStorage.get());
-      setNewLocation("");
+      try {
+        await configService.addLocation(newLocation.trim());
+        setNewLocation("");
+        await loadSettings();
+        toast({
+          title: "Sucesso",
+          description: `Local "${newLocation}" adicionado`,
+        });
+      } catch (error) {
+        console.error("Error adding location:", error);
+        toast({
+          title: "Erro",
+          description: "Erro ao adicionar local",
+          variant: "destructive"
+        });
+      }
+    }
+  };
+
+  const handleRemoveLocation = async (location: string) => {
+    try {
+      await configService.removeLocation(location);
+      await loadSettings();
       toast({
         title: "Sucesso",
-        description: `Local "${newLocation}" adicionado`,
+        description: `Local "${location}" removido`,
+      });
+    } catch (error) {
+      console.error("Error removing location:", error);
+      toast({
+        title: "Erro",
+        description: "Erro ao remover local",
+        variant: "destructive"
       });
     }
   };
 
-  const handleRemoveLocation = (location: string) => {
-    configStorage.removeLocation(location);
-    setConfig(configStorage.get());
-    toast({
-      title: "Sucesso",
-      description: `Local "${location}" removido`,
-    });
-  };
-
-  const handleUpdateAdminFee = () => {
+  const handleUpdateAdminFee = async () => {
     if (!config) return;
     const newAdminFee = Number((document.getElementById("adminFee") as HTMLInputElement).value);
     if (isNaN(newAdminFee) || newAdminFee < 0 || newAdminFee > 100) return;
-    configStorage.update({ ...config, adminFeePercentage: newAdminFee });
-    setAdminFee(newAdminFee);
-    toast({ title: "Taxa de administração atualizada" });
+    
+    try {
+      await configService.save({ ...config, adminFeePercentage: newAdminFee });
+      await loadSettings();
+      toast({ title: "Taxa de administração atualizada" });
+    } catch (error) {
+      console.error("Error updating admin fee:", error);
+      toast({
+        title: "Erro",
+        description: "Erro ao atualizar taxa",
+        variant: "destructive"
+      });
+    }
   };
 
   if (isLoading) return null;
@@ -244,7 +288,7 @@ export default function Settings() {
                           type="number"
                           id="adminFee"
                           value={config?.adminFeePercentage}
-                          onChange={(e) => setConfig(config ? { ...config, adminFeePercentage: Number(e.target.value) } : null)}
+                          onChange={(e) => setConfig(config ? { ...config, adminFeePercentage: Number(e.target.value) } : config)}
                           step="0.1"
                           min="0"
                           max="100"
