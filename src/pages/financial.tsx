@@ -721,8 +721,8 @@ export default function FinancialPage() {
                     <TableRow className="bg-slate-50 font-bold">
                       <TableCell colSpan={isAdmin ? 7 : 6}>TOTAL</TableCell>
                       {isAdmin && <TableCell></TableCell>}
-                      <TableCell className="text-right">{formatCurrency(totalExpected)}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(totalPaid)}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(String(totalExpected))}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(String(totalPaid))}</TableCell>
                     </TableRow>
                   </TableBody>
                 </Table>
