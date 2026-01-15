@@ -46,6 +46,9 @@ export default function Dashboard() {
     const payments = paymentStorage.getAll();
     const config = configStorage.get();
 
+    const activeTenants = tenants.filter(t => t.status === 'active').length;
+    
+    // Calculate financial stats
     const currentDate = new Date();
     const currentMonth = (currentDate.getMonth() + 1).toString().padStart(2, '0');
     const currentYear = currentDate.getFullYear().toString();
@@ -64,8 +67,8 @@ export default function Dashboard() {
     // Imóveis Vagos (status = "available")
     const availableProperties = properties.filter(p => p.status === "available").length;
 
-    // Total de Inquilinos Ativos (isActive = true)
-    const totalTenants = tenants.filter(t => t.isActive).length;
+    // Total de Inquilinos Ativos (status = 'active')
+    const totalTenants = tenants.filter(t => t.status === 'active').length;
 
     // Pagamentos Recebidos (status = "paid") - contagem de locações
     const paidThisMonth = currentMonthPayments.filter(p => p.status === "paid").length;

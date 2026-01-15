@@ -183,4 +183,19 @@ export const formatCurrencyInput = (value: string): string => {
   });
 };
 
-export const formatPhone = applyPhoneMask;
+export const formatPhone = (value: string) => {
+  return value
+    .replace(/\D/g, "")
+    .replace(/^(\d{2})(\d)/g, "($1) $2")
+    .replace(/(\d)(\d{4})$/, "$1-$2")
+    .substring(0, 15);
+};
+
+export const formatCPF = (value: string) => {
+  return value
+    .replace(/\D/g, "")
+    .replace(/(\d{3})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d{1,2})/, "$1-$2")
+    .replace(/(-\d{2})\d+?$/, "$1");
+};

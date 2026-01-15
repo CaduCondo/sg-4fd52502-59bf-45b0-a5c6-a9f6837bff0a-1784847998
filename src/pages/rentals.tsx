@@ -67,6 +67,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, parseCurrency, formatDate, formatPhone, formatCurrencyInput } from "@/lib/masks";
 import { propertyStorage, tenantStorage, rentalStorage, paymentStorage } from "@/lib/storage";
+import { rentalService } from "@/services/rentalService";
 import type { Property, Tenant, Rental, Payment } from "@/types";
 import { FloatingCard } from "@/components/animations/FloatingCard";
 
@@ -134,9 +135,13 @@ export default function RentalsPage() {
     setTenants(allTenants);
     setRentals(allRentals);
 
-    const available = allTenants.filter((t) => t.isActive).sort((a, b) => a.name.localeCompare(b.name));
-    setAvailableTenants(available);
+    // Filter active tenants
+    const activeTenants = tenants
+      .filter(t => t.status === "active")
+      .sort((a, b) => a.name.localeCompare(b.name));
+    setAvailableTenants(activeTenants);
 
+    // Filter available properties (status 'available')
     const vacant = allProperties.filter((p) => p.status === "available").sort((a, b) => 
       (a.location || "").localeCompare(b.location || "")
     );
@@ -163,7 +168,7 @@ export default function RentalsPage() {
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (
       !formData.propertyId ||
       !formData.tenantId ||
@@ -199,12 +204,12 @@ export default function RentalsPage() {
         value: totalValue,
         monthlyRent: baseRent,
         paymentDay: parseInt(formData.paymentDay),
-        deposit: formData.deposit ? parseCurrency(formData.deposit) : undefined,
+        deposit: formData.deposit || undefined,
         hasGarage: formData.hasGarage,
         garageValue: formData.hasGarage ? garageVal : undefined,
       };
 
-      rentalStorage.update(updatedRental);
+      await rentalService.update(updatedRental);
       toast({ title: "Sucesso", description: "Locação atualizada com sucesso!" });
     } else {
       const newRental: Rental = {
@@ -216,14 +221,14 @@ export default function RentalsPage() {
         value: totalValue,
         monthlyRent: baseRent,
         paymentDay: parseInt(formData.paymentDay),
-        deposit: formData.deposit ? parseCurrency(formData.deposit) : undefined,
+        deposit: formData.deposit || undefined,
         hasGarage: formData.hasGarage,
         garageValue: formData.hasGarage ? garageVal : undefined,
         isActive: true,
         createdAt: new Date().toISOString(),
       };
 
-      rentalStorage.save(newRental);
+      await rentalService.create(newRental);
 
       const propertyToUpdate = properties.find((p) => p.id === formData.propertyId);
       if (propertyToUpdate) {
@@ -232,7 +237,7 @@ export default function RentalsPage() {
 
       const tenant = tenants.find((t) => t.id === formData.tenantId);
       if (tenant) {
-        tenantStorage.update({ ...tenant, isActive: false });
+        tenantStorage.update({ ...tenant, status: "inactive" });
       }
 
       const currentDate = new Date();
@@ -295,9 +300,9 @@ export default function RentalsPage() {
         tenantId: selectedRental.tenantId,
         startDate: selectedRental.startDate,
         endDate: selectedRental.endDate,
-        monthlyRent: selectedRental.value.toFixed(2).replace(".", ","),
+        monthlyRent: selectedRental.monthlyRent.toFixed(2).replace(".", ","),
         paymentDay: selectedRental.paymentDay.toString(),
-        deposit: selectedRental.deposit ? selectedRental.deposit.toString() : "",
+        deposit: selectedRental.deposit ? selectedRental.deposit : "",
         hasGarage: selectedRental.hasGarage || false,
         garageValue: selectedRental.garageValue ? selectedRental.garageValue.toFixed(2).replace(".", ",") : "",
       });
@@ -321,7 +326,7 @@ export default function RentalsPage() {
 
     const tenant = tenants.find((t) => t.id === rentalToEnd.tenantId);
     if (tenant) {
-      tenantStorage.update({ ...tenant, isActive: true });
+      tenantStorage.update({ ...tenant, status: "active" });
     }
 
     toast({ title: "Sucesso", description: "Locação encerrada com sucesso!" });
@@ -354,7 +359,7 @@ export default function RentalsPage() {
 
     const tenant = tenants.find((t) => t.id === rentalToDelete.tenantId);
     if (tenant) {
-      tenantStorage.update({ ...tenant, isActive: true });
+      tenantStorage.update({ ...tenant, status: "active" });
     }
 
     allPayments
@@ -807,40 +812,44 @@ export default function RentalsPage() {
                               Ativa
                             </Badge>
                           </CardContent>
-                          <CardFooter className="pt-4 flex gap-2 border-t">
+                          <CardFooter className="pt-4 flex flex-col gap-2 border-t">
+                            <div className="flex w-full gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="flex-1"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleViewRental(rental);
+                                }}
+                              >
+                                <Eye className="h-4 w-4 mr-1" />
+                                Detalhes
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                className="flex-1"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  confirmDelete(rental.id);
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4 mr-1" />
+                                Excluir
+                              </Button>
+                            </div>
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="flex-1"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleViewRental(rental);
-                              }}
-                            >
-                              <Eye className="h-4 w-4 mr-1" />
-                              Ver
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="flex-1"
+                              className="w-full text-muted-foreground hover:text-foreground"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleEndRental(rental.id);
                               }}
                             >
                               <XCircle className="h-4 w-4 mr-1" />
-                              Encerrar
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                confirmDelete(rental.id);
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4 text-red-500" />
+                              Encerrar Contrato
                             </Button>
                           </CardFooter>
                         </Card>

@@ -152,7 +152,7 @@ export const tenantStorage = {
     const tenants = tenantStorage.getAll();
     const index = tenants.findIndex((t) => t.id === id);
     if (index !== -1) {
-      tenants[index].isActive = isActive;
+      tenants[index].status = isActive ? "active" : "inactive";
       localStorage.setItem(TENANTS_KEY, JSON.stringify(tenants));
     }
   },

@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { maskCPF, maskPhone } from "@/lib/masks";
+import { formatCPF, formatPhone, maskCPF, maskPhone } from "@/lib/masks";
 
 export default function TenantDetailsPage() {
   const router = useRouter();
@@ -24,10 +24,8 @@ export default function TenantDetailsPage() {
   const [formData, setFormData] = useState({
     name: "",
     cpf: "",
-    rg: "",
     phone: "",
     email: "",
-    observations: "",
   });
 
   useEffect(() => {
@@ -44,10 +42,8 @@ export default function TenantDetailsPage() {
       setFormData({
         name: found.name,
         cpf: found.cpf,
-        rg: found.rg,
         phone: found.phone,
         email: found.email,
-        observations: found.observations || "",
       });
     } else {
       toast({ title: "Erro", description: "Inquilino não encontrado", variant: "destructive" });
@@ -104,8 +100,8 @@ export default function TenantDetailsPage() {
           <div className="flex-1">
             <h1 className="text-3xl font-bold tracking-tight text-gray-900">{tenant.name}</h1>
             <div className="flex items-center gap-2 mt-1">
-              <Badge variant={tenant.isActive ? "default" : "secondary"}>
-                {tenant.isActive ? "Ativo" : "Inativo"}
+              <Badge variant={tenant.status === 'active' ? "default" : "secondary"}>
+                {tenant.status === 'active' ? "Ativo" : "Inativo"}
               </Badge>
               <span className="text-sm text-gray-500">Cadastrado em {new Date(tenant.createdAt).toLocaleDateString()}</span>
             </div>
@@ -121,71 +117,33 @@ export default function TenantDetailsPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="h-5 w-5 text-gray-500" />
-                Dados Pessoais
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-gray-500">CPF</Label>
-                  <div className="font-medium">{tenant.cpf}</div>
-                </div>
-                <div>
-                  <Label className="text-gray-500">RG</Label>
-                  <div className="font-medium">{tenant.rg}</div>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 gap-4">
-                <div>
-                  <Label className="text-gray-500">Nome Completo</Label>
-                  <div className="font-medium">{tenant.name}</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <div>
+            <h3 className="text-sm font-medium text-muted-foreground">CPF</h3>
+            <p className="text-lg">{formatCPF(tenant.cpf)}</p>
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-muted-foreground">Telefone</h3>
+            <p className="text-lg">{formatPhone(tenant.phone)}</p>
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-muted-foreground">Email</h3>
+            <p className="text-lg">{tenant.email || "-"}</p>
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-muted-foreground">Status</h3>
+            <Badge variant={tenant.status === 'active' ? 'default' : 'secondary'}>
+              {tenant.status === 'active' ? 'Ativo' : 'Inativo'}
+            </Badge>
+          </div>
+        </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Phone className="h-5 w-5 text-gray-500" />
-                Contatos
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label className="text-gray-500">Telefone</Label>
-                <div className="font-medium flex items-center gap-2">
-                  <Phone className="h-4 w-4 text-gray-400" />
-                  {tenant.phone}
-                </div>
-              </div>
-              <div>
-                <Label className="text-gray-500">Email</Label>
-                <div className="font-medium flex items-center gap-2">
-                  <Mail className="h-4 w-4 text-gray-400" />
-                  {tenant.email}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="md:col-span-2">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5 text-gray-500" />
-                Observações
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-700 whitespace-pre-wrap">
-                {tenant.observations || "Nenhuma observação registrada."}
-              </p>
-            </CardContent>
-          </Card>
+        <div className="flex justify-end gap-2">
+          <Button
+            variant="outline"
+            onClick={() => router.back()}
+          >
+            Voltar
+          </Button>
         </div>
 
         <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
@@ -204,23 +162,13 @@ export default function TenantDetailsPage() {
                   <Input id="edit-cpf" name="cpf" required value={formData.cpf} onChange={handleInputChange} placeholder="000.000.000-00" maxLength={14} />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-rg">RG *</Label>
-                  <Input id="edit-rg" name="rg" required value={formData.rg} onChange={handleInputChange} />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
                   <Label htmlFor="edit-phone">Telefone *</Label>
                   <Input id="edit-phone" name="phone" required value={formData.phone} onChange={handleInputChange} placeholder="(00) 00000-0000" maxLength={15} />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-email">Email *</Label>
-                  <Input id="edit-email" name="email" type="email" required value={formData.email} onChange={handleInputChange} />
-                </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-observations">Observações</Label>
-                <Textarea id="edit-observations" name="observations" value={formData.observations} onChange={handleInputChange} />
+                <Label htmlFor="edit-email">Email *</Label>
+                <Input id="edit-email" name="email" type="email" required value={formData.email} onChange={handleInputChange} />
               </div>
               <div className="flex justify-end gap-3 pt-4">
                 <Button type="button" variant="outline" onClick={() => setIsEditOpen(false)}>Cancelar</Button>

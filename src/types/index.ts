@@ -13,33 +13,29 @@ export interface User {
 
 export interface Property {
   id: string;
+  location: string;
   address: string;
   number: string;
   complement?: string;
-  neighborhood: string;
-  city: string;
-  state: string;
-  cep: string;
-  description?: string;
-  location: string; // Renamed from local to location for consistency
-  type: string;
-  status: "available" | "occupied";
+  neighborhood?: string;
+  city?: string;
+  state?: string;
+  cep?: string;
   monthlyRent: number;
-  value?: number;
+  description?: string;
+  type?: string;
+  status: "available" | "occupied";
   createdAt: string;
 }
 
 export interface Tenant {
   id: string;
   name: string;
-  documentType: "CPF" | "CNPJ";
-  cpf: string; // Used for both CPF and CNPJ value
-  rg?: string;
+  cpf: string;
   email: string;
   phone: string;
-  isActive: boolean; // Replaces status
+  status: "active" | "inactive";
   createdAt: string;
-  observations?: string;
 }
 
 export interface Config {
@@ -60,14 +56,13 @@ export interface Rental {
   tenantId: string;
   startDate: string;
   endDate: string;
-  value: number;
   monthlyRent: number;
   paymentDay: number;
   hasGarage: boolean;
   garageValue?: number;
-  deposit?: number; // Add missing deposit field
-  observations?: string;
-  attachments?: Attachment[];
+  value: number; // Total value (monthlyRent + garageValue)
+  deposit?: string;
+  contractAttachments?: Attachment[];
   isActive: boolean;
   createdAt: string;
 }

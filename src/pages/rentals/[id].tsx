@@ -35,7 +35,6 @@ export default function RentalDetails() {
   const [editMonthlyRent, setEditMonthlyRent] = useState("");
   const [editHasGarage, setEditHasGarage] = useState(false);
   const [editGarageValue, setEditGarageValue] = useState("");
-  const [editObservations, setEditObservations] = useState("");
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -69,7 +68,6 @@ export default function RentalDetails() {
     setEditMonthlyRent(rentalData.monthlyRent.toFixed(2).replace(".", ",") || "");
     setEditHasGarage(rentalData.hasGarage || false);
     setEditGarageValue(rentalData.garageValue?.toFixed(2).replace(".", ",") || "");
-    setEditObservations(rentalData.observations || "");
   };
 
   const handleEdit = () => {
@@ -92,8 +90,7 @@ export default function RentalDetails() {
       paymentDay: parseInt(editPaymentDay),
       monthlyRent,
       hasGarage: editHasGarage,
-      garageValue: editHasGarage ? garageValue : undefined,
-      observations: editObservations
+      garageValue: editHasGarage ? garageValue : undefined
     };
 
     rentalStorage.update(updatedRental);
@@ -388,18 +385,6 @@ export default function RentalDetails() {
                     </div>
                   )}
                 </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="observations">Observações</Label>
-                <Textarea
-                  id="observations"
-                  value={editObservations}
-                  onChange={(e) => setEditObservations(e.target.value)}
-                  disabled={!isEditing}
-                  rows={4}
-                  placeholder="Observações sobre a locação..."
-                />
               </div>
             </CardContent>
           </Card>
