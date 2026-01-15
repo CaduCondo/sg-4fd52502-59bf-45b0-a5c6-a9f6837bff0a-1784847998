@@ -16,7 +16,7 @@ export interface Property {
   state: string;
   description: string;
   monthlyRent: number;
-  status: "available" | "rented";
+  status: "available" | "occupied";
   createdAt: string;
 }
 
@@ -28,7 +28,7 @@ export interface Tenant {
   phone: string;
   email: string;
   observations?: string;
-  status: "vacant" | "rented";
+  status: "vacant" | "active";
   createdAt: string;
 }
 
