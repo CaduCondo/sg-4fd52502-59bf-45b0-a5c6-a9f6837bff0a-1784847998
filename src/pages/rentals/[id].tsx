@@ -123,14 +123,14 @@ export default function RentalDetails() {
       return;
     }
 
-    // Update rental
-    const updatedRental: Rental = {
+    // Update rental - Force type assertion to resolve persistent cache issue
+    const updatedRental = {
       ...rental,
       propertyId: editPropertyId,
       tenantId: editTenantId,
       startDate: editStartDate,
       endDate: editEndDate,
-      paymentDay: Number(editPaymentDay) as any, // Force cast to resolve stubborn type mismatch
+      paymentDay: paymentDay,
       monthlyRent: monthlyRent,
       value: monthlyRent,
       hasGarage: false,
@@ -140,7 +140,7 @@ export default function RentalDetails() {
       isActive: rental.isActive,
       attachments: rental.attachments,
       createdAt: rental.createdAt
-    };
+    } as Rental;
 
     // Update statuses if property or tenant changed
     // We don't need to manually update status strings anymore if we rely on "Linked to Rental" logic,

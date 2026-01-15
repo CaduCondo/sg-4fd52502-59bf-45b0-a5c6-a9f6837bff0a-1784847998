@@ -48,16 +48,16 @@ export interface Rental {
   tenantId: string;
   startDate: string;
   endDate: string;
-  value: number; // Monthly rent base value
-  monthlyRent: number; // Total value including extras
+  value: number;
+  monthlyRent: number;
   paymentDay: number;
   hasGarage: boolean;
   garageValue?: number;
   hasMotorcycleSpot: boolean;
   motorcycleSpotValue?: number;
-  observations?: string; // Caução / Notes
+  observations?: string;
   attachments?: { name: string; url: string; date?: string; type?: string }[];
-  isActive: boolean; // Replaces status
+  isActive: boolean;
   createdAt: string;
 }
 
