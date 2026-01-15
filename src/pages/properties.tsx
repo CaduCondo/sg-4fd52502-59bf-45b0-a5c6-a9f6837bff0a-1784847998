@@ -52,9 +52,8 @@ export default function Properties() {
     state: "",
     cep: "",
     description: "",
-    local: "",
+    location: "", // Updated
     type: "",
-    value: "",
     monthlyRent: "",
     status: "available" as "available" | "occupied",
   });
@@ -93,7 +92,7 @@ export default function Properties() {
     }
 
     if (filterLocal) {
-      filtered = filtered.filter(p => p.local === filterLocal);
+      filtered = filtered.filter(p => p.location === filterLocal);
     }
 
     // Sorting
@@ -101,7 +100,7 @@ export default function Properties() {
       if (sortBy === "status") {
         return a.status.localeCompare(b.status);
       }
-      return a.local.localeCompare(b.local);
+      return a.location.localeCompare(b.location);
     });
 
     setFilteredProperties(filtered);
@@ -168,8 +167,8 @@ export default function Properties() {
     
     const propertyData: Property = {
       id: editingProperty ? editingProperty.id : crypto.randomUUID(),
-      local: formData.local,
-      type: formData.type || "Residencial", // Default or from form
+      location: formData.location,
+      type: formData.type || "Residencial",
       cep: formData.cep,
       address: formData.address,
       number: formData.number,
@@ -178,10 +177,9 @@ export default function Properties() {
       city: formData.city,
       state: formData.state,
       description: formData.description,
-      monthlyRent: 0, // Not used directly usually, derived from rental? Or derived from value? Keeping 0 as placeholder if value is the main one.
-      value: parseCurrency(formData.value),
+      monthlyRent: parseCurrency(formData.monthlyRent),
+      value: parseCurrency(formData.monthlyRent), // Use monthlyRent as value
       status: formData.status,
-      // Removed isActive
       createdAt: editingProperty ? editingProperty.createdAt : new Date().toISOString()
     };
 
@@ -205,18 +203,19 @@ export default function Properties() {
   const handleEdit = (property: Property) => {
     setFormData({
       address: property.address,
-      complement: property.complement || "",
       number: property.number,
-      cep: property.cep || "",
-      local: property.local || "",
-      type: property.type,
-      monthlyRent: property.monthlyRent ? property.monthlyRent.toFixed(2).replace(".", ",") : "",
-      status: property.status,
-      neighborhood: property.neighborhood || "",
-      city: property.city || "",
-      state: property.state || "",
+      complement: property.complement || "",
+      neighborhood: property.neighborhood,
+      city: property.city,
+      state: property.state,
+      cep: property.cep,
       description: property.description || "",
-      value: property.value ? property.value.toFixed(2).replace(".", ",") : "",
+      location: property.location, // Updated
+      type: property.type,
+      monthlyRent: property.monthlyRent 
+        ? property.monthlyRent.toFixed(2).replace(".", ",") 
+        : "",
+      status: property.status,
     });
     setEditingProperty(property);
     setIsDialogOpen(true);
@@ -366,7 +365,7 @@ export default function Properties() {
                       className="cursor-pointer hover:bg-slate-50"
                       onClick={() => handleViewProperty(property)}
                     >
-                      <TableCell className="font-medium">{property.local}</TableCell>
+                      <TableCell className="font-medium">{property.location}</TableCell>
                       <TableCell>{property.address}, {property.number}</TableCell>
                       <TableCell>{formatCurrency(property.monthlyRent)}</TableCell>
                       <TableCell>
@@ -414,9 +413,9 @@ export default function Properties() {
                       <CardContent className="pt-0 pb-4">
                         <div className="space-y-3">
                           {/* Local */}
-                          <div className="flex items-center gap-2 text-sm">
-                            <MapPin className="h-4 w-4 text-emerald-600" />
-                            <span className="text-slate-600 font-medium">{property.local}</span>
+                          <div className="flex items-center gap-2 text-muted-foreground">
+                            <MapPin className="h-4 w-4 flex-shrink-0" />
+                            <span>{property.location}</span>
                           </div>
 
                           {/* Complemento */}
@@ -479,7 +478,7 @@ export default function Properties() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label className="text-muted-foreground">Local</Label>
-                    <p className="font-medium">{viewingProperty.local}</p>
+                    <p className="font-medium">{viewingProperty.location}</p>
                   </div>
                   <div>
                     <Label className="text-muted-foreground">Tipo</Label>
@@ -552,22 +551,14 @@ export default function Properties() {
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="local">Local *</Label>
-                <Select
-                  value={formData.local}
-                  onValueChange={(value) => setFormData({ ...formData, local: value })}
-                >
-                  <SelectTrigger id="local">
-                    <SelectValue placeholder="Selecione um local" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableLocations.map((location) => (
-                      <SelectItem key={location} value={location}>
-                        {location}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="location">Local *</Label>
+                <Input
+                  id="location"
+                  value={formData.location}
+                  onChange={(e) =>
+                    setFormData({ ...formData, location: e.target.value })
+                  }
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-4">

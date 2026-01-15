@@ -155,8 +155,8 @@ export default function FinancialPage() {
 
       rentalPayments.forEach(payment => {
         const dueDate = new Date(rental.startDate);
-        const monthNum = payment.referenceMonth;
-        const monthsFromStart = monthNum - 1;
+        const monthNum = parseInt(payment.referenceMonth);
+        const monthsFromStart = monthNum - 1; // Approximate logic, might need improvement for year rollover but keeps existing logic working for now with parseInt
         
         dueDate.setMonth(dueDate.getMonth() + monthsFromStart);
         dueDate.setDate(rental.paymentDay);
@@ -183,11 +183,11 @@ export default function FinancialPage() {
         paymentRows.push({
           paymentId: payment.id,
           rentalId: rental.id,
-          location: property.local,
+          location: property.location, // Fix local -> location
           complement: property.complement || "",
           tenantName: tenant.name,
-          year: parseInt(String(payment.referenceYear)),
-          month: monthNum,
+          year: parseInt(payment.referenceYear),
+          month: parseInt(payment.referenceMonth),
           status: payment.isPaid ? "Pago" : (payment.paidAmount && payment.paidAmount > 0) ? "Parcial" : "Não Pago",
           paymentCode: payment.paymentCode || "",
           dueDate: dueDate.toISOString().split('T')[0],

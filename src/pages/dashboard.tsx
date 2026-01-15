@@ -46,8 +46,9 @@ export default function Dashboard() {
     const payments = paymentStorage.getAll();
     const config = configStorage.get();
 
-    const currentMonth = new Date().getMonth() + 1;
-    const currentYear = new Date().getFullYear();
+    const currentDate = new Date();
+    const currentMonth = (currentDate.getMonth() + 1).toString().padStart(2, '0');
+    const currentYear = currentDate.getFullYear().toString();
 
     // Filter payments for current month
     const currentMonthPayments = payments.filter(

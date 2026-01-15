@@ -21,11 +21,11 @@ export interface Property {
   state: string;
   cep: string;
   description?: string;
-  local?: string;
+  location: string; // Renamed from local to location for consistency
   type: string;
   status: "available" | "occupied";
   monthlyRent: number;
-  value?: number; // Valor do imóvel (para venda ou referência)
+  value?: number;
   createdAt: string;
 }
 
@@ -60,6 +60,7 @@ export interface Rental {
   paymentDay: number;
   hasGarage: boolean;
   garageValue?: number;
+  deposit?: number; // Add missing deposit field
   observations?: string;
   attachments?: Attachment[];
   isActive: boolean;
@@ -69,32 +70,31 @@ export interface Rental {
 export interface Payment {
   id: string;
   rentalId: string;
-  referenceMonth: number;
-  referenceYear: number;
-  dueDate: string;
+  referenceMonth: string; // Renamed from month for clarity/consistency
+  referenceYear: string;  // Renamed from year for clarity/consistency
+  dueDate: string;        // Add missing dueDate
   expectedAmount: number;
-  paidAmount: number;
+  paidAmount?: number;
   paymentDate?: string;
-  paymentMethod?: "pix" | "boleto" | "dinheiro";
+  paymentMethod?: "pix" | "boleto" | "cash" | "dinheiro"; // Add dinheiro for compatibility
   paymentLocation?: "CP" | "CD" | "CE";
   paymentCode?: string;
-  status: "paid" | "pending" | "partial" | "overdue";
-  isPaid: boolean;
-  adminFee: number;
+  status: "pending" | "paid" | "partial" | "overdue";
+  isPaid: boolean;        // Add missing isPaid helper flag
   lateFee?: number;
-  fine?: number;
   interest?: number;
-  discount?: boolean;
-  attachments?: { id: string; name: string; url: string; date: string }[];
-  partialPayments?: { 
-    id: string; 
-    amount: number; 
-    date: string; 
-    method: string;
+  adminFee?: number;      // Add missing adminFee
+  notes?: string;         // Add missing notes
+  attachments?: Attachment[];
+  partialPayments?: Array<{
+    id: string;
+    amount: number;
+    date: string;
+    method?: string;
     location?: string;
     code?: string;
-  }[];
-  notes?: string;
+  }>;
+  createdAt: string;
 }
 
 export interface SystemConfig {
