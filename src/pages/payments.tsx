@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { Layout } from "@/components/Layout";
 import { SEO } from "@/components/SEO";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -16,19 +15,18 @@ import { tenantService } from "@/services/tenantService";
 import { rentalService } from "@/services/rentalService";
 import type { Payment, Property, Tenant, Rental } from "@/types";
 
-interface PaymentWithDetails extends Payment {
+interface RentalWithDetails extends Rental {
   property?: Property;
   tenant?: Tenant;
-  rental?: Rental;
+  payment?: Payment;
 }
 
 export default function PaymentsPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const [payments, setPayments] = useState<PaymentWithDetails[]>([]);
-  const [filteredPayments, setFilteredPayments] = useState<PaymentWithDetails[]>([]);
-  const [unpaidPayments, setUnpaidPayments] = useState<PaymentWithDetails[]>([]);
-  const [paidPayments, setPaidPayments] = useState<PaymentWithDetails[]>([]);
+  const [rentals, setRentals] = useState<RentalWithDetails[]>([]);
+  const [unpaidRentals, setUnpaidRentals] = useState<RentalWithDetails[]>([]);
+  const [paidRentals, setPaidRentals] = useState<RentalWithDetails[]>([]);
   const [selectedMonth, setSelectedMonth] = useState("");
   const [selectedYear, setSelectedYear] = useState("");
 
@@ -46,53 +44,59 @@ export default function PaymentsPage() {
 
   const loadData = async () => {
     try {
-      const [allPayments, properties, tenants, rentals] = await Promise.all([
-        paymentService.getAll(),
+      const [allRentals, properties, tenants, payments] = await Promise.all([
+        rentalService.getAll(),
         propertyService.getAll(),
         tenantService.getAll(),
-        rentalService.getAll()
+        paymentService.getAll()
       ]);
 
-      const paymentsWithDetails: PaymentWithDetails[] = allPayments.map(payment => {
-        const rental = rentals.find(r => r.id === payment.rentalId);
-        const property = rental ? properties.find(p => p.id === rental.propertyId) : undefined;
-        const tenant = rental ? tenants.find(t => t.id === rental.tenantId) : undefined;
+      // Filter only active rentals
+      const activeRentals = allRentals.filter(r => r.status === "active");
+
+      // Enrich rentals with property and tenant details + payment info
+      const rentalsWithDetails: RentalWithDetails[] = activeRentals.map(rental => {
+        const property = properties.find(p => p.id === rental.propertyId);
+        const tenant = tenants.find(t => t.id === rental.tenantId);
         
+        // Find payment for this rental in selected month/year
+        const payment = payments.find(p => 
+          p.rentalId === rental.id &&
+          p.referenceMonth === parseInt(selectedMonth) &&
+          p.referenceYear === parseInt(selectedYear)
+        );
+
         return {
-          ...payment,
+          ...rental,
           property,
           tenant,
-          rental
+          payment
         };
       });
 
-      setPayments(paymentsWithDetails);
+      setRentals(rentalsWithDetails);
 
-      // Filter by selected month/year
-      const filtered = paymentsWithDetails.filter((p) => {
-        const matchMonth = selectedMonth === "all" || p.referenceMonth === parseInt(selectedMonth);
-        const matchYear = selectedYear === "all" || p.referenceYear === parseInt(selectedYear);
-        return matchMonth && matchYear;
-      });
+      // Split into unpaid (no payment or pending/partial) and paid
+      const unpaid = rentalsWithDetails.filter(r => 
+        !r.payment || r.payment.status === "pending" || r.payment.status === "partial"
+      );
+      const paid = rentalsWithDetails.filter(r => 
+        r.payment && r.payment.status === "paid"
+      );
 
-      setFilteredPayments(filtered);
-
-      // Split into unpaid (pending + partial) and paid
-      const unpaid = filtered.filter(p => p.status === "pending" || p.status === "partial");
-      const paid = filtered.filter(p => p.status === "paid");
-
-      setUnpaidPayments(unpaid);
-      setPaidPayments(paid);
+      setUnpaidRentals(unpaid);
+      setPaidRentals(paid);
     } catch (error) {
-      toast({ title: "Erro", description: "Falha ao carregar pagamentos.", variant: "destructive" });
+      toast({ title: "Erro", description: "Falha ao carregar locações.", variant: "destructive" });
     }
   };
 
-  const getCardColorClass = (payment: Payment): string => {
-    if (payment.status === "paid") return "bg-white border-slate-200";
+  const getCardColorClass = (rental: RentalWithDetails): string => {
+    if (rental.payment?.status === "paid") return "bg-white border-slate-200";
     
     const currentDate = new Date();
-    const dueDate = new Date(payment.dueDate);
+    const dueDay = rental.dueDay || 5;
+    const dueDate = new Date(parseInt(selectedYear), parseInt(selectedMonth) - 1, dueDay);
     
     currentDate.setHours(0, 0, 0, 0);
     dueDate.setHours(0, 0, 0, 0);
@@ -102,20 +106,21 @@ export default function PaymentsPage() {
     return "bg-emerald-50 border-emerald-200"; // A vencer
   };
 
-  const getStatusBadge = (payment: Payment) => {
-    const currentDate = new Date();
-    const dueDate = new Date(payment.dueDate);
-    
-    currentDate.setHours(0, 0, 0, 0);
-    dueDate.setHours(0, 0, 0, 0);
-    
-    if (payment.status === "paid") {
+  const getStatusBadge = (rental: RentalWithDetails) => {
+    if (rental.payment?.status === "paid") {
       return <Badge variant="default" className="bg-emerald-600"><CheckCircle className="h-3 w-3 mr-1" />Pago</Badge>;
     }
     
-    if (payment.status === "partial") {
+    if (rental.payment?.status === "partial") {
       return <Badge variant="warning"><Clock className="h-3 w-3 mr-1" />Parcial</Badge>;
     }
+    
+    const currentDate = new Date();
+    const dueDay = rental.dueDay || 5;
+    const dueDate = new Date(parseInt(selectedYear), parseInt(selectedMonth) - 1, dueDay);
+    
+    currentDate.setHours(0, 0, 0, 0);
+    dueDate.setHours(0, 0, 0, 0);
     
     if (currentDate > dueDate) {
       return <Badge variant="destructive"><AlertCircle className="h-3 w-3 mr-1" />Atrasado</Badge>;
@@ -126,6 +131,41 @@ export default function PaymentsPage() {
     }
     
     return <Badge variant="secondary"><Clock className="h-3 w-3 mr-1" />A Vencer</Badge>;
+  };
+
+  const handleCardClick = (rental: RentalWithDetails) => {
+    if (rental.payment) {
+      // If payment exists, go to manage payment page
+      router.push(`/payments/manage/${rental.payment.id}`);
+    } else {
+      // If no payment, create one and go to manage page
+      createPaymentAndNavigate(rental);
+    }
+  };
+
+  const createPaymentAndNavigate = async (rental: RentalWithDetails) => {
+    try {
+      const dueDay = rental.dueDay || 5;
+      const dueDate = new Date(parseInt(selectedYear), parseInt(selectedMonth) - 1, dueDay);
+      
+      const newPayment: Omit<Payment, "id"> = {
+        rentalId: rental.id,
+        referenceMonth: parseInt(selectedMonth),
+        referenceYear: parseInt(selectedYear),
+        dueDate: dueDate.toISOString().split("T")[0],
+        expectedAmount: rental.rentAmount,
+        paidAmount: 0,
+        adminFee: 0,
+        status: "pending",
+        paymentDate: null,
+        notes: ""
+      };
+
+      const created = await paymentService.create(newPayment);
+      router.push(`/payments/manage/${created.id}`);
+    } catch (error) {
+      toast({ title: "Erro", description: "Falha ao criar pagamento.", variant: "destructive" });
+    }
   };
 
   const months = [
@@ -154,7 +194,7 @@ export default function PaymentsPage() {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
               <h1 className="text-3xl font-bold">Gestão de Recebimentos</h1>
-              <p className="text-muted-foreground">Gerencie os pagamentos mensais</p>
+              <p className="text-muted-foreground">Gerencie os pagamentos mensais das locações</p>
             </div>
           </div>
 
@@ -194,51 +234,51 @@ export default function PaymentsPage() {
           <Tabs defaultValue="unpaid" className="space-y-4">
             <TabsList>
               <TabsTrigger value="unpaid">
-                Locações Não Pagas Este Mês ({unpaidPayments.length})
+                Locações Não Pagas Este Mês ({unpaidRentals.length})
               </TabsTrigger>
               <TabsTrigger value="paid">
-                Locações Pagas Este Mês ({paidPayments.length})
+                Locações Pagas Este Mês ({paidRentals.length})
               </TabsTrigger>
             </TabsList>
 
             <TabsContent value="unpaid" className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {unpaidPayments.length === 0 ? (
+                {unpaidRentals.length === 0 ? (
                   <p className="col-span-full text-center text-muted-foreground py-8">
-                    Nenhum pagamento pendente neste mês
+                    Nenhuma locação pendente neste mês
                   </p>
                 ) : (
-                  unpaidPayments.map((payment) => (
+                  unpaidRentals.map((rental) => (
                     <Card
-                      key={payment.id}
-                      className={`cursor-pointer hover:shadow-lg transition-all duration-200 ${getCardColorClass(payment)}`}
-                      onClick={() => router.push(`/payments/manage/${payment.id}`)}
+                      key={rental.id}
+                      className={`cursor-pointer hover:shadow-lg transition-all duration-200 ${getCardColorClass(rental)}`}
+                      onClick={() => handleCardClick(rental)}
                     >
                       <CardHeader className="pb-3">
                         <div className="flex justify-between items-start">
                           <CardTitle className="text-base">
-                            {payment.property?.location || "Imóvel não encontrado"}
+                            {rental.property?.location || "Imóvel não encontrado"}
                           </CardTitle>
-                          {getStatusBadge(payment)}
+                          {getStatusBadge(rental)}
                         </div>
                         <CardDescription className="text-sm">
-                          {payment.tenant?.name || "Inquilino não encontrado"}
+                          {rental.tenant?.name || "Inquilino não encontrado"}
                         </CardDescription>
                       </CardHeader>
                       <CardContent className="space-y-2 text-sm">
-                        {payment.property?.complement && (
+                        {rental.property?.complement && (
                           <div className="flex items-center gap-2 text-muted-foreground">
                             <Home className="h-4 w-4 flex-shrink-0" />
-                            <span>{payment.property.complement}</span>
+                            <span>{rental.property.complement}</span>
                           </div>
                         )}
                         <div className="flex items-center gap-2 text-muted-foreground">
                           <Calendar className="h-4 w-4 flex-shrink-0" />
-                          <span>Vencimento: {formatDate(payment.dueDate)}</span>
+                          <span>Vencimento: Dia {rental.dueDay || 5}</span>
                         </div>
                         <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-semibold">
                           <DollarSign className="h-4 w-4 flex-shrink-0" />
-                          <span>{formatCurrency(payment.expectedAmount)}</span>
+                          <span>{formatCurrency(rental.rentAmount)}</span>
                         </div>
                       </CardContent>
                     </Card>
@@ -249,42 +289,42 @@ export default function PaymentsPage() {
 
             <TabsContent value="paid" className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {paidPayments.length === 0 ? (
+                {paidRentals.length === 0 ? (
                   <p className="col-span-full text-center text-muted-foreground py-8">
-                    Nenhum pagamento realizado neste mês
+                    Nenhuma locação paga neste mês
                   </p>
                 ) : (
-                  paidPayments.map((payment) => (
+                  paidRentals.map((rental) => (
                     <Card
-                      key={payment.id}
+                      key={rental.id}
                       className="cursor-pointer hover:shadow-lg transition-all duration-200"
-                      onClick={() => router.push(`/payments/${payment.id}`)}
+                      onClick={() => handleCardClick(rental)}
                     >
                       <CardHeader className="pb-3">
                         <div className="flex justify-between items-start">
                           <CardTitle className="text-base">
-                            {payment.property?.location || "Imóvel não encontrado"}
+                            {rental.property?.location || "Imóvel não encontrado"}
                           </CardTitle>
-                          {getStatusBadge(payment)}
+                          {getStatusBadge(rental)}
                         </div>
                         <CardDescription className="text-sm">
-                          {payment.tenant?.name || "Inquilino não encontrado"}
+                          {rental.tenant?.name || "Inquilino não encontrado"}
                         </CardDescription>
                       </CardHeader>
                       <CardContent className="space-y-2 text-sm">
-                        {payment.property?.complement && (
+                        {rental.property?.complement && (
                           <div className="flex items-center gap-2 text-muted-foreground">
                             <Home className="h-4 w-4 flex-shrink-0" />
-                            <span>{payment.property.complement}</span>
+                            <span>{rental.property.complement}</span>
                           </div>
                         )}
                         <div className="flex items-center gap-2 text-muted-foreground">
                           <Calendar className="h-4 w-4 flex-shrink-0" />
-                          <span>Pago em: {payment.paymentDate ? formatDate(payment.paymentDate) : "N/A"}</span>
+                          <span>Pago em: {rental.payment?.paymentDate ? formatDate(rental.payment.paymentDate) : "N/A"}</span>
                         </div>
                         <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-semibold">
                           <DollarSign className="h-4 w-4 flex-shrink-0" />
-                          <span>{formatCurrency(payment.paidAmount || payment.expectedAmount)}</span>
+                          <span>{formatCurrency(rental.payment?.paidAmount || rental.rentAmount)}</span>
                         </div>
                       </CardContent>
                     </Card>
