@@ -3,7 +3,8 @@ import { useRouter } from "next/router";
 import Link from "next/link";
 import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { isAuthenticated } from "@/lib/auth";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { getCurrentUser, isAuthenticated } from "@/lib/auth";
 import { propertyStorage, tenantStorage, rentalStorage, paymentStorage, configStorage } from "@/lib/storage";
 import { DashboardStats, Property, Tenant, Rental, Payment } from "@/types";
 import { Building2, Users, DollarSign, CheckCircle, XCircle, TrendingUp, AlertTriangle } from "lucide-react";
@@ -12,6 +13,9 @@ import { formatCurrency, formatDate } from "@/lib/masks";
 
 export default function Dashboard() {
   const router = useRouter();
+  const currentUser = getCurrentUser();
+  const [selectedMonth, setSelectedMonth] = useState("");
+  const [selectedYear, setSelectedYear] = useState("");
   const [stats, setStats] = useState<DashboardStats>({
     totalProperties: 0,
     rentedProperties: 0,
@@ -36,18 +40,25 @@ export default function Dashboard() {
       return;
     }
 
+    const now = new Date();
+    const currentMonth = (now.getMonth() + 1).toString().padStart(2, "0");
+    const currentYear = now.getFullYear().toString();
+    
+    setSelectedMonth(currentMonth);
+    setSelectedYear(currentYear);
+  }, [router]);
+
+  useEffect(() => {
+    if (!selectedMonth || !selectedYear) return;
+
     const properties = propertyStorage.getAll();
     const tenants = tenantStorage.getAll();
     const rentals = rentalStorage.getAll();
     const payments = paymentStorage.getAll();
     const config = configStorage.get();
 
-    const now = new Date();
-    const currentMonth = now.getMonth() + 1;
-    const currentYear = now.getFullYear();
-
     const currentMonthPayments = payments.filter(
-      p => p.month === currentMonth.toString().padStart(2, "0") && p.year === currentYear
+      p => p.month === selectedMonth && p.year === parseInt(selectedYear)
     );
 
     const paidCount = currentMonthPayments.filter(p => p.isPaid).length;
@@ -94,7 +105,28 @@ export default function Dashboard() {
       }>;
 
     setUpcomingPayments(upcoming);
-  }, [router]);
+  }, [selectedMonth, selectedYear]);
+
+  const getMonthName = (month: string) => {
+    const months = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", 
+                   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+    return months[parseInt(month) - 1];
+  };
+
+  const generateMonthOptions = () => {
+    return Array.from({ length: 12 }, (_, i) => {
+      const month = (i + 1).toString().padStart(2, "0");
+      return { value: month, label: getMonthName(month) };
+    });
+  };
+
+  const generateYearOptions = () => {
+    const currentYear = new Date().getFullYear();
+    return Array.from({ length: 5 }, (_, i) => {
+      const year = currentYear - 2 + i;
+      return { value: year.toString(), label: year.toString() };
+    });
+  };
 
   return (
     <>
@@ -105,17 +137,49 @@ export default function Dashboard() {
       
       <Layout>
         <div className="space-y-6">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight text-gray-900">Dashboard</h1>
-            <p className="text-gray-500">Visão geral do sistema de locações</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+                Olá, {currentUser?.name || "Usuário"}
+              </h1>
+              <p className="text-gray-500">Bem-vindo ao painel de controle</p>
+            </div>
+            
+            <div className="flex gap-3">
+              <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                <SelectTrigger className="w-[150px]">
+                  <SelectValue placeholder="Selecione o mês" />
+                </SelectTrigger>
+                <SelectContent>
+                  {generateMonthOptions().map(month => (
+                    <SelectItem key={month.value} value={month.value}>
+                      {month.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={selectedYear} onValueChange={setSelectedYear}>
+                <SelectTrigger className="w-[120px]">
+                  <SelectValue placeholder="Ano" />
+                </SelectTrigger>
+                <SelectContent>
+                  {generateYearOptions().map(year => (
+                    <SelectItem key={year.value} value={year.value}>
+                      {year.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <Link href="/properties">
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-l-blue-500">
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-l-blue-500 h-full">
                 <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
                   <CardTitle className="text-sm font-medium text-gray-600">Total de Imóveis</CardTitle>
-                  <Building2 className="h-5 w-5 text-blue-600" />
+                  <Building2 className="h-4 w-4 text-blue-600" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-gray-900">{stats.totalProperties}</div>
@@ -124,11 +188,11 @@ export default function Dashboard() {
               </Card>
             </Link>
 
-            <Link href="/properties?filter=rented">
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-l-emerald-500">
+            <Link href="/properties?filter=occupied">
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-l-emerald-500 h-full">
                 <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
                   <CardTitle className="text-sm font-medium text-gray-600">Imóveis Ocupados</CardTitle>
-                  <CheckCircle className="h-5 w-5 text-emerald-600" />
+                  <CheckCircle className="h-4 w-4 text-emerald-600" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-gray-900">{stats.rentedProperties}</div>
@@ -138,10 +202,10 @@ export default function Dashboard() {
             </Link>
 
             <Link href="/properties?filter=available">
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-l-amber-500">
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-l-amber-500 h-full">
                 <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
                   <CardTitle className="text-sm font-medium text-gray-600">Imóveis Vagos</CardTitle>
-                  <Building2 className="h-5 w-5 text-amber-600" />
+                  <Building2 className="h-4 w-4 text-amber-600" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-gray-900">{stats.availableProperties}</div>
@@ -151,10 +215,10 @@ export default function Dashboard() {
             </Link>
 
             <Link href="/tenants">
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-l-purple-500">
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-l-purple-500 h-full">
                 <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
                   <CardTitle className="text-sm font-medium text-gray-600">Total de Inquilinos</CardTitle>
-                  <Users className="h-5 w-5 text-purple-600" />
+                  <Users className="h-4 w-4 text-purple-600" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-gray-900">{stats.totalTenants}</div>
@@ -166,10 +230,10 @@ export default function Dashboard() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <Link href="/payments?filter=paid">
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-l-green-500">
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-l-green-500 h-full">
                 <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
                   <CardTitle className="text-sm font-medium text-gray-600">Pagamentos no Mês</CardTitle>
-                  <CheckCircle className="h-5 w-5 text-green-600" />
+                  <CheckCircle className="h-4 w-4 text-green-600" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-gray-900">{stats.paidThisMonth}</div>
@@ -179,10 +243,10 @@ export default function Dashboard() {
             </Link>
 
             <Link href="/payments?filter=unpaid">
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-l-red-500">
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-l-red-500 h-full">
                 <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
                   <CardTitle className="text-sm font-medium text-gray-600">Pagamentos Pendentes</CardTitle>
-                  <XCircle className="h-5 w-5 text-red-600" />
+                  <XCircle className="h-4 w-4 text-red-600" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-gray-900">{stats.unpaidThisMonth}</div>
@@ -191,10 +255,10 @@ export default function Dashboard() {
               </Card>
             </Link>
 
-            <Card className="border-l-4 border-l-blue-500 bg-blue-50">
+            <Card className="border-l-4 border-l-blue-500 bg-blue-50 h-full">
               <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
                 <CardTitle className="text-sm font-medium text-gray-600">Recebido no Mês</CardTitle>
-                <TrendingUp className="h-5 w-5 text-blue-600" />
+                <TrendingUp className="h-4 w-4 text-blue-600" />
               </CardHeader>
               <CardContent>
                 <div className="text-xl font-bold text-gray-900">{formatCurrency(stats.totalRevenue)}</div>
@@ -202,10 +266,10 @@ export default function Dashboard() {
               </CardContent>
             </Card>
 
-            <Card className="border-l-4 border-l-indigo-500 bg-indigo-50">
+            <Card className="border-l-4 border-l-indigo-500 bg-indigo-50 h-full">
               <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
                 <CardTitle className="text-sm font-medium text-gray-600">Taxa Administração</CardTitle>
-                <DollarSign className="h-5 w-5 text-indigo-600" />
+                <DollarSign className="h-4 w-4 text-indigo-600" />
               </CardHeader>
               <CardContent>
                 <div className="text-xl font-bold text-gray-900">{formatCurrency(stats.adminFee)}</div>
@@ -214,39 +278,37 @@ export default function Dashboard() {
             </Card>
           </div>
 
-          <Card className="border-l-4 border-l-amber-500">
-            <CardHeader>
-              <div className="flex items-center space-x-2">
-                <AlertTriangle className="h-5 w-5 text-amber-600" />
-                <div>
-                  <CardTitle>Prestes a Vencer</CardTitle>
-                  <CardDescription>Pagamentos pendentes do mês corrente</CardDescription>
+          {upcomingPayments.length > 0 && (
+            <Card className="border-l-4 border-l-amber-500">
+              <CardHeader>
+                <div className="flex items-center space-x-2">
+                  <AlertTriangle className="h-5 w-5 text-amber-600" />
+                  <div>
+                    <CardTitle>Prestes a Vencer</CardTitle>
+                    <CardDescription>Pagamentos pendentes de {getMonthName(selectedMonth)}/{selectedYear}</CardDescription>
+                  </div>
                 </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {upcomingPayments.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <CheckCircle className="h-12 w-12 mx-auto mb-3 text-green-500" />
-                  <p>Todos os pagamentos do mês estão em dia!</p>
-                </div>
-              ) : (
+              </CardHeader>
+              <CardContent>
                 <div className="space-y-3">
                   {upcomingPayments.map(({ payment, property, tenant }) => (
-                    <div 
+                    <Link 
                       key={payment.id}
-                      className="flex items-center justify-between p-4 bg-amber-50 border border-amber-200 rounded-lg hover:shadow-md transition-shadow"
+                      href={`/payments?payment=${payment.id}`}
+                      className="block"
                     >
-                      <div className="flex-1">
-                        <p className="font-semibold text-gray-900">{property.address}</p>
-                        <p className="text-sm text-gray-600">Inquilino: {tenant.name}</p>
-                        <p className="text-xs text-gray-500">Vencimento: {formatDate(payment.dueDate)}</p>
+                      <div className="flex items-center justify-between p-3 bg-amber-50 border border-amber-200 rounded-lg hover:shadow-md transition-shadow cursor-pointer">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-gray-900 truncate">{property.address}</p>
+                          <p className="text-sm text-gray-600 truncate">Inquilino: {tenant.name}</p>
+                          <p className="text-xs text-gray-500">Vencimento: {formatDate(payment.dueDate)}</p>
+                        </div>
+                        <div className="text-right ml-4 flex-shrink-0">
+                          <p className="text-lg font-bold text-amber-700 whitespace-nowrap">{formatCurrency(payment.amount)}</p>
+                          <p className="text-xs text-gray-500">Pendente</p>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-lg font-bold text-amber-700">{formatCurrency(payment.amount)}</p>
-                        <p className="text-xs text-gray-500">Pendente</p>
-                      </div>
-                    </div>
+                    </Link>
                   ))}
                   <div className="mt-4 pt-4 border-t border-amber-200">
                     <div className="flex justify-between items-center">
@@ -255,9 +317,9 @@ export default function Dashboard() {
                     </div>
                   </div>
                 </div>
-              )}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </Layout>
     </>
