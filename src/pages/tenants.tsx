@@ -290,8 +290,7 @@ export default function TenantsPage() {
                 <Select
                   value={documentType}
                   onValueChange={(value) => {
-                    const type = value as "cpf" | "cnpj";
-                    setDocumentType(type);
+                    setDocumentType(value as "cpf" | "cnpj");
                     setFormData({ ...formData, cpf: "", rg: "" });
                   }}
                 >
