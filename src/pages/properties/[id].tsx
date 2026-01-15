@@ -38,7 +38,9 @@ export default function PropertyDetails() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
     local: "",
+    cep: "",
     address: "",
+    number: "",
     complement: "",
     state: "SP",
     description: "",
@@ -63,7 +65,9 @@ export default function PropertyDetails() {
       setProperty(found);
       setFormData({
         local: found.local,
+        cep: found.cep,
         address: found.address,
+        number: found.number,
         complement: found.complement || "",
         state: found.state,
         description: found.description,
@@ -87,7 +91,9 @@ export default function PropertyDetails() {
     const updatedProperty: Property = {
       ...property,
       local: formData.local,
+      cep: formData.cep,
       address: formData.address,
+      number: formData.number,
       complement: formData.complement || undefined,
       state: formData.state,
       description: formData.description,
@@ -148,7 +154,7 @@ export default function PropertyDetails() {
                 <MapPin className="text-emerald-600" />
                 <span>{property.local}</span>
               </h1>
-              <p className="text-slate-600 mt-2">{property.address}</p>
+              <p className="text-slate-600 mt-2">{property.address}, {property.number}</p>
             </div>
             <Badge variant={property.status === "rented" ? "default" : "secondary"} className="text-base px-4 py-2">
               {property.status === "rented" ? "Alugado" : "Disponível"}
@@ -167,22 +173,34 @@ export default function PropertyDetails() {
                     <p className="text-lg text-slate-900">{property.local}</p>
                   </div>
                   <div>
+                    <p className="text-sm font-medium text-slate-600">CEP</p>
+                    <p className="text-lg text-slate-900">{property.cep}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-slate-600">Endereço</p>
+                    <p className="text-lg text-slate-900">{property.address}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-slate-600">Número</p>
+                    <p className="text-lg text-slate-900">{property.number}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  {property.complement && (
+                    <div>
+                      <p className="text-sm font-medium text-slate-600">Complemento</p>
+                      <p className="text-lg text-slate-900">{property.complement}</p>
+                    </div>
+                  )}
+                  <div>
                     <p className="text-sm font-medium text-slate-600">Estado</p>
                     <p className="text-lg text-slate-900">{property.state}</p>
                   </div>
                 </div>
-
-                <div>
-                  <p className="text-sm font-medium text-slate-600">Endereço Completo</p>
-                  <p className="text-lg text-slate-900">{property.address}</p>
-                </div>
-
-                {property.complement && (
-                  <div>
-                    <p className="text-sm font-medium text-slate-600">Complemento</p>
-                    <p className="text-lg text-slate-900">{property.complement}</p>
-                  </div>
-                )}
 
                 <div>
                   <p className="text-sm font-medium text-slate-600">Descrição</p>
@@ -262,6 +280,41 @@ export default function PropertyDetails() {
                     </select>
                   </div>
                   <div className="space-y-2">
+                    <Label htmlFor="cep">CEP *</Label>
+                    <Input
+                      id="cep"
+                      value={formData.cep}
+                      onChange={(e) => setFormData({ ...formData, cep: e.target.value })}
+                      placeholder="00000-000"
+                      maxLength={9}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="address">Endereço *</Label>
+                  <Input
+                    id="address"
+                    value={formData.address}
+                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                    placeholder="Rua, avenida"
+                    required
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="number">Número *</Label>
+                    <Input
+                      id="number"
+                      value={formData.number}
+                      onChange={(e) => setFormData({ ...formData, number: e.target.value })}
+                      placeholder="Número"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
                     <Label htmlFor="state">Estado *</Label>
                     <select
                       id="state"
@@ -275,17 +328,6 @@ export default function PropertyDetails() {
                       ))}
                     </select>
                   </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="address">Endereço *</Label>
-                  <Input
-                    id="address"
-                    value={formData.address}
-                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                    placeholder="Rua, número, bairro, cidade"
-                    required
-                  />
                 </div>
 
                 <div className="space-y-2">
