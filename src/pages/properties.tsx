@@ -15,7 +15,7 @@ import { Building2, Plus, Search, Edit, Eye, Home, MapPin } from "lucide-react";
 import { Property } from "@/types";
 import { propertyService } from "@/services";
 import { configService } from "@/services/configService";
-import { applyCepMask, applyMoneyMask, removeMask } from "@/lib/masks";
+import { applyCepMask, applyRealMask, removeMask } from "@/lib/masks";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
 import { FloatingCard } from "@/components/animations/FloatingCard";
 
@@ -470,7 +470,7 @@ export default function PropertiesPage() {
                     id="rentValue"
                     placeholder="R$ 0,00"
                     value={formData.rentValue}
-                    onChange={(e) => setFormData({ ...formData, rentValue: applyMoneyMask(e.target.value) })}
+                    onChange={(e) => setFormData({ ...formData, rentValue: applyRealMask(e.target.value) })}
                     disabled={isViewMode}
                   />
                 </div>
