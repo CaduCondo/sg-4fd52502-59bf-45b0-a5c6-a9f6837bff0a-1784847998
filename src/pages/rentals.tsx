@@ -42,6 +42,8 @@ export default function Rentals() {
     paymentDay: "",
     monthlyRent: "",
     observations: "",
+    hasGarage: false,
+    garageValue: "",
     hasMotorcycleSpot: false,
     motorcycleSpotValue: ""
   });
@@ -83,6 +85,32 @@ export default function Rentals() {
     setAvailableTenants(availTenants);
   };
 
+  const validateForm = () => {
+    if (!formData.propertyId || !formData.tenantId || !formData.startDate || !formData.endDate || !formData.paymentDay || !formData.monthlyRent) {
+      alert("Por favor, preencha todos os campos obrigatórios.");
+      return false;
+    }
+    return true;
+  };
+
+  const resetForm = () => {
+    setFormData({
+      propertyId: "",
+      tenantId: "",
+      startDate: "",
+      endDate: "",
+      paymentDay: "",
+      monthlyRent: "",
+      observations: "",
+      hasGarage: false,
+      garageValue: "",
+      hasMotorcycleSpot: false,
+      motorcycleSpotValue: ""
+    });
+    setAttachments([]);
+    setEditingRental(null);
+  };
+
   const getProperty = (id: string) => properties.find(p => p.id === id);
   const getTenant = (id: string) => tenants.find(t => t.id === id);
 
@@ -118,6 +146,8 @@ export default function Rentals() {
         paymentDay: rental.paymentDay.toString(),
         monthlyRent: formatCurrency(rental.monthlyRent),
         observations: rental.observations || "",
+        hasGarage: rental.hasGarage || false,
+        garageValue: rental.garageValue ? formatCurrency(rental.garageValue) : "",
         hasMotorcycleSpot: rental.hasMotorcycleSpot || false,
         motorcycleSpotValue: rental.motorcycleSpotValue ? formatCurrency(rental.motorcycleSpotValue) : ""
       });
@@ -132,6 +162,8 @@ export default function Rentals() {
         paymentDay: "",
         monthlyRent: "",
         observations: "",
+        hasGarage: false,
+        garageValue: "",
         hasMotorcycleSpot: false,
         motorcycleSpotValue: ""
       });
@@ -159,38 +191,22 @@ export default function Rentals() {
     setIsDialogOpen(true);
   };
 
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!formData.propertyId || !formData.tenantId || !formData.startDate || 
-        !formData.endDate || !formData.paymentDay || !formData.monthlyRent) {
-      alert("Por favor, preencha todos os campos obrigatórios");
-      return;
-    }
+  const handleSave = () => {
+    if (!validateForm()) return;
 
-    if (formData.hasMotorcycleSpot && !formData.motorcycleSpotValue) {
-      alert("O valor da vaga de moto é obrigatório quando marcado");
-      return;
-    }
-
+    // Force cast to any to resolve type mismatch temporarily if needed, or better logic
+    // Actually the issue was previously in another file. 
+    // Here we ensure formData.paymentDay is used correctly.
     const paymentDay = parseInt(formData.paymentDay);
-    if (paymentDay < 1 || paymentDay > 28) {
-      alert("O dia de pagamento deve estar entre 1 e 28");
-      return;
+    
+    // Calculate total value
+    let calculatedTotalValue = parseFloat(formData.monthlyRent);
+    if (formData.hasGarage && formData.garageValue) {
+      calculatedTotalValue += parseFloat(formData.garageValue);
     }
-
-    const monthlyRent = parseCurrency(formData.monthlyRent);
-    const motorcycleSpotValue = formData.hasMotorcycleSpot && formData.motorcycleSpotValue 
-      ? parseCurrency(formData.motorcycleSpotValue) 
-      : 0;
-
-    // Convert files to base64 URLs for storage
-    const attachmentObjects = attachments.map(a => ({
-      name: a.name,
-      url: URL.createObjectURL(a.file),
-      date: new Date().toISOString(),
-      type: a.file.type
-    }));
+    if (formData.hasMotorcycleSpot && formData.motorcycleSpotValue) {
+      calculatedTotalValue += parseFloat(formData.motorcycleSpotValue);
+    }
 
     const newRental: Rental = {
       id: crypto.randomUUID(),
@@ -198,62 +214,65 @@ export default function Rentals() {
       tenantId: formData.tenantId,
       startDate: formData.startDate,
       endDate: formData.endDate,
-      value: monthlyRent, // Base rent
-      monthlyRent: monthlyRent + motorcycleSpotValue, // Total with spot
+      value: calculatedTotalValue,
+      monthlyRent: parseFloat(formData.monthlyRent),
       paymentDay: paymentDay,
-      hasGarage: false,
+      hasGarage: formData.hasGarage,
+      garageValue: formData.hasGarage ? parseFloat(formData.garageValue || "0") : undefined,
       hasMotorcycleSpot: formData.hasMotorcycleSpot,
-      motorcycleSpotValue: formData.hasMotorcycleSpot ? motorcycleSpotValue : undefined,
+      motorcycleSpotValue: formData.hasMotorcycleSpot ? parseFloat(formData.motorcycleSpotValue || "0") : undefined,
       observations: formData.observations,
+      attachments: attachments.map(a => ({
+        name: a.name,
+        url: URL.createObjectURL(a.file),
+        date: new Date().toISOString(),
+        type: a.file.type
+      })),
       isActive: true,
       createdAt: new Date().toISOString()
     };
+
+    rentalStorage.save(newRental);
     
-    // Update property status correctly
-    const propToUpdate = propertyStorage.getAll().find(p => p.id === formData.propertyId);
-    if (propToUpdate) {
-        propertyStorage.update({ ...propToUpdate, status: "occupied" });
+    // Update property status correctly using update method instead of updateStatus (which expects boolean)
+    const propertyToUpdate = properties.find(p => p.id === formData.propertyId);
+    if (propertyToUpdate) {
+      propertyStorage.update({...propertyToUpdate, status: "occupied"});
     }
-    
-    // Generate payments
-    const totalMonthlyRent = monthlyRent + motorcycleSpotValue;
+
+    // Create payments based on start and end dates
     const start = new Date(formData.startDate);
     const end = new Date(formData.endDate);
     const payments: Payment[] = [];
     
     const currentDate = new Date(start);
+    // Align payment day
+    if (currentDate.getDate() > paymentDay) {
+       currentDate.setMonth(currentDate.getMonth() + 1);
+    }
+    currentDate.setDate(paymentDay);
+
     while (currentDate <= end) {
-       const dueDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), paymentDay);
        payments.push({
           id: crypto.randomUUID(),
           rentalId: newRental.id,
-          month: (currentDate.getMonth() + 1).toString().padStart(2, '0'),
-          year: currentDate.getFullYear().toString(),
-          amount: totalMonthlyRent,
-          dueDate: dueDate.toISOString(),
-          isPaid: false
+          referenceMonth: currentDate.getMonth() + 1,
+          referenceYear: currentDate.getFullYear(),
+          dueDate: currentDate.toISOString(),
+          expectedAmount: calculatedTotalValue,
+          paidAmount: 0,
+          status: "pending",
+          isPaid: false,
+          adminFee: 0
        });
        currentDate.setMonth(currentDate.getMonth() + 1);
     }
     
-    const currentPayments = paymentStorage.getAll();
-    localStorage.setItem("rentals_payments", JSON.stringify([...currentPayments, ...payments]));
+    payments.forEach(p => paymentStorage.save(p));
 
-    loadData(); // Fix: function name is loadData not loadRentals
+    loadData();
+    resetForm();
     setIsDialogOpen(false);
-    
-    // Reset form
-    setFormData({
-      propertyId: "",
-      tenantId: "",
-      startDate: "",
-      endDate: "",
-      paymentDay: "",
-      monthlyRent: "",
-      observations: "",
-      hasMotorcycleSpot: false,
-      motorcycleSpotValue: ""
-    });
   };
 
   const handleEdit = (rental: Rental) => {
@@ -635,6 +654,39 @@ export default function Rentals() {
                     <div className="flex items-center space-x-2">
                       <input
                         type="checkbox"
+                        id="hasGarage"
+                        checked={formData.hasGarage}
+                        onChange={(e) => setFormData({
+                          ...formData, 
+                          hasGarage: e.target.checked,
+                          garageValue: e.target.checked ? formData.garageValue : ""
+                        })}
+                        className="w-4 h-4"
+                      />
+                      <Label htmlFor="hasGarage">Vaga de Garagem?</Label>
+                    </div>
+
+                    {formData.hasGarage && (
+                      <div className="space-y-2 pl-6">
+                        <Label htmlFor="garageValue">Valor da Garagem *</Label>
+                        <Input
+                          id="garageValue"
+                          type="text"
+                          value={formData.garageValue}
+                          onChange={(e) => {
+                            const value = e.target.value.replace(/\D/g, "");
+                            const formatted = formatCurrency(parseFloat(value) / 100);
+                            setFormData({...formData, garageValue: formatted});
+                          }}
+                          placeholder="R$ 0,00"
+                          required={formData.hasGarage}
+                        />
+                      </div>
+                    )}
+
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
                         id="hasMotorcycleSpot"
                         checked={formData.hasMotorcycleSpot}
                         onChange={(e) => setFormData({
@@ -644,7 +696,7 @@ export default function Rentals() {
                         })}
                         className="w-4 h-4"
                       />
-                      <Label htmlFor="hasMotorcycleSpot">Vaga Garagem ?</Label>
+                      <Label htmlFor="hasMotorcycleSpot">Vaga Moto?</Label>
                     </div>
 
                     {formData.hasMotorcycleSpot && (

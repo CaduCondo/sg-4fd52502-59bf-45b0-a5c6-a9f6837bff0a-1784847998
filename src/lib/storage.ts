@@ -7,6 +7,23 @@ const PAYMENTS_KEY = "rental_payments";
 const CONFIG_KEY = "rental_config";
 const USERS_KEY = "rental_users";
 
+// Helper to manage localStorage
+const createStorage = <T extends { id: string }>(key: string) => ({
+  getAll: (): T[] => {
+    if (typeof window === "undefined") return [];
+    const item = localStorage.getItem(key);
+    return item ? JSON.parse(item) : [];
+  },
+  getById: (id: string): T | null => {
+    if (typeof window === "undefined") return null;
+    const items = JSON.parse(localStorage.getItem(key) || "[]");
+    return items.find((item: any) => item.id === id) || null;
+  },
+  save: (data: T) => {
+    const items = JSON.parse(localStorage.getItem(key) || "[]");
+  }
+});
+
 export function initializeStorage(): void {
   if (typeof window === "undefined") return;
   
@@ -92,6 +109,11 @@ export const propertyStorage = {
     propertyStorage.save(property);
   },
 
+  getById: (id: string): Property | null => {
+    const properties = propertyStorage.getAll();
+    return properties.find(p => p.id === id) || null;
+  },
+
   updateStatus: (id: string, isActive: boolean): void => {
     if (typeof window === "undefined") return;
     const properties = propertyStorage.getAll();
@@ -129,6 +151,11 @@ export const tenantStorage = {
 
   update: (tenant: Tenant): void => {
     tenantStorage.save(tenant);
+  },
+
+  getById: (id: string): Tenant | null => {
+    const tenants = tenantStorage.getAll();
+    return tenants.find(t => t.id === id) || null;
   },
 
   updateStatus: (id: string, isActive: boolean) => {
@@ -169,6 +196,11 @@ export const rentalStorage = {
     rentalStorage.save(rental);
   },
 
+  getById: (id: string): Rental | null => {
+    const rentals = rentalStorage.getAll();
+    return rentals.find(r => r.id === id) || null;
+  },
+
   updateStatus: (id: string, isActive: boolean): void => {
     if (typeof window === "undefined") return;
     const rentals = rentalStorage.getAll();
@@ -206,6 +238,11 @@ export const paymentStorage = {
 
   update: (payment: Payment): void => {
     paymentStorage.save(payment);
+  },
+
+  getById: (id: string): Payment | null => {
+    const payments = paymentStorage.getAll();
+    return payments.find(p => p.id === id) || null;
   },
   
   delete: (id: string): void => {

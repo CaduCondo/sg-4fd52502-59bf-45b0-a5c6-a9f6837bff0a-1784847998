@@ -1,14 +1,12 @@
-export function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("pt-BR", {
+export const formatCurrency = (value: number | string): string => {
+  const numValue = typeof value === "string" ? parseFloat(value) : value;
+  if (isNaN(numValue)) return "R$ 0,00";
+  
+  return numValue.toLocaleString("pt-BR", {
     style: "currency",
     currency: "BRL",
-  }).format(value);
-}
-
-export function parseCurrency(value: string): number {
-  const cleaned = value.replace(/[^\d,]/g, "").replace(",", ".");
-  return parseFloat(cleaned) || 0;
-}
+  });
+};
 
 export function maskCurrency(value: string): string {
   const numbers = value.replace(/\D/g, "");
@@ -166,3 +164,14 @@ export function numberToWords(value: number): string {
     return str;
   }
 }
+
+export const parseCurrency = (value: string): number => {
+  if (!value) return 0;
+  return parseFloat(value.replace(/\./g, "").replace(",", "."));
+};
+
+export const applyRealMask = (value: string): string => {
+  const cleanValue = value.replace(/\D/g, "");
+  const numberValue = parseFloat(cleanValue) / 100;
+  return numberValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 });
+};

@@ -64,21 +64,32 @@ export interface Rental {
 export interface Payment {
   id: string;
   rentalId: string;
-  month: string;
-  year: string;
-  amount: number;
+  referenceMonth: number;
+  referenceYear: number;
   dueDate: string;
+  expectedAmount: number;
+  paidAmount: number;
+  paymentDate?: string;
+  paymentMethod?: "pix" | "boleto" | "dinheiro";
+  paymentLocation?: "CP" | "CD" | "CE";
+  paymentCode?: string;
+  status: "paid" | "pending" | "partial" | "overdue";
   isPaid: boolean;
-  paidAmount?: number; // Replaces partialAmount
-  paidDate?: string;
-  paymentMethod?: string;
+  adminFee: number;
   lateFee?: number;
+  fine?: number;
+  interest?: number;
+  discount?: boolean;
+  attachments?: { id: string; name: string; url: string; date: string }[];
+  partialPayments?: { 
+    id: string; 
+    amount: number; 
+    date: string; 
+    method: string;
+    location?: string;
+    code?: string;
+  }[];
   notes?: string;
-  attachments?: { name: string; url: string; date?: string; type?: string }[];
-  // Fields used in legacy/other components, keeping for compatibility if needed
-  paymentCode?: string; 
-  paymentLocation?: string; 
-  status?: string; // Deprecated, mapped to isPaid
 }
 
 export interface SystemConfig {

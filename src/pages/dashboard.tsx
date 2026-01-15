@@ -5,7 +5,7 @@ import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getCurrentUser, isAuthenticated } from "@/lib/auth";
-import { propertyStorage, tenantStorage, rentalStorage, paymentStorage, configStorage } from "@/lib/storage";
+import { propertyStorage, tenantStorage, rentalStorage, paymentStorage, configStorage, cleanOrphanedPayments } from "@/lib/storage";
 import { DashboardStats, Property, Tenant, Rental, Payment } from "@/types";
 import { Building2, Users, DollarSign, CheckCircle, XCircle, TrendingUp, AlertTriangle } from "lucide-react";
 import { SEO } from "@/components/SEO";
@@ -16,6 +16,7 @@ import { StaggerContainer, StaggerItem } from "@/components/animations/ScrollRev
 import { AnimatedCounter } from "@/components/animations/FloatingCard";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 export default function Dashboard() {
   const router = useRouter();
@@ -84,19 +85,22 @@ export default function Dashboard() {
     const payments = paymentStorage.getAll();
     const config = configStorage.get();
 
-    const currentMonthPayments = payments.filter(
-      p => p.month === selectedMonth && p.year === selectedYear
+    // Filter payments for selected period
+    const periodPayments = payments.filter(p => 
+      p.referenceMonth === parseInt(selectedMonth) && 
+      p.referenceYear === parseInt(selectedYear)
     );
 
-    const paidCount = currentMonthPayments.filter(p => p.isPaid).length;
-    const unpaidCount = currentMonthPayments.filter(p => !p.isPaid).length;
-    const totalRevenue = currentMonthPayments
+    // Calculate stats
+    const paid = periodPayments.filter(p => p.isPaid).length;
+    const unpaid = periodPayments.filter(p => !p.isPaid).length;
+    const revenue = periodPayments
       .filter(p => p.isPaid)
-      .reduce((sum, p) => sum + (p.paidAmount || p.amount), 0);
-    const adminFee = totalRevenue * (config.adminFeePercentage / 100);
-    const dueThisMonth = currentMonthPayments
+      .reduce((sum, p) => sum + p.paidAmount, 0); // Use paidAmount for revenue
+      
+    const due = periodPayments
       .filter(p => !p.isPaid)
-      .reduce((sum, p) => sum + (p.amount - (p.paidAmount || 0)), 0);
+      .reduce((sum, p) => sum + p.expectedAmount, 0); // Use expectedAmount for due
 
     const rentedCount = properties.filter(p => p.status === "occupied").length;
 
@@ -105,14 +109,14 @@ export default function Dashboard() {
       rentedProperties: rentedCount,
       availableProperties: properties.length - rentedCount,
       totalTenants: tenants.length,
-      paidThisMonth: paidCount,
-      unpaidThisMonth: unpaidCount,
-      totalRevenue,
-      adminFee,
-      dueThisMonth
+      paidThisMonth: paid,
+      unpaidThisMonth: unpaid,
+      totalRevenue: revenue,
+      adminFee: revenue * (config.adminFeePercentage / 100),
+      dueThisMonth: due
     });
 
-    const upcoming = currentMonthPayments
+    const upcoming = periodPayments
       .filter(p => !p.isPaid)
       .map(payment => {
         const rental = rentals.find(r => r.id === payment.rentalId);
@@ -144,10 +148,10 @@ export default function Dashboard() {
       const year = date.getFullYear();
       
       const monthPayments = payments.filter(
-        p => p.month === month && p.year === String(year) && p.isPaid
+        p => p.referenceMonth === parseInt(month) && p.referenceYear === year && p.isPaid
       );
       
-      const revenue = monthPayments.reduce((sum, p) => sum + (p.paidAmount || p.amount), 0);
+      const revenue = monthPayments.reduce((sum, p) => sum + (p.paidAmount || p.expectedAmount), 0);
       const fee = revenue * (config.adminFeePercentage / 100);
       
       revenueData.push({
@@ -161,8 +165,8 @@ export default function Dashboard() {
 
     // Dados para gráfico de pizza - Status de Pagamentos
     setPaymentStatusData([
-      { name: "Pagos", value: paidCount, color: "#3b82f6" },
-      { name: "Pendentes", value: unpaidCount, color: "#ef4444" }
+      { name: "Pagos", value: paid, color: "#3b82f6" },
+      { name: "Pendentes", value: unpaid, color: "#ef4444" }
     ]);
 
     // Dados para gráfico de pizza - Ocupação
@@ -580,7 +584,7 @@ export default function Dashboard() {
                             <p className="text-sm text-gray-600">Inquilino: {tenant.name} • Venc: {formatDate(payment.dueDate)}</p>
                           </div>
                           <div className="text-right flex-shrink-0">
-                            <p className="text-lg font-bold text-amber-700 whitespace-nowrap">{formatCurrency(payment.amount - (payment.paidAmount || 0))}</p>
+                            <p className="text-lg font-bold text-amber-700 whitespace-nowrap">{formatCurrency(payment.expectedAmount)}</p>
                           </div>
                         </div>
                       </Link>

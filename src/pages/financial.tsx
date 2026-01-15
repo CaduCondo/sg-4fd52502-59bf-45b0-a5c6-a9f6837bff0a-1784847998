@@ -157,7 +157,7 @@ export default function FinancialPage() {
       rentalPayments.forEach(payment => {
         const dueDate = new Date(rental.startDate);
         // Fix: Ensure payment.month is treated as number
-        const monthNum = parseInt(payment.month.toString());
+        const monthNum = payment.referenceMonth;
         const monthsFromStart = monthNum - 1;
         
         dueDate.setMonth(dueDate.getMonth() + monthsFromStart);
@@ -192,13 +192,13 @@ export default function FinancialPage() {
           location: property.local,
           complement: property.complement || "",
           tenantName: tenant.name,
-          year: parseInt(payment.year), // Ensure number
+          year: parseInt(payment.referenceYear), // Ensure number
           month: monthNum,
           status: payment.isPaid ? "Pago" : (payment.paidAmount && payment.paidAmount > 0) ? "Parcial" : "Não Pago",
           paymentCode: payment.paymentCode || "",
           dueDate: dueDate.toISOString().split('T')[0],
           expectedAmount,
-          paidAmount: payment.paidAmount || payment.amount || 0, // Ensure number
+          paidAmount: payment.paidAmount || payment.expectedAmount || 0, // Ensure number
         });
       });
     });

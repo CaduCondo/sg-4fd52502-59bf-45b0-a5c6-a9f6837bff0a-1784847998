@@ -81,8 +81,8 @@ export default function Payments() {
 
   const filteredPayments = payments.filter(payment => {
     // Ensure strict string comparison
-    const matchesMonth = filterMonth === "all" || String(payment.month) === String(filterMonth);
-    const matchesYear = filterYear === "all" || String(payment.year) === String(filterYear);
+    const matchesMonth = filterMonth === "all" || payment.referenceMonth.toString() === filterMonth;
+    const matchesYear = payment.referenceYear.toString() === filterYear;
     const matchesStatus = filterStatus === "all" || 
       (filterStatus === "paid" && payment.isPaid) ||
       (filterStatus === "pending" && !payment.isPaid);
@@ -94,7 +94,7 @@ export default function Payments() {
     const currentMonth = (now.getMonth() + 1).toString().padStart(2, "0");
     const currentYear = now.getFullYear().toString();
     // Ensure strict string comparison
-    return !p.isPaid && String(p.month) === currentMonth && String(p.year) === currentYear;
+    return !p.isPaid && p.referenceMonth.toString() === currentMonth && p.referenceYear.toString() === currentYear;
   });
 
   const calculateTotals = () => {
@@ -104,7 +104,7 @@ export default function Payments() {
     
     const totalPending = filteredPayments
       .filter(p => !p.isPaid)
-      .reduce((sum, p) => sum + p.amount, 0);
+      .reduce((sum, p) => sum + p.expectedAmount, 0);
 
     // Admin fee only for properties NOT in "Outros" location
     const adminFee = filteredPayments
@@ -117,7 +117,7 @@ export default function Payments() {
         return sum + ((p.paidAmount || 0) * (config?.adminFeePercentage || 0) / 100);
       }, 0);
 
-    const totalFiltered = filteredPayments.reduce((sum, p) => sum + p.amount, 0);
+    const totalFiltered = filteredPayments.reduce((sum, p) => sum + p.expectedAmount, 0);
 
     return { totalReceived, totalPending, adminFee, totalFiltered };
   };
@@ -132,7 +132,7 @@ export default function Payments() {
     setSelectedPayment(payment);
     setFormData({
       paidDate: new Date().toISOString().split("T")[0],
-      paidAmount: formatCurrency(payment.amount),
+      paidAmount: formatCurrency(payment.expectedAmount),
       paymentMethod: "Pix",
       notes: ""
     });
@@ -151,7 +151,7 @@ export default function Payments() {
     if (daysLate <= 0) return 0;
     
     // 2% fine + 0.033% per day late
-    const baseAmount = payment.amount;
+    const baseAmount = payment.expectedAmount;
     const fine = baseAmount * 0.02;
     const dailyInterest = baseAmount * 0.00033 * daysLate;
     
@@ -168,18 +168,20 @@ export default function Payments() {
     
     // Convert files to base64 for storage
     const attachmentObjects = attachments.map(a => ({
+      id: crypto.randomUUID(),
       name: a.name,
       url: URL.createObjectURL(a.file),
+      date: new Date().toISOString(),
       type: a.file.type
     }));
 
     const updatedPayment: Payment = {
       ...selectedPayment,
       isPaid: true,
-      paidDate: new Date(formData.paidDate).toISOString(),
+      paymentDate: new Date(formData.paidDate).toISOString(),
       paidAmount,
       lateFee,
-      paymentMethod: formData.paymentMethod,
+      paymentMethod: formData.paymentMethod.toLowerCase() as "pix" | "boleto" | "dinheiro",
       notes: formData.notes,
       attachments: attachmentObjects
     };
@@ -227,10 +229,12 @@ export default function Payments() {
     return <Badge variant="secondary">Pendente</Badge>;
   };
 
-  const formatMonthYear = (month: string, year: string) => {
+  const formatMonthYear = (month: number | string, year: number | string) => {
     const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", 
                        "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
-    return `${monthNames[parseInt(month) - 1]} ${year}`;
+    const monthNum = typeof month === 'string' ? parseInt(month) : month;
+    const yearNum = typeof year === 'string' ? parseInt(year) : year;
+    return `${monthNames[monthNum - 1]} ${yearNum}`;
   };
 
   return (
@@ -284,7 +288,7 @@ export default function Payments() {
                                 </div>
                                 <div className="flex justify-between items-center">
                                   <span className="text-xs text-slate-500">Valor:</span>
-                                  <span className="text-sm font-bold text-red-700">{formatCurrency(payment.amount)}</span>
+                                  <span className="text-sm font-bold text-red-700">{formatCurrency(payment.expectedAmount)}</span>
                                 </div>
                                 <Button
                                   size="sm"
@@ -474,9 +478,17 @@ export default function Payments() {
                               >
                                 <TableCell className="font-medium">{property?.local}</TableCell>
                                 <TableCell>{tenant?.name}</TableCell>
-                                <TableCell>{payment.month}/{payment.year}</TableCell>
+                                <TableCell>{payment.referenceMonth}/{payment.referenceYear}</TableCell>
                                 <TableCell>{new Date(payment.dueDate).toLocaleDateString()}</TableCell>
-                                <TableCell>{formatCurrency(payment.amount)}</TableCell>
+                                <TableCell>
+                                  <span className={`font-semibold ${
+                                    !payment.isPaid && calculateLateFee(payment, new Date().toISOString().split("T")[0]) > 0 
+                                      ? "text-red-600" 
+                                      : "text-gray-900"
+                                  }`}>
+                                    {formatCurrency(payment.expectedAmount)}
+                                  </span>
+                                </TableCell>
                                 <TableCell>{getStatusBadge(payment)}</TableCell>
                                 <TableCell className="text-right">
                                   <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setViewingPayment(payment); }}>
@@ -516,11 +528,11 @@ export default function Payments() {
                                   <div className="space-y-1 text-sm">
                                     <div className="flex justify-between">
                                       <span className="text-slate-600">Ref:</span>
-                                      <span className="font-medium">{payment.month}/{payment.year}</span>
+                                      <span className="font-medium">{payment.referenceMonth}/{payment.referenceYear}</span>
                                     </div>
                                     <div className="flex justify-between">
                                       <span className="text-slate-600">Valor:</span>
-                                      <span className="font-bold">{formatCurrency(payment.amount)}</span>
+                                      <span className="font-bold">{formatCurrency(payment.expectedAmount)}</span>
                                     </div>
                                     {payment.isPaid && (
                                       <div className="flex justify-between text-green-700">
@@ -573,7 +585,7 @@ export default function Payments() {
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <Label className="text-xs text-slate-500">Referência</Label>
-                        <p className="font-medium">{formatMonthYear(viewingPayment.month, viewingPayment.year)}</p>
+                        <p className="font-medium">{formatMonthYear(viewingPayment.referenceMonth, viewingPayment.referenceYear)}</p>
                       </div>
                       <div>
                         <Label className="text-xs text-slate-500">Vencimento</Label>
@@ -581,7 +593,7 @@ export default function Payments() {
                       </div>
                       <div>
                         <Label className="text-xs text-slate-500">Valor Original</Label>
-                        <p className="font-bold text-lg">{formatCurrency(viewingPayment.amount)}</p>
+                        <p className="font-bold text-lg">{formatCurrency(viewingPayment.expectedAmount)}</p>
                       </div>
                       <div>
                         <Label className="text-xs text-slate-500">Status</Label>
@@ -595,7 +607,7 @@ export default function Payments() {
                           <div className="grid grid-cols-2 gap-4">
                             <div>
                               <Label className="text-xs text-slate-500">Data do Pagamento</Label>
-                              <p className="font-medium">{viewingPayment.paidDate ? new Date(viewingPayment.paidDate).toLocaleDateString() : "-"}</p>
+                              <p className="font-medium">{viewingPayment.paymentDate ? new Date(viewingPayment.paymentDate).toLocaleDateString() : "-"}</p>
                             </div>
                             <div>
                               <Label className="text-xs text-slate-500">Método</Label>
@@ -702,7 +714,7 @@ export default function Payments() {
                       <p className="text-sm font-medium">{property?.local}</p>
                       <p className="text-xs text-slate-600">{tenant?.name}</p>
                       <p className="text-xs text-slate-500 mt-1">
-                        Ref: {formatMonthYear(selectedPayment.month, selectedPayment.year)}
+                        Ref: {formatMonthYear(selectedPayment.referenceMonth, selectedPayment.referenceYear)}
                       </p>
                     </div>
 
@@ -885,7 +897,7 @@ export default function Payments() {
                         Recebi de <span className="font-semibold">{tenant?.name}</span> a importância de{' '}
                         <span className="font-semibold">{amountInWords}</span> ({formatCurrency(totalAmount)}),{' '}
                         proveniente ao depósito de aluguel referente ao mês de{' '}
-                        <span className="font-semibold">{formatMonthYear(receiptData.month, receiptData.year)}</span>,{' '}
+                        <span className="font-semibold">{formatMonthYear(receiptData.referenceMonth, receiptData.referenceYear)}</span>,{' '}
                         tendo seu vencimento em{' '}
                         <span className="font-semibold">{new Date(receiptData.dueDate).toLocaleDateString()}</span>{' '}
                         do imóvel localizado em{' '}

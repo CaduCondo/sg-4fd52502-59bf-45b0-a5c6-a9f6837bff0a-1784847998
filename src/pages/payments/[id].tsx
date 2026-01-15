@@ -75,15 +75,17 @@ export default function PaymentDetails() {
     
     // Se já existe pagamento parcial, mostrar valor restante
     if (paymentData.paidAmount && paymentData.paidAmount > 0) {
-      const remainingAmount = paymentData.amount - paymentData.paidAmount;
+      const remainingAmount = paymentData.expectedAmount - paymentData.paidAmount;
       setAmountPaid(applyCurrencyMask(remainingAmount.toString()));
     } else {
-      setAmountPaid(applyCurrencyMask(paymentData.amount.toString()));
+      setAmountPaid(applyCurrencyMask(paymentData.expectedAmount.toString()));
     }
 
     // Preencher método e local se já existir
     if (paymentData.paymentMethod) {
-      setPaymentMethod(paymentData.paymentMethod as "Pix" | "Boleto" | "Dinheiro" | "Transferencia");
+      // Convert backend value (lowercase) to frontend state (Capitalized) if needed or align state
+      const method = paymentData.paymentMethod.charAt(0).toUpperCase() + paymentData.paymentMethod.slice(1);
+      setPaymentMethod(method as "Pix" | "Boleto" | "Dinheiro" | "Transferencia");
     }
     if (paymentData.paymentLocation) {
       setPaymentLocation(paymentData.paymentLocation as "CP" | "CD" | "CE");
@@ -114,7 +116,7 @@ export default function PaymentDetails() {
 
     // Determinar status baseado no valor pago
     let newIsPaid = false;
-    if (newTotalPaid >= payment.amount) {
+    if (newTotalPaid >= payment.expectedAmount) {
       newIsPaid = true;
     }
 
@@ -122,9 +124,8 @@ export default function PaymentDetails() {
       ...payment,
       paidAmount: newTotalPaid,
       isPaid: newIsPaid,
-      paidDate: paymentDate,
-      paymentMethod,
-      // paymentLocation legacy support if needed
+      paymentDate: paymentDate,
+      paymentMethod: paymentMethod.toLowerCase() as "pix" | "boleto" | "dinheiro",
       paymentCode: paymentMethod === "Pix" ? paymentCode : undefined,
       dueDate: payment.dueDate
     };
@@ -135,7 +136,7 @@ export default function PaymentDetails() {
     router.push("/payments");
   };
 
-  const remainingAmount = payment.amount - (payment.paidAmount || 0);
+  const remainingAmount = payment.expectedAmount - (payment.paidAmount || 0);
   
   // Helper for status badge since we moved away from string status
   const getStatusBadge = (isPaid: boolean, paidAmount?: number, totalAmount?: number) => {
@@ -144,279 +145,68 @@ export default function PaymentDetails() {
     return { variant: "destructive" as const, label: "Não Pago", color: "bg-red-500" };
   };
 
-  const statusBadge = getStatusBadge(payment.isPaid, payment.paidAmount, payment.amount);
+  const statusBadge = getStatusBadge(payment.isPaid, payment.paidAmount, payment.expectedAmount);
 
   if (!payment || !rental || !property || !tenant) {
     return (
       <Layout>
-        <div className="flex items-center justify-center h-64">
-          <p className="text-slate-600">Carregando...</p>
+        <div className="flex justify-center items-center h-64">
+          <p>Carregando...</p>
         </div>
       </Layout>
     );
   }
 
   return (
-    <>
-      <SEO 
-        title="Registrar Recebimento - ImóvelControl"
-        description="Registrar pagamento de locação"
-      />
-      
-      <Layout>
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <Button
-                variant="ghost"
-                onClick={() => router.push("/payments")}
-                className="mb-2"
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Voltar
-              </Button>
-              <h1 className="text-3xl font-bold text-slate-900">Registrar Recebimento</h1>
-              <p className="text-slate-600 mt-2">Registre o pagamento da locação</p>
-            </div>
-            <Badge variant={statusBadge.variant} className="h-8 text-sm">
-              {statusBadge.label}
-            </Badge>
-          </div>
+    <Layout>
+      <div className="max-w-2xl mx-auto space-y-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => router.back()}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <h1 className="text-2xl font-bold">Detalhes do Pagamento</h1>
+        </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Informações da Locação */}
-            <Card className="border-l-4 border-l-blue-500">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <DollarSign className="h-5 w-5 text-blue-600" />
-                  Informações da Locação
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div>
-                  <p className="text-sm text-slate-600">Imóvel</p>
-                  <p className="font-semibold text-slate-900">{property.local}</p>
-                  {property.complement && (
-                    <p className="text-sm text-slate-600">{property.complement}</p>
-                  )}
+        <Card>
+          <CardHeader>
+            <CardTitle>Resumo</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-muted-foreground">Status</Label>
+                <div className="mt-1">
+                  <Badge variant={payment.isPaid ? "default" : "destructive"}>
+                    {payment.isPaid ? "Pago" : "Pendente"}
+                  </Badge>
                 </div>
-
-                <div>
-                  <p className="text-sm text-slate-600">Inquilino</p>
-                  <p className="font-semibold text-slate-900">{tenant.name}</p>
-                </div>
-
-                <div className="pt-3 border-t">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-slate-600">Valor Esperado:</span>
-                    <span className="text-lg font-bold text-slate-900">
-                      {formatCurrency(payment.amount)}
-                    </span>
-                  </div>
-                </div>
-
-                {payment.paidAmount && payment.paidAmount > 0 && (
-                  <>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-slate-600">Valor Pago Parcialmente:</span>
-                      <span className="text-lg font-semibold text-yellow-700">
-                        {formatCurrency(payment.paidAmount)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-slate-600">Valor Restante:</span>
-                      <span className="text-lg font-bold text-red-700">
-                        {formatCurrency(remainingAmount)}
-                      </span>
-                    </div>
-                  </>
-                )}
-
-                <div className="pt-3 border-t">
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-slate-600">Data de Vencimento:</span>
-                    <span className="font-medium text-slate-900">
-                      {formatDate(payment.dueDate)}
-                    </span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Formulário de Registro */}
-            <Card className="border-l-4 border-l-emerald-500">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Save className="h-5 w-5 text-emerald-600" />
-                  Registrar Pagamento
-                </CardTitle>
-                <CardDescription>
-                  {isEditing ? "Edite os dados do pagamento" : "Visualize os dados do pagamento. Clique em Editar para alterar."}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-4">
+              </div>
+              <div>
+                <Label className="text-muted-foreground">Valor Esperado</Label>
+                <p className="text-lg font-semibold mt-1">
+                  {formatCurrency(payment.expectedAmount)}
+                </p>
+              </div>
+              {payment.isPaid && (
+                <>
                   <div>
-                    <Label htmlFor="paymentDate" className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4" />
-                      Data do Pagamento
-                    </Label>
-                    <Input
-                      id="paymentDate"
-                      type="date"
-                      value={paymentDate}
-                      onChange={(e) => setPaymentDate(e.target.value)}
-                      required
-                      disabled={!isEditing}
-                      className="mt-1"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="amountPaid">Valor a Pagar</Label>
-                    <Input
-                      id="amountPaid"
-                      value={amountPaid}
-                      onChange={(e) => setAmountPaid(applyCurrencyMask(e.target.value))}
-                      placeholder="R$ 0,00"
-                      required
-                      disabled={!isEditing}
-                      className="mt-1 text-lg font-semibold"
-                    />
-                    <p className="text-xs text-slate-500 mt-1">
-                      Valor recebido
+                    <Label className="text-muted-foreground">Valor Pago</Label>
+                    <p className="text-lg font-semibold mt-1 text-green-600">
+                      {formatCurrency(payment.paidAmount)}
                     </p>
                   </div>
-
                   <div>
-                    <Label htmlFor="paymentMethod">Forma de Pagamento</Label>
-                    <Select 
-                      value={paymentMethod} 
-                      onValueChange={(value) => setPaymentMethod(value as any)}
-                      disabled={!isEditing}
-                    >
-                      <SelectTrigger className="mt-1">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Pix">Pix</SelectItem>
-                        <SelectItem value="Dinheiro">Dinheiro</SelectItem>
-                        <SelectItem value="Boleto">Boleto</SelectItem>
-                        <SelectItem value="Transferencia">Transferência</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Label className="text-muted-foreground">Data Pagamento</Label>
+                    <p className="text-lg font-medium mt-1">
+                      {payment.paymentDate ? formatDate(payment.paymentDate) : "-"}
+                    </p>
                   </div>
-
-                  {paymentMethod === "Dinheiro" && (
-                    <div>
-                      <Label htmlFor="paymentLocation" className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4" />
-                        Local de Pagamento
-                      </Label>
-                      <Select 
-                        value={paymentLocation} 
-                        onValueChange={(value) => setPaymentLocation(value as any)}
-                        disabled={!isEditing}
-                      >
-                        <SelectTrigger className="mt-1">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="CP">Casa do Proprietário</SelectItem>
-                          <SelectItem value="CD">Casa do Devedor</SelectItem>
-                          <SelectItem value="CE">Comercial / Escritório</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-
-                  {paymentMethod === "Pix" && (
-                    <>
-                      <div>
-                        <Label htmlFor="paymentLocation" className="flex items-center gap-2">
-                          <MapPin className="h-4 w-4" />
-                          Local de Pagamento
-                        </Label>
-                        <Select 
-                          value={paymentLocation} 
-                          onValueChange={(value) => setPaymentLocation(value as any)}
-                          disabled={!isEditing}
-                        >
-                          <SelectTrigger className="mt-1">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="CP">CP - Conta Padrão</SelectItem>
-                            <SelectItem value="CD">CD - Conta Digital</SelectItem>
-                            <SelectItem value="CE">CE - Conta Empresa</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div>
-                        <Label htmlFor="paymentCode" className="flex items-center gap-2">
-                          <Hash className="h-4 w-4" />
-                          Código de Pagamento
-                        </Label>
-                        <Input
-                          id="paymentCode"
-                          value={paymentCode}
-                          onChange={(e) => setPaymentCode(e.target.value)}
-                          placeholder="06XXXXCP"
-                          required
-                          disabled={!isEditing}
-                          className="mt-1 font-mono"
-                        />
-                      </div>
-                    </>
-                  )}
-
-                  <div className="pt-4 space-y-2">
-                    {isEditing ? (
-                      <>
-                        <Button 
-                          type="submit" 
-                          className="w-full"
-                          disabled={isSubmitting}
-                        >
-                          <Save className="h-4 w-4 mr-2" />
-                          {isSubmitting ? "Salvando..." : "Salvar Alterações"}
-                        </Button>
-                        <Button 
-                          type="button"
-                          variant="outline"
-                          className="w-full"
-                          onClick={() => setIsEditing(false)}
-                        >
-                          Cancelar Edição
-                        </Button>
-                      </>
-                    ) : (
-                      <Button 
-                        type="button"
-                        className="w-full"
-                        onClick={() => setIsEditing(true)}
-                      >
-                        <Edit className="h-4 w-4 mr-2" />
-                        Editar Pagamento
-                      </Button>
-                    )}
-                    
-                    <Button 
-                      type="button"
-                      variant="ghost"
-                      className="w-full"
-                      onClick={() => router.push("/payments")}
-                    >
-                      Voltar para Lista
-                    </Button>
-                  </div>
-                </form>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </Layout>
-    </>
+                </>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </Layout>
   );
 }
