@@ -14,7 +14,7 @@ import { propertyStorage } from "@/lib/storage";
 import { Property } from "@/types";
 import { Building2, Plus, Edit, Trash2, Search, MapPin } from "lucide-react";
 import { SEO } from "@/components/SEO";
-import { formatCurrency, parseCurrency, maskCurrency } from "@/lib/masks";
+import { formatCurrency, parseCurrency, maskCurrency, maskCEP, fetchAddressByCEP } from "@/lib/masks";
 
 const LOCALS = [
   "Jd. Colombo",
@@ -41,9 +41,12 @@ export default function Properties() {
   const [filterLocal, setFilterLocal] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProperty, setEditingProperty] = useState<Property | null>(null);
+  const [loadingCEP, setLoadingCEP] = useState(false);
   const [formData, setFormData] = useState({
     local: "",
+    cep: "",
     address: "",
+    number: "",
     complement: "",
     state: "SP",
     description: "",
@@ -88,13 +91,36 @@ export default function Properties() {
     setFilteredProperties(data);
   };
 
+  const handleCEPChange = async (cep: string) => {
+    const masked = maskCEP(cep);
+    setFormData({ ...formData, cep: masked });
+
+    const cleanCEP = cep.replace(/\D/g, "");
+    if (cleanCEP.length === 8) {
+      setLoadingCEP(true);
+      const addressData = await fetchAddressByCEP(cleanCEP);
+      setLoadingCEP(false);
+
+      if (addressData) {
+        setFormData(prev => ({
+          ...prev,
+          cep: masked,
+          address: addressData.logradouro || "",
+          state: addressData.uf || "SP"
+        }));
+      }
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     const property: Property = {
       id: editingProperty?.id || Date.now().toString(),
       local: formData.local,
+      cep: formData.cep,
       address: formData.address,
+      number: formData.number,
       complement: formData.complement || undefined,
       state: formData.state,
       description: formData.description,
@@ -112,7 +138,9 @@ export default function Properties() {
     setEditingProperty(property);
     setFormData({
       local: property.local,
+      cep: property.cep,
       address: property.address,
+      number: property.number,
       complement: property.complement || "",
       state: property.state,
       description: property.description,
@@ -132,7 +160,9 @@ export default function Properties() {
   const resetForm = () => {
     setFormData({
       local: "",
+      cep: "",
       address: "",
+      number: "",
       complement: "",
       state: "SP",
       description: "",
@@ -213,9 +243,8 @@ export default function Properties() {
                           <MapPin size={18} className="text-emerald-600" />
                           <span>{property.local}</span>
                         </CardTitle>
-                        <CardDescription className="mt-2">{property.address}</CardDescription>
                         {property.complement && (
-                          <CardDescription className="mt-1 text-slate-500">
+                          <CardDescription className="mt-2">
                             {property.complement}
                           </CardDescription>
                         )}
@@ -300,6 +329,43 @@ export default function Properties() {
                     </select>
                   </div>
                   <div className="space-y-2">
+                    <Label htmlFor="cep">CEP *</Label>
+                    <Input
+                      id="cep"
+                      value={formData.cep}
+                      onChange={(e) => handleCEPChange(e.target.value)}
+                      placeholder="00000-000"
+                      maxLength={9}
+                      required
+                      disabled={loadingCEP}
+                    />
+                    {loadingCEP && <p className="text-xs text-slate-500">Buscando endereço...</p>}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="address">Endereço *</Label>
+                  <Input
+                    id="address"
+                    value={formData.address}
+                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                    placeholder="Rua, avenida"
+                    required
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="number">Número *</Label>
+                    <Input
+                      id="number"
+                      value={formData.number}
+                      onChange={(e) => setFormData({ ...formData, number: e.target.value })}
+                      placeholder="Número"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
                     <Label htmlFor="state">Estado *</Label>
                     <select
                       id="state"
@@ -313,17 +379,6 @@ export default function Properties() {
                       ))}
                     </select>
                   </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="address">Endereço *</Label>
-                  <Input
-                    id="address"
-                    value={formData.address}
-                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                    placeholder="Rua, número, bairro, cidade"
-                    required
-                  />
                 </div>
 
                 <div className="space-y-2">

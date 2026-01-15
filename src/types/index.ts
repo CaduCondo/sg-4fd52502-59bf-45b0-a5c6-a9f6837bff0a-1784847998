@@ -9,7 +9,9 @@ export interface User {
 export interface Property {
   id: string;
   local: string;
+  cep: string;
   address: string;
+  number: string;
   complement?: string;
   state: string;
   description: string;

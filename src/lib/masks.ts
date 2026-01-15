@@ -46,3 +46,28 @@ export function formatDate(date: string): string {
   const d = new Date(date);
   return d.toLocaleDateString("pt-BR");
 }
+
+export function maskCEP(value: string): string {
+  const numbers = value.replace(/\D/g, "");
+  return numbers.replace(/(\d{5})(\d)/, "$1-$2");
+}
+
+export async function fetchAddressByCEP(cep: string): Promise<{
+  logradouro: string;
+  bairro: string;
+  localidade: string;
+  uf: string;
+  erro?: boolean;
+} | null> {
+  const cleanCEP = cep.replace(/\D/g, "");
+  if (cleanCEP.length !== 8) return null;
+  
+  try {
+    const response = await fetch(`https://viacep.com.br/ws/${cleanCEP}/json/`);
+    const data = await response.json();
+    if (data.erro) return null;
+    return data;
+  } catch (error) {
+    return null;
+  }
+}
