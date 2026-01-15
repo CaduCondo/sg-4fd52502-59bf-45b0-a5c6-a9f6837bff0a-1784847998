@@ -617,7 +617,7 @@ export default function FinancialPage() {
                             <td className="p-2">
                               <div>
                                 <p className="font-medium">{property?.address}</p>
-                                <p className="text-xs text-muted-foreground">{property?.local}</p>
+                                <p className="text-xs text-muted-foreground">{property?.location}</p>
                               </div>
                             </td>
                             <td className="p-2">{tenant?.name}</td>

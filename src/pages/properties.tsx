@@ -81,7 +81,7 @@ export default function Properties() {
     if (searchTerm) {
       filtered = filtered.filter(p =>
         p.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.local.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.location.toLowerCase().includes(searchTerm.toLowerCase()) || // Fix local -> location
         p.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (p.complement && p.complement.toLowerCase().includes(searchTerm.toLowerCase()))
       );
@@ -238,9 +238,8 @@ export default function Properties() {
       state: "",
       cep: "",
       description: "",
-      local: "",
+      location: "", // Use location instead of local
       type: "",
-      value: "",
       monthlyRent: "",
       status: "available",
     });
@@ -256,8 +255,8 @@ export default function Properties() {
   return (
     <>
       <SEO 
-        title="Imóveis - ImóvelControl"
-        description="Gerenciamento de imóveis cadastrados"
+        title="Imóveis - Gerenciador de Locações" 
+        description="Gerencie seus imóveis"
       />
       
       <Layout>

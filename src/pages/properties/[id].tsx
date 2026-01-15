@@ -28,13 +28,16 @@ export default function PropertyDetails() {
   const [isEditing, setIsEditing] = useState(false);
   const [availableLocations, setAvailableLocations] = useState<string[]>([]);
   const [formData, setFormData] = useState({ 
-    local: "",
+    location: "",
     cep: "",
     address: "",
     number: "",
     complement: "",
+    neighborhood: "",
+    city: "",
     state: "",
     description: "",
+    type: "",
     monthlyRent: "",
     status: "available" as "available" | "occupied"
   }); 
@@ -61,13 +64,16 @@ export default function PropertyDetails() {
     if (found) {
       setProperty(found);
       setFormData({
-        local: found.local,
+        location: found.location, // Fix local -> location
         cep: found.cep || "",
         address: found.address,
         number: found.number,
         complement: found.complement || "",
+        neighborhood: found.neighborhood || "",
+        city: found.city || "",
         state: found.state || "",
         description: found.description || "",
+        type: found.type || "",
         monthlyRent: maskCurrency(found.monthlyRent.toString()),
         status: found.status
       });
@@ -83,13 +89,16 @@ export default function PropertyDetails() {
   const handleCancelEdit = () => {
     if (property) {
       setFormData({
-        local: property.local,
+        location: property.location, // Fix local -> location
         cep: property.cep || "",
         address: property.address,
         number: property.number,
         complement: property.complement || "",
+        neighborhood: property.neighborhood || "",
+        city: property.city || "",
         state: property.state || "",
         description: property.description || "",
+        type: property.type || "",
         monthlyRent: maskCurrency(property.monthlyRent.toString()),
         status: property.status
       });
@@ -102,15 +111,17 @@ export default function PropertyDetails() {
 
     const updatedProperty: Property = {
       ...property,
-      local: formData.local,
-      cep: formData.cep,
       address: formData.address,
       number: formData.number,
-      complement: formData.complement || undefined,
+      complement: formData.complement,
+      neighborhood: formData.neighborhood,
+      city: formData.city,
       state: formData.state,
+      cep: formData.cep,
       description: formData.description,
+      location: formData.location, // Fix local -> location
+      type: formData.type,
       monthlyRent: parseCurrency(formData.monthlyRent),
-      status: formData.status
     };
 
     propertyStorage.save(updatedProperty);
@@ -147,8 +158,8 @@ export default function PropertyDetails() {
   return (
     <>
       <SEO 
-        title={`${property.local} - ImóvelControl`}
-        description={`Detalhes do imóvel em ${property.local}`}
+        title={`${property.location} - ImóvelControl`}
+        description={`Detalhes do imóvel em ${property.location}`}
       />
       
       <Layout>
@@ -204,23 +215,18 @@ export default function PropertyDetails() {
                 <CardTitle>Informações do Imóvel</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="location">Local</Label>
+                  <Input
+                    id="location"
+                    value={formData.location}
+                    onChange={(e) =>
+                      setFormData({ ...formData, location: e.target.value })
+                    }
+                  />
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm font-medium text-slate-600">Local</p>
-                    {isEditing ? (
-                      <select
-                        value={formData.local}
-                        onChange={(e) => setFormData({ ...formData, local: e.target.value })}
-                        className="w-full h-10 px-3 rounded-md border border-slate-300 bg-white text-slate-900"
-                      >
-                        {availableLocations.map(local => (
-                          <option key={local} value={local}>{local}</option>
-                        ))}
-                      </select>
-                    ) : (
-                      <p className="text-lg text-slate-900">{property.local}</p>
-                    )}
-                  </div>
                   <div>
                     <p className="text-sm font-medium text-slate-600">CEP</p>
                     {isEditing ? (

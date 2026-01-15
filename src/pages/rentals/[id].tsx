@@ -152,7 +152,7 @@ export default function RentalDetails() {
 
   return (
     <>
-      <SEO title={`Locação - ${property.local}`} />
+      <SEO title={`Locação - ${property.location}`} />
       <Layout>
         <div className="space-y-6">
           <div className="flex items-center justify-between">
@@ -163,7 +163,7 @@ export default function RentalDetails() {
               <div>
                 <h1 className="text-3xl font-bold tracking-tight">Detalhes da Locação</h1>
                 <p className="text-muted-foreground mt-1">
-                  {property.local} - {tenant.name}
+                  {property.location} - {tenant.name}
                 </p>
               </div>
             </div>
@@ -261,7 +261,7 @@ export default function RentalDetails() {
               <CardContent className="space-y-3">
                 <div>
                   <Label className="text-muted-foreground">Local</Label>
-                  <p className="font-medium">{property.local}</p>
+                  <p className="font-medium">{property.location}</p>
                 </div>
                 <div>
                   <Label className="text-muted-foreground">Endereço</Label>
