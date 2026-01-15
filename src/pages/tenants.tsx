@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { isAuthenticated } from "@/lib/auth";
-import { Search, Plus, Trash2, Edit, User, Phone, Mail, FileText, Eye } from "lucide-react";
+import { Search, Plus, Trash2, Edit, User, Phone, Mail, FileText, Eye, LayoutList, Grid } from "lucide-react";
 import { Tenant } from "@/types";
 import { tenantStorage } from "@/lib/storage";
 import { maskCPF, maskCNPJ, maskPhone } from "@/lib/masks";
@@ -19,6 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { StaggerContainer, StaggerItem } from "@/components/animations/ScrollReveal";
 import { FloatingCard } from "@/components/animations/FloatingCard";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export default function TenantsPage() {
   const router = useRouter();
@@ -48,6 +49,8 @@ export default function TenantsPage() {
     observations: "",
     isActive: true,
   });
+
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -100,6 +103,20 @@ export default function TenantsPage() {
     if (name === "phone") finalValue = maskPhone(value);
 
     setFormData(prev => ({ ...prev, [name]: finalValue }));
+  };
+
+  const handleDocumentChange = (value: string) => {
+    let formatted = value;
+    if (formData.documentType === "CPF") {
+      formatted = maskCPF(value);
+    } else {
+      formatted = maskCNPJ(value);
+    }
+    setFormData(prev => ({ ...prev, cpf: formatted }));
+  };
+
+  const handlePhoneChange = (value: string) => {
+    setFormData(prev => ({ ...prev, phone: maskPhone(value) }));
   };
 
   const handleDocumentTypeChange = (value: "CPF" | "CNPJ") => {
@@ -216,78 +233,101 @@ export default function TenantsPage() {
               <DialogHeader>
                 <DialogTitle>Novo Inquilino</DialogTitle>
               </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4 py-4">
+              <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Nome Completo *</Label>
-                  <Input id="name" name="name" required value={formData.name} onChange={handleInputChange} />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>Tipo de Documento *</Label>
-                  <Select value={formData.documentType} onValueChange={handleDocumentTypeChange}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="CPF">CPF</SelectItem>
-                      <SelectItem value="CNPJ">CNPJ</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="name">Nome *</Label>
+                  <Input
+                    id="name"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    required
+                  />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="cpf">{formData.documentType} *</Label>
-                    <Input 
-                      id="cpf" 
-                      name="cpf" 
-                      required 
-                      value={formData.cpf} 
-                      onChange={handleInputChange} 
-                      placeholder={formData.documentType === "CPF" ? "000.000.000-00" : "00.000.000/0000-00"}
+                    <Label htmlFor="documentType">Tipo de Documento</Label>
+                    <Select 
+                      value={formData.documentType} 
+                      onValueChange={(val: "CPF" | "CNPJ") => setFormData({ ...formData, documentType: val })}
+                    >
+                      <SelectTrigger id="documentType">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="CPF">CPF</SelectItem>
+                        <SelectItem value="CNPJ">CNPJ</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="cpf">{formData.documentType}</Label>
+                    <Input
+                      id="cpf"
+                      name="cpf"
+                      value={formData.cpf}
+                      onChange={handleInputChange}
                       maxLength={formData.documentType === "CPF" ? 14 : 18}
                     />
                   </div>
-                  {formData.documentType === "CPF" && (
-                    <div className="space-y-2">
-                      <Label htmlFor="rg">RG *</Label>
-                      <Input id="rg" name="rg" required value={formData.rg} onChange={handleInputChange} />
-                    </div>
-                  )}
                 </div>
+
+                {formData.documentType === "CPF" && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="rg">RG</Label>
+                      <Input
+                        id="rg"
+                        name="rg"
+                        value={formData.rg}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="phone">Telefone *</Label>
-                    <Input id="phone" name="phone" required value={formData.phone} onChange={handleInputChange} placeholder="(00) 00000-0000" maxLength={15} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email *</Label>
-                    <Input id="email" name="email" type="email" required value={formData.email} onChange={handleInputChange} />
+                    <Label htmlFor="phone">Telefone</Label>
+                    <Input
+                      id="phone"
+                      value={formData.phone}
+                      onChange={(e) => handlePhoneChange(e.target.value)}
+                      maxLength={15}
+                    />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Status *</Label>
-                  <Select value={formData.isActive ? "active" : "inactive"} onValueChange={(val) => setFormData({...formData, isActive: val === "active"})}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="active">Ativo</SelectItem>
-                      <SelectItem value="inactive">Inativo</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  />
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="observations">Observações</Label>
-                  <Textarea id="observations" name="observations" value={formData.observations} onChange={handleInputChange} />
+                  <Textarea
+                    id="observations"
+                    value={formData.observations}
+                    onChange={(e) => setFormData({ ...formData, observations: e.target.value })}
+                    rows={3}
+                  />
                 </div>
-                <div className="flex justify-end gap-3 pt-4">
-                  <Button type="button" variant="outline" onClick={() => setIsAddOpen(false)}>Cancelar</Button>
-                  <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">Cadastrar</Button>
-                </div>
+
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={() => {
+                    setIsAddOpen(false);
+                    setIsEditOpen(false);
+                  }}>
+                    Cancelar
+                  </Button>
+                  <Button type="submit">Salvar</Button>
+                </DialogFooter>
               </form>
             </DialogContent>
           </Dialog>
@@ -323,63 +363,118 @@ export default function TenantsPage() {
               <SelectItem value="status">Status</SelectItem>
             </SelectContent>
           </Select>
+          <div className="flex items-center space-x-2 bg-slate-100 p-1 rounded-md">
+             <Button
+              variant={viewMode === "grid" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("grid")}
+            >
+              <Grid className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={viewMode === "list" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("list")}
+            >
+              <LayoutList className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
         {/* List */}
-        <StaggerContainer staggerDelay={0.08}>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredTenants.map((tenant) => (
-              <Card 
-                key={tenant.id} 
-                className="hover:shadow-lg transition-shadow cursor-pointer group relative"
-                onClick={() => handleViewTenant(tenant)}
-              >
-                <CardHeader className="pb-2">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle className="text-xl">{tenant.name}</CardTitle>
-                      <CardDescription>{tenant.phone}</CardDescription>
-                    </div>
-                    <Badge className={tenant.isActive ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-800"}>
-                      {tenant.isActive ? "Ativo" : "Inativo"}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-1 text-sm text-slate-600">
-                    {tenant.email && (
-                      <div className="flex items-center gap-2">
-                        <Mail className="h-4 w-4" />
-                        <span>{tenant.email}</span>
-                      </div>
-                    )}
-                    <div className="flex items-center gap-2">
-                      <FileText className="h-4 w-4" />
-                      <span>{tenant.documentType}: {tenant.cpf}</span>
-                    </div>
-                  </div>
-                  
-                  {/* Actions - Prevent bubbling */}
-                  <div className="flex gap-2 pt-4 mt-2" onClick={(e) => e.stopPropagation()}>
-                     <Button 
-                        variant="destructive" 
-                        size="sm" 
-                        className="w-full opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setTenantToDelete(tenant);
-                          setIsDeleteOpen(true);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Excluir
-                      </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+        {filteredTenants.length === 0 ? (
+          <div className="text-center py-12 bg-slate-50 rounded-lg border border-dashed border-slate-300">
+             <p className="text-slate-500">Nenhum inquilino encontrado.</p>
           </div>
-        </StaggerContainer>
+        ) : viewMode === "list" ? (
+          <div className="bg-white rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nome</TableHead>
+                  <TableHead>Documento</TableHead>
+                  <TableHead>Telefone</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredTenants.map((tenant) => (
+                  <TableRow key={tenant.id} className="cursor-pointer hover:bg-slate-50" onClick={() => handleViewTenant(tenant)}>
+                    <TableCell className="font-medium">{tenant.name}</TableCell>
+                    <TableCell>{tenant.documentType}: {tenant.cpf}</TableCell>
+                    <TableCell>{tenant.phone}</TableCell>
+                    <TableCell>
+                      <Badge className={tenant.isActive ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-800"}>
+                        {tenant.isActive ? "Ativo" : "Inativo"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                       <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setTenantToDelete(tenant); setIsDeleteOpen(true); }}>
+                        <Trash2 className="h-4 w-4 text-red-500" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        ) : (
+          <StaggerContainer staggerDelay={0.08}>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredTenants.map((tenant) => (
+                <Card 
+                  key={tenant.id} 
+                  className="hover:shadow-lg transition-shadow cursor-pointer group relative"
+                  onClick={() => handleViewTenant(tenant)}
+                >
+                  <CardHeader className="pb-2">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <CardTitle className="text-xl">{tenant.name}</CardTitle>
+                        <CardDescription>{tenant.phone}</CardDescription>
+                      </div>
+                      <Badge className={tenant.isActive ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-800"}>
+                        {tenant.isActive ? "Ativo" : "Inativo"}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-1 text-sm text-slate-600">
+                      {tenant.email && (
+                        <div className="flex items-center gap-2">
+                          <Mail className="h-4 w-4" />
+                          <span>{tenant.email}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4" />
+                        <span>{tenant.documentType}: {tenant.cpf}</span>
+                      </div>
+                    </div>
+                    
+                    {/* Actions - Prevent bubbling */}
+                    <div className="flex gap-2 pt-4 mt-2" onClick={(e) => e.stopPropagation()}>
+                       <Button 
+                          variant="destructive" 
+                          size="sm" 
+                          className="w-full opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setTenantToDelete(tenant);
+                            setIsDeleteOpen(true);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Excluir
+                        </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </StaggerContainer>
+        )}
 
         {/* View Tenant Dialog */}
         <Dialog open={!!viewingTenant} onOpenChange={(open) => !open && setViewingTenant(null)}>

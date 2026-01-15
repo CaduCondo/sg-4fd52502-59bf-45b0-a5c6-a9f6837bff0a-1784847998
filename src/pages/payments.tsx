@@ -6,13 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { isAuthenticated } from "@/lib/auth";
 import { propertyStorage, tenantStorage, rentalStorage, paymentStorage, configStorage } from "@/lib/storage";
 import { Property, Tenant, Rental, Payment, SystemConfig } from "@/types";
-import { DollarSign, Calendar, CheckCircle, XCircle, AlertCircle, Plus, Eye, Download, ExternalLink, FileText, Edit } from "lucide-react";
+import { DollarSign, Calendar, CheckCircle, XCircle, AlertCircle, Plus, Eye, Download, ExternalLink, FileText, Edit, LayoutList, Grid, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "lucide-react";
 import { SEO } from "@/components/SEO";
 import { formatCurrency, parseCurrency, numberToWords } from "@/lib/masks";
 import { StaggerContainer, StaggerItem } from "@/components/animations/ScrollReveal";
@@ -33,15 +33,19 @@ export default function Payments() {
   const [viewingPayment, setViewingPayment] = useState<Payment | null>(null);
   const [showReceipt, setShowReceipt] = useState(false);
   const [receiptData, setReceiptData] = useState<Payment | null>(null);
-  
   const [formData, setFormData] = useState({
     paidDate: "",
     paidAmount: "",
     paymentMethod: "Pix",
     notes: ""
   });
-
   const [attachments, setAttachments] = useState<Array<{ name: string; file: File }>>([]);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
+  const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
+  const [selectedRental, setSelectedRental] = useState<Rental | null>(null);
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -238,6 +242,10 @@ export default function Payments() {
               <h1 className="text-3xl font-bold text-slate-900">Gestão de Recebimentos</h1>
               <p className="text-slate-600 mt-2">Controle de recebimentos de locações</p>
             </div>
+            <div className="flex items-center space-x-2 bg-slate-100 p-1 rounded-md">
+              <Button variant={viewMode === "grid" ? "default" : "ghost"} size="sm" onClick={() => setViewMode("grid")}><Grid className="h-4 w-4" /></Button>
+              <Button variant={viewMode === "list" ? "default" : "ghost"} size="sm" onClick={() => setViewMode("list")}><LayoutList className="h-4 w-4" /></Button>
+            </div>
           </div>
 
           {/* Unpaid This Month Alert */}
@@ -429,102 +437,92 @@ export default function Payments() {
               </CardHeader>
               <CardContent>
                 <StaggerContainer staggerDelay={0.04}>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {filteredPayments.map((payment, index) => {
-                      const rental = getRental(payment.rentalId);
-                      if (!rental) return null;
-                      const property = getProperty(rental);
-                      const tenant = getTenant(rental);
-                      
-                      return (
-                        <StaggerItem key={payment.id}>
-                          <FloatingCard delay={index * 0.02}>
-                            <Card className={`${payment.isPaid ? 'border-green-200 bg-green-50' : 'border-slate-200'}`}>
-                              <CardHeader className="pb-2">
-                                <div className="flex justify-between items-start">
-                                  <div className="flex-1">
-                                    <CardTitle className="text-base">{property?.local}</CardTitle>
-                                    <p className="text-sm text-slate-600">{tenant?.name}</p>
+                  {filteredPayments.length === 0 ? (
+                    <div className="text-center py-12 bg-slate-50 rounded-lg border border-dashed border-slate-300">
+                      <p className="text-slate-500">Nenhum recebimento encontrado.</p>
+                    </div>
+                  ) : viewMode === "list" ? (
+                    <div className="bg-white rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Imóvel</TableHead>
+                            <TableHead>Inquilino</TableHead>
+                            <TableHead>Ref</TableHead>
+                            <TableHead>Vencimento</TableHead>
+                            <TableHead>Valor</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead className="text-right">Ações</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredPayments.map((payment) => {
+                            const rental = getRental(payment.rentalId);
+                            const property = rental ? getProperty(rental) : null;
+                            const tenant = rental ? getTenant(rental) : null;
+                            return (
+                              <TableRow key={payment.id} className="cursor-pointer hover:bg-slate-50" onClick={() => setViewingPayment(payment)}>
+                                <TableCell className="font-medium">{property?.local}</TableCell>
+                                <TableCell>{tenant?.name}</TableCell>
+                                <TableCell>{payment.month}/{payment.year}</TableCell>
+                                <TableCell>{new Date(payment.dueDate).toLocaleDateString()}</TableCell>
+                                <TableCell>{formatCurrency(payment.amount)}</TableCell>
+                                <TableCell>{getStatusBadge(payment)}</TableCell>
+                                <TableCell className="text-right">
+                                  <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setViewingPayment(payment); }}>
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {filteredPayments.map(payment => {
+                        const rental = getRental(payment.rentalId);
+                        const property = rental ? getProperty(rental) : null;
+                        const tenant = rental ? getTenant(rental) : null;
+                        return (
+                          <StaggerItem key={payment.id}>
+                            <FloatingCard delay={0}>
+                              <Card className={`hover:shadow-md transition-shadow cursor-pointer ${payment.isPaid ? 'border-green-200 bg-green-50' : ''}`} onClick={() => setViewingPayment(payment)}>
+                                <CardHeader className="pb-2">
+                                  <div className="flex justify-between items-start">
+                                    <div>
+                                      <CardTitle className="text-base">{property?.local}</CardTitle>
+                                      <CardDescription>{tenant?.name}</CardDescription>
+                                    </div>
+                                    {getStatusBadge(payment)}
                                   </div>
-                                  {getStatusBadge(payment)}
-                                </div>
-                              </CardHeader>
-                              <CardContent className="space-y-2">
-                                <div className="flex justify-between text-sm">
-                                  <span className="text-slate-600">Referência:</span>
-                                  <span className="font-medium">{formatMonthYear(payment.month, payment.year)}</span>
-                                </div>
-                                <div className="flex justify-between text-sm">
-                                  <span className="text-slate-600">Vencimento:</span>
-                                  <span className="font-medium">{new Date(payment.dueDate).toLocaleDateString()}</span>
-                                </div>
-                                <div className="flex justify-between text-sm">
-                                  <span className="text-slate-600">Valor:</span>
-                                  <span className="font-bold text-slate-900">{formatCurrency(payment.amount)}</span>
-                                </div>
-                                {payment.isPaid && (
-                                  <>
-                                    <div className="flex justify-between text-sm border-t pt-2">
-                                      <span className="text-slate-600">Pago em:</span>
-                                      <span className="font-medium">{payment.paidDate ? new Date(payment.paidDate).toLocaleDateString() : "-"}</span>
+                                </CardHeader>
+                                <CardContent>
+                                  <div className="space-y-1 text-sm">
+                                    <div className="flex justify-between">
+                                      <span className="text-slate-600">Ref:</span>
+                                      <span className="font-medium">{payment.month}/{payment.year}</span>
                                     </div>
-                                    <div className="flex justify-between text-sm">
-                                      <span className="text-slate-600">Valor Pago:</span>
-                                      <span className="font-bold text-green-700">{formatCurrency(payment.paidAmount || 0)}</span>
+                                    <div className="flex justify-between">
+                                      <span className="text-slate-600">Valor:</span>
+                                      <span className="font-bold">{formatCurrency(payment.amount)}</span>
                                     </div>
-                                    {payment.lateFee && payment.lateFee > 0 && (
-                                      <div className="flex justify-between text-sm">
-                                        <span className="text-slate-600">Multa/Juros:</span>
-                                        <span className="font-medium text-red-600">{formatCurrency(payment.lateFee)}</span>
+                                    {payment.isPaid && (
+                                      <div className="flex justify-between text-green-700">
+                                        <span>Pago:</span>
+                                        <span className="font-bold">{formatCurrency(payment.paidAmount || 0)}</span>
                                       </div>
                                     )}
-                                  </>
-                                )}
-                                
-                                <div className="flex gap-2 pt-2 border-t">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setViewingPayment(payment)}
-                                    className="flex-1 bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-600"
-                                  >
-                                    <Eye size={14} className="mr-1" />
-                                    Ver
-                                  </Button>
-                                  {!payment.isPaid && (
-                                    <Button
-                                      size="sm"
-                                      onClick={() => handleOpenDialog(payment)}
-                                      className="flex-1"
-                                    >
-                                      Registrar
-                                    </Button>
-                                  )}
-                                  {payment.isPaid && (
-                                    <Button
-                                      size="sm"
-                                      onClick={() => {
-                                        setReceiptData(payment);
-                                        setShowReceipt(true);
-                                      }}
-                                      className="flex-1 bg-blue-600 hover:bg-blue-700"
-                                    >
-                                      Recibo
-                                    </Button>
-                                  )}
-                                </div>
-                              </CardContent>
-                            </Card>
-                          </FloatingCard>
-                        </StaggerItem>
-                      );
-                    })}
-                    {filteredPayments.length === 0 && (
-                      <div className="col-span-full text-center py-12 text-slate-500">
-                        Nenhum recebimento encontrado com os filtros atuais.
-                      </div>
-                    )}
-                  </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            </FloatingCard>
+                          </StaggerItem>
+                        );
+                      })}
+                    </div>
+                  )}
                 </StaggerContainer>
               </CardContent>
             </Card>

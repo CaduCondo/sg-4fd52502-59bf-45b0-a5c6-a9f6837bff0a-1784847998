@@ -6,18 +6,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { isAuthenticated } from "@/lib/auth";
 import { propertyStorage, tenantStorage, rentalStorage, paymentStorage } from "@/lib/storage";
 import { Property, Tenant, Rental } from "@/types";
-import { Home, Users, FileText, Plus, Edit2, Trash2, Search, Building2, User, Calendar, DollarSign, AlertCircle, X, Eye, Download, Edit, ExternalLink } from "lucide-react";
+import { Home, Users, FileText, Plus, Edit2, Trash2, Search, Building2, User, Calendar, DollarSign, AlertCircle, X, Eye, Download, Edit, ExternalLink, XCircle, LayoutList, Grid } from "lucide-react";
 import { SEO } from "@/components/SEO";
 import { formatCurrency, parseCurrency, formatDate } from "@/lib/masks";
 import { StaggerContainer, StaggerItem } from "@/components/animations/ScrollReveal";
 import { FloatingCard } from "@/components/animations/FloatingCard";
 import { Payment } from "@/types";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export default function Rentals() {
   const router = useRouter();
@@ -31,6 +32,7 @@ export default function Rentals() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingRental, setEditingRental] = useState<Rental | null>(null);
   const [viewingRental, setViewingRental] = useState<Rental | null>(null);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   
   const [formData, setFormData] = useState({
     propertyId: "",
@@ -91,6 +93,14 @@ export default function Rentals() {
       (statusFilter === "finished" && !rental.isActive);
     return matchesSearch && matchesStatus;
   });
+
+  const handleViewRental = (rental: Rental) => {
+    setViewingRental(rental);
+  };
+
+  const getTotalValue = (rental: Rental) => {
+    return rental.monthlyRent + (rental.motorcycleSpotValue || 0);
+  };
 
   const handleOpenDialog = (rental?: Rental) => {
     if (rental) {
@@ -328,6 +338,21 @@ export default function Rentals() {
     return total;
   };
 
+  const openNewRentalDialog = () => {
+    const properties = propertyStorage.getAll();
+    const allTenants = tenantStorage.getAll();
+    const activeRentals = rentalStorage.getAll().filter(r => r.isActive);
+    
+    // Filter properties: available and active
+    setAvailableProperties(properties.filter(p => p.isActive && p.status === "available"));
+    
+    // Filter tenants: active and NOT in an active rental
+    const tenantsWithRental = new Set(activeRentals.map(r => r.tenantId));
+    setAvailableTenants(allTenants.filter(t => t.isActive && !tenantsWithRental.has(t.id)));
+
+    setIsDialogOpen(true);
+  };
+
   return (
     <>
       <SEO 
@@ -466,12 +491,18 @@ export default function Rentals() {
                 )}
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setViewingRental(null)}>Fechar</Button>
-                  <Button onClick={() => {
-                    handleEdit(viewingRental!);
-                    setViewingRental(null);
-                  }}>
+                  
+                  <Button 
+                    variant="outline"
+                    className="border-amber-500 text-amber-600 hover:bg-amber-50"
+                    onClick={() => {
+                      // Redirect to full details page which handles editing/ending comprehensively
+                      // Or implement logic here. Given the complexity of "End Contract", redirection to [id] is safer as it has the logic.
+                      router.push(`/rentals/${viewingRental?.id}`);
+                    }}
+                  >
                     <Edit className="h-4 w-4 mr-2" />
-                    Editar
+                    Gerenciar (Editar/Encerrar)
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -495,19 +526,24 @@ export default function Rentals() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="propertyId">Imóveis Vagos *</Label>
-                      <Select 
-                        value={formData.propertyId}
-                        onValueChange={(value) => setFormData({...formData, propertyId: value})}
-                        required
-                      >
+                      <Select value={formData.propertyId} onValueChange={(val) => {
+                        setFormData({...formData, propertyId: val});
+                        const prop = availableProperties.find(p => p.id === val);
+                        if (prop) {
+                          setFormData(prev => ({
+                            ...prev, 
+                            propertyId: val,
+                            monthlyRent: formatCurrency(prop.monthlyRent)
+                          }));
+                        }
+                      }}>
                         <SelectTrigger>
-                          <SelectValue placeholder="Selecione o imóvel" />
+                          <SelectValue placeholder="Selecione um imóvel" />
                         </SelectTrigger>
                         <SelectContent>
-                          {availableProperties.map(property => (
+                          {availableProperties.map((property) => (
                             <SelectItem key={property.id} value={property.id}>
-                              {property.local} - {property.address}, {property.number}
-                              {property.complement && ` - ${property.complement}`}
+                              {property.local} {property.complement ? `- ${property.complement}` : ""} - {formatCurrency(property.monthlyRent)}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -733,6 +769,23 @@ export default function Rentals() {
             </Select>
           </div>
 
+          <div className="flex items-center space-x-2 bg-slate-100 p-1 rounded-md">
+            <Button
+              variant={viewMode === "grid" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("grid")}
+            >
+              <Grid className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={viewMode === "list" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("list")}
+            >
+              <LayoutList className="h-4 w-4" />
+            </Button>
+          </div>
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <FloatingCard delay={0.1}>
               <Card className="border-green-200 bg-green-50">
@@ -850,7 +903,7 @@ export default function Rentals() {
                                   
                                   <div className="flex justify-between items-center">
                                     <span className="text-slate-600">Valor Mensal Total:</span>
-                                    <span className="font-semibold text-slate-900">
+                                    <span className="font-bold text-slate-900">
                                       {formatCurrency(totalValue)}
                                     </span>
                                   </div>
@@ -902,6 +955,151 @@ export default function Rentals() {
               </Card>
             </FloatingCard>
           </div>
+
+          {filteredRentals.length === 0 ? (
+            <div className="text-center py-12 bg-slate-50 rounded-lg border border-dashed border-slate-300">
+              <p className="text-slate-500">Nenhuma locação encontrada.</p>
+            </div>
+          ) : viewMode === "list" ? (
+            <div className="bg-white rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Imóvel</TableHead>
+                    <TableHead>Inquilino</TableHead>
+                    <TableHead>Vencimento</TableHead>
+                    <TableHead>Valor Total</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredRentals.map((rental) => {
+                     const property = getProperty(rental.propertyId);
+                     const tenant = getTenant(rental.tenantId);
+                     const total = getTotalValue(rental);
+                     return (
+                      <TableRow key={rental.id} className="cursor-pointer hover:bg-slate-50" onClick={() => handleViewRental(rental)}>
+                        <TableCell className="font-medium">{property?.local}</TableCell>
+                        <TableCell>{tenant?.name}</TableCell>
+                        <TableCell>Dia {rental.paymentDay}</TableCell>
+                        <TableCell className="text-emerald-600 font-bold">{formatCurrency(total)}</TableCell>
+                        <TableCell>
+                           <Badge className={getStatusColor(rental.isActive)}>
+                            {getStatusLabel(rental.isActive)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                           {/* Actions */}
+                        </TableCell>
+                      </TableRow>
+                     );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredRentals.map((rental) => {
+                const property = getProperty(rental.propertyId);
+                const tenant = getTenant(rental.tenantId);
+                const totalValue = rental.monthlyRent + (rental.motorcycleSpotValue || 0);
+
+                return (
+                  <Card 
+                    key={rental.id} 
+                    className="hover:shadow-lg transition-shadow cursor-pointer relative group"
+                    onClick={() => handleOpenDialog(rental)}
+                  >
+                    <CardHeader className="pb-2">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <CardTitle className="text-xl">{property?.local || "Imóvel removido"}</CardTitle>
+                          <CardDescription>{tenant?.name || "Inquilino removido"}</CardDescription>
+                        </div>
+                        <Badge className={`${getStatusColor(rental.isActive)} text-white`}>
+                          {getStatusLabel(rental.isActive)}
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3 text-sm text-slate-600">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4" />
+                          <span>Vence dia {rental.paymentDay}</span>
+                        </div>
+                        
+                        <div className="pt-2 border-t border-slate-100 space-y-1">
+                           <div className="flex justify-between text-xs">
+                              <span>Aluguel:</span>
+                              <span>{formatCurrency(rental.monthlyRent)}</span>
+                           </div>
+                           {rental.hasMotorcycleSpot && (
+                             <div className="flex justify-between text-xs">
+                                <span>Vaga Moto:</span>
+                                <span>{formatCurrency(rental.motorcycleSpotValue || 0)}</span>
+                             </div>
+                           )}
+                           <div className="flex justify-between font-bold text-emerald-600 text-base pt-1">
+                              <span>Total Mensal:</span>
+                              <span>{formatCurrency(totalValue)}</span>
+                           </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex gap-2 pt-2 mt-2" onClick={(e) => e.stopPropagation()}>
+                           {/* View is implicit via card click, but we can keep buttons if needed, prompt says "deve ter os botões visualizar, encerrar locação e deletar" */}
+                           <Button 
+                              variant="secondary" 
+                              size="sm" 
+                              className="flex-1"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenDialog(rental);
+                              }}
+                           >
+                              <Eye className="h-4 w-4 mr-2" />
+                              Ver
+                           </Button>
+                           
+                           {rental.isActive && (
+                             <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="flex-1 border-amber-500 text-amber-600 hover:bg-amber-50"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  // Navigate to details page for End action logic which is complex, 
+                                  // OR open a local dialog. The prompt says "Visualização da locação... deve ter botão editar e encerrar".
+                                  // So here maybe just delete? Prompt says "card... deve ter os botões visualizar, encerrar locação e deletar"
+                                  // I'll implement End logic redirection or simple toggle
+                                  router.push(`/rentals/${rental.id}`);
+                                }}
+                             >
+                                <XCircle className="h-4 w-4 mr-2" />
+                                Encerrar
+                             </Button>
+                           )}
+
+                           <Button 
+                              variant="destructive" 
+                              size="sm" 
+                              className="w-10 px-0"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDelete(rental.id);
+                              }}
+                           >
+                              <Trash2 className="h-4 w-4" />
+                           </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
         </div>
       </Layout>
     </>

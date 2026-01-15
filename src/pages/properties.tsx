@@ -12,13 +12,14 @@ import { Badge } from "@/components/ui/badge";
 import { isAuthenticated } from "@/lib/auth";
 import { propertyStorage } from "@/lib/storage";
 import { Property } from "@/types";
-import { Building2, Plus, Edit, Trash2, Search, MapPin, Eye } from "lucide-react";
+import { Building2, Plus, Edit, Trash2, Search, MapPin, Eye, LayoutList, Grid } from "lucide-react";
 import { SEO } from "@/components/SEO";
-import { formatCurrency, parseCurrency, maskCurrency, maskCEP, fetchAddressByCEP } from "@/lib/masks";
+import { formatCurrency, parseCurrency, maskCurrency, maskCEP, fetchAddressByCEP, applyCurrencyMask } from "@/lib/masks";
 import { StaggerContainer, StaggerItem } from "@/components/animations/ScrollReveal";
 import { FloatingCard } from "@/components/animations/FloatingCard";
 import { configStorage } from "@/lib/storage";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 const STATES = [
   "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA",
@@ -55,6 +56,7 @@ export default function Properties() {
     status: "available" as "available" | "occupied"
   });
   const [availableLocals, setAvailableLocals] = useState<string[]>([]);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -180,6 +182,11 @@ export default function Properties() {
     resetForm();
   };
 
+  const confirmDelete = (id: string) => {
+    setDeletingId(id);
+    setShowDeleteDialog(true);
+  };
+
   const handleEdit = (property: Property) => {
     setEditingProperty(property);
     setFormData({
@@ -189,6 +196,8 @@ export default function Properties() {
       address: property.address,
       number: property.number,
       complement: property.complement || "",
+      neighborhood: property.neighborhood || "",
+      city: property.city || "",
       state: property.state,
       description: property.description,
       monthlyRent: maskCurrency(property.monthlyRent.toString()),
@@ -300,73 +309,119 @@ export default function Properties() {
             )}
           </div>
 
-          <StaggerContainer staggerDelay={0.08}>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredProperties.map((property) => (
-                <Card 
-                  key={property.id} 
-                  className="hover:shadow-lg transition-shadow cursor-pointer relative group"
-                  onClick={() => handleViewProperty(property)}
-                >
-                  <CardHeader className="pb-2">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <CardTitle className="text-xl">{property.local}</CardTitle>
-                        <CardDescription>{property.address}, {property.number}</CardDescription>
-                      </div>
-                      <Badge className={getStatusColor(property.status)}>
-                        {getStatusLabel(property.status)}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2 text-sm text-slate-600">
-                      <div className="flex justify-between">
-                        <span>Bairro:</span>
-                        <span className="font-medium text-slate-900">{property.neighborhood || "-"}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Valor Aluguel:</span>
-                        <span className="font-bold text-emerald-600">
-                          {formatCurrency(property.monthlyRent)}
-                        </span>
-                      </div>
-                    </div>
-                    
-                    {/* Action buttons - prevent card click propagation */}
-                    <div className="flex gap-2 pt-4 mt-2" onClick={(e) => e.stopPropagation()}>
-                       <Button 
-                          variant="destructive" 
-                          size="sm" 
-                          className="w-full opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeletingId(property.id);
-                            setShowDeleteDialog(true);
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Excluir
-                        </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </StaggerContainer>
+          <div className="flex items-center space-x-2 bg-slate-100 p-1 rounded-md">
+            <Button
+              variant={viewMode === "grid" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("grid")}
+            >
+              <Grid className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={viewMode === "list" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("list")}
+            >
+              <LayoutList className="h-4 w-4" />
+            </Button>
+          </div>
 
-          {filteredProperties.length === 0 && (
-            <Card className="p-12">
-              <div className="text-center">
-                <Building2 className="h-16 w-16 mx-auto text-slate-300 mb-4" />
-                <h3 className="text-xl font-semibold text-slate-900 mb-2">Nenhum imóvel encontrado</h3>
-                <p className="text-slate-600 mb-6">Comece adicionando seu primeiro imóvel</p>
-                <Button onClick={() => setIsDialogOpen(true)}>
-                  <Plus size={18} className="mr-2" />
-                  Adicionar Imóvel
-                </Button>
+          {filteredProperties.length === 0 ? (
+            <div className="text-center py-12 bg-slate-50 rounded-lg border border-dashed border-slate-300">
+              <p className="text-slate-500">Nenhum imóvel encontrado.</p>
+            </div>
+          ) : viewMode === "list" ? (
+            <div className="bg-white rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Local</TableHead>
+                    <TableHead>Endereço</TableHead>
+                    <TableHead>Valor</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredProperties.map((property) => (
+                    <TableRow 
+                      key={property.id} 
+                      className="cursor-pointer hover:bg-slate-50"
+                      onClick={() => handleViewProperty(property)}
+                    >
+                      <TableCell className="font-medium">{property.local}</TableCell>
+                      <TableCell>{property.address}, {property.number}</TableCell>
+                      <TableCell>{formatCurrency(property.monthlyRent)}</TableCell>
+                      <TableCell>
+                        <Badge className={getStatusColor(property.status)}>
+                          {getStatusLabel(property.status)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); confirmDelete(property.id); }}>
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <StaggerContainer staggerDelay={0.08}>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredProperties.map((property) => (
+                  <Card 
+                    key={property.id} 
+                    className="hover:shadow-lg transition-shadow cursor-pointer relative group"
+                    onClick={() => handleViewProperty(property)}
+                  >
+                    <CardHeader className="pb-2">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <CardTitle className="text-xl">{property.local}</CardTitle>
+                          <CardDescription>{property.address}, {property.number}</CardDescription>
+                        </div>
+                        <Badge className={getStatusColor(property.status)}>
+                          {getStatusLabel(property.status)}
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2 text-sm text-slate-600">
+                        <div className="flex justify-between">
+                          <span>Bairro:</span>
+                          <span className="font-medium text-slate-900">{property.neighborhood || "-"}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Valor Aluguel:</span>
+                          <span className="font-bold text-emerald-600">
+                            {formatCurrency(property.monthlyRent)}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      {/* Action buttons - prevent card click propagation */}
+                      <div className="flex gap-2 pt-4 mt-2" onClick={(e) => e.stopPropagation()}>
+                         <Button 
+                            variant="destructive" 
+                            size="sm" 
+                            className="w-full opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeletingId(property.id);
+                              setShowDeleteDialog(true);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Excluir
+                          </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
-            </Card>
+            </StaggerContainer>
           )}
         </div>
 

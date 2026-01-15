@@ -36,17 +36,18 @@ export default function PropertyDetails() {
   const { id } = router.query;
   const [property, setProperty] = useState<Property | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [formData, setFormData] = useState({
+  const [isEditing, setIsEditing] = useState(false);
+  const [formData, setFormData] = useState({ 
     local: "",
     cep: "",
     address: "",
     number: "",
     complement: "",
-    state: "SP",
+    state: "",
     description: "",
     monthlyRent: "",
     status: "available" as "available" | "occupied"
-  });
+  }); 
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -65,12 +66,12 @@ export default function PropertyDetails() {
       setProperty(found);
       setFormData({
         local: found.local,
-        cep: found.cep,
+        cep: found.cep || "",
         address: found.address,
         number: found.number,
         complement: found.complement || "",
-        state: found.state,
-        description: found.description,
+        state: found.state || "",
+        description: found.description || "",
         monthlyRent: maskCurrency(found.monthlyRent.toString()),
         status: found.status
       });
@@ -120,6 +121,29 @@ export default function PropertyDetails() {
     setFormData({ ...formData, monthlyRent: masked });
   };
 
+  const handleSave = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    
+    if (!property) return;
+
+    const updatedProperty: Property = {
+      ...property,
+      local: formData.local,
+      cep: formData.cep,
+      address: formData.address,
+      number: formData.number,
+      complement: formData.complement || undefined,
+      state: formData.state,
+      description: formData.description,
+      monthlyRent: parseCurrency(formData.monthlyRent),
+      status: formData.status
+    };
+
+    propertyStorage.save(updatedProperty);
+    setProperty(updatedProperty);
+    setIsEditing(false);
+  };
+
   if (!property) {
     return (
       <Layout>
@@ -161,6 +185,17 @@ export default function PropertyDetails() {
             </Badge>
           </div>
 
+          <div className="flex justify-end mb-4">
+            {!isEditing ? (
+              <Button onClick={() => setIsEditing(true)}>Editar</Button>
+            ) : (
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setIsEditing(false)}>Cancelar</Button>
+                <Button onClick={handleSave}>Salvar</Button>
+              </div>
+            )}
+          </div>
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <Card className="lg:col-span-2">
               <CardHeader>
@@ -170,22 +205,38 @@ export default function PropertyDetails() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm font-medium text-slate-600">Local</p>
-                    <p className="text-lg text-slate-900">{property.local}</p>
+                    {isEditing ? (
+                      <Input value={formData.local} onChange={e => setFormData({...formData, local: e.target.value})} />
+                    ) : (
+                      <p className="text-lg text-slate-900">{property.local}</p>
+                    )}
                   </div>
                   <div>
                     <p className="text-sm font-medium text-slate-600">CEP</p>
-                    <p className="text-lg text-slate-900">{property.cep}</p>
+                    {isEditing ? (
+                      <Input value={formData.cep} onChange={e => setFormData({...formData, cep: e.target.value})} />
+                    ) : (
+                      <p className="text-lg text-slate-900">{property.cep}</p>
+                    )}
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm font-medium text-slate-600">Endereço</p>
-                    <p className="text-lg text-slate-900">{property.address}</p>
+                    {isEditing ? (
+                      <Input value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} />
+                    ) : (
+                      <p className="text-lg text-slate-900">{property.address}</p>
+                    )}
                   </div>
                   <div>
                     <p className="text-sm font-medium text-slate-600">Número</p>
-                    <p className="text-lg text-slate-900">{property.number}</p>
+                    {isEditing ? (
+                      <Input value={formData.number} onChange={e => setFormData({...formData, number: e.target.value})} />
+                    ) : (
+                      <p className="text-lg text-slate-900">{property.number}</p>
+                    )}
                   </div>
                 </div>
 
@@ -193,18 +244,43 @@ export default function PropertyDetails() {
                   {property.complement && (
                     <div>
                       <p className="text-sm font-medium text-slate-600">Complemento</p>
-                      <p className="text-lg text-slate-900">{property.complement}</p>
+                      {isEditing ? (
+                        <Input value={formData.complement} onChange={e => setFormData({...formData, complement: e.target.value})} />
+                      ) : (
+                        <p className="text-lg text-slate-900">{property.complement}</p>
+                      )}
                     </div>
                   )}
                   <div>
                     <p className="text-sm font-medium text-slate-600">Estado</p>
-                    <p className="text-lg text-slate-900">{property.state}</p>
+                    {isEditing ? (
+                      <select
+                        value={formData.state}
+                        onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                        className="w-full h-10 px-3 rounded-md border border-slate-300 bg-white text-slate-900"
+                      >
+                        {STATES.map(state => (
+                          <option key={state} value={state}>{state}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <p className="text-lg text-slate-900">{property.state}</p>
+                    )}
                   </div>
                 </div>
 
                 <div>
                   <p className="text-sm font-medium text-slate-600">Descrição</p>
-                  <p className="text-slate-900">{property.description}</p>
+                  {isEditing ? (
+                    <Textarea
+                      value={formData.description}
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      placeholder="Características do imóvel"
+                      rows={3}
+                    />
+                  ) : (
+                    <p className="text-slate-900">{property.description}</p>
+                  )}
                 </div>
 
                 <div className="pt-4 border-t">
@@ -223,9 +299,17 @@ export default function PropertyDetails() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-3xl font-bold text-emerald-600">
-                    {formatCurrency(property.monthlyRent)}
-                  </p>
+                  {isEditing ? (
+                    <Input
+                      value={formData.monthlyRent}
+                      onChange={handleMoneyChange}
+                      placeholder="R$ 0,00"
+                    />
+                  ) : (
+                    <p className="text-3xl font-bold text-emerald-600">
+                      {formatCurrency(property.monthlyRent)}
+                    </p>
+                  )}
                 </CardContent>
               </Card>
 

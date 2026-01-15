@@ -47,13 +47,13 @@ export interface Rental {
   propertyId: string;
   tenantId: string;
   startDate: string;
-  endDate?: string;
-  value: number; // Base rent value
-  monthlyRent: number; // Total value
+  endDate: string;
+  value: number; // Monthly rent base value
+  monthlyRent: number; // Total value including extras
   paymentDay: number;
   hasGarage: boolean;
   garageValue?: number;
-  hasMotorcycleSpot?: boolean;
+  hasMotorcycleSpot: boolean;
   motorcycleSpotValue?: number;
   observations?: string; // Caução / Notes
   attachments?: { name: string; url: string; date?: string; type?: string }[];
