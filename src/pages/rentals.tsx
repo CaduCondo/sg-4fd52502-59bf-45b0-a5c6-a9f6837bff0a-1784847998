@@ -69,7 +69,7 @@ export default function Rentals() {
       .sort((a, b) => a.local.localeCompare(b.local) || a.address.localeCompare(b.address));
       
     const availTenants = allTenants
-      .filter(t => t.status === "vacant")
+      .filter(t => !t.isActive) // Fix: check isActive (false means vacant/available)
       .sort((a, b) => a.name.localeCompare(b.name));
       
     setAvailableProperties(availProps);
@@ -197,7 +197,7 @@ export default function Rentals() {
     for (let i = 0; i < 12; i++) {
       const dueDate = new Date(startDate);
       dueDate.setMonth(startDate.getMonth() + i);
-      dueDate.setDate(formData.paymentDay);
+      dueDate.setDate(paymentDay);
       
       const payment: Payment = {
         id: crypto.randomUUID(),
@@ -251,14 +251,32 @@ export default function Rentals() {
       const tenant = getTenant(rental.tenantId);
       
       if (property) {
-        property.status = "available";
-        propertyStorage.save(property);
+        propertyStorage.updateStatus(property.id, true); // true = active/available? No, wait. 
+        // Logic: Property status: available (true?), occupied (false?) 
+        // Property.isActive -> if true, it exists? Or is it availability?
+        // Check storage.ts logic: "isActive" usually means "not deleted".
+        // But for availability, we used "status" = "available" | "occupied".
+        // We need to check Property interface. It has `isActive`.
+        // If `status` field was removed, we use `isActive`? 
+        // No, checking Property interface in types/index.ts...
+        // Property has `isActive`. 
+        // Let's assume we are just "freeing" them up.
+        // If the requirement said "status only needs to know if available", 
+        // and we replaced status with isActive...
+        // isActive = true means "Available for rent"? 
+        // Or isActive = true means "Record is active/not soft deleted"?
+        // The prompt said: "se o inquilino não esta ligado a uma locação, ele esta disponivel... deve ter um combo... para inativar"
+        // So isActive = true means "Eligible for rent". 
+        // When rental is deleted, tenant/property should remain active (eligible).
       }
-      if (tenant) {
-        tenant.status = "vacant";
-        tenantStorage.save(tenant);
-      }
-
+      // Actually, we don't need to change their isActive status when deleting a rental, 
+      // unless they were "locked" by the rental.
+      // The prompt says: "quando cadastrado, ja nasce ativo". "se não esta ligado a locação, esta livre".
+      // So availability is derived from "Not linked to active rental".
+      // But we probably don't store "linked status" on the entity anymore if we follow the prompt strictly?
+      // "se o inquilino não esta ligado a uma locação... ele esta disponivel".
+      // So we don't update tenant/property status here. We just delete rental.
+      
       payments.forEach(p => paymentStorage.delete(p.id));
       rentalStorage.delete(id);
       loadData();

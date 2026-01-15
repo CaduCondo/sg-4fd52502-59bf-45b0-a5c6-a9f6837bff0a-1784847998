@@ -73,8 +73,8 @@ export default function PaymentDetails() {
     setPaymentDate(now.toISOString().split("T")[0]);
     
     // Se já existe pagamento parcial, mostrar valor restante
-    if (paymentData.partialAmount && paymentData.partialAmount > 0) {
-      const remainingAmount = paymentData.amount - paymentData.partialAmount;
+    if (paymentData.paidAmount && paymentData.paidAmount > 0) {
+      const remainingAmount = paymentData.amount - paymentData.paidAmount;
       setAmountPaid(applyCurrencyMask(remainingAmount.toString()));
     } else {
       setAmountPaid(applyCurrencyMask(paymentData.amount.toString()));
@@ -107,26 +107,23 @@ export default function PaymentDetails() {
 
     setIsSubmitting(true);
 
-    const paidAmount = parseCurrencyToNumber(amountPaid);
-    const currentPartialAmount = payment.partialAmount || 0;
-    const newTotalPaid = currentPartialAmount + paidAmount;
+    const paidAmountVal = parseCurrencyToNumber(amountPaid);
+    const currentPaidAmount = payment.paidAmount || 0;
+    const newTotalPaid = currentPaidAmount + paidAmountVal;
 
     // Determinar status baseado no valor pago
-    let newStatus: "paid" | "unpaid" | "partial" = "unpaid";
+    let newIsPaid = false;
     if (newTotalPaid >= payment.amount) {
-      newStatus = "paid";
-    } else if (newTotalPaid > 0) {
-      newStatus = "partial";
+      newIsPaid = true;
     }
 
     const updatedPayment: Payment = {
       ...payment,
-      partialAmount: newTotalPaid,
-      status: newStatus,
-      isPaid: newStatus === "paid",
-      paidAt: paymentDate,
+      paidAmount: newTotalPaid,
+      isPaid: newIsPaid,
+      paidDate: paymentDate,
       paymentMethod,
-      paymentLocation: paymentMethod === "Pix" ? paymentLocation : undefined,
+      // paymentLocation legacy support if needed
       paymentCode: paymentMethod === "Pix" ? paymentCode : undefined,
       dueDate: payment.dueDate
     };
@@ -137,14 +134,16 @@ export default function PaymentDetails() {
     router.push("/payments");
   };
 
-  const getStatusBadge = (status: "paid" | "unpaid" | "partial") => {
-    const variants = {
-      paid: { variant: "default" as const, label: "Pago", color: "bg-blue-500" },
-      unpaid: { variant: "destructive" as const, label: "Não Pago", color: "bg-red-500" },
-      partial: { variant: "secondary" as const, label: "Parcial", color: "bg-yellow-500" }
-    };
-    return variants[status];
+  const remainingAmount = payment.amount - (payment.paidAmount || 0);
+  
+  // Helper for status badge since we moved away from string status
+  const getStatusBadge = (isPaid: boolean, paidAmount?: number, totalAmount?: number) => {
+    if (isPaid) return { variant: "default" as const, label: "Pago", color: "bg-blue-500" };
+    if (paidAmount && paidAmount > 0) return { variant: "secondary" as const, label: "Parcial", color: "bg-yellow-500" };
+    return { variant: "destructive" as const, label: "Não Pago", color: "bg-red-500" };
   };
+
+  const statusBadge = getStatusBadge(payment.isPaid, payment.paidAmount, payment.amount);
 
   if (!payment || !rental || !property || !tenant) {
     return (
@@ -155,9 +154,6 @@ export default function PaymentDetails() {
       </Layout>
     );
   }
-
-  const remainingAmount = payment.amount - (payment.partialAmount || 0);
-  const statusBadge = getStatusBadge(payment.status);
 
   return (
     <>
@@ -218,12 +214,12 @@ export default function PaymentDetails() {
                   </div>
                 </div>
 
-                {payment.partialAmount && payment.partialAmount > 0 && (
+                {payment.paidAmount && payment.paidAmount > 0 && (
                   <>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-slate-600">Valor Pago Parcialmente:</span>
                       <span className="text-lg font-semibold text-yellow-700">
-                        {formatCurrency(payment.partialAmount)}
+                        {formatCurrency(payment.paidAmount)}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">

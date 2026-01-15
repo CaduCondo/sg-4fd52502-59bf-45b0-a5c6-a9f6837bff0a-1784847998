@@ -126,15 +126,17 @@ export default function RentalDetails() {
     };
 
     // Update statuses if property or tenant changed
+    // We don't need to manually update status strings anymore if we rely on "Linked to Rental" logic,
+    // BUT the current codebase might still rely on some flags.
+    // However, the prompt asked to use "isActive" for "Soft Delete / Availability toggle".
+    // For now, let's remove the calls to updateStatus that pass strings like "available"/"occupied"
+    // because those methods were removed or changed signature in storage.ts to take boolean.
+    
+    /* 
     if (rental.propertyId !== editPropertyId) {
-      propertyStorage.updateStatus(rental.propertyId, "available");
-      propertyStorage.updateStatus(editPropertyId, "occupied");
+       // logic removed
     }
-
-    if (rental.tenantId !== editTenantId) {
-      tenantStorage.updateStatus(rental.tenantId, "vacant");
-      tenantStorage.updateStatus(editTenantId, "active");
-    }
+    */
 
     rentalStorage.update(updatedRental);
     
@@ -190,9 +192,9 @@ export default function RentalDetails() {
   const handleDelete = () => {
     if (!rental) return;
 
-    // Update statuses
-    propertyStorage.updateStatus(rental.propertyId, "available");
-    tenantStorage.updateStatus(rental.tenantId, "vacant");
+    // Update statuses - Removed as per new logic (availability derived or manual toggle)
+    // propertyStorage.updateStatus(rental.propertyId, "available"); 
+    // tenantStorage.updateStatus(rental.tenantId, "vacant");
     
     // Remove all payments for this rental
     const allPayments = paymentStorage.getAll();
@@ -210,14 +212,11 @@ export default function RentalDetails() {
     e.preventDefault();
     if (!rental) return;
 
-    // Update rental status to ended
-    rentalStorage.updateStatus(rental.id, "ended");
+    // Update rental status to ended (isActive = false)
+    rentalStorage.updateStatus(rental.id, false);
     
-    // Update property status to available
-    propertyStorage.updateStatus(rental.propertyId, "available");
-    
-    // Update tenant status to inactive
-    tenantStorage.updateStatus(rental.tenantId, "inactive");
+    // We don't update property/tenant status automatically anymore 
+    // as they remain "Active" (available for new rent) unless manually deactivated.
 
     setShowEndDialog(false);
     router.push("/rentals");
@@ -237,14 +236,15 @@ export default function RentalDetails() {
   const statusColors = {
     active: "bg-emerald-100 text-emerald-800",
     ended: "bg-slate-100 text-slate-800",
-    expired: "bg-red-100 text-red-800"
   };
 
   const statusLabels = {
     active: "Ativa",
     ended: "Encerrada",
-    expired: "Vencida"
   };
+  
+  // Helper to get key
+  const statusKey = rental.isActive ? 'active' : 'ended';
 
   return (
     <>
@@ -265,8 +265,8 @@ export default function RentalDetails() {
                 <p className="text-slate-600 mt-1">Informações completas do contrato</p>
               </div>
             </div>
-            <Badge className={statusColors[rental.status]}>
-              {statusLabels[rental.status]}
+            <Badge className={statusColors[statusKey]}>
+              {statusLabels[statusKey]}
             </Badge>
           </div>
 
@@ -454,7 +454,7 @@ export default function RentalDetails() {
               <span>Editar</span>
             </Button>
             
-            {rental.status === "active" && (
+            {rental.isActive && (
               <Button 
                 onClick={() => setShowEndDialog(true)}
                 variant="outline"
@@ -569,7 +569,7 @@ export default function RentalDetails() {
                   id="edit-motorcycle-spot"
                   checked={editHasMotorcycleSpot}
                   onCheckedChange={(checked) => {
-                    setEditHasMotorcycleSpot(checked as boolean);
+                    setEditHasMotorcycleSpot(checked === true); // Ensure boolean
                     if (!checked) setEditMotorcycleSpotValue("");
                   }}
                 />
@@ -699,7 +699,11 @@ export default function RentalDetails() {
         {/* Lightbox for Attachments */}
         {showLightbox && rental.attachments && (
           <Lightbox
-            files={rental.attachments}
+            files={rental.attachments?.map(a => ({
+              name: a.name, 
+              url: a.url, 
+              type: a.type || 'application/octet-stream' // Ensure type string
+            })) || []}
             initialIndex={lightboxIndex}
             onClose={() => setShowLightbox(false)}
           />

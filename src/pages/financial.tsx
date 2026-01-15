@@ -198,7 +198,7 @@ export default function FinancialPage() {
           paymentCode: payment.paymentCode || "",
           dueDate: dueDate.toISOString().split('T')[0],
           expectedAmount,
-          paidAmount: payment.amount,
+          paidAmount: payment.paidAmount || payment.amount || 0, // Ensure number
         });
       });
     });
