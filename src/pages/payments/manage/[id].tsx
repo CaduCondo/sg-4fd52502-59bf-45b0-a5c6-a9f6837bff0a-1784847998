@@ -6,18 +6,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { isAuthenticated } from "@/lib/auth";
 import { paymentStorage, rentalStorage, propertyStorage, tenantStorage, configStorage } from "@/lib/storage";
 import { Payment, Rental, Property, Tenant } from "@/types";
-import { ArrowLeft, Save, Upload, X, AlertCircle, CheckCircle, Mail, Camera, Paperclip, Send } from "lucide-react";
+import { ArrowLeft, Save, X, CheckCircle, Mail, Camera, Paperclip } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { formatCurrency, applyRealMask, parseCurrency, formatDate } from "@/lib/masks";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 export default function ManagePayment() {
   const router = useRouter();
@@ -29,7 +27,6 @@ export default function ManagePayment() {
   const [property, setProperty] = useState<Property | null>(null);
   const [tenant, setTenant] = useState<Tenant | null>(null);
   
-  // Form state
   const [paymentDate, setPaymentDate] = useState("");
   const [amountToPay, setAmountToPay] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<"Pix" | "Boleto" | "Dinheiro">("Pix");
@@ -37,14 +34,11 @@ export default function ManagePayment() {
   const [paymentCode, setPaymentCode] = useState("");
   const [notes, setNotes] = useState("");
   const [attachments, setAttachments] = useState<File[]>([]);
+  const [removeFees, setRemoveFees] = useState(false);
   
-  // Calculations
   const [expectedAmount, setExpectedAmount] = useState(0);
   const [lateFee, setLateFee] = useState(0);
   const [interest, setInterest] = useState(0);
-  const [remainingBalance, setRemainingBalance] = useState(0);
-
-  // Receipt Modal
   const [showReceipt, setShowReceipt] = useState(false);
 
   useEffect(() => {
@@ -72,16 +66,13 @@ export default function ManagePayment() {
     setProperty(propertyData);
     setTenant(tenantData);
 
-    // Initialize defaults
     const today = new Date().toISOString().split("T")[0];
     setPaymentDate(today);
     setPaymentMethod("Pix");
     setPaymentLocation("CP");
     
-    // Set initial payment code
     updatePaymentCode(today, "CP");
 
-    // Calculate initial amounts
     const baseAmount = paymentData.status === "partial" 
       ? (paymentData.expectedAmount - (paymentData.paidAmount || 0))
       : paymentData.expectedAmount;
@@ -101,17 +92,14 @@ export default function ManagePayment() {
     const paymentDateObj = new Date(payDate);
     const dueDateObj = new Date(dueDateStr);
     
-    // Check if late (compare dates only)
     const isLate = paymentDateObj > dueDateObj;
     
     let calcLateFee = 0;
     let calcInterest = 0;
 
-    if (isLate) {
-      // 10% Late Fee
+    if (isLate && !removeFees) {
       calcLateFee = baseAmount * 0.10;
       
-      // 2% Interest per day
       const diffTime = Math.abs(paymentDateObj.getTime() - dueDateObj.getTime());
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
       calcInterest = baseAmount * 0.02 * diffDays;
@@ -121,7 +109,6 @@ export default function ManagePayment() {
     setInterest(calcInterest);
     setExpectedAmount(baseAmount + calcLateFee + calcInterest);
     
-    // Default amount to pay to expected amount
     setAmountToPay((baseAmount + calcLateFee + calcInterest).toFixed(2).replace(".", ","));
   };
 
@@ -141,6 +128,24 @@ export default function ManagePayment() {
     updatePaymentCode(paymentDate, loc);
   };
 
+  const handleRemoveFeesChange = (checked: boolean) => {
+    setRemoveFees(checked);
+    if (payment && rental) {
+      const baseAmount = payment.status === "partial" 
+        ? (payment.expectedAmount - (payment.paidAmount || 0))
+        : payment.expectedAmount;
+      
+      if (checked) {
+        setLateFee(0);
+        setInterest(0);
+        setExpectedAmount(baseAmount);
+        setAmountToPay(baseAmount.toFixed(2).replace(".", ","));
+      } else {
+        recalculateTotals(paymentDate, baseAmount, payment.dueDate);
+      }
+    }
+  };
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const newFiles = Array.from(e.target.files);
@@ -158,11 +163,9 @@ export default function ManagePayment() {
     const paidValue = parseCurrency(amountToPay);
     const isFullPayment = paidValue >= expectedAmount;
     
-    // Calculate admin fee
     const config = configStorage.get();
     const adminFeeVal = (paidValue * (config.adminFeePercentage || 0)) / 100;
 
-    // Update payment object
     const updatedPayment: Payment = {
       ...payment,
       paidAmount: (payment.paidAmount || 0) + paidValue,
@@ -172,8 +175,8 @@ export default function ManagePayment() {
       paymentMethod: paymentMethod.toLowerCase() as any,
       paymentLocation: paymentMethod === "Pix" ? paymentLocation : undefined,
       paymentCode: paymentMethod === "Pix" ? paymentCode : undefined,
-      lateFee: (payment.lateFee || 0) + lateFee,
-      interest: (payment.interest || 0) + interest,
+      lateFee: removeFees ? 0 : ((payment.lateFee || 0) + lateFee),
+      interest: removeFees ? 0 : ((payment.interest || 0) + interest),
       adminFee: (payment.adminFee || 0) + adminFeeVal,
       notes: notes,
       partialPayments: [
@@ -200,7 +203,6 @@ export default function ManagePayment() {
   };
 
   const sendReceiptEmail = () => {
-    // Simulate email sending
     toast({ title: "Email enviado", description: `Recibo enviado para ${tenant?.email}` });
     setShowReceipt(false);
     router.push("/payments");
@@ -224,7 +226,6 @@ export default function ManagePayment() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Info Card */}
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-base">Informações da Locação</CardTitle>
@@ -232,7 +233,7 @@ export default function ManagePayment() {
               <CardContent className="text-sm space-y-2">
                 <div>
                   <span className="text-muted-foreground block text-xs">Imóvel</span>
-                  <span className="font-medium">{property.address}, {property.number}</span>
+                  <span className="font-medium">{property.location}</span>
                   {property.complement && <span className="block text-xs text-muted-foreground">{property.complement}</span>}
                 </div>
                 <div className="grid grid-cols-2 gap-4 pt-2">
@@ -248,7 +249,6 @@ export default function ManagePayment() {
               </CardContent>
             </Card>
 
-            {/* Expected Amount Card */}
             <Card className="bg-slate-50 border-slate-200">
               <CardHeader className="pb-2">
                 <CardTitle className="text-base flex justify-between">
@@ -259,7 +259,7 @@ export default function ManagePayment() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-emerald-600 mb-2">
+                <div className="text-2xl font-bold text-emerald-600 mb-2">
                   {formatCurrency(expectedAmount)}
                 </div>
                 
@@ -270,7 +270,7 @@ export default function ManagePayment() {
                   </div>
                 )}
 
-                {(lateFee > 0 || interest > 0) && (
+                {(lateFee > 0 || interest > 0) && !removeFees && (
                   <div className="bg-red-50 p-2 rounded text-xs text-red-700 space-y-1">
                     <div className="flex justify-between">
                       <span>Multa (10%):</span>
@@ -293,7 +293,6 @@ export default function ManagePayment() {
             </Card>
           </div>
 
-          {/* Payment Form */}
           <Card>
             <CardHeader>
               <CardTitle>Dados do Pagamento</CardTitle>
@@ -362,7 +361,19 @@ export default function ManagePayment() {
                 )}
               </div>
 
-              {/* Attachments */}
+              {(lateFee > 0 || interest > 0) && (
+                <div className="flex items-center space-x-2 p-3 bg-amber-50 rounded-lg">
+                  <Checkbox
+                    id="removeFees"
+                    checked={removeFees}
+                    onCheckedChange={handleRemoveFeesChange}
+                  />
+                  <Label htmlFor="removeFees" className="cursor-pointer font-medium">
+                    Retirar Multa e Juros
+                  </Label>
+                </div>
+              )}
+
               <div className="space-y-2 pt-4 border-t">
                 <Label className="flex justify-between">
                   <span>Anexos ({attachments.length}/5)</span>
@@ -407,7 +418,6 @@ export default function ManagePayment() {
           </Card>
         </div>
 
-        {/* Receipt Dialog */}
         <Dialog open={showReceipt} onOpenChange={setShowReceipt}>
           <DialogContent>
             <DialogHeader>
