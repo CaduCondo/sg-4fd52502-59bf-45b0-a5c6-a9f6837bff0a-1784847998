@@ -52,7 +52,7 @@ export default function PaymentsPage() {
       ]);
 
       // Filter only active rentals
-      const activeRentals = allRentals.filter(r => r.status === "active");
+      const activeRentals = allRentals.filter(r => r.isActive);
 
       // Enrich rentals with property and tenant details + payment info
       const rentalsWithDetails: RentalWithDetails[] = activeRentals.map(rental => {
@@ -95,7 +95,7 @@ export default function PaymentsPage() {
     if (rental.payment?.status === "paid") return "bg-white border-slate-200";
     
     const currentDate = new Date();
-    const dueDay = rental.dueDay || 5;
+    const dueDay = rental.paymentDay || 5;
     const dueDate = new Date(parseInt(selectedYear), parseInt(selectedMonth) - 1, dueDay);
     
     currentDate.setHours(0, 0, 0, 0);
@@ -116,7 +116,7 @@ export default function PaymentsPage() {
     }
     
     const currentDate = new Date();
-    const dueDay = rental.dueDay || 5;
+    const dueDay = rental.paymentDay || 5;
     const dueDate = new Date(parseInt(selectedYear), parseInt(selectedMonth) - 1, dueDay);
     
     currentDate.setHours(0, 0, 0, 0);
@@ -145,17 +145,16 @@ export default function PaymentsPage() {
 
   const createPaymentAndNavigate = async (rental: RentalWithDetails) => {
     try {
-      const dueDay = rental.dueDay || 5;
+      const dueDay = rental.paymentDay || 5;
       const dueDate = new Date(parseInt(selectedYear), parseInt(selectedMonth) - 1, dueDay);
       
-      const newPayment: Omit<Payment, "id"> = {
+      const newPayment: any = {
         rentalId: rental.id,
         referenceMonth: parseInt(selectedMonth),
         referenceYear: parseInt(selectedYear),
         dueDate: dueDate.toISOString().split("T")[0],
-        expectedAmount: rental.rentAmount,
+        expectedAmount: rental.value,
         paidAmount: 0,
-        adminFee: 0,
         status: "pending",
         paymentDate: null,
         notes: ""
@@ -274,11 +273,11 @@ export default function PaymentsPage() {
                         )}
                         <div className="flex items-center gap-2 text-muted-foreground">
                           <Calendar className="h-4 w-4 flex-shrink-0" />
-                          <span>Vencimento: Dia {rental.dueDay || 5}</span>
+                          <span>Vencimento: Dia {rental.paymentDay || 5}</span>
                         </div>
                         <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-semibold">
                           <DollarSign className="h-4 w-4 flex-shrink-0" />
-                          <span>{formatCurrency(rental.rentAmount)}</span>
+                          <span>{formatCurrency(rental.value)}</span>
                         </div>
                       </CardContent>
                     </Card>
@@ -324,7 +323,7 @@ export default function PaymentsPage() {
                         </div>
                         <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-semibold">
                           <DollarSign className="h-4 w-4 flex-shrink-0" />
-                          <span>{formatCurrency(rental.payment?.paidAmount || rental.rentAmount)}</span>
+                          <span>{formatCurrency(rental.payment?.paidAmount || rental.value)}</span>
                         </div>
                       </CardContent>
                     </Card>
