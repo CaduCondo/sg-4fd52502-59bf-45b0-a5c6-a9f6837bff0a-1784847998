@@ -66,7 +66,7 @@ export const configService = {
         const { data, error } = await supabase
           .from("configs")
           .update(configData)
-          .eq("admin_fee_percentage", existing[0].admin_fee_percentage)
+          .eq("id", existing[0].id)
           .select()
           .single();
         
