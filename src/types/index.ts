@@ -8,7 +8,10 @@ export interface User {
 
 export interface Property {
   id: string;
+  local: string;
   address: string;
+  complement?: string;
+  state: string;
   description: string;
   monthlyRent: number;
   status: "available" | "rented";

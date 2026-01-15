@@ -12,6 +12,7 @@ import { rentalStorage, propertyStorage, tenantStorage, paymentStorage } from "@
 import { Rental, Property, Tenant } from "@/types";
 import { Home, Plus, Edit, Trash2, Search, User, Building2, Calendar, XCircle } from "lucide-react";
 import { SEO } from "@/components/SEO";
+import { formatCurrency, parseCurrency, maskCurrency, formatDate } from "@/lib/masks";
 
 export default function Rentals() {
   const router = useRouter();
@@ -131,7 +132,7 @@ export default function Rentals() {
       propertyId: formData.propertyId,
       tenantId: formData.tenantId,
       startDate: formData.startDate,
-      monthlyRent: parseFloat(formData.monthlyRent),
+      monthlyRent: parseCurrency(formData.monthlyRent),
       status: formData.status,
       createdAt: editingRental?.createdAt || new Date().toISOString()
     };
@@ -142,6 +143,12 @@ export default function Rentals() {
     if (property) {
       property.status = rental.status === "active" ? "rented" : "available";
       propertyStorage.save(property);
+    }
+
+    const tenant = tenantStorage.getAll().find(t => t.id === rental.tenantId);
+    if (tenant) {
+      tenant.status = rental.status === "active" ? "rented" : "vacant";
+      tenantStorage.save(tenant);
     }
     
     if (rental.status === "active") {
@@ -159,7 +166,7 @@ export default function Rentals() {
       propertyId: rental.propertyId,
       tenantId: rental.tenantId,
       startDate: rental.startDate.split("T")[0],
-      monthlyRent: rental.monthlyRent.toString(),
+      monthlyRent: maskCurrency(rental.monthlyRent.toString()),
       status: rental.status
     });
     setIsDialogOpen(true);
@@ -175,13 +182,19 @@ export default function Rentals() {
         property.status = "available";
         propertyStorage.save(property);
       }
+
+      const tenant = tenantStorage.getAll().find(t => t.id === rental.tenantId);
+      if (tenant) {
+        tenant.status = "vacant";
+        tenantStorage.save(tenant);
+      }
       
       loadRentals();
       loadAvailableProperties();
     }
   };
 
-  const handleDelete = (id: string, propertyId: string) => {
+  const handleDelete = (id: string, propertyId: string, tenantId: string) => {
     if (confirm("Tem certeza que deseja excluir esta locação?")) {
       rentalStorage.delete(id);
       
@@ -189,6 +202,12 @@ export default function Rentals() {
       if (property) {
         property.status = "available";
         propertyStorage.save(property);
+      }
+
+      const tenant = tenantStorage.getAll().find(t => t.id === tenantId);
+      if (tenant) {
+        tenant.status = "vacant";
+        tenantStorage.save(tenant);
       }
       
       loadRentals();
@@ -208,16 +227,9 @@ export default function Rentals() {
     setIsDialogOpen(false);
   };
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL"
-    }).format(value);
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("pt-BR");
+  const handleMoneyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const masked = maskCurrency(e.target.value);
+    setFormData({ ...formData, monthlyRent: masked });
   };
 
   return (
@@ -305,7 +317,7 @@ export default function Rentals() {
                         <Button 
                           variant="destructive" 
                           size="sm" 
-                          onClick={() => handleDelete(rental.id, rental.propertyId)}
+                          onClick={() => handleDelete(rental.id, rental.propertyId, rental.tenantId)}
                           className="flex-1"
                         >
                           <Trash2 size={16} className="mr-2" />
@@ -392,11 +404,9 @@ export default function Rentals() {
                   <Label htmlFor="monthlyRent">Valor Mensal</Label>
                   <Input
                     id="monthlyRent"
-                    type="number"
-                    step="0.01"
                     value={formData.monthlyRent}
-                    onChange={(e) => setFormData({ ...formData, monthlyRent: e.target.value })}
-                    placeholder="0.00"
+                    onChange={handleMoneyChange}
+                    placeholder="R$ 0,00"
                     required
                   />
                 </div>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
-import Layout from "@/components/Layout";
+import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Search, Plus, Trash2, Edit, User, Phone, Mail, FileText } from "lucide-react";
 import { Tenant } from "@/types";
-import { storage } from "@/lib/storage";
+import { tenantStorage } from "@/lib/storage";
 import { maskCPF, maskPhone } from "@/lib/masks";
 import { useToast } from "@/hooks/use-toast";
 
@@ -49,7 +49,7 @@ export default function TenantsPage() {
   }, [searchName, searchCpf, searchEmail, tenants]);
 
   const loadTenants = () => {
-    const data = storage.tenants.getAll();
+    const data = tenantStorage.getAll();
     setTenants(data);
   };
 
@@ -89,7 +89,7 @@ export default function TenantsPage() {
       createdAt: new Date().toISOString(),
     };
 
-    storage.tenants.save(newTenant);
+    tenantStorage.save(newTenant);
     toast({ title: "Sucesso", description: "Inquilino cadastrado com sucesso!" });
     setIsAddOpen(false);
     resetForm();
@@ -105,7 +105,7 @@ export default function TenantsPage() {
       ...formData,
     };
 
-    storage.tenants.save(updatedTenant);
+    tenantStorage.save(updatedTenant);
     toast({ title: "Sucesso", description: "Inquilino atualizado com sucesso!" });
     setIsEditOpen(false);
     setSelectedTenant(null);
@@ -116,7 +116,7 @@ export default function TenantsPage() {
   const handleDelete = (id: string, e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent navigation
     if (confirm("Tem certeza que deseja excluir este inquilino?")) {
-      storage.tenants.delete(id);
+      tenantStorage.delete(id);
       toast({ title: "Sucesso", description: "Inquilino excluído." });
       loadTenants();
     }

@@ -8,6 +8,7 @@ import { propertyStorage, tenantStorage, rentalStorage, paymentStorage, configSt
 import { DashboardStats, Property, Tenant, Rental, Payment } from "@/types";
 import { Building2, Users, DollarSign, CheckCircle, XCircle, TrendingUp, AlertTriangle } from "lucide-react";
 import { SEO } from "@/components/SEO";
+import { formatCurrency, formatDate } from "@/lib/masks";
 
 export default function Dashboard() {
   const router = useRouter();
@@ -95,18 +96,6 @@ export default function Dashboard() {
     setUpcomingPayments(upcoming);
   }, [router]);
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL"
-    }).format(value);
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("pt-BR");
-  };
-
   return (
     <>
       <SEO 
@@ -115,120 +104,120 @@ export default function Dashboard() {
       />
       
       <Layout>
-        <div className="space-y-8">
+        <div className="space-y-6">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900">Dashboard</h1>
-            <p className="text-slate-600 mt-2">Visão geral do sistema de locações</p>
+            <h1 className="text-3xl font-bold tracking-tight text-gray-900">Dashboard</h1>
+            <p className="text-gray-500">Visão geral do sistema de locações</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <Link href="/properties">
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-blue-500">
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium text-slate-600">Total de Imóveis</CardTitle>
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-l-blue-500">
+                <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                  <CardTitle className="text-sm font-medium text-gray-600">Total de Imóveis</CardTitle>
                   <Building2 className="h-5 w-5 text-blue-600" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-slate-900">{stats.totalProperties}</div>
-                  <p className="text-xs text-slate-500 mt-2">Todos os imóveis cadastrados</p>
+                  <div className="text-2xl font-bold text-gray-900">{stats.totalProperties}</div>
+                  <p className="text-xs text-gray-500 mt-1">Todos os imóveis</p>
                 </CardContent>
               </Card>
             </Link>
 
             <Link href="/properties?filter=rented">
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-green-500">
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium text-slate-600">Imóveis Alugados</CardTitle>
-                  <CheckCircle className="h-5 w-5 text-green-600" />
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-l-emerald-500">
+                <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                  <CardTitle className="text-sm font-medium text-gray-600">Imóveis Alugados</CardTitle>
+                  <CheckCircle className="h-5 w-5 text-emerald-600" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-slate-900">{stats.rentedProperties}</div>
-                  <p className="text-xs text-slate-500 mt-2">Imóveis com inquilinos</p>
+                  <div className="text-2xl font-bold text-gray-900">{stats.rentedProperties}</div>
+                  <p className="text-xs text-gray-500 mt-1">Com inquilinos</p>
                 </CardContent>
               </Card>
             </Link>
 
             <Link href="/properties?filter=available">
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-amber-500">
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium text-slate-600">Imóveis Disponíveis</CardTitle>
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-l-amber-500">
+                <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                  <CardTitle className="text-sm font-medium text-gray-600">Imóveis Disponíveis</CardTitle>
                   <Building2 className="h-5 w-5 text-amber-600" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-slate-900">{stats.availableProperties}</div>
-                  <p className="text-xs text-slate-500 mt-2">Disponíveis para locação</p>
+                  <div className="text-2xl font-bold text-gray-900">{stats.availableProperties}</div>
+                  <p className="text-xs text-gray-500 mt-1">Para locação</p>
                 </CardContent>
               </Card>
             </Link>
 
             <Link href="/tenants">
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-purple-500">
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium text-slate-600">Total de Inquilinos</CardTitle>
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-l-purple-500">
+                <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                  <CardTitle className="text-sm font-medium text-gray-600">Total de Inquilinos</CardTitle>
                   <Users className="h-5 w-5 text-purple-600" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-slate-900">{stats.totalTenants}</div>
-                  <p className="text-xs text-slate-500 mt-2">Inquilinos cadastrados</p>
+                  <div className="text-2xl font-bold text-gray-900">{stats.totalTenants}</div>
+                  <p className="text-xs text-gray-500 mt-1">Cadastrados</p>
                 </CardContent>
               </Card>
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <Link href="/payments?filter=paid">
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-emerald-500">
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium text-slate-600">Pagos no Mês</CardTitle>
-                  <CheckCircle className="h-5 w-5 text-emerald-600" />
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-l-green-500">
+                <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                  <CardTitle className="text-sm font-medium text-gray-600">Pagos no Mês</CardTitle>
+                  <CheckCircle className="h-5 w-5 text-green-600" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-slate-900">{stats.paidThisMonth}</div>
-                  <p className="text-xs text-slate-500 mt-2">Pagamentos confirmados</p>
+                  <div className="text-2xl font-bold text-gray-900">{stats.paidThisMonth}</div>
+                  <p className="text-xs text-gray-500 mt-1">Confirmados</p>
                 </CardContent>
               </Card>
             </Link>
 
             <Link href="/payments?filter=unpaid">
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-red-500">
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium text-slate-600">Pendentes no Mês</CardTitle>
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-l-red-500">
+                <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                  <CardTitle className="text-sm font-medium text-gray-600">Pendentes no Mês</CardTitle>
                   <XCircle className="h-5 w-5 text-red-600" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-slate-900">{stats.unpaidThisMonth}</div>
-                  <p className="text-xs text-slate-500 mt-2">Aguardando pagamento</p>
+                  <div className="text-2xl font-bold text-gray-900">{stats.unpaidThisMonth}</div>
+                  <p className="text-xs text-gray-500 mt-1">Aguardando</p>
                 </CardContent>
               </Card>
             </Link>
 
-            <Card className="border-2 border-blue-500 bg-blue-50">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-slate-600">Valores Recebidos</CardTitle>
+            <Card className="border-l-4 border-l-blue-500 bg-blue-50">
+              <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                <CardTitle className="text-sm font-medium text-gray-600">Recebido no Mês</CardTitle>
                 <TrendingUp className="h-5 w-5 text-blue-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-slate-900">{formatCurrency(stats.totalRevenue)}</div>
-                <p className="text-xs text-slate-500 mt-2">Total recebido este mês</p>
+                <div className="text-xl font-bold text-gray-900">{formatCurrency(stats.totalRevenue)}</div>
+                <p className="text-xs text-gray-500 mt-1">Total recebido</p>
               </CardContent>
             </Card>
 
-            <Card className="border-2 border-indigo-500 bg-indigo-50">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-slate-600">Taxa de Administração</CardTitle>
+            <Card className="border-l-4 border-l-indigo-500 bg-indigo-50">
+              <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                <CardTitle className="text-sm font-medium text-gray-600">Taxa Administração</CardTitle>
                 <DollarSign className="h-5 w-5 text-indigo-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-slate-900">{formatCurrency(stats.adminFee)}</div>
-                <p className="text-xs text-slate-500 mt-2">Comissão do corretor</p>
+                <div className="text-xl font-bold text-gray-900">{formatCurrency(stats.adminFee)}</div>
+                <p className="text-xs text-gray-500 mt-1">Comissão</p>
               </CardContent>
             </Card>
           </div>
 
-          <Card className="border-2 border-amber-500">
+          <Card className="border-l-4 border-l-amber-500">
             <CardHeader>
               <div className="flex items-center space-x-2">
-                <AlertTriangle className="h-6 w-6 text-amber-600" />
+                <AlertTriangle className="h-5 w-5 text-amber-600" />
                 <div>
                   <CardTitle>Prestes a Vencer</CardTitle>
                   <CardDescription>Pagamentos pendentes do mês corrente</CardDescription>
@@ -237,31 +226,31 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               {upcomingPayments.length === 0 ? (
-                <div className="text-center py-8 text-slate-500">
+                <div className="text-center py-8 text-gray-500">
                   <CheckCircle className="h-12 w-12 mx-auto mb-3 text-green-500" />
                   <p>Todos os pagamentos do mês estão em dia!</p>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {upcomingPayments.map(({ payment, property, tenant }) => (
                     <div 
                       key={payment.id}
-                      className="flex items-center justify-between p-4 bg-amber-50 border border-amber-200 rounded-lg"
+                      className="flex items-center justify-between p-4 bg-amber-50 border border-amber-200 rounded-lg hover:shadow-md transition-shadow"
                     >
                       <div className="flex-1">
-                        <p className="font-semibold text-slate-900">{property.address}</p>
-                        <p className="text-sm text-slate-600">Inquilino: {tenant.name}</p>
-                        <p className="text-xs text-slate-500">Vencimento: {formatDate(payment.dueDate)}</p>
+                        <p className="font-semibold text-gray-900">{property.address}</p>
+                        <p className="text-sm text-gray-600">Inquilino: {tenant.name}</p>
+                        <p className="text-xs text-gray-500">Vencimento: {formatDate(payment.dueDate)}</p>
                       </div>
                       <div className="text-right">
                         <p className="text-lg font-bold text-amber-700">{formatCurrency(payment.amount)}</p>
-                        <p className="text-xs text-slate-500">Pendente</p>
+                        <p className="text-xs text-gray-500">Pendente</p>
                       </div>
                     </div>
                   ))}
                   <div className="mt-4 pt-4 border-t border-amber-200">
                     <div className="flex justify-between items-center">
-                      <span className="font-semibold text-slate-700">Total a Receber:</span>
+                      <span className="font-semibold text-gray-700">Total a Receber:</span>
                       <span className="text-xl font-bold text-amber-700">{formatCurrency(stats.dueThisMonth)}</span>
                     </div>
                   </div>

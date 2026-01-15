@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
+import Link from "next/link";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,18 +12,40 @@ import { Badge } from "@/components/ui/badge";
 import { isAuthenticated } from "@/lib/auth";
 import { propertyStorage } from "@/lib/storage";
 import { Property } from "@/types";
-import { Building2, Plus, Edit, Trash2, Search } from "lucide-react";
+import { Building2, Plus, Edit, Trash2, Search, MapPin } from "lucide-react";
 import { SEO } from "@/components/SEO";
+import { formatCurrency, parseCurrency, maskCurrency } from "@/lib/masks";
+
+const LOCALS = [
+  "Jd. Colombo",
+  "Signore",
+  "Lemos",
+  "Marrom",
+  "Cinza",
+  "Dora",
+  "Acacias"
+];
+
+const STATES = [
+  "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA",
+  "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN",
+  "RS", "RO", "RR", "SC", "SP", "SE", "TO"
+];
 
 export default function Properties() {
   const router = useRouter();
   const [properties, setProperties] = useState<Property[]>([]);
   const [filteredProperties, setFilteredProperties] = useState<Property[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [filterStatus, setFilterStatus] = useState<"all" | "available" | "rented">("all");
+  const [filterLocal, setFilterLocal] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProperty, setEditingProperty] = useState<Property | null>(null);
   const [formData, setFormData] = useState({
+    local: "",
     address: "",
+    complement: "",
+    state: "SP",
     description: "",
     monthlyRent: "",
     status: "available" as "available" | "rented"
@@ -37,12 +60,27 @@ export default function Properties() {
   }, [router]);
 
   useEffect(() => {
-    const filtered = properties.filter(p =>
-      p.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.description.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    let filtered = properties;
+
+    if (searchTerm) {
+      filtered = filtered.filter(p =>
+        p.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.local.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (p.complement && p.complement.toLowerCase().includes(searchTerm.toLowerCase()))
+      );
+    }
+
+    if (filterStatus !== "all") {
+      filtered = filtered.filter(p => p.status === filterStatus);
+    }
+
+    if (filterLocal) {
+      filtered = filtered.filter(p => p.local === filterLocal);
+    }
+
     setFilteredProperties(filtered);
-  }, [searchTerm, properties]);
+  }, [searchTerm, filterStatus, filterLocal, properties]);
 
   const loadProperties = () => {
     const data = propertyStorage.getAll();
@@ -55,9 +93,12 @@ export default function Properties() {
     
     const property: Property = {
       id: editingProperty?.id || Date.now().toString(),
+      local: formData.local,
       address: formData.address,
+      complement: formData.complement || undefined,
+      state: formData.state,
       description: formData.description,
-      monthlyRent: parseFloat(formData.monthlyRent),
+      monthlyRent: parseCurrency(formData.monthlyRent),
       status: formData.status,
       createdAt: editingProperty?.createdAt || new Date().toISOString()
     };
@@ -70,9 +111,12 @@ export default function Properties() {
   const handleEdit = (property: Property) => {
     setEditingProperty(property);
     setFormData({
+      local: property.local,
       address: property.address,
+      complement: property.complement || "",
+      state: property.state,
       description: property.description,
-      monthlyRent: property.monthlyRent.toString(),
+      monthlyRent: maskCurrency(property.monthlyRent.toString()),
       status: property.status
     });
     setIsDialogOpen(true);
@@ -87,7 +131,10 @@ export default function Properties() {
 
   const resetForm = () => {
     setFormData({
+      local: "",
       address: "",
+      complement: "",
+      state: "SP",
       description: "",
       monthlyRent: "",
       status: "available"
@@ -96,11 +143,9 @@ export default function Properties() {
     setIsDialogOpen(false);
   };
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL"
-    }).format(value);
+  const handleMoneyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const masked = maskCurrency(e.target.value);
+    setFormData({ ...formData, monthlyRent: masked });
   };
 
   return (
@@ -123,31 +168,64 @@ export default function Properties() {
             </Button>
           </div>
 
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={20} />
-            <Input
-              type="text"
-              placeholder="Buscar imóveis..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 h-12"
-            />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={20} />
+              <Input
+                type="text"
+                placeholder="Buscar imóveis..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+
+            <select
+              value={filterLocal}
+              onChange={(e) => setFilterLocal(e.target.value)}
+              className="h-10 px-3 rounded-md border border-slate-300 bg-white text-slate-900"
+            >
+              <option value="">Todos os locais</option>
+              {LOCALS.map(local => (
+                <option key={local} value={local}>{local}</option>
+              ))}
+            </select>
+
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value as "all" | "available" | "rented")}
+              className="h-10 px-3 rounded-md border border-slate-300 bg-white text-slate-900"
+            >
+              <option value="all">Todos os status</option>
+              <option value="available">Disponível</option>
+              <option value="rented">Alugado</option>
+            </select>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredProperties.map((property) => (
               <Card key={property.id} className="hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <CardTitle className="text-lg">{property.address}</CardTitle>
-                      <CardDescription className="mt-2">{property.description}</CardDescription>
+                <Link href={`/properties/${property.id}`}>
+                  <CardHeader className="cursor-pointer">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <CardTitle className="text-lg flex items-center space-x-2">
+                          <MapPin size={18} className="text-emerald-600" />
+                          <span>{property.local}</span>
+                        </CardTitle>
+                        <CardDescription className="mt-2">{property.address}</CardDescription>
+                        {property.complement && (
+                          <CardDescription className="mt-1 text-slate-500">
+                            {property.complement}
+                          </CardDescription>
+                        )}
+                      </div>
+                      <Badge variant={property.status === "rented" ? "default" : "secondary"}>
+                        {property.status === "rented" ? "Alugado" : "Disponível"}
+                      </Badge>
                     </div>
-                    <Badge variant={property.status === "rented" ? "default" : "secondary"}>
-                      {property.status === "rented" ? "Alugado" : "Disponível"}
-                    </Badge>
-                  </div>
-                </CardHeader>
+                  </CardHeader>
+                </Link>
                 <CardContent>
                   <div className="space-y-4">
                     <div>
@@ -196,7 +274,7 @@ export default function Properties() {
         </div>
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent className="sm:max-w-[500px]">
+          <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editingProperty ? "Editar Imóvel" : "Novo Imóvel"}</DialogTitle>
               <DialogDescription>
@@ -205,8 +283,40 @@ export default function Properties() {
             </DialogHeader>
             <form onSubmit={handleSubmit}>
               <div className="space-y-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="local">Local *</Label>
+                    <select
+                      id="local"
+                      value={formData.local}
+                      onChange={(e) => setFormData({ ...formData, local: e.target.value })}
+                      className="w-full h-10 px-3 rounded-md border border-slate-300 bg-white text-slate-900"
+                      required
+                    >
+                      <option value="">Selecione o local</option>
+                      {LOCALS.map(local => (
+                        <option key={local} value={local}>{local}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="state">Estado *</Label>
+                    <select
+                      id="state"
+                      value={formData.state}
+                      onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                      className="w-full h-10 px-3 rounded-md border border-slate-300 bg-white text-slate-900"
+                      required
+                    >
+                      {STATES.map(state => (
+                        <option key={state} value={state}>{state}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="address">Endereço</Label>
+                  <Label htmlFor="address">Endereço *</Label>
                   <Input
                     id="address"
                     value={formData.address}
@@ -215,8 +325,19 @@ export default function Properties() {
                     required
                   />
                 </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="description">Descrição</Label>
+                  <Label htmlFor="complement">Complemento</Label>
+                  <Input
+                    id="complement"
+                    value={formData.complement}
+                    onChange={(e) => setFormData({ ...formData, complement: e.target.value })}
+                    placeholder="Apto, bloco, etc."
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="description">Descrição *</Label>
                   <Textarea
                     id="description"
                     value={formData.description}
@@ -226,29 +347,30 @@ export default function Properties() {
                     required
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="monthlyRent">Valor Mensal</Label>
-                  <Input
-                    id="monthlyRent"
-                    type="number"
-                    step="0.01"
-                    value={formData.monthlyRent}
-                    onChange={(e) => setFormData({ ...formData, monthlyRent: e.target.value })}
-                    placeholder="0.00"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="status">Status</Label>
-                  <select
-                    id="status"
-                    value={formData.status}
-                    onChange={(e) => setFormData({ ...formData, status: e.target.value as "available" | "rented" })}
-                    className="w-full h-10 px-3 rounded-md border border-slate-300 bg-white text-slate-900"
-                  >
-                    <option value="available">Disponível</option>
-                    <option value="rented">Alugado</option>
-                  </select>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="monthlyRent">Valor Mensal *</Label>
+                    <Input
+                      id="monthlyRent"
+                      value={formData.monthlyRent}
+                      onChange={handleMoneyChange}
+                      placeholder="R$ 0,00"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="status">Status *</Label>
+                    <select
+                      id="status"
+                      value={formData.status}
+                      onChange={(e) => setFormData({ ...formData, status: e.target.value as "available" | "rented" })}
+                      className="w-full h-10 px-3 rounded-md border border-slate-300 bg-white text-slate-900"
+                    >
+                      <option value="available">Disponível</option>
+                      <option value="rented">Alugado</option>
+                    </select>
+                  </div>
                 </div>
               </div>
               <DialogFooter>
@@ -256,7 +378,7 @@ export default function Properties() {
                   Cancelar
                 </Button>
                 <Button type="submit">
-                  {editingProperty ? "Atualizar" : "Adicionar"}
+                  {editingProperty ? "Salvar" : "Adicionar"}
                 </Button>
               </DialogFooter>
             </form>

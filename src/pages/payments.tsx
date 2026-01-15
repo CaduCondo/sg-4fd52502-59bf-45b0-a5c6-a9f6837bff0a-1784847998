@@ -10,6 +10,7 @@ import { paymentStorage, rentalStorage, propertyStorage, tenantStorage } from "@
 import { Payment, Rental, Property, Tenant } from "@/types";
 import { DollarSign, Search, CheckCircle, XCircle, Calendar } from "lucide-react";
 import { SEO } from "@/components/SEO";
+import { formatCurrency, formatDate } from "@/lib/masks";
 
 export default function Payments() {
   const router = useRouter();
@@ -112,18 +113,6 @@ export default function Payments() {
       paymentStorage.save(payment);
       loadPayments();
     }
-  };
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL"
-    }).format(value);
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("pt-BR");
   };
 
   const formatMonthYear = (month: string, year: number) => {
