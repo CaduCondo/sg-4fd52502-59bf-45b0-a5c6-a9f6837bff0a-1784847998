@@ -130,7 +130,7 @@ export default function RentalDetails() {
       tenantId: editTenantId,
       startDate: editStartDate,
       endDate: editEndDate,
-      paymentDay: Number(editPaymentDay),
+      paymentDay: Number(editPaymentDay) as any, // Force cast to resolve stubborn type mismatch
       monthlyRent: monthlyRent,
       value: monthlyRent,
       hasGarage: false,
