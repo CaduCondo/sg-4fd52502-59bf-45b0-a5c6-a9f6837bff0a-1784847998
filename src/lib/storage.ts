@@ -113,16 +113,6 @@ export const propertyStorage = {
     const properties = propertyStorage.getAll();
     return properties.find(p => p.id === id) || null;
   },
-
-  updateStatus: (id: string, isActive: boolean): void => {
-    if (typeof window === "undefined") return;
-    const properties = propertyStorage.getAll();
-    const property = properties.find(p => p.id === id);
-    if (property) {
-      property.isActive = isActive;
-      propertyStorage.save(property);
-    }
-  },
   
   delete: (id: string): void => {
     if (typeof window === "undefined") return;

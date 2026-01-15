@@ -12,14 +12,15 @@ import { Badge } from "@/components/ui/badge";
 import { isAuthenticated } from "@/lib/auth";
 import { propertyStorage, tenantStorage, rentalStorage, paymentStorage } from "@/lib/storage";
 import { Property, Tenant, Rental } from "@/types";
-import { Home, Users, FileText, Plus, Edit2, Trash2, Search, Building2, User, Calendar, DollarSign, AlertCircle, X, Eye, Download, Edit, ExternalLink, XCircle, LayoutList, Grid } from "lucide-react";
+import { Home, Users, FileText, Plus, Edit2, Trash2, Search, Building2, User, Calendar, DollarSign, AlertCircle, X, Eye, Download, Edit, ExternalLink, XCircle, LayoutList, Grid, Building } from "lucide-react";
 import { SEO } from "@/components/SEO";
-import { formatCurrency, parseCurrency, formatDate } from "@/lib/masks";
+import { formatCurrency, parseCurrency, formatDate, formatPhone } from "@/lib/masks";
 import { StaggerContainer, StaggerItem } from "@/components/animations/ScrollReveal";
 import { FloatingCard } from "@/components/animations/FloatingCard";
 import { Payment } from "@/types";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Rentals() {
   const router = useRouter();
@@ -50,6 +51,8 @@ export default function Rentals() {
   });
 
   const [attachments, setAttachments] = useState<Array<{ name: string; file: File }>>([]);
+
+  const { toast } = useToast();
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -181,7 +184,7 @@ export default function Rentals() {
       const tenantsWithActiveRental = new Set(activeRentals.map(r => r.tenantId));
       
       const availProps = allProperties
-        .filter(p => p.status === "available" && p.isActive)
+        .filter(p => p.status === "available")
         .sort((a, b) => a.local.localeCompare(b.local));
         
       const availTenants = allTenants
@@ -375,6 +378,76 @@ export default function Rentals() {
   const sortedTenants = [...availableTenants].sort((a, b) =>
     a.name.localeCompare(b.name)
   );
+
+  const handleDeleteRental = (id: string) => {
+    const rentalToDelete = rentals.find((r) => r.id === id);
+    
+    if (!rentalToDelete) return;
+
+    // Check if rental has any payments registered
+    const allPayments = paymentStorage.getAll(); // Fixed paymentsStorage -> paymentStorage
+    const rentalPayments = allPayments.filter(p => p.rentalId === id);
+    const hasRegisteredPayments = rentalPayments.some(p => p.status === "paid" || (p.paidAmount && p.paidAmount > 0));
+
+    if (hasRegisteredPayments) {
+      toast({
+        title: "Não é possível excluir",
+        description: "Esta locação possui pagamentos registrados. Encerre a locação ao invés de excluí-la.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (window.confirm("Tem certeza que deseja excluir esta locação?")) {
+      // Delete all payments for this rental
+      rentalPayments.forEach(payment => paymentStorage.delete(payment.id));
+
+      // Update property status back to available
+      const property = properties.find(p => p.id === rentalToDelete.propertyId);
+      if (property) {
+        propertyStorage.update({ ...property, status: "available" });
+      }
+
+      // Update tenant status back to active
+      const tenant = tenants.find(t => t.id === rentalToDelete.tenantId);
+      if (tenant) {
+        tenantStorage.update({ ...tenant, isActive: true });
+      }
+
+      rentalStorage.delete(id);
+      toast({ title: "Sucesso", description: "Locação excluída com sucesso!" });
+      loadData();
+    }
+  };
+
+  const handleEndRental = (id: string) => {
+    const rentalToEnd = rentals.find((r) => r.id === id);
+    
+    if (!rentalToEnd) return;
+
+    if (window.confirm("Tem certeza que deseja encerrar esta locação?")) {
+      // Update rental status to inactive
+      rentalStorage.update({ ...rentalToEnd, isActive: false });
+
+      // Update property status back to available
+      const property = properties.find(p => p.id === rentalToEnd.propertyId);
+      if (property) {
+        propertyStorage.update({ ...property, status: "available" });
+      }
+
+      // Update tenant status back to active
+      const tenant = tenants.find(t => t.id === rentalToEnd.tenantId);
+      if (tenant) {
+        tenantStorage.update({ ...tenant, isActive: true });
+      }
+
+      toast({ title: "Sucesso", description: "Locação encerrada com sucesso!" });
+      loadData();
+    }
+  };
+
+  // Calculate active rentals for display
+  const activeRentals = rentals.filter(r => r.isActive);
 
   return (
     <>
@@ -771,25 +844,35 @@ export default function Rentals() {
             {/* Inquilinos Disponíveis */}
             <FloatingCard delay={0.1}>
               <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Users className="h-5 w-5" />
-                    <span>Inquilinos Disponíveis ({availableTenants.length})</span>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Users className="h-5 w-5 text-blue-600" />
+                    Inquilinos Disponíveis ({availableTenants.length})
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-2 max-h-60 overflow-y-auto">
-                    {availableTenants.length === 0 ? (
-                      <p className="text-sm text-slate-500">Nenhum inquilino disponível</p>
-                    ) : (
-                      availableTenants.map((tenant) => (
-                        <div key={tenant.id} className="p-3 bg-slate-50 rounded-lg border hover:bg-slate-100 transition-colors">
-                          <p className="font-medium">{tenant.name}</p>
-                          <p className="text-sm text-slate-600">{tenant.cpf}</p>
-                        </div>
-                      ))
-                    )}
-                  </div>
+                  {availableTenants.length === 0 ? (
+                    <p className="text-sm text-slate-500 italic">Nenhum inquilino disponível</p>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {sortedTenants.map((tenant) => (
+                        <Card key={tenant.id} className="border-blue-100 bg-blue-50/30 hover:shadow-md transition-shadow">
+                          <CardContent className="p-3">
+                            <div className="flex items-start justify-between">
+                              <div className="space-y-1 flex-1">
+                                <p className="font-medium text-sm">{tenant.name}</p>
+                                <p className="text-xs text-slate-600">{tenant.email}</p>
+                                <p className="text-xs text-slate-500">{formatPhone(tenant.phone)}</p>
+                              </div>
+                              <Badge variant="outline" className="text-xs bg-blue-100 text-blue-700 border-blue-200">
+                                Ativo
+                              </Badge>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </FloatingCard>
@@ -797,26 +880,42 @@ export default function Rentals() {
             {/* Imóveis Vagos */}
             <FloatingCard delay={0.2}>
               <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Building2 className="h-5 w-5" />
-                    <span>Imóveis Vagos ({availableProperties.length})</span>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Building className="h-5 w-5 text-emerald-600" />
+                    Imóveis Vagos ({availableProperties.length})
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-2 max-h-60 overflow-y-auto">
-                    {availableProperties.length === 0 ? (
-                      <p className="text-sm text-slate-500">Nenhum imóvel disponível</p>
-                    ) : (
-                      availableProperties.map((property) => (
-                        <div key={property.id} className="p-3 bg-slate-50 rounded-lg border hover:bg-slate-100 transition-colors">
-                          <p className="font-medium">{property.local} {property.complement && `- ${property.complement}`}</p>
-                          <p className="text-sm text-slate-600">{property.address}, {property.number}</p>
-                          <p className="text-sm font-semibold text-emerald-600">{formatCurrency(property.monthlyRent)}/mês</p>
-                        </div>
-                      ))
-                    )}
-                  </div>
+                  {availableProperties.length === 0 ? (
+                    <p className="text-sm text-slate-500 italic">Nenhum imóvel vago</p>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {sortedProperties.map((property) => (
+                        <Card key={property.id} className="border-emerald-100 bg-emerald-50/30 hover:shadow-md transition-shadow">
+                          <CardContent className="p-3">
+                            <div className="space-y-1">
+                              <div className="flex items-start justify-between">
+                                <p className="font-medium text-sm">{property.address}</p>
+                                <Badge variant="outline" className="text-xs bg-emerald-100 text-emerald-700 border-emerald-200">
+                                  Vago
+                                </Badge>
+                              </div>
+                              {property.local && (
+                                <p className="text-xs text-slate-600">{property.local}</p>
+                              )}
+                              {property.complement && (
+                                <p className="text-xs text-slate-500">{property.complement}</p>
+                              )}
+                              <p className="text-xs font-semibold text-emerald-600">
+                                {formatCurrency(property.value)}
+                              </p>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </FloatingCard>
@@ -824,80 +923,78 @@ export default function Rentals() {
             {/* Locações Ativas */}
             <FloatingCard delay={0.3}>
               <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <FileText className="h-5 w-5" />
-                    <span>Locações Ativas ({filteredRentals.length})</span>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <FileText className="h-5 w-5 text-purple-600" />
+                    Locações Ativas ({activeRentals.length})
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-3">
-                    {filteredRentals.length === 0 ? (
-                      <p className="text-sm text-slate-500">Nenhuma locação ativa</p>
-                    ) : (
-                      filteredRentals.map((rental) => {
+                  {activeRentals.length === 0 ? (
+                    <p className="text-sm text-slate-500 italic">Nenhuma locação ativa</p>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {activeRentals.map((rental) => {
                         const property = getProperty(rental.propertyId);
                         const tenant = getTenant(rental.tenantId);
                         const totalValue = rental.monthlyRent + (rental.garageValue || 0);
-                        
+
                         return (
-                          <div key={rental.id} className="p-4 bg-gradient-to-br from-slate-50 to-slate-100 rounded-lg border border-slate-200 hover:shadow-md transition-all">
-                            <div className="flex justify-between items-start mb-3">
-                              <div className="flex-1">
-                                <h4 className="font-semibold text-lg text-slate-900">
-                                  {property?.local} {property?.complement && `- ${property.complement}`}
-                                </h4>
-                                <p className="text-sm text-slate-600">{tenant?.name}</p>
+                          <Card key={rental.id} className="border-purple-100 bg-purple-50/30 hover:shadow-md transition-shadow">
+                            <CardContent className="p-4">
+                              <div className="space-y-3">
+                                <div>
+                                  <p className="font-semibold text-sm">{property?.address || "Imóvel não encontrado"}</p>
+                                  <p className="text-xs text-slate-600">{tenant?.name || "Inquilino não encontrado"}</p>
+                                </div>
+                                
+                                <div className="flex items-center justify-between text-xs">
+                                  <span className="text-slate-600">Vencimento:</span>
+                                  <Badge variant="outline" className="bg-purple-100 text-purple-700 border-purple-200">
+                                    Dia {rental.paymentDay}
+                                  </Badge>
+                                </div>
+                                
+                                <div className="pt-2 border-t border-purple-100">
+                                  <p className="text-sm font-semibold text-purple-600">
+                                    {formatCurrency(totalValue)}/mês
+                                  </p>
+                                </div>
+                                
+                                <div className="flex items-center gap-2 pt-2">
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="flex-1 text-xs h-8"
+                                    onClick={() => handleViewRental(rental)}
+                                  >
+                                    <Eye className="h-3 w-3 mr-1" />
+                                    Ver
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="text-red-600 hover:text-red-700 hover:bg-red-50 h-8"
+                                    onClick={() => handleEndRental(rental.id)}
+                                  >
+                                    <XCircle className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="text-red-600 hover:text-red-700 hover:bg-red-50 h-8"
+                                    onClick={() => handleDeleteRental(rental.id)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
                               </div>
-                              <Badge className={getStatusColor(rental.isActive)}>
-                                {getStatusLabel(rental.isActive)}
-                              </Badge>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-3 mb-3">
-                              <div className="bg-white p-2 rounded border">
-                                <p className="text-xs text-slate-500">Vencimento</p>
-                                <p className="font-semibold text-slate-900">Dia {rental.paymentDay}</p>
-                              </div>
-                              <div className="bg-white p-2 rounded border">
-                                <p className="text-xs text-slate-500">Valor Mensal</p>
-                                <p className="font-semibold text-emerald-600">{formatCurrency(totalValue)}</p>
-                              </div>
-                            </div>
-
-                            <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleViewRental(rental)}
-                                className="flex-1"
-                              >
-                                <Eye className="h-4 w-4 mr-1" />
-                                Ver Detalhes
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => router.push(`/rentals/${rental.id}`)}
-                                className="flex-1 border-amber-500 text-amber-600 hover:bg-amber-50"
-                              >
-                                <XCircle className="h-4 w-4 mr-1" />
-                                Encerrar
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleDelete(rental.id)}
-                                className="border-red-500 text-red-600 hover:bg-red-50"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
+                            </CardContent>
+                          </Card>
                         );
-                      })
-                    )}
-                  </div>
+                      })}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </FloatingCard>

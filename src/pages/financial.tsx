@@ -6,6 +6,8 @@ import { Layout } from "@/components/Layout";
 import { SEO } from "@/components/SEO";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { FloatingCard } from "@/components/animations/FloatingCard";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -391,6 +393,21 @@ export default function FinancialPage() {
     return null;
   }
 
+  // Calculate filtered rentals for the table
+  const rentals = rentalStorage.getAll();
+  const properties = propertyStorage.getAll();
+  const tenants = tenantStorage.getAll();
+  
+  const filteredRentals = rentals.filter(rental => {
+    // Filter by active status if needed, or show all. 
+    // Usually financial reports show active and historical.
+    // Based on user request "planilha com as informações das locações", showing all relevant ones.
+    // Let's reuse the filters if possible, but the user asked for a table ABOVE charts.
+    // Let's show active rentals primarily or all rentals.
+    // Given the context of "active rentals", let's filter active ones or respect the filters.
+    return true; 
+  });
+
   return (
     <>
       <SEO title="Financeiro - Gestão de Locações" />
@@ -551,6 +568,80 @@ export default function FinancialPage() {
               )}
             </CardContent>
           </Card>
+
+          {/* Rentals Table - Moved above charts */}
+          <FloatingCard delay={0.3}>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Detalhamento de Locações</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="border-b">
+                      <tr className="text-left">
+                        <th className="pb-2 font-semibold text-slate-700">Imóvel</th>
+                        <th className="pb-2 font-semibold text-slate-700">Inquilino</th>
+                        <th className="pb-2 font-semibold text-slate-700 text-right">Aluguel</th>
+                        <th className="pb-2 font-semibold text-slate-700 text-right">Garagem</th>
+                        <th className="pb-2 font-semibold text-slate-700 text-right">Total</th>
+                        <th className="pb-2 font-semibold text-slate-700 text-center">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredRentals.map((rental) => {
+                        const property = properties.find((p) => p.id === rental.propertyId);
+                        const tenant = tenants.find((t) => t.id === rental.tenantId);
+                        const totalValue = rental.monthlyRent + (rental.garageValue || 0);
+
+                        return (
+                          <tr key={rental.id} className="border-b hover:bg-slate-50">
+                            <td className="py-3 text-slate-800">{property?.address || "-"}</td>
+                            <td className="py-3 text-slate-600">{tenant?.name || "-"}</td>
+                            <td className="py-3 text-right text-slate-800">
+                              {formatCurrency(rental.monthlyRent)}
+                            </td>
+                            <td className="py-3 text-right text-slate-600">
+                              {rental.hasGarage && rental.garageValue
+                                ? formatCurrency(rental.garageValue)
+                                : "-"}
+                            </td>
+                            <td className="py-3 text-right font-semibold text-emerald-600">
+                              {formatCurrency(totalValue)}
+                            </td>
+                            <td className="py-3 text-center">
+                              <Badge
+                                variant={rental.isActive ? "default" : "secondary"}
+                                className="text-xs"
+                              >
+                                {rental.isActive ? "Ativa" : "Encerrada"}
+                              </Badge>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                    <tfoot className="border-t-2 border-slate-300">
+                      <tr>
+                        <td colSpan={4} className="py-3 font-semibold text-slate-700 text-right">
+                          Total Mensal:
+                        </td>
+                        <td className="py-3 text-right font-bold text-emerald-600 text-lg">
+                          {formatCurrency(
+                            filteredRentals.reduce(
+                              (sum, r) => sum + r.monthlyRent + (r.garageValue || 0),
+                              0
+                            )
+                          )}
+                        </td>
+                        <td></td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          </FloatingCard>
 
           {/* Charts Section */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

@@ -13,19 +13,19 @@ export interface User {
 
 export interface Property {
   id: string;
-  local: string;
-  type?: string;
-  cep?: string;
   address: string;
   number: string;
   complement?: string;
-  neighborhood?: string;
-  city?: string;
-  state?: string;
+  neighborhood: string;
+  city: string;
+  state: string;
+  cep: string;
   description?: string;
-  monthlyRent: number;
+  local?: string;
+  type: string;
   status: "available" | "occupied";
-  isActive?: boolean;
+  monthlyRent: number;
+  value?: number; // Valor do imóvel (para venda ou referência)
   createdAt: string;
 }
 

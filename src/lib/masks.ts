@@ -172,3 +172,15 @@ export const maskCEP = applyCepMask;
 export const maskCPF = applyCpfMask;
 export const maskPhone = applyPhoneMask;
 export const maskCNPJ = applyCnpjMask;
+
+export const formatCurrencyInput = (value: string): string => {
+  const numbers = value.replace(/\D/g, "");
+  const amount = parseFloat(numbers) / 100;
+  if (isNaN(amount)) return "";
+  return amount.toLocaleString("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+};
+
+export const formatPhone = applyPhoneMask;

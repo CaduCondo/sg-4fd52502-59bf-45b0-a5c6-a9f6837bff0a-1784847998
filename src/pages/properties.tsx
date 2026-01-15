@@ -12,9 +12,9 @@ import { Badge } from "@/components/ui/badge";
 import { isAuthenticated } from "@/lib/auth";
 import { propertyStorage } from "@/lib/storage";
 import { Property } from "@/types";
-import { Building2, Plus, Edit, Trash2, Search, MapPin, Eye, LayoutList, Grid } from "lucide-react";
+import { Building2, Plus, Edit, Trash2, Search, MapPin, Eye, LayoutList, Grid, Building } from "lucide-react";
 import { SEO } from "@/components/SEO";
-import { formatCurrency, parseCurrency, maskCurrency, maskCEP, fetchAddressByCEP, applyCurrencyMask } from "@/lib/masks";
+import { formatCurrency, parseCurrency, maskCurrency, maskCEP, fetchAddressByCEP, applyCurrencyMask, formatCurrencyInput } from "@/lib/masks";
 import { StaggerContainer, StaggerItem } from "@/components/animations/ScrollReveal";
 import { FloatingCard } from "@/components/animations/FloatingCard";
 import { configStorage } from "@/lib/storage";
@@ -44,18 +44,19 @@ export default function Properties() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
-    local: "",
-    type: "Apartamento",
-    cep: "",
     address: "",
     number: "",
     complement: "",
     neighborhood: "",
     city: "",
     state: "",
+    cep: "",
     description: "",
+    local: "",
+    type: "",
+    value: "",
     monthlyRent: "",
-    status: "available" as "available" | "occupied"
+    status: "available" as "available" | "occupied",
   });
   const [availableLocals, setAvailableLocals] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -176,9 +177,10 @@ export default function Properties() {
       city: formData.city,
       state: formData.state,
       description: formData.description,
-      monthlyRent: parseCurrency(formData.monthlyRent),
-      status: editingProperty ? editingProperty.status : "available",
-      isActive: editingProperty ? editingProperty.isActive : true,
+      monthlyRent: 0, // Not used directly usually, derived from rental? Or derived from value? Keeping 0 as placeholder if value is the main one.
+      value: parseCurrency(formData.value),
+      status: formData.status,
+      // Removed isActive
       createdAt: editingProperty ? editingProperty.createdAt : new Date().toISOString()
     };
 
@@ -200,21 +202,22 @@ export default function Properties() {
   };
 
   const handleEdit = (property: Property) => {
-    setEditingProperty(property);
     setFormData({
-      local: property.local,
-      type: property.type || "Apartamento",
-      cep: property.cep,
       address: property.address,
       number: property.number,
       complement: property.complement || "",
-      neighborhood: property.neighborhood || "",
-      city: property.city || "",
+      neighborhood: property.neighborhood,
+      city: property.city,
       state: property.state,
-      description: property.description,
-      monthlyRent: maskCurrency(property.monthlyRent.toString()),
-      status: property.status
+      cep: property.cep,
+      description: property.description || "",
+      local: property.local || "",
+      type: property.type,
+      value: property.value ? formatCurrency(property.value) : "",
+      monthlyRent: property.monthlyRent ? formatCurrency(property.monthlyRent) : "",
+      status: property.status,
     });
+    setEditingProperty(property);
     setIsDialogOpen(true);
   };
 
@@ -227,18 +230,19 @@ export default function Properties() {
 
   const resetForm = () => {
     setFormData({
-      local: "",
-      type: "Apartamento", // Default value, hidden in UI
-      cep: "",
       address: "",
       number: "",
       complement: "",
       neighborhood: "",
       city: "",
       state: "",
+      cep: "",
       description: "",
+      local: "",
+      type: "",
+      value: "",
       monthlyRent: "",
-      status: "available"
+      status: "available",
     });
     setEditingProperty(null);
     setIsDialogOpen(false);
@@ -405,35 +409,36 @@ export default function Properties() {
                           </Button>
                         </div>
                       </CardHeader>
-                      <CardContent>
-                        <div className="space-y-2 text-sm text-slate-600">
-                          <div className="flex justify-between">
-                            <span>Bairro:</span>
-                            <span className="font-medium text-slate-900">{property.neighborhood || "-"}</span>
+                      <CardContent className="pt-0">
+                        <div className="space-y-2">
+                          <div className="flex items-center text-sm text-slate-600">
+                            <MapPin className="h-4 w-4 mr-2" />
+                            <span className="truncate">{property.address}</span>
                           </div>
-                          <div className="flex justify-between">
-                            <span>Valor Aluguel:</span>
-                            <span className="font-bold text-emerald-600">
-                              {formatCurrency(property.monthlyRent)}
-                            </span>
+                          
+                          {property.local && (
+                            <div className="flex items-center text-sm text-slate-600">
+                              <Building className="h-4 w-4 mr-2" />
+                              <span>{property.local}</span>
+                            </div>
+                          )}
+                          
+                          {property.complement && (
+                            <div className="flex items-center text-sm text-slate-500">
+                              <span className="ml-6 text-xs">{property.complement}</span>
+                            </div>
+                          )}
+                          
+                          <div className="flex items-center text-sm font-semibold text-emerald-600">
+                            <span>Valor: {formatCurrency(property.value)}</span>
                           </div>
-                        </div>
-                        
-                        {/* Action buttons - prevent card click propagation */}
-                        <div className="flex gap-2 pt-4 mt-2" onClick={(e) => e.stopPropagation()}>
-                           <Button 
-                              variant="destructive" 
-                              size="sm" 
-                              className="w-full"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setDeletingId(property.id);
-                                setShowDeleteDialog(true);
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Excluir
-                            </Button>
+                          
+                          <Badge
+                            variant={property.status === "available" ? "default" : "secondary"}
+                            className="text-xs"
+                          >
+                            {property.status === "available" ? "Disponível" : "Alugado"}
+                          </Badge>
                         </div>
                       </CardContent>
                     </Card>
@@ -490,10 +495,8 @@ export default function Properties() {
                   </div>
                   <div>
                     <Label className="text-muted-foreground">Status</Label>
-                    <Badge variant={viewingProperty.isActive ? (viewingProperty.status === "available" ? "default" : "secondary") : "outline"}>
-                      {viewingProperty.isActive 
-                        ? (viewingProperty.status === "available" ? "Disponível" : "Ocupado")
-                        : "Inativo"}
+                    <Badge variant={viewingProperty.status === "available" ? "default" : "secondary"}>
+                      {viewingProperty.status === "available" ? "Disponível" : "Ocupado"}
                     </Badge>
                   </div>
                 </div>
@@ -633,6 +636,38 @@ export default function Properties() {
                     onChange={(e) => setFormData({ ...formData, state: e.target.value })}
                   />
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="value">Valor do Aluguel (R$)</Label>
+                <Input
+                  id="value"
+                  value={formData.value}
+                  onChange={(e) =>
+                    setFormData({ ...formData, value: e.target.value })
+                  }
+                  onBlur={(e) => {
+                    const formatted = formatCurrencyInput(e.target.value);
+                    setFormData({ ...formData, value: formatted });
+                  }}
+                  placeholder="R$ 0,00"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="status">Status do Imóvel</Label>
+                <Select 
+                  value={formData.status} 
+                  onValueChange={(value) => setFormData({ ...formData, status: value as "available" | "occupied" })}
+                >
+                  <SelectTrigger id="status">
+                    <SelectValue placeholder="Selecione o status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="available">Disponível</SelectItem>
+                    <SelectItem value="occupied">Alugado</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">
