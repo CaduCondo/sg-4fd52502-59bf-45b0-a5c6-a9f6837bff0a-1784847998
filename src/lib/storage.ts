@@ -180,6 +180,10 @@ export const paymentStorage = {
     }
     localStorage.setItem(PAYMENTS_KEY, JSON.stringify(payments));
   },
+
+  update: (payment: Payment): void => {
+    paymentStorage.save(payment);
+  },
   
   delete: (id: string): void => {
     if (typeof window === "undefined") return;

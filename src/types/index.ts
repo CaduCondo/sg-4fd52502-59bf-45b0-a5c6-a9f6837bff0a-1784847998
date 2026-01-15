@@ -14,6 +14,7 @@ export interface User {
 export interface Property {
   id: string;
   local: string;
+  type?: "Apartamento" | "Casa" | "Comercial" | "Terreno";
   cep: string;
   address: string;
   number: string;
@@ -53,6 +54,8 @@ export interface Rental {
   }>;
   hasMotorcycleSpot?: boolean;
   motorcycleSpotValue?: number;
+  hasGarage?: boolean;
+  garageValue?: number;
   status: "active" | "ended" | "expired";
   createdAt: string;
 }
