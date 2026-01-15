@@ -130,7 +130,21 @@ export default function PropertiesPage() {
         });
         toast({ title: "Sucesso", description: "Imóvel atualizado!" });
       } else {
-        await propertyService.create(propertyData);
+        const newProperty: Omit<Property, "id" | "createdAt"> = {
+          location: formData.location,
+          address: formData.address,
+          number: formData.number,
+          complement: formData.complement,
+          neighborhood: "Bairro", // Valor padrão ou adicionar campo no formulário
+          city: "São Paulo",     // Valor padrão ou adicionar campo no formulário
+          state: "SP",           // Valor padrão ou adicionar campo no formulário
+          zipCode: "00000-000",  // Valor padrão ou adicionar campo no formulário
+          monthlyRent: parseCurrency(formData.monthlyRent),
+          description: "",
+          status: "available",
+        };
+
+        await propertyService.create(newProperty);
         toast({ title: "Sucesso", description: "Imóvel criado!" });
       }
 

@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { isAuthenticated } from "@/lib/auth";
 import { propertyStorage, configStorage } from "@/lib/storage";
+import { propertyService } from "@/services/propertyService";
 import { Property } from "@/types";
 import { ArrowLeft, Edit, Trash2, MapPin, DollarSign, Save, X } from "lucide-react";
 import { SEO } from "@/components/SEO";
@@ -59,11 +60,11 @@ export default function PropertyDetails() {
     if (found) {
       setProperty(found);
       setFormData({
-        location: found.location, // Fix local -> location
-        cep: found.cep || "",
+        location: found.location,
         address: found.address,
         number: found.number,
         complement: found.complement || "",
+        zipCode: found.zipCode,
         neighborhood: found.neighborhood || "",
         city: found.city || "",
         state: found.state || "",
@@ -106,20 +107,19 @@ export default function PropertyDetails() {
 
     const updatedProperty: Property = {
       ...property,
+      location: formData.location,
       address: formData.address,
       number: formData.number,
       complement: formData.complement,
+      zipCode: formData.zipCode,
       neighborhood: formData.neighborhood,
       city: formData.city,
       state: formData.state,
-      cep: formData.cep,
-      description: formData.description,
-      location: formData.location, // Fix local -> location
-      type: formData.type,
       monthlyRent: parseCurrency(formData.monthlyRent),
+      description: formData.description,
     };
 
-    propertyStorage.save(updatedProperty);
+    await propertyService.update(updatedProperty);
     setProperty(updatedProperty);
     setIsEditing(false);
     toast({ title: "Sucesso", description: "Imóvel atualizado com sucesso!" });
@@ -229,9 +229,9 @@ export default function PropertyDetails() {
                   <div>
                     <p className="text-sm font-medium text-slate-600">CEP</p>
                     {isEditing ? (
-                      <Input value={formData.cep} onChange={e => setFormData({...formData, cep: e.target.value})} />
+                      <Input value={formData.zipCode} onChange={e => setFormData({...formData, zipCode: e.target.value})} />
                     ) : (
-                      <p className="text-lg text-slate-900">{property.cep}</p>
+                      <p className="text-lg text-slate-900">{property.zipCode}</p>
                     )}
                   </div>
                 </div>
@@ -283,17 +283,8 @@ export default function PropertyDetails() {
                 </div>
 
                 <div>
-                  <p className="text-sm font-medium text-slate-600">Descrição</p>
-                  {isEditing ? (
-                    <Textarea
-                      value={formData.description}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                      placeholder="Características do imóvel"
-                      rows={3}
-                    />
-                  ) : (
-                    <p className="text-slate-900">{property.description || "-"}</p>
-                  )}
+                  <h3 className="font-semibold text-gray-900">Descrição</h3>
+                  <p className="text-gray-600">{property.description || "-"}</p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">

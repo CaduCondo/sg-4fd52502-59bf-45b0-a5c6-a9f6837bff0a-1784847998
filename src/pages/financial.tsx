@@ -1,229 +1,282 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
+import Head from "next/head";
 import { Layout } from "@/components/Layout";
-import { SEO } from "@/components/SEO";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/masks";
-import { 
-  rentalService, 
-  paymentService, 
-  propertyService, 
-  tenantService,
-  configService 
-} from "@/services";
-import { Property, Tenant, Rental, Payment, Config } from "@/types";
-import { DollarSign, TrendingUp, TrendingDown, Percent, FileText } from "lucide-react";
+import { paymentService } from "@/services/paymentService";
+import { rentalService } from "@/services/rentalService";
+import { propertyService } from "@/services/propertyService";
+import { tenantService } from "@/services/tenantService";
+import { configService } from "@/services/configService";
+import type { Payment, Rental, Property, Tenant, Config } from "@/types";
+
+interface PaymentWithDetails extends Payment {
+  rental?: Rental;
+  property?: Property;
+  tenant?: Tenant;
+  editablePixCode?: string;
+}
 
 export default function FinancialPage() {
   const router = useRouter();
+  const [payments, setPayments] = useState<PaymentWithDetails[]>([]);
   const [rentals, setRentals] = useState<Rental[]>([]);
-  const [payments, setPayments] = useState<Payment[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [tenants, setTenants] = useState<Tenant[]>([]);
-  const [config, setConfig] = useState<Config | null>(null);
-
-  const [filterMonth, setFilterMonth] = useState("");
-  const [filterYear, setFilterYear] = useState("");
+  const [config, setConfig] = useState<Config>({ adminFeePercentage: 6, locations: [] });
+  const [loading, setLoading] = useState(true);
+  
+  const [totalRevenue, setTotalRevenue] = useState(0);
+  const [totalAdminFee, setTotalAdminFee] = useState(0);
+  const [netRevenue, setNetRevenue] = useState(0);
 
   useEffect(() => {
-    const now = new Date();
-    setFilterMonth((now.getMonth() + 1).toString().padStart(2, "0"));
-    setFilterYear(now.getFullYear().toString());
     loadData();
   }, []);
 
   const loadData = async () => {
     try {
-      const [r, p, prop, t, c] = await Promise.all([
-        rentalService.getAll(),
+      setLoading(true);
+      const [paymentsData, rentalsData, propertiesData, tenantsData, configData] = await Promise.all([
         paymentService.getAll(),
+        rentalService.getAll(),
         propertyService.getAll(),
         tenantService.getAll(),
         configService.get()
       ]);
-      setRentals(r);
-      setPayments(p);
-      setProperties(prop);
-      setTenants(t);
-      setConfig(c);
+
+      setPayments(paymentsData.map(p => ({ ...p, editablePixCode: p.notes || "" })));
+      setRentals(rentalsData);
+      setProperties(propertiesData);
+      setTenants(tenantsData);
+      setConfig(configData);
+
+      calculateFinancials(paymentsData, rentalsData, propertiesData, configData);
     } catch (error) {
-      console.error("Error loading financial data", error);
+      console.error("Erro ao carregar dados:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Filter payments for selected period
-  const filteredPayments = payments.filter(p => 
-    p.referenceMonth === filterMonth && 
-    p.referenceYear === filterYear
-  );
+  const calculateFinancials = (
+    paymentsData: Payment[],
+    rentalsData: Rental[],
+    propertiesData: Property[],
+    configData: Config
+  ) => {
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth() + 1; // 1-12
+    const currentYear = currentDate.getFullYear();
 
-  // Calculate totals
-  const totalExpected = filteredPayments.reduce((acc, curr) => acc + curr.expectedAmount, 0);
-  const totalPaid = filteredPayments.reduce((acc, curr) => acc + (curr.paidAmount || 0), 0);
-  const totalPending = totalExpected - totalPaid; // Approximate for simple display
-  
-  // Calculate admin fee based on PAID amount
-  const adminFeePercentage = config?.adminFeePercentage || 6;
-  const totalAdminFee = (totalPaid * adminFeePercentage) / 100;
-  
-  const netRevenue = totalPaid - totalAdminFee;
+    const currentMonthPayments = paymentsData.filter(
+      p => p.referenceMonth === currentMonth && p.referenceYear === currentYear && p.status === "paid"
+    );
 
-  // Prepare table data
-  const tableData = filteredPayments.map(payment => {
-    const rental = rentals.find(r => r.id === payment.rentalId);
-    const property = properties.find(p => p.id === rental?.propertyId);
-    const tenant = tenants.find(t => t.id === rental?.tenantId);
-    
-    return {
-      id: payment.id,
-      location: property?.location || "N/A",
-      complement: property?.complement || "",
-      tenant: tenant?.name || "N/A",
-      dueDate: payment.dueDate,
-      expected: payment.expectedAmount,
-      paid: payment.paidAmount || 0,
-      status: payment.status,
-      adminFee: ((payment.paidAmount || 0) * adminFeePercentage) / 100
+    let totalRev = 0;
+    let adminFeeTotal = 0;
+
+    for (const payment of currentMonthPayments) {
+      const paidAmount = payment.paidAmount || 0;
+      totalRev += paidAmount;
+
+      const rental = rentalsData.find(r => r.id === payment.rentalId);
+      const property = rental ? propertiesData.find(p => p.id === rental.propertyId) : undefined;
+
+      if (property && property.location.toLowerCase() !== "outros") {
+        const fee = paidAmount * (configData.adminFeePercentage / 100);
+        adminFeeTotal += fee;
+      }
+    }
+
+    setTotalRevenue(totalRev);
+    setTotalAdminFee(adminFeeTotal);
+    setNetRevenue(totalRev - adminFeeTotal);
+  };
+
+  const handlePixCodeChange = (paymentId: string, value: string) => {
+    setPayments(prev =>
+      prev.map(p => p.id === paymentId ? { ...p, editablePixCode: value } : p)
+    );
+  };
+
+  const handleSavePixCode = async (payment: PaymentWithDetails) => {
+    try {
+      await paymentService.update({
+        ...payment,
+        notes: payment.editablePixCode || ""
+      });
+      loadData();
+    } catch (error) {
+      console.error("Erro ao salvar código PIX:", error);
+    }
+  };
+
+  const getMonthName = (month: number): string => {
+    const months = [
+      "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+      "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+    ];
+    return months[month - 1] || "";
+  };
+
+  const getStatusBadge = (status: string) => {
+    const statusMap = {
+      paid: { label: "Pago", class: "bg-green-100 text-green-800" },
+      pending: { label: "Pendente", class: "bg-yellow-100 text-yellow-800" },
+      partial: { label: "Parcial", class: "bg-orange-100 text-orange-800" },
+      overdue: { label: "Atrasado", class: "bg-red-100 text-red-800" }
     };
+    const statusInfo = statusMap[status as keyof typeof statusMap] || { label: status, class: "bg-gray-100 text-gray-800" };
+    return (
+      <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusInfo.class}`}>
+        {statusInfo.label}
+      </span>
+    );
+  };
+
+  const paymentsWithDetails: PaymentWithDetails[] = payments.map(payment => {
+    const rental = rentals.find(r => r.id === payment.rentalId);
+    const property = rental ? properties.find(p => p.id === rental.propertyId) : undefined;
+    const tenant = rental ? tenants.find(t => t.id === rental.tenantId) : undefined;
+    return { ...payment, rental, property, tenant };
   });
+
+  if (loading) {
+    return (
+      <>
+        <Head>
+          <title>Financeiro - Sistema de Locações</title>
+        </Head>
+        <Layout>
+          <div className="flex items-center justify-center min-h-screen">
+            <p className="text-slate-600">Carregando...</p>
+          </div>
+        </Layout>
+      </>
+    );
+  }
 
   return (
     <>
-      <SEO title="Financeiro" />
+      <Head>
+        <title>Financeiro - Sistema de Locações</title>
+      </Head>
       <Layout>
         <div className="space-y-6">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <h1 className="text-3xl font-bold">Relatório Financeiro</h1>
-            
-            <div className="flex gap-4">
-              <Select value={filterMonth} onValueChange={setFilterMonth}>
-                <SelectTrigger className="w-[150px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
-                    <SelectItem key={m} value={m.toString().padStart(2, "0")}>
-                      {new Date(2024, m - 1).toLocaleString('pt-BR', { month: 'long' })}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              
-              <Select value={filterYear} onValueChange={setFilterYear}>
-                <SelectTrigger className="w-[100px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="2025">2025</SelectItem>
-                  <SelectItem value="2026">2026</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="flex items-center justify-between">
+            <h1 className="text-3xl font-bold text-slate-900">Relatório Financeiro</h1>
           </div>
 
-          {/* KPI Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Receita Total</CardTitle>
-                <DollarSign className="h-4 w-4 text-emerald-600" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Card className="border-emerald-200 bg-gradient-to-br from-emerald-50 to-white">
+              <CardHeader>
+                <CardTitle className="text-emerald-700 text-lg">💰 Receita Total do Mês</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{formatCurrency(totalPaid)}</div>
-                <p className="text-xs text-muted-foreground">Valor efetivamente recebido</p>
+                <p className="text-3xl font-bold text-emerald-900">{formatCurrency(totalRevenue)}</p>
+                <p className="text-sm text-emerald-600 mt-1">Todos os pagamentos recebidos</p>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Taxa Adm. ({adminFeePercentage}%)</CardTitle>
-                <Percent className="h-4 w-4 text-blue-600" />
+            <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-white">
+              <CardHeader>
+                <CardTitle className="text-blue-700 text-lg">📊 Taxa de Administração</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-blue-600">{formatCurrency(totalAdminFee)}</div>
-                <p className="text-xs text-muted-foreground">Sobre o valor recebido</p>
+                <p className="text-3xl font-bold text-blue-900">{formatCurrency(totalAdminFee)}</p>
+                <p className="text-sm text-blue-600 mt-1">{config.adminFeePercentage}% (exceto &quot;Outros&quot;)</p>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Repasse Líquido</CardTitle>
-                <TrendingUp className="h-4 w-4 text-green-600" />
+            <Card className="border-purple-200 bg-gradient-to-br from-purple-50 to-white">
+              <CardHeader>
+                <CardTitle className="text-purple-700 text-lg">🏠 Líquido para Proprietários</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-green-600">{formatCurrency(netRevenue)}</div>
-                <p className="text-xs text-muted-foreground">Receita - Taxa Adm.</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Pendente</CardTitle>
-                <TrendingDown className="h-4 w-4 text-red-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-red-600">{formatCurrency(totalExpected - totalPaid)}</div>
-                <p className="text-xs text-muted-foreground">A receber no mês</p>
+                <p className="text-3xl font-bold text-purple-900">{formatCurrency(netRevenue)}</p>
+                <p className="text-sm text-purple-600 mt-1">Após taxa administrativa</p>
               </CardContent>
             </Card>
           </div>
 
-          {/* Detailed Table */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                Detalhamento de Locações
-              </CardTitle>
+              <CardTitle>📋 Detalhamento de Locações - Todos os Pagamentos do Mês</CardTitle>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Imóvel</TableHead>
-                    <TableHead>Inquilino</TableHead>
-                    <TableHead>Vencimento</TableHead>
-                    <TableHead>Valor Esperado</TableHead>
-                    <TableHead>Valor Pago</TableHead>
-                    <TableHead>Taxa Adm.</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {tableData.length === 0 ? (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-4">
-                        Nenhum registro encontrado para este período.
-                      </TableCell>
+                      <TableHead>Local</TableHead>
+                      <TableHead>Complemento</TableHead>
+                      <TableHead>Ano</TableHead>
+                      <TableHead>Mês</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Código PIX</TableHead>
+                      <TableHead>Data Vencimento</TableHead>
+                      <TableHead>Data Recebida</TableHead>
+                      <TableHead>Valor Esperado</TableHead>
+                      <TableHead>Valor Pago</TableHead>
                     </TableRow>
-                  ) : (
-                    tableData.map((row) => (
-                      <TableRow key={row.id}>
-                        <TableCell>
-                          <div className="font-medium">{row.location}</div>
-                          <div className="text-xs text-muted-foreground">{row.complement}</div>
-                        </TableCell>
-                        <TableCell>{row.tenant}</TableCell>
-                        <TableCell>{new Date(row.dueDate).toLocaleDateString('pt-BR')}</TableCell>
-                        <TableCell>{formatCurrency(row.expected)}</TableCell>
-                        <TableCell className="font-medium text-emerald-600">{formatCurrency(row.paid)}</TableCell>
-                        <TableCell className="text-blue-600">{formatCurrency(row.adminFee)}</TableCell>
-                        <TableCell>
-                          <span className={`px-2 py-1 rounded-full text-xs ${
-                            row.status === 'paid' ? 'bg-green-100 text-green-800' :
-                            row.status === 'partial' ? 'bg-amber-100 text-amber-800' :
-                            'bg-red-100 text-red-800'
-                          }`}>
-                            {row.status === 'paid' ? 'Pago' : row.status === 'partial' ? 'Parcial' : 'Pendente'}
-                          </span>
+                  </TableHeader>
+                  <TableBody>
+                    {paymentsWithDetails.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={10} className="text-center text-slate-500 py-8">
+                          Nenhum pagamento cadastrado
                         </TableCell>
                       </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+                    ) : (
+                      paymentsWithDetails.map((payment) => (
+                        <TableRow key={payment.id}>
+                          <TableCell className="font-medium">
+                            {payment.property?.location || "-"}
+                          </TableCell>
+                          <TableCell>{payment.property?.complement || "-"}</TableCell>
+                          <TableCell>{payment.referenceYear}</TableCell>
+                          <TableCell>{getMonthName(payment.referenceMonth)}</TableCell>
+                          <TableCell>{getStatusBadge(payment.status)}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Input
+                                value={payment.editablePixCode || ""}
+                                onChange={(e) => handlePixCodeChange(payment.id, e.target.value)}
+                                placeholder="Código PIX"
+                                className="w-32 text-sm"
+                              />
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleSavePixCode(payment)}
+                              >
+                                💾
+                              </Button>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {new Date(payment.dueDate).toLocaleDateString("pt-BR")}
+                          </TableCell>
+                          <TableCell>
+                            {payment.paymentDate
+                              ? new Date(payment.paymentDate).toLocaleDateString("pt-BR")
+                              : "-"}
+                          </TableCell>
+                          <TableCell>{formatCurrency(payment.expectedAmount)}</TableCell>
+                          <TableCell className="font-semibold text-emerald-700">
+                            {formatCurrency(payment.paidAmount || 0)}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         </div>

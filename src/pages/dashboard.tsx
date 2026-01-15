@@ -50,12 +50,18 @@ export default function Dashboard() {
     
     // Calculate financial stats
     const currentDate = new Date();
-    const currentMonth = (currentDate.getMonth() + 1).toString().padStart(2, '0');
-    const currentYear = currentDate.getFullYear().toString();
+    const currentMonthStr = (currentDate.getMonth() + 1).toString().padStart(2, '0');
+    const currentYearStr = currentDate.getFullYear().toString();
+    
+    // Default to current month/year if not selected (or just use current for dashboard stats)
+    const selectedMonth = currentMonthStr;
+    const selectedYear = currentYearStr;
 
-    // Filter payments for current month
+    // Filter payments for selected month/year
     const currentMonthPayments = payments.filter(
-      (p) => p.referenceMonth === currentMonth && p.referenceYear === currentYear
+      (p) =>
+        p.referenceMonth === parseInt(selectedMonth) &&
+        p.referenceYear === parseInt(selectedYear)
     );
 
     // Total de Imóveis Cadastrados

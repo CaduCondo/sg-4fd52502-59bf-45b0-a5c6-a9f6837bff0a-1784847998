@@ -17,13 +17,13 @@ export interface Property {
   address: string;
   number: string;
   complement?: string;
-  neighborhood?: string;
-  city?: string;
-  state?: string;
-  cep?: string;
+  neighborhood: string;
+  city: string;
+  state: string;
+  zipCode: string;
   monthlyRent: number;
-  description?: string;
   type?: string;
+  description?: string;
   status: "available" | "occupied";
   createdAt: string;
 }
@@ -70,30 +70,18 @@ export interface Rental {
 export interface Payment {
   id: string;
   rentalId: string;
-  referenceMonth: string; // Renamed from month for clarity/consistency
-  referenceYear: string;  // Renamed from year for clarity/consistency
-  dueDate: string;        // Add missing dueDate
+  referenceMonth: number;
+  referenceYear: number;
+  dueDate: string;
   expectedAmount: number;
   paidAmount?: number;
   paymentDate?: string;
-  paymentMethod?: "pix" | "boleto" | "cash" | "dinheiro"; // Add dinheiro for compatibility
-  paymentLocation?: "CP" | "CD" | "CE";
-  paymentCode?: string;
   status: "pending" | "paid" | "partial" | "overdue";
-  isPaid: boolean;        // Add missing isPaid helper flag
-  lateFee?: number;
-  interest?: number;
-  adminFee?: number;      // Add missing adminFee
-  notes?: string;         // Add missing notes
-  attachments?: Attachment[];
-  partialPayments?: Array<{
-    id: string;
-    amount: number;
-    date: string;
-    method?: string;
-    location?: string;
-    code?: string;
-  }>;
+  paymentMethod?: string;
+  notes?: string;
+  attachments?: string[];
+  fineAmount?: number;
+  interestAmount?: number;
   createdAt: string;
 }
 

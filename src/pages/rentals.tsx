@@ -68,6 +68,9 @@ import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, parseCurrency, formatDate, formatPhone, formatCurrencyInput } from "@/lib/masks";
 import { propertyStorage, tenantStorage, rentalStorage, paymentStorage } from "@/lib/storage";
 import { rentalService } from "@/services/rentalService";
+import { propertyService } from "@/services/propertyService";
+import { tenantService } from "@/services/tenantService";
+import { paymentService } from "@/services/paymentService";
 import type { Property, Tenant, Rental, Payment } from "@/types";
 import { FloatingCard } from "@/components/animations/FloatingCard";
 
@@ -201,62 +204,57 @@ export default function RentalsPage() {
         tenantId: formData.tenantId,
         startDate: formData.startDate,
         endDate: formData.endDate,
-        value: totalValue,
         monthlyRent: baseRent,
         paymentDay: parseInt(formData.paymentDay),
-        deposit: formData.deposit || undefined,
         hasGarage: formData.hasGarage,
         garageValue: formData.hasGarage ? garageVal : undefined,
+        deposit: formData.deposit,
+        value: totalValue,
       };
 
       await rentalService.update(updatedRental);
       toast({ title: "Sucesso", description: "Locação atualizada com sucesso!" });
     } else {
-      const newRental: Rental = {
-        id: crypto.randomUUID(),
+      const newRental: Omit<Rental, "id" | "createdAt"> = {
         propertyId: formData.propertyId,
         tenantId: formData.tenantId,
         startDate: formData.startDate,
         endDate: formData.endDate,
-        value: totalValue,
         monthlyRent: baseRent,
         paymentDay: parseInt(formData.paymentDay),
-        deposit: formData.deposit || undefined,
         hasGarage: formData.hasGarage,
         garageValue: formData.hasGarage ? garageVal : undefined,
+        deposit: formData.deposit,
+        value: totalValue,
         isActive: true,
-        createdAt: new Date().toISOString(),
       };
 
-      await rentalService.create(newRental);
+      const createdRental = await rentalService.create(newRental);
 
       const propertyToUpdate = properties.find((p) => p.id === formData.propertyId);
       if (propertyToUpdate) {
-        propertyStorage.update({ ...propertyToUpdate, status: "occupied" });
+        propertyService.update({ ...propertyToUpdate, status: "occupied" });
       }
 
       const tenant = tenants.find((t) => t.id === formData.tenantId);
       if (tenant) {
-        tenantStorage.update({ ...tenant, status: "inactive" });
+        tenantService.update({ ...tenant, status: "inactive" });
       }
 
       const currentDate = new Date();
-      const referenceMonth = (currentDate.getMonth() + 1).toString().padStart(2, "0");
-      const referenceYear = currentDate.getFullYear().toString();
+      const referenceMonth = currentDate.getMonth() + 1;
+      const referenceYear = currentDate.getFullYear();
 
-      const firstPayment: Payment = {
-        id: crypto.randomUUID(),
-        rentalId: newRental.id,
+      const firstPayment: Omit<Payment, "id" | "createdAt"> = {
+        rentalId: createdRental.id,
         referenceMonth: referenceMonth,
         referenceYear: referenceYear,
         dueDate: newRental.startDate,
         expectedAmount: totalValue,
         status: "pending",
-        isPaid: false,
-        createdAt: new Date().toISOString(),
       };
 
-      paymentStorage.save(firstPayment);
+      await paymentService.create(firstPayment);
 
       toast({ title: "Sucesso", description: "Locação criada com sucesso!" });
     }
