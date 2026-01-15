@@ -2,6 +2,8 @@ import { ReactNode, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { Button } from "@/components/ui/button";
+import { motion, AnimatePresence } from "framer-motion";
+import { useScrollProgress, useScrollDirection, useIsScrolled } from "@/hooks/useScrollProgress";
 import {
   Building2,
   Users,
@@ -37,9 +39,14 @@ interface LayoutProps {
 export function Layout({ children }: LayoutProps) {
   const router = useRouter();
   const [user, setUser] = useState<UserType | null>(null);
-  const [menuOpen, setMenuOpen] = useState(true);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [showProfileDialog, setShowProfileDialog] = useState(false);
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  
+  // Scroll effects
+  const scrollProgress = useScrollProgress();
+  const scrollDirection = useScrollDirection();
+  const isScrolled = useIsScrolled(10);
   
   // Profile edit state
   const [profileName, setProfileName] = useState("");
@@ -47,7 +54,7 @@ export function Layout({ children }: LayoutProps) {
   const [profileCpf, setProfileCpf] = useState("");
   const [profilePhone, setProfilePhone] = useState("");
   const [profileEmail, setProfileEmail] = useState("");
-  
+
   // Password change state
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -155,9 +162,26 @@ export function Layout({ children }: LayoutProps) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      <nav className="bg-white border-b border-slate-200 shadow-sm">
+      {/* Scroll Progress Bar */}
+      <motion.div
+        className="fixed top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-emerald-600 origin-left z-50"
+        style={{ scaleX: scrollProgress / 100 }}
+        initial={{ scaleX: 0 }}
+        transition={{ duration: 0.1 }}
+      />
+
+      {/* Navbar with scroll effects */}
+      <motion.nav
+        className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm z-40 transition-all duration-300"
+        initial={{ y: 0 }}
+        animate={{
+          y: scrollDirection === "down" && scrollProgress > 5 ? -100 : 0,
+          height: isScrolled ? "56px" : "64px",
+        }}
+        transition={{ duration: 0.3, ease: "easeInOut" }}
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
+          <div className="flex justify-between items-center h-14 lg:h-16 transition-all duration-300">
             <div className="flex items-center space-x-4">
               <Button
                 variant="ghost"
@@ -165,22 +189,54 @@ export function Layout({ children }: LayoutProps) {
                 onClick={() => setMenuOpen(!menuOpen)}
                 className="lg:hidden"
               >
-                {menuOpen ? <X size={20} /> : <Menu size={20} />}
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={menuOpen ? "close" : "open"}
+                    initial={{ rotate: 0, opacity: 0 }}
+                    animate={{ rotate: 0, opacity: 1 }}
+                    exit={{ rotate: 90, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    {menuOpen ? <X size={20} /> : <Menu size={20} />}
+                  </motion.div>
+                </AnimatePresence>
               </Button>
               
-              <Link href="/dashboard" className="flex items-center space-x-2">
-                <Building2 className="h-7 w-7 text-emerald-600" />
-                <span className="text-lg font-bold text-slate-900">ImóvelControl</span>
+              <Link href="/dashboard" className="flex items-center space-x-2 group">
+                <motion.div
+                  whileHover={{ rotate: 360 }}
+                  transition={{ duration: 0.5 }}
+                >
+                  <Building2 className="h-7 w-7 text-emerald-600 group-hover:text-emerald-700 transition-colors" />
+                </motion.div>
+                <motion.span
+                  className="text-lg font-bold text-slate-900 group-hover:text-emerald-600 transition-colors"
+                  animate={{ fontSize: isScrolled ? "1rem" : "1.125rem" }}
+                  transition={{ duration: 0.3 }}
+                >
+                  ImóvelControl
+                </motion.span>
               </Link>
             </div>
             
             <div className="flex items-center space-x-4">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="flex items-center space-x-2">
-                    <User size={18} />
+                  <Button variant="ghost" className="flex items-center space-x-2 hover:bg-emerald-50 transition-colors">
+                    <motion.div
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      <User size={18} />
+                    </motion.div>
                     <span className="hidden sm:inline">{user?.name}</span>
-                    <ChevronDown size={16} />
+                    <motion.div
+                      animate={{ rotate: 0 }}
+                      whileHover={{ rotate: 180 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <ChevronDown size={16} />
+                    </motion.div>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
@@ -207,48 +263,92 @@ export function Layout({ children }: LayoutProps) {
             </div>
           </div>
           
-          {/* Desktop Menu */}
-          <div className="hidden lg:flex space-x-1 pb-3 overflow-x-auto">
-            {menuItems.map((item) => (
-              <Link key={item.path} href={item.path}>
-                <Button 
-                  variant={isActive(item.path) ? "default" : "ghost"}
-                  size="sm"
-                  className="flex items-center space-x-2"
-                >
-                  <item.icon size={16} />
-                  <span>{item.label}</span>
-                </Button>
-              </Link>
-            ))}
-          </div>
+          {/* Desktop Menu with stagger animation */}
+          <AnimatePresence>
+            {!menuOpen && (
+              <motion.div
+                className="hidden lg:flex space-x-1 pb-3 overflow-x-auto"
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.3 }}
+              >
+                {menuItems.map((item, index) => (
+                  <motion.div
+                    key={item.path}
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05, duration: 0.3 }}
+                  >
+                    <Link href={item.path}>
+                      <Button 
+                        variant={isActive(item.path) ? "default" : "ghost"}
+                        size="sm"
+                        className="flex items-center space-x-2 transition-all hover:scale-105"
+                      >
+                        <motion.div
+                          whileHover={{ rotate: 15, scale: 1.1 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <item.icon size={16} />
+                        </motion.div>
+                        <span>{item.label}</span>
+                      </Button>
+                    </Link>
+                  </motion.div>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
         
-        {/* Mobile Menu */}
-        {menuOpen && (
-          <div className="lg:hidden border-t border-slate-200 bg-white">
-            <div className="px-4 py-3 space-y-1">
-              {menuItems.map((item) => (
-                <Link key={item.path} href={item.path}>
-                  <Button 
-                    variant={isActive(item.path) ? "default" : "ghost"}
-                    size="sm"
-                    className="w-full justify-start flex items-center space-x-2"
-                    onClick={() => setMenuOpen(false)}
+        {/* Mobile Menu with slide animation */}
+        <AnimatePresence>
+          {menuOpen && (
+            <motion.div
+              className="lg:hidden border-t border-slate-200 bg-white overflow-hidden"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
+            >
+              <div className="px-4 py-3 space-y-1">
+                {menuItems.map((item, index) => (
+                  <motion.div
+                    key={item.path}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.05, duration: 0.3 }}
                   >
-                    <item.icon size={16} />
-                    <span>{item.label}</span>
-                  </Button>
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
-      </nav>
+                    <Link href={item.path}>
+                      <Button 
+                        variant={isActive(item.path) ? "default" : "ghost"}
+                        size="sm"
+                        className="w-full justify-start flex items-center space-x-2"
+                        onClick={() => setMenuOpen(false)}
+                      >
+                        <item.icon size={16} />
+                        <span>{item.label}</span>
+                      </Button>
+                    </Link>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.nav>
       
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Main content with padding for fixed navbar */}
+      <motion.main
+        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"
+        style={{ paddingTop: isScrolled ? "72px" : "80px" }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5 }}
+      >
         {children}
-      </main>
+      </motion.main>
       
       {/* Edit Profile Dialog */}
       <Dialog open={showProfileDialog} onOpenChange={setShowProfileDialog}>
