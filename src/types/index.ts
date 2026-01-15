@@ -14,30 +14,31 @@ export interface User {
 export interface Property {
   id: string;
   local: string;
-  type?: "Apartamento" | "Casa" | "Comercial" | "Terreno";
-  cep: string;
+  type?: string;
+  cep?: string;
   address: string;
   number: string;
   complement?: string;
-  state: string;
-  description: string;
+  neighborhood?: string;
+  city?: string;
+  state?: string;
+  description?: string;
   monthlyRent: number;
   status: "available" | "occupied";
-  isActive: boolean;
+  isActive?: boolean;
   createdAt: string;
 }
 
 export interface Tenant {
   id: string;
   name: string;
-  documentType: "CPF" | "CNPJ";
+  documentType?: "CPF" | "CNPJ";
   cpf: string;
-  rg: string;
-  phone: string;
-  email: string;
+  rg?: string;
+  email?: string;
+  phone?: string;
   observations?: string;
-  status: "vacant" | "active" | "inactive";
-  isActive: boolean;
+  isActive?: boolean;
   createdAt: string;
 }
 
@@ -46,45 +47,34 @@ export interface Rental {
   propertyId: string;
   tenantId: string;
   startDate: string;
-  endDate: string;
-  monthlyRent: number;
+  endDate?: string;
+  value: number; // Base rent value
+  monthlyRent: number; // Redundant but kept for compatibility
   paymentDay: number;
-  observations?: string;
-  attachments?: Array<{
-    name: string;
-    url: string;
-    type: string;
-    data?: string;
-  }>;
+  hasGarage: boolean;
+  garageValue?: number;
   hasMotorcycleSpot?: boolean;
   motorcycleSpotValue?: number;
-  hasGarage?: boolean;
-  garageValue?: number;
-  status: "active" | "ended" | "expired";
-  createdAt: string;
+  observations?: string;
+  attachments?: { name: string; url: string; date?: string; type?: string }[];
+  isActive: boolean;
+  createdAt: string; // Add createdAt
 }
 
 export interface Payment {
   id: string;
   rentalId: string;
   month: string;
-  year: number;
+  year: string;
   amount: number;
-  isPaid: boolean;
-  paidAt?: string;
   dueDate: string;
-  createdAt: string;
-  status?: "paid" | "unpaid" | "partial";
-  partialAmount?: number;
-  paymentMethod?: "Pix" | "Boleto" | "Dinheiro";
-  paymentLocation?: "CP" | "CD" | "CE";
-  paymentCode?: string;
-  attachments?: Array<{
-    name: string;
-    url: string;
-    type: string;
-    data?: string;
-  }>;
+  isPaid: boolean;
+  paidDate?: string;
+  paidAmount?: number;
+  lateFee?: number;
+  paymentMethod?: string;
+  notes?: string;
+  attachments?: { name: string; url: string; type: string }[];
 }
 
 export interface SystemConfig {

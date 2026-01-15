@@ -84,8 +84,15 @@ export default function TenantsPage() {
     if (searchPhone) {
       filtered = filtered.filter(t => t.phone.includes(searchPhone));
     }
+    // 2. Status filter
     if (filterStatus !== "all") {
-      filtered = filtered.filter(t => t.status === filterStatus);
+      if (filterStatus === "active") {
+        filtered = filtered.filter(t => t.isActive !== false);
+      } else if (filterStatus === "vacant") { // Assuming 'vacant' means inactive here for tenants or free? 
+        // User requirement: "status só precisam saber se ele esta disponivel para realizar uma locação"
+        // But for filter list:
+        filtered = filtered.filter(t => t.isActive === false);
+      }
     }
 
     // Sorting

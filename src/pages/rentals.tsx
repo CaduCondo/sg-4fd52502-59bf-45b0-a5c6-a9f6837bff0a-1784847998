@@ -85,7 +85,9 @@ export default function Rentals() {
       property?.local.toLowerCase().includes(searchTerm.toLowerCase()) ||
       property?.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
       tenant?.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === "all" || rental.status === statusFilter;
+    const matchesStatus = statusFilter === "all" || 
+      (statusFilter === "active" && rental.isActive) ||
+      (statusFilter === "finished" && !rental.isActive);
     return matchesSearch && matchesStatus;
   });
 
@@ -151,10 +153,11 @@ export default function Rentals() {
     const attachmentObjects = attachments.map(a => ({
       name: a.name,
       url: URL.createObjectURL(a.file),
+      date: new Date().toISOString(),
       type: a.file.type
     }));
 
-    const rental: Rental = {
+    const newRental: Rental = {
       id: editingRental?.id || crypto.randomUUID(),
       propertyId: formData.propertyId,
       tenantId: formData.tenantId,
@@ -166,14 +169,35 @@ export default function Rentals() {
       hasMotorcycleSpot: formData.hasMotorcycleSpot,
       motorcycleSpotValue,
       attachments: attachmentObjects,
-      status: "active",
-      createdAt: editingRental?.createdAt || new Date().toISOString()
+      isActive: true,
+      createdAt: new Date().toISOString()
     };
 
-    rentalStorage.save(rental);
+    rentalStorage.save(newRental);
 
-    const property = getProperty(rental.propertyId);
-    const tenant = getTenant(rental.tenantId);
+    // Generate payments for the first 12 months
+    const payments: Payment[] = [];
+    const startDate = new Date(formData.startDate + "T00:00:00");
+    
+    for (let i = 0; i < 12; i++) {
+      const dueDate = new Date(startDate);
+      dueDate.setMonth(startDate.getMonth() + i);
+      dueDate.setDate(formData.paymentDay);
+      
+      const payment: Payment = {
+        id: crypto.randomUUID(),
+        rentalId: newRental.id,
+        month: (dueDate.getMonth() + 1).toString().padStart(2, "0"),
+        year: dueDate.getFullYear().toString(),
+        amount: calculateTotal(newRental),
+        dueDate: dueDate.toISOString(),
+        isPaid: false
+      };
+      payments.push(payment);
+    }
+
+    const property = getProperty(newRental.propertyId);
+    const tenant = getTenant(newRental.tenantId);
     if (property) {
       property.status = "occupied";
       propertyStorage.save(property);
@@ -184,7 +208,7 @@ export default function Rentals() {
     }
 
     if (!editingRental) {
-      generatePayments(rental);
+      payments.forEach(p => paymentStorage.save(p));
     }
 
     loadData();
@@ -193,35 +217,6 @@ export default function Rentals() {
 
   const handleEdit = (rental: Rental) => {
     handleOpenDialog(rental);
-  };
-
-  const generatePayments = (rental: Rental) => {
-    const start = new Date(rental.startDate);
-    const end = new Date(rental.endDate);
-    const currentDate = new Date(start);
-
-    while (currentDate <= end) {
-      const year = currentDate.getFullYear();
-      const month = (currentDate.getMonth() + 1).toString().padStart(2, "0");
-      const dueDate = new Date(year, currentDate.getMonth(), rental.paymentDay);
-
-      if (dueDate >= start && dueDate <= end) {
-        const totalValue = rental.monthlyRent + (rental.motorcycleSpotValue || 0);
-        const payment = {
-          id: crypto.randomUUID(),
-          rentalId: rental.id,
-          month,
-          year,
-          amount: totalValue,
-          isPaid: false,
-          dueDate: dueDate.toISOString(),
-          createdAt: new Date().toISOString()
-        };
-        paymentStorage.save(payment);
-      }
-
-      currentDate.setMonth(currentDate.getMonth() + 1);
-    }
   };
 
   const handleDelete = (id: string) => {

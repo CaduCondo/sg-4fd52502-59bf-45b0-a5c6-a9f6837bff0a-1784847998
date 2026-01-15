@@ -1,40 +1,47 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
-import Link from "next/link";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 import { isAuthenticated } from "@/lib/auth";
-import { paymentStorage, rentalStorage, propertyStorage, tenantStorage, configStorage } from "@/lib/storage";
-import { Payment, Rental, Property, Tenant } from "@/types";
-import { DollarSign, AlertTriangle, CheckCircle, XCircle, TrendingUp } from "lucide-react";
+import { propertyStorage, tenantStorage, rentalStorage, paymentStorage, configStorage } from "@/lib/storage";
+import { Property, Tenant, Rental, Payment, SystemConfig } from "@/types";
+import { DollarSign, Calendar, CheckCircle, XCircle, AlertCircle, Plus, Eye, Download, ExternalLink, FileText } from "lucide-react";
 import { SEO } from "@/components/SEO";
-import { formatCurrency, formatDate } from "@/lib/masks";
+import { formatCurrency, parseCurrency, numberToWords } from "@/lib/masks";
 import { StaggerContainer, StaggerItem } from "@/components/animations/ScrollReveal";
 import { FloatingCard } from "@/components/animations/FloatingCard";
 
-export default function Recebimentos() {
+export default function Payments() {
   const router = useRouter();
-  const [payments, setPayments] = useState<Array<{
-    payment: Payment;
-    rental: Rental;
-    property: Property;
-    tenant: Tenant;
-    installmentNumber: number;
-  }>>([]);
-  const [filteredPayments, setFilteredPayments] = useState<Array<{
-    payment: Payment;
-    rental: Rental;
-    property: Property;
-    tenant: Tenant;
-    installmentNumber: number;
-  }>>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [rentals, setRentals] = useState<Rental[]>([]);
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [config, setConfig] = useState<SystemConfig | null>(null);
   const [filterMonth, setFilterMonth] = useState("");
   const [filterYear, setFilterYear] = useState("");
-  const [filterStatus, setFilterStatus] = useState<"all" | "paid" | "unpaid" | "partial">("all");
+  const [filterStatus, setFilterStatus] = useState<"all" | "paid" | "pending">("all");
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
+  const [viewingPayment, setViewingPayment] = useState<Payment | null>(null);
+  const [showReceipt, setShowReceipt] = useState(false);
+  const [receiptData, setReceiptData] = useState<Payment | null>(null);
+  
+  const [formData, setFormData] = useState({
+    paidDate: "",
+    paidAmount: "",
+    paymentMethod: "Pix",
+    notes: ""
+  });
+
+  const [attachments, setAttachments] = useState<Array<{ name: string; file: File }>>([]);
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -46,212 +53,259 @@ export default function Recebimentos() {
     setFilterMonth((now.getMonth() + 1).toString().padStart(2, "0"));
     setFilterYear(now.getFullYear().toString());
     
-    loadPayments();
+    loadData();
   }, [router]);
 
-  useEffect(() => {
-    let filtered = payments;
-
-    if (filterMonth) {
-      filtered = filtered.filter(p => p.payment.month === filterMonth);
-    }
-
-    if (filterYear) {
-      filtered = filtered.filter(p => p.payment.year.toString() === filterYear);
-    }
-
-    if (filterStatus !== "all") {
-      filtered = filtered.filter(p => p.payment.status === filterStatus);
-    }
-
-    // Ordenar por cor: vermelhos (unpaid/partial) → amarelos (partial) → azuis (paid)
-    filtered.sort((a, b) => {
-      const statusOrder = { unpaid: 0, partial: 1, paid: 2 };
-      return statusOrder[a.payment.status] - statusOrder[b.payment.status];
-    });
-
-    setFilteredPayments(filtered);
-  }, [filterMonth, filterYear, filterStatus, payments]);
-
-  const loadPayments = () => {
+  const loadData = () => {
     const allPayments = paymentStorage.getAll();
-    const rentals = rentalStorage.getAll();
-    const properties = propertyStorage.getAll();
-    const tenants = tenantStorage.getAll();
+    const allRentals = rentalStorage.getAll();
+    const allProperties = propertyStorage.getAll();
+    const allTenants = tenantStorage.getAll();
+    const systemConfig = configStorage.get();
+    
+    setPayments(allPayments);
+    setRentals(allRentals);
+    setProperties(allProperties);
+    setTenants(allTenants);
+    setConfig(systemConfig);
+  };
 
-    const paymentDetails = allPayments.map(payment => {
-      const rental = rentals.find(r => r.id === payment.rentalId);
-      const property = rental ? properties.find(p => p.id === rental.propertyId) : undefined;
-      const tenant = rental ? tenants.find(t => t.id === rental.tenantId) : undefined;
-      
-      if (rental && property && tenant) {
-        // Calcular número da prestação
-        const startDate = new Date(rental.startDate);
-        const paymentDate = new Date(payment.year, parseInt(payment.month) - 1);
-        const monthsDiff = (paymentDate.getFullYear() - startDate.getFullYear()) * 12 + 
-                          (paymentDate.getMonth() - startDate.getMonth()) + 1;
-        
-        return { 
-          payment, 
-          rental, 
-          property, 
-          tenant,
-          installmentNumber: monthsDiff
-        };
-      }
-      return null;
-    }).filter(Boolean) as Array<{
-      payment: Payment;
-      rental: Rental;
-      property: Property;
-      tenant: Tenant;
-      installmentNumber: number;
-    }>;
+  const getRental = (id: string) => rentals.find(r => r.id === id);
+  const getProperty = (rental: Rental) => properties.find(p => p.id === rental.propertyId);
+  const getTenant = (rental: Rental) => tenants.find(t => t.id === rental.tenantId);
 
-    paymentDetails.sort((a, b) => {
-      if (a.payment.year !== b.payment.year) {
-        return b.payment.year - a.payment.year;
-      }
-      return parseInt(b.payment.month) - parseInt(a.payment.month);
+  const filteredPayments = payments.filter(payment => {
+    // Ensure strict string comparison
+    const matchesMonth = !filterMonth || String(payment.month) === String(filterMonth);
+    const matchesYear = !filterYear || String(payment.year) === String(filterYear);
+    const matchesStatus = filterStatus === "all" || 
+      (filterStatus === "paid" && payment.isPaid) ||
+      (filterStatus === "pending" && !payment.isPaid);
+    return matchesMonth && matchesYear && matchesStatus;
+  });
+
+  const unpaidPayments = payments.filter(p => {
+    const now = new Date();
+    const currentMonth = (now.getMonth() + 1).toString().padStart(2, "0");
+    const currentYear = now.getFullYear().toString();
+    // Ensure strict string comparison
+    return !p.isPaid && String(p.month) === currentMonth && String(p.year) === currentYear;
+  });
+
+  const calculateTotals = () => {
+    const totalReceived = filteredPayments
+      .filter(p => p.isPaid)
+      .reduce((sum, p) => sum + (p.paidAmount || 0), 0);
+    
+    const totalPending = filteredPayments
+      .filter(p => !p.isPaid)
+      .reduce((sum, p) => sum + p.amount, 0);
+
+    // Admin fee only for properties NOT in "Outros" location
+    const adminFee = filteredPayments
+      .filter(p => p.isPaid)
+      .reduce((sum, p) => {
+        const rental = getRental(p.rentalId);
+        if (!rental) return sum;
+        const property = getProperty(rental);
+        if (!property || property.local === "Outros") return sum;
+        return sum + ((p.paidAmount || 0) * (config?.adminFeePercentage || 0) / 100);
+      }, 0);
+
+    const totalFiltered = filteredPayments.reduce((sum, p) => sum + p.amount, 0);
+
+    return { totalReceived, totalPending, adminFee, totalFiltered };
+  };
+
+  const { totalReceived, totalPending, adminFee, totalFiltered } = calculateTotals();
+
+  const handleOpenDialog = (payment: Payment) => {
+    setSelectedPayment(payment);
+    setFormData({
+      paidDate: new Date().toISOString().split("T")[0],
+      paidAmount: formatCurrency(payment.amount),
+      paymentMethod: "Pix",
+      notes: ""
     });
-
-    setPayments(paymentDetails);
-    setFilteredPayments(paymentDetails);
+    setAttachments([]);
+    setIsDialogOpen(true);
   };
 
-  const formatMonthYear = (month: string, year: number) => {
-    const monthNames = [
-      "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
-      "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
-    ];
-    return `${monthNames[parseInt(month) - 1]}/${year}`;
+  const calculateLateFee = (payment: Payment, paidDate: string) => {
+    const dueDate = new Date(payment.dueDate);
+    const paymentDate = new Date(paidDate);
+    
+    // No late fee if paid on or before due date
+    if (paymentDate <= dueDate) return 0;
+    
+    const daysLate = Math.floor((paymentDate.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
+    if (daysLate <= 0) return 0;
+    
+    // 2% fine + 0.033% per day late
+    const baseAmount = payment.amount;
+    const fine = baseAmount * 0.02;
+    const dailyInterest = baseAmount * 0.00033 * daysLate;
+    
+    return fine + dailyInterest;
   };
 
-  const getOrdinalSuffix = (num: number) => {
-    return `${num}ª`;
-  };
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!selectedPayment) return;
 
-  const getStatusBadge = (status: "paid" | "unpaid" | "partial") => {
-    const variants = {
-      paid: { variant: "default" as const, label: "Pago", color: "bg-blue-500" },
-      unpaid: { variant: "destructive" as const, label: "Não Pago", color: "bg-red-500" },
-      partial: { variant: "secondary" as const, label: "Parcial", color: "bg-yellow-500" }
+    const paidAmount = parseCurrency(formData.paidAmount);
+    const lateFee = calculateLateFee(selectedPayment, formData.paidDate);
+    
+    // Convert files to base64 for storage
+    const attachmentObjects = attachments.map(a => ({
+      name: a.name,
+      url: URL.createObjectURL(a.file),
+      type: a.file.type
+    }));
+
+    const updatedPayment: Payment = {
+      ...selectedPayment,
+      isPaid: true,
+      paidDate: new Date(formData.paidDate).toISOString(),
+      paidAmount,
+      lateFee,
+      paymentMethod: formData.paymentMethod,
+      notes: formData.notes,
+      attachments: attachmentObjects
     };
-    return variants[status];
+
+    paymentStorage.save(updatedPayment);
+    
+    // Show receipt
+    setReceiptData(updatedPayment);
+    setShowReceipt(true);
+    
+    loadData();
+    setIsDialogOpen(false);
   };
 
-  const unpaidPayments = filteredPayments.filter(p => p.payment.status === "unpaid" || p.payment.status === "partial");
-  const paidPayments = filteredPayments.filter(p => p.payment.status === "paid");
+  const handleAddAttachment = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const newFile = e.target.files[0];
+      
+      if (attachments.length >= 5) {
+        alert("Você pode anexar no máximo 5 arquivos");
+        return;
+      }
 
-  const totalPaid = paidPayments.reduce((sum, p) => sum + (p.payment.partialAmount || p.payment.amount), 0);
-  const totalUnpaid = unpaidPayments.reduce((sum, p) => sum + (p.payment.amount - (p.payment.partialAmount || 0)), 0);
-
-  const config = configStorage.get();
-  
-  // Logic to calculate admin fee excluding "Outros"
-  const adminFee = paidPayments.reduce((acc, curr) => {
-    // Only apply fee if property local is NOT "Outros"
-    if (curr.property && curr.property.local !== "Outros") {
-      const amount = curr.payment.partialAmount || curr.payment.amount;
-      return acc + (amount * (config.adminFeePercentage / 100));
+      setAttachments([...attachments, { name: newFile.name, file: newFile }]);
+      e.target.value = "";
     }
-    return acc;
-  }, 0);
+  };
+
+  const handleRemoveAttachment = (index: number) => {
+    setAttachments(attachments.filter((_, i) => i !== index));
+  };
+
+  const getStatusBadge = (payment: Payment) => {
+    if (payment.isPaid) {
+      return <Badge className="bg-green-100 text-green-800 border-green-200">Pago</Badge>;
+    }
+    
+    const dueDate = new Date(payment.dueDate);
+    const now = new Date();
+    
+    if (now > dueDate) {
+      return <Badge variant="destructive">Atrasado</Badge>;
+    }
+    
+    return <Badge variant="secondary">Pendente</Badge>;
+  };
+
+  const formatMonthYear = (month: string, year: string) => {
+    const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", 
+                       "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+    return `${monthNames[parseInt(month) - 1]} ${year}`;
+  };
 
   return (
     <>
       <SEO 
-        title="Gestão de Recebimento - ImóvelControl"
+        title="Recebimentos - ImóvelControl"
         description="Controle de recebimentos de locações"
       />
       
       <Layout>
         <div className="space-y-6">
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900">Gestão de Recebimentos</h1>
-            <p className="text-slate-600 mt-2">Controle de recebimentos de locações</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-slate-900">Gestão de Recebimentos</h1>
+              <p className="text-slate-600 mt-2">Controle de recebimentos de locações</p>
+            </div>
           </div>
 
-          {/* Locações Não Pagas Este Mês */}
+          {/* Unpaid This Month Alert */}
           {unpaidPayments.length > 0 && (
             <FloatingCard delay={0.1}>
-              <Card className="border-l-4 border-l-red-500 bg-red-50">
-                <CardHeader>
-                  <div className="flex items-center space-x-2">
-                    <AlertTriangle className="h-5 w-5 text-red-600" />
-                    <div>
-                      <CardTitle className="text-red-900">Locações Não Pagas Este Mês</CardTitle>
-                      <CardDescription className="text-red-700">
-                        {unpaidPayments.length} {unpaidPayments.length === 1 ? "locação pendente" : "locações pendentes"}
-                      </CardDescription>
-                    </div>
-                  </div>
+              <Card className="border-red-200 bg-red-50">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center space-x-2 text-red-800">
+                    <AlertCircle size={20} />
+                    <span>Locações Não Pagas Este Mês ({unpaidPayments.length})</span>
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <StaggerContainer staggerDelay={0.05}>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {unpaidPayments.map(({ payment, property, tenant }, index) => (
-                        <StaggerItem key={payment.id}>
-                          <Link 
-                            href={`/payments/${payment.id}`}
-                            className="block"
-                          >
-                            <div className="p-4 bg-white border-2 border-red-200 rounded-lg hover:shadow-md transition-shadow cursor-pointer">
-                              <div className="space-y-2">
-                                <div className="flex items-start justify-between">
-                                  <div className="flex-1 min-w-0">
-                                    <p className="font-semibold text-slate-900 text-sm">{property.local}</p>
-                                    {property.complement && (
-                                      <p className="text-xs text-slate-600">{property.complement}</p>
-                                    )}
-                                  </div>
-                                  <Badge variant={getStatusBadge(payment.status).variant} className="ml-2 flex-shrink-0">
-                                    {getStatusBadge(payment.status).label}
-                                  </Badge>
-                                </div>
-                                <p className="text-xs text-slate-700">
-                                  <span className="font-medium">Inquilino:</span> {tenant.name}
-                                </p>
+                      {unpaidPayments.map((payment, index) => {
+                        const rental = getRental(payment.rentalId);
+                        if (!rental) return null;
+                        const property = getProperty(rental);
+                        const tenant = getTenant(rental);
+                        
+                        return (
+                          <StaggerItem key={payment.id}>
+                            <FloatingCard delay={index * 0.03}>
+                              <div className="p-3 bg-white rounded-lg border border-red-200 space-y-2">
+                                <p className="font-semibold text-slate-900 text-sm">{property?.local}</p>
+                                <p className="text-xs text-slate-600">{tenant?.name}</p>
                                 <div className="flex justify-between items-center pt-2 border-t">
-                                  <span className="text-xs text-slate-600">Venc: {formatDate(payment.dueDate)}</span>
-                                  <span className="font-bold text-red-700">
-                                    {formatCurrency(payment.amount - (payment.partialAmount || 0))}
-                                  </span>
+                                  <span className="text-xs text-slate-500">Vencimento:</span>
+                                  <span className="text-xs font-medium">{new Date(payment.dueDate).toLocaleDateString()}</span>
                                 </div>
-                                {payment.partialAmount && payment.partialAmount > 0 && (
-                                  <p className="text-xs text-yellow-700">
-                                    Pago parcial: {formatCurrency(payment.partialAmount)}
-                                  </p>
-                                )}
+                                <div className="flex justify-between items-center">
+                                  <span className="text-xs text-slate-500">Valor:</span>
+                                  <span className="text-sm font-bold text-red-700">{formatCurrency(payment.amount)}</span>
+                                </div>
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleOpenDialog(payment)}
+                                  className="w-full mt-2 bg-red-600 hover:bg-red-700"
+                                >
+                                  Registrar Pagamento
+                                </Button>
                               </div>
-                            </div>
-                          </Link>
-                        </StaggerItem>
-                      ))}
+                            </FloatingCard>
+                          </StaggerItem>
+                        );
+                      })}
                     </div>
                   </StaggerContainer>
-                  <div className="mt-4 pt-4 border-t border-red-200">
-                    <div className="flex justify-between items-center">
-                      <span className="font-semibold text-red-900">Total a Receber:</span>
-                      <span className="text-xl font-bold text-red-700">{formatCurrency(totalUnpaid)}</span>
-                    </div>
-                  </div>
                 </CardContent>
               </Card>
             </FloatingCard>
           )}
 
-          {/* Resumo e Filtros */}
+          {/* Summary Cards */}
           <StaggerContainer staggerDelay={0.08}>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <StaggerItem>
                 <FloatingCard delay={0}>
-                  <Card className="border-l-4 border-l-green-500">
-                    <CardHeader className="pb-3">
+                  <Card>
+                    <CardHeader className="pb-2">
                       <CardTitle className="text-sm font-medium text-slate-600">Total Recebido</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-2xl font-bold text-green-600">{formatCurrency(totalPaid)}</div>
+                      <div className="flex items-center space-x-2">
+                        <DollarSign className="text-green-600" size={24} />
+                        <span className="text-2xl font-bold text-slate-900">{formatCurrency(totalReceived)}</span>
+                      </div>
                     </CardContent>
                   </Card>
                 </FloatingCard>
@@ -259,28 +313,32 @@ export default function Recebimentos() {
 
               <StaggerItem>
                 <FloatingCard delay={0.05}>
-                  <Card className="border-l-4 border-l-red-500">
-                    <CardHeader className="pb-3">
+                  <Card>
+                    <CardHeader className="pb-2">
                       <CardTitle className="text-sm font-medium text-slate-600">Total Pendente</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-2xl font-bold text-red-600">{formatCurrency(totalUnpaid)}</div>
+                      <div className="flex items-center space-x-2">
+                        <AlertCircle className="text-amber-600" size={24} />
+                        <span className="text-2xl font-bold text-slate-900">{formatCurrency(totalPending)}</span>
+                      </div>
                     </CardContent>
                   </Card>
                 </FloatingCard>
               </StaggerItem>
 
               <StaggerItem>
-                <FloatingCard delay={0.1}>
-                  <Card className="border-l-4 border-l-blue-500">
-                    <CardHeader className="pb-3">
+                <FloatingCard delay={0.08}>
+                  <Card>
+                    <CardHeader className="pb-2">
                       <CardTitle className="text-sm font-medium text-slate-600">Taxa Administração</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-2xl font-bold text-blue-600">{formatCurrency(adminFee)}</div>
-                      <p className="text-xs text-slate-500 mt-1">
-                        {config.adminFeePercentage}% (exceto "Outros")
-                      </p>
+                      <div className="flex items-center space-x-2">
+                        <DollarSign className="text-blue-600" size={24} />
+                        <span className="text-2xl font-bold text-slate-900">{formatCurrency(adminFee)}</span>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-1">Excluindo imóveis em "Outros"</p>
                     </CardContent>
                   </Card>
                 </FloatingCard>
@@ -288,12 +346,15 @@ export default function Recebimentos() {
 
               <StaggerItem>
                 <FloatingCard delay={0.15}>
-                  <Card className="border-l-4 border-l-slate-500">
-                    <CardHeader className="pb-3">
+                  <Card>
+                    <CardHeader className="pb-2">
                       <CardTitle className="text-sm font-medium text-slate-600">Total Filtrado</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-2xl font-bold text-slate-900">{formatCurrency(totalPaid + totalUnpaid)}</div>
+                      <div className="flex items-center space-x-2">
+                        <Calendar className="text-purple-600" size={24} />
+                        <span className="text-2xl font-bold text-slate-900">{formatCurrency(totalFiltered)}</span>
+                      </div>
                     </CardContent>
                   </Card>
                 </FloatingCard>
@@ -301,128 +362,558 @@ export default function Recebimentos() {
             </div>
           </StaggerContainer>
 
-          {/* Filtros */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Select value={filterMonth} onValueChange={setFilterMonth}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione o mês" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">Todos os meses</SelectItem>
-                <SelectItem value="01">Janeiro</SelectItem>
-                <SelectItem value="02">Fevereiro</SelectItem>
-                <SelectItem value="03">Março</SelectItem>
-                <SelectItem value="04">Abril</SelectItem>
-                <SelectItem value="05">Maio</SelectItem>
-                <SelectItem value="06">Junho</SelectItem>
-                <SelectItem value="07">Julho</SelectItem>
-                <SelectItem value="08">Agosto</SelectItem>
-                <SelectItem value="09">Setembro</SelectItem>
-                <SelectItem value="10">Outubro</SelectItem>
-                <SelectItem value="11">Novembro</SelectItem>
-                <SelectItem value="12">Dezembro</SelectItem>
-              </SelectContent>
-            </Select>
+          {/* Filters */}
+          <Card>
+            <CardContent className="pt-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>Mês</Label>
+                  <Select value={filterMonth} onValueChange={setFilterMonth}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Todos</SelectItem>
+                      {Array.from({ length: 12 }, (_, i) => {
+                        const month = (i + 1).toString().padStart(2, "0");
+                        const monthName = new Date(2024, i, 1).toLocaleDateString("pt-BR", { month: "long" });
+                        return (
+                          <SelectItem key={month} value={month}>
+                            {monthName.charAt(0).toUpperCase() + monthName.slice(1)}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-            <Input
-              type="number"
-              placeholder="Ano"
-              value={filterYear}
-              onChange={(e) => setFilterYear(e.target.value)}
-            />
+                <div className="space-y-2">
+                  <Label>Ano</Label>
+                  <Select value={filterYear} onValueChange={setFilterYear}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Todos</SelectItem>
+                      {[2024, 2025, 2026].map(year => (
+                        <SelectItem key={year} value={year.toString()}>
+                          {year}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-            <Select value={filterStatus} onValueChange={(value) => setFilterStatus(value as any)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os Status</SelectItem>
-                <SelectItem value="paid">Pagos</SelectItem>
-                <SelectItem value="unpaid">Não Pagos</SelectItem>
-                <SelectItem value="partial">Parciais</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <Select value={filterStatus} onValueChange={(val: any) => setFilterStatus(val)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos</SelectItem>
+                      <SelectItem value="paid">Pagos</SelectItem>
+                      <SelectItem value="pending">Pendentes</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-          {/* Todos os Registros dos Pagamentos Realizados */}
+          {/* All Payment Records */}
           <FloatingCard delay={0.3}>
             <Card>
               <CardHeader>
-                <CardTitle>Todos os Registros dos Pagamentos Realizados</CardTitle>
-                <CardDescription>
-                  {filteredPayments.length} {filteredPayments.length === 1 ? "registro" : "registros"}
-                </CardDescription>
+                <CardTitle>Todos os Registros dos Recebimentos Realizados</CardTitle>
               </CardHeader>
               <CardContent>
                 <StaggerContainer staggerDelay={0.04}>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {filteredPayments.map(({ payment, property, tenant, installmentNumber }, index) => {
-                      const status = getStatusBadge(payment.status);
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {filteredPayments.map((payment, index) => {
+                      const rental = getRental(payment.rentalId);
+                      if (!rental) return null;
+                      const property = getProperty(rental);
+                      const tenant = getTenant(rental);
+                      
                       return (
                         <StaggerItem key={payment.id}>
-                          <Link 
-                            href={`/payments/${payment.id}`}
-                            className="block"
-                          >
-                            <div className={`p-4 border-2 rounded-lg hover:shadow-md transition-shadow cursor-pointer ${
-                              payment.status === "paid" ? "bg-blue-50 border-blue-200" :
-                              payment.status === "partial" ? "bg-yellow-50 border-yellow-200" :
-                              "bg-red-50 border-red-200"
-                            }`}>
-                              <div className="space-y-2">
-                                <div className="flex items-start justify-between">
-                                  <div className="flex-1 min-w-0">
-                                    <p className="font-semibold text-slate-900 text-sm">
-                                      {property.local}
-                                      {property.complement && ` - ${property.complement}`}
-                                    </p>
-                                    <p className="text-xs text-slate-600 mt-1">
-                                      {tenant.name}
-                                    </p>
+                          <FloatingCard delay={index * 0.02}>
+                            <Card className={`${payment.isPaid ? 'border-green-200 bg-green-50' : 'border-slate-200'}`}>
+                              <CardHeader className="pb-2">
+                                <div className="flex justify-between items-start">
+                                  <div className="flex-1">
+                                    <CardTitle className="text-base">{property?.local}</CardTitle>
+                                    <p className="text-sm text-slate-600">{tenant?.name}</p>
                                   </div>
-                                  <Badge variant={status.variant} className="ml-2 flex-shrink-0">
-                                    {status.label}
-                                  </Badge>
+                                  {getStatusBadge(payment)}
                                 </div>
-                                <div className="flex items-center justify-between pt-2 border-t">
-                                  <span className="text-xs font-medium text-slate-600">
-                                    {getOrdinalSuffix(installmentNumber)} prestação
-                                  </span>
-                                  <span className="text-sm font-bold text-slate-900">
-                                    {formatCurrency(payment.partialAmount || payment.amount)}
-                                  </span>
+                              </CardHeader>
+                              <CardContent className="space-y-2">
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-slate-600">Referência:</span>
+                                  <span className="font-medium">{formatMonthYear(payment.month, payment.year)}</span>
                                 </div>
-                                {payment.paymentMethod === "Pix" && payment.paymentCode && (
-                                  <p className="text-xs text-slate-500">
-                                    <span className="font-medium">Código:</span> {payment.paymentCode}
-                                  </p>
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-slate-600">Vencimento:</span>
+                                  <span className="font-medium">{new Date(payment.dueDate).toLocaleDateString()}</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-slate-600">Valor:</span>
+                                  <span className="font-bold text-slate-900">{formatCurrency(payment.amount)}</span>
+                                </div>
+                                {payment.isPaid && (
+                                  <>
+                                    <div className="flex justify-between text-sm border-t pt-2">
+                                      <span className="text-slate-600">Pago em:</span>
+                                      <span className="font-medium">{payment.paidDate ? new Date(payment.paidDate).toLocaleDateString() : "-"}</span>
+                                    </div>
+                                    <div className="flex justify-between text-sm">
+                                      <span className="text-slate-600">Valor Pago:</span>
+                                      <span className="font-bold text-green-700">{formatCurrency(payment.paidAmount || 0)}</span>
+                                    </div>
+                                    {payment.lateFee && payment.lateFee > 0 && (
+                                      <div className="flex justify-between text-sm">
+                                        <span className="text-slate-600">Multa/Juros:</span>
+                                        <span className="font-medium text-red-600">{formatCurrency(payment.lateFee)}</span>
+                                      </div>
+                                    )}
+                                  </>
                                 )}
-                                {payment.partialAmount && payment.partialAmount > 0 && payment.status !== "paid" && (
-                                  <p className="text-xs text-yellow-700">
-                                    Restante: {formatCurrency(payment.amount - payment.partialAmount)}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          </Link>
+                                
+                                <div className="flex gap-2 pt-2 border-t">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setViewingPayment(payment)}
+                                    className="flex-1 bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-600"
+                                  >
+                                    <Eye size={14} className="mr-1" />
+                                    Ver
+                                  </Button>
+                                  {!payment.isPaid && (
+                                    <Button
+                                      size="sm"
+                                      onClick={() => handleOpenDialog(payment)}
+                                      className="flex-1"
+                                    >
+                                      Registrar
+                                    </Button>
+                                  )}
+                                  {payment.isPaid && (
+                                    <Button
+                                      size="sm"
+                                      onClick={() => {
+                                        setReceiptData(payment);
+                                        setShowReceipt(true);
+                                      }}
+                                      className="flex-1 bg-blue-600 hover:bg-blue-700"
+                                    >
+                                      Recibo
+                                    </Button>
+                                  )}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </FloatingCard>
                         </StaggerItem>
                       );
                     })}
+                    {filteredPayments.length === 0 && (
+                      <div className="col-span-full text-center py-12 text-slate-500">
+                        Nenhum recebimento encontrado com os filtros atuais.
+                      </div>
+                    )}
                   </div>
                 </StaggerContainer>
               </CardContent>
             </Card>
           </FloatingCard>
 
-          {filteredPayments.length === 0 && (
-            <Card className="p-12">
-              <div className="text-center">
-                <DollarSign className="h-16 w-16 mx-auto text-slate-300 mb-4" />
-                <h3 className="text-xl font-semibold text-slate-900 mb-2">Nenhum registro encontrado</h3>
-                <p className="text-slate-600">Ajuste os filtros para visualizar outros registros</p>
-              </div>
-            </Card>
-          )}
+          {/* View Payment Dialog */}
+          <Dialog open={!!viewingPayment} onOpenChange={(open) => !open && setViewingPayment(null)}>
+            <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Detalhes do Recebimento</DialogTitle>
+                <DialogDescription>Informações completas do registro</DialogDescription>
+              </DialogHeader>
+              {viewingPayment && (() => {
+                const rental = getRental(viewingPayment.rentalId);
+                const property = rental ? getProperty(rental) : null;
+                const tenant = rental ? getTenant(rental) : null;
+                
+                return (
+                  <div className="space-y-4 py-4">
+                    <div className="bg-slate-50 p-4 rounded-lg border">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-xs text-slate-500">Imóvel</Label>
+                          <p className="font-medium">{property?.local}</p>
+                          <p className="text-sm text-slate-600">{property?.address}, {property?.number}</p>
+                        </div>
+                        <div>
+                          <Label className="text-xs text-slate-500">Inquilino</Label>
+                          <p className="font-medium">{tenant?.name}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-xs text-slate-500">Referência</Label>
+                        <p className="font-medium">{formatMonthYear(viewingPayment.month, viewingPayment.year)}</p>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-slate-500">Vencimento</Label>
+                        <p className="font-medium">{new Date(viewingPayment.dueDate).toLocaleDateString()}</p>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-slate-500">Valor Original</Label>
+                        <p className="font-bold text-lg">{formatCurrency(viewingPayment.amount)}</p>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-slate-500">Status</Label>
+                        <div className="mt-1">{getStatusBadge(viewingPayment)}</div>
+                      </div>
+                    </div>
+
+                    {viewingPayment.isPaid && (
+                      <>
+                        <div className="border-t pt-4 space-y-3">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <Label className="text-xs text-slate-500">Data do Pagamento</Label>
+                              <p className="font-medium">{viewingPayment.paidDate ? new Date(viewingPayment.paidDate).toLocaleDateString() : "-"}</p>
+                            </div>
+                            <div>
+                              <Label className="text-xs text-slate-500">Método</Label>
+                              <p className="font-medium">{viewingPayment.paymentMethod || "-"}</p>
+                            </div>
+                          </div>
+
+                          <div className="bg-green-50 p-3 rounded border border-green-200">
+                            <Label className="text-xs text-green-700">Valor Pago</Label>
+                            <p className="font-bold text-2xl text-green-700">{formatCurrency(viewingPayment.paidAmount || 0)}</p>
+                          </div>
+
+                          {viewingPayment.lateFee && viewingPayment.lateFee > 0 && (
+                            <div className="bg-red-50 p-3 rounded border border-red-200">
+                              <Label className="text-xs text-red-700">Multa e Juros por Atraso</Label>
+                              <p className="font-bold text-lg text-red-700">{formatCurrency(viewingPayment.lateFee)}</p>
+                            </div>
+                          )}
+
+                          {viewingPayment.notes && (
+                            <div>
+                              <Label className="text-xs text-slate-500">Observações</Label>
+                              <p className="text-sm mt-1 p-2 bg-slate-50 rounded">{viewingPayment.notes}</p>
+                            </div>
+                          )}
+
+                          {viewingPayment.attachments && viewingPayment.attachments.length > 0 && (
+                            <div>
+                              <Label className="text-xs text-slate-500 flex items-center gap-2 mb-2">
+                                <FileText size={14} />
+                                Comprovantes Anexados ({viewingPayment.attachments.length})
+                              </Label>
+                              <div className="space-y-2">
+                                {viewingPayment.attachments.map((att, idx) => (
+                                  <div key={idx} className="flex items-center justify-between p-2 border rounded hover:bg-slate-50">
+                                    <span className="text-sm truncate">{att.name}</span>
+                                    <div className="flex gap-2">
+                                      <Button 
+                                        size="sm" 
+                                        variant="outline"
+                                        onClick={() => {
+                                          const link = document.createElement('a');
+                                          link.href = att.url;
+                                          link.download = att.name;
+                                          document.body.appendChild(link);
+                                          link.click();
+                                          document.body.removeChild(link);
+                                        }}
+                                      >
+                                        <Download size={14} />
+                                      </Button>
+                                      <Button 
+                                        size="sm" 
+                                        variant="outline"
+                                        onClick={() => window.open(att.url, '_blank')}
+                                      >
+                                        <ExternalLink size={14} />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                );
+              })()}
+              <DialogFooter>
+                <Button onClick={() => setViewingPayment(null)}>Fechar</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Register Payment Dialog */}
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Registrar Recebimento</DialogTitle>
+              </DialogHeader>
+              
+              {selectedPayment && (() => {
+                const rental = getRental(selectedPayment.rentalId);
+                const property = rental ? getProperty(rental) : null;
+                const tenant = rental ? getTenant(rental) : null;
+                const lateFee = calculateLateFee(selectedPayment, formData.paidDate);
+                const totalWithFee = parseCurrency(formData.paidAmount) + lateFee;
+                
+                return (
+                  <form onSubmit={handleSubmit} className="space-y-4">
+                    <div className="bg-slate-50 p-3 rounded border">
+                      <p className="text-sm font-medium">{property?.local}</p>
+                      <p className="text-xs text-slate-600">{tenant?.name}</p>
+                      <p className="text-xs text-slate-500 mt-1">
+                        Ref: {formatMonthYear(selectedPayment.month, selectedPayment.year)}
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="paidDate">Data do Pagamento *</Label>
+                      <Input
+                        id="paidDate"
+                        type="date"
+                        value={formData.paidDate}
+                        onChange={(e) => setFormData({...formData, paidDate: e.target.value})}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="paidAmount">Valor do Aluguel *</Label>
+                      <Input
+                        id="paidAmount"
+                        type="text"
+                        value={formData.paidAmount}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/\D/g, "");
+                          const formatted = formatCurrency(parseFloat(value) / 100);
+                          setFormData({...formData, paidAmount: formatted});
+                        }}
+                        required
+                      />
+                    </div>
+
+                    {lateFee > 0 && (
+                      <div className="bg-amber-50 p-3 rounded border border-amber-200">
+                        <Label className="text-sm text-amber-800">Encargos por Atraso</Label>
+                        <p className="font-bold text-lg text-amber-900">{formatCurrency(lateFee)}</p>
+                        <p className="text-xs text-amber-700 mt-1">Multa de 2% + juros de 0,033% ao dia</p>
+                      </div>
+                    )}
+
+                    <div className="bg-blue-50 p-3 rounded border border-blue-200">
+                      <Label className="text-sm text-blue-800">Valor Total a Receber</Label>
+                      <p className="font-bold text-2xl text-blue-900">{formatCurrency(totalWithFee)}</p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="paymentMethod">Método de Pagamento *</Label>
+                      <Select 
+                        value={formData.paymentMethod} 
+                        onValueChange={(val) => setFormData({...formData, paymentMethod: val})}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Pix">Pix</SelectItem>
+                          <SelectItem value="Transferência">Transferência</SelectItem>
+                          <SelectItem value="Dinheiro">Dinheiro</SelectItem>
+                          <SelectItem value="Boleto">Boleto</SelectItem>
+                          <SelectItem value="Cartão">Cartão</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="notes">Observações</Label>
+                      <Textarea
+                        id="notes"
+                        value={formData.notes}
+                        onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                        rows={3}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Comprovantes ({attachments.length}/5)</Label>
+                      <div className="space-y-2">
+                        {attachments.map((attachment, index) => (
+                          <div key={index} className="flex items-center justify-between p-2 bg-slate-50 rounded border">
+                            <span className="text-sm truncate">{attachment.name}</span>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleRemoveAttachment(index)}
+                            >
+                              ×
+                            </Button>
+                          </div>
+                        ))}
+                        {attachments.length < 5 && (
+                          <div>
+                            <Input
+                              type="file"
+                              onChange={handleAddAttachment}
+                              accept="image/*,.pdf"
+                              capture="environment"
+                              className="hidden"
+                              id="file-upload"
+                            />
+                            <Label
+                              htmlFor="file-upload"
+                              className="cursor-pointer inline-flex items-center justify-center px-4 py-2 border rounded-md text-sm font-medium hover:bg-slate-50 w-full"
+                            >
+                              <Plus size={16} className="mr-2" />
+                              Adicionar Comprovante (Foto ou Arquivo)
+                            </Label>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex gap-3 pt-4">
+                      <Button type="submit" className="flex-1">
+                        Confirmar Recebimento
+                      </Button>
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        onClick={() => setIsDialogOpen(false)}
+                        className="flex-1"
+                      >
+                        Cancelar
+                      </Button>
+                    </div>
+                  </form>
+                );
+              })()}
+            </DialogContent>
+          </Dialog>
+
+          {/* Receipt Dialog */}
+          <Dialog open={showReceipt} onOpenChange={setShowReceipt}>
+            <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Recibo de Aluguel</DialogTitle>
+              </DialogHeader>
+              
+              {receiptData && (() => {
+                const rental = getRental(receiptData.rentalId);
+                const property = rental ? getProperty(rental) : null;
+                const tenant = rental ? getTenant(rental) : null;
+                const totalAmount = (receiptData.paidAmount || 0) + (receiptData.lateFee || 0);
+                const amountInWords = numberToWords(totalAmount);
+                const now = new Date();
+                
+                return (
+                  <div className="space-y-6 py-4 text-sm">
+                    <div className="text-center border-b pb-4">
+                      <h2 className="text-2xl font-bold text-slate-900">RECIBO DE ALUGUEL</h2>
+                      <p className="text-slate-600 mt-2">Nº {receiptData.id.substring(0, 8).toUpperCase()}</p>
+                    </div>
+
+                    <div className="space-y-4 bg-slate-50 p-4 rounded-lg border">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-xs text-slate-500">Valor do Aluguel</Label>
+                          <p className="font-bold text-lg">{formatCurrency(receiptData.paidAmount || 0)}</p>
+                        </div>
+                        {receiptData.lateFee && receiptData.lateFee > 0 && (
+                          <div>
+                            <Label className="text-xs text-slate-500">Encargos por Atraso</Label>
+                            <p className="font-bold text-lg text-red-600">{formatCurrency(receiptData.lateFee)}</p>
+                          </div>
+                        )}
+                        {rental?.hasMotorcycleSpot && rental.motorcycleSpotValue && (
+                          <div>
+                            <Label className="text-xs text-slate-500">Vaga de Garagem</Label>
+                            <p className="font-bold text-lg">{formatCurrency(rental.motorcycleSpotValue)}</p>
+                          </div>
+                        )}
+                        <div className="col-span-2 bg-green-50 p-3 rounded border border-green-200">
+                          <Label className="text-xs text-green-700">Valor Total</Label>
+                          <p className="font-bold text-2xl text-green-700">{formatCurrency(totalAmount)}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3 text-justify leading-relaxed">
+                      <p className="font-semibold text-center text-lg">RECIBO DE ALUGUEL</p>
+                      
+                      <p>
+                        Recebi de <span className="font-semibold">{tenant?.name}</span> a importância de{' '}
+                        <span className="font-semibold">{amountInWords}</span> ({formatCurrency(totalAmount)}),{' '}
+                        proveniente ao depósito de aluguel referente ao mês de{' '}
+                        <span className="font-semibold">{formatMonthYear(receiptData.month, receiptData.year)}</span>,{' '}
+                        tendo seu vencimento em{' '}
+                        <span className="font-semibold">{new Date(receiptData.dueDate).toLocaleDateString()}</span>{' '}
+                        do imóvel localizado em{' '}
+                        <span className="font-semibold">
+                          {property?.local}, {property?.address}, {property?.number}
+                          {property?.complement && `, ${property.complement}`}
+                          {property?.neighborhood && `, ${property.neighborhood}`}
+                          {property?.city && `, ${property.city}`}
+                          {property?.state && ` - ${property.state}`}
+                          {property?.cep && `, CEP: ${property.cep}`}
+                        </span>,{' '}
+                        após apresentação dos comprovantes de depósito bancário e contas de água e luz do mês anterior pagas,{' '}
+                        sendo este vinculado ao{' '}
+                        <span className="font-semibold">INSTRUMENTO PARTICULAR DE CONTRATO DE LOCAÇÃO PARA FINS RESIDENCIAL</span>,{' '}
+                        assinado entre as partes em{' '}
+                        <span className="font-semibold">{rental ? new Date(rental.startDate).toLocaleDateString() : '-'}</span>.
+                      </p>
+
+                      <p className="text-right pt-4">
+                        São Paulo, {now.toLocaleDateString('pt-BR', { 
+                          day: '2-digit', 
+                          month: 'long', 
+                          year: 'numeric' 
+                        })}, às {now.toLocaleTimeString('pt-BR', { 
+                          hour: '2-digit', 
+                          minute: '2-digit' 
+                        })}.
+                      </p>
+                    </div>
+
+                    <div className="border-t pt-6 mt-8">
+                      <div className="text-center">
+                        <div className="border-t border-slate-400 w-64 mx-auto mb-2"></div>
+                        <p className="text-sm text-slate-600">Assinatura do Locador</p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+              
+              <DialogFooter>
+                <Button onClick={() => window.print()} variant="outline">
+                  Imprimir
+                </Button>
+                <Button onClick={() => setShowReceipt(false)}>
+                  Fechar
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </Layout>
     </>
