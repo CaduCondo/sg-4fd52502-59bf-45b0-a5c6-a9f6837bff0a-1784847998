@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { isAuthenticated } from "@/lib/auth";
 import { propertyStorage, tenantStorage, rentalStorage, paymentStorage } from "@/lib/storage";
 import { Property, Tenant, Rental } from "@/types";
-import { Home, Users, FileText, Plus, Edit2, Trash2, Search, Building2, User, Calendar, DollarSign, AlertCircle, X, Eye, Download, Edit, ExternalLink, XCircle, LayoutList, Grid, Building, Clock } from "lucide-react";
+import { Home, Users, FileText, Plus, Edit2, Trash2, Search, Building2, User, Calendar, DollarSign, AlertCircle, X, Eye, Download, Edit, ExternalLink, XCircle, LayoutList, Grid, Building, Clock, MapPin } from "lucide-react";
 import { SEO } from "@/components/SEO";
 import { formatCurrency, parseCurrency, formatDate, formatPhone } from "@/lib/masks";
 import { StaggerContainer, StaggerItem } from "@/components/animations/ScrollReveal";
@@ -858,39 +858,62 @@ export default function Rentals() {
 
             {/* Imóveis Vagos */}
             <FloatingCard delay={0.2}>
-              <Card>
+              <Card className="bg-gradient-to-br from-emerald-50 to-white border-emerald-100">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Building2 className="h-5 w-5 text-emerald-500" />
-                    Imóveis Vagos ({availableProperties.length})
-                  </CardTitle>
-                  <CardDescription>Imóveis disponíveis para locação</CardDescription>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-xl font-bold text-emerald-900 flex items-center gap-2">
+                      <Building2 className="h-5 w-5 text-emerald-600" />
+                      Imóveis Vagos ({availableProperties.length})
+                    </CardTitle>
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  {availableProperties.length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-8">
-                      Nenhum imóvel vago no momento
-                    </p>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {availableProperties.map((property) => (
-                        <Card key={property.id} className="hover:shadow-md transition-shadow">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {availableProperties.length === 0 ? (
+                      <p className="text-slate-500 col-span-full text-center py-8">
+                        Nenhum imóvel vago disponível
+                      </p>
+                    ) : (
+                      availableProperties.map((property) => (
+                        <Card
+                          key={property.id}
+                          className="group hover:shadow-md transition-all duration-300 hover:border-emerald-200 cursor-pointer"
+                          onClick={() => router.push(`/properties/${property.id}`)}
+                        >
                           <CardHeader className="pb-3">
-                            <div className="flex items-start justify-between">
-                              <div className="flex-1">
-                                <h4 className="font-semibold text-sm">{property.address}, {property.number}</h4>
-                                <p className="text-xs text-muted-foreground mt-1">{property.local}</p>
-                                <p className="text-sm font-medium text-emerald-600 mt-2">
-                                  {formatCurrency(property.monthlyRent)}
-                                </p>
-                              </div>
-                              <Badge variant="default">Vago</Badge>
-                            </div>
+                            <CardTitle className="text-base font-semibold text-slate-800 group-hover:text-emerald-600 transition-colors">
+                              {property.address}, {property.number}
+                            </CardTitle>
                           </CardHeader>
+                          <CardContent className="pt-0">
+                            <div className="space-y-2">
+                              {/* Local */}
+                              <div className="flex items-center gap-2 text-sm">
+                                <MapPin className="h-4 w-4 text-emerald-600" />
+                                <span className="text-slate-600 font-medium">{property.local}</span>
+                              </div>
+
+                              {/* Complemento */}
+                              {property.complement && (
+                                <div className="flex items-center gap-2 text-sm">
+                                  <Building className="h-4 w-4 text-slate-400" />
+                                  <span className="text-slate-500">{property.complement}</span>
+                                </div>
+                              )}
+
+                              {/* Valor */}
+                              <div className="flex items-center gap-2 text-sm">
+                                <DollarSign className="h-4 w-4 text-emerald-600" />
+                                <span className="text-slate-700 font-semibold">
+                                  {formatCurrency(property.monthlyRent)}/mês
+                                </span>
+                              </div>
+                            </div>
+                          </CardContent>
                         </Card>
-                      ))}
-                    </div>
-                  )}
+                      ))
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             </FloatingCard>

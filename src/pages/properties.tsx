@@ -6,13 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { isAuthenticated } from "@/lib/auth";
 import { propertyStorage } from "@/lib/storage";
 import { Property } from "@/types";
-import { Building2, Plus, Edit, Trash2, Search, MapPin, Eye, LayoutList, Grid, Building } from "lucide-react";
+import { Building2, Plus, Edit, Trash2, Search, MapPin, Eye, LayoutList, Grid, Building, DollarSign } from "lucide-react";
 import { SEO } from "@/components/SEO";
 import { formatCurrency, parseCurrency, maskCurrency, maskCEP, fetchAddressByCEP, applyCurrencyMask, formatCurrencyInput } from "@/lib/masks";
 import { StaggerContainer, StaggerItem } from "@/components/animations/ScrollReveal";
@@ -389,61 +389,76 @@ export default function Properties() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredProperties.map((property) => (
                   <StaggerItem key={property.id}>
-                    <Card 
-                      key={property.id} 
-                      className="hover:shadow-lg transition-shadow cursor-pointer relative group"
-                      onClick={() => handleViewProperty(property)}
-                    >
+                    <Card key={property.id} className="group hover:shadow-lg transition-all duration-300 hover:border-emerald-200">
                       <CardHeader className="pb-3">
-                        <div className="flex items-center justify-between">
-                          <CardTitle className="text-lg">{property.address}</CardTitle>
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <CardTitle className="text-lg font-semibold text-slate-800 group-hover:text-emerald-600 transition-colors">
+                              {property.address}, {property.number}
+                            </CardTitle>
+                          </div>
                           <Button
                             variant="ghost"
-                            size="sm"
+                            size="icon"
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleDelete(property.id);
+                              handleViewProperty(property);
                             }}
-                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                            className="h-8 w-8 text-slate-400 hover:text-emerald-600"
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Eye className="h-4 w-4" />
                           </Button>
                         </div>
                       </CardHeader>
-                      <CardContent className="pt-0">
+                      
+                      <CardContent className="pt-0 pb-4">
                         <div className="space-y-3">
-                          <div className="flex items-start gap-2">
-                            <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate">{property.address}, {property.number}</p>
-                              {property.local && (
-                                <p className="text-xs text-muted-foreground">{property.local}</p>
-                              )}
-                              {property.complement && (
-                                <p className="text-xs text-muted-foreground">{property.complement}</p>
-                              )}
-                            </div>
+                          {/* Local */}
+                          <div className="flex items-center gap-2 text-sm">
+                            <MapPin className="h-4 w-4 text-emerald-600" />
+                            <span className="text-slate-600 font-medium">{property.local}</span>
                           </div>
 
-                          <div className="flex items-center justify-between pt-2 border-t">
-                            <div className="flex items-center gap-2">
-                              <Building className="h-4 w-4 text-muted-foreground" />
-                              <span className="text-xs text-muted-foreground">{property.type}</span>
+                          {/* Complemento */}
+                          {property.complement && (
+                            <div className="flex items-center gap-2 text-sm">
+                              <Building className="h-4 w-4 text-slate-400" />
+                              <span className="text-slate-500">{property.complement}</span>
                             </div>
-                            {property.monthlyRent && (
-                              <span className="text-sm font-semibold text-emerald-600">
-                                {formatCurrency(property.monthlyRent)}
-                              </span>
-                            )}
+                          )}
+
+                          {/* Valor do Aluguel */}
+                          <div className="flex items-center gap-2 text-sm">
+                            <DollarSign className="h-4 w-4 text-emerald-600" />
+                            <span className="text-slate-700 font-semibold">
+                              {formatCurrency(property.monthlyRent)}/mês
+                            </span>
                           </div>
 
-                          <div className="flex items-center justify-between">
+                          {/* Status Badge */}
+                          <div className="pt-2">
                             <Badge variant={property.status === "available" ? "default" : "secondary"}>
                               {property.status === "available" ? "Disponível" : "Ocupado"}
                             </Badge>
                           </div>
                         </div>
                       </CardContent>
+
+                      {/* Card Footer with Delete Button */}
+                      <CardFooter className="pt-0 pb-4 flex justify-end border-t border-slate-100">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            confirmDelete(property.id);
+                          }}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Excluir
+                        </Button>
+                      </CardFooter>
                     </Card>
                   </StaggerItem>
                 ))}
