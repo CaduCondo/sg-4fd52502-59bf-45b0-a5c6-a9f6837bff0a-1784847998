@@ -1,12 +1,17 @@
-import React from 'react'
+import { useEffect } from "react";
+import { useRouter } from "next/router";
+import { isAuthenticated } from "@/lib/auth";
 
 export default function Home() {
-  return (
-    <main className="min-h-screen bg-background flex items-center justify-center">
-      <div className="text-center space-y-4">
-        <h1 className="text-4xl font-bold text-foreground">Hello World</h1>
-        <p className="text-lg text-muted-foreground">This is going to be your softgen app, start by describing your project.</p>
-      </div>
-    </main>
-  )
+  const router = useRouter();
+
+  useEffect(() => {
+    if (isAuthenticated()) {
+      router.push("/dashboard");
+    } else {
+      router.push("/login");
+    }
+  }, [router]);
+
+  return null;
 }
