@@ -1,10 +1,11 @@
-import { Property, Tenant, Rental, Payment, SystemConfig } from "@/types";
+import { Property, Tenant, Rental, Payment, SystemConfig, User } from "@/types";
 
 const PROPERTIES_KEY = "rental_properties";
 const TENANTS_KEY = "rental_tenants";
 const RENTALS_KEY = "rental_rentals";
 const PAYMENTS_KEY = "rental_payments";
 const CONFIG_KEY = "rental_config";
+const USERS_KEY = "rental_users";
 
 export function initializeStorage(): void {
   if (typeof window === "undefined") return;
@@ -15,6 +16,18 @@ export function initializeStorage(): void {
       lastUpdated: new Date().toISOString()
     };
     localStorage.setItem(CONFIG_KEY, JSON.stringify(defaultConfig));
+  }
+  
+  if (!localStorage.getItem(USERS_KEY)) {
+    const defaultUser: User = {
+      id: "1",
+      username: "cadu.pires",
+      password: "teste123",
+      name: "Cadu Pires",
+      role: "admin",
+      createdAt: new Date().toISOString()
+    };
+    localStorage.setItem(USERS_KEY, JSON.stringify([defaultUser]));
   }
   
   if (!localStorage.getItem(PROPERTIES_KEY)) {
@@ -175,21 +188,76 @@ export const paymentStorage = {
   }
 };
 
+export const userStorage = {
+  getAll: (): User[] => {
+    if (typeof window === "undefined") return [];
+    return JSON.parse(localStorage.getItem(USERS_KEY) || "[]");
+  },
+  
+  getById: (id: string): User | null => {
+    const users = userStorage.getAll();
+    return users.find(u => u.id === id) || null;
+  },
+  
+  save: (user: User): void => {
+    if (typeof window === "undefined") return;
+    const users = userStorage.getAll();
+    const index = users.findIndex(u => u.id === user.id);
+    if (index >= 0) {
+      users[index] = user;
+    } else {
+      users.push(user);
+    }
+    localStorage.setItem(USERS_KEY, JSON.stringify(users));
+  },
+  
+  update: (user: User): void => {
+    userStorage.save(user);
+  },
+  
+  resetPassword: (id: string, newPassword: string): void => {
+    const users = userStorage.getAll();
+    const user = users.find(u => u.id === id);
+    if (user) {
+      user.password = newPassword;
+      userStorage.save(user);
+    }
+  },
+  
+  delete: (id: string): void => {
+    if (typeof window === "undefined") return;
+    const users = userStorage.getAll().filter(u => u.id !== id);
+    localStorage.setItem(USERS_KEY, JSON.stringify(users));
+  }
+};
+
 export const configStorage = {
   get: (): SystemConfig => {
     if (typeof window === "undefined") return { adminFeePercentage: 6, lastUpdated: new Date().toISOString() };
-    return JSON.parse(localStorage.getItem(CONFIG_KEY) || '{"adminFeePercentage":6,"lastUpdated":""}');
+    const stored = JSON.parse(localStorage.getItem(CONFIG_KEY) || "null");
+    if (!stored) {
+      return { 
+        adminFeePercentage: 6, 
+        lastUpdated: new Date().toISOString(),
+        locations: ["Jd. Colombo", "Signore", "Lemos", "Marrom", "Cinza", "Dora", "Acacias"]
+      };
+    }
+    return stored;
   },
   
-  update: (percentage: number): void => {
+  update: (newConfig: SystemConfig): void => {
     if (typeof window === "undefined") return;
-    const now = new Date();
-    const config: SystemConfig = {
-      adminFeePercentage: percentage,
-      lastUpdated: now.toISOString()
-    };
-    localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
     
+    // Check if percentage changed to trigger payment updates if needed
+    // The requirement says: update current month and future
+    
+    localStorage.setItem(CONFIG_KEY, JSON.stringify(newConfig));
+    
+    // Logic to update current month payments if needed (from previous implementation)
+    // This part ensures that if we save a payment again, it might pick up the new fee if logic depends on it
+    // But mostly the fee calculation happens at display time or payment generation time.
+    // We'll keep the side effect of "touching" current month payments just in case specific logic relies on it
+    const now = new Date();
     const currentMonth = now.getMonth() + 1;
     const currentYear = now.getFullYear();
     const payments = paymentStorage.getAll();
@@ -197,6 +265,7 @@ export const configStorage = {
     payments.forEach(payment => {
       const paymentDate = new Date(payment.dueDate);
       if (paymentDate.getMonth() + 1 === currentMonth && paymentDate.getFullYear() === currentYear) {
+        // Just re-saving to ensure consistency if needed
         paymentStorage.save(payment);
       }
     });

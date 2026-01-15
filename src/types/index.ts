@@ -3,7 +3,12 @@ export interface User {
   username: string;
   password: string;
   name: string;
-  role: "admin";
+  rg?: string;
+  cpf?: string;
+  phone?: string;
+  email?: string;
+  role: "admin" | "corretor" | "financeiro";
+  createdAt: string;
 }
 
 export interface Property {
@@ -72,6 +77,7 @@ export interface Payment {
 export interface SystemConfig {
   adminFeePercentage: number;
   lastUpdated: string;
+  locations?: string[];
 }
 
 export interface DashboardStats {

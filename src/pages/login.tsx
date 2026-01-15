@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Building2, AlertCircle } from "lucide-react";
-import { login, isAuthenticated, initializeAuth } from "@/lib/auth";
+import { login, isAuthenticated } from "@/lib/auth";
 import { initializeStorage } from "@/lib/storage";
 import { SEO } from "@/components/SEO";
 
@@ -17,7 +17,6 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    initializeAuth();
     initializeStorage();
     
     if (isAuthenticated()) {
