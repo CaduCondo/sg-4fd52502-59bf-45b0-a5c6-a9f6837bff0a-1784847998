@@ -209,3 +209,26 @@ export const maskCNPJ = applyCnpjMask;
 export const unformatCep = (value: string): string => {
   return value.replace(/\D/g, "").slice(0, 8);
 };
+
+// Money mask for input fields
+export const applyMoneyMask = (value: string): string => {
+  if (!value) return "";
+  
+  // Remove tudo exceto números
+  const numbers = value.replace(/\D/g, "");
+  
+  // Converte para número e formata
+  const amount = parseFloat(numbers) / 100;
+  
+  if (isNaN(amount)) return "";
+  
+  return amount.toLocaleString("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+};
+
+// Remove all masks from string (keep only numbers)
+export const removeMask = (value: string): string => {
+  return value.replace(/\D/g, "");
+};

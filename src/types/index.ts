@@ -20,8 +20,10 @@ export interface Property {
   neighborhood?: string;
   city?: string;
   state?: string;
+  cep?: string;
   zipCode?: string;
   monthlyRent: number;
+  rentValue: number;
   type: string;
   status: "available" | "occupied";
   description?: string;

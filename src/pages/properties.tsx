@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
-import Layout from "@/components/Layout";
+import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -16,8 +16,8 @@ import { Property } from "@/types";
 import { propertyService } from "@/services";
 import { configService } from "@/services/configService";
 import { applyCepMask, applyMoneyMask, removeMask } from "@/lib/masks";
-import ScrollReveal from "@/components/animations/ScrollReveal";
-import FloatingCard from "@/components/animations/FloatingCard";
+import { ScrollReveal } from "@/components/animations/ScrollReveal";
+import { FloatingCard } from "@/components/animations/FloatingCard";
 
 export default function PropertiesPage() {
   const router = useRouter();
@@ -55,7 +55,7 @@ export default function PropertiesPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const config = await configService.getConfig();
+      const config = await configService.get();
       setLocations(config.locations || []);
       
       const propertiesData = await propertyService.getAll();
@@ -172,9 +172,11 @@ export default function PropertiesPage() {
         complement: formData.complement,
         city: formData.city || undefined,
         state: formData.state || undefined,
+        monthlyRent: parseFloat(removeMask(formData.rentValue)),
         rentValue: parseFloat(removeMask(formData.rentValue)),
-        description: formData.description || undefined,
+        type: "residential",
         status: "available",
+        description: formData.description || undefined,
       };
 
       if (currentProperty) {

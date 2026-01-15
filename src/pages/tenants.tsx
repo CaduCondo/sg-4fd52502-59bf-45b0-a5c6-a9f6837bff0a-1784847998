@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
-import Layout from "@/components/Layout";
+import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -14,8 +14,8 @@ import { Users, Plus, Search, Edit, Eye, Mail, Phone, FileText } from "lucide-re
 import { Tenant } from "@/types";
 import { tenantService } from "@/services";
 import { applyCpfMask, applyCnpjMask, applyPhoneMask, removeMask } from "@/lib/masks";
-import ScrollReveal from "@/components/animations/ScrollReveal";
-import FloatingCard from "@/components/animations/FloatingCard";
+import { ScrollReveal } from "@/components/animations/ScrollReveal";
+import { FloatingCard } from "@/components/animations/FloatingCard";
 
 export default function TenantsPage() {
   const router = useRouter();
