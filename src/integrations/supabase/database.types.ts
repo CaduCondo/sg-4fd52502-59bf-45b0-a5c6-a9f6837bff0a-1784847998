@@ -220,6 +220,7 @@ export type Database = {
           status: string
           type: string
           updated_at: string | null
+          zip_code: string | null
         }
         Insert: {
           address: string
@@ -237,6 +238,7 @@ export type Database = {
           status: string
           type: string
           updated_at?: string | null
+          zip_code?: string | null
         }
         Update: {
           address?: string
@@ -254,6 +256,7 @@ export type Database = {
           status?: string
           type?: string
           updated_at?: string | null
+          zip_code?: string | null
         }
         Relationships: []
       }

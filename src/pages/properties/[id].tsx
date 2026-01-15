@@ -31,7 +31,7 @@ export default function PropertyDetails() {
   const [locations, setLocations] = useState<string[]>([]);
   const [formData, setFormData] = useState({ 
     location: "",
-    cep: "",
+    zipCode: "",
     address: "",
     number: "",
     complement: "",
@@ -85,8 +85,8 @@ export default function PropertyDetails() {
   const handleCancelEdit = () => {
     if (property) {
       setFormData({
-        location: property.location, // Fix local -> location
-        cep: property.cep || "",
+        location: property.location,
+        zipCode: property.zipCode,
         address: property.address,
         number: property.number,
         complement: property.complement || "",

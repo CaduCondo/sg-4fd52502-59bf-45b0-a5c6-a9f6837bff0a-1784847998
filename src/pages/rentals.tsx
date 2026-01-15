@@ -311,25 +311,35 @@ export default function RentalsPage() {
     }
   };
 
-  const handleEndRental = (id: string) => {
-    const rentalToEnd = rentals.find((r) => r.id === id);
-    if (!rentalToEnd) return;
+  const handleEndContract = async (rental: Rental) => {
+    if (!confirm("Deseja realmente encerrar este contrato?")) return;
 
-    rentalStorage.update({ ...rentalToEnd, isActive: false });
+    try {
+      // Update rental status
+      await rentalService.update({
+        ...rental,
+        isActive: false,
+      });
 
-    const property = properties.find((p) => p.id === rentalToEnd.propertyId);
-    if (property) {
-      propertyStorage.update({ ...property, status: "available" });
+      // Keep tenant active (do not change status)
+      // Tenant remains available for new rentals
+
+      // Update property status to available
+      await propertyService.update({
+        ...properties.find(p => p.id === rental.propertyId)!,
+        status: "available",
+      });
+
+      toast({ title: "Sucesso", description: "Contrato encerrado com sucesso!" });
+      loadData();
+    } catch (error) {
+      console.error("Error ending contract:", error);
+      toast({ 
+        title: "Erro", 
+        description: "Erro ao encerrar contrato", 
+        variant: "destructive" 
+      });
     }
-
-    const tenant = tenants.find((t) => t.id === rentalToEnd.tenantId);
-    if (tenant) {
-      tenantStorage.update({ ...tenant, status: "active" });
-    }
-
-    toast({ title: "Sucesso", description: "Locação encerrada com sucesso!" });
-    setIsViewDialogOpen(false);
-    loadData();
   };
 
   const handleDeleteRental = (id: string) => {
@@ -843,7 +853,7 @@ export default function RentalsPage() {
                               className="w-full text-muted-foreground hover:text-foreground"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleEndRental(rental.id);
+                                handleEndContract(rental);
                               }}
                             >
                               <XCircle className="h-4 w-4 mr-1" />
@@ -966,7 +976,7 @@ export default function RentalsPage() {
               </Button>
               <Button
                 variant="destructive"
-                onClick={() => selectedRental && handleEndRental(selectedRental.id)}
+                onClick={() => selectedRental && handleEndContract(selectedRental)}
               >
                 <XCircle className="h-4 w-4 mr-2" />
                 Encerrar Contrato

@@ -82,6 +82,7 @@ export interface Payment {
   attachments?: string[];
   fineAmount?: number;
   interestAmount?: number;
+  partialPayments?: any[];
   createdAt: string;
 }
 

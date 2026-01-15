@@ -43,7 +43,11 @@ export default function PropertiesPage() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [filteredProperties, setFilteredProperties] = useState<Property[]>([]);
   const [locations, setLocations] = useState<string[]>([]);
-  const [selectedLocation, setSelectedLocation] = useState<string>("all");
+  const [filters, setFilters] = useState({
+    location: "all",
+    status: "all",
+    search: "",
+  });
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -59,9 +63,32 @@ export default function PropertiesPage() {
     complement: "",
     monthlyRent: "",
     description: "",
+    zipCode: "",
+    neighborhood: "",
+    city: "",
+    state: "",
+    type: "",
   });
 
   const { toast } = useToast();
+
+  const resetForm = () => {
+    setFormData({
+      location: "",
+      address: "",
+      number: "",
+      complement: "",
+      monthlyRent: "",
+      description: "",
+      zipCode: "",
+      neighborhood: "",
+      city: "",
+      state: "",
+      type: "",
+    });
+    setSelectedProperty(null);
+    setIsEditMode(false);
+  };
 
   useEffect(() => {
     loadData();
@@ -69,28 +96,41 @@ export default function PropertiesPage() {
 
   const loadData = async () => {
     try {
-      const [props, config] = await Promise.all([
+      const [propertiesData, config] = await Promise.all([
         propertyService.getAll(),
         configService.get()
       ]);
-      setProperties(props);
-      setLocations(config.locations || []);
+      
+      setProperties(propertiesData);
+      
+      // Get unique locations from properties + config locations
+      const propertyLocations = [...new Set(propertiesData.map(p => p.location))];
+      const configLocations = config.locations || [];
+      const allLocations = [...new Set([...propertyLocations, ...configLocations])].sort();
+      setLocations(allLocations);
+      
+      setFilteredProperties(propertiesData);
     } catch (error) {
-      toast({ title: "Erro", description: "Falha ao carregar dados.", variant: "destructive" });
+      console.error("Error loading data:", error);
+      toast({ 
+        title: "Erro", 
+        description: "Erro ao carregar dados", 
+        variant: "destructive" 
+      });
     }
   };
 
   useEffect(() => {
     let filtered = properties;
     
-    if (selectedLocation !== "all") {
-      filtered = filtered.filter(p => p.location === selectedLocation);
+    if (filters.location !== "all") {
+      filtered = filtered.filter(p => p.location === filters.location);
     }
     
     // Sort by location
     filtered.sort((a, b) => a.location.localeCompare(b.location));
     setFilteredProperties(filtered);
-  }, [properties, selectedLocation]);
+  }, [properties, filters]);
 
   const handleEdit = (property: Property) => {
     setSelectedProperty(property);
@@ -101,60 +141,87 @@ export default function PropertiesPage() {
       complement: property.complement || "",
       monthlyRent: property.monthlyRent.toFixed(2).replace(".", ","),
       description: property.description || "",
+      zipCode: property.zipCode || "",
+      neighborhood: property.neighborhood || "",
+      city: property.city || "",
+      state: property.state || "",
+      type: property.type || "",
     });
     setIsEditMode(true);
     setIsDialogOpen(true);
   };
 
   const handleSave = async () => {
-    if (!formData.location || !formData.address || !formData.monthlyRent) {
-      toast({ title: "Erro", description: "Preencha os campos obrigatórios.", variant: "destructive" });
-      return;
-    }
-
     try {
-      const propertyData = {
-        location: formData.location,
-        address: formData.address,
-        number: formData.number,
-        complement: formData.complement,
-        monthlyRent: parseCurrency(formData.monthlyRent),
-        description: formData.description,
-        status: isEditMode && selectedProperty ? selectedProperty.status : "available" as const
-      };
+      // Validate required fields
+      if (!formData.location || !formData.complement) {
+        toast({
+          title: "Erro",
+          description: "Preencha os campos obrigatórios: Local e Complemento",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Validate monthly rent
+      const rentValue = parseCurrency(formData.monthlyRent);
+      if (!rentValue || rentValue <= 0) {
+        toast({
+          title: "Erro",
+          description: "Informe um valor de aluguel válido",
+          variant: "destructive",
+        });
+        return;
+      }
 
       if (isEditMode && selectedProperty) {
-        await propertyService.update({
+        const updatedProperty: Property = {
           ...selectedProperty,
-          ...propertyData
-        });
-        toast({ title: "Sucesso", description: "Imóvel atualizado!" });
+          location: formData.location,
+          complement: formData.complement,
+          zipCode: formData.zipCode || "",
+          address: formData.address || "",
+          number: formData.number || "",
+          neighborhood: formData.neighborhood || "",
+          city: formData.city || "",
+          state: formData.state || "",
+          type: formData.type || "",
+          monthlyRent: rentValue,
+          description: formData.description || "",
+        };
+
+        await propertyService.update(updatedProperty);
+        toast({ title: "Sucesso", description: "Imóvel atualizado com sucesso!" });
       } else {
         const newProperty: Omit<Property, "id" | "createdAt"> = {
           location: formData.location,
-          address: formData.address,
-          number: formData.number,
           complement: formData.complement,
-          neighborhood: "Bairro", // Valor padrão ou adicionar campo no formulário
-          city: "São Paulo",     // Valor padrão ou adicionar campo no formulário
-          state: "SP",           // Valor padrão ou adicionar campo no formulário
-          zipCode: "00000-000",  // Valor padrão ou adicionar campo no formulário
-          monthlyRent: parseCurrency(formData.monthlyRent),
-          description: "",
+          zipCode: formData.zipCode || "",
+          address: formData.address || "",
+          number: formData.number || "",
+          neighborhood: formData.neighborhood || "",
+          city: formData.city || "",
+          state: formData.state || "",
+          type: formData.type || "",
+          monthlyRent: rentValue,
+          description: formData.description || "",
           status: "available",
         };
 
         await propertyService.create(newProperty);
-        toast({ title: "Sucesso", description: "Imóvel criado!" });
+        toast({ title: "Sucesso", description: "Imóvel cadastrado com sucesso!" });
       }
 
       setIsDialogOpen(false);
-      setIsEditMode(false);
-      setSelectedProperty(null);
-      setFormData({ location: "", address: "", number: "", complement: "", monthlyRent: "", description: "" });
+      resetForm();
       loadData();
     } catch (error) {
-      toast({ title: "Erro", description: "Erro ao salvar imóvel.", variant: "destructive" });
+      console.error("Error saving property:", error);
+      toast({
+        title: "Erro",
+        description: "Erro ao salvar imóvel",
+        variant: "destructive",
+      });
     }
   };
 
@@ -182,14 +249,16 @@ export default function PropertiesPage() {
           <Card className="p-4">
             <div className="flex gap-4 items-center">
               <div className="w-full md:w-1/3">
-                <Select value={selectedLocation} onValueChange={setSelectedLocation}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Filtrar por Local" />
+                <Select value={filters.location} onValueChange={(value) => setFilters({ ...filters, location: value })}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Filtrar por local" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todos os Locais</SelectItem>
-                    {locations.map(loc => (
-                      <SelectItem key={loc} value={loc}>{loc}</SelectItem>
+                    {locations.map((location) => (
+                      <SelectItem key={location} value={location}>
+                        {location}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -249,73 +318,142 @@ export default function PropertiesPage() {
 
         {/* Create/Edit Dialog */}
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{isEditMode ? "Editar Imóvel" : "Novo Imóvel"}</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label>Local *</Label>
-                <Select 
-                  value={formData.location} 
-                  onValueChange={(val) => setFormData({...formData, location: val})}
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="location">Local *</Label>
+                <Select
+                  value={formData.location}
+                  onValueChange={(value) => setFormData({ ...formData, location: value })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione o local" />
                   </SelectTrigger>
                   <SelectContent>
-                    {locations.map(loc => (
-                      <SelectItem key={loc} value={loc}>{loc}</SelectItem>
+                    {locations.map((location) => (
+                      <SelectItem key={location} value={location}>
+                        {location}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label>Endereço *</Label>
-                <Input 
+              <div>
+                <Label htmlFor="complement">Complemento *</Label>
+                <Input
+                  id="complement"
+                  value={formData.complement}
+                  onChange={(e) => setFormData({ ...formData, complement: e.target.value })}
+                  placeholder="Ex: Apto 101, Casa 2, Sala 3"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="zipCode">CEP</Label>
+                <Input
+                  id="zipCode"
+                  value={formData.zipCode}
+                  onChange={(e) => setFormData({ ...formData, zipCode: e.target.value })}
+                  placeholder="00000-000"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="address">Endereço</Label>
+                <Input
+                  id="address"
                   value={formData.address}
-                  onChange={(e) => setFormData({...formData, address: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  placeholder="Ex: Rua das Flores"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Número</Label>
-                  <Input 
-                    value={formData.number}
-                    onChange={(e) => setFormData({...formData, number: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Complemento</Label>
-                  <Input 
-                    value={formData.complement}
-                    onChange={(e) => setFormData({...formData, complement: e.target.value})}
-                  />
-                </div>
+              <div>
+                <Label htmlFor="number">Número</Label>
+                <Input
+                  id="number"
+                  value={formData.number}
+                  onChange={(e) => setFormData({ ...formData, number: e.target.value })}
+                  placeholder="Ex: 123"
+                />
               </div>
 
-              <div className="space-y-2">
-                <Label>Valor do Aluguel (R$) *</Label>
-                <Input 
+              <div>
+                <Label htmlFor="neighborhood">Bairro</Label>
+                <Input
+                  id="neighborhood"
+                  value={formData.neighborhood}
+                  onChange={(e) => setFormData({ ...formData, neighborhood: e.target.value })}
+                  placeholder="Ex: Centro"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="city">Cidade</Label>
+                <Input
+                  id="city"
+                  value={formData.city}
+                  onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                  placeholder="Ex: São Paulo"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="state">Estado</Label>
+                <Input
+                  id="state"
+                  value={formData.state}
+                  onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                  placeholder="Ex: SP"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="type">Tipo</Label>
+                <Input
+                  id="type"
+                  value={formData.type}
+                  onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                  placeholder="Ex: Apartamento, Casa, Sala Comercial"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="monthlyRent">Valor do Aluguel *</Label>
+                <Input
+                  id="monthlyRent"
                   value={formData.monthlyRent}
-                  onChange={(e) => setFormData({...formData, monthlyRent: formatCurrencyInput(e.target.value)})}
-                  placeholder="0,00"
+                  onChange={(e) => {
+                    const formatted = formatCurrencyInput(e.target.value);
+                    setFormData({ ...formData, monthlyRent: formatted });
+                  }}
+                  placeholder="R$ 0,00"
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label>Descrição</Label>
-                <Input 
+              <div className="md:col-span-2">
+                <Label htmlFor="description">Descrição</Label>
+                <Input
+                  id="description"
                   value={formData.description}
-                  onChange={(e) => setFormData({...formData, description: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Descrição adicional do imóvel"
                 />
               </div>
             </div>
+
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
-              <Button onClick={handleSave}>Salvar</Button>
+              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleSave}>
+                Salvar
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
