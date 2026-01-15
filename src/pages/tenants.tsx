@@ -20,6 +20,7 @@ import { StaggerContainer, StaggerItem } from "@/components/animations/ScrollRev
 import { FloatingCard } from "@/components/animations/FloatingCard";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { SEO } from "@/components/SEO";
 
 export default function TenantsPage() {
   const router = useRouter();
@@ -32,12 +33,11 @@ export default function TenantsPage() {
   const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
 
   // Filters
-  const [searchTerm, setSearchTerm] = useState(""); // Name or Phone
+  const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<"all" | "active" | "inactive">("all");
   const [sortBy, setSortBy] = useState<"name" | "status">("name");
 
   // Form states
-  const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
   const [viewingTenant, setViewingTenant] = useState<Tenant | null>(null);
   const [formData, setFormData] = useState({
     name: "",
@@ -62,7 +62,6 @@ export default function TenantsPage() {
 
   const loadTenants = () => {
     const data = tenantStorage.getAll();
-    // Ensure backwards compatibility - add isActive if missing
     const updated = data.map(t => ({
       ...t,
       isActive: t.isActive !== undefined ? t.isActive : true,
@@ -105,29 +104,6 @@ export default function TenantsPage() {
     setFormData(prev => ({ ...prev, [name]: finalValue }));
   };
 
-  const handleDocumentChange = (value: string) => {
-    let formatted = value;
-    if (formData.documentType === "CPF") {
-      formatted = maskCPF(value);
-    } else {
-      formatted = maskCNPJ(value);
-    }
-    setFormData(prev => ({ ...prev, cpf: formatted }));
-  };
-
-  const handlePhoneChange = (value: string) => {
-    setFormData(prev => ({ ...prev, phone: maskPhone(value) }));
-  };
-
-  const handleDocumentTypeChange = (value: "CPF" | "CNPJ") => {
-    setFormData(prev => ({
-      ...prev,
-      documentType: value,
-      cpf: "",
-      rg: value === "CNPJ" ? "" : prev.rg
-    }));
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -135,7 +111,7 @@ export default function TenantsPage() {
       id: selectedTenant ? selectedTenant.id : crypto.randomUUID(),
       name: formData.name,
       documentType: formData.documentType,
-      cpf: formData.cpf, // Stores CPF or CNPJ
+      cpf: formData.cpf,
       rg: formData.documentType === "CNPJ" ? undefined : formData.rg,
       email: formData.email,
       phone: formData.phone,
@@ -152,45 +128,18 @@ export default function TenantsPage() {
       toast({ title: "Sucesso", description: "Inquilino cadastrado com sucesso!" });
     }
 
-    loadTenants(); // Refresh list immediately
-    handleCloseDialog();
-  };
-
-  const handleEditSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedTenant) return;
-
-    const updatedTenant: Tenant = {
-      ...selectedTenant,
-      name: formData.name,
-      documentType: formData.documentType,
-      cpf: formData.cpf,
-      rg: formData.rg,
-      phone: formData.phone,
-      email: formData.email,
-      observations: formData.observations,
-      isActive: formData.isActive,
-    };
-
-    tenantStorage.save(updatedTenant);
-    toast({ title: "Sucesso", description: "Inquilino atualizado com sucesso!" });
-    setIsEditOpen(false);
-    setSelectedTenant(null);
-    resetForm();
     loadTenants();
+    handleCloseDialog();
   };
 
   const handleViewTenant = (tenant: Tenant) => {
     setViewingTenant(tenant);
   };
 
-  const handleDelete = (id: string, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-    // if (confirm("Tem certeza que deseja excluir este inquilino?")) { // Moved to Dialog
-      tenantStorage.delete(id);
-      toast({ title: "Sucesso", description: "Inquilino excluído." });
-      loadTenants();
-    // }
+  const handleDelete = (id: string) => {
+    tenantStorage.delete(id);
+    toast({ title: "Sucesso", description: "Inquilino excluído." });
+    loadTenants();
   };
 
   const handleEdit = (tenant: Tenant) => {
@@ -229,65 +178,66 @@ export default function TenantsPage() {
   };
 
   return (
-    <Layout>
-      <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight text-gray-900">Inquilinos</h1>
-            <p className="text-gray-500">Gerencie os inquilinos cadastrados no sistema.</p>
-          </div>
-          <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={resetForm} className="bg-emerald-600 hover:bg-emerald-700">
-                <Plus className="mr-2 h-4 w-4" /> Novo Inquilino
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
-              <DialogHeader>
-                <DialogTitle>Novo Inquilino</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Nome *</Label>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    required
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
+    <>
+      <SEO title="Inquilinos - Gerenciador de Locações" />
+      <Layout>
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight text-gray-900">Inquilinos</h1>
+              <p className="text-gray-500">Gerencie os inquilinos cadastrados no sistema.</p>
+            </div>
+            <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+              <DialogTrigger asChild>
+                <Button onClick={resetForm} className="bg-emerald-600 hover:bg-emerald-700">
+                  <Plus className="mr-2 h-4 w-4" /> Novo Inquilino
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[500px]">
+                <DialogHeader>
+                  <DialogTitle>Novo Inquilino</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="documentType">Tipo de Documento</Label>
-                    <Select 
-                      value={formData.documentType} 
-                      onValueChange={(val: "CPF" | "CNPJ") => setFormData({ ...formData, documentType: val })}
-                    >
-                      <SelectTrigger id="documentType">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="CPF">CPF</SelectItem>
-                        <SelectItem value="CNPJ">CNPJ</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="cpf">{formData.documentType}</Label>
+                    <Label htmlFor="name">Nome *</Label>
                     <Input
-                      id="cpf"
-                      name="cpf"
-                      value={formData.cpf}
-                      onChange={handleInputChange}
-                      maxLength={formData.documentType === "CPF" ? 14 : 18}
+                      id="name"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      required
                     />
                   </div>
-                </div>
 
-                {formData.documentType === "CPF" && (
                   <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="documentType">Tipo de Documento</Label>
+                      <Select 
+                        value={formData.documentType} 
+                        onValueChange={(val: "CPF" | "CNPJ") => setFormData({ ...formData, documentType: val })}
+                      >
+                        <SelectTrigger id="documentType">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="CPF">CPF</SelectItem>
+                          <SelectItem value="CNPJ">CNPJ</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="cpf">{formData.documentType}</Label>
+                      <Input
+                        id="cpf"
+                        name="cpf"
+                        value={formData.cpf}
+                        onChange={handleInputChange}
+                        maxLength={formData.documentType === "CPF" ? 14 : 18}
+                      />
+                    </div>
+                  </div>
+
+                  {formData.documentType === "CPF" && (
                     <div className="space-y-2">
                       <Label htmlFor="rg">RG</Label>
                       <Input
@@ -297,383 +247,367 @@ export default function TenantsPage() {
                         onChange={handleInputChange}
                       />
                     </div>
-                  </div>
-                )}
+                  )}
 
-                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="phone">Telefone</Label>
                     <Input
                       id="phone"
                       value={formData.phone}
-                      onChange={(e) => handlePhoneChange(e.target.value)}
+                      onChange={(e) => setFormData({ ...formData, phone: maskPhone(e.target.value) })}
                       maxLength={15}
                     />
                   </div>
-                </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  />
-                </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    />
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="observations">Observações</Label>
-                  <Textarea
-                    id="observations"
-                    value={formData.observations}
-                    onChange={(e) => setFormData({ ...formData, observations: e.target.value })}
-                    rows={3}
-                  />
-                </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="observations">Observações</Label>
+                    <Textarea
+                      id="observations"
+                      value={formData.observations}
+                      onChange={(e) => setFormData({ ...formData, observations: e.target.value })}
+                      rows={3}
+                    />
+                  </div>
 
-                <DialogFooter>
-                  <Button type="button" variant="outline" onClick={() => {
-                    setIsAddOpen(false);
-                    setIsEditOpen(false);
-                  }}>
-                    Cancelar
-                  </Button>
-                  <Button type="submit">Salvar</Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
-        </div>
-
-        {/* Filters */}
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-            <Input
-              placeholder="Buscar por nome ou telefone..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
+                  <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => setIsAddOpen(false)}>
+                      Cancelar
+                    </Button>
+                    <Button type="submit">Salvar</Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
           </div>
-          <Select value={filterStatus} onValueChange={(v: any) => setFilterStatus(v)}>
-            <SelectTrigger className="w-full md:w-[180px]">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="active">Ativos</SelectItem>
-              <SelectItem value="inactive">Inativos</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
-            <SelectTrigger className="w-full md:w-[180px]">
-              <SelectValue placeholder="Ordenar por" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="name">Nome (A-Z)</SelectItem>
-              <SelectItem value="status">Status</SelectItem>
-            </SelectContent>
-          </Select>
-          <div className="flex items-center space-x-2 bg-slate-100 p-1 rounded-md">
-             <Button
-              variant={viewMode === "grid" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setViewMode("grid")}
-            >
-              <Grid className="h-4 w-4" />
-            </Button>
-            <Button
-              variant={viewMode === "list" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setViewMode("list")}
-            >
-              <LayoutList className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
 
-        {/* List */}
-        {filteredTenants.length === 0 ? (
-          <div className="text-center py-12 bg-slate-50 rounded-lg border border-dashed border-slate-300">
-             <p className="text-slate-500">Nenhum inquilino encontrado.</p>
+          {/* Filters */}
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+              <Input
+                placeholder="Buscar por nome ou telefone..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Select value={filterStatus} onValueChange={(v: any) => setFilterStatus(v)}>
+              <SelectTrigger className="w-full md:w-[180px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="active">Ativos</SelectItem>
+                <SelectItem value="inactive">Inativos</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
+              <SelectTrigger className="w-full md:w-[180px]">
+                <SelectValue placeholder="Ordenar por" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="name">Nome (A-Z)</SelectItem>
+                <SelectItem value="status">Status</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="flex items-center space-x-2 bg-slate-100 p-1 rounded-md">
+              <Button
+                variant={viewMode === "grid" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode("grid")}
+              >
+                <Grid className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={viewMode === "list" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode("list")}
+              >
+                <LayoutList className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
-        ) : viewMode === "list" ? (
-          <div className="bg-white rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Documento</TableHead>
-                  <TableHead>Telefone</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredTenants.sort((t1, t2) => t1.name.localeCompare(t2.name)).map((tenant) => (
-                  <TableRow 
-                    key={tenant.id}
-                    onClick={() => handleViewTenant(tenant)}
-                    className="list-item-hover cursor-pointer"
-                  >
-                    <TableCell className="font-medium">{tenant.name}</TableCell>
-                    <TableCell>{tenant.documentType}: {tenant.cpf}</TableCell>
-                    <TableCell>{tenant.phone}</TableCell>
-                    <TableCell>
-                      <Badge className={tenant.isActive ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-800"}>
-                        {tenant.isActive ? "Ativo" : "Inativo"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                       <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setTenantToDelete(tenant); setIsDeleteOpen(true); }}>
-                        <Trash2 className="h-4 w-4 text-red-500" />
-                      </Button>
-                    </TableCell>
+
+          {/* List */}
+          {filteredTenants.length === 0 ? (
+            <div className="text-center py-12 bg-slate-50 rounded-lg border border-dashed border-slate-300">
+              <p className="text-slate-500">Nenhum inquilino encontrado.</p>
+            </div>
+          ) : viewMode === "list" ? (
+            <div className="bg-white rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Documento</TableHead>
+                    <TableHead>Telefone</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        ) : (
-          <StaggerContainer staggerDelay={0.08}>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                </TableHeader>
+                <TableBody>
+                  {filteredTenants.map((tenant) => (
+                    <TableRow 
+                      key={tenant.id}
+                      onClick={() => router.push(`/tenants/${tenant.id}`)}
+                      className="cursor-pointer hover:bg-slate-50"
+                    >
+                      <TableCell className="font-medium">{tenant.name}</TableCell>
+                      <TableCell>{tenant.documentType}: {tenant.cpf}</TableCell>
+                      <TableCell>{tenant.phone}</TableCell>
+                      <TableCell>
+                        <Badge className={tenant.isActive ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-800"}>
+                          {tenant.isActive ? "Ativo" : "Inativo"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={(e) => { 
+                            e.stopPropagation(); 
+                            setTenantToDelete(tenant); 
+                            setIsDeleteOpen(true); 
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {filteredTenants.map((tenant) => (
                 <Card 
                   key={tenant.id} 
-                  className="group hover:shadow-lg transition-all duration-200 cursor-pointer"
+                  className="group hover:shadow-md transition-all cursor-pointer"
                   onClick={() => router.push(`/tenants/${tenant.id}`)}
                 >
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <CardTitle className="text-lg font-semibold text-slate-800 group-hover:text-emerald-600 transition-colors">
-                          {tenant.name}
-                        </CardTitle>
-                        <p className="text-sm text-slate-500 mt-1">{tenant.cpf}</p>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleViewTenant(tenant);
-                        }}
-                        className="h-8 w-8 text-slate-400 hover:text-emerald-600"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  
-                  <CardContent className="pt-0 pb-4">
+                  <CardContent className="p-4">
                     <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-sm">
-                        <Mail className="h-4 w-4 text-emerald-600" />
-                        <span className="text-slate-600">{tenant.email}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <Phone className="h-4 w-4 text-emerald-600" />
-                        <span className="text-slate-600">{tenant.phone}</span>
-                      </div>
-                      <div className="pt-2">
-                        <Badge variant={tenant.isActive ? "default" : "secondary"}>
+                      <div className="flex justify-between items-start mb-2">
+                        <h3 className="font-semibold text-sm truncate flex-1">{tenant.name}</h3>
+                        <Badge 
+                          variant={tenant.isActive ? "default" : "secondary"}
+                          className="ml-2 text-xs"
+                        >
                           {tenant.isActive ? "Ativo" : "Inativo"}
                         </Badge>
                       </div>
+                      <p className="text-xs text-muted-foreground">{tenant.cpf}</p>
+                      <div className="pt-2 border-t border-dashed space-y-1">
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Phone className="h-3 w-3" />
+                          <span className="truncate">{tenant.phone}</span>
+                        </div>
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Mail className="h-3 w-3" />
+                          <span className="truncate">{tenant.email}</span>
+                        </div>
+                      </div>
                     </div>
                   </CardContent>
-
-                  {/* Card Footer with Delete Button */}
-                  <CardFooter className="pt-4 border-t">
+                  <CardFooter className="p-3 pt-0">
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="w-full text-red-600 hover:text-red-700 hover:bg-red-50"
+                      className="w-full text-red-600 hover:text-red-700 hover:bg-red-50 h-8"
                       onClick={(e) => {
                         e.stopPropagation();
                         setTenantToDelete(tenant);
                         setIsDeleteOpen(true);
                       }}
                     >
-                      <Trash2 className="h-4 w-4 mr-2" />
+                      <Trash2 className="h-3 w-3 mr-1" />
                       Excluir
                     </Button>
                   </CardFooter>
                 </Card>
               ))}
             </div>
-          </StaggerContainer>
-        )}
+          )}
 
-        {/* View Tenant Dialog */}
-        <Dialog open={!!viewingTenant} onOpenChange={(open) => !open && setViewingTenant(null)}>
-          <DialogContent className="sm:max-w-[600px]">
-            <DialogHeader>
-              <DialogTitle>Detalhes do Inquilino</DialogTitle>
-              <DialogDescription>Ficha cadastral completa</DialogDescription>
-            </DialogHeader>
-            {viewingTenant && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-muted-foreground">Nome</Label>
-                    <p className="font-medium">{viewingTenant.name}</p>
-                  </div>
-                  <div>
-                    <Label className="text-muted-foreground">Documento ({viewingTenant.documentType})</Label>
-                    <p className="font-medium">{viewingTenant.cpf}</p>
-                  </div>
-                  {viewingTenant.rg && (
+          {/* View Dialog */}
+          <Dialog open={!!viewingTenant} onOpenChange={(open) => !open && setViewingTenant(null)}>
+            <DialogContent className="sm:max-w-[600px]">
+              <DialogHeader>
+                <DialogTitle>Detalhes do Inquilino</DialogTitle>
+                <DialogDescription>Ficha cadastral completa</DialogDescription>
+              </DialogHeader>
+              {viewingTenant && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label className="text-muted-foreground">RG</Label>
-                      <p className="font-medium">{viewingTenant.rg}</p>
+                      <Label className="text-muted-foreground">Nome</Label>
+                      <p className="font-medium">{viewingTenant.name}</p>
+                    </div>
+                    <div>
+                      <Label className="text-muted-foreground">Documento ({viewingTenant.documentType})</Label>
+                      <p className="font-medium">{viewingTenant.cpf}</p>
+                    </div>
+                    {viewingTenant.rg && (
+                      <div>
+                        <Label className="text-muted-foreground">RG</Label>
+                        <p className="font-medium">{viewingTenant.rg}</p>
+                      </div>
+                    )}
+                    <div>
+                      <Label className="text-muted-foreground">Telefone</Label>
+                      <p className="font-medium">{viewingTenant.phone}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <Label className="text-muted-foreground">Email</Label>
+                      <p className="font-medium">{viewingTenant.email}</p>
+                    </div>
+                    <div>
+                      <Label className="text-muted-foreground">Status</Label>
+                      <Badge variant={viewingTenant.isActive ? "default" : "secondary"}>
+                        {viewingTenant.isActive ? "Ativo" : "Inativo"}
+                      </Badge>
+                    </div>
+                  </div>
+                  
+                  {viewingTenant.observations && (
+                    <div>
+                      <Label className="text-muted-foreground">Observações</Label>
+                      <p className="text-sm mt-1 bg-slate-50 p-3 rounded-md">{viewingTenant.observations}</p>
                     </div>
                   )}
-                  <div>
-                    <Label className="text-muted-foreground">Telefone</Label>
-                    <p className="font-medium">{viewingTenant.phone}</p>
-                  </div>
-                  <div className="col-span-2">
-                    <Label className="text-muted-foreground">Email</Label>
-                    <p className="font-medium">{viewingTenant.email}</p>
-                  </div>
-                  <div>
-                    <Label className="text-muted-foreground">Status</Label>
-                    <Badge variant={viewingTenant.isActive ? "default" : "secondary"}>
-                      {viewingTenant.isActive ? "Ativo" : "Inativo"}
-                    </Badge>
-                  </div>
+                </div>
+              )}
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setViewingTenant(null)}>Fechar</Button>
+                <Button onClick={() => {
+                  handleEdit(viewingTenant!);
+                  setViewingTenant(null);
+                }}>
+                  <Edit className="h-4 w-4 mr-2" />
+                  Editar
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Edit Dialog */}
+          <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>Editar Inquilino</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-name">Nome Completo *</Label>
+                  <Input id="edit-name" name="name" required value={formData.name} onChange={handleInputChange} />
                 </div>
                 
-                {viewingTenant.observations && (
-                  <div>
-                    <Label className="text-muted-foreground">Observações</Label>
-                    <p className="text-sm mt-1 bg-slate-50 p-3 rounded-md">{viewingTenant.observations}</p>
-                  </div>
-                )}
-              </div>
-            )}
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setViewingTenant(null)}>Fechar</Button>
-              <Button onClick={() => {
-                handleEdit(viewingTenant!);
-                setViewingTenant(null);
-              }}>
-                <Edit className="h-4 w-4 mr-2" />
-                Editar
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Edit Dialog */}
-        <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-          <DialogContent className="sm:max-w-[500px]">
-            <DialogHeader>
-              <DialogTitle>Editar Inquilino</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleEditSubmit} className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-name">Nome Completo *</Label>
-                <Input id="edit-name" name="name" required value={formData.name} onChange={handleInputChange} />
-              </div>
-              
-              <div className="space-y-2">
-                <Label>Tipo de Documento *</Label>
-                <Select value={formData.documentType} onValueChange={handleDocumentTypeChange}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="CPF">CPF</SelectItem>
-                    <SelectItem value="CNPJ">CNPJ</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit-cpf">{formData.documentType} *</Label>
-                  <Input 
-                    id="edit-cpf" 
-                    name="cpf" 
-                    required 
-                    value={formData.cpf} 
-                    onChange={handleInputChange} 
-                    placeholder={formData.documentType === "CPF" ? "000.000.000-00" : "00.000.000/0000-00"}
-                    maxLength={formData.documentType === "CPF" ? 14 : 18}
-                  />
+                  <Label>Tipo de Documento *</Label>
+                  <Select value={formData.documentType} onValueChange={(val: "CPF" | "CNPJ") => setFormData({ ...formData, documentType: val })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="CPF">CPF</SelectItem>
+                      <SelectItem value="CNPJ">CNPJ</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-                {formData.documentType === "CPF" && (
+
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="edit-rg">RG *</Label>
-                    <Input id="edit-rg" name="rg" required value={formData.rg} onChange={handleInputChange} />
+                    <Label htmlFor="edit-cpf">{formData.documentType} *</Label>
+                    <Input 
+                      id="edit-cpf" 
+                      name="cpf" 
+                      required 
+                      value={formData.cpf} 
+                      onChange={handleInputChange} 
+                      placeholder={formData.documentType === "CPF" ? "000.000.000-00" : "00.000.000/0000-00"}
+                      maxLength={formData.documentType === "CPF" ? 14 : 18}
+                    />
                   </div>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="edit-phone">Telefone *</Label>
-                  <Input id="edit-phone" name="phone" required value={formData.phone} onChange={handleInputChange} placeholder="(00) 00000-0000" maxLength={15} />
+                  {formData.documentType === "CPF" && (
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-rg">RG</Label>
+                      <Input id="edit-rg" name="rg" value={formData.rg} onChange={handleInputChange} />
+                    </div>
+                  )}
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-email">Email *</Label>
-                  <Input id="edit-email" name="email" type="email" required value={formData.email} onChange={handleInputChange} />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-phone">Telefone *</Label>
+                    <Input id="edit-phone" name="phone" required value={formData.phone} onChange={handleInputChange} placeholder="(00) 00000-0000" maxLength={15} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-email">Email *</Label>
+                    <Input id="edit-email" name="email" type="email" required value={formData.email} onChange={handleInputChange} />
+                  </div>
                 </div>
-              </div>
 
-              <div className="space-y-2">
-                <Label>Status *</Label>
-                <Select value={formData.isActive ? "active" : "inactive"} onValueChange={(val) => setFormData({...formData, isActive: val === "active"})}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">Ativo</SelectItem>
-                    <SelectItem value="inactive">Inativo</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+                <div className="space-y-2">
+                  <Label>Status *</Label>
+                  <Select value={formData.isActive ? "active" : "inactive"} onValueChange={(val) => setFormData({...formData, isActive: val === "active"})}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Ativo</SelectItem>
+                      <SelectItem value="inactive">Inativo</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="edit-observations">Observações</Label>
-                <Textarea id="edit-observations" name="observations" value={formData.observations} onChange={handleInputChange} />
-              </div>
-              <div className="flex justify-end gap-3 pt-4">
-                <Button type="button" variant="outline" onClick={() => setIsEditOpen(false)}>Cancelar</Button>
-                <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">Salvar Alterações</Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-observations">Observações</Label>
+                  <Textarea id="edit-observations" name="observations" value={formData.observations} onChange={handleInputChange} />
+                </div>
+                <div className="flex justify-end gap-3 pt-4">
+                  <Button type="button" variant="outline" onClick={() => setIsEditOpen(false)}>Cancelar</Button>
+                  <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">Salvar Alterações</Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
 
-        {/* Delete Confirmation Dialog */}
-        <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Confirmar Exclusão</DialogTitle>
-              <DialogDescription>
-                Tem certeza que deseja excluir este inquilino? Esta ação não pode ser desfeita.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsDeleteOpen(false)}>Cancelar</Button>
-              <Button 
-                variant="destructive" 
-                onClick={() => {
-                  if (tenantToDelete) handleDelete(tenantToDelete.id);
-                  setIsDeleteOpen(false);
-                }}
-              >
-                Excluir
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
-    </Layout>
+          {/* Delete Confirmation */}
+          <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Confirmar Exclusão</DialogTitle>
+                <DialogDescription>
+                  Tem certeza que deseja excluir este inquilino? Esta ação não pode ser desfeita.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsDeleteOpen(false)}>Cancelar</Button>
+                <Button 
+                  variant="destructive" 
+                  onClick={() => {
+                    if (tenantToDelete) handleDelete(tenantToDelete.id);
+                    setIsDeleteOpen(false);
+                  }}
+                >
+                  Excluir
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </Layout>
+    </>
   );
 }

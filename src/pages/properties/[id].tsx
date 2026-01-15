@@ -14,6 +14,7 @@ import { ArrowLeft, Edit, Trash2, MapPin, DollarSign, Save, X } from "lucide-rea
 import { SEO } from "@/components/SEO";
 import { formatCurrency, formatDate, parseCurrency, maskCurrency } from "@/lib/masks";
 import { toast } from "@/hooks/use-toast";
+import { Select, SelectContent } from "@/components/ui/select";
 
 const STATES = [
   "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA",
@@ -26,7 +27,7 @@ export default function PropertyDetails() {
   const { id } = router.query;
   const [property, setProperty] = useState<Property | null>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [availableLocations, setAvailableLocations] = useState<string[]>([]);
+  const [locations, setLocations] = useState<string[]>([]);
   const [formData, setFormData] = useState({ 
     location: "",
     cep: "",
@@ -47,16 +48,10 @@ export default function PropertyDetails() {
       router.push("/login");
       return;
     }
-    if (id) {
-      loadProperty();
-      loadLocations();
-    }
+    const config = configStorage.get();
+    setLocations(config.locations || []);
+    loadProperty();
   }, [router, id]);
-
-  const loadLocations = () => {
-    const settings = configStorage.get();
-    setAvailableLocations(settings.locations || []);
-  };
 
   const loadProperty = () => {
     const properties = propertyStorage.getAll();
@@ -217,13 +212,17 @@ export default function PropertyDetails() {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="location">Local</Label>
-                  <Input
-                    id="location"
+                  <Select
                     value={formData.location}
-                    onChange={(e) =>
-                      setFormData({ ...formData, location: e.target.value })
-                    }
-                  />
+                    onValueChange={(value) => setFormData({ ...formData, location: value })}
+                    disabled={!isEditing}
+                  >
+                    <SelectContent>
+                      {locations.map(location => (
+                        <option key={location} value={location}>{location}</option>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
