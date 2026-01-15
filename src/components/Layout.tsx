@@ -16,7 +16,8 @@ import {
   User,
   Lock,
   ChevronDown,
-  Calculator
+  Calculator,
+  FileText
 } from "lucide-react";
 import { logout, getCurrentUser } from "@/lib/auth";
 import { User as UserType } from "@/types";
@@ -150,7 +151,7 @@ export function Layout({ children }: LayoutProps) {
       { path: "/properties", icon: Building2, label: "Imóveis", roles: ["admin", "corretor"] },
       { path: "/tenants", icon: Users, label: "Inquilinos", roles: ["admin", "corretor"] },
       { path: "/rentals", icon: Building2, label: "Locações", roles: ["admin", "corretor"] },
-      { path: "/payments", icon: DollarSign, label: "Pagamentos", roles: ["admin", "corretor"] },
+      { path: "/payments", icon: DollarSign, label: "Recebimentos", roles: ["admin", "corretor"] },
       { path: "/financial", icon: Calculator, label: "Financeiro", roles: ["admin", "financeiro"] },
       { path: "/settings", icon: Settings, label: "Configurações", roles: ["admin"] },
     ];

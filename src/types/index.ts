@@ -23,18 +23,21 @@ export interface Property {
   description: string;
   monthlyRent: number;
   status: "available" | "occupied";
+  isActive: boolean;
   createdAt: string;
 }
 
 export interface Tenant {
   id: string;
   name: string;
+  documentType: "CPF" | "CNPJ";
   cpf: string;
   rg: string;
   phone: string;
   email: string;
   observations?: string;
   status: "vacant" | "active" | "inactive";
+  isActive: boolean;
   createdAt: string;
 }
 
@@ -51,6 +54,7 @@ export interface Rental {
     name: string;
     url: string;
     type: string;
+    data?: string;
   }>;
   hasMotorcycleSpot?: boolean;
   motorcycleSpotValue?: number;
@@ -75,6 +79,12 @@ export interface Payment {
   paymentMethod?: "Pix" | "Boleto" | "Dinheiro";
   paymentLocation?: "CP" | "CD" | "CE";
   paymentCode?: string;
+  attachments?: Array<{
+    name: string;
+    url: string;
+    type: string;
+    data?: string;
+  }>;
 }
 
 export interface SystemConfig {

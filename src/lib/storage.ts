@@ -13,7 +13,8 @@ export function initializeStorage(): void {
   if (!localStorage.getItem(CONFIG_KEY)) {
     const defaultConfig: SystemConfig = {
       adminFeePercentage: 6,
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
+      locations: ["Jd. Colombo", "Signore", "Lemos", "Marrom", "Cinza", "Dora", "Acacias", "Outros"]
     };
     localStorage.setItem(CONFIG_KEY, JSON.stringify(defaultConfig));
   }
@@ -237,14 +238,22 @@ export const userStorage = {
 
 export const configStorage = {
   get: (): SystemConfig => {
-    if (typeof window === "undefined") return { adminFeePercentage: 6, lastUpdated: new Date().toISOString() };
+    if (typeof window === "undefined") return { 
+      adminFeePercentage: 6, 
+      lastUpdated: new Date().toISOString(),
+      locations: ["Jd. Colombo", "Signore", "Lemos", "Marrom", "Cinza", "Dora", "Acacias", "Outros"]
+    };
     const stored = JSON.parse(localStorage.getItem(CONFIG_KEY) || "null");
     if (!stored) {
       return { 
         adminFeePercentage: 6, 
         lastUpdated: new Date().toISOString(),
-        locations: ["Jd. Colombo", "Signore", "Lemos", "Marrom", "Cinza", "Dora", "Acacias"]
+        locations: ["Jd. Colombo", "Signore", "Lemos", "Marrom", "Cinza", "Dora", "Acacias", "Outros"]
       };
+    }
+    // Ensure 'Outros' is always in locations
+    if (stored.locations && !stored.locations.includes("Outros")) {
+      stored.locations.push("Outros");
     }
     return stored;
   },
@@ -252,15 +261,8 @@ export const configStorage = {
   update: (newConfig: SystemConfig): void => {
     if (typeof window === "undefined") return;
     
-    // Check if percentage changed to trigger payment updates if needed
-    // The requirement says: update current month and future
-    
     localStorage.setItem(CONFIG_KEY, JSON.stringify(newConfig));
     
-    // Logic to update current month payments if needed (from previous implementation)
-    // This part ensures that if we save a payment again, it might pick up the new fee if logic depends on it
-    // But mostly the fee calculation happens at display time or payment generation time.
-    // We'll keep the side effect of "touching" current month payments just in case specific logic relies on it
     const now = new Date();
     const currentMonth = now.getMonth() + 1;
     const currentYear = now.getFullYear();
@@ -269,7 +271,6 @@ export const configStorage = {
     payments.forEach(payment => {
       const paymentDate = new Date(payment.dueDate);
       if (paymentDate.getMonth() + 1 === currentMonth && paymentDate.getFullYear() === currentYear) {
-        // Just re-saving to ensure consistency if needed
         paymentStorage.save(payment);
       }
     });

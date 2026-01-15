@@ -6,8 +6,8 @@ export function formatCurrency(value: number): string {
 }
 
 export function parseCurrency(value: string): number {
-  const cleaned = value.replace(/\D/g, "");
-  return parseFloat(cleaned) / 100;
+  const cleaned = value.replace(/[^\d,]/g, "").replace(",", ".");
+  return parseFloat(cleaned) || 0;
 }
 
 export function maskCurrency(value: string): string {
@@ -23,33 +23,42 @@ export function maskCurrency(value: string): string {
 }
 
 export function maskCPF(value: string): string {
-  const numbers = value.replace(/\D/g, "");
-  return numbers
+  return value
+    .replace(/\D/g, "")
     .replace(/(\d{3})(\d)/, "$1.$2")
     .replace(/(\d{3})(\d)/, "$1.$2")
-    .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+    .replace(/(\d{3})(\d{1,2})/, "$1-$2")
+    .replace(/(-\d{2})\d+?$/, "$1");
+}
+
+export function maskCNPJ(value: string): string {
+  return value
+    .replace(/\D/g, "")
+    .replace(/(\d{2})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d)/, "$1/$2")
+    .replace(/(\d{4})(\d)/, "$1-$2")
+    .replace(/(-\d{2})\d+?$/, "$1");
 }
 
 export function maskPhone(value: string): string {
-  const numbers = value.replace(/\D/g, "");
-  if (numbers.length <= 10) {
-    return numbers
-      .replace(/(\d{2})(\d)/, "($1) $2")
-      .replace(/(\d{4})(\d)/, "$1-$2");
-  }
-  return numbers
+  return value
+    .replace(/\D/g, "")
     .replace(/(\d{2})(\d)/, "($1) $2")
-    .replace(/(\d{5})(\d)/, "$1-$2");
+    .replace(/(\d{5})(\d)/, "$1-$2")
+    .replace(/(-\d{4})\d+?$/, "$1");
 }
 
-export function formatDate(date: string): string {
-  const d = new Date(date);
-  return d.toLocaleDateString("pt-BR");
+export function formatDate(dateString: string): string {
+  const date = new Date(dateString);
+  return date.toLocaleDateString("pt-BR");
 }
 
 export function maskCEP(value: string): string {
-  const numbers = value.replace(/\D/g, "");
-  return numbers.replace(/(\d{5})(\d)/, "$1-$2");
+  return value
+    .replace(/\D/g, "")
+    .replace(/(\d{5})(\d)/, "$1-$2")
+    .replace(/(-\d{3})\d+?$/, "$1");
 }
 
 export function applyCurrencyMask(value: string | number): string {
@@ -90,5 +99,70 @@ export async function fetchAddressByCEP(cep: string): Promise<{
     return data;
   } catch (error) {
     return null;
+  }
+}
+
+export function numberToWords(value: number): string {
+  const units = ["", "um", "dois", "três", "quatro", "cinco", "seis", "sete", "oito", "nove"];
+  const teens = ["dez", "onze", "doze", "treze", "quatorze", "quinze", "dezesseis", "dezessete", "dezoito", "dezenove"];
+  const tens = ["", "", "vinte", "trinta", "quarenta", "cinquenta", "sessenta", "setenta", "oitenta", "noventa"];
+  const hundreds = ["", "cento", "duzentos", "trezentos", "quatrocentos", "quinhentos", "seiscentos", "setecentos", "oitocentos", "novecentos"];
+  
+  if (value === 0) return "zero";
+  if (value === 100) return "cem";
+  
+  let result = "";
+  const integerPart = Math.floor(value);
+  const decimalPart = Math.round((value - integerPart) * 100);
+  
+  // Thousands
+  const thousands = Math.floor(integerPart / 1000);
+  if (thousands > 0) {
+    if (thousands === 1) {
+      result += "mil";
+    } else {
+      result += convertHundreds(thousands) + " mil";
+    }
+    if (integerPart % 1000 > 0) result += " e ";
+  }
+  
+  // Hundreds, tens and units
+  const remainder = integerPart % 1000;
+  if (remainder > 0) {
+    result += convertHundreds(remainder);
+  }
+  
+  result += " reais";
+  
+  if (decimalPart > 0) {
+    result += " e " + convertHundreds(decimalPart) + " centavos";
+  }
+  
+  return result;
+  
+  function convertHundreds(n: number): string {
+    let str = "";
+    const h = Math.floor(n / 100);
+    const t = Math.floor((n % 100) / 10);
+    const u = n % 10;
+    
+    if (h > 0) {
+      str += hundreds[h];
+      if (t > 0 || u > 0) str += " e ";
+    }
+    
+    if (t === 1) {
+      str += teens[u];
+    } else {
+      if (t > 0) {
+        str += tens[t];
+        if (u > 0) str += " e ";
+      }
+      if (u > 0 && t !== 1) {
+        str += units[u];
+      }
+    }
+    
+    return str;
   }
 }

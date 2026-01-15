@@ -7,12 +7,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { isAuthenticated } from "@/lib/auth";
 import { propertyStorage, tenantStorage, rentalStorage, paymentStorage } from "@/lib/storage";
 import { Property, Tenant, Rental } from "@/types";
-import { Home, Users, FileText, Plus, Edit2, Trash2, Search, Building2, User, Calendar, DollarSign, AlertCircle, X } from "lucide-react";
+import { Home, Users, FileText, Plus, Edit2, Trash2, Search, Building2, User, Calendar, DollarSign, AlertCircle, X, Eye, Download, Edit, ExternalLink } from "lucide-react";
 import { SEO } from "@/components/SEO";
 import { formatCurrency, parseCurrency, formatDate } from "@/lib/masks";
 import { StaggerContainer, StaggerItem } from "@/components/animations/ScrollReveal";
@@ -29,6 +29,7 @@ export default function Rentals() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingRental, setEditingRental] = useState<Rental | null>(null);
+  const [viewingRental, setViewingRental] = useState<Rental | null>(null);
   
   const [formData, setFormData] = useState({
     propertyId: "",
@@ -60,8 +61,18 @@ export default function Rentals() {
     setRentals(allRentals);
     setProperties(allProperties);
     setTenants(allTenants);
-    setAvailableProperties(allProperties.filter(p => p.status === "available"));
-    setAvailableTenants(allTenants.filter(t => t.status === "vacant"));
+    
+    // Sort alphabetically
+    const availProps = allProperties
+      .filter(p => p.status === "available")
+      .sort((a, b) => a.local.localeCompare(b.local) || a.address.localeCompare(b.address));
+      
+    const availTenants = allTenants
+      .filter(t => t.status === "vacant")
+      .sort((a, b) => a.name.localeCompare(b.name));
+      
+    setAvailableProperties(availProps);
+    setAvailableTenants(availTenants);
   };
 
   const getProperty = (id: string) => properties.find(p => p.id === id);
@@ -178,6 +189,10 @@ export default function Rentals() {
 
     loadData();
     setIsDialogOpen(false);
+  };
+
+  const handleEdit = (rental: Rental) => {
+    handleOpenDialog(rental);
   };
 
   const generatePayments = (rental: Rental) => {
@@ -299,6 +314,133 @@ export default function Rentals() {
               <p className="text-slate-600 mt-2">Gerencie as locações de imóveis</p>
             </div>
             
+            {/* View Rental Dialog */}
+            <Dialog open={!!viewingRental} onOpenChange={(open) => !open && setViewingRental(null)}>
+              <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Detalhes da Locação</DialogTitle>
+                  <DialogDescription>Contrato e informações financeiras</DialogDescription>
+                </DialogHeader>
+                {viewingRental && (
+                  <div className="space-y-6 py-4">
+                    {/* Header Info */}
+                    <div className="bg-slate-50 p-4 rounded-lg border flex flex-col md:flex-row justify-between gap-4">
+                      <div>
+                        <Label className="text-xs font-semibold text-slate-500 uppercase">Imóvel</Label>
+                        <p className="font-medium text-lg text-slate-900">{getProperty(viewingRental.propertyId)?.local}</p>
+                        <p className="text-sm text-slate-600">
+                          {getProperty(viewingRental.propertyId)?.address}, {getProperty(viewingRental.propertyId)?.number}
+                        </p>
+                      </div>
+                      <div className="md:text-right">
+                        <Label className="text-xs font-semibold text-slate-500 uppercase">Inquilino</Label>
+                        <p className="font-medium text-lg text-slate-900">{getTenant(viewingRental.tenantId)?.name}</p>
+                        <p className="text-sm text-slate-600">{getTenant(viewingRental.tenantId)?.cpf}</p>
+                      </div>
+                    </div>
+
+                    {/* Financial Info */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="p-3 border rounded-md">
+                        <Label className="text-xs text-slate-500">Início</Label>
+                        <p className="font-semibold">{new Date(viewingRental.startDate).toLocaleDateString()}</p>
+                      </div>
+                      <div className="p-3 border rounded-md">
+                        <Label className="text-xs text-slate-500">Dia Pagto</Label>
+                        <p className="font-semibold">Dia {viewingRental.paymentDay}</p>
+                      </div>
+                      <div className="p-3 border rounded-md bg-emerald-50 border-emerald-100">
+                        <Label className="text-xs text-emerald-600">Aluguel Base</Label>
+                        <p className="font-bold text-emerald-700">{formatCurrency(viewingRental.monthlyRent)}</p>
+                      </div>
+                      <div className="p-3 border rounded-md bg-blue-50 border-blue-100">
+                        <Label className="text-xs text-blue-600">Total Mensal</Label>
+                        <p className="font-bold text-blue-700">
+                          {formatCurrency(
+                            viewingRental.monthlyRent + 
+                            (viewingRental.hasMotorcycleSpot ? (viewingRental.motorcycleSpotValue || 0) : 0)
+                          )}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Extras */}
+                    {viewingRental.hasMotorcycleSpot && (
+                      <div className="grid grid-cols-1 gap-4">
+                        <div className="flex justify-between items-center p-2 bg-slate-50 rounded border">
+                          <span className="text-sm">🏍️ Vaga Moto</span>
+                          <span className="font-medium">{formatCurrency(viewingRental.motorcycleSpotValue || 0)}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Caução */}
+                    <div>
+                      <Label className="text-slate-500">Caução / Observações</Label>
+                      <div className="p-3 bg-slate-50 rounded-md border mt-1 min-h-[60px]">
+                        <p className="text-sm text-slate-700 whitespace-pre-wrap">{viewingRental.observations || "Nenhuma observação registrada."}</p>
+                      </div>
+                    </div>
+
+                    {/* Anexos / Contratos */}
+                    <div>
+                      <Label className="text-slate-500 flex items-center gap-2 mb-2">
+                        <FileText size={16} />
+                        Contratos e Anexos ({viewingRental.attachments?.length || 0})
+                      </Label>
+                      
+                      {(!viewingRental.attachments || viewingRental.attachments.length === 0) ? (
+                        <p className="text-sm text-slate-400 italic">Nenhum anexo disponível.</p>
+                      ) : (
+                        <div className="grid grid-cols-1 gap-2">
+                          {viewingRental.attachments.map((att, idx) => (
+                            <div key={idx} className="flex items-center justify-between p-3 border rounded-md hover:bg-slate-50 transition-colors">
+                              <div className="flex items-center gap-3 overflow-hidden">
+                                <div className="bg-blue-100 p-2 rounded text-blue-600">
+                                  <FileText size={18} />
+                                </div>
+                                <div className="truncate">
+                                  <p className="text-sm font-medium truncate max-w-[200px]">{att.name}</p>
+                                </div>
+                              </div>
+                              <div className="flex gap-2">
+                                 <Button 
+                                  size="sm" 
+                                  variant="outline" 
+                                  onClick={() => {
+                                    const link = document.createElement('a');
+                                    link.href = att.url;
+                                    link.download = att.name;
+                                    document.body.appendChild(link);
+                                    link.click();
+                                    document.body.removeChild(link);
+                                  }}
+                                  title="Download"
+                                >
+                                  <Download size={14} />
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  onClick={() => window.open(att.url, '_blank')}
+                                  title="Abrir em nova aba"
+                                >
+                                  <ExternalLink size={14} />
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+                <DialogFooter>
+                  <Button onClick={() => setViewingRental(null)}>Fechar</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
                 <Button onClick={() => handleOpenDialog()} className="flex items-center space-x-2">
@@ -384,12 +526,17 @@ export default function Rentals() {
                       <Label htmlFor="paymentDay">Dia de Pagamento *</Label>
                       <Input
                         id="paymentDay"
-                        type="number"
-                        min="1"
-                        max="28"
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
                         value={formData.paymentDay}
-                        onChange={(e) => setFormData({...formData, paymentDay: e.target.value})}
-                        placeholder="1-28"
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/\D/g, '');
+                          if (val === '' || (parseInt(val) >= 1 && parseInt(val) <= 31)) {
+                            setFormData({...formData, paymentDay: val});
+                          }
+                        }}
+                        placeholder="Dia"
                         required
                       />
                     </div>
@@ -439,6 +586,13 @@ export default function Rentals() {
                             const formatted = formatCurrency(parseFloat(value) / 100);
                             setFormData({...formData, motorcycleSpotValue: formatted});
                           }}
+                          onBlur={(e) => {
+                            // Ensure proper formatting on blur
+                            if (formData.motorcycleSpotValue) {
+                               const val = parseCurrency(formData.motorcycleSpotValue);
+                               setFormData({...formData, motorcycleSpotValue: formatCurrency(val)});
+                            }
+                          }}
                           placeholder="R$ 0,00"
                           required={formData.hasMotorcycleSpot}
                         />
@@ -454,18 +608,18 @@ export default function Rentals() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="observations">Observações</Label>
+                    <Label htmlFor="observations">Caução</Label>
                     <Textarea
                       id="observations"
                       value={formData.observations}
                       onChange={(e) => setFormData({...formData, observations: e.target.value})}
-                      placeholder="Detalhes do contrato..."
+                      placeholder="Detalhes da caução..."
                       rows={3}
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Anexos ({attachments.length}/5)</Label>
+                    <Label>Contrato ({attachments.length}/5)</Label>
                     <div className="space-y-2">
                       {attachments.map((attachment, index) => (
                         <div key={index} className="flex items-center justify-between p-2 bg-slate-50 rounded border">
@@ -659,18 +813,15 @@ export default function Rentals() {
                                   </div>
                                   
                                   <div className="flex justify-between items-center">
-                                    <span className="text-slate-600">Valor Mensal:</span>
+                                    <span className="text-slate-600">Valor Mensal Total:</span>
                                     <span className="font-semibold text-slate-900">
-                                      {formatCurrency(rental.monthlyRent)}
+                                      {formatCurrency(totalValue)}
                                     </span>
                                   </div>
                                   
                                   {rental.hasMotorcycleSpot && rental.motorcycleSpotValue && (
-                                    <div className="flex justify-between items-center">
-                                      <span className="text-slate-600">Vaga Garagem:</span>
-                                      <span className="font-semibold text-slate-900">
-                                        {formatCurrency(rental.motorcycleSpotValue)}
-                                      </span>
+                                    <div className="flex justify-between items-center text-xs text-slate-500">
+                                      <span>(Aluguel: {formatCurrency(rental.monthlyRent)} + Vaga: {formatCurrency(rental.motorcycleSpotValue)})</span>
                                     </div>
                                   )}
                                   
@@ -683,28 +834,35 @@ export default function Rentals() {
                                 </div>
 
                                 <div className="flex justify-end gap-1 pt-1">
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleOpenDialog(rental);
-                                    }}
-                                    className="h-6 px-2 text-xs"
-                                  >
-                                    <Edit2 size={12} />
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleDelete(rental.id);
-                                    }}
-                                    className="h-6 px-2 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
-                                  >
-                                    <Trash2 size={12} />
-                                  </Button>
+                                  <div className="flex gap-2 pt-2 border-t mt-2">
+                                    <Button 
+                                      variant="outline" 
+                                      size="sm" 
+                                      onClick={() => setViewingRental(rental)}
+                                      className="flex-1 bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-600"
+                                    >
+                                      <Eye size={14} className="mr-1" />
+                                      Ver Detalhes
+                                    </Button>
+                                    <Button 
+                                      variant="outline" 
+                                      size="sm" 
+                                      onClick={() => handleEdit(rental)}
+                                      className="flex-1"
+                                    >
+                                      <Edit size={14} className="mr-1" />
+                                      Editar
+                                    </Button>
+                                    <Button 
+                                      variant="destructive" 
+                                      size="sm" 
+                                      onClick={() => handleDelete(rental.id)}
+                                      className="px-2"
+                                      title="Excluir"
+                                    >
+                                      <Trash2 size={14} />
+                                    </Button>
+                                  </div>
                                 </div>
                               </div>
                             </StaggerItem>

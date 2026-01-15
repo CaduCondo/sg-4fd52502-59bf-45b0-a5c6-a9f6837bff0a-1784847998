@@ -7,13 +7,14 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { configStorage, userStorage } from "@/lib/storage";
 import { SystemConfig, User } from "@/types";
-import { Trash2, Edit, Key, Plus } from "lucide-react";
-import { hasRole } from "@/lib/auth";
+import { Trash2, Edit, Key, Plus, Save, MapPin, X } from "lucide-react";
+import { StaggerContainer, StaggerItem } from "@/components/animations/ScrollReveal";
+import { FloatingCard } from "@/components/animations/FloatingCard";
 
 export default function Settings() {
   const router = useRouter();
@@ -29,7 +30,7 @@ export default function Settings() {
   const [userForm, setUserForm] = useState({
     name: "",
     username: "",
-    password: "", // Only for creation or reset
+    password: "",
     role: "corretor",
     rg: "",
     cpf: "",
@@ -53,8 +54,9 @@ export default function Settings() {
     const loadedConfig = configStorage.get();
     const loadedUsers = userStorage.getAll();
     
-    // Default locations if not in config (backward compatibility)
-    const locs = loadedConfig.locations || ["Jd. Colombo", "Signore", "Lemos", "Marrom", "Cinza", "Dora", "Acacias"];
+    // Ensure "Outros" is always present
+    const locs = loadedConfig.locations || ["Jd. Colombo", "Signore", "Lemos", "Marrom", "Cinza", "Dora", "Acacias", "Outros"];
+    if (!locs.includes("Outros")) locs.push("Outros");
     
     setConfig(loadedConfig);
     setUsers(loadedUsers);
@@ -66,7 +68,6 @@ export default function Settings() {
     e.preventDefault();
     if (!config) return;
 
-    // Update config logic (preserves history implicitly by only affecting new calculations)
     configStorage.update({
       ...config,
       locations: locations
@@ -168,40 +169,47 @@ export default function Settings() {
   const handleAddLocation = () => {
     if (newLocation && !locations.includes(newLocation)) {
       const updatedLocations = [...locations, newLocation];
+      // Sort alphabetically, keep "Outros" at end logic if needed, but simple sort is fine
+      updatedLocations.sort();
+      
       setLocations(updatedLocations);
       if (config) {
         configStorage.update({ ...config, locations: updatedLocations });
       }
       setNewLocation("");
+      toast({ title: "Local adicionado" });
     }
   };
 
   const handleDeleteLocation = (loc: string) => {
-    if (confirm(`Excluir local ${loc}?`)) {
+    if (loc === "Outros") {
+      toast({ title: "Erro", description: "O local 'Outros' não pode ser excluído.", variant: "destructive" });
+      return;
+    }
+    
+    if (confirm(`Excluir definitivamente o local "${loc}"?`)) {
       const updatedLocations = locations.filter(l => l !== loc);
       setLocations(updatedLocations);
       if (config) {
         configStorage.update({ ...config, locations: updatedLocations });
       }
+      toast({ title: "Local excluído" });
     }
   };
 
   if (isLoading) return null;
 
-  // Only admin can access settings page
-  // Note: Layout should handle redirect, but we double check here
-  
   return (
     <Layout>
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Configurações</h1>
           <p className="text-muted-foreground">
-            Gerencie as configurações do sistema e usuários.
+            Gerencie as configurações do sistema, usuários e locais.
           </p>
         </div>
 
-        <Tabs defaultValue="general">
+        <Tabs defaultValue="general" className="space-y-4">
           <TabsList>
             <TabsTrigger value="general">Geral</TabsTrigger>
             <TabsTrigger value="users">Usuários</TabsTrigger>
@@ -209,129 +217,172 @@ export default function Settings() {
           </TabsList>
 
           <TabsContent value="general">
-            <Card>
-              <CardHeader>
-                <CardTitle>Configurações Gerais</CardTitle>
-                <CardDescription>
-                  Taxas e parâmetros do sistema
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleUpdateConfig} className="space-y-4">
-                  <div className="grid w-full max-w-sm items-center gap-1.5">
-                    <Label htmlFor="adminFee">Taxa de Administração (%)</Label>
-                    <Input
-                      type="number"
-                      id="adminFee"
-                      value={config?.adminFeePercentage}
-                      onChange={(e) => setConfig(config ? { ...config, adminFeePercentage: Number(e.target.value) } : null)}
-                      step="0.1"
-                      min="0"
-                      max="100"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Esta alteração afetará o mês atual e futuros.
-                    </p>
-                  </div>
-                  <Button type="submit">Salvar Alterações</Button>
-                </form>
-              </CardContent>
-            </Card>
+            <FloatingCard delay={0.1}>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Configurações Gerais</CardTitle>
+                  <CardDescription>
+                    Parâmetros financeiros do sistema
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handleUpdateConfig} className="space-y-6">
+                    <div className="grid w-full max-w-sm items-center gap-1.5">
+                      <Label htmlFor="adminFee">Taxa de Administração (%)</Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          id="adminFee"
+                          value={config?.adminFeePercentage}
+                          onChange={(e) => setConfig(config ? { ...config, adminFeePercentage: Number(e.target.value) } : null)}
+                          step="0.1"
+                          min="0"
+                          max="100"
+                          className="w-24"
+                        />
+                        <span className="text-sm text-muted-foreground">%</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Esta taxa será aplicada a todos os cálculos de receita, exceto imóveis classificados como "Outros".
+                      </p>
+                    </div>
+                    <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
+                      <Save className="w-4 h-4 mr-2" /> Salvar Alterações
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
+            </FloatingCard>
           </TabsContent>
 
           <TabsContent value="users">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle>Usuários</CardTitle>
-                  <CardDescription>
-                    Gerencie o acesso ao sistema
-                  </CardDescription>
-                </div>
-                <Button onClick={() => {
-                  setEditingUser(null);
-                  setUserForm({
-                    name: "",
-                    username: "",
-                    password: "",
-                    role: "corretor",
-                    rg: "",
-                    cpf: "",
-                    email: "",
-                    phone: ""
-                  });
-                  setIsUserModalOpen(true);
-                }}>
-                  <Plus className="mr-2 h-4 w-4" /> Novo Usuário
-                </Button>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Nome</TableHead>
-                      <TableHead>Usuário</TableHead>
-                      <TableHead>Perfil</TableHead>
-                      <TableHead>Contato</TableHead>
-                      <TableHead className="text-right">Ações</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {users.map((user) => (
-                      <TableRow key={user.id}>
-                        <TableCell>{user.name}</TableCell>
-                        <TableCell>{user.username}</TableCell>
-                        <TableCell className="capitalize">{user.role}</TableCell>
-                        <TableCell>{user.email || user.phone || "-"}</TableCell>
-                        <TableCell className="text-right space-x-2">
-                          <Button variant="ghost" size="icon" onClick={() => {
-                            setUserToReset(user);
-                            setIsResetPasswordOpen(true);
-                          }}>
-                            <Key className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleEditUser(user)}>
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDeleteUser(user.id)} disabled={user.username === 'cadu.pires'}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+            <FloatingCard delay={0.1}>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle>Usuários</CardTitle>
+                    <CardDescription>
+                      Gerencie o acesso ao sistema
+                    </CardDescription>
+                  </div>
+                  <Button onClick={() => {
+                    setEditingUser(null);
+                    setUserForm({ name: "", username: "", password: "", role: "corretor", rg: "", cpf: "", email: "", phone: "" });
+                    setIsUserModalOpen(true);
+                  }} className="bg-emerald-600 hover:bg-emerald-700">
+                    <Plus className="mr-2 h-4 w-4" /> Novo Usuário
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Nome</TableHead>
+                          <TableHead>Usuário</TableHead>
+                          <TableHead>Perfil</TableHead>
+                          <TableHead>Contato</TableHead>
+                          <TableHead className="text-right">Ações</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {users.map((user) => (
+                          <TableRow key={user.id}>
+                            <TableCell className="font-medium">{user.name}</TableCell>
+                            <TableCell>{user.username}</TableCell>
+                            <TableCell>
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize
+                                ${user.role === 'admin' ? 'bg-purple-100 text-purple-800' : 
+                                  user.role === 'financeiro' ? 'bg-blue-100 text-blue-800' : 
+                                  'bg-green-100 text-green-800'}`}>
+                                {user.role}
+                              </span>
+                            </TableCell>
+                            <TableCell>{user.email || user.phone || "-"}</TableCell>
+                            <TableCell className="text-right space-x-1">
+                              <Button variant="ghost" size="sm" onClick={() => {
+                                setUserToReset(user);
+                                setIsResetPasswordOpen(true);
+                              }} title="Alterar Senha">
+                                <Key className="h-4 w-4 text-slate-500" />
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => handleEditUser(user)} title="Editar">
+                                <Edit className="h-4 w-4 text-blue-600" />
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => handleDeleteUser(user.id)} disabled={user.username === 'cadu.pires'} title="Excluir">
+                                <Trash2 className="h-4 w-4 text-red-600" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            </FloatingCard>
           </TabsContent>
 
           <TabsContent value="locations">
-            <Card>
-              <CardHeader>
-                <CardTitle>Locais</CardTitle>
-                <CardDescription>Gerencie os locais disponíveis para imóveis</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex gap-2 mb-4">
-                  <Input 
-                    placeholder="Novo local..." 
-                    value={newLocation}
-                    onChange={(e) => setNewLocation(e.target.value)}
-                  />
-                  <Button onClick={handleAddLocation}>Adicionar</Button>
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                  {locations.map((loc) => (
-                    <div key={loc} className="flex items-center justify-between p-2 border rounded bg-muted/20">
-                      <span>{loc}</span>
-                      <Button variant="ghost" size="sm" onClick={() => handleDeleteLocation(loc)}>
-                        <XIcon className="h-4 w-4" />
-                      </Button>
+            <FloatingCard delay={0.1}>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Gerenciar Locais</CardTitle>
+                  <CardDescription>Adicione ou remova locais disponíveis para cadastro de imóveis</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex gap-4 mb-8 items-end max-w-lg">
+                    <div className="flex-1 space-y-2">
+                      <Label htmlFor="new-location">Novo Local</Label>
+                      <Input 
+                        id="new-location"
+                        placeholder="Nome do condomínio ou bairro..." 
+                        value={newLocation}
+                        onChange={(e) => setNewLocation(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleAddLocation()}
+                      />
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                    <Button onClick={handleAddLocation} disabled={!newLocation} className="bg-emerald-600 hover:bg-emerald-700">
+                      <Plus className="mr-2 h-4 w-4" /> Adicionar
+                    </Button>
+                  </div>
+                  
+                  <div className="bg-slate-50 rounded-lg p-6 border">
+                    <h3 className="text-sm font-medium text-slate-500 mb-4 uppercase tracking-wider">Locais Cadastrados</h3>
+                    <StaggerContainer staggerDelay={0.05}>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {locations.map((loc) => (
+                          <StaggerItem key={loc}>
+                            <div className="group flex items-center justify-between p-3 bg-white border rounded-md shadow-sm hover:shadow-md transition-all">
+                              <div className="flex items-center gap-3">
+                                <div className="p-2 bg-slate-100 rounded-full text-slate-600 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
+                                  <MapPin className="h-4 w-4" />
+                                </div>
+                                <span className="font-medium text-slate-700">{loc}</span>
+                              </div>
+                              {loc !== "Outros" && (
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  onClick={() => handleDeleteLocation(loc)}
+                                  className="opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                  title="Excluir local"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              )}
+                              {loc === "Outros" && (
+                                <span className="text-xs text-slate-400 px-2 italic">Padrão</span>
+                              )}
+                            </div>
+                          </StaggerItem>
+                        ))}
+                      </div>
+                    </StaggerContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            </FloatingCard>
           </TabsContent>
         </Tabs>
 
@@ -418,25 +469,5 @@ export default function Settings() {
         </Dialog>
       </div>
     </Layout>
-  );
-}
-
-function XIcon(props: any) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M18 6 6 18" />
-      <path d="m6 6 12 12" />
-    </svg>
   );
 }

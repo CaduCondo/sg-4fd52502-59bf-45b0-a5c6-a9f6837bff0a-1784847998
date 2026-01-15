@@ -6,14 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Search, Plus, Trash2, Edit, User, Phone, Mail, FileText } from "lucide-react";
+import { Search, Plus, Trash2, Edit, User, Phone, Mail, FileText, Eye } from "lucide-react";
 import { Tenant } from "@/types";
 import { tenantStorage } from "@/lib/storage";
-import { maskCPF, maskPhone } from "@/lib/masks";
+import { maskCPF, maskCNPJ, maskPhone } from "@/lib/masks";
 import { useToast } from "@/hooks/use-toast";
 import { StaggerContainer, StaggerItem } from "@/components/animations/ScrollReveal";
 import { FloatingCard } from "@/components/animations/FloatingCard";
@@ -37,13 +37,17 @@ export default function TenantsPage() {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 
   // Form states
+  const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
+  const [viewingTenant, setViewingTenant] = useState<Tenant | null>(null);
   const [formData, setFormData] = useState({
     name: "",
+    documentType: "CPF" as "CPF" | "CNPJ",
     cpf: "",
     rg: "",
     phone: "",
     email: "",
     observations: "",
+    isActive: true,
   });
 
   useEffect(() => {
@@ -56,7 +60,13 @@ export default function TenantsPage() {
 
   const loadTenants = () => {
     const data = tenantStorage.getAll();
-    setTenants(data);
+    // Ensure backwards compatibility - add isActive if missing
+    const updated = data.map(t => ({
+      ...t,
+      isActive: t.isActive !== undefined ? t.isActive : true,
+      documentType: t.documentType || "CPF" as "CPF" | "CNPJ"
+    }));
+    setTenants(updated);
   };
 
   const filterTenants = () => {
@@ -102,10 +112,25 @@ export default function TenantsPage() {
     const { name, value } = e.target;
     let finalValue = value;
 
-    if (name === "cpf") finalValue = maskCPF(value);
+    if (name === "cpf") {
+      if (formData.documentType === "CPF") {
+        finalValue = maskCPF(value);
+      } else {
+        finalValue = maskCNPJ(value);
+      }
+    }
     if (name === "phone") finalValue = maskPhone(value);
 
     setFormData(prev => ({ ...prev, [name]: finalValue }));
+  };
+
+  const handleDocumentTypeChange = (value: "CPF" | "CNPJ") => {
+    setFormData(prev => ({
+      ...prev,
+      documentType: value,
+      cpf: "",
+      rg: value === "CNPJ" ? "" : prev.rg
+    }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -113,8 +138,15 @@ export default function TenantsPage() {
     
     const newTenant: Tenant = {
       id: crypto.randomUUID(),
-      ...formData,
+      name: formData.name,
+      documentType: formData.documentType,
+      cpf: formData.cpf,
+      rg: formData.rg,
+      phone: formData.phone,
+      email: formData.email,
+      observations: formData.observations,
       status: "vacant",
+      isActive: formData.isActive,
       createdAt: new Date().toISOString(),
     };
 
@@ -131,7 +163,14 @@ export default function TenantsPage() {
 
     const updatedTenant: Tenant = {
       ...selectedTenant,
-      ...formData,
+      name: formData.name,
+      documentType: formData.documentType,
+      cpf: formData.cpf,
+      rg: formData.rg,
+      phone: formData.phone,
+      email: formData.email,
+      observations: formData.observations,
+      isActive: formData.isActive,
     };
 
     tenantStorage.save(updatedTenant);
@@ -143,7 +182,7 @@ export default function TenantsPage() {
   };
 
   const handleDelete = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent navigation
+    e.stopPropagation();
     if (confirm("Tem certeza que deseja excluir este inquilino?")) {
       tenantStorage.delete(id);
       toast({ title: "Sucesso", description: "Inquilino excluído." });
@@ -151,16 +190,17 @@ export default function TenantsPage() {
     }
   };
 
-  const openEdit = (tenant: Tenant, e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent navigation
+  const handleEdit = (tenant: Tenant) => {
     setSelectedTenant(tenant);
     setFormData({
       name: tenant.name,
+      documentType: tenant.documentType || "CPF",
       cpf: tenant.cpf,
       rg: tenant.rg || "",
       phone: tenant.phone,
       email: tenant.email,
       observations: tenant.observations || "",
+      isActive: tenant.isActive !== undefined ? tenant.isActive : true,
     });
     setIsEditOpen(true);
   };
@@ -168,11 +208,13 @@ export default function TenantsPage() {
   const resetForm = () => {
     setFormData({
       name: "",
+      documentType: "CPF",
       cpf: "",
       rg: "",
       phone: "",
       email: "",
       observations: "",
+      isActive: true,
     });
   };
 
@@ -199,16 +241,41 @@ export default function TenantsPage() {
                   <Label htmlFor="name">Nome Completo *</Label>
                   <Input id="name" name="name" required value={formData.name} onChange={handleInputChange} />
                 </div>
+                
+                <div className="space-y-2">
+                  <Label>Tipo de Documento *</Label>
+                  <Select value={formData.documentType} onValueChange={handleDocumentTypeChange}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="CPF">CPF</SelectItem>
+                      <SelectItem value="CNPJ">CNPJ</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="cpf">CPF *</Label>
-                    <Input id="cpf" name="cpf" required value={formData.cpf} onChange={handleInputChange} placeholder="000.000.000-00" maxLength={14} />
+                    <Label htmlFor="cpf">{formData.documentType} *</Label>
+                    <Input 
+                      id="cpf" 
+                      name="cpf" 
+                      required 
+                      value={formData.cpf} 
+                      onChange={handleInputChange} 
+                      placeholder={formData.documentType === "CPF" ? "000.000.000-00" : "00.000.000/0000-00"}
+                      maxLength={formData.documentType === "CPF" ? 14 : 18}
+                    />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="rg">RG *</Label>
-                    <Input id="rg" name="rg" required value={formData.rg} onChange={handleInputChange} />
-                  </div>
+                  {formData.documentType === "CPF" && (
+                    <div className="space-y-2">
+                      <Label htmlFor="rg">RG *</Label>
+                      <Input id="rg" name="rg" required value={formData.rg} onChange={handleInputChange} />
+                    </div>
+                  )}
                 </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="phone">Telefone *</Label>
@@ -219,6 +286,20 @@ export default function TenantsPage() {
                     <Input id="email" name="email" type="email" required value={formData.email} onChange={handleInputChange} />
                   </div>
                 </div>
+
+                <div className="space-y-2">
+                  <Label>Status *</Label>
+                  <Select value={formData.isActive ? "active" : "inactive"} onValueChange={(val) => setFormData({...formData, isActive: val === "active"})}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Ativo</SelectItem>
+                      <SelectItem value="inactive">Inativo</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="observations">Observações</Label>
                   <Textarea id="observations" name="observations" value={formData.observations} onChange={handleInputChange} />
@@ -249,12 +330,11 @@ export default function TenantsPage() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>CPF</Label>
+                <Label>CPF/CNPJ</Label>
                 <Input 
-                  placeholder="Filtrar por CPF..." 
+                  placeholder="Filtrar..." 
                   value={searchCpf}
-                  onChange={(e) => setSearchCpf(maskCPF(e.target.value))}
-                  maxLength={14}
+                  onChange={(e) => setSearchCpf(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
@@ -300,7 +380,7 @@ export default function TenantsPage() {
                   className="w-full h-10 px-3 rounded-md border border-slate-300 bg-white text-slate-900"
                 >
                   <option value="name">Nome</option>
-                  <option value="cpf">CPF</option>
+                  <option value="cpf">CPF/CNPJ</option>
                   <option value="createdAt">Data de Cadastro</option>
                 </select>
               </div>
@@ -364,7 +444,7 @@ export default function TenantsPage() {
                           </Badge>
                         </div>
                         <CardDescription className="flex items-center gap-1">
-                          <FileText className="h-3 w-3" /> CPF: {tenant.cpf}
+                          <FileText className="h-3 w-3" /> {tenant.documentType}: {tenant.cpf}
                         </CardDescription>
                       </CardHeader>
                       <CardContent className="pl-6 text-sm space-y-2 text-gray-600">
@@ -376,24 +456,32 @@ export default function TenantsPage() {
                           <Phone className="h-4 w-4 text-gray-400" />
                           <span>{tenant.phone}</span>
                         </div>
+                        {!tenant.isActive && (
+                          <Badge variant="destructive" className="mt-2">Inativo</Badge>
+                        )}
                         
                         <div className="flex justify-end gap-2 mt-4 pt-2 border-t">
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                            onClick={(e) => openEdit(tenant, e)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                            onClick={(e) => handleDelete(tenant.id, e)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <div className="flex gap-2 pt-4 mt-auto">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => setViewingTenant(tenant)}
+                              className="flex-1 bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-600"
+                              title="Visualizar Detalhes"
+                            >
+                              <Eye size={14} className="mr-1" />
+                              Ver
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => handleEdit(tenant)}
+                              className="flex-1"
+                            >
+                              <Edit size={14} className="mr-1" />
+                              Editar
+                            </Button>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
@@ -409,6 +497,64 @@ export default function TenantsPage() {
           </div>
         </StaggerContainer>
 
+        {/* View Tenant Dialog */}
+        <Dialog open={!!viewingTenant} onOpenChange={(open) => !open && setViewingTenant(null)}>
+          <DialogContent className="sm:max-w-[600px]">
+            <DialogHeader>
+              <DialogTitle>Detalhes do Inquilino</DialogTitle>
+              <DialogDescription>Ficha cadastral completa</DialogDescription>
+            </DialogHeader>
+            {viewingTenant && (
+              <div className="space-y-6 py-4">
+                <div className="flex items-center space-x-4 pb-4 border-b">
+                  <div className="h-16 w-16 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 text-2xl font-bold">
+                    {viewingTenant.name.charAt(0)}
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-slate-900">{viewingTenant.name}</h3>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Badge variant={viewingTenant.isActive ? "default" : "secondary"}>
+                        {viewingTenant.isActive ? "Ativo" : "Inativo"}
+                      </Badge>
+                      <span className="text-sm text-slate-500">
+                        Cadastrado em {new Date(viewingTenant.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold text-slate-500 uppercase">Documento ({viewingTenant.documentType || "CPF"})</Label>
+                    <p className="font-medium text-slate-900">{viewingTenant.cpf}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold text-slate-500 uppercase">RG</Label>
+                    <p className="font-medium text-slate-900">{viewingTenant.rg || "-"}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold text-slate-500 uppercase">Email</Label>
+                    <p className="font-medium text-slate-900 flex items-center gap-2">
+                      <Mail size={14} className="text-slate-400" />
+                      {viewingTenant.email || "-"}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold text-slate-500 uppercase">Telefone</Label>
+                    <p className="font-medium text-slate-900 flex items-center gap-2">
+                      <Phone size={14} className="text-slate-400" />
+                      {viewingTenant.phone || "-"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button onClick={() => setViewingTenant(null)}>Fechar</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         {/* Edit Dialog */}
         <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
           <DialogContent className="sm:max-w-[500px]">
@@ -420,16 +566,41 @@ export default function TenantsPage() {
                 <Label htmlFor="edit-name">Nome Completo *</Label>
                 <Input id="edit-name" name="name" required value={formData.name} onChange={handleInputChange} />
               </div>
+              
+              <div className="space-y-2">
+                <Label>Tipo de Documento *</Label>
+                <Select value={formData.documentType} onValueChange={handleDocumentTypeChange}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="CPF">CPF</SelectItem>
+                    <SelectItem value="CNPJ">CNPJ</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit-cpf">CPF *</Label>
-                  <Input id="edit-cpf" name="cpf" required value={formData.cpf} onChange={handleInputChange} placeholder="000.000.000-00" maxLength={14} />
+                  <Label htmlFor="edit-cpf">{formData.documentType} *</Label>
+                  <Input 
+                    id="edit-cpf" 
+                    name="cpf" 
+                    required 
+                    value={formData.cpf} 
+                    onChange={handleInputChange} 
+                    placeholder={formData.documentType === "CPF" ? "000.000.000-00" : "00.000.000/0000-00"}
+                    maxLength={formData.documentType === "CPF" ? 14 : 18}
+                  />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-rg">RG *</Label>
-                  <Input id="edit-rg" name="rg" required value={formData.rg} onChange={handleInputChange} />
-                </div>
+                {formData.documentType === "CPF" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-rg">RG *</Label>
+                    <Input id="edit-rg" name="rg" required value={formData.rg} onChange={handleInputChange} />
+                  </div>
+                )}
               </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="edit-phone">Telefone *</Label>
@@ -440,6 +611,20 @@ export default function TenantsPage() {
                   <Input id="edit-email" name="email" type="email" required value={formData.email} onChange={handleInputChange} />
                 </div>
               </div>
+
+              <div className="space-y-2">
+                <Label>Status *</Label>
+                <Select value={formData.isActive ? "active" : "inactive"} onValueChange={(val) => setFormData({...formData, isActive: val === "active"})}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Ativo</SelectItem>
+                    <SelectItem value="inactive">Inativo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="edit-observations">Observações</Label>
                 <Textarea id="edit-observations" name="observations" value={formData.observations} onChange={handleInputChange} />

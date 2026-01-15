@@ -12,21 +12,12 @@ import { Badge } from "@/components/ui/badge";
 import { isAuthenticated } from "@/lib/auth";
 import { propertyStorage } from "@/lib/storage";
 import { Property } from "@/types";
-import { Building2, Plus, Edit, Trash2, Search, MapPin } from "lucide-react";
+import { Building2, Plus, Edit, Trash2, Search, MapPin, Eye } from "lucide-react";
 import { SEO } from "@/components/SEO";
 import { formatCurrency, parseCurrency, maskCurrency, maskCEP, fetchAddressByCEP } from "@/lib/masks";
 import { StaggerContainer, StaggerItem } from "@/components/animations/ScrollReveal";
 import { FloatingCard } from "@/components/animations/FloatingCard";
-
-const LOCALS = [
-  "Jd. Colombo",
-  "Signore",
-  "Lemos",
-  "Marrom",
-  "Cinza",
-  "Dora",
-  "Acacias"
-];
+import { configStorage } from "@/lib/storage";
 
 const STATES = [
   "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA",
@@ -48,9 +39,11 @@ export default function Properties() {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProperty, setEditingProperty] = useState<Property | null>(null);
+  const [viewingProperty, setViewingProperty] = useState<Property | null>(null);
   const [loadingCEP, setLoadingCEP] = useState(false);
   const [formData, setFormData] = useState({
     local: "",
+    type: "Apartamento",
     cep: "",
     address: "",
     number: "",
@@ -60,6 +53,7 @@ export default function Properties() {
     monthlyRent: "",
     status: "available" as "available" | "occupied"
   });
+  const [availableLocals, setAvailableLocals] = useState<string[]>([]);
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -67,6 +61,11 @@ export default function Properties() {
       return;
     }
     loadProperties();
+    // Load locals from config
+    const config = configStorage.get();
+    if (config.locations) {
+      setAvailableLocals(config.locations);
+    }
   }, [router]);
 
   useEffect(() => {
@@ -160,6 +159,7 @@ export default function Properties() {
     const property: Property = {
       id: editingProperty?.id || Date.now().toString(),
       local: formData.local,
+      type: formData.type as any,
       cep: formData.cep,
       address: formData.address,
       number: formData.number,
@@ -168,6 +168,7 @@ export default function Properties() {
       description: formData.description,
       monthlyRent: parseCurrency(formData.monthlyRent),
       status: formData.status,
+      isActive: true,
       createdAt: editingProperty?.createdAt || new Date().toISOString()
     };
 
@@ -180,6 +181,7 @@ export default function Properties() {
     setEditingProperty(property);
     setFormData({
       local: property.local,
+      type: property.type || "Apartamento",
       cep: property.cep,
       address: property.address,
       number: property.number,
@@ -202,6 +204,7 @@ export default function Properties() {
   const resetForm = () => {
     setFormData({
       local: "",
+      type: "Apartamento",
       cep: "",
       address: "",
       number: "",
@@ -258,7 +261,7 @@ export default function Properties() {
               className="h-10 px-3 rounded-md border border-slate-300 bg-white text-slate-900"
             >
               <option value="">Todos os locais</option>
-              {LOCALS.map(local => (
+              {availableLocals.map(local => (
                 <option key={local} value={local}>{local}</option>
               ))}
             </select>
@@ -403,6 +406,16 @@ export default function Properties() {
                             <Button 
                               variant="outline" 
                               size="sm" 
+                              onClick={() => setViewingProperty(property)}
+                              className="flex-1 bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-600"
+                              title="Visualizar Detalhes"
+                            >
+                              <Eye size={14} className="mr-1" />
+                              Ver
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
                               onClick={() => handleEdit(property)}
                               className="flex-1"
                             >
@@ -443,6 +456,74 @@ export default function Properties() {
           )}
         </div>
 
+        {/* View Details Dialog */}
+        <Dialog open={!!viewingProperty} onOpenChange={(open) => !open && setViewingProperty(null)}>
+          <DialogContent className="sm:max-w-[600px]">
+            <DialogHeader>
+              <DialogTitle>Detalhes do Imóvel</DialogTitle>
+              <DialogDescription>Visualização completa dos dados</DialogDescription>
+            </DialogHeader>
+            {viewingProperty && (
+              <div className="space-y-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-slate-500">Local</Label>
+                    <p className="font-medium">{viewingProperty.local}</p>
+                  </div>
+                  <div>
+                    <Label className="text-slate-500">Tipo</Label>
+                    <p className="font-medium">{viewingProperty.type || "Apartamento"}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-slate-500">CEP</Label>
+                    <p className="font-medium">{viewingProperty.cep}</p>
+                  </div>
+                  <div>
+                    <Label className="text-slate-500">Estado</Label>
+                    <p className="font-medium">{viewingProperty.state}</p>
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-slate-500">Endereço Completo</Label>
+                  <p className="font-medium">
+                    {viewingProperty.address}, {viewingProperty.number}
+                    {viewingProperty.complement && ` - ${viewingProperty.complement}`}
+                  </p>
+                </div>
+
+                <div>
+                  <Label className="text-slate-500">Descrição</Label>
+                  <div className="p-3 bg-slate-50 rounded-md mt-1 border">
+                    <p className="text-sm text-slate-700 whitespace-pre-wrap">{viewingProperty.description}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 pt-4 border-t">
+                  <div>
+                    <Label className="text-slate-500">Valor Mensal</Label>
+                    <p className="text-xl font-bold text-emerald-600">{formatCurrency(viewingProperty.monthlyRent)}</p>
+                  </div>
+                  <div>
+                    <Label className="text-slate-500">Status Atual</Label>
+                    <div className="mt-1">
+                      <Badge variant={viewingProperty.status === "occupied" ? "default" : "secondary"}>
+                        {viewingProperty.status === "occupied" ? "Ocupado" : "Disponível"}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button onClick={() => setViewingProperty(null)}>Fechar</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
@@ -464,24 +545,40 @@ export default function Properties() {
                       required
                     >
                       <option value="">Selecione o local</option>
-                      {LOCALS.map(local => (
+                      {availableLocals.map(local => (
                         <option key={local} value={local}>{local}</option>
                       ))}
                     </select>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="cep">CEP *</Label>
-                    <Input
-                      id="cep"
-                      value={formData.cep}
-                      onChange={(e) => handleCEPChange(e.target.value)}
-                      placeholder="00000-000"
-                      maxLength={9}
+                    <Label htmlFor="type">Tipo *</Label>
+                    <select
+                      id="type"
+                      value={formData.type}
+                      onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                      className="w-full h-10 px-3 rounded-md border border-slate-300 bg-white text-slate-900"
                       required
-                      disabled={loadingCEP}
-                    />
-                    {loadingCEP && <p className="text-xs text-slate-500">Buscando endereço...</p>}
+                    >
+                      <option value="Apartamento">Apartamento</option>
+                      <option value="Casa">Casa</option>
+                      <option value="Comercial">Comercial</option>
+                      <option value="Terreno">Terreno</option>
+                    </select>
                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="cep">CEP *</Label>
+                  <Input
+                    id="cep"
+                    value={formData.cep}
+                    onChange={(e) => handleCEPChange(e.target.value)}
+                    placeholder="00000-000"
+                    maxLength={9}
+                    required
+                    disabled={loadingCEP}
+                  />
+                  {loadingCEP && <p className="text-xs text-slate-500">Buscando endereço...</p>}
                 </div>
 
                 <div className="space-y-2">

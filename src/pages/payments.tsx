@@ -16,7 +16,7 @@ import { formatCurrency, formatDate } from "@/lib/masks";
 import { StaggerContainer, StaggerItem } from "@/components/animations/ScrollReveal";
 import { FloatingCard } from "@/components/animations/FloatingCard";
 
-export default function Payments() {
+export default function Recebimentos() {
   const router = useRouter();
   const [payments, setPayments] = useState<Array<{
     payment: Payment;
@@ -147,7 +147,16 @@ export default function Payments() {
   const totalUnpaid = unpaidPayments.reduce((sum, p) => sum + (p.payment.amount - (p.payment.partialAmount || 0)), 0);
 
   const config = configStorage.get();
-  const adminFee = totalPaid * (config.adminFeePercentage / 100);
+  
+  // Logic to calculate admin fee excluding "Outros"
+  const adminFee = paidPayments.reduce((acc, curr) => {
+    // Only apply fee if property local is NOT "Outros"
+    if (curr.property && curr.property.local !== "Outros") {
+      const amount = curr.payment.partialAmount || curr.payment.amount;
+      return acc + (amount * (config.adminFeePercentage / 100));
+    }
+    return acc;
+  }, 0);
 
   return (
     <>
@@ -159,7 +168,7 @@ export default function Payments() {
       <Layout>
         <div className="space-y-6">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900">Gestão de Recebimento</h1>
+            <h1 className="text-3xl font-bold text-slate-900">Gestão de Recebimentos</h1>
             <p className="text-slate-600 mt-2">Controle de recebimentos de locações</p>
           </div>
 
@@ -269,7 +278,9 @@ export default function Payments() {
                     </CardHeader>
                     <CardContent>
                       <div className="text-2xl font-bold text-blue-600">{formatCurrency(adminFee)}</div>
-                      <p className="text-xs text-slate-500 mt-1">{config.adminFeePercentage}% do total</p>
+                      <p className="text-xs text-slate-500 mt-1">
+                        {config.adminFeePercentage}% (exceto "Outros")
+                      </p>
                     </CardContent>
                   </Card>
                 </FloatingCard>
