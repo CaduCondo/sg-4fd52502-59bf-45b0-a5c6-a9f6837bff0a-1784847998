@@ -20,6 +20,7 @@ import { FloatingCard } from "@/components/animations/FloatingCard";
 import { configStorage } from "@/lib/storage";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { toast } from "@/hooks/use-toast";
 
 const STATES = [
   "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA",
@@ -161,24 +162,32 @@ export default function Properties() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    const property: Property = {
-      id: editingProperty?.id || Date.now().toString(),
+    const propertyData: Property = {
+      id: editingProperty ? editingProperty.id : crypto.randomUUID(),
       local: formData.local,
-      type: formData.type as any,
       cep: formData.cep,
       address: formData.address,
       number: formData.number,
-      complement: formData.complement || undefined,
+      complement: formData.complement,
+      neighborhood: formData.neighborhood,
+      city: formData.city,
       state: formData.state,
       description: formData.description,
       monthlyRent: parseCurrency(formData.monthlyRent),
-      status: formData.status,
-      isActive: true,
-      createdAt: editingProperty?.createdAt || new Date().toISOString()
+      status: editingProperty ? editingProperty.status : "available",
+      isActive: editingProperty ? editingProperty.isActive : true,
+      createdAt: editingProperty ? editingProperty.createdAt : new Date().toISOString()
     };
 
-    propertyStorage.save(property);
-    loadProperties();
+    if (editingProperty) {
+      propertyStorage.update(propertyData);
+      toast({ title: "Sucesso", description: "Imóvel atualizado com sucesso!" });
+    } else {
+      propertyStorage.save(propertyData);
+      toast({ title: "Sucesso", description: "Imóvel cadastrado com sucesso!" });
+    }
+
+    loadProperties(); // Refresh list immediately
     resetForm();
   };
 

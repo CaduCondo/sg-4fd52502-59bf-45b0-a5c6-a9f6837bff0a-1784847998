@@ -131,23 +131,29 @@ export default function TenantsPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    const newTenant: Tenant = {
-      id: crypto.randomUUID(),
+    const tenantData: Tenant = {
+      id: selectedTenant ? selectedTenant.id : crypto.randomUUID(),
       name: formData.name,
-      documentType: formData.documentType as "CPF" | "CNPJ",
-      cpf: formData.cpf,
-      rg: formData.rg,
+      documentType: formData.documentType,
+      cpf: formData.cpf, // Stores CPF or CNPJ
+      rg: formData.documentType === "CNPJ" ? undefined : formData.rg,
       email: formData.email,
       phone: formData.phone,
-      isActive: true,
-      createdAt: new Date().toISOString()
+      observations: formData.observations,
+      isActive: selectedTenant ? selectedTenant.isActive : true,
+      createdAt: selectedTenant ? selectedTenant.createdAt : new Date().toISOString()
     };
 
-    tenantStorage.save(newTenant);
-    toast({ title: "Sucesso", description: "Inquilino cadastrado com sucesso!" });
-    setIsAddOpen(false);
-    resetForm();
-    loadTenants();
+    if (selectedTenant) {
+      tenantStorage.update(tenantData);
+      toast({ title: "Sucesso", description: "Inquilino atualizado com sucesso!" });
+    } else {
+      tenantStorage.save(tenantData);
+      toast({ title: "Sucesso", description: "Inquilino cadastrado com sucesso!" });
+    }
+
+    loadTenants(); // Refresh list immediately
+    handleCloseDialog();
   };
 
   const handleEditSubmit = (e: React.FormEvent) => {
@@ -200,6 +206,13 @@ export default function TenantsPage() {
       isActive: tenant.isActive !== undefined ? tenant.isActive : true,
     });
     setIsEditOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setIsAddOpen(false);
+    setIsEditOpen(false);
+    setSelectedTenant(null);
+    resetForm();
   };
 
   const resetForm = () => {

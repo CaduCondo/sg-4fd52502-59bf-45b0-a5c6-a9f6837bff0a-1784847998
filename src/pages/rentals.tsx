@@ -135,7 +135,7 @@ export default function Rentals() {
     setIsDialogOpen(true);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.propertyId || !formData.tenantId || !formData.startDate || 
@@ -174,70 +174,62 @@ export default function Rentals() {
       tenantId: formData.tenantId,
       startDate: formData.startDate,
       endDate: formData.endDate,
-      value: parseCurrency(formData.monthlyRent), 
-      monthlyRent: parseCurrency(formData.monthlyRent),
-      paymentDay: Number(formData.paymentDay),
-      hasGarage: formData.hasMotorcycleSpot, // Map generic garage flag if needed or fix logic
-      garageValue: 0,
+      value: monthlyRent, // Base rent
+      monthlyRent: monthlyRent + motorcycleSpotValue, // Total with spot
+      paymentDay: paymentDay,
+      hasGarage: false,
       hasMotorcycleSpot: formData.hasMotorcycleSpot,
-      motorcycleSpotValue: formData.motorcycleSpotValue ? parseCurrency(formData.motorcycleSpotValue) : 0,
+      motorcycleSpotValue: formData.hasMotorcycleSpot ? motorcycleSpotValue : undefined,
       observations: formData.observations,
-      attachments: attachments.map(a => ({
-        name: a.name,
-        url: URL.createObjectURL(a.file),
-        date: new Date().toISOString(),
-        type: a.file.type
-      })),
       isActive: true,
       createdAt: new Date().toISOString()
     };
     
-    // Recalculate total monthly rent
-    let totalRent = newRental.value;
-    if (newRental.hasGarage) totalRent += (newRental.garageValue || 0);
-    if (newRental.hasMotorcycleSpot) totalRent += (newRental.motorcycleSpotValue || 0);
-    newRental.monthlyRent = totalRent;
-
-    rentalStorage.save(newRental);
-
-    // Generate payments for the first 12 months
-    const payments: Payment[] = [];
-    const startDate = new Date(formData.startDate + "T00:00:00");
+    // Update property status correctly
+    const propToUpdate = propertyStorage.getAll().find(p => p.id === formData.propertyId);
+    if (propToUpdate) {
+        propertyStorage.update({ ...propToUpdate, status: "occupied" });
+    }
     
-    for (let i = 0; i < 12; i++) {
-      const dueDate = new Date(startDate);
-      dueDate.setMonth(startDate.getMonth() + i);
-      dueDate.setDate(paymentDay);
-      
-      const payment: Payment = {
-        id: crypto.randomUUID(),
-        rentalId: newRental.id,
-        month: (dueDate.getMonth() + 1).toString().padStart(2, "0"),
-        year: dueDate.getFullYear().toString(),
-        amount: calculateTotal(newRental),
-        dueDate: dueDate.toISOString(),
-        isPaid: false
-      };
-      payments.push(payment);
+    // Generate payments
+    const totalMonthlyRent = monthlyRent + motorcycleSpotValue;
+    const start = new Date(formData.startDate);
+    const end = new Date(formData.endDate);
+    const payments: Payment[] = [];
+    
+    const currentDate = new Date(start);
+    while (currentDate <= end) {
+       const dueDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), paymentDay);
+       payments.push({
+          id: crypto.randomUUID(),
+          rentalId: newRental.id,
+          month: (currentDate.getMonth() + 1).toString().padStart(2, '0'),
+          year: currentDate.getFullYear().toString(),
+          amount: totalMonthlyRent,
+          dueDate: dueDate.toISOString(),
+          isPaid: false
+       });
+       currentDate.setMonth(currentDate.getMonth() + 1);
     }
+    
+    const currentPayments = paymentStorage.getAll();
+    localStorage.setItem("rentals_payments", JSON.stringify([...currentPayments, ...payments]));
 
-    const property = getProperty(newRental.propertyId);
-    const tenant = getTenant(newRental.tenantId);
-    if (property) {
-      // property.status = "occupied"; // Removed: availability is derived or manual
-      // propertyStorage.save(property); // Only update if changing other fields
-    }
-    if (tenant) {
-      // tenant.status = "active"; // Removed: isActive is for soft delete
-      // tenantStorage.save(tenant);
-    }
-
-    if (!editingRental) {
-      payments.forEach(p => paymentStorage.save(p));
-    }
-
-    loadData();
+    loadData(); // Fix: function name is loadData not loadRentals
     setIsDialogOpen(false);
+    
+    // Reset form
+    setFormData({
+      propertyId: "",
+      tenantId: "",
+      startDate: "",
+      endDate: "",
+      paymentDay: "",
+      monthlyRent: "",
+      observations: "",
+      hasMotorcycleSpot: false,
+      motorcycleSpotValue: ""
+    });
   };
 
   const handleEdit = (rental: Rental) => {
@@ -340,15 +332,12 @@ export default function Rentals() {
 
   const openNewRentalDialog = () => {
     const properties = propertyStorage.getAll();
-    const allTenants = tenantStorage.getAll();
+    const tenants = tenantStorage.getAll();
     const activeRentals = rentalStorage.getAll().filter(r => r.isActive);
-    
-    // Filter properties: available and active
-    setAvailableProperties(properties.filter(p => p.isActive && p.status === "available"));
-    
-    // Filter tenants: active and NOT in an active rental
-    const tenantsWithRental = new Set(activeRentals.map(r => r.tenantId));
-    setAvailableTenants(allTenants.filter(t => t.isActive && !tenantsWithRental.has(t.id)));
+    const tenantsWithActiveRental = new Set(activeRentals.map(r => r.tenantId));
+
+    setAvailableProperties(properties.filter(p => p.status === "available" && p.isActive));
+    setAvailableTenants(tenants.filter(t => t.isActive && !tenantsWithActiveRental.has(t.id)));
 
     setIsDialogOpen(true);
   };
@@ -522,7 +511,7 @@ export default function Rentals() {
                   </DialogTitle>
                 </DialogHeader>
                 
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSave} className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="propertyId">Imóveis Vagos *</Label>
@@ -1034,7 +1023,7 @@ export default function Rentals() {
                               <span>Aluguel:</span>
                               <span>{formatCurrency(rental.monthlyRent)}</span>
                            </div>
-                           {rental.hasMotorcycleSpot && (
+                           {rental.hasMotorcycleSpot && rental.motorcycleSpotValue && (
                              <div className="flex justify-between text-xs">
                                 <span>Vaga Moto:</span>
                                 <span>{formatCurrency(rental.motorcycleSpotValue || 0)}</span>
@@ -1058,7 +1047,7 @@ export default function Rentals() {
                                 handleOpenDialog(rental);
                               }}
                            >
-                              <Eye className="h-4 w-4 mr-2" />
+                              <Eye className="h-4 w-4 mr-1" />
                               Ver
                            </Button>
                            
@@ -1076,7 +1065,7 @@ export default function Rentals() {
                                   router.push(`/rentals/${rental.id}`);
                                 }}
                              >
-                                <XCircle className="h-4 w-4 mr-2" />
+                                <XCircle className="h-4 w-4 mr-1" />
                                 Encerrar
                              </Button>
                            )}
