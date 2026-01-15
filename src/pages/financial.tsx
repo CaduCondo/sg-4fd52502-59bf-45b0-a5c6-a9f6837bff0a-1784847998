@@ -264,7 +264,7 @@ export default function FinancialPage() {
 
             <Card className="border-purple-200 bg-gradient-to-br from-purple-50 to-white">
               <CardHeader>
-                <CardTitle className="text-purple-700 text-lg">🏠 Líquido para Proprietários</CardTitle>
+                <CardTitle className="text-purple-700 text-lg">🏠 Valor Líquido Recebido</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-3xl font-bold text-purple-900">{formatCurrency(netRevenue)}</p>
