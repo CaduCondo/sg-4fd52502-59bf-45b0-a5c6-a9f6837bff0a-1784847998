@@ -99,6 +99,8 @@ export default function ManagePaymentPage() {
         fineAmount: formatCurrency(paymentData.lateFee || 0),
         interestAmount: formatCurrency(paymentData.interest || 0),
         notes: paymentData.notes || "",
+        paymentMethod: paymentData.paymentMethod || "",
+        attachments: paymentData.attachments || []
       });
     } catch (error) {
       console.error("Erro ao carregar dados:", error);
