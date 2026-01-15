@@ -15,6 +15,8 @@ import { Property } from "@/types";
 import { Building2, Plus, Edit, Trash2, Search, MapPin } from "lucide-react";
 import { SEO } from "@/components/SEO";
 import { formatCurrency, parseCurrency, maskCurrency, maskCEP, fetchAddressByCEP } from "@/lib/masks";
+import { StaggerContainer, StaggerItem } from "@/components/animations/ScrollReveal";
+import { FloatingCard } from "@/components/animations/FloatingCard";
 
 const LOCALS = [
   "Jd. Colombo",
@@ -232,56 +234,62 @@ export default function Properties() {
             </select>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredProperties.map((property) => (
-              <Card key={property.id} className="hover:shadow-lg transition-shadow">
-                <CardContent className="p-4">
-                  <div className="space-y-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <MapPin size={16} className="text-emerald-600 flex-shrink-0" />
-                          <h3 className="font-semibold text-slate-900">{property.local}</h3>
+          <StaggerContainer staggerDelay={0.08}>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredProperties.map((property, index) => (
+                <StaggerItem key={property.id}>
+                  <FloatingCard delay={index * 0.05}>
+                    <Card className="hover:shadow-lg transition-shadow">
+                      <CardContent className="p-4">
+                        <div className="space-y-3">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <MapPin size={16} className="text-emerald-600 flex-shrink-0" />
+                                <h3 className="font-semibold text-slate-900">{property.local}</h3>
+                              </div>
+                              {property.complement && (
+                                <p className="text-sm text-slate-600">{property.complement}</p>
+                              )}
+                            </div>
+                            <Badge variant={property.status === "occupied" ? "default" : "secondary"} className="ml-2 flex-shrink-0">
+                              {property.status === "occupied" ? "Ocupado" : "Disponível"}
+                            </Badge>
+                          </div>
+
+                          <div className="pt-2 border-t border-slate-200">
+                            <p className="text-sm text-slate-600 mb-1">Valor Mensal</p>
+                            <p className="text-xl font-bold text-slate-900">{formatCurrency(property.monthlyRent)}</p>
+                          </div>
+
+                          <div className="flex gap-2 pt-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => handleEdit(property)}
+                              className="flex-1"
+                            >
+                              <Edit size={14} className="mr-1" />
+                              Editar
+                            </Button>
+                            <Button 
+                              variant="destructive" 
+                              size="sm" 
+                              onClick={() => handleDelete(property.id)}
+                              className="flex-1"
+                            >
+                              <Trash2 size={14} className="mr-1" />
+                              Excluir
+                            </Button>
+                          </div>
                         </div>
-                        {property.complement && (
-                          <p className="text-sm text-slate-600">{property.complement}</p>
-                        )}
-                      </div>
-                      <Badge variant={property.status === "occupied" ? "default" : "secondary"} className="ml-2 flex-shrink-0">
-                        {property.status === "occupied" ? "Ocupado" : "Disponível"}
-                      </Badge>
-                    </div>
-
-                    <div className="pt-2 border-t border-slate-200">
-                      <p className="text-sm text-slate-600 mb-1">Valor Mensal</p>
-                      <p className="text-xl font-bold text-slate-900">{formatCurrency(property.monthlyRent)}</p>
-                    </div>
-
-                    <div className="flex gap-2 pt-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => handleEdit(property)}
-                        className="flex-1"
-                      >
-                        <Edit size={14} className="mr-1" />
-                        Editar
-                      </Button>
-                      <Button 
-                        variant="destructive" 
-                        size="sm" 
-                        onClick={() => handleDelete(property.id)}
-                        className="flex-1"
-                      >
-                        <Trash2 size={14} className="mr-1" />
-                        Excluir
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                      </CardContent>
+                    </Card>
+                  </FloatingCard>
+                </StaggerItem>
+              ))}
+            </div>
+          </StaggerContainer>
 
           {filteredProperties.length === 0 && (
             <Card className="p-12">

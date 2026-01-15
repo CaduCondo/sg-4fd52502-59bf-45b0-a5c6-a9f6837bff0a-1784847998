@@ -13,6 +13,8 @@ import { Payment, Rental, Property, Tenant } from "@/types";
 import { DollarSign, AlertTriangle, CheckCircle, XCircle, TrendingUp } from "lucide-react";
 import { SEO } from "@/components/SEO";
 import { formatCurrency, formatDate } from "@/lib/masks";
+import { StaggerContainer, StaggerItem } from "@/components/animations/ScrollReveal";
+import { FloatingCard } from "@/components/animations/FloatingCard";
 
 export default function Payments() {
   const router = useRouter();
@@ -163,107 +165,130 @@ export default function Payments() {
 
           {/* Locações Não Pagas Este Mês */}
           {unpaidPayments.length > 0 && (
-            <Card className="border-l-4 border-l-red-500 bg-red-50">
-              <CardHeader>
-                <div className="flex items-center space-x-2">
-                  <AlertTriangle className="h-5 w-5 text-red-600" />
-                  <div>
-                    <CardTitle className="text-red-900">Locações Não Pagas Este Mês</CardTitle>
-                    <CardDescription className="text-red-700">
-                      {unpaidPayments.length} {unpaidPayments.length === 1 ? "locação pendente" : "locações pendentes"}
-                    </CardDescription>
+            <FloatingCard delay={0.1}>
+              <Card className="border-l-4 border-l-red-500 bg-red-50">
+                <CardHeader>
+                  <div className="flex items-center space-x-2">
+                    <AlertTriangle className="h-5 w-5 text-red-600" />
+                    <div>
+                      <CardTitle className="text-red-900">Locações Não Pagas Este Mês</CardTitle>
+                      <CardDescription className="text-red-700">
+                        {unpaidPayments.length} {unpaidPayments.length === 1 ? "locação pendente" : "locações pendentes"}
+                      </CardDescription>
+                    </div>
                   </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {unpaidPayments.map(({ payment, property, tenant }) => (
-                    <Link 
-                      key={payment.id}
-                      href={`/payments/${payment.id}`}
-                      className="block"
-                    >
-                      <div className="p-4 bg-white border-2 border-red-200 rounded-lg hover:shadow-md transition-shadow cursor-pointer">
-                        <div className="space-y-2">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1 min-w-0">
-                              <p className="font-semibold text-slate-900 text-sm">{property.local}</p>
-                              {property.complement && (
-                                <p className="text-xs text-slate-600">{property.complement}</p>
-                              )}
+                </CardHeader>
+                <CardContent>
+                  <StaggerContainer staggerDelay={0.05}>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {unpaidPayments.map(({ payment, property, tenant }, index) => (
+                        <StaggerItem key={payment.id}>
+                          <Link 
+                            href={`/payments/${payment.id}`}
+                            className="block"
+                          >
+                            <div className="p-4 bg-white border-2 border-red-200 rounded-lg hover:shadow-md transition-shadow cursor-pointer">
+                              <div className="space-y-2">
+                                <div className="flex items-start justify-between">
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-semibold text-slate-900 text-sm">{property.local}</p>
+                                    {property.complement && (
+                                      <p className="text-xs text-slate-600">{property.complement}</p>
+                                    )}
+                                  </div>
+                                  <Badge variant={getStatusBadge(payment.status).variant} className="ml-2 flex-shrink-0">
+                                    {getStatusBadge(payment.status).label}
+                                  </Badge>
+                                </div>
+                                <p className="text-xs text-slate-700">
+                                  <span className="font-medium">Inquilino:</span> {tenant.name}
+                                </p>
+                                <div className="flex justify-between items-center pt-2 border-t">
+                                  <span className="text-xs text-slate-600">Venc: {formatDate(payment.dueDate)}</span>
+                                  <span className="font-bold text-red-700">
+                                    {formatCurrency(payment.amount - (payment.partialAmount || 0))}
+                                  </span>
+                                </div>
+                                {payment.partialAmount && payment.partialAmount > 0 && (
+                                  <p className="text-xs text-yellow-700">
+                                    Pago parcial: {formatCurrency(payment.partialAmount)}
+                                  </p>
+                                )}
+                              </div>
                             </div>
-                            <Badge variant={getStatusBadge(payment.status).variant} className="ml-2 flex-shrink-0">
-                              {getStatusBadge(payment.status).label}
-                            </Badge>
-                          </div>
-                          <p className="text-xs text-slate-700">
-                            <span className="font-medium">Inquilino:</span> {tenant.name}
-                          </p>
-                          <div className="flex justify-between items-center pt-2 border-t">
-                            <span className="text-xs text-slate-600">Venc: {formatDate(payment.dueDate)}</span>
-                            <span className="font-bold text-red-700">
-                              {formatCurrency(payment.amount - (payment.partialAmount || 0))}
-                            </span>
-                          </div>
-                          {payment.partialAmount && payment.partialAmount > 0 && (
-                            <p className="text-xs text-yellow-700">
-                              Pago parcial: {formatCurrency(payment.partialAmount)}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-                <div className="mt-4 pt-4 border-t border-red-200">
-                  <div className="flex justify-between items-center">
-                    <span className="font-semibold text-red-900">Total a Receber:</span>
-                    <span className="text-xl font-bold text-red-700">{formatCurrency(totalUnpaid)}</span>
+                          </Link>
+                        </StaggerItem>
+                      ))}
+                    </div>
+                  </StaggerContainer>
+                  <div className="mt-4 pt-4 border-t border-red-200">
+                    <div className="flex justify-between items-center">
+                      <span className="font-semibold text-red-900">Total a Receber:</span>
+                      <span className="text-xl font-bold text-red-700">{formatCurrency(totalUnpaid)}</span>
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </FloatingCard>
           )}
 
           {/* Resumo e Filtros */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Card className="border-l-4 border-l-green-500">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-slate-600">Total Recebido</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600">{formatCurrency(totalPaid)}</div>
-              </CardContent>
-            </Card>
+          <StaggerContainer staggerDelay={0.08}>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <StaggerItem>
+                <FloatingCard delay={0}>
+                  <Card className="border-l-4 border-l-green-500">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-medium text-slate-600">Total Recebido</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold text-green-600">{formatCurrency(totalPaid)}</div>
+                    </CardContent>
+                  </Card>
+                </FloatingCard>
+              </StaggerItem>
 
-            <Card className="border-l-4 border-l-red-500">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-slate-600">Total Pendente</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-red-600">{formatCurrency(totalUnpaid)}</div>
-              </CardContent>
-            </Card>
+              <StaggerItem>
+                <FloatingCard delay={0.05}>
+                  <Card className="border-l-4 border-l-red-500">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-medium text-slate-600">Total Pendente</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold text-red-600">{formatCurrency(totalUnpaid)}</div>
+                    </CardContent>
+                  </Card>
+                </FloatingCard>
+              </StaggerItem>
 
-            <Card className="border-l-4 border-l-blue-500">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-slate-600">Taxa Administração</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-blue-600">{formatCurrency(adminFee)}</div>
-                <p className="text-xs text-slate-500 mt-1">{config.adminFeePercentage}% do total</p>
-              </CardContent>
-            </Card>
+              <StaggerItem>
+                <FloatingCard delay={0.1}>
+                  <Card className="border-l-4 border-l-blue-500">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-medium text-slate-600">Taxa Administração</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold text-blue-600">{formatCurrency(adminFee)}</div>
+                      <p className="text-xs text-slate-500 mt-1">{config.adminFeePercentage}% do total</p>
+                    </CardContent>
+                  </Card>
+                </FloatingCard>
+              </StaggerItem>
 
-            <Card className="border-l-4 border-l-slate-500">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-slate-600">Total Filtrado</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-slate-900">{formatCurrency(totalPaid + totalUnpaid)}</div>
-              </CardContent>
-            </Card>
-          </div>
+              <StaggerItem>
+                <FloatingCard delay={0.15}>
+                  <Card className="border-l-4 border-l-slate-500">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-medium text-slate-600">Total Filtrado</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold text-slate-900">{formatCurrency(totalPaid + totalUnpaid)}</div>
+                    </CardContent>
+                  </Card>
+                </FloatingCard>
+              </StaggerItem>
+            </div>
+          </StaggerContainer>
 
           {/* Filtros */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -309,69 +334,74 @@ export default function Payments() {
           </div>
 
           {/* Todos os Registros dos Pagamentos Realizados */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Todos os Registros dos Pagamentos Realizados</CardTitle>
-              <CardDescription>
-                {filteredPayments.length} {filteredPayments.length === 1 ? "registro" : "registros"}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {filteredPayments.map(({ payment, property, tenant, installmentNumber }) => {
-                  const status = getStatusBadge(payment.status);
-                  return (
-                    <Link 
-                      key={payment.id}
-                      href={`/payments/${payment.id}`}
-                      className="block"
-                    >
-                      <div className={`p-4 border-2 rounded-lg hover:shadow-md transition-shadow cursor-pointer ${
-                        payment.status === "paid" ? "bg-blue-50 border-blue-200" :
-                        payment.status === "partial" ? "bg-yellow-50 border-yellow-200" :
-                        "bg-red-50 border-red-200"
-                      }`}>
-                        <div className="space-y-2">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1 min-w-0">
-                              <p className="font-semibold text-slate-900 text-sm">
-                                {property.local}
-                                {property.complement && ` - ${property.complement}`}
-                              </p>
-                              <p className="text-xs text-slate-600 mt-1">
-                                {tenant.name}
-                              </p>
+          <FloatingCard delay={0.3}>
+            <Card>
+              <CardHeader>
+                <CardTitle>Todos os Registros dos Pagamentos Realizados</CardTitle>
+                <CardDescription>
+                  {filteredPayments.length} {filteredPayments.length === 1 ? "registro" : "registros"}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <StaggerContainer staggerDelay={0.04}>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {filteredPayments.map(({ payment, property, tenant, installmentNumber }, index) => {
+                      const status = getStatusBadge(payment.status);
+                      return (
+                        <StaggerItem key={payment.id}>
+                          <Link 
+                            href={`/payments/${payment.id}`}
+                            className="block"
+                          >
+                            <div className={`p-4 border-2 rounded-lg hover:shadow-md transition-shadow cursor-pointer ${
+                              payment.status === "paid" ? "bg-blue-50 border-blue-200" :
+                              payment.status === "partial" ? "bg-yellow-50 border-yellow-200" :
+                              "bg-red-50 border-red-200"
+                            }`}>
+                              <div className="space-y-2">
+                                <div className="flex items-start justify-between">
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-semibold text-slate-900 text-sm">
+                                      {property.local}
+                                      {property.complement && ` - ${property.complement}`}
+                                    </p>
+                                    <p className="text-xs text-slate-600 mt-1">
+                                      {tenant.name}
+                                    </p>
+                                  </div>
+                                  <Badge variant={status.variant} className="ml-2 flex-shrink-0">
+                                    {status.label}
+                                  </Badge>
+                                </div>
+                                <div className="flex items-center justify-between pt-2 border-t">
+                                  <span className="text-xs font-medium text-slate-600">
+                                    {getOrdinalSuffix(installmentNumber)} prestação
+                                  </span>
+                                  <span className="text-sm font-bold text-slate-900">
+                                    {formatCurrency(payment.partialAmount || payment.amount)}
+                                  </span>
+                                </div>
+                                {payment.paymentMethod === "Pix" && payment.paymentCode && (
+                                  <p className="text-xs text-slate-500">
+                                    <span className="font-medium">Código:</span> {payment.paymentCode}
+                                  </p>
+                                )}
+                                {payment.partialAmount && payment.partialAmount > 0 && payment.status !== "paid" && (
+                                  <p className="text-xs text-yellow-700">
+                                    Restante: {formatCurrency(payment.amount - payment.partialAmount)}
+                                  </p>
+                                )}
+                              </div>
                             </div>
-                            <Badge variant={status.variant} className="ml-2 flex-shrink-0">
-                              {status.label}
-                            </Badge>
-                          </div>
-                          <div className="flex items-center justify-between pt-2 border-t">
-                            <span className="text-xs font-medium text-slate-600">
-                              {getOrdinalSuffix(installmentNumber)} prestação
-                            </span>
-                            <span className="text-sm font-bold text-slate-900">
-                              {formatCurrency(payment.partialAmount || payment.amount)}
-                            </span>
-                          </div>
-                          {payment.paymentMethod === "Pix" && payment.paymentCode && (
-                            <p className="text-xs text-slate-500">
-                              <span className="font-medium">Código:</span> {payment.paymentCode}
-                            </p>
-                          )}
-                          {payment.partialAmount && payment.partialAmount > 0 && payment.status !== "paid" && (
-                            <p className="text-xs text-yellow-700">
-                              Restante: {formatCurrency(payment.amount - payment.partialAmount)}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
+                          </Link>
+                        </StaggerItem>
+                      );
+                    })}
+                  </div>
+                </StaggerContainer>
+              </CardContent>
+            </Card>
+          </FloatingCard>
 
           {filteredPayments.length === 0 && (
             <Card className="p-12">

@@ -15,6 +15,8 @@ import { Tenant } from "@/types";
 import { tenantStorage } from "@/lib/storage";
 import { maskCPF, maskPhone } from "@/lib/masks";
 import { useToast } from "@/hooks/use-toast";
+import { StaggerContainer, StaggerItem } from "@/components/animations/ScrollReveal";
+import { FloatingCard } from "@/components/animations/FloatingCard";
 
 export default function TenantsPage() {
   const router = useRouter();
@@ -241,64 +243,69 @@ export default function TenantsPage() {
         </Card>
 
         {/* List */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredTenants.map((tenant) => (
-            <div 
-              key={tenant.id} 
-              onClick={() => router.push(`/tenants/${tenant.id}`)}
-              className="group cursor-pointer"
-            >
-              <Card className="h-full hover:shadow-md transition-shadow relative overflow-hidden">
-                <div className={`absolute top-0 left-0 w-1 h-full ${tenant.status === 'active' ? 'bg-emerald-500' : 'bg-gray-300'}`} />
-                <CardHeader className="pb-2 pl-6">
-                  <div className="flex justify-between items-start">
-                    <CardTitle className="text-lg font-semibold truncate pr-2">{tenant.name}</CardTitle>
-                    <Badge variant={tenant.status === 'active' ? "default" : "secondary"} className={tenant.status === 'active' ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-100" : ""}>
-                      {tenant.status === 'active' ? 'Ativo' : 'Vago'}
-                    </Badge>
+        <StaggerContainer staggerDelay={0.08}>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredTenants.map((tenant, index) => (
+              <StaggerItem key={tenant.id}>
+                <FloatingCard delay={index * 0.05}>
+                  <div 
+                    onClick={() => router.push(`/tenants/${tenant.id}`)}
+                    className="group cursor-pointer"
+                  >
+                    <Card className="h-full hover:shadow-md transition-shadow relative overflow-hidden">
+                      <div className={`absolute top-0 left-0 w-1 h-full ${tenant.status === 'active' ? 'bg-emerald-500' : 'bg-gray-300'}`} />
+                      <CardHeader className="pb-2 pl-6">
+                        <div className="flex justify-between items-start">
+                          <CardTitle className="text-lg font-semibold truncate pr-2">{tenant.name}</CardTitle>
+                          <Badge variant={tenant.status === 'active' ? "default" : "secondary"} className={tenant.status === 'active' ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-100" : ""}>
+                            {tenant.status === 'active' ? 'Ativo' : 'Vago'}
+                          </Badge>
+                        </div>
+                        <CardDescription className="flex items-center gap-1">
+                          <FileText className="h-3 w-3" /> CPF: {tenant.cpf}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="pl-6 text-sm space-y-2 text-gray-600">
+                        <div className="flex items-center gap-2">
+                          <Mail className="h-4 w-4 text-gray-400" />
+                          <span className="truncate">{tenant.email}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Phone className="h-4 w-4 text-gray-400" />
+                          <span>{tenant.phone}</span>
+                        </div>
+                        
+                        <div className="flex justify-end gap-2 mt-4 pt-2 border-t">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                            onClick={(e) => openEdit(tenant, e)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                            onClick={(e) => handleDelete(tenant.id, e)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
                   </div>
-                  <CardDescription className="flex items-center gap-1">
-                    <FileText className="h-3 w-3" /> CPF: {tenant.cpf}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="pl-6 text-sm space-y-2 text-gray-600">
-                  <div className="flex items-center gap-2">
-                    <Mail className="h-4 w-4 text-gray-400" />
-                    <span className="truncate">{tenant.email}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Phone className="h-4 w-4 text-gray-400" />
-                    <span>{tenant.phone}</span>
-                  </div>
-                  
-                  <div className="flex justify-end gap-2 mt-4 pt-2 border-t">
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                      onClick={(e) => openEdit(tenant, e)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                      onClick={(e) => handleDelete(tenant.id, e)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          ))}
-          {filteredTenants.length === 0 && (
-            <div className="col-span-full text-center py-12 text-gray-500">
-              Nenhum inquilino encontrado com os filtros atuais.
-            </div>
-          )}
-        </div>
+                </FloatingCard>
+              </StaggerItem>
+            ))}
+            {filteredTenants.length === 0 && (
+              <div className="col-span-full text-center py-12 text-gray-500">
+                Nenhum inquilino encontrado com os filtros atuais.
+              </div>
+            )}
+          </div>
+        </StaggerContainer>
 
         {/* Edit Dialog */}
         <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
