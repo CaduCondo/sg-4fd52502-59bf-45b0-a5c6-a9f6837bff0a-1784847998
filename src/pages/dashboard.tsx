@@ -119,7 +119,7 @@ export default function Dashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-gray-900">{stats.totalProperties}</div>
-                  <p className="text-xs text-gray-500 mt-1">Todos os imóveis</p>
+                  <p className="text-xs text-gray-500 mt-1">Total</p>
                 </CardContent>
               </Card>
             </Link>
@@ -127,7 +127,7 @@ export default function Dashboard() {
             <Link href="/properties?filter=rented">
               <Card className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-l-emerald-500">
                 <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                  <CardTitle className="text-sm font-medium text-gray-600">Imóveis Alugados</CardTitle>
+                  <CardTitle className="text-sm font-medium text-gray-600">Imóveis Ocupados</CardTitle>
                   <CheckCircle className="h-5 w-5 text-emerald-600" />
                 </CardHeader>
                 <CardContent>
@@ -140,7 +140,7 @@ export default function Dashboard() {
             <Link href="/properties?filter=available">
               <Card className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-l-amber-500">
                 <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                  <CardTitle className="text-sm font-medium text-gray-600">Imóveis Disponíveis</CardTitle>
+                  <CardTitle className="text-sm font-medium text-gray-600">Imóveis Vagos</CardTitle>
                   <Building2 className="h-5 w-5 text-amber-600" />
                 </CardHeader>
                 <CardContent>
@@ -168,7 +168,7 @@ export default function Dashboard() {
             <Link href="/payments?filter=paid">
               <Card className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-l-green-500">
                 <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                  <CardTitle className="text-sm font-medium text-gray-600">Pagos no Mês</CardTitle>
+                  <CardTitle className="text-sm font-medium text-gray-600">Pagamentos no Mês</CardTitle>
                   <CheckCircle className="h-5 w-5 text-green-600" />
                 </CardHeader>
                 <CardContent>
@@ -181,7 +181,7 @@ export default function Dashboard() {
             <Link href="/payments?filter=unpaid">
               <Card className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-l-red-500">
                 <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                  <CardTitle className="text-sm font-medium text-gray-600">Pendentes no Mês</CardTitle>
+                  <CardTitle className="text-sm font-medium text-gray-600">Pagamentos Pendentes</CardTitle>
                   <XCircle className="h-5 w-5 text-red-600" />
                 </CardHeader>
                 <CardContent>

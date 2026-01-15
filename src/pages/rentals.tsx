@@ -15,6 +15,7 @@ import { Property, Tenant, Rental } from "@/types";
 import { Home, Users, FileText, Plus, Edit2, Trash2, Search, Building2, User, Calendar, DollarSign, AlertCircle } from "lucide-react";
 import { SEO } from "@/components/SEO";
 import { formatCurrency, parseCurrency, formatDate } from "@/lib/masks";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export default function Rentals() {
   const router = useRouter();

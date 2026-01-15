@@ -28,7 +28,7 @@ export interface Tenant {
   phone: string;
   email: string;
   observations?: string;
-  status: "vacant" | "active";
+  status: "vacant" | "active" | "inactive";
   createdAt: string;
 }
 

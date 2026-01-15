@@ -24,6 +24,7 @@ export default function RentalDetails() {
   const [property, setProperty] = useState<Property | null>(null);
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showEndDialog, setShowEndDialog] = useState(false);
 
   // Edit form states
@@ -38,6 +39,9 @@ export default function RentalDetails() {
   const [editMotorcycleSpotValue, setEditMotorcycleSpotValue] = useState("");
   const [availableProperties, setAvailableProperties] = useState<Property[]>([]);
   const [availableTenants, setAvailableTenants] = useState<Tenant[]>([]);
+
+  // End contract state
+  const [endDate, setEndDate] = useState("");
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -178,20 +182,10 @@ export default function RentalDetails() {
     localStorage.setItem("rentals_payments", JSON.stringify([...otherPayments, ...newPayments]));
   };
 
-  const handleEndRental = () => {
+  const handleDelete = () => {
     if (!rental) return;
 
-    propertyStorage.updateStatus(rental.propertyId, "available");
-    tenantStorage.updateStatus(rental.tenantId, "vacant");
-    rentalStorage.updateStatus(rental.id, "ended");
-
-    setShowEndDialog(false);
-    router.push("/rentals");
-  };
-
-  const handleDelete = () => {
-    if (!rental || !confirm("Tem certeza que deseja excluir esta locação?")) return;
-
+    // Update statuses
     propertyStorage.updateStatus(rental.propertyId, "available");
     tenantStorage.updateStatus(rental.tenantId, "vacant");
     
@@ -200,7 +194,27 @@ export default function RentalDetails() {
     const filteredPayments = allPayments.filter(p => p.rentalId !== rental.id);
     localStorage.setItem("rentals_payments", JSON.stringify(filteredPayments));
     
+    // Delete rental
     rentalStorage.delete(rental.id);
+    
+    setShowDeleteDialog(false);
+    router.push("/rentals");
+  };
+
+  const handleEndContract = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!rental) return;
+
+    // Update rental status to ended
+    rentalStorage.updateStatus(rental.id, "ended");
+    
+    // Update property status to available
+    propertyStorage.updateStatus(rental.propertyId, "available");
+    
+    // Update tenant status to inactive
+    tenantStorage.updateStatus(rental.tenantId, "inactive");
+
+    setShowEndDialog(false);
     router.push("/rentals");
   };
 
@@ -424,7 +438,7 @@ export default function RentalDetails() {
             )}
             
             <Button 
-              onClick={handleDelete}
+              onClick={() => setShowDeleteDialog(true)}
               variant="destructive"
               className="flex items-center space-x-2"
             >
@@ -579,30 +593,78 @@ export default function RentalDetails() {
           </DialogContent>
         </Dialog>
 
-        {/* End Rental Dialog */}
-        <Dialog open={showEndDialog} onOpenChange={setShowEndDialog}>
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Encerrar Locação</DialogTitle>
+              <DialogTitle>Confirmar Exclusão</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <p className="text-slate-600">
-                Tem certeza que deseja encerrar esta locação? Esta ação irá:
+                Tem certeza que deseja excluir esta locação? Esta ação:
               </p>
               <ul className="list-disc list-inside space-y-1 text-sm text-slate-600">
-                <li>Alterar o status da locação para "Encerrada"</li>
-                <li>Liberar o imóvel (status: Disponível)</li>
-                <li>Liberar o inquilino (status: Vago)</li>
+                <li>Removerá permanentemente a locação</li>
+                <li>Alterará o status do imóvel para "Disponível"</li>
+                <li>Alterará o status do inquilino para "Vago"</li>
+                <li>Removerá todos os pagamentos associados</li>
+                <li><strong>Esta ação não pode ser desfeita</strong></li>
               </ul>
               <div className="flex items-center space-x-2 pt-4">
-                <Button onClick={handleEndRental} variant="destructive">
-                  Confirmar Encerramento
+                <Button onClick={handleDelete} variant="destructive">
+                  Confirmar Exclusão
                 </Button>
-                <Button variant="outline" onClick={() => setShowEndDialog(false)}>
+                <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
                   Cancelar
                 </Button>
               </div>
             </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* End Contract Dialog */}
+        <Dialog open={showEndDialog} onOpenChange={setShowEndDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Encerrar Contrato de Locação</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleEndContract} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="end-date">Data de Encerramento *</Label>
+                <Input
+                  id="end-date"
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  required
+                />
+              </div>
+              
+              <div className="bg-amber-50 border border-amber-200 rounded-md p-4">
+                <p className="text-sm text-amber-800 font-medium mb-2">
+                  Ao encerrar este contrato:
+                </p>
+                <ul className="list-disc list-inside space-y-1 text-sm text-amber-700">
+                  <li>O status da locação será alterado para "Encerrada"</li>
+                  <li>O status do imóvel será alterado para "Disponível"</li>
+                  <li>O status do inquilino será alterado para "Inativo"</li>
+                </ul>
+              </div>
+
+              <div className="flex items-center space-x-2 pt-4">
+                <Button type="submit" className="flex items-center space-x-2">
+                  <XCircle className="h-4 w-4" />
+                  <span>Confirmar Encerramento</span>
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowEndDialog(false)}
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </form>
           </DialogContent>
         </Dialog>
       </Layout>

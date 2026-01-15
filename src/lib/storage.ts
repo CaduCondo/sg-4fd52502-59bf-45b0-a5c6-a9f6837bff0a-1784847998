@@ -95,13 +95,12 @@ export const tenantStorage = {
     tenantStorage.save(tenant);
   },
 
-  updateStatus: (id: string, status: "vacant" | "active"): void => {
-    if (typeof window === "undefined") return;
+  updateStatus: (id: string, status: "vacant" | "active" | "inactive") => {
     const tenants = tenantStorage.getAll();
-    const tenant = tenants.find(t => t.id === id);
-    if (tenant) {
-      tenant.status = status;
-      tenantStorage.save(tenant);
+    const index = tenants.findIndex((t) => t.id === id);
+    if (index !== -1) {
+      tenants[index].status = status;
+      localStorage.setItem(TENANTS_KEY, JSON.stringify(tenants));
     }
   },
   
