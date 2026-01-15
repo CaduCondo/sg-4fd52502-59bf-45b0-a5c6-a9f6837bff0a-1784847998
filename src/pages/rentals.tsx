@@ -107,6 +107,53 @@ export default function RentalsPage() {
     });
   };
 
+  const generatePayments = async (rental: Rental) => {
+    const startDate = new Date(rental.startDate);
+    const endDate = rental.endDate ? new Date(rental.endDate) : null;
+    const paymentDay = rental.paymentDay;
+    
+    const payments: Omit<Payment, "id" | "createdAt">[] = [];
+    
+    const currentDate = new Date(startDate.getFullYear(), startDate.getMonth(), paymentDay);
+    
+    // Se a data de vencimento for antes da data de início, começar no próximo mês
+    if (currentDate < startDate) {
+      currentDate.setMonth(currentDate.getMonth() + 1);
+    }
+    
+    // Gerar pagamentos até a data de término ou 12 meses se não houver data de término
+    const maxDate = endDate || new Date(startDate.getFullYear() + 1, startDate.getMonth(), paymentDay);
+    
+    while (currentDate <= maxDate) {
+      const payment: Omit<Payment, "id" | "createdAt"> = {
+        rentalId: rental.id,
+        referenceMonth: currentDate.getMonth() + 1,
+        referenceYear: currentDate.getFullYear(),
+        dueDate: currentDate.toISOString().split("T")[0],
+        expectedAmount: rental.value,
+        paidAmount: 0,
+        paymentDate: null,
+        status: "pending",
+        paymentMethod: null,
+        lateFee: 0,
+        interest: 0,
+        notes: null,
+        attachments: [],
+        partialPayments: [],
+      };
+      
+      payments.push(payment);
+      
+      // Próximo mês
+      currentDate.setMonth(currentDate.getMonth() + 1);
+    }
+    
+    // Criar todos os pagamentos
+    for (const payment of payments) {
+      await paymentService.create(payment);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -132,11 +179,26 @@ export default function RentalsPage() {
         isActive: true,
       };
 
-      await rentalService.create(rental);
+      const createdRental = await rentalService.create(rental);
+
+      // Gerar pagamentos mensais
+      await generatePayments({ ...createdRental, ...rental });
+
+      // Update property status to occupied
+      const property = properties.find((p) => p.id === formData.propertyId);
+      if (property) {
+        await propertyService.update({ ...property, status: "occupied" });
+      }
+
+      // Update tenant status to rented
+      const tenant = tenants.find((t) => t.id === formData.tenantId);
+      if (tenant) {
+        await tenantService.update({ ...tenant, status: "rented" });
+      }
 
       toast({
         title: "Sucesso",
-        description: "Locação cadastrada com sucesso! Recebimentos mensais foram gerados automaticamente.",
+        description: "Locação cadastrada com sucesso! Recebimentos mensais foram gerados.",
       });
 
       handleCloseDialog();
@@ -272,39 +334,6 @@ export default function RentalsPage() {
             </div>
           </ScrollReveal>
 
-          {/* Available Properties and Active Tenants Summary */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <ScrollReveal delay={0.1}>
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Home className="h-5 w-5 text-emerald-600" />
-                    Imóveis Vagos
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-3xl font-bold text-emerald-600">{availableProperties.length}</p>
-                  <p className="text-sm text-muted-foreground mt-1">Disponíveis para locação</p>
-                </CardContent>
-              </Card>
-            </ScrollReveal>
-
-            <ScrollReveal delay={0.15}>
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <User className="h-5 w-5 text-blue-600" />
-                    Inquilinos Ativos
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-3xl font-bold text-blue-600">{availableTenants.length}</p>
-                  <p className="text-sm text-muted-foreground mt-1">Disponíveis para locação</p>
-                </CardContent>
-              </Card>
-            </ScrollReveal>
-          </div>
-
           {loading ? (
             <div className="text-center py-12">
               <p className="text-muted-foreground">Carregando locações...</p>
@@ -313,12 +342,12 @@ export default function RentalsPage() {
             <>
               {/* Active Rentals */}
               <div className="space-y-4">
-                <ScrollReveal delay={0.2}>
+                <ScrollReveal delay={0.1}>
                   <h2 className="text-2xl font-bold">Locações Ativas</h2>
                 </ScrollReveal>
 
                 {activeRentals.length === 0 ? (
-                  <ScrollReveal delay={0.25}>
+                  <ScrollReveal delay={0.2}>
                     <Card>
                       <CardContent className="py-12 text-center">
                         <Home className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
@@ -340,7 +369,7 @@ export default function RentalsPage() {
                       const tenant = getTenantInfo(rental.tenantId);
 
                       return (
-                        <FloatingCard key={rental.id} delay={0.1 * (index + 3)}>
+                        <FloatingCard key={rental.id} delay={0.1 * (index + 2)}>
                           <Card 
                             className="hover:shadow-lg transition-shadow cursor-pointer"
                             onClick={() => handleCardClick(rental.id)}
