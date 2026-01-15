@@ -260,6 +260,11 @@ export default function RentalsPage() {
         dueDate: newRental.startDate,
         expectedAmount: totalValue,
         status: "pending",
+        attachments: [],
+        interest: 0,
+        paidAmount: 0,
+        lateFee: 0,
+        partialPayments: []
       };
 
       await paymentService.create(firstPayment);
@@ -708,18 +713,10 @@ export default function RentalsPage() {
                         variant="outline" 
                         size="sm" 
                         onClick={() => fileInputRef.current?.click()}
+                        className="w-full sm:w-auto"
                       >
                         <Paperclip className="h-4 w-4 mr-2" />
-                        Adicionar Contrato
-                      </Button>
-                      <Button 
-                        type="button"
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => fileInputRef.current?.click()}
-                      >
-                        <Camera className="h-4 w-4 mr-2" />
-                        Tirar Foto
+                        Anexar
                       </Button>
                     </div>
                   </div>

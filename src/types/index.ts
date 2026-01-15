@@ -75,17 +75,23 @@ export interface Payment {
   rentalId: string;
   referenceMonth: number;
   referenceYear: number;
-  dueDate: string;
   expectedAmount: number;
-  paidAmount?: number;
+  paidAmount: number;
+  dueDate: string;
   paymentDate?: string;
-  status: "pending" | "paid" | "partial" | "overdue";
   paymentMethod?: string;
+  paymentLocation?: string;
+  paymentCode?: string;
+  status: "paid" | "pending" | "partial" | "overdue";
+  lateFee: number;
+  interest: number;
   notes?: string;
-  attachments?: string[];
-  lateFee?: number;
-  interest?: number;
-  partialPayments?: any[];
+  attachments: string[];
+  partialPayments: Array<{
+    amount: number;
+    date: string;
+    method: string;
+  }>;
   createdAt: string;
 }
 
