@@ -58,6 +58,11 @@ export interface Payment {
   paidAt?: string;
   dueDate: string;
   createdAt: string;
+  status?: "paid" | "unpaid" | "partial";
+  partialAmount?: number;
+  paymentMethod?: "Pix" | "Boleto" | "Dinheiro";
+  paymentLocation?: "CP" | "CD" | "CE";
+  paymentCode?: string;
 }
 
 export interface SystemConfig {
