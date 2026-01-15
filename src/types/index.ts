@@ -69,15 +69,16 @@ export interface Rental {
   propertyId: string;
   tenantId: string;
   startDate: string;
-  endDate: string;
-  monthlyRent: number;
+  endDate: string | null;
+  value: number;
   paymentDay: number;
+  monthlyRent: number;
   hasGarage: boolean;
   garageValue?: number;
-  value: number;
   deposit?: string;
-  contractAttachments?: Attachment[];
+  contractAttachments?: any[];
   isActive: boolean;
+  notes?: string;
   createdAt: string;
 }
 
