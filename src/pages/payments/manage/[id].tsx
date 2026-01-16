@@ -34,7 +34,7 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
   const [formData, setFormData] = useState({
     paymentDate: new Date().toISOString().split("T")[0],
     paidAmount: "",
-    paymentMethod: "PIX",
+    paymentMethod: "pix",
     paymentLocation: "CP",
     paymentCode: "",
     notes: "",
@@ -65,7 +65,7 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
 
   useEffect(() => {
     // Auto-generate payment code when method or location changes
-    if (formData.paymentMethod === "PIX") {
+    if (formData.paymentMethod === "pix") {
       const day = new Date().getDate().toString().padStart(2, "0");
       const code = `${day}XXXX${formData.paymentLocation}`;
       setFormData((prev) => ({ ...prev, paymentCode: code }));
@@ -99,7 +99,7 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
         setFormData({
           paymentDate: paymentData.paymentDate || new Date().toISOString().split("T")[0],
           paidAmount: applyRealMask((paymentData.expectedAmount * 100).toString()),
-          paymentMethod: paymentData.paymentMethod || "PIX",
+          paymentMethod: paymentData.paymentMethod || "pix",
           paymentLocation: paymentData.paymentLocation || "CP",
           paymentCode: paymentData.paymentCode || "",
           notes: paymentData.notes || "",
@@ -217,6 +217,7 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
     try {
       const paidAmount = parseFloat(removeMask(formData.paidAmount));
 
+      // Determine status based on paid amount vs expected amount
       let status: Payment["status"] = "pending";
       if (paidAmount >= calculatedValues.totalAmount) {
         status = "paid";
@@ -229,11 +230,11 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
         paidAmount,
         paymentDate: formData.paymentDate,
         paymentMethod: formData.paymentMethod,
-        paymentLocation: formData.paymentMethod === "PIX" ? formData.paymentLocation : undefined,
-        paymentCode: formData.paymentMethod === "PIX" ? formData.paymentCode : undefined,
+        paymentLocation: formData.paymentMethod === "pix" ? formData.paymentLocation : undefined,
+        paymentCode: formData.paymentMethod === "pix" ? formData.paymentCode : undefined,
         status,
-        lateFee: calculatedValues.lateFee,
-        interest: calculatedValues.interest,
+        lateFee: waiveLateFee ? 0 : calculatedValues.lateFee,
+        interest: waiveLateFee ? 0 : calculatedValues.interest,
         notes: formData.notes,
         attachments: formData.attachments,
       };
@@ -244,6 +245,46 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
         title: "Sucesso",
         description: "Recebimento registrado com sucesso!",
       });
+
+      // Generate receipt if payment is complete
+      if (status === "paid" && rental && property && tenant) {
+        const { PaymentReceipt } = await import("@/components/PaymentReceipt");
+        const receiptData = {
+          payment: updatedPayment,
+          rental,
+          property,
+          tenant,
+        };
+        
+        // Open receipt in new window
+        const receiptWindow = window.open("", "_blank");
+        if (receiptWindow) {
+          const receipt = PaymentReceipt(receiptData);
+          receiptWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+              <head>
+                <title>Recibo de Pagamento</title>
+                <style>
+                  body { margin: 0; padding: 20px; font-family: Arial, sans-serif; }
+                  @media print {
+                    body { margin: 0; }
+                  }
+                </style>
+              </head>
+              <body>
+                <div id="receipt"></div>
+                <script>
+                  window.onload = function() {
+                    window.print();
+                  };
+                </script>
+              </body>
+            </html>
+          `);
+          receiptWindow.document.close();
+        }
+      }
 
       if (embedded && onClose) {
         onClose();
@@ -462,14 +503,14 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="PIX">PIX</SelectItem>
-                    <SelectItem value="Dinheiro">Dinheiro</SelectItem>
-                    <SelectItem value="Boleto">Boleto</SelectItem>
+                    <SelectItem value="pix">PIX</SelectItem>
+                    <SelectItem value="dinheiro">Dinheiro</SelectItem>
+                    <SelectItem value="boleto">Boleto</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
-              {formData.paymentMethod === "PIX" && (
+              {formData.paymentMethod === "pix" && (
                 <>
                   <div className="space-y-2">
                     <Label htmlFor="paymentLocation">

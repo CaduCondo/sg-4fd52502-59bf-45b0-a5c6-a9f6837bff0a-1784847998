@@ -119,7 +119,7 @@ export default function PaymentsPage() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    const due = new Date(dueDate);
+    const due = new Date(dueDate + "T00:00:00");
     due.setHours(0, 0, 0, 0);
     
     if (due < today) {
@@ -137,7 +137,7 @@ export default function PaymentsPage() {
         amount: "text-yellow-600" 
       };
     } else {
-      // Future - Blue (changed from green)
+      // Future - Blue
       return { 
         border: "border-l-blue-500", 
         icon: "text-blue-600", 
