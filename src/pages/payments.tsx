@@ -27,9 +27,10 @@ export default function PaymentsPage() {
   const [selectedPaymentId, setSelectedPaymentId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  // Filter state
-  const [selectedMonth, setSelectedMonth] = useState<string>("all");
-  const [selectedYear, setSelectedYear] = useState<string>("all");
+  // Filter state - Initialize with current month/year
+  const currentDate = new Date();
+  const [selectedMonth, setSelectedMonth] = useState<string>((currentDate.getMonth() + 1).toString());
+  const [selectedYear, setSelectedYear] = useState<string>(currentDate.getFullYear().toString());
 
   useEffect(() => {
     loadData();
@@ -111,6 +112,38 @@ export default function PaymentsPage() {
       "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
     ];
     return months[month - 1] || "";
+  };
+
+  // Get color class based on due date
+  const getDueDateColor = (dueDate: string): { border: string; icon: string; amount: string } => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const due = new Date(dueDate);
+    due.setHours(0, 0, 0, 0);
+    
+    if (due < today) {
+      // Overdue - Red
+      return { 
+        border: "border-l-red-500", 
+        icon: "text-red-600", 
+        amount: "text-red-600" 
+      };
+    } else if (due.getTime() === today.getTime()) {
+      // Due today - Yellow
+      return { 
+        border: "border-l-yellow-500", 
+        icon: "text-yellow-600", 
+        amount: "text-yellow-600" 
+      };
+    } else {
+      // Future - Green
+      return { 
+        border: "border-l-green-500", 
+        icon: "text-green-600", 
+        amount: "text-green-600" 
+      };
+    }
   };
 
   // Filter payments: show all payments within contract period by default
@@ -277,11 +310,12 @@ export default function PaymentsPage() {
                     {unpaidPayments.map((payment, index) => {
                       const property = getPropertyInfo(payment.rentalId);
                       const tenant = getTenantInfo(payment.rentalId);
+                      const colors = getDueDateColor(payment.dueDate);
 
                       return (
                         <FloatingCard key={payment.id} delay={0.1 * (index + 3)}>
                           <Card
-                            className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-l-red-500"
+                            className={`hover:shadow-lg transition-shadow cursor-pointer border-l-4 ${colors.border}`}
                             onClick={() => handleCardClick(payment.id)}
                           >
                             <CardHeader className="pb-3">
@@ -294,7 +328,7 @@ export default function PaymentsPage() {
                               <CardTitle className="flex items-center gap-2 text-lg">
                                 <div className="flex flex-col gap-1 flex-1">
                                   <span className="flex items-center gap-2">
-                                    <Home className="h-5 w-5 text-red-600" />
+                                    <Home className={`h-5 w-5 ${colors.icon}`} />
                                     {property?.location || "N/A"}
                                   </span>
                                   {property?.complement && (
@@ -325,7 +359,7 @@ export default function PaymentsPage() {
 
                               <div className="pt-2 border-t">
                                 <p className="text-xs text-muted-foreground mb-1">Valor Esperado</p>
-                                <p className="text-2xl font-bold text-red-600">
+                                <p className={`text-2xl font-bold ${colors.amount}`}>
                                   {formatCurrency(payment.expectedAmount)}
                                 </p>
                               </div>
