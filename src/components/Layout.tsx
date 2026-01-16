@@ -55,6 +55,7 @@ export function Layout({ children }: LayoutProps) {
   const [profileCpf, setProfileCpf] = useState("");
   const [profilePhone, setProfilePhone] = useState("");
   const [profileEmail, setProfileEmail] = useState("");
+  const [profilePhoto, setProfilePhoto] = useState("");
 
   // Password change state
   const [currentPassword, setCurrentPassword] = useState("");
@@ -70,8 +71,35 @@ export function Layout({ children }: LayoutProps) {
       setProfileCpf(currentUser.cpf || "");
       setProfilePhone(currentUser.phone || "");
       setProfileEmail(currentUser.email || "");
+      setProfilePhoto(currentUser.photo || "");
     }
   }, []);
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const file = files[0];
+    
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      alert("Por favor, selecione apenas arquivos de imagem.");
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert("A imagem deve ter no máximo 5MB.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      setProfilePhoto(base64String);
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleLogout = () => {
     logout();
@@ -88,6 +116,7 @@ export function Layout({ children }: LayoutProps) {
       cpf: profileCpf,
       phone: profilePhone,
       email: profileEmail,
+      photo: profilePhoto,
     };
     
     userStorage.update(updatedUser);
@@ -227,8 +256,19 @@ export function Layout({ children }: LayoutProps) {
                     <motion.div
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.95 }}
+                      className="relative"
                     >
-                      <User size={18} />
+                      {user?.photo ? (
+                        <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-emerald-600">
+                          <img 
+                            src={user.photo} 
+                            alt={user.name} 
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      ) : (
+                        <User size={18} />
+                      )}
                     </motion.div>
                     <span className="hidden sm:inline">{user?.name}</span>
                     <motion.div
@@ -358,6 +398,48 @@ export function Layout({ children }: LayoutProps) {
             <DialogTitle>Editar Perfil</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {/* Profile Photo Upload */}
+            <div className="flex flex-col items-center space-y-3">
+              <div className="relative">
+                <div className="w-24 h-24 rounded-full overflow-hidden bg-slate-200 flex items-center justify-center">
+                  {profilePhoto ? (
+                    <img 
+                      src={profilePhoto} 
+                      alt="Profile" 
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <User className="w-12 h-12 text-slate-400" />
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => document.getElementById("profile-photo-upload")?.click()}
+                  className="absolute bottom-0 right-0 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full p-2 shadow-lg transition-colors"
+                >
+                  <svg 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    className="h-4 w-4" 
+                    viewBox="0 0 20 20" 
+                    fill="currentColor"
+                  >
+                    <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                  </svg>
+                </button>
+                <input
+                  id="profile-photo-upload"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handlePhotoUpload}
+                />
+              </div>
+              <p className="text-xs text-slate-500 text-center">
+                Clique no ícone para alterar a foto<br />
+                (Máximo 5MB)
+              </p>
+            </div>
+
             <div>
               <Label htmlFor="profile-name">Nome Completo</Label>
               <Input

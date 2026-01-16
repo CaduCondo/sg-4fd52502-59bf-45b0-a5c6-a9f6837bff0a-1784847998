@@ -95,17 +95,32 @@ export default function Login() {
               
               <Button 
                 type="submit" 
-                className="w-full h-11 text-base"
-                disabled={loading}
+                className="w-full h-11 text-base bg-blue-600 hover:bg-blue-700"
+                disabled={loading || isLocked}
               >
                 {loading ? "Entrando..." : "Entrar"}
               </Button>
               
+              <div className="text-center mt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowForgotPassword(true)}
+                  className="text-sm text-blue-600 hover:text-blue-700 hover:underline"
+                >
+                  Esqueci minha senha
+                </button>
+              </div>
+              
               <div className="mt-6 pt-6 border-t border-slate-200">
                 <p className="text-xs text-slate-500 text-center">
-                  Credenciais padrão:<br />
-                  <span className="font-mono font-semibold">Usuário: cadu.pires</span><br />
-                  <span className="font-mono font-semibold">Senha: teste123</span>
+                  Desenvolvido por <span className="font-semibold">Carlos Uva</span>
+                  <br />
+                  <a 
+                    href="mailto:stefcadu@gmail.com" 
+                    className="text-blue-600 hover:text-blue-700 hover:underline"
+                  >
+                    stefcadu@gmail.com
+                  </a>
                 </p>
               </div>
             </form>

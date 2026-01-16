@@ -1,13 +1,14 @@
 export interface User {
   id: string;
+  name: string;
   username: string;
   password: string;
-  name: string;
+  role: "admin" | "corretor" | "financeiro";
   rg?: string;
   cpf?: string;
-  phone?: string;
   email?: string;
-  role: "admin" | "corretor" | "financeiro";
+  phone?: string;
+  photo?: string;
   createdAt: string;
 }
 
