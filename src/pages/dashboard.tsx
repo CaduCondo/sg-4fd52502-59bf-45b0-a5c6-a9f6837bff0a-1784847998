@@ -26,6 +26,7 @@ export default function DashboardPage() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [adminFeePercentage, setAdminFeePercentage] = useState(6);
   const [userName, setUserName] = useState("Administrador");
+  const [mounted, setMounted] = useState(false);
   
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
@@ -160,6 +161,7 @@ export default function DashboardPage() {
     loadData();
     loadConfig();
     loadUserName();
+    setMounted(true);
   }, []);
 
   useEffect(() => {
@@ -284,10 +286,10 @@ export default function DashboardPage() {
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                   <div>
                     <h1 className="text-3xl font-bold mb-2">
-                      {getGreeting()}, {userName}! 👋
+                      {mounted ? `${getGreeting()}, ${userName}! 👋` : `Olá, ${userName}! 👋`}
                     </h1>
                     <p className="text-emerald-50 capitalize">
-                      {getCurrentDate()}
+                      {mounted ? getCurrentDate() : "Carregando..."}
                     </p>
                   </div>
                   
