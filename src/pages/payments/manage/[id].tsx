@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, DollarSign, Calendar, Home, User, X, Upload, Camera, Paperclip } from "lucide-react";
+import { ArrowLeft, DollarSign, Calendar, Home, User, X, Upload, Camera, Paperclip, Eye, Download } from "lucide-react";
 import type { Payment, Rental, Property, Tenant, Config } from "@/types";
 import { paymentService, rentalService, propertyService, tenantService, configService } from "@/services";
 import { applyRealMask, removeMask, formatCurrency, parseCurrencyToFloat } from "@/lib/masks";
@@ -52,6 +52,8 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
   });
 
   const [waiveLateFees, setWaiveLateFees] = useState(false);
+  const [isViewMode, setIsViewMode] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
     const id = embedded ? paymentId : (router.query.id as string);
@@ -101,13 +103,19 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
         // Set initial form data with lowercase payment method
         setFormData({
           paymentDate: paymentData.paymentDate || new Date().toISOString().split("T")[0],
-          paidAmount: applyRealMask((paymentData.expectedAmount * 100).toString()),
+          paidAmount: applyRealMask((paymentData.paidAmount * 100).toString()),
           paymentMethod: (paymentData.paymentMethod || "pix").toLowerCase(),
           paymentLocation: paymentData.paymentLocation || "CP",
           paymentCode: paymentData.paymentCode || "",
           notes: paymentData.notes || "",
           attachments: paymentData.attachments || [],
         });
+
+        // Set view mode if payment is paid
+        if (paymentData.status === "paid") {
+          setIsViewMode(true);
+          setIsEditing(false);
+        }
       }
     } catch (error) {
       console.error("Error loading payment:", error);
@@ -285,6 +293,26 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
     handleBack();
   };
 
+  const handleEdit = () => {
+    setIsEditing(true);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    if (payment) {
+      // Reset form data to original payment data
+      setFormData({
+        paymentDate: payment.paymentDate || new Date().toISOString().split("T")[0],
+        paidAmount: applyRealMask((payment.paidAmount * 100).toString()),
+        paymentMethod: (payment.paymentMethod || "pix").toLowerCase(),
+        paymentLocation: payment.paymentLocation || "CP",
+        paymentCode: payment.paymentCode || "",
+        notes: payment.notes || "",
+        attachments: payment.attachments || [],
+      });
+    }
+  };
+  
   if (loading) {
     return embedded ? (
       <div className="p-8 text-center">
@@ -317,21 +345,39 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Registrar Recebimento</h1>
+          <h1 className="text-2xl font-bold">
+            {isViewMode && !isEditing ? "Visualizar Recebimento" : "Registrar Recebimento"}
+          </h1>
           <p className="text-muted-foreground mt-1">
             {property?.location} - {tenant?.name}
           </p>
         </div>
-        {embedded ? (
-          <Button variant="ghost" size="icon" onClick={handleBack}>
-            <X className="h-5 w-5" />
-          </Button>
-        ) : (
-          <Button variant="outline" onClick={handleBack}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Voltar
-          </Button>
-        )}
+        <div className="flex gap-2">
+          {isViewMode && !isEditing ? (
+            <>
+              <Button variant="outline" onClick={handleEdit}>
+                Editar
+              </Button>
+              <Button variant="ghost" size="icon" onClick={handleBack}>
+                <X className="h-5 w-5" />
+              </Button>
+            </>
+          ) : (
+            <>
+              {embedded && (
+                <Button variant="ghost" size="icon" onClick={handleBack}>
+                  <X className="h-5 w-5" />
+                </Button>
+              )}
+              {!embedded && (
+                <Button variant="outline" onClick={handleBack}>
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Voltar
+                </Button>
+              )}
+            </>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -457,6 +503,7 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
                   type="date"
                   value={formData.paymentDate}
                   onChange={(e) => setFormData({ ...formData, paymentDate: e.target.value })}
+                  disabled={isViewMode && !isEditing}
                   required
                 />
               </div>
@@ -470,6 +517,7 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
                   value={formData.paidAmount}
                   onChange={(e) => setFormData({ ...formData, paidAmount: applyRealMask(e.target.value) })}
                   placeholder="R$ 0,00"
+                  disabled={isViewMode && !isEditing}
                   required
                 />
               </div>
@@ -481,6 +529,7 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
                 <Select
                   value={formData.paymentMethod}
                   onValueChange={(value) => setFormData({ ...formData, paymentMethod: value })}
+                  disabled={isViewMode && !isEditing}
                 >
                   <SelectTrigger id="paymentMethod">
                     <SelectValue />
@@ -502,6 +551,7 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
                     <Select
                       value={formData.paymentLocation}
                       onValueChange={(value) => setFormData({ ...formData, paymentLocation: value })}
+                      disabled={isViewMode && !isEditing}
                     >
                       <SelectTrigger id="paymentLocation">
                         <SelectValue />
@@ -521,6 +571,7 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
                       value={formData.paymentCode}
                       onChange={(e) => setFormData({ ...formData, paymentCode: e.target.value })}
                       placeholder="Ex: 15XXXXCP"
+                      disabled={isViewMode && !isEditing}
                     />
                   </div>
                 </>
@@ -534,6 +585,7 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                   placeholder="Adicione observações sobre este recebimento..."
                   rows={3}
+                  disabled={isViewMode && !isEditing}
                 />
               </div>
             </div>
@@ -542,41 +594,43 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
             <div className="space-y-4 border-t pt-4">
               <div className="flex items-center justify-between">
                 <Label className="text-base font-medium">Anexos</Label>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => document.getElementById("cameraCapture")?.click()}
-                  >
-                    <Camera className="mr-2 h-4 w-4" />
-                    Tirar Foto
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => document.getElementById("fileUpload")?.click()}
-                  >
-                    <Paperclip className="mr-2 h-4 w-4" />
-                    Anexar Arquivo
-                  </Button>
-                  <input
-                    id="cameraCapture"
-                    type="file"
-                    accept="image/*"
-                    capture="environment"
-                    className="hidden"
-                    onChange={handleCameraCapture}
-                  />
-                  <input
-                    id="fileUpload"
-                    type="file"
-                    accept="image/*,.pdf,.doc,.docx"
-                    className="hidden"
-                    onChange={handleFileUpload}
-                  />
-                </div>
+                {(!isViewMode || isEditing) && (
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => document.getElementById("cameraCapture")?.click()}
+                    >
+                      <Camera className="mr-2 h-4 w-4" />
+                      Tirar Foto
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => document.getElementById("fileUpload")?.click()}
+                    >
+                      <Paperclip className="mr-2 h-4 w-4" />
+                      Anexar Arquivo
+                    </Button>
+                    <input
+                      id="cameraCapture"
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      className="hidden"
+                      onChange={handleCameraCapture}
+                    />
+                    <input
+                      id="fileUpload"
+                      type="file"
+                      accept="image/*,.pdf,.doc,.docx"
+                      className="hidden"
+                      onChange={handleFileUpload}
+                    />
+                  </div>
+                )}
               </div>
 
               {formData.attachments.length > 0 && (
@@ -589,28 +643,77 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
                       <span className="text-sm truncate flex-1">
                         Arquivo {index + 1}
                       </span>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeAttachment(index)}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
+                      <div className="flex gap-2">
+                        {isViewMode && !isEditing && (
+                          <>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                const link = document.createElement("a");
+                                link.href = attachment;
+                                link.target = "_blank";
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                              }}
+                            >
+                              <Eye className="h-4 w-4 mr-2" />
+                              Ver
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                const link = document.createElement("a");
+                                link.href = attachment;
+                                link.download = `anexo-${index + 1}`;
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                              }}
+                            >
+                              <Download className="h-4 w-4 mr-2" />
+                              Baixar
+                            </Button>
+                          </>
+                        )}
+                        {(!isViewMode || isEditing) && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeAttachment(index)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
               )}
             </div>
 
-            <div className="flex gap-2 justify-end pt-4">
-              <Button type="button" variant="outline" onClick={handleBack}>
-                Cancelar
-              </Button>
-              <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">
-                Registrar Recebimento
-              </Button>
-            </div>
+            {(!isViewMode || isEditing) && (
+              <div className="flex gap-2 justify-end pt-4">
+                {isEditing && (
+                  <Button type="button" variant="outline" onClick={handleCancelEdit}>
+                    Cancelar
+                  </Button>
+                )}
+                {!isEditing && (
+                  <Button type="button" variant="outline" onClick={handleBack}>
+                    Cancelar
+                  </Button>
+                )}
+                <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">
+                  {isEditing ? "Salvar Alterações" : "Registrar Recebimento"}
+                </Button>
+              </div>
+            )}
           </form>
         </CardContent>
       </Card>

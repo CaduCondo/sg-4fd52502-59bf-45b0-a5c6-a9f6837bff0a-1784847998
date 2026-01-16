@@ -91,6 +91,29 @@ export const paymentService = {
     if (error) throw error;
   },
 
+  async deleteFutureAndPendingByRentalId(rentalId: string): Promise<void> {
+    const today = new Date().toISOString().split("T")[0];
+    
+    // Delete future payments (after today) regardless of status
+    const { error: futureError } = await supabase
+      .from("payments")
+      .delete()
+      .eq("rental_id", rentalId)
+      .gt("due_date", today);
+    
+    if (futureError) throw futureError;
+    
+    // Delete pending payments on or before today
+    const { error: pendingError } = await supabase
+      .from("payments")
+      .delete()
+      .eq("rental_id", rentalId)
+      .lte("due_date", today)
+      .eq("status", "pending");
+    
+    if (pendingError) throw pendingError;
+  },
+
   async updateOverdueStatus(): Promise<void> {
     const today = new Date().toISOString().split("T")[0];
     
