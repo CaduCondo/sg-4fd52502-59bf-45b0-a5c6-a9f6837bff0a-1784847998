@@ -75,7 +75,7 @@ export const paymentService = {
       rentalId: data.rental_id,
       referenceMonth: data.reference_month,
       referenceYear: data.reference_year,
-      expectedAmount: parseFloat(data.expected_amount),
+      expectedAmount: parseFloat(data.expected_amount) || 0,
       paidAmount: parseFloat(data.paid_amount || 0),
       dueDate: data.due_date,
       paymentDate: data.payment_date,
