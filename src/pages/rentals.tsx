@@ -3,14 +3,15 @@ import { useRouter } from "next/router";
 import { Layout } from "@/components/Layout";
 import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Home, User, Calendar, Trash2, XCircle, Archive, Upload, X, Users, DollarSign, Badge } from "lucide-react";
+import { Plus, Home, User, Calendar, Trash2, XCircle, Archive, Upload, X, Users, DollarSign } from "lucide-react";
 import type { Rental, Property, Tenant, Payment } from "@/types";
 import { rentalService, propertyService, tenantService, paymentService } from "@/services";
 import { formatCurrency, applyRealMask, removeMask } from "@/lib/masks";
@@ -28,6 +29,8 @@ export default function RentalsPage() {
   const [availableTenants, setAvailableTenants] = useState<Tenant[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isInactiveDialogOpen, setIsInactiveDialogOpen] = useState(false);
+  const [isEndDialogOpen, setIsEndDialogOpen] = useState(false);
+  const [selectedRental, setSelectedRental] = useState<Rental | null>(null);
   const [loading, setLoading] = useState(true);
   const currentUser = getCurrentUser();
 
@@ -576,7 +579,7 @@ export default function RentalsPage() {
                                 size="sm"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleDeleteRental(rental);
+                                  handleDelete(rental);
                                 }}
                               >
                                 <Trash2 className="h-4 w-4" />
@@ -879,7 +882,7 @@ export default function RentalsPage() {
             </DialogHeader>
 
             <div className="space-y-4">
-              {inactiveRentals.map((rental) => {
+              {inactiveRentals.map((rental, index) => {
                 const property = getPropertyInfo(rental.propertyId);
                 const tenant = getTenantInfo(rental.tenantId);
 
@@ -932,7 +935,7 @@ export default function RentalsPage() {
                           className="w-full"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleDeleteRental(rental);
+                            handleDelete(rental);
                           }}
                         >
                           <Trash2 className="h-4 w-4 mr-2" />
@@ -947,6 +950,34 @@ export default function RentalsPage() {
 
             <DialogFooter>
               <Button onClick={() => setIsInactiveDialogOpen(false)}>Fechar</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* End Rental Confirmation Dialog */}
+        <Dialog open={isEndDialogOpen} onOpenChange={setIsEndDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Encerrar Locação</DialogTitle>
+              <DialogDescription>
+                Tem certeza que deseja encerrar esta locação? O imóvel ficará disponível novamente.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsEndDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button 
+                variant="destructive" 
+                onClick={() => {
+                  if (selectedRental) {
+                    handleEndRental(selectedRental);
+                    setIsEndDialogOpen(false);
+                  }
+                }}
+              >
+                Confirmar Encerramento
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
