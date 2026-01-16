@@ -9,7 +9,7 @@ export const tenantService = {
       .order("name", { ascending: true });
     
     if (error) throw error;
-    return data.map(this.mapFromDB);
+    return (data || []).map(this.mapFromDB);
   },
 
   async getById(id: string): Promise<Tenant | null> {
@@ -37,10 +37,7 @@ export const tenantService = {
   async update(tenant: Tenant): Promise<Tenant> {
     const { data, error } = await supabase
       .from("tenants")
-      .update({
-        ...this.mapToDB(tenant),
-        updated_at: new Date().toISOString()
-      })
+      .update(this.mapToDB(tenant))
       .eq("id", tenant.id)
       .select()
       .single();
@@ -62,9 +59,9 @@ export const tenantService = {
     return {
       id: data.id,
       name: data.name,
-      cpf: data.cpf || data.document || "",
       document: data.document || data.cpf || "",
       documentType: data.document_type || "cpf",
+      cpf: data.cpf || data.document || "",
       email: data.email,
       phone: data.phone,
       status: data.status,
@@ -73,10 +70,14 @@ export const tenantService = {
   },
 
   mapToDB(tenant: any): any {
-    // Map for compatibility
     return {
-      ...tenant,
-      cpf: tenant.documentType === 'cpf' ? tenant.document : null, // Ensure compatibility
+      name: tenant.name,
+      document: tenant.document,
+      document_type: tenant.documentType,
+      cpf: tenant.documentType === 'cpf' ? tenant.document : null,
+      email: tenant.email || null,
+      phone: tenant.phone || null,
+      status: tenant.status || "active"
     };
   }
 };
