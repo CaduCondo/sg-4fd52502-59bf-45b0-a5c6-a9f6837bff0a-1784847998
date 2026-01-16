@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Building2, ArrowLeft, Edit, X } from "lucide-react";
-import { Property } from "@/types";
+import { Property, Location } from "@/types";
 import { propertyService } from "@/services";
 import { configService } from "@/services/configService";
 import { applyCepMask, applyRealMask, removeMask, formatCurrency } from "@/lib/masks";
@@ -23,7 +23,7 @@ export default function PropertyDetailsPage() {
   const [property, setProperty] = useState<Property | null>(null);
   const [loading, setLoading] = useState(true);
   const [isEditMode, setIsEditMode] = useState(false);
-  const [locations, setLocations] = useState<string[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
 
   const [formData, setFormData] = useState({
     location: "",
@@ -31,6 +31,7 @@ export default function PropertyDetailsPage() {
     address: "",
     number: "",
     complement: "",
+    neighborhood: "",
     city: "",
     state: "",
     rentValue: "",
@@ -65,6 +66,7 @@ export default function PropertyDetailsPage() {
           address: propertyData.address || "",
           number: propertyData.number || "",
           complement: propertyData.complement,
+          neighborhood: propertyData.neighborhood || "",
           city: propertyData.city || "",
           state: propertyData.state || "",
           rentValue: applyRealMask(propertyData.rentValue.toString()),
@@ -102,6 +104,7 @@ export default function PropertyDetailsPage() {
         address: property.address || "",
         number: property.number || "",
         complement: property.complement,
+        neighborhood: property.neighborhood || "",
         city: property.city || "",
         state: property.state || "",
         rentValue: applyRealMask(property.rentValue.toString()),
@@ -109,6 +112,24 @@ export default function PropertyDetailsPage() {
       });
     }
     setIsEditMode(false);
+  };
+
+  const handleLocationChange = (value: string) => {
+    const selectedLocation = locations.find(l => l.name === value);
+    if (selectedLocation) {
+      setFormData(prev => ({
+        ...prev,
+        location: selectedLocation.name,
+        cep: selectedLocation.cep,
+        address: selectedLocation.address,
+        number: selectedLocation.number,
+        neighborhood: selectedLocation.neighborhood,
+        city: selectedLocation.city,
+        state: selectedLocation.state
+      }));
+    } else {
+      setFormData(prev => ({ ...prev, location: value }));
+    }
   };
 
   const handleSave = async () => {
@@ -131,6 +152,7 @@ export default function PropertyDetailsPage() {
         address: formData.address || undefined,
         number: formData.number || undefined,
         complement: formData.complement,
+        neighborhood: formData.neighborhood || undefined,
         city: formData.city || undefined,
         state: formData.state || undefined,
         monthlyRent: parseFloat(removeMask(formData.rentValue)),
@@ -258,15 +280,15 @@ export default function PropertyDetailsPage() {
                     {isEditMode ? (
                       <Select
                         value={formData.location}
-                        onValueChange={(value) => setFormData({ ...formData, location: value })}
+                        onValueChange={handleLocationChange}
                       >
                         <SelectTrigger id="location">
                           <SelectValue placeholder="Selecione o local" />
                         </SelectTrigger>
                         <SelectContent>
                           {locations.map((location) => (
-                            <SelectItem key={location} value={location}>
-                              {location}
+                            <SelectItem key={location.id} value={location.name}>
+                              {location.name}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -303,6 +325,7 @@ export default function PropertyDetailsPage() {
                         value={formData.cep}
                         onChange={(e) => setFormData({ ...formData, cep: applyCepMask(e.target.value) })}
                         maxLength={9}
+                        disabled={!!locations.find(l => l.name === formData.location)}
                       />
                     ) : (
                       <p className="text-lg font-medium">{property.cep || "—"}</p>
@@ -336,9 +359,25 @@ export default function PropertyDetailsPage() {
                       placeholder="Rua, Avenida, etc."
                       value={formData.address}
                       onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                      disabled={!!locations.find(l => l.name === formData.location)}
                     />
                   ) : (
                     <p className="text-lg font-medium">{property.address || "—"}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="neighborhood">Bairro</Label>
+                  {isEditMode ? (
+                    <Input
+                      id="neighborhood"
+                      placeholder="Bairro"
+                      value={formData.neighborhood}
+                      onChange={(e) => setFormData({ ...formData, neighborhood: e.target.value })}
+                      disabled={!!locations.find(l => l.name === formData.location)}
+                    />
+                  ) : (
+                    <p className="text-lg font-medium">{property.neighborhood || "—"}</p>
                   )}
                 </div>
 
@@ -351,6 +390,7 @@ export default function PropertyDetailsPage() {
                         placeholder="123"
                         value={formData.number}
                         onChange={(e) => setFormData({ ...formData, number: e.target.value })}
+                        disabled={!!locations.find(l => l.name === formData.location)}
                       />
                     ) : (
                       <p className="text-lg font-medium">{property.number || "—"}</p>
@@ -365,6 +405,7 @@ export default function PropertyDetailsPage() {
                         placeholder="São Paulo"
                         value={formData.city}
                         onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                        disabled={!!locations.find(l => l.name === formData.location)}
                       />
                     ) : (
                       <p className="text-lg font-medium">{property.city || "—"}</p>
@@ -380,6 +421,7 @@ export default function PropertyDetailsPage() {
                         value={formData.state}
                         onChange={(e) => setFormData({ ...formData, state: e.target.value.toUpperCase() })}
                         maxLength={2}
+                        disabled={!!locations.find(l => l.name === formData.location)}
                       />
                     ) : (
                       <p className="text-lg font-medium">{property.state || "—"}</p>
