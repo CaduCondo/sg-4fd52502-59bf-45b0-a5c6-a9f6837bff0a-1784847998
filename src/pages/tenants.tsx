@@ -15,7 +15,7 @@ import { Users, Plus, Search, Trash2, LayoutGrid, List } from "lucide-react";
 import { Tenant } from "@/types";
 import { tenantService } from "@/services";
 import { getCurrentUser } from "@/lib/auth";
-import { applyCpfMask, applyCnpjMask, applyPhoneMask, applyCepMask, removeMask } from "@/lib/masks";
+import { applyCpfMask, applyCnpjMask, applyPhoneMask, removeMask } from "@/lib/masks";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
 import { FloatingCard } from "@/components/animations/FloatingCard";
 
@@ -39,13 +39,16 @@ export default function TenantsPage() {
     rg: "",
     email: "",
     phone: "",
-    cep: "",
-    address: "",
-    number: "",
-    complement: "",
-    city: "",
-    state: "",
     description: "",
+  });
+
+  const [newTenant, setNewTenant] = useState<Partial<Tenant>>({
+    name: "",
+    email: "",
+    phone: "",
+    document: "",
+    documentType: "cpf",
+    rg: "",
   });
 
   useEffect(() => {
@@ -105,12 +108,6 @@ export default function TenantsPage() {
         rg: tenant.rg || "",
         email: tenant.email || "",
         phone: applyPhoneMask(tenant.phone || ""),
-        cep: applyCepMask(tenant.cep || ""),
-        address: tenant.address || "",
-        number: tenant.number || "",
-        complement: tenant.complement || "",
-        city: tenant.city || "",
-        state: tenant.state || "",
         description: tenant.description || "",
       });
       setIsViewMode(!!viewMode);
@@ -123,12 +120,6 @@ export default function TenantsPage() {
         rg: "",
         email: "",
         phone: "",
-        cep: "",
-        address: "",
-        number: "",
-        complement: "",
-        city: "",
-        state: "",
         description: "",
       });
       setIsViewMode(false);
@@ -147,12 +138,6 @@ export default function TenantsPage() {
       rg: "",
       email: "",
       phone: "",
-      cep: "",
-      address: "",
-      number: "",
-      complement: "",
-      city: "",
-      state: "",
       description: "",
     });
   };
@@ -190,12 +175,6 @@ export default function TenantsPage() {
         rg: formData.rg || undefined,
         email: formData.email || undefined,
         phone: removeMask(formData.phone) || undefined,
-        cep: removeMask(formData.cep) || undefined,
-        address: formData.address || undefined,
-        number: formData.number || undefined,
-        complement: formData.complement || undefined,
-        city: formData.city || undefined,
-        state: formData.state || undefined,
         description: formData.description || undefined,
         status: currentTenant?.status || "active",
       };
@@ -559,79 +538,6 @@ export default function TenantsPage() {
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: applyPhoneMask(e.target.value) })}
                       placeholder="(00) 00000-0000"
-                      disabled={isViewMode}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="cep">CEP</Label>
-                    <Input
-                      id="cep"
-                      value={formData.cep}
-                      onChange={(e) => setFormData({ ...formData, cep: applyCepMask(e.target.value) })}
-                      placeholder="00000-000"
-                      disabled={isViewMode}
-                    />
-                  </div>
-
-                  <div className="space-y-2 sm:col-span-2">
-                    <Label htmlFor="address">Endereço</Label>
-                    <Input
-                      id="address"
-                      value={formData.address}
-                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                      placeholder="Rua, Avenida, etc."
-                      disabled={isViewMode}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="number">Número</Label>
-                    <Input
-                      id="number"
-                      value={formData.number}
-                      onChange={(e) => setFormData({ ...formData, number: e.target.value })}
-                      placeholder="000"
-                      disabled={isViewMode}
-                    />
-                  </div>
-
-                  <div className="space-y-2 sm:col-span-2">
-                    <Label htmlFor="complement">Complemento</Label>
-                    <Input
-                      id="complement"
-                      value={formData.complement}
-                      onChange={(e) => setFormData({ ...formData, complement: e.target.value })}
-                      placeholder="Apto, Casa, etc."
-                      disabled={isViewMode}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="city">Cidade</Label>
-                    <Input
-                      id="city"
-                      value={formData.city}
-                      onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                      placeholder="Digite a cidade"
-                      disabled={isViewMode}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="state">Estado</Label>
-                    <Input
-                      id="state"
-                      value={formData.state}
-                      onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                      placeholder="UF"
-                      maxLength={2}
                       disabled={isViewMode}
                     />
                   </div>
