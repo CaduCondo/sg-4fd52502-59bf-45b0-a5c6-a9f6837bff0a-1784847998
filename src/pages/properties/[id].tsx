@@ -132,6 +132,15 @@ export default function PropertyDetailsPage() {
     }
   };
 
+  const convertMaskedValueToNumber = (maskedValue: string): number => {
+    if (!maskedValue) return 0;
+    // Remove tudo exceto números e vírgula
+    const cleanValue = maskedValue.replace(/[^\d,]/g, '');
+    // Substitui vírgula por ponto para conversão
+    const numericValue = cleanValue.replace(',', '.');
+    return parseFloat(numericValue) || 0;
+  };
+
   const handleSave = async () => {
     if (!property) return;
 
