@@ -12,8 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { userStorage } from "@/lib/storage";
 import { configService } from "@/services/configService";
-import { User, Config, Location } from "@/types";
-import { Trash2, Edit, Key, Plus, Save, MapPin } from "lucide-react";
+import { User, Config, Location, SystemConfig } from "@/types";
+import { Trash2, Edit, Key, Plus, Save, MapPin, Percent } from "lucide-react";
 import { isAuthenticated } from "@/lib/auth";
 import { StaggerContainer, StaggerItem } from "@/components/animations/ScrollReveal";
 import { FloatingCard } from "@/components/animations/FloatingCard";
@@ -22,7 +22,7 @@ import { applyCepMask, applyRealMask, removeMask } from "@/lib/masks";
 export default function Settings() {
   const router = useRouter();
   const { toast } = useToast();
-  const [config, setConfig] = useState<Config>({ adminFeePercentage: 6, locations: [] });
+  const [config, setConfig] = useState<Config>({ adminFeePercentage: 6, lateFeePercentage: 2, interestRatePercentage: 0.033, locations: [] });
   const [users, setUsers] = useState<User[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -295,6 +295,7 @@ export default function Settings() {
         <Tabs defaultValue="general" className="space-y-4">
           <TabsList>
             <TabsTrigger value="general">Geral</TabsTrigger>
+            <TabsTrigger value="fees">Multa e Juros</TabsTrigger>
             <TabsTrigger value="users">Usuários</TabsTrigger>
             <TabsTrigger value="locations">Locais</TabsTrigger>
           </TabsList>
@@ -331,6 +332,86 @@ export default function Settings() {
                     </div>
                     <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
                       <Save className="w-4 h-4 mr-2" /> Salvar Alterações
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
+            </FloatingCard>
+          </TabsContent>
+
+          <TabsContent value="fees">
+            <FloatingCard delay={0.1}>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Percent className="h-5 w-5" />
+                    Configuração de Multa e Juros
+                  </CardTitle>
+                  <CardDescription>
+                    Configure as porcentagens aplicadas em pagamentos atrasados
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handleUpdateConfig} className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <Label htmlFor="lateFee">Multa por Atraso (%)</Label>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            id="lateFee"
+                            value={config?.lateFeePercentage || 2}
+                            onChange={(e) => setConfig(config ? { ...config, lateFeePercentage: Number(e.target.value) } : config)}
+                            step="0.01"
+                            min="0"
+                            max="100"
+                            className="w-32"
+                          />
+                          <span className="text-sm text-muted-foreground">%</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Multa aplicada sobre o valor do aluguel quando o pagamento atrasa (padrão: 2%)
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="interestRate">Juros Diário (%)</Label>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            id="interestRate"
+                            value={config?.interestRatePercentage || 0.033}
+                            onChange={(e) => setConfig(config ? { ...config, interestRatePercentage: Number(e.target.value) } : config)}
+                            step="0.001"
+                            min="0"
+                            max="10"
+                            className="w-32"
+                          />
+                          <span className="text-sm text-muted-foreground">% ao dia</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Juros aplicado por dia de atraso sobre o valor do aluguel (padrão: 0.033% = 1% ao mês)
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <h4 className="font-semibold text-blue-900 mb-2">Exemplo de Cálculo</h4>
+                      <div className="text-sm text-blue-800 space-y-1">
+                        <p>• Valor do aluguel: R$ 1.500,00</p>
+                        <p>• Vencimento: 10/01/2026</p>
+                        <p>• Pagamento: 20/01/2026 (10 dias de atraso)</p>
+                        <p className="font-semibold mt-2">Cálculo:</p>
+                        <p>• Multa ({config?.lateFeePercentage || 2}%): R$ {((config?.lateFeePercentage || 2) * 15).toFixed(2)}</p>
+                        <p>• Juros ({config?.interestRatePercentage || 0.033}% × 10 dias): R$ {((config?.interestRatePercentage || 0.033) * 10 * 15).toFixed(2)}</p>
+                        <p className="font-bold text-blue-900 mt-2">
+                          Total a pagar: R$ {(1500 + ((config?.lateFeePercentage || 2) * 15) + ((config?.interestRatePercentage || 0.033) * 10 * 15)).toFixed(2)}
+                        </p>
+                      </div>
+                    </div>
+
+                    <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
+                      <Save className="w-4 h-4 mr-2" /> Salvar Configurações
                     </Button>
                   </form>
                 </CardContent>

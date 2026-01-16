@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, DollarSign, Calendar, Home, User, X } from "lucide-react";
+import { ArrowLeft, DollarSign, Calendar, Home, User, X, Upload, Camera, Paperclip } from "lucide-react";
 import type { Payment, Rental, Property, Tenant, Config } from "@/types";
 import { paymentService, rentalService, propertyService, tenantService, configService } from "@/services";
 import { applyRealMask, removeMask, formatCurrency } from "@/lib/masks";
@@ -38,6 +38,7 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
     paymentLocation: "CP",
     paymentCode: "",
     notes: "",
+    attachments: [] as string[],
   });
 
   const [calculatedValues, setCalculatedValues] = useState({
@@ -95,11 +96,12 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
         // Set initial form data
         setFormData({
           paymentDate: paymentData.paymentDate || new Date().toISOString().split("T")[0],
-          paidAmount: applyRealMask(paymentData.expectedAmount.toString()),
+          paidAmount: applyRealMask((paymentData.expectedAmount * 100).toString()),
           paymentMethod: paymentData.paymentMethod || "PIX",
           paymentLocation: paymentData.paymentLocation || "CP",
           paymentCode: paymentData.paymentCode || "",
           notes: paymentData.notes || "",
+          attachments: paymentData.attachments || [],
         });
       }
     } catch (error) {
@@ -118,8 +120,8 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
     if (!payment || !rental || !config) return;
 
     const baseAmount = payment.expectedAmount;
-    const dueDate = new Date(payment.dueDate);
-    const paymentDate = new Date(formData.paymentDate);
+    const dueDate = new Date(payment.dueDate + "T00:00:00");
+    const paymentDate = new Date(formData.paymentDate + "T00:00:00");
 
     let lateFee = 0;
     let interest = 0;
@@ -128,12 +130,13 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
     if (paymentDate > dueDate) {
       const daysLate = Math.ceil((paymentDate.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
 
-      // Late fee (2% of base amount)
-      lateFee = baseAmount * (config.lateFeePercentage || 2) / 100;
+      // Late fee from config (default 2%)
+      const lateFeePercentage = config.lateFeePercentage || 2;
+      lateFee = baseAmount * (lateFeePercentage / 100);
 
-      // Interest (1% per month, proportional to days)
-      const monthsLate = daysLate / 30;
-      interest = baseAmount * (config.interestRatePercentage || 1) / 100 * monthsLate;
+      // Interest from config (default 0.033% per day)
+      const interestRatePercentage = config.interestRatePercentage || 0.033;
+      interest = baseAmount * (interestRatePercentage / 100) * daysLate;
     }
 
     const totalAmount = baseAmount + lateFee + interest;
@@ -149,9 +152,60 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
     if (!formData.paidAmount || parseFloat(removeMask(formData.paidAmount)) === payment.expectedAmount) {
       setFormData((prev) => ({
         ...prev,
-        paidAmount: applyRealMask(totalAmount.toFixed(2)),
+        paidAmount: applyRealMask((totalAmount * 100).toString()),
       }));
     }
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const file = files[0];
+    const reader = new FileReader();
+
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      setFormData({
+        ...formData,
+        attachments: [...formData.attachments, base64String],
+      });
+      toast({
+        title: "Arquivo anexado",
+        description: `${file.name} foi anexado com sucesso.`,
+      });
+    };
+
+    reader.readAsDataURL(file);
+  };
+
+  const handleCameraCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const file = files[0];
+    const reader = new FileReader();
+
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      setFormData({
+        ...formData,
+        attachments: [...formData.attachments, base64String],
+      });
+      toast({
+        title: "Foto capturada",
+        description: "Foto anexada com sucesso.",
+      });
+    };
+
+    reader.readAsDataURL(file);
+  };
+
+  const removeAttachment = (index: number) => {
+    setFormData({
+      ...formData,
+      attachments: formData.attachments.filter((_, i) => i !== index),
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -180,6 +234,7 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
         lateFee: calculatedValues.lateFee,
         interest: calculatedValues.interest,
         notes: formData.notes,
+        attachments: formData.attachments,
       };
 
       await paymentService.update(updatedPayment);
@@ -290,7 +345,7 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
             <div className="flex items-center gap-2">
               <Calendar className="h-4 w-4 text-muted-foreground" />
               <p className="text-sm">
-                Vencimento: {new Date(payment.dueDate).toLocaleDateString("pt-BR")}
+                Vencimento: {new Date(payment.dueDate + "T00:00:00").toLocaleDateString("pt-BR")}
               </p>
             </div>
 
@@ -324,7 +379,7 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
 
             {calculatedValues.interest > 0 && (
               <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Juros:</span>
+                <span className="text-sm text-muted-foreground">Juros ({config?.interestRatePercentage || 0.033}% ao dia):</span>
                 <span className="text-sm font-medium text-red-600">
                   {formatCurrency(calculatedValues.interest)}
                 </span>
@@ -437,6 +492,71 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
                   rows={3}
                 />
               </div>
+            </div>
+
+            {/* Attachments Section */}
+            <div className="space-y-4 border-t pt-4">
+              <div className="flex items-center justify-between">
+                <Label className="text-base font-medium">Anexos</Label>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => document.getElementById("cameraCapture")?.click()}
+                  >
+                    <Camera className="mr-2 h-4 w-4" />
+                    Tirar Foto
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => document.getElementById("fileUpload")?.click()}
+                  >
+                    <Paperclip className="mr-2 h-4 w-4" />
+                    Anexar Arquivo
+                  </Button>
+                  <input
+                    id="cameraCapture"
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="hidden"
+                    onChange={handleCameraCapture}
+                  />
+                  <input
+                    id="fileUpload"
+                    type="file"
+                    accept="image/*,.pdf,.doc,.docx"
+                    className="hidden"
+                    onChange={handleFileUpload}
+                  />
+                </div>
+              </div>
+
+              {formData.attachments.length > 0 && (
+                <div className="space-y-2">
+                  {formData.attachments.map((attachment, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-3 bg-muted rounded-lg"
+                    >
+                      <span className="text-sm truncate flex-1">
+                        Arquivo {index + 1}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeAttachment(index)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="flex gap-2 justify-end pt-4">

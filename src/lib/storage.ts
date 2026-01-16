@@ -30,6 +30,8 @@ export function initializeStorage(): void {
   if (!localStorage.getItem(CONFIG_KEY)) {
     const defaultConfig: SystemConfig = {
       adminFeePercentage: 6,
+      lateFeePercentage: 2,
+      interestRatePercentage: 0.033,
       lastUpdated: new Date().toISOString(),
       locations: ["Jd. Colombo", "Signore", "Lemos", "Marrom", "Cinza", "Dora", "Acacias", "Outros"]
     };
@@ -318,4 +320,12 @@ export const configStorage = {
     config.locations = config.locations.filter(l => l !== location);
     this.save(config);
   }
+};
+
+const DEFAULT_CONFIG: SystemConfig = {
+  adminFeePercentage: 10,
+  lateFeePercentage: 2, // 2% padrão
+  interestRatePercentage: 0.033, // 0.033% ao dia padrão
+  lastUpdated: new Date().toISOString(),
+  locations: [],
 };
