@@ -276,6 +276,7 @@ export default function DashboardPage() {
     occupiedProperties: properties.filter((p) => p.status === "occupied").length,
     availableProperties: properties.filter((p) => p.status === "available").length,
     totalTenants: tenants.filter((t) => t.status === "active" || t.status === "rented").length,
+    activeRentals: rentals.filter(r => r.isActive).length,
     pendingPayments: pendingPayments.length,
     paidPayments: paidPayments.length,
     monthlyRevenue: monthlyRevenue,
@@ -377,20 +378,21 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            {/* Row 1 */}
             <FloatingCard delay={0.1}>
               <Card
-                className="cursor-pointer hover:shadow-lg transition-shadow border-l-4 border-l-blue-500"
+                className="cursor-pointer hover:shadow-lg transition-shadow border-l-4 border-l-blue-500 h-full"
                 onClick={() => router.push("/properties")}
               >
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4">
                   <CardTitle className="text-sm font-medium">Total de Imóveis</CardTitle>
                   <Building2 className="h-4 w-4 text-blue-500" />
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-4 pt-0">
                   <div className="text-2xl font-bold">{stats.totalProperties}</div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {stats.occupiedProperties} alugados, {stats.availableProperties} disponíveis
+                    Cadastrados
                   </p>
                 </CardContent>
               </Card>
@@ -398,86 +400,82 @@ export default function DashboardPage() {
 
             <FloatingCard delay={0.2}>
               <Card
-                className="cursor-pointer hover:shadow-lg transition-shadow border-l-4 border-l-emerald-500"
-                onClick={() => router.push("/properties?filter=occupied")}
-              >
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Imóveis Alugados</CardTitle>
-                  <Home className="h-4 w-4 text-emerald-500" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{stats.occupiedProperties}</div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {((stats.occupiedProperties / stats.totalProperties) * 100 || 0).toFixed(0)}% de
-                    ocupação
-                  </p>
-                </CardContent>
-              </Card>
-            </FloatingCard>
-
-            <FloatingCard delay={0.3}>
-              <Card
-                className="cursor-pointer hover:shadow-lg transition-shadow border-l-4 border-l-amber-500"
+                className="cursor-pointer hover:shadow-lg transition-shadow border-l-4 border-l-emerald-500 h-full"
                 onClick={() => router.push("/properties?filter=available")}
               >
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4">
                   <CardTitle className="text-sm font-medium">Imóveis Disponíveis</CardTitle>
-                  <Home className="h-4 w-4 text-amber-500" />
+                  <Home className="h-4 w-4 text-emerald-500" />
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-4 pt-0">
                   <div className="text-2xl font-bold">{stats.availableProperties}</div>
                   <p className="text-xs text-muted-foreground mt-1">Prontos para locação</p>
                 </CardContent>
               </Card>
             </FloatingCard>
 
+            <FloatingCard delay={0.3}>
+              <Card
+                className="cursor-pointer hover:shadow-lg transition-shadow border-l-4 border-l-amber-500 h-full"
+                onClick={() => router.push("/properties?filter=occupied")}
+              >
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4">
+                  <CardTitle className="text-sm font-medium">Imóveis Indisponíveis</CardTitle>
+                  <Home className="h-4 w-4 text-amber-500" />
+                </CardHeader>
+                <CardContent className="p-4 pt-0">
+                  <div className="text-2xl font-bold">{stats.occupiedProperties}</div>
+                  <p className="text-xs text-muted-foreground mt-1">Alugados/Ocupados</p>
+                </CardContent>
+              </Card>
+            </FloatingCard>
+
             <FloatingCard delay={0.4}>
               <Card
-                className="cursor-pointer hover:shadow-lg transition-shadow border-l-4 border-l-indigo-500"
+                className="cursor-pointer hover:shadow-lg transition-shadow border-l-4 border-l-indigo-500 h-full"
                 onClick={() => router.push("/tenants")}
               >
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4">
                   <CardTitle className="text-sm font-medium">Total de Inquilinos</CardTitle>
                   <Users className="h-4 w-4 text-indigo-500" />
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-4 pt-0">
                   <div className="text-2xl font-bold">{stats.totalTenants}</div>
                   <p className="text-xs text-muted-foreground mt-1">Ativos e locadores</p>
                 </CardContent>
               </Card>
             </FloatingCard>
 
-            <FloatingCard delay={0.5}>
+             <FloatingCard delay={0.5}>
               <Card
-                className="cursor-pointer hover:shadow-lg transition-shadow border-l-4 border-l-red-500"
-                onClick={() => router.push("/payments")}
+                className="cursor-pointer hover:shadow-lg transition-shadow border-l-4 border-l-violet-500 h-full"
+                onClick={() => router.push("/rentals")}
               >
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Recebimentos Pendentes</CardTitle>
-                  <AlertCircle className="h-4 w-4 text-red-500" />
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4">
+                  <CardTitle className="text-sm font-medium">Contratos Ativos</CardTitle>
+                  <CheckCircle className="h-4 w-4 text-violet-500" />
                 </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{stats.pendingPayments}</div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Aguardando pagamento em {monthNames[selectedMonth - 1]}
-                  </p>
+                <CardContent className="p-4 pt-0">
+                  <div className="text-2xl font-bold">{stats.activeRentals}</div>
+                  <p className="text-xs text-muted-foreground mt-1">Locações vigentes</p>
                 </CardContent>
               </Card>
             </FloatingCard>
 
+            {/* Row 2 */}
             <FloatingCard delay={0.6}>
               <Card
-                className="cursor-pointer hover:shadow-lg transition-shadow border-l-4 border-l-emerald-500"
+                className="cursor-pointer hover:shadow-lg transition-shadow border-l-4 border-l-red-500 h-full"
                 onClick={() => router.push("/payments")}
               >
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Recebimentos Realizados</CardTitle>
-                  <Calendar className="h-4 w-4 text-emerald-500" />
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4">
+                  <CardTitle className="text-sm font-medium">Pendentes</CardTitle>
+                  <AlertCircle className="h-4 w-4 text-red-500" />
                 </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{stats.paidPayments}</div>
+                <CardContent className="p-4 pt-0">
+                  <div className="text-2xl font-bold">{stats.pendingPayments}</div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Pagos em {monthNames[selectedMonth - 1]}
+                    Aguardando pagamento
                   </p>
                 </CardContent>
               </Card>
@@ -485,17 +483,17 @@ export default function DashboardPage() {
 
             <FloatingCard delay={0.7}>
               <Card
-                className="cursor-pointer hover:shadow-lg transition-shadow border-l-4 border-l-green-500"
-                onClick={() => router.push("/financial")}
+                className="cursor-pointer hover:shadow-lg transition-shadow border-l-4 border-l-emerald-500 h-full"
+                onClick={() => router.push("/payments")}
               >
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Receita do Mês</CardTitle>
-                  <DollarSign className="h-4 w-4 text-green-500" />
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4">
+                  <CardTitle className="text-sm font-medium">Realizados</CardTitle>
+                  <Calendar className="h-4 w-4 text-emerald-500" />
                 </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{formatCurrency(stats.monthlyRevenue)}</div>
+                <CardContent className="p-4 pt-0">
+                  <div className="text-2xl font-bold">{stats.paidPayments}</div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {monthNames[selectedMonth - 1]} de {selectedYear}
+                    Pagos no mês
                   </p>
                 </CardContent>
               </Card>
@@ -503,17 +501,17 @@ export default function DashboardPage() {
 
             <FloatingCard delay={0.75}>
               <Card
-                className="cursor-pointer hover:shadow-lg transition-shadow border-l-4 border-l-cyan-500"
+                className="cursor-pointer hover:shadow-lg transition-shadow border-l-4 border-l-cyan-500 h-full"
                 onClick={() => router.push("/financial")}
               >
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4">
                   <CardTitle className="text-sm font-medium">Valor Esperado</CardTitle>
                   <DollarSign className="h-4 w-4 text-cyan-500" />
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-4 pt-0">
                   <div className="text-2xl font-bold">{formatCurrency(stats.expectedValue)}</div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Todos os recebimentos de {monthNames[selectedMonth - 1]}
+                    Total previsto
                   </p>
                 </CardContent>
               </Card>
@@ -521,17 +519,35 @@ export default function DashboardPage() {
 
             <FloatingCard delay={0.8}>
               <Card
-                className="cursor-pointer hover:shadow-lg transition-shadow border-l-4 border-l-purple-500"
-                onClick={() => router.push("/settings")}
+                className="cursor-pointer hover:shadow-lg transition-shadow border-l-4 border-l-green-500 h-full"
+                onClick={() => router.push("/financial")}
               >
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Taxa de Administração</CardTitle>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4">
+                  <CardTitle className="text-sm font-medium">Receita Bruta</CardTitle>
+                  <DollarSign className="h-4 w-4 text-green-500" />
+                </CardHeader>
+                <CardContent className="p-4 pt-0">
+                  <div className="text-2xl font-bold">{formatCurrency(stats.monthlyRevenue)}</div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Total recebido
+                  </p>
+                </CardContent>
+              </Card>
+            </FloatingCard>
+
+            <FloatingCard delay={0.9}>
+              <Card
+                className="cursor-pointer hover:shadow-lg transition-shadow border-l-4 border-l-purple-500 h-full"
+                onClick={() => router.push("/financial")}
+              >
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4">
+                  <CardTitle className="text-sm font-medium">Receita Líquida</CardTitle>
                   <TrendingUp className="h-4 w-4 text-purple-500" />
                 </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{formatCurrency(stats.adminFee)}</div>
+                <CardContent className="p-4 pt-0">
+                  <div className="text-2xl font-bold">{formatCurrency(stats.netRevenue)}</div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {adminFeePercentage}% da receita
+                    Após taxas
                   </p>
                 </CardContent>
               </Card>

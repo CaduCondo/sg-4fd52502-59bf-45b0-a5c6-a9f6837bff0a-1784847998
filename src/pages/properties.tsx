@@ -191,7 +191,7 @@ export default function PropertiesPage() {
         monthlyRent: rentValueNumber,
         rentValue: rentValueNumber,
         type: "residential",
-        status: formData.status,
+        status: formData.status as "available" | "occupied",
         description: formData.description || undefined,
       };
 
