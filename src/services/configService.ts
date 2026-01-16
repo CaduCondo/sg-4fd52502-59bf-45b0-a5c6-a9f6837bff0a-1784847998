@@ -1,20 +1,11 @@
 import { supabase } from "@/integrations/supabase/client";
-import type { Config } from "@/types";
+import type { Config, Location } from "@/types";
 
 const DEFAULT_CONFIG: Config = {
   adminFeePercentage: 6,
   lateFeePercentage: 2,
   interestRatePercentage: 1,
-  locations: [
-    "Jd. Colombo",
-    "Signore",
-    "Lemos",
-    "Marrom",
-    "Cinza",
-    "Dora",
-    "Acacias",
-    "Outros"
-  ]
+  locations: []
 };
 
 export const configService = {
@@ -34,15 +25,34 @@ export const configService = {
       
       // Return first config
       const config = data[0];
-      const locations = Array.isArray(config.locations) 
-        ? config.locations.map((l: any) => String(l)) 
-        : [];
+      
+      // Handle legacy locations (strings) vs new locations (objects)
+      let locations: Location[] = [];
+      if (Array.isArray(config.locations)) {
+        locations = config.locations.map((l: any) => {
+          if (typeof l === 'string') {
+            // Convert legacy string location to object
+            return {
+              id: crypto.randomUUID(),
+              name: l,
+              cep: "",
+              address: "",
+              number: "",
+              neighborhood: "",
+              city: "",
+              state: "",
+              createdAt: new Date().toISOString()
+            };
+          }
+          return l as Location;
+        });
+      }
 
       return {
         adminFeePercentage: Number(config.admin_fee_percentage) || 6,
         lateFeePercentage: Number(config.late_fee_percentage) || 2,
         interestRatePercentage: Number(config.interest_rate_percentage) || 1,
-        locations: locations.length > 0 ? locations : DEFAULT_CONFIG.locations
+        locations: locations
       };
     } catch (error) {
       console.error("Error loading config:", error);
@@ -59,11 +69,24 @@ export const configService = {
         .select("*")
         .limit(1);
       
+      // Prepare data for DB - converting Location objects to JSON-compatible array
+      const locationsJson = config.locations.map(l => ({
+        id: l.id,
+        name: l.name,
+        cep: l.cep,
+        address: l.address,
+        number: l.number,
+        neighborhood: l.neighborhood,
+        city: l.city,
+        state: l.state,
+        createdAt: l.createdAt
+      }));
+      
       const configData = {
         admin_fee_percentage: config.adminFeePercentage,
         late_fee_percentage: config.lateFeePercentage,
         interest_rate_percentage: config.interestRatePercentage,
-        locations: config.locations,
+        locations: locationsJson, // Supabase will handle JSON conversion
         updated_at: new Date().toISOString()
       };
 
@@ -78,15 +101,11 @@ export const configService = {
         
         if (error) throw error;
         
-        const locations = Array.isArray(data.locations) 
-          ? data.locations.map((l: any) => String(l)) 
-          : [];
-
         return {
           adminFeePercentage: Number(data.admin_fee_percentage),
           lateFeePercentage: Number(data.late_fee_percentage),
           interestRatePercentage: Number(data.interest_rate_percentage),
-          locations
+          locations: (data.locations as any[]).map(l => l as Location)
         };
       } else {
         // Insert new config
@@ -98,15 +117,11 @@ export const configService = {
         
         if (error) throw error;
         
-        const locations = Array.isArray(data.locations) 
-          ? data.locations.map((l: any) => String(l)) 
-          : [];
-
         return {
           adminFeePercentage: Number(data.admin_fee_percentage),
           lateFeePercentage: Number(data.late_fee_percentage),
           interestRatePercentage: Number(data.interest_rate_percentage),
-          locations
+          locations: (data.locations as any[]).map(l => l as Location)
         };
       }
     } catch (error) {
@@ -115,12 +130,14 @@ export const configService = {
     }
   },
 
-  async addLocation(location: string): Promise<Config> {
+  async addLocation(location: Location): Promise<Config> {
     try {
       const config = await this.get();
-      if (!config.locations.includes(location)) {
+      // Check for duplicates by name or ID
+      if (!config.locations.some(l => l.id === location.id || l.name === location.name)) {
         config.locations.push(location);
-        config.locations.sort();
+        // Sort by name
+        config.locations.sort((a, b) => a.name.localeCompare(b.name));
         return await this.save(config);
       }
       return config;
@@ -130,10 +147,10 @@ export const configService = {
     }
   },
 
-  async removeLocation(location: string): Promise<Config> {
+  async removeLocation(locationId: string): Promise<Config> {
     try {
       const config = await this.get();
-      config.locations = config.locations.filter((l) => l !== location);
+      config.locations = config.locations.filter((l) => l.id !== locationId);
       return await this.save(config);
     } catch (error) {
       console.error("Error removing location:", error);
