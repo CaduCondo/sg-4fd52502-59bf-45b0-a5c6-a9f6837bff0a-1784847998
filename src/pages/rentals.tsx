@@ -149,18 +149,33 @@ export default function RentalsPage() {
     const startDate = new Date(rental.startDate);
     const endDate = rental.endDate ? new Date(rental.endDate) : null;
     const paymentDay = rental.paymentDay;
+    const today = new Date();
     
     const payments: Omit<Payment, "id" | "createdAt">[] = [];
     
-    const currentDate = new Date(startDate.getFullYear(), startDate.getMonth(), paymentDay);
-    
-    // Se a data de vencimento for antes da data de início, começar no próximo mês
-    if (currentDate < startDate) {
-      currentDate.setMonth(currentDate.getMonth() + 1);
+    // Para contratos antigos (data início no passado), começar do mês atual
+    // Para contratos novos (data início no futuro ou presente), começar da data início
+    let currentDate: Date;
+    if (startDate < today) {
+      // Contrato antigo: começar do mês atual
+      currentDate = new Date(today.getFullYear(), today.getMonth(), paymentDay);
+      
+      // Se o dia de vencimento já passou neste mês, começar do próximo mês
+      if (currentDate < today) {
+        currentDate.setMonth(currentDate.getMonth() + 1);
+      }
+    } else {
+      // Contrato novo: começar da data de início
+      currentDate = new Date(startDate.getFullYear(), startDate.getMonth(), paymentDay);
+      
+      // Se a data de vencimento for antes da data de início, começar no próximo mês
+      if (currentDate < startDate) {
+        currentDate.setMonth(currentDate.getMonth() + 1);
+      }
     }
     
     // Gerar pagamentos até a data de término ou 12 meses se não houver data de término
-    const maxDate = endDate || new Date(startDate.getFullYear() + 1, startDate.getMonth(), paymentDay);
+    const maxDate = endDate || new Date(currentDate.getFullYear() + 1, currentDate.getMonth() + 11, paymentDay);
     
     while (currentDate <= maxDate) {
       const payment: Omit<Payment, "id" | "createdAt"> = {
