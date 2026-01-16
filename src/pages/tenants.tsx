@@ -23,6 +23,7 @@ export default function TenantsPage() {
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive" | "rented">("all");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isViewMode, setIsViewMode] = useState(false);
   const [currentTenant, setCurrentTenant] = useState<Tenant | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -80,7 +81,9 @@ export default function TenantsPage() {
 
   const openDialog = (tenant?: Tenant) => {
     if (tenant) {
+      // Modo visualização ao clicar no card
       setCurrentTenant(tenant);
+      setIsViewMode(true);
       setFormData({
         name: tenant.name,
         documentType: tenant.documentType || "cpf",
@@ -91,7 +94,9 @@ export default function TenantsPage() {
         phone: applyPhoneMask(tenant.phone || ""),
       });
     } else {
+      // Modo criação (novo inquilino)
       setCurrentTenant(null);
+      setIsViewMode(false);
       setFormData({
         name: "",
         documentType: "cpf",
@@ -106,6 +111,7 @@ export default function TenantsPage() {
   const closeDialog = () => {
     setIsDialogOpen(false);
     setCurrentTenant(null);
+    setIsViewMode(false);
     setFormData({
       name: "",
       documentType: "cpf",
@@ -113,6 +119,10 @@ export default function TenantsPage() {
       email: "",
       phone: "",
     });
+  };
+
+  const handleEdit = () => {
+    setIsViewMode(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -366,10 +376,14 @@ export default function TenantsPage() {
         </div>
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent className="max-w-2xl">
+          <DialogContent 
+            className="max-w-2xl"
+            onPointerDownOutside={(e) => !isViewMode && e.preventDefault()}
+            onEscapeKeyDown={(e) => !isViewMode && e.preventDefault()}
+          >
             <DialogHeader>
               <DialogTitle>
-                {currentTenant ? "Editar Inquilino" : "Novo Inquilino"}
+                {isViewMode ? "Detalhes do Inquilino" : currentTenant ? "Editar Inquilino" : "Novo Inquilino"}
               </DialogTitle>
             </DialogHeader>
 
@@ -382,6 +396,7 @@ export default function TenantsPage() {
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="Digite o nome completo"
                   required
+                  disabled={isViewMode}
                 />
               </div>
 
@@ -393,6 +408,7 @@ export default function TenantsPage() {
                     onValueChange={(value: "cpf" | "cnpj") => {
                       setFormData({ ...formData, documentType: value, document: "" });
                     }}
+                    disabled={isViewMode}
                   >
                     <SelectTrigger id="documentType">
                       <SelectValue />
@@ -419,6 +435,7 @@ export default function TenantsPage() {
                     }}
                     placeholder={formData.documentType === "cpf" ? "000.000.000-00" : "00.000.000/0000-00"}
                     required
+                    disabled={isViewMode}
                   />
                 </div>
               </div>
@@ -432,6 +449,7 @@ export default function TenantsPage() {
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     placeholder="exemplo@email.com"
+                    disabled={isViewMode}
                   />
                 </div>
 
@@ -442,17 +460,31 @@ export default function TenantsPage() {
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: applyPhoneMask(e.target.value) })}
                     placeholder="(00) 00000-0000"
+                    disabled={isViewMode}
                   />
                 </div>
               </div>
 
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={closeDialog}>
-                  Cancelar
-                </Button>
-                <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">
-                  {currentTenant ? "Salvar" : "Cadastrar"}
-                </Button>
+                {isViewMode ? (
+                  <>
+                    <Button type="button" variant="outline" onClick={closeDialog}>
+                      Fechar
+                    </Button>
+                    <Button type="button" onClick={handleEdit} className="bg-emerald-600 hover:bg-emerald-700">
+                      Editar
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button type="button" variant="outline" onClick={closeDialog}>
+                      Cancelar
+                    </Button>
+                    <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">
+                      {currentTenant ? "Salvar" : "Cadastrar"}
+                    </Button>
+                  </>
+                )}
               </DialogFooter>
             </form>
           </DialogContent>
