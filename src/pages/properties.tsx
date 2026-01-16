@@ -215,7 +215,7 @@ export default function PropertiesPage() {
           description: "Imóvel atualizado com sucesso!",
         });
       } else {
-        await tenantService.create(propertyData as Omit<Property, "id" | "createdAt">);
+        await propertyService.create(propertyData as Omit<Property, "id" | "createdAt">);
         toast({
           title: "Sucesso",
           description: "Imóvel cadastrado com sucesso!",
