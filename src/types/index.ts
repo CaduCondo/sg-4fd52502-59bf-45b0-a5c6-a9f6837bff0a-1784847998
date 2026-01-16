@@ -47,7 +47,6 @@ export interface Tenant {
   name: string;
   document: string | null;
   documentType?: "cpf" | "cnpj";
-  rg?: string;
   cpf?: string; // Add optional for backward compatibility during migration
   email: string | null;
   phone: string | null;
@@ -59,7 +58,6 @@ export interface Tenant {
   complement?: string;
   city?: string;
   state?: string;
-  description?: string;
 }
 
 export interface Config {

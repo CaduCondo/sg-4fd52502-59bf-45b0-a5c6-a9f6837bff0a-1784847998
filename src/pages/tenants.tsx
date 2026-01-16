@@ -46,7 +46,6 @@ export default function TenantsPage() {
     phone: "",
     document: "",
     documentType: "cpf",
-    rg: "",
   });
 
   useEffect(() => {
@@ -129,10 +128,8 @@ export default function TenantsPage() {
       name: "",
       documentType: "cpf",
       document: "",
-      rg: "",
       email: "",
       phone: "",
-      description: "",
     });
   };
 
