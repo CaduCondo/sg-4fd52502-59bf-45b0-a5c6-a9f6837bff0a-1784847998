@@ -41,6 +41,7 @@ export default function PropertiesPage() {
     state: "",
     rentValue: "",
     description: "",
+    status: "available",
   });
 
   useEffect(() => {
@@ -116,6 +117,7 @@ export default function PropertiesPage() {
       state: "",
       rentValue: "",
       description: "",
+      status: "available",
     });
     setIsDialogOpen(true);
   };
@@ -133,6 +135,7 @@ export default function PropertiesPage() {
       state: "",
       rentValue: "",
       description: "",
+      status: "available",
     });
   };
 
@@ -188,7 +191,7 @@ export default function PropertiesPage() {
         monthlyRent: rentValueNumber,
         rentValue: rentValueNumber,
         type: "residential",
-        status: "available",
+        status: formData.status,
         description: formData.description || undefined,
       };
 
