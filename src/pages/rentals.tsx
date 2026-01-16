@@ -242,10 +242,10 @@ export default function RentalsPage() {
         await propertyService.update({ ...property, status: "occupied" });
       }
 
-      // Update tenant status to locador
+      // Update tenant status to rented
       const tenant = tenants.find((t) => t.id === formData.tenantId);
       if (tenant) {
-        await tenantService.update({ ...tenant, status: "locador" });
+        await tenantService.update({ ...tenant, status: "rented" });
       }
 
       toast({
@@ -614,7 +614,7 @@ export default function RentalsPage() {
                       setFormData({
                         ...formData,
                         propertyId: value,
-                        value: property?.rentValue ? applyRealMask(property.rentValue.toString()) : "",
+                        value: property?.rentValue ? applyRealMask((property.rentValue * 100).toString()) : "",
                       });
                     }}
                   >

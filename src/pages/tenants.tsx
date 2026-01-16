@@ -81,7 +81,6 @@ export default function TenantsPage() {
 
   const openDialog = (tenant?: Tenant) => {
     if (tenant) {
-      // Modo visualização ao clicar no card
       setCurrentTenant(tenant);
       setIsViewMode(true);
       setFormData({
@@ -94,7 +93,6 @@ export default function TenantsPage() {
         phone: applyPhoneMask(tenant.phone || ""),
       });
     } else {
-      // Modo criação (novo inquilino)
       setCurrentTenant(null);
       setIsViewMode(false);
       setFormData({
@@ -378,8 +376,16 @@ export default function TenantsPage() {
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent 
             className="max-w-2xl"
-            onPointerDownOutside={(e) => !isViewMode && e.preventDefault()}
-            onEscapeKeyDown={(e) => !isViewMode && e.preventDefault()}
+            onPointerDownOutside={(e) => {
+              if (!isViewMode) {
+                e.preventDefault();
+              }
+            }}
+            onEscapeKeyDown={(e) => {
+              if (!isViewMode) {
+                e.preventDefault();
+              }
+            }}
           >
             <DialogHeader>
               <DialogTitle>

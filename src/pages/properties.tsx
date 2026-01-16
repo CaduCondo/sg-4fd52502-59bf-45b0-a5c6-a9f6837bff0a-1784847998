@@ -475,8 +475,16 @@ export default function PropertiesPage() {
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent 
             className="max-w-2xl max-h-[90vh] overflow-y-auto"
-            onPointerDownOutside={(e) => !isViewMode && e.preventDefault()}
-            onEscapeKeyDown={(e) => !isViewMode && e.preventDefault()}
+            onPointerDownOutside={(e) => {
+              if (!isViewMode) {
+                e.preventDefault();
+              }
+            }}
+            onEscapeKeyDown={(e) => {
+              if (!isViewMode) {
+                e.preventDefault();
+              }
+            }}
           >
             <DialogHeader>
               <DialogTitle>
