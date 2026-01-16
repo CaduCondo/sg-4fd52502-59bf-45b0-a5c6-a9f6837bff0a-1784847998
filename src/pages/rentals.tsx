@@ -298,9 +298,12 @@ export default function RentalsPage() {
       }
     }
 
-    if (!confirm("Tem certeza que deseja excluir esta locação?")) return;
+    if (!confirm("Tem certeza que deseja excluir esta locação? Todos os recebimentos pendentes serão excluídos.")) return;
 
     try {
+      // Delete all pending payments for this rental
+      await paymentService.deletePendingByRentalId(rental.id);
+
       // Delete rental
       await rentalService.delete(rental.id);
 
@@ -318,7 +321,7 @@ export default function RentalsPage() {
 
       toast({
         title: "Sucesso",
-        description: "Locação excluída com sucesso!",
+        description: "Locação e recebimentos pendentes excluídos com sucesso!",
       });
 
       loadData();
@@ -333,9 +336,12 @@ export default function RentalsPage() {
   };
 
   const handleEndRental = async (rental: Rental) => {
-    if (!confirm("Tem certeza que deseja encerrar esta locação?")) return;
+    if (!confirm("Tem certeza que deseja encerrar esta locação? Todos os recebimentos futuros serão excluídos.")) return;
 
     try {
+      // Delete all future payments for this rental
+      await paymentService.deleteFutureByRentalId(rental.id);
+
       // Update rental to inactive
       await rentalService.update({ ...rental, isActive: false });
 
@@ -353,7 +359,7 @@ export default function RentalsPage() {
 
       toast({
         title: "Sucesso",
-        description: "Locação encerrada com sucesso!",
+        description: "Locação encerrada e recebimentos futuros excluídos com sucesso!",
       });
 
       loadData();

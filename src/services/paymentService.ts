@@ -69,6 +69,28 @@ export const paymentService = {
     if (error) throw error;
   },
 
+  async deletePendingByRentalId(rentalId: string): Promise<void> {
+    const { error } = await supabase
+      .from("payments")
+      .delete()
+      .eq("rental_id", rentalId)
+      .eq("status", "pending");
+    
+    if (error) throw error;
+  },
+
+  async deleteFutureByRentalId(rentalId: string): Promise<void> {
+    const today = new Date().toISOString().split("T")[0];
+    
+    const { error } = await supabase
+      .from("payments")
+      .delete()
+      .eq("rental_id", rentalId)
+      .gt("due_date", today);
+    
+    if (error) throw error;
+  },
+
   async updateOverdueStatus(): Promise<void> {
     const today = new Date().toISOString().split("T")[0];
     
