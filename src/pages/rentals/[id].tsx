@@ -14,6 +14,7 @@ import { ArrowLeft, Edit, Save, X, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { applyRealMask, formatCurrency } from "@/lib/masks";
+import { Select } from "@/components/ui/select";
 
 export default function RentalDetails() {
   const router = useRouter();
