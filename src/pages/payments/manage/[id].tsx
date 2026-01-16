@@ -255,8 +255,7 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
         description: "Recebimento registrado com sucesso!",
       });
 
-      // Show receipt if paid fully
-      if (status === "paid") {
+      if (status === "paid" || status === "partial") {
         setShowReceipt(true);
       } else {
         handleBack();
@@ -386,6 +385,13 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
               <span className="text-sm font-medium">{formatCurrency(calculatedValues.baseAmount)}</span>
             </div>
 
+            {payment.status === "partial" && payment.paidAmount > 0 && (
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Valor Já Pago:</span>
+                <span className="text-sm font-medium text-green-600">-{formatCurrency(payment.paidAmount)}</span>
+              </div>
+            )}
+
             {calculatedValues.lateFee > 0 && (
               <div className="flex justify-between">
                 <span className={`text-sm ${waiveLateFees ? "line-through text-muted-foreground" : "text-muted-foreground"}`}>
@@ -426,7 +432,7 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
             <div className="pt-3 border-t flex justify-between">
               <span className="font-medium">Valor Esperado:</span>
               <span className="text-lg font-bold text-emerald-600">
-                {formatCurrency(calculatedValues.totalAmount)}
+                {formatCurrency(calculatedValues.totalAmount - (payment.status === "partial" ? payment.paidAmount : 0))}
               </span>
             </div>
           </CardContent>

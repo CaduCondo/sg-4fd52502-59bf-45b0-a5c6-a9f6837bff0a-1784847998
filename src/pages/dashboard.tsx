@@ -15,7 +15,7 @@ import { formatCurrency } from "@/lib/masks";
 import type { Property, Tenant, Rental, Payment } from "@/types";
 import { FloatingCard } from "@/components/animations/FloatingCard";
 import { useToast } from "@/hooks/use-toast";
-import { authService } from "@/services/authService";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -25,7 +25,7 @@ export default function DashboardPage() {
   const [rentals, setRentals] = useState<Rental[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [adminFeePercentage, setAdminFeePercentage] = useState(6);
-  const [userName, setUserName] = useState("Administrador");
+  const [userName, setUserName] = useState("Carregando...");
   const [mounted, setMounted] = useState(false);
   
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
@@ -34,7 +34,6 @@ export default function DashboardPage() {
   const exportDashboardData = () => {
     const monthName = monthNames[selectedMonth - 1];
     
-    // Prepare data for export
     const exportData = {
       periodo: `${monthName} de ${selectedYear}`,
       resumo: {
@@ -83,7 +82,6 @@ export default function DashboardPage() {
       }),
     };
 
-    // Convert to JSON and download
     const jsonString = JSON.stringify(exportData, null, 2);
     const blob = new Blob([jsonString], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -95,17 +93,14 @@ export default function DashboardPage() {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
 
-    // Also export as CSV for easier viewing
     exportAsCSV(exportData);
   };
 
   const exportAsCSV = (data: any) => {
     const monthName = monthNames[selectedMonth - 1];
     
-    // Create CSV content
     let csvContent = `Dashboard - ${monthName} de ${selectedYear}\n\n`;
     
-    // Summary section
     csvContent += "RESUMO GERAL\n";
     csvContent += "Métrica,Valor\n";
     csvContent += `Total de Imóveis,${data.resumo.totalImoveis}\n`;
@@ -115,14 +110,12 @@ export default function DashboardPage() {
     csvContent += `Recebimentos Pendentes,${data.resumo.recebimentosPendentes}\n`;
     csvContent += `Recebimentos Realizados,${data.resumo.recebimentosRealizados}\n\n`;
     
-    // Financial section
     csvContent += "FINANCEIRO\n";
     csvContent += "Métrica,Valor\n";
     csvContent += `Receita Mensal,${data.financeiro.receitaMensal}\n`;
     csvContent += `Taxa de Administração,${data.financeiro.taxaAdministracao}\n`;
     csvContent += `Receita Líquida,${data.financeiro.receitaLiquida}\n\n`;
     
-    // Properties section
     csvContent += "IMÓVEIS\n";
     csvContent += "Local,Endereço,Bairro,Cidade,Valor Aluguel,Tipo,Status\n";
     data.imoveis.forEach((imovel: any) => {
@@ -130,7 +123,6 @@ export default function DashboardPage() {
     });
     csvContent += "\n";
     
-    // Tenants section
     csvContent += "INQUILINOS\n";
     csvContent += "Nome,CPF,Email,Telefone,Status\n";
     data.inquilinos.forEach((inquilino: any) => {
@@ -138,14 +130,12 @@ export default function DashboardPage() {
     });
     csvContent += "\n";
     
-    // Payments section
     csvContent += "PAGAMENTOS\n";
     csvContent += "Imóvel,Inquilino,Valor Esperado,Valor Pago,Data Vencimento,Data Pagamento,Status\n";
     data.pagamentos.forEach((pagamento: any) => {
       csvContent += `"${pagamento.imovel}","${pagamento.inquilino}",${pagamento.valorEsperado},${pagamento.valorPago},"${pagamento.dataVencimento}","${pagamento.dataPagamento}","${pagamento.status}"\n`;
     });
 
-    // Download CSV
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -201,10 +191,27 @@ export default function DashboardPage() {
 
   const loadUserName = async () => {
     try {
-      const name = await authService.getUserProfileName();
-      setUserName(name);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setUserName("Administrador");
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("user_profiles")
+        .select("name")
+        .eq("id", user.id)
+        .single();
+
+      if (error || !data || !data.name) {
+        const emailName = user.email?.split("@")[0] || "Administrador";
+        setUserName(emailName);
+      } else {
+        setUserName(data.name);
+      }
     } catch (error) {
       console.error("Error loading user name:", error);
+      setUserName("Administrador");
     }
   };
 
@@ -235,16 +242,13 @@ export default function DashboardPage() {
     (p) => p.status === "pending" || p.status === "partial"
   );
 
-  // Calculate monthly revenue (all paid payments)
   const monthlyRevenue = paidPayments.reduce((sum, p) => sum + (p.paidAmount || 0), 0);
   
-  // Calculate admin fee (exclude "Outros" location)
   let adminFee = 0;
   for (const payment of paidPayments) {
     const rental = rentals.find(r => r.id === payment.rentalId);
     const property = rental ? properties.find(p => p.id === rental.propertyId) : undefined;
     
-    // Only apply admin fee if property location is NOT "Outros"
     if (property && property.location.toLowerCase() !== "outros") {
       const fee = (payment.paidAmount || 0) * (adminFeePercentage / 100);
       adminFee += fee;
@@ -253,11 +257,9 @@ export default function DashboardPage() {
   
   const netRevenue = monthlyRevenue - adminFee;
   
-  // Calculate expected value (all payments for the month, any status)
   const expectedValue = filteredPayments.reduce((sum, p) => sum + (p.expectedAmount || 0), 0);
 
   const dueSoonPayments = filteredPayments.filter((p) => {
-    // Skip paid payments - use negation to avoid type error
     if (p.status !== "pending" && p.status !== "partial" && p.status !== "overdue") return false;
     
     const rental = rentals.find((r) => r.id === p.rentalId);
@@ -297,7 +299,6 @@ export default function DashboardPage() {
       />
       <Layout>
         <div className="space-y-6">
-          {/* Welcome Section */}
           <FloatingCard delay={0}>
             <Card className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white border-none">
               <CardContent className="pt-6">
@@ -330,7 +331,6 @@ export default function DashboardPage() {
             </Card>
           </FloatingCard>
 
-          {/* Month/Year Filter */}
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
             <h2 className="text-2xl font-bold">Visão Geral</h2>
             <div className="flex gap-3">
@@ -538,13 +538,10 @@ export default function DashboardPage() {
             </FloatingCard>
           </div>
 
-          {/* Charts Section */}
           <div className="space-y-6 mt-8">
             <h2 className="text-2xl font-bold">📊 Análises e Gráficos</h2>
 
-            {/* Row 1: Occupancy and Revenue Charts */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Occupancy Rate Chart */}
               <FloatingCard delay={0.9}>
                 <Card>
                   <CardHeader>
@@ -580,7 +577,6 @@ export default function DashboardPage() {
                 </Card>
               </FloatingCard>
 
-              {/* Monthly Revenue Chart */}
               <FloatingCard delay={1.0}>
                 <Card>
                   <CardHeader>
@@ -635,9 +631,7 @@ export default function DashboardPage() {
               </FloatingCard>
             </div>
 
-            {/* Row 2: Payments Status and Financial Breakdown */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Payments Status Chart */}
               <FloatingCard delay={1.1}>
                 <Card>
                   <CardHeader>
@@ -691,7 +685,6 @@ export default function DashboardPage() {
                 </Card>
               </FloatingCard>
 
-              {/* Financial Breakdown Chart */}
               <FloatingCard delay={1.2}>
                 <Card>
                   <CardHeader>
@@ -759,7 +752,6 @@ export default function DashboardPage() {
               </FloatingCard>
             </div>
 
-            {/* Row 3: Properties by Status */}
             <FloatingCard delay={1.3}>
               <Card>
                 <CardHeader>
