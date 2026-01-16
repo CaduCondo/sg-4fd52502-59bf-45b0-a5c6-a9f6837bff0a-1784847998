@@ -203,16 +203,16 @@ export default function TenantDetailsPage() {
             <div className="flex gap-2">
               {isEditMode ? (
                 <>
-                  <Button variant="outline" onClick={handleCancel} size="sm">
+                  <Button variant="outline" onClick={handleCancel}>
                     <X className="h-4 w-4 mr-2" />
                     Cancelar
                   </Button>
-                  <Button onClick={handleSave} className="bg-emerald-600 hover:bg-emerald-700" size="sm">
+                  <Button onClick={handleSave} className="bg-emerald-600 hover:bg-emerald-700">
                     Salvar
                   </Button>
                 </>
               ) : (
-                <Button onClick={handleEdit} className="bg-emerald-600 hover:bg-emerald-700" size="sm">
+                <Button onClick={handleEdit} className="bg-emerald-600 hover:bg-emerald-700">
                   <Edit className="h-4 w-4 mr-2" />
                   Editar
                 </Button>

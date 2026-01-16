@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { rentalService, propertyService, tenantService, paymentService } from "@/services";
 import type { Rental, Property, Tenant } from "@/types";
-import { ArrowLeft, Edit, Save, X, Trash2 } from "lucide-react";
+import { ArrowLeft, Edit, Save, X, Trash2, Camera, Paperclip } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { applyRealMask, formatCurrency } from "@/lib/masks";
@@ -34,6 +34,7 @@ export default function RentalDetails() {
   const [editMonthlyRent, setEditMonthlyRent] = useState("");
   const [editHasGarage, setEditHasGarage] = useState(false);
   const [editGarageValue, setEditGarageValue] = useState("");
+  const [editAttachments, setEditAttachments] = useState<string[]>([]);
 
   useEffect(() => {
     if (id) {
@@ -71,6 +72,7 @@ export default function RentalDetails() {
       setEditMonthlyRent(applyRealMask((rentalData.monthlyRent * 100).toString()));
       setEditHasGarage(rentalData.hasGarage || false);
       setEditGarageValue(rentalData.garageValue ? applyRealMask((rentalData.garageValue * 100).toString()) : "");
+      setEditAttachments(rentalData.attachments || []);
     } catch (error) {
       console.error("Error loading rental:", error);
       toast({ 
@@ -82,6 +84,52 @@ export default function RentalDetails() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const file = files[0];
+    const reader = new FileReader();
+
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      setEditAttachments([...editAttachments, base64String]);
+      toast({
+        title: "Arquivo anexado",
+        description: `${file.name} foi anexado com sucesso.`,
+      });
+    };
+
+    reader.readAsDataURL(file);
+  };
+
+  const handleCameraCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const file = files[0];
+    const reader = new FileReader();
+
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      setEditAttachments([...editAttachments, base64String]);
+      toast({
+        title: "Foto capturada",
+        description: "Foto anexada com sucesso.",
+      });
+    };
+
+    reader.readAsDataURL(file);
+  };
+
+  const removeAttachment = (index: number) => {
+    setEditAttachments(editAttachments.filter((_, i) => i !== index));
+    toast({
+      title: "Anexo removido",
+      description: "Anexo removido com sucesso.",
+    });
   };
 
   const handleEdit = () => {
@@ -110,6 +158,7 @@ export default function RentalDetails() {
         value: totalValue,
         hasGarage: editHasGarage,
         garageValue: editHasGarage ? garageValue : undefined,
+        attachments: editAttachments,
       };
 
       await rentalService.update(updatedRental);
@@ -397,6 +446,72 @@ export default function RentalDetails() {
                     )}
                   </div>
                 </div>
+
+                {isEditing && (
+                  <div className="space-y-4 border-t pt-4 mt-4">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs text-muted-foreground font-medium">Anexos</Label>
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => document.getElementById("rentalCameraCapture")?.click()}
+                        >
+                          <Camera className="mr-2 h-4 w-4" />
+                          Tirar Foto
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => document.getElementById("rentalFileUpload")?.click()}
+                        >
+                          <Paperclip className="mr-2 h-4 w-4" />
+                          Anexar Arquivo
+                        </Button>
+                        <input
+                          id="rentalCameraCapture"
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          className="hidden"
+                          onChange={handleCameraCapture}
+                        />
+                        <input
+                          id="rentalFileUpload"
+                          type="file"
+                          accept="image/*,.pdf,.doc,.docx"
+                          className="hidden"
+                          onChange={handleFileUpload}
+                        />
+                      </div>
+                    </div>
+
+                    {editAttachments.length > 0 && (
+                      <div className="space-y-2">
+                        {editAttachments.map((attachment, index) => (
+                          <div
+                            key={index}
+                            className="flex items-center justify-between p-3 bg-muted rounded-lg"
+                          >
+                            <span className="text-sm truncate flex-1">
+                              Arquivo {index + 1}
+                            </span>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeAttachment(index)}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
