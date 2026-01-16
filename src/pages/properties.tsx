@@ -181,9 +181,7 @@ export default function PropertiesPage() {
 
   const convertMaskedValueToNumber = (maskedValue: string): number => {
     if (!maskedValue) return 0;
-    // Remove tudo exceto números e vírgula
     const cleanValue = maskedValue.replace(/[^\d,]/g, '');
-    // Substitui vírgula por ponto para conversão
     const numericValue = cleanValue.replace(',', '.');
     return parseFloat(numericValue) || 0;
   };
@@ -201,6 +199,8 @@ export default function PropertiesPage() {
     }
 
     try {
+      const rentValueNumber = convertMaskedValueToNumber(formData.rentValue);
+
       const propertyData: Partial<Property> = {
         location: formData.location,
         cep: formData.cep || undefined,
@@ -210,8 +210,8 @@ export default function PropertiesPage() {
         neighborhood: formData.neighborhood || undefined,
         city: formData.city || undefined,
         state: formData.state || undefined,
-        monthlyRent: convertMaskedValueToNumber(formData.rentValue),
-        rentValue: convertMaskedValueToNumber(formData.rentValue),
+        monthlyRent: rentValueNumber,
+        rentValue: rentValueNumber,
         type: "residential",
         status: currentProperty?.status || "available",
         description: formData.description || undefined,
@@ -490,16 +490,9 @@ export default function PropertiesPage() {
         <Dialog open={isDialogOpen}>
           <DialogContent 
             className="max-w-2xl max-h-[90vh] overflow-y-auto"
-            onPointerDownOutside={(e) => {
-              if (!isViewMode) {
-                e.preventDefault();
-              }
-            }}
-            onEscapeKeyDown={(e) => {
-              if (!isViewMode) {
-                e.preventDefault();
-              }
-            }}
+            onPointerDownOutside={(e) => e.preventDefault()}
+            onEscapeKeyDown={(e) => e.preventDefault()}
+            onInteractOutside={(e) => e.preventDefault()}
           >
             <DialogHeader>
               <DialogTitle>
