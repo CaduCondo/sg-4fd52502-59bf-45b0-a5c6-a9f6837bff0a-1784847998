@@ -39,7 +39,7 @@ export interface Tenant {
   cpf?: string; // Add optional for backward compatibility during migration
   email: string | null;
   phone: string | null;
-  status: "active" | "inactive" | "rented";
+  status: "active" | "inactive" | "rented" | "locador";
   createdAt: string;
   cep?: string;
   address?: string;
@@ -77,6 +77,7 @@ export interface Rental {
   value: number;
   deposit?: string;
   contractAttachments?: Attachment[];
+  attachments?: string[];
   isActive: boolean;
   createdAt: string;
 }
