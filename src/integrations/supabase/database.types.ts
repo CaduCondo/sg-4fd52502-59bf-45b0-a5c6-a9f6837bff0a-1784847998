@@ -298,6 +298,7 @@ export type Database = {
       }
       rentals: {
         Row: {
+          attachments: Json | null
           contract_attachments: Json | null
           created_at: string | null
           deposit: string | null
@@ -315,6 +316,7 @@ export type Database = {
           value: number
         }
         Insert: {
+          attachments?: Json | null
           contract_attachments?: Json | null
           created_at?: string | null
           deposit?: string | null
@@ -332,6 +334,7 @@ export type Database = {
           value: number
         }
         Update: {
+          attachments?: Json | null
           contract_attachments?: Json | null
           created_at?: string | null
           deposit?: string | null

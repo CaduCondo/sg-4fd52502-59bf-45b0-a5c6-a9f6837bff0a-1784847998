@@ -411,7 +411,7 @@ export default function PropertiesPage() {
                   className="hover:shadow-md transition-all cursor-pointer group"
                   onClick={() => handleCardClick(property.id)}
                 >
-                  <CardContent className="py-4">
+                  <CardContent className="py-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4 flex-1">
                         <Building2 className="h-8 w-8 text-emerald-600 flex-shrink-0" />
@@ -599,7 +599,6 @@ export default function PropertiesPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="available">Disponível</SelectItem>
-                    <SelectItem value="occupied">Alugado</SelectItem>
                     <SelectItem value="unavailable">Indisponível</SelectItem>
                   </SelectContent>
                 </Select>

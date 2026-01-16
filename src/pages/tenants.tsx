@@ -285,28 +285,28 @@ export default function TenantsPage() {
                   className="cursor-pointer hover:shadow-lg transition-all duration-300 group"
                   onClick={() => handleCardClick(tenant.id)}
                 >
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between mb-2">
+                  <CardHeader className="pb-2">
+                    <div className="flex items-start justify-between mb-1">
                       <Badge className={getStatusColor(tenant.status)}>
                         {getStatusLabel(tenant.status)}
                       </Badge>
                     </div>
-                    <CardTitle className="text-base group-hover:text-emerald-600 transition-colors">
+                    <CardTitle className="text-sm group-hover:text-emerald-600 transition-colors">
                       {tenant.name}
                     </CardTitle>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                       {tenant.documentType?.toUpperCase()}: {tenant.documentType === "cpf" ? applyCpfMask(tenant.document || "") : applyCnpjMask(tenant.document || "")}
                     </p>
                   </CardHeader>
-                  <CardContent className="pt-0">
+                  <CardContent className="pt-0 pb-2">
                     <div className="flex items-center justify-end">
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50"
+                        className="h-7 w-7 text-red-500 hover:text-red-700 hover:bg-red-50"
                         onClick={(e) => handleDelete(e, tenant)}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </div>
                   </CardContent>
@@ -321,15 +321,15 @@ export default function TenantsPage() {
                   className="cursor-pointer hover:shadow-md transition-all duration-300 group"
                   onClick={() => handleCardClick(tenant.id)}
                 >
-                  <CardContent className="py-4">
+                  <CardContent className="py-3">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4 flex-1">
+                      <div className="flex items-center gap-3 flex-1">
                         <Badge className={getStatusColor(tenant.status)}>
                           {getStatusLabel(tenant.status)}
                         </Badge>
                         <div>
-                          <h3 className="font-semibold group-hover:text-emerald-600 transition-colors">{tenant.name}</h3>
-                          <p className="text-sm text-muted-foreground">
+                          <h3 className="font-semibold text-base group-hover:text-emerald-600 transition-colors">{tenant.name}</h3>
+                          <p className="text-xs text-muted-foreground">
                             {tenant.documentType?.toUpperCase()}: {tenant.documentType === "cpf" ? applyCpfMask(tenant.document || "") : applyCnpjMask(tenant.document || "")}
                           </p>
                         </div>
@@ -337,10 +337,10 @@ export default function TenantsPage() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50"
+                        className="h-7 w-7 text-red-500 hover:text-red-700 hover:bg-red-50"
                         onClick={(e) => handleDelete(e, tenant)}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </div>
                   </CardContent>
