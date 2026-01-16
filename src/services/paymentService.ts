@@ -115,6 +115,44 @@ export const paymentService = {
     if (error) throw error;
   },
 
+  async updateFuturePaymentsOnPaymentDayChange(rentalId: string, newPaymentDay: number): Promise<void> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Get all future payments for this rental
+    const { data: futurePayments, error: fetchError } = await supabase
+      .from("payments")
+      .select("*")
+      .eq("rental_id", rentalId)
+      .gte("due_date", today.toISOString().split("T")[0])
+      .order("due_date", { ascending: true });
+    
+    if (fetchError) throw fetchError;
+    if (!futurePayments || futurePayments.length === 0) return;
+    
+    // Update each payment's due date
+    for (const payment of futurePayments) {
+      const [year, month] = payment.due_date.split("-").map(Number);
+      
+      // Calculate last day of the month
+      const lastDayOfMonth = new Date(year, month, 0).getDate();
+      
+      // Adjust payment day if it exceeds month days
+      const validDay = Math.min(newPaymentDay, lastDayOfMonth);
+      
+      // Create new due date
+      const newDueDate = `${year}-${String(month).padStart(2, "0")}-${String(validDay).padStart(2, "0")}`;
+      
+      // Update payment
+      const { error: updateError } = await supabase
+        .from("payments")
+        .update({ due_date: newDueDate })
+        .eq("id", payment.id);
+      
+      if (updateError) throw updateError;
+    }
+  },
+
   async regeneratePaymentsFromCurrentMonth(rentalId: string, rental: { value: number; paymentDay: number; endDate: string | null; }): Promise<void> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);

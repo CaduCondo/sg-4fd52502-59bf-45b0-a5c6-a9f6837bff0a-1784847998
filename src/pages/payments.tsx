@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { DollarSign, Calendar, Home, User, AlertCircle, CheckCircle } from "lucide-react";
+import { DollarSign, Calendar, Home, User, AlertCircle, CheckCircle, X } from "lucide-react";
 import type { Payment, Rental, Property, Tenant } from "@/types";
 import { paymentService, rentalService, propertyService, tenantService } from "@/services";
 import { formatCurrency } from "@/lib/masks";
@@ -75,6 +75,46 @@ export default function PaymentsPage() {
     setIsDialogOpen(false);
     setSelectedPaymentId(null);
     loadData();
+  };
+
+  const handleCancelPayment = async (paymentId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (!confirm("Tem certeza que deseja cancelar este pagamento? O recebimento voltará ao estado pendente.")) {
+      return;
+    }
+
+    try {
+      const payment = payments.find(p => p.id === paymentId);
+      if (!payment) return;
+
+      const updatedPayment: Payment = {
+        ...payment,
+        status: "pending",
+        paidAmount: 0,
+        paymentDate: null,
+        paymentMethod: null,
+        paymentLocation: null,
+        paymentCode: null,
+        notes: null,
+      };
+
+      await paymentService.update(updatedPayment);
+      
+      toast({
+        title: "Sucesso",
+        description: "Pagamento cancelado com sucesso!",
+      });
+
+      loadData();
+    } catch (error) {
+      console.error("Error canceling payment:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível cancelar o pagamento.",
+        variant: "destructive",
+      });
+    }
   };
 
   const getPropertyInfo = (rentalId: string) => {
@@ -463,7 +503,7 @@ export default function PaymentsPage() {
                               <div className="flex items-center gap-2">
                                 <Calendar className="h-4 w-4 text-muted-foreground" />
                                 <p className="text-sm">
-                                  Pago em: {payment.paymentDate ? new Date(payment.paymentDate).toLocaleDateString("pt-BR") : "N/A"}
+                                  Pago em: {payment.paymentDate ? new Date(payment.paymentDate + "T12:00:00").toLocaleDateString("pt-BR") : "N/A"}
                                 </p>
                               </div>
 
@@ -480,6 +520,18 @@ export default function PaymentsPage() {
                                   <p className="text-sm capitalize">{payment.paymentMethod}</p>
                                 </div>
                               )}
+
+                              <div className="pt-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="w-full text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  onClick={(e) => handleCancelPayment(payment.id, e)}
+                                >
+                                  <X className="h-4 w-4 mr-2" />
+                                  Cancelar Pagamento
+                                </Button>
+                              </div>
                             </CardContent>
                           </Card>
                         </FloatingCard>

@@ -210,7 +210,7 @@ export function PaymentReceipt({ isOpen, onClose, payment, rental, property, ten
           <div className="text-justify leading-relaxed text-slate-800 space-y-4">
             <p className="text-lg">
               Recebi de <span className="font-bold">{tenant.name}</span> a importância de{" "}
-              <span className="font-bold uppercase">{numberToWords(totalValue)}</span>, proveniente ao depósito de aluguel
+              <span className="font-bold uppercase">{numberToWords(totalValue)}</span> ({formatCurrency(totalValue)}), proveniente ao depósito de aluguel
               referente ao mês de <span className="font-bold">{referenceMonth} de {referenceYear}</span>, tendo seu vencimento
               em <span className="font-bold">{dueDate}</span> do imóvel localizado em{" "}
               <span className="font-bold">{fullAddress}</span>, após apresentação dos comprovantes de depósito bancário e

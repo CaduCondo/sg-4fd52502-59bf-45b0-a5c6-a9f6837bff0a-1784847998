@@ -14,7 +14,7 @@ import { ArrowLeft, Edit, Save, X, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { applyRealMask, formatCurrency } from "@/lib/masks";
-import { Select } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function RentalDetails() {
   const router = useRouter();
@@ -114,7 +114,13 @@ export default function RentalDetails() {
 
       await rentalService.update(updatedRental);
       
+      // Update future payments if value changed
       await paymentService.updateFuturePaymentsOnRentalValueChange(rental.id, totalValue);
+      
+      // Update future payments if payment day changed
+      if (rental.paymentDay !== parseInt(editPaymentDay)) {
+        await paymentService.updateFuturePaymentsOnPaymentDayChange(rental.id, parseInt(editPaymentDay));
+      }
       
       setRental(updatedRental);
       setIsEditing(false);
@@ -331,14 +337,18 @@ export default function RentalDetails() {
                   <div className="space-y-1">
                     <Label className="text-xs text-muted-foreground">Dia Pagamento</Label>
                     {isEditing ? (
-                      <Input
-                        type="number"
-                        min="1"
-                        max="31"
-                        value={editPaymentDay}
-                        onChange={(e) => setEditPaymentDay(e.target.value)}
-                        className="h-8 text-sm"
-                      />
+                      <Select value={editPaymentDay} onValueChange={setEditPaymentDay}>
+                        <SelectTrigger className="h-8 text-sm">
+                          <SelectValue placeholder="Selecione o dia" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                            <SelectItem key={day} value={day.toString()}>
+                              Dia {day.toString().padStart(2, "0")}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     ) : (
                       <p className="text-sm font-medium">Dia {rental.paymentDay}</p>
                     )}

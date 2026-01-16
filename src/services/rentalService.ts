@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Rental } from "@/types";
+import { paymentService } from "@/services/paymentService";
 
 export const rentalService = {
   async getAll(): Promise<Rental[]> {
