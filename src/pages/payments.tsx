@@ -46,6 +46,10 @@ export default function PaymentsPage() {
   const loadData = async () => {
     try {
       setLoading(true);
+      
+      // Update overdue payments first
+      await paymentService.updateOverdueStatus();
+      
       const [paymentsData, rentalsData, propertiesData, tenantsData] = await Promise.all([
         paymentService.getAll(),
         rentalService.getAll(),
@@ -362,10 +366,7 @@ export default function PaymentsPage() {
                               {payment.paymentMethod && (
                                 <div className="flex items-center gap-2">
                                   <DollarSign className="h-4 w-4 text-muted-foreground" />
-                                  <p className="text-sm">{payment.paymentMethod}</p>
-                                  {payment.paymentCode && (
-                                    <p className="text-xs text-muted-foreground">({payment.paymentCode})</p>
-                                  )}
+                                  <p className="text-sm capitalize">{payment.paymentMethod}</p>
                                 </div>
                               )}
                             </CardContent>

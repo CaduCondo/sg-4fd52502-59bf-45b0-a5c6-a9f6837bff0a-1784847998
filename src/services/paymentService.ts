@@ -69,12 +69,24 @@ export const paymentService = {
     if (error) throw error;
   },
 
+  async updateOverdueStatus(): Promise<void> {
+    const today = new Date().toISOString().split("T")[0];
+    
+    const { error } = await supabase
+      .from("payments")
+      .update({ status: "overdue" })
+      .lt("due_date", today)
+      .in("status", ["pending", "partial"]);
+    
+    if (error) throw error;
+  },
+
   mapFromDB(data: any): Payment {
     return {
       id: data.id,
       rentalId: data.rental_id,
-      referenceMonth: data.reference_month,
-      referenceYear: data.reference_year,
+      referenceMonth: parseInt(data.reference_month),
+      referenceYear: parseInt(data.reference_year),
       expectedAmount: parseFloat(data.expected_amount) || 0,
       paidAmount: parseFloat(data.paid_amount || 0),
       dueDate: data.due_date,
