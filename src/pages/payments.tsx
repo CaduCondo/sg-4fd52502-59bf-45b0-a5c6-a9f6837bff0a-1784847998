@@ -137,11 +137,11 @@ export default function PaymentsPage() {
         amount: "text-yellow-600" 
       };
     } else {
-      // Future - Green
+      // Future - Blue (changed from green)
       return { 
-        border: "border-l-green-500", 
-        icon: "text-green-600", 
-        amount: "text-green-600" 
+        border: "border-l-blue-500", 
+        icon: "text-blue-600", 
+        amount: "text-blue-600" 
       };
     }
   };
