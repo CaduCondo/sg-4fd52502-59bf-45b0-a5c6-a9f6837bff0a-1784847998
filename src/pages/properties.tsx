@@ -215,7 +215,7 @@ export default function PropertiesPage() {
           description: "Imóvel atualizado com sucesso!",
         });
       } else {
-        await propertyService.create(propertyData as Omit<Property, "id" | "createdAt">);
+        await tenantService.create(propertyData as Omit<Property, "id" | "createdAt">);
         toast({
           title: "Sucesso",
           description: "Imóvel cadastrado com sucesso!",
@@ -238,7 +238,6 @@ export default function PropertiesPage() {
     e.preventDefault();
     e.stopPropagation();
     
-    // Check if corretor is trying to delete occupied property
     const currentUser = getCurrentUser();
     if (currentUser?.role === "corretor" && property.status === "occupied") {
       toast({
@@ -479,8 +478,20 @@ export default function PropertiesPage() {
           )}
         </div>
 
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <Dialog open={isDialogOpen} onOpenChange={(open) => { if (!open && !isViewMode) { return; } setIsDialogOpen(open); }}>
+          <DialogContent 
+            className="max-w-2xl max-h-[90vh] overflow-y-auto"
+            onPointerDownOutside={(e) => {
+              if (!isViewMode) {
+                e.preventDefault();
+              }
+            }}
+            onEscapeKeyDown={(e) => {
+              if (!isViewMode) {
+                e.preventDefault();
+              }
+            }}
+          >
             <DialogHeader>
               <DialogTitle>
                 {isViewMode ? "Detalhes do Imóvel" : currentProperty ? "Editar Imóvel" : "Novo Imóvel"}
