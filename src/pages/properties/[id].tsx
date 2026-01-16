@@ -111,8 +111,7 @@ export default function PropertyDetailsPage() {
     setIsEditMode(false);
   };
 
-  const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const handleSave = async () => {
     if (!property) return;
 
     if (!formData.location || !formData.complement || !formData.rentValue) {
