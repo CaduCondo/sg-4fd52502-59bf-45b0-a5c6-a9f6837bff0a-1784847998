@@ -347,7 +347,7 @@ export default function PaymentsPage() {
                               <div className="flex items-center gap-2">
                                 <Calendar className="h-4 w-4 text-muted-foreground" />
                                 <p className="text-sm">
-                                  Vencimento: {new Date(payment.dueDate).toLocaleDateString("pt-BR")}
+                                  Vencimento: {new Date(new Date(payment.dueDate).getTime() + 24 * 60 * 60 * 1000).toLocaleDateString("pt-BR")}
                                 </p>
                               </div>
 
