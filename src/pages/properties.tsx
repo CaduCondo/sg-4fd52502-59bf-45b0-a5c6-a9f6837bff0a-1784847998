@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Building2, Plus, Search, Trash2, LayoutGrid, List } from "lucide-react";
-import { Property } from "@/types";
+import { Property, Location } from "@/types";
 import { propertyService } from "@/services";
 import { configService } from "@/services/configService";
 import { getCurrentUser } from "@/lib/auth";
@@ -32,7 +32,7 @@ export default function PropertiesPage() {
   const [isViewMode, setIsViewMode] = useState(false);
   const [currentProperty, setCurrentProperty] = useState<Property | null>(null);
   const [loading, setLoading] = useState(true);
-  const [locations, setLocations] = useState<string[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
 
   const [formData, setFormData] = useState({
     location: "",
@@ -40,6 +40,7 @@ export default function PropertiesPage() {
     address: "",
     number: "",
     complement: "",
+    neighborhood: "",
     city: "",
     state: "",
     rentValue: "",
@@ -112,6 +113,7 @@ export default function PropertiesPage() {
         address: property.address || "",
         number: property.number || "",
         complement: property.complement,
+        neighborhood: property.neighborhood || "",
         city: property.city || "",
         state: property.state || "",
         rentValue: applyRealMask(property.rentValue.toString()),
@@ -126,6 +128,7 @@ export default function PropertiesPage() {
         address: "",
         number: "",
         complement: "",
+        neighborhood: "",
         city: "",
         state: "",
         rentValue: "",
@@ -146,6 +149,7 @@ export default function PropertiesPage() {
       address: "",
       number: "",
       complement: "",
+      neighborhood: "",
       city: "",
       state: "",
       rentValue: "",
@@ -155,6 +159,24 @@ export default function PropertiesPage() {
 
   const handleEdit = () => {
     setIsViewMode(false);
+  };
+
+  const handleLocationChange = (value: string) => {
+    const selectedLocation = locations.find(l => l.name === value);
+    if (selectedLocation) {
+      setFormData(prev => ({
+        ...prev,
+        location: selectedLocation.name,
+        cep: selectedLocation.cep,
+        address: selectedLocation.address,
+        number: selectedLocation.number,
+        neighborhood: selectedLocation.neighborhood,
+        city: selectedLocation.city,
+        state: selectedLocation.state
+      }));
+    } else {
+      setFormData(prev => ({ ...prev, location: value }));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -176,6 +198,7 @@ export default function PropertiesPage() {
         address: formData.address || undefined,
         number: formData.number || undefined,
         complement: formData.complement,
+        neighborhood: formData.neighborhood || undefined,
         city: formData.city || undefined,
         state: formData.state || undefined,
         monthlyRent: parseFloat(removeMask(formData.rentValue)),
@@ -479,7 +502,7 @@ export default function PropertiesPage() {
                   </Label>
                   <Select
                     value={formData.location}
-                    onValueChange={(value) => setFormData({ ...formData, location: value })}
+                    onValueChange={handleLocationChange}
                     disabled={isViewMode}
                   >
                     <SelectTrigger id="location">
@@ -487,8 +510,8 @@ export default function PropertiesPage() {
                     </SelectTrigger>
                     <SelectContent>
                       {locations.map((location) => (
-                        <SelectItem key={location} value={location}>
-                          {location}
+                        <SelectItem key={location.id} value={location.name}>
+                          {location.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -518,7 +541,7 @@ export default function PropertiesPage() {
                     value={formData.cep}
                     onChange={(e) => setFormData({ ...formData, cep: applyCepMask(e.target.value) })}
                     maxLength={9}
-                    disabled={isViewMode}
+                    disabled={isViewMode || !!locations.find(l => l.name === formData.location)}
                   />
                 </div>
 
@@ -543,7 +566,18 @@ export default function PropertiesPage() {
                   placeholder="Rua, Avenida, etc."
                   value={formData.address}
                   onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  disabled={isViewMode}
+                  disabled={isViewMode || !!locations.find(l => l.name === formData.location)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="neighborhood">Bairro</Label>
+                <Input
+                  id="neighborhood"
+                  placeholder="Bairro"
+                  value={formData.neighborhood}
+                  onChange={(e) => setFormData({ ...formData, neighborhood: e.target.value })}
+                  disabled={isViewMode || !!locations.find(l => l.name === formData.location)}
                 />
               </div>
 
@@ -555,7 +589,7 @@ export default function PropertiesPage() {
                     placeholder="123"
                     value={formData.number}
                     onChange={(e) => setFormData({ ...formData, number: e.target.value })}
-                    disabled={isViewMode}
+                    disabled={isViewMode || !!locations.find(l => l.name === formData.location)}
                   />
                 </div>
 
@@ -566,7 +600,7 @@ export default function PropertiesPage() {
                     placeholder="São Paulo"
                     value={formData.city}
                     onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                    disabled={isViewMode}
+                    disabled={isViewMode || !!locations.find(l => l.name === formData.location)}
                   />
                 </div>
 
@@ -578,7 +612,7 @@ export default function PropertiesPage() {
                     value={formData.state}
                     onChange={(e) => setFormData({ ...formData, state: e.target.value.toUpperCase() })}
                     maxLength={2}
-                    disabled={isViewMode}
+                    disabled={isViewMode || !!locations.find(l => l.name === formData.location)}
                   />
                 </div>
               </div>
