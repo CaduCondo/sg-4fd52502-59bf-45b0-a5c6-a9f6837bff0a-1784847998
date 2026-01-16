@@ -28,8 +28,8 @@ export default function PaymentsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   // Filter state
-  const [selectedMonth, setSelectedMonth] = useState<string>("");
-  const [selectedYear, setSelectedYear] = useState<string>("");
+  const [selectedMonth, setSelectedMonth] = useState<string>("all");
+  const [selectedYear, setSelectedYear] = useState<string>("all");
 
   useEffect(() => {
     loadData();
@@ -120,9 +120,9 @@ export default function PaymentsPage() {
       if (!rental) return false;
       
       // Apply month/year filters if selected
-      if (selectedMonth || selectedYear) {
-        if (selectedMonth && payment.referenceMonth !== parseInt(selectedMonth)) return false;
-        if (selectedYear && payment.referenceYear !== parseInt(selectedYear)) return false;
+      if (selectedMonth !== "all" || selectedYear !== "all") {
+        if (selectedMonth !== "all" && payment.referenceMonth !== parseInt(selectedMonth)) return false;
+        if (selectedYear !== "all" && payment.referenceYear !== parseInt(selectedYear)) return false;
         return true;
       }
 
@@ -177,11 +177,11 @@ export default function PaymentsPage() {
   const years = Array.from({ length: 5 }, (_, i) => (currentYear - 2 + i).toString());
 
   const clearFilters = () => {
-    setSelectedMonth("");
-    setSelectedYear("");
+    setSelectedMonth("all");
+    setSelectedYear("all");
   };
 
-  const hasActiveFilters = selectedMonth || selectedYear;
+  const hasActiveFilters = selectedMonth !== "all" || selectedYear !== "all";
 
   return (
     <>
@@ -197,7 +197,7 @@ export default function PaymentsPage() {
                   <h1 className="text-3xl font-bold tracking-tight">Recebimentos</h1>
                   <p className="text-muted-foreground mt-2">
                     {hasActiveFilters 
-                      ? `${selectedMonth ? getMonthName(parseInt(selectedMonth)) : "Todos os meses"} de ${selectedYear || "todos os anos"}`
+                      ? `${selectedMonth !== "all" ? getMonthName(parseInt(selectedMonth)) : "Todos os meses"} de ${selectedYear !== "all" ? selectedYear : "todos os anos"}`
                       : "Todos os recebimentos dos contratos ativos"
                     }
                   </p>
@@ -205,40 +205,38 @@ export default function PaymentsPage() {
               </div>
               
               {/* Month/Year Filter Dropdowns */}
-              <div className="flex gap-4 items-center flex-wrap">
-                <div className="w-full sm:w-48">
-                  <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Todos os meses" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">Todos os meses</SelectItem>
-                      {months.map((month) => (
-                        <SelectItem key={month.value} value={month.value}>
-                          {month.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="w-full sm:w-32">
-                  <Select value={selectedYear} onValueChange={setSelectedYear}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Todos os anos" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">Todos os anos</SelectItem>
-                      {years.map((year) => (
-                        <SelectItem key={year} value={year}>
-                          {year}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="flex gap-2 items-center">
+                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                  <SelectTrigger className="w-[150px]">
+                    <SelectValue placeholder="Todos os meses" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os meses</SelectItem>
+                    {months.map((month) => (
+                      <SelectItem key={month.value} value={month.value}>
+                        {month.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                
+                <Select value={selectedYear} onValueChange={setSelectedYear}>
+                  <SelectTrigger className="w-[120px]">
+                    <SelectValue placeholder="Todos os anos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os anos</SelectItem>
+                    {years.map((year) => (
+                      <SelectItem key={year} value={year}>
+                        {year}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                
                 {hasActiveFilters && (
                   <Button variant="ghost" onClick={clearFilters}>
-                    Limpar Filtros
+                    Limpar
                   </Button>
                 )}
               </div>
