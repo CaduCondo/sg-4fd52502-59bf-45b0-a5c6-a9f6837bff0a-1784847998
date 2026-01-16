@@ -272,6 +272,26 @@ export default function FinancialPage() {
                 <p className="text-sm text-emerald-600 mt-1">Todos os pagamentos recebidos</p>
               </CardContent>
             </Card>
+
+            <Card className="border-purple-200 bg-gradient-to-br from-purple-50 to-white">
+              <CardHeader>
+                <CardTitle className="text-purple-700 text-lg">💜 Taxa de Administração</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-bold text-purple-900">{formatCurrency(totalAdminFee)}</p>
+                <p className="text-sm text-purple-600 mt-1">{config.adminFeePercentage}% da receita</p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-white">
+              <CardHeader>
+                <CardTitle className="text-blue-700 text-lg">🎯 Receita Líquida</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-bold text-blue-900">{formatCurrency(netRevenue)}</p>
+                <p className="text-sm text-blue-600 mt-1">Receita após taxa administrativa</p>
+              </CardContent>
+            </Card>
           </div>
 
           <Card>
