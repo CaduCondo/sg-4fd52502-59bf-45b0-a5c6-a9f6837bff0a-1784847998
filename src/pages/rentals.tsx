@@ -8,11 +8,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Home, User, Calendar, Trash2, XCircle, Archive } from "lucide-react";
+import { Plus, Home, User, Calendar, Trash2, XCircle, Archive, Upload, X } from "lucide-react";
 import type { Rental, Property, Tenant, Payment } from "@/types";
 import { rentalService, propertyService, tenantService, paymentService } from "@/services";
-import { formatCurrency } from "@/lib/masks";
+import { formatCurrency, applyRealMask, removeMask } from "@/lib/masks";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
 import { FloatingCard } from "@/components/animations/FloatingCard";
 import { getCurrentUser } from "@/lib/auth";
@@ -37,6 +38,9 @@ export default function RentalsPage() {
     endDate: "",
     value: "",
     paymentDay: "10",
+    hasGarage: false,
+    garageValue: "",
+    attachments: [] as string[],
   });
 
   useEffect(() => {
@@ -44,8 +48,10 @@ export default function RentalsPage() {
   }, []);
 
   useEffect(() => {
-    // Filter available properties and active tenants
-    const availProps = properties.filter((p) => p.status === "available");
+    // Filter available properties and active tenants - sort properties alphabetically
+    const availProps = properties
+      .filter((p) => p.status === "available")
+      .sort((a, b) => a.location.localeCompare(b.location));
     const availTenants = tenants.filter((t) => t.status === "active");
     setAvailableProperties(availProps);
     setAvailableTenants(availTenants);
@@ -104,6 +110,38 @@ export default function RentalsPage() {
       endDate: "",
       value: "",
       paymentDay: "10",
+      hasGarage: false,
+      garageValue: "",
+      attachments: [],
+    });
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const file = files[0];
+    const reader = new FileReader();
+
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      setFormData({
+        ...formData,
+        attachments: [...formData.attachments, base64String],
+      });
+      toast({
+        title: "Arquivo anexado",
+        description: `${file.name} foi anexado com sucesso.`,
+      });
+    };
+
+    reader.readAsDataURL(file);
+  };
+
+  const removeAttachment = (index: number) => {
+    setFormData({
+      ...formData,
+      attachments: formData.attachments.filter((_, i) => i !== index),
     });
   };
 
@@ -166,17 +204,31 @@ export default function RentalsPage() {
       return;
     }
 
+    if (formData.hasGarage && !formData.garageValue) {
+      toast({
+        title: "Valor da vaga obrigatório",
+        description: "Informe o valor da vaga de garagem.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
+      const garageValue = formData.hasGarage ? parseFloat(formData.garageValue.replace(/\./g, "").replace(",", ".")) : 0;
+      const rentValue = parseFloat(formData.value.replace(/\./g, "").replace(",", "."));
+
       const rental: Omit<Rental, "id" | "createdAt"> = {
         propertyId: formData.propertyId,
         tenantId: formData.tenantId,
         startDate: formData.startDate,
         endDate: formData.endDate || null,
-        value: parseFloat(formData.value),
-        monthlyRent: parseFloat(formData.value),
-        hasGarage: false,
+        value: rentValue + garageValue,
+        monthlyRent: rentValue,
+        hasGarage: formData.hasGarage,
+        garageValue: formData.hasGarage ? garageValue : undefined,
         paymentDay: parseInt(formData.paymentDay),
         isActive: true,
+        attachments: formData.attachments,
       };
 
       const createdRental = await rentalService.create(rental);
@@ -190,10 +242,10 @@ export default function RentalsPage() {
         await propertyService.update({ ...property, status: "occupied" });
       }
 
-      // Update tenant status to rented
+      // Update tenant status to locador
       const tenant = tenants.find((t) => t.id === formData.tenantId);
       if (tenant) {
-        await tenantService.update({ ...tenant, status: "rented" });
+        await tenantService.update({ ...tenant, status: "locador" });
       }
 
       toast({
@@ -308,6 +360,12 @@ export default function RentalsPage() {
     router.push(`/rentals/${rentalId}`);
   };
 
+  const getTotalValue = () => {
+    const rentValue = parseFloat(formData.value.replace(/\./g, "").replace(",", ".")) || 0;
+    const garageValue = formData.hasGarage ? parseFloat(formData.garageValue.replace(/\./g, "").replace(",", ".")) || 0 : 0;
+    return rentValue + garageValue;
+  };
+
   const activeRentals = rentals.filter((r) => r.isActive);
   const inactiveRentals = rentals.filter((r) => !r.isActive);
 
@@ -340,14 +398,90 @@ export default function RentalsPage() {
             </div>
           ) : (
             <>
+              {/* Available Properties and Active Tenants Cards */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                {/* Available Properties */}
+                <div className="space-y-4">
+                  <ScrollReveal delay={0.1}>
+                    <h2 className="text-xl font-bold">Imóveis Vagos</h2>
+                  </ScrollReveal>
+                  <ScrollReveal delay={0.15}>
+                    <Card>
+                      <CardContent className="pt-6">
+                        {availableProperties.length === 0 ? (
+                          <p className="text-muted-foreground text-center py-4">
+                            Nenhum imóvel vago disponível
+                          </p>
+                        ) : (
+                          <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                            {availableProperties.map((property) => (
+                              <div
+                                key={property.id}
+                                className="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors"
+                              >
+                                <div className="flex items-center gap-3">
+                                  <Home className="h-4 w-4 text-emerald-600" />
+                                  <div>
+                                    <p className="font-medium text-sm">{property.location}</p>
+                                    <p className="text-xs text-muted-foreground">{property.complement}</p>
+                                  </div>
+                                </div>
+                                <p className="text-sm font-semibold text-emerald-600">
+                                  {formatCurrency(property.rentValue)}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </ScrollReveal>
+                </div>
+
+                {/* Active Tenants */}
+                <div className="space-y-4">
+                  <ScrollReveal delay={0.2}>
+                    <h2 className="text-xl font-bold">Inquilinos Disponíveis</h2>
+                  </ScrollReveal>
+                  <ScrollReveal delay={0.25}>
+                    <Card>
+                      <CardContent className="pt-6">
+                        {availableTenants.length === 0 ? (
+                          <p className="text-muted-foreground text-center py-4">
+                            Nenhum inquilino disponível
+                          </p>
+                        ) : (
+                          <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                            {availableTenants.map((tenant) => (
+                              <div
+                                key={tenant.id}
+                                className="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors"
+                              >
+                                <div className="flex items-center gap-3">
+                                  <User className="h-4 w-4 text-emerald-600" />
+                                  <div>
+                                    <p className="font-medium text-sm">{tenant.name}</p>
+                                    <p className="text-xs text-muted-foreground">{tenant.document}</p>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </ScrollReveal>
+                </div>
+              </div>
+
               {/* Active Rentals */}
               <div className="space-y-4">
-                <ScrollReveal delay={0.1}>
+                <ScrollReveal delay={0.3}>
                   <h2 className="text-2xl font-bold">Locações Ativas</h2>
                 </ScrollReveal>
 
                 {activeRentals.length === 0 ? (
-                  <ScrollReveal delay={0.2}>
+                  <ScrollReveal delay={0.35}>
                     <Card>
                       <CardContent className="py-12 text-center">
                         <Home className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
@@ -369,7 +503,7 @@ export default function RentalsPage() {
                       const tenant = getTenantInfo(rental.tenantId);
 
                       return (
-                        <FloatingCard key={rental.id} delay={0.1 * (index + 2)}>
+                        <FloatingCard key={rental.id} delay={0.1 * (index + 4)}>
                           <Card 
                             className="hover:shadow-lg transition-shadow cursor-pointer"
                             onClick={() => handleCardClick(rental.id)}
@@ -440,7 +574,7 @@ export default function RentalsPage() {
 
               {/* Inactive Rentals Button */}
               {inactiveRentals.length > 0 && (
-                <ScrollReveal delay={0.3}>
+                <ScrollReveal delay={0.4}>
                   <div className="flex justify-center pt-4">
                     <Button
                       variant="outline"
@@ -459,7 +593,7 @@ export default function RentalsPage() {
 
         {/* New Rental Dialog */}
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Nova Locação</DialogTitle>
               <DialogDescription>
@@ -471,7 +605,7 @@ export default function RentalsPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="propertyId">
-                    Imóvel <span className="text-red-500">*</span>
+                    Imóveis Vagos <span className="text-red-500">*</span>
                   </Label>
                   <Select
                     value={formData.propertyId}
@@ -480,7 +614,7 @@ export default function RentalsPage() {
                       setFormData({
                         ...formData,
                         propertyId: value,
-                        value: property?.rentValue?.toString() || "",
+                        value: property?.rentValue ? applyRealMask(property.rentValue.toString()) : "",
                       });
                     }}
                   >
@@ -490,7 +624,7 @@ export default function RentalsPage() {
                     <SelectContent>
                       {availableProperties.map((property) => (
                         <SelectItem key={property.id} value={property.id}>
-                          {property.location} - {property.complement}
+                          {property.location} - {property.complement} - {formatCurrency(property.rentValue)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -499,7 +633,7 @@ export default function RentalsPage() {
 
                 <div className="space-y-2">
                   <Label htmlFor="tenantId">
-                    Inquilino <span className="text-red-500">*</span>
+                    Inquilinos Disponíveis <span className="text-red-500">*</span>
                   </Label>
                   <Select
                     value={formData.tenantId}
@@ -522,7 +656,7 @@ export default function RentalsPage() {
 
                 <div className="space-y-2">
                   <Label htmlFor="startDate">
-                    Data de Início <span className="text-red-500">*</span>
+                    Data Início Contrato <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     id="startDate"
@@ -536,7 +670,7 @@ export default function RentalsPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="endDate">Data de Término</Label>
+                  <Label htmlFor="endDate">Data Término Contrato</Label>
                   <Input
                     id="endDate"
                     type="date"
@@ -553,11 +687,10 @@ export default function RentalsPage() {
                   </Label>
                   <Input
                     id="value"
-                    type="number"
-                    step="0.01"
+                    placeholder="R$ 0,00"
                     value={formData.value}
                     onChange={(e) =>
-                      setFormData({ ...formData, value: e.target.value })
+                      setFormData({ ...formData, value: applyRealMask(e.target.value) })
                     }
                     required
                   />
@@ -585,6 +718,110 @@ export default function RentalsPage() {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+
+              {/* Garage Section */}
+              <div className="space-y-4 border-t pt-4">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="hasGarage"
+                    checked={formData.hasGarage}
+                    onCheckedChange={(checked) =>
+                      setFormData({ ...formData, hasGarage: checked as boolean, garageValue: "" })
+                    }
+                  />
+                  <Label htmlFor="hasGarage" className="text-base font-medium cursor-pointer">
+                    Vaga Garagem?
+                  </Label>
+                </div>
+
+                {formData.hasGarage && (
+                  <div className="space-y-2 pl-6">
+                    <Label htmlFor="garageValue">
+                      Valor da Vaga <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="garageValue"
+                      placeholder="R$ 0,00"
+                      value={formData.garageValue}
+                      onChange={(e) =>
+                        setFormData({ ...formData, garageValue: applyRealMask(e.target.value) })
+                      }
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Total Value Card */}
+              {formData.value && (
+                <Card className="bg-emerald-50 border-emerald-200">
+                  <CardContent className="pt-6">
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground">Valor do Aluguel:</span>
+                        <span className="font-medium">R$ {formData.value}</span>
+                      </div>
+                      {formData.hasGarage && formData.garageValue && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-muted-foreground">Valor da Vaga:</span>
+                          <span className="font-medium">R$ {formData.garageValue}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between items-center pt-2 border-t border-emerald-200">
+                        <span className="text-lg font-semibold">Valor Total:</span>
+                        <span className="text-2xl font-bold text-emerald-600">
+                          {formatCurrency(getTotalValue())}
+                        </span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Attachments Section */}
+              <div className="space-y-4 border-t pt-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-base font-medium">Anexos</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => document.getElementById("fileUpload")?.click()}
+                  >
+                    <Upload className="mr-2 h-4 w-4" />
+                    Anexar Arquivo
+                  </Button>
+                  <input
+                    id="fileUpload"
+                    type="file"
+                    accept="image/*,.pdf,.doc,.docx"
+                    className="hidden"
+                    onChange={handleFileUpload}
+                  />
+                </div>
+
+                {formData.attachments.length > 0 && (
+                  <div className="space-y-2">
+                    {formData.attachments.map((attachment, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between p-3 bg-muted rounded-lg"
+                      >
+                        <span className="text-sm truncate flex-1">
+                          Arquivo {index + 1}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeAttachment(index)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <DialogFooter>
