@@ -48,6 +48,8 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
     totalAmount: 0,
   });
 
+  const [waiveLateFee, setWaiveLateFee] = useState(false);
+
   useEffect(() => {
     const id = embedded ? paymentId : (router.query.id as string);
     if (id) {
@@ -148,13 +150,11 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
       totalAmount,
     });
 
-    // Update paid amount to total if not manually changed
-    if (!formData.paidAmount || parseFloat(removeMask(formData.paidAmount)) === payment.expectedAmount) {
-      setFormData((prev) => ({
-        ...prev,
-        paidAmount: applyRealMask((totalAmount * 100).toString()),
-      }));
-    }
+    // Update paid amount to total
+    setFormData((prev) => ({
+      ...prev,
+      paidAmount: applyRealMask((totalAmount * 100).toString()),
+    }));
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
