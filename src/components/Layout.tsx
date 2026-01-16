@@ -382,8 +382,7 @@ export function Layout({ children }: LayoutProps) {
       
       {/* Main content with padding for fixed navbar */}
       <motion.main
-        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"
-        style={{ paddingTop: isScrolled ? "72px" : "80px" }}
+        className="pt-32 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5 }}
