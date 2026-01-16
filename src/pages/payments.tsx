@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { DollarSign, Calendar, Home, User, AlertCircle, CheckCircle, Filter } from "lucide-react";
+import { DollarSign, Calendar, Home, User, AlertCircle, CheckCircle } from "lucide-react";
 import type { Payment, Rental, Property, Tenant } from "@/types";
 import { paymentService, rentalService, propertyService, tenantService } from "@/services";
 import { formatCurrency } from "@/lib/masks";
@@ -28,7 +28,6 @@ export default function PaymentsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   // Filter state
-  const [showFilters, setShowFilters] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState<string>("");
   const [selectedYear, setSelectedYear] = useState<string>("");
 
@@ -192,73 +191,59 @@ export default function PaymentsPage() {
       <Layout>
         <div className="space-y-8">
           <ScrollReveal>
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <div>
-                <h1 className="text-3xl font-bold tracking-tight">Recebimentos</h1>
-                <p className="text-muted-foreground mt-2">
-                  {hasActiveFilters 
-                    ? `${selectedMonth ? getMonthName(parseInt(selectedMonth)) : "Todos os meses"} de ${selectedYear || "todos os anos"}`
-                    : "Todos os recebimentos dos contratos ativos"
-                  }
-                </p>
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                  <h1 className="text-3xl font-bold tracking-tight">Recebimentos</h1>
+                  <p className="text-muted-foreground mt-2">
+                    {hasActiveFilters 
+                      ? `${selectedMonth ? getMonthName(parseInt(selectedMonth)) : "Todos os meses"} de ${selectedYear || "todos os anos"}`
+                      : "Todos os recebimentos dos contratos ativos"
+                    }
+                  </p>
+                </div>
               </div>
-              <Button
-                variant={showFilters ? "default" : "outline"}
-                onClick={() => setShowFilters(!showFilters)}
-                className="gap-2"
-              >
-                <Filter className="h-4 w-4" />
-                {showFilters ? "Ocultar Filtros" : "Filtrar"}
-              </Button>
+              
+              {/* Month/Year Filter Dropdowns */}
+              <div className="flex gap-4 items-center flex-wrap">
+                <div className="w-full sm:w-48">
+                  <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todos os meses" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Todos os meses</SelectItem>
+                      {months.map((month) => (
+                        <SelectItem key={month.value} value={month.value}>
+                          {month.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="w-full sm:w-32">
+                  <Select value={selectedYear} onValueChange={setSelectedYear}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todos os anos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Todos os anos</SelectItem>
+                      {years.map((year) => (
+                        <SelectItem key={year} value={year}>
+                          {year}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {hasActiveFilters && (
+                  <Button variant="ghost" onClick={clearFilters}>
+                    Limpar Filtros
+                  </Button>
+                )}
+              </div>
             </div>
           </ScrollReveal>
-
-          {/* Month/Year Filters (Optional) */}
-          {showFilters && (
-            <ScrollReveal delay={0.1}>
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex gap-4 items-center flex-wrap">
-                    <div className="w-full md:w-1/4">
-                      <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Todos os meses" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="">Todos os meses</SelectItem>
-                          {months.map((month) => (
-                            <SelectItem key={month.value} value={month.value}>
-                              {month.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="w-full md:w-1/4">
-                      <Select value={selectedYear} onValueChange={setSelectedYear}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Todos os anos" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="">Todos os anos</SelectItem>
-                          {years.map((year) => (
-                            <SelectItem key={year} value={year}>
-                              {year}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    {hasActiveFilters && (
-                      <Button variant="ghost" onClick={clearFilters}>
-                        Limpar Filtros
-                      </Button>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </ScrollReveal>
-          )}
 
           {loading ? (
             <div className="text-center py-12">
