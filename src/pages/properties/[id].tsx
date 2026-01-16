@@ -69,7 +69,7 @@ export default function PropertyDetailsPage() {
           neighborhood: propertyData.neighborhood || "",
           city: propertyData.city || "",
           state: propertyData.state || "",
-          rentValue: applyRealMask(propertyData.rentValue.toString()),
+          rentValue: applyRealMask((propertyData.rentValue * 100).toString()),
           description: propertyData.description || "",
         });
       } else {
@@ -107,7 +107,7 @@ export default function PropertyDetailsPage() {
         neighborhood: property.neighborhood || "",
         city: property.city || "",
         state: property.state || "",
-        rentValue: applyRealMask(property.rentValue.toString()),
+        rentValue: applyRealMask((property.rentValue * 100).toString()),
         description: property.description || "",
       });
     }
@@ -280,7 +280,7 @@ export default function PropertyDetailsPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <form onSubmit={(e) => { e.preventDefault(); }} className="space-y-6">
+              <div className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <Label htmlFor="location">
@@ -452,7 +452,7 @@ export default function PropertyDetailsPage() {
                     <p className="text-lg font-medium whitespace-pre-wrap">{property.description || "—"}</p>
                   )}
                 </div>
-              </form>
+              </div>
             </CardContent>
           </Card>
         </div>

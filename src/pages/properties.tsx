@@ -116,7 +116,7 @@ export default function PropertiesPage() {
         neighborhood: property.neighborhood || "",
         city: property.city || "",
         state: property.state || "",
-        rentValue: applyRealMask(property.rentValue.toString()),
+        rentValue: applyRealMask((property.rentValue * 100).toString()),
         description: property.description || "",
       });
       setIsViewMode(!!viewMode);
@@ -487,7 +487,7 @@ export default function PropertiesPage() {
           )}
         </div>
 
-        <Dialog open={isDialogOpen} onOpenChange={(open) => { if (!open && !isViewMode) { return; } setIsDialogOpen(open); }}>
+        <Dialog open={isDialogOpen}>
           <DialogContent 
             className="max-w-2xl max-h-[90vh] overflow-y-auto"
             onPointerDownOutside={(e) => {
