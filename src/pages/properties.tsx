@@ -16,7 +16,7 @@ import { Property } from "@/types";
 import { propertyService } from "@/services";
 import { configService } from "@/services/configService";
 import { getCurrentUser } from "@/lib/auth";
-import { applyCepMask, applyRealMask, removeMask } from "@/lib/masks";
+import { applyCepMask, applyRealMask, removeMask, formatCurrency } from "@/lib/masks";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
 import { FloatingCard } from "@/components/animations/FloatingCard";
 
@@ -269,15 +269,6 @@ export default function PropertiesPage() {
       default:
         return status;
     }
-  };
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(value);
   };
 
   return (

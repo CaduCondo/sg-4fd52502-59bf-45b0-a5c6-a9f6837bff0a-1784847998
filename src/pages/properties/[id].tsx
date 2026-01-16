@@ -14,7 +14,7 @@ import { Building2, ArrowLeft, Edit, X } from "lucide-react";
 import { Property } from "@/types";
 import { propertyService } from "@/services";
 import { configService } from "@/services/configService";
-import { applyCepMask, applyRealMask, removeMask } from "@/lib/masks";
+import { applyCepMask, applyRealMask, removeMask, formatCurrency } from "@/lib/masks";
 
 export default function PropertyDetailsPage() {
   const router = useRouter();
@@ -177,10 +177,6 @@ export default function PropertyDetailsPage() {
     }
   };
 
-  const formatCurrency = (value: number) => {
-    return value.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  };
-
   if (loading) {
     return (
       <Layout>
@@ -325,7 +321,7 @@ export default function PropertyDetailsPage() {
                     />
                   ) : (
                     <p className="text-2xl font-bold text-emerald-600">
-                      R$ {formatCurrency(property.rentValue)}
+                      {formatCurrency(property.rentValue)}
                     </p>
                   )}
                 </div>

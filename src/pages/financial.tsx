@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { formatCurrency } from "@/lib/masks";
+import { formatCurrency, applyRealMask, removeMask } from "@/lib/masks";
 import { paymentService } from "@/services/paymentService";
 import { rentalService } from "@/services/rentalService";
 import { propertyService } from "@/services/propertyService";
