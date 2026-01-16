@@ -114,33 +114,33 @@ export default function PaymentsPage() {
     return months[month - 1] || "";
   };
 
-  // Filter payments: show all from active contracts by default, or filter by month/year if selected
+  // Filter payments: show all payments within contract period by default
   const getFilteredPayments = () => {
-    const activeRentals = rentals.filter(r => r.status === "active");
-    const today = new Date();
-    
     const filtered = payments.filter(payment => {
       const rental = getRentalInfo(payment.rentalId);
       if (!rental) return false;
       
-      // Only show payments from active rentals
-      if (!activeRentals.some(r => r.id === rental.id)) return false;
+      // Apply month/year filters if selected
+      if (selectedMonth || selectedYear) {
+        if (selectedMonth && payment.referenceMonth !== parseInt(selectedMonth)) return false;
+        if (selectedYear && payment.referenceYear !== parseInt(selectedYear)) return false;
+        return true;
+      }
+
+      // If no filters, show all payments within contract period (month-based comparison)
+      // This ensures we show the full contract schedule including current month
+      const paymentMonthIndex = payment.referenceYear * 12 + (payment.referenceMonth - 1);
       
-      // If no filters, show payments within contract period
-      if (!selectedMonth && !selectedYear) {
-        const startDate = new Date(rental.startDate);
-        const endDate = rental.endDate ? new Date(rental.endDate) : new Date(today.getFullYear() + 10, 11, 31);
-        const paymentDate = new Date(payment.referenceYear, payment.referenceMonth - 1, 1);
-        
-        // Include current month and all months within contract period
-        return paymentDate >= startDate && paymentDate <= endDate;
+      const startDate = new Date(rental.startDate);
+      const startMonthIndex = startDate.getFullYear() * 12 + startDate.getMonth();
+      
+      let endMonthIndex = Infinity;
+      if (rental.endDate) {
+        const endDate = new Date(rental.endDate);
+        endMonthIndex = endDate.getFullYear() * 12 + endDate.getMonth();
       }
       
-      // Apply month/year filters if selected
-      if (selectedMonth && payment.referenceMonth !== parseInt(selectedMonth)) return false;
-      if (selectedYear && payment.referenceYear !== parseInt(selectedYear)) return false;
-      
-      return true;
+      return paymentMonthIndex >= startMonthIndex && paymentMonthIndex <= endMonthIndex;
     });
     
     // Sort by due date (oldest first)
