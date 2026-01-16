@@ -29,8 +29,6 @@ export default function TenantDetailsPage() {
     phone: "",
     documentType: "cpf" as "cpf" | "cnpj",
     document: "",
-    rg: "",
-    description: "",
   });
 
   useEffect(() => {
@@ -51,8 +49,6 @@ export default function TenantDetailsPage() {
           phone: tenantData.phone || "",
           documentType: tenantData.documentType || "cpf",
           document: tenantData.document || "",
-          rg: tenantData.rg || "",
-          description: "",
         });
       } else {
         toast({
@@ -86,8 +82,6 @@ export default function TenantDetailsPage() {
         phone: tenant.phone || "",
         documentType: tenant.documentType || "cpf",
         document: tenant.document || "",
-        rg: tenant.rg || "",
-        description: "",
       });
     }
     setIsEditMode(false);
@@ -125,7 +119,6 @@ export default function TenantDetailsPage() {
         phone: formData.phone ? removeMask(formData.phone) : undefined,
         documentType: formData.documentType,
         document: formData.document ? removeMask(formData.document) : undefined,
-        rg: formData.rg || undefined,
       };
 
       await tenantService.update(updatedTenant);
@@ -298,7 +291,7 @@ export default function TenantDetailsPage() {
                   <Select
                     value={formData.documentType}
                     onValueChange={(value: "cpf" | "cnpj") => {
-                      setFormData({ ...formData, documentType: value, document: "", rg: value === "cnpj" ? "" : formData.rg });
+                      setFormData({ ...formData, documentType: value, document: "" });
                     }}
                   >
                     <SelectTrigger id="documentType">
@@ -330,35 +323,6 @@ export default function TenantDetailsPage() {
                   <p className="text-lg font-medium">{tenant.document || "—"}</p>
                 )}
               </div>
-
-              {(formData.documentType === "cpf" || !isEditMode) && tenant.rg && (
-                <div className="space-y-2">
-                  <Label htmlFor="rg">RG</Label>
-                  {isEditMode ? (
-                    <Input
-                      id="rg"
-                      placeholder="00.000.000-0"
-                      value={formData.rg}
-                      onChange={(e) => setFormData({ ...formData, rg: e.target.value })}
-                    />
-                  ) : (
-                    <p className="text-lg font-medium">{tenant.rg || "—"}</p>
-                  )}
-                </div>
-              )}
-
-              {isEditMode && (
-                <div className="space-y-2">
-                  <Label htmlFor="description">Descrição</Label>
-                  <Textarea
-                    id="description"
-                    placeholder="Informações adicionais sobre o inquilino..."
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    rows={3}
-                  />
-                </div>
-              )}
             </CardContent>
           </Card>
         </div>
