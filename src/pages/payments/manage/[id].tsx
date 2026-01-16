@@ -61,7 +61,7 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
     if (payment && rental && config) {
       calculateValues();
     }
-  }, [formData.paymentDate, payment, rental, config]);
+  }, [formData.paymentDate, payment, rental, config, waiveLateFee]);
 
   useEffect(() => {
     // Auto-generate payment code when method or location changes
@@ -141,7 +141,8 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
       interest = baseAmount * (interestRatePercentage / 100) * daysLate;
     }
 
-    const totalAmount = baseAmount + lateFee + interest;
+    // Apply or remove fees based on waiveLateFees checkbox
+    const totalAmount = waiveLateFee ? baseAmount : baseAmount + lateFee + interest;
 
     setCalculatedValues({
       baseAmount,
@@ -370,8 +371,10 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
 
             {calculatedValues.lateFee > 0 && (
               <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Multa ({config?.lateFeePercentage || 2}%):</span>
-                <span className="text-sm font-medium text-red-600">
+                <span className={`text-sm ${waiveLateFee ? "line-through text-muted-foreground" : "text-muted-foreground"}`}>
+                  Multa ({config?.lateFeePercentage || 2}%):
+                </span>
+                <span className={`text-sm font-medium ${waiveLateFee ? "line-through text-muted-foreground" : "text-red-600"}`}>
                   {formatCurrency(calculatedValues.lateFee)}
                 </span>
               </div>
@@ -379,10 +382,27 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
 
             {calculatedValues.interest > 0 && (
               <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Juros ({config?.interestRatePercentage || 0.033}% ao dia):</span>
-                <span className="text-sm font-medium text-red-600">
+                <span className={`text-sm ${waiveLateFee ? "line-through text-muted-foreground" : "text-muted-foreground"}`}>
+                  Juros ({config?.interestRatePercentage || 0.033}% ao dia):
+                </span>
+                <span className={`text-sm font-medium ${waiveLateFee ? "line-through text-muted-foreground" : "text-red-600"}`}>
                   {formatCurrency(calculatedValues.interest)}
                 </span>
+              </div>
+            )}
+
+            {(calculatedValues.lateFee > 0 || calculatedValues.interest > 0) && (
+              <div className="flex items-center gap-2 py-2">
+                <input
+                  type="checkbox"
+                  id="waiveLateFees"
+                  checked={waiveLateFee}
+                  onChange={(e) => setWaiveLateFee(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300"
+                />
+                <Label htmlFor="waiveLateFees" className="text-sm cursor-pointer">
+                  Descontar multa e juros
+                </Label>
               </div>
             )}
 

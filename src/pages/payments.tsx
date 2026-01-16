@@ -216,6 +216,24 @@ export default function PaymentsPage() {
 
   const hasActiveFilters = selectedMonth !== "all" || selectedYear !== "all";
 
+  // Calculate expected amount including late fees and interest
+  const getExpectedAmount = (payment: Payment): number => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const dueDate = new Date(payment.dueDate);
+    dueDate.setHours(0, 0, 0, 0);
+    
+    // If not overdue, return base amount
+    if (dueDate >= today) {
+      return payment.expectedAmount;
+    }
+    
+    // If overdue, add late fee and interest
+    const totalWithFees = payment.expectedAmount + (payment.lateFee || 0) + (payment.interest || 0);
+    return totalWithFees;
+  };
+
   return (
     <>
       <Head>
@@ -354,7 +372,7 @@ export default function PaymentsPage() {
                               <div className="pt-2 border-t">
                                 <p className="text-xs text-muted-foreground mb-1">Valor Esperado</p>
                                 <p className={`text-2xl font-bold ${colors.amount}`}>
-                                  {formatCurrency(payment.expectedAmount)}
+                                  {formatCurrency(getExpectedAmount(payment))}
                                 </p>
                               </div>
 
