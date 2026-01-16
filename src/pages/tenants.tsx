@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useRouter } from "next/router";
 import Head from "next/head";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { applyCpfMask, applyCnpjMask, applyPhoneMask, removeMask } from "@/lib/masks";
 
 export default function TenantsPage() {
+  const router = useRouter();
   const { toast } = useToast();
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [filteredTenants, setFilteredTenants] = useState<Tenant[]>([]);
@@ -23,8 +25,6 @@ export default function TenantsPage() {
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive" | "rented">("all");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isViewMode, setIsViewMode] = useState(false);
-  const [currentTenant, setCurrentTenant] = useState<Tenant | null>(null);
   const [loading, setLoading] = useState(true);
 
   const [formData, setFormData] = useState({
@@ -79,37 +79,11 @@ export default function TenantsPage() {
     setFilteredTenants(filtered);
   };
 
-  const openDialog = (tenant?: Tenant) => {
-    if (tenant) {
-      setCurrentTenant(tenant);
-      setIsViewMode(true);
-      setFormData({
-        name: tenant.name,
-        documentType: tenant.documentType || "cpf",
-        document: tenant.documentType === "cpf" 
-          ? applyCpfMask(tenant.document || "") 
-          : applyCnpjMask(tenant.document || ""),
-        email: tenant.email || "",
-        phone: applyPhoneMask(tenant.phone || ""),
-      });
-    } else {
-      setCurrentTenant(null);
-      setIsViewMode(false);
-      setFormData({
-        name: "",
-        documentType: "cpf",
-        document: "",
-        email: "",
-        phone: "",
-      });
-    }
-    setIsDialogOpen(true);
+  const handleCardClick = (tenantId: string) => {
+    router.push(`/tenants/${tenantId}`);
   };
 
-  const closeDialog = () => {
-    setIsDialogOpen(false);
-    setCurrentTenant(null);
-    setIsViewMode(false);
+  const openDialog = () => {
     setFormData({
       name: "",
       documentType: "cpf",
@@ -117,10 +91,18 @@ export default function TenantsPage() {
       email: "",
       phone: "",
     });
+    setIsDialogOpen(true);
   };
 
-  const handleEdit = () => {
-    setIsViewMode(false);
+  const closeDialog = () => {
+    setIsDialogOpen(false);
+    setFormData({
+      name: "",
+      documentType: "cpf",
+      document: "",
+      email: "",
+      phone: "",
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -142,16 +124,11 @@ export default function TenantsPage() {
         document: removeMask(formData.document),
         email: formData.email || undefined,
         phone: removeMask(formData.phone) || undefined,
-        status: currentTenant?.status || "active",
+        status: "active",
       };
 
-      if (currentTenant) {
-        await tenantService.update({ ...currentTenant, ...tenantData } as Tenant);
-        toast({ title: "Sucesso", description: "Inquilino atualizado!" });
-      } else {
-        await tenantService.create(tenantData as Omit<Tenant, "id" | "createdAt">);
-        toast({ title: "Sucesso", description: "Inquilino cadastrado!" });
-      }
+      await tenantService.create(tenantData as Omit<Tenant, "id" | "createdAt">);
+      toast({ title: "Sucesso", description: "Inquilino cadastrado!" });
 
       closeDialog();
       loadTenants();
@@ -206,7 +183,7 @@ export default function TenantsPage() {
   const getStatusLabel = (status: string) => {
     switch (status) {
       case "active": return "Ativo";
-      case "rented": return "Locador";
+      case "rented": return "Alugado";
       case "inactive": return "Inativo";
       default: return status;
     }
@@ -229,7 +206,7 @@ export default function TenantsPage() {
                 Gerencie todos os inquilinos cadastrados
               </p>
             </div>
-            <Button onClick={() => openDialog()} className="bg-emerald-600 hover:bg-emerald-700">
+            <Button onClick={openDialog} className="bg-emerald-600 hover:bg-emerald-700">
               <Plus className="mr-2 h-4 w-4" />
               Novo Inquilino
             </Button>
@@ -254,7 +231,7 @@ export default function TenantsPage() {
                   <SelectContent>
                     <SelectItem value="all">Todos</SelectItem>
                     <SelectItem value="active">Ativo</SelectItem>
-                    <SelectItem value="rented">Locador</SelectItem>
+                    <SelectItem value="rented">Alugado</SelectItem>
                     <SelectItem value="inactive">Inativo</SelectItem>
                   </SelectContent>
                 </Select>
@@ -293,7 +270,7 @@ export default function TenantsPage() {
                     : "Comece cadastrando seu primeiro inquilino"}
                 </p>
                 {!searchTerm && statusFilter === "all" && (
-                  <Button onClick={() => openDialog()} className="bg-emerald-600 hover:bg-emerald-700">
+                  <Button onClick={openDialog} className="bg-emerald-600 hover:bg-emerald-700">
                     <Plus className="mr-2 h-4 w-4" />
                     Novo Inquilino
                   </Button>
@@ -306,7 +283,7 @@ export default function TenantsPage() {
                 <Card 
                   key={tenant.id}
                   className="cursor-pointer hover:shadow-lg transition-all duration-300 group"
-                  onClick={() => openDialog(tenant)}
+                  onClick={() => handleCardClick(tenant.id)}
                 >
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between mb-2">
@@ -342,7 +319,7 @@ export default function TenantsPage() {
                 <Card 
                   key={tenant.id}
                   className="cursor-pointer hover:shadow-md transition-all duration-300 group"
-                  onClick={() => openDialog(tenant)}
+                  onClick={() => handleCardClick(tenant.id)}
                 >
                   <CardContent className="py-4">
                     <div className="flex items-center justify-between">
@@ -374,23 +351,9 @@ export default function TenantsPage() {
         </div>
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent 
-            className="max-w-2xl"
-            onPointerDownOutside={(e) => {
-              if (!isViewMode) {
-                e.preventDefault();
-              }
-            }}
-            onEscapeKeyDown={(e) => {
-              if (!isViewMode) {
-                e.preventDefault();
-              }
-            }}
-          >
+          <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>
-                {isViewMode ? "Detalhes do Inquilino" : currentTenant ? "Editar Inquilino" : "Novo Inquilino"}
-              </DialogTitle>
+              <DialogTitle>Novo Inquilino</DialogTitle>
             </DialogHeader>
 
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -402,7 +365,6 @@ export default function TenantsPage() {
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="Digite o nome completo"
                   required
-                  disabled={isViewMode}
                 />
               </div>
 
@@ -414,7 +376,6 @@ export default function TenantsPage() {
                     onValueChange={(value: "cpf" | "cnpj") => {
                       setFormData({ ...formData, documentType: value, document: "" });
                     }}
-                    disabled={isViewMode}
                   >
                     <SelectTrigger id="documentType">
                       <SelectValue />
@@ -441,7 +402,6 @@ export default function TenantsPage() {
                     }}
                     placeholder={formData.documentType === "cpf" ? "000.000.000-00" : "00.000.000/0000-00"}
                     required
-                    disabled={isViewMode}
                   />
                 </div>
               </div>
@@ -455,7 +415,6 @@ export default function TenantsPage() {
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     placeholder="exemplo@email.com"
-                    disabled={isViewMode}
                   />
                 </div>
 
@@ -466,31 +425,17 @@ export default function TenantsPage() {
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: applyPhoneMask(e.target.value) })}
                     placeholder="(00) 00000-0000"
-                    disabled={isViewMode}
                   />
                 </div>
               </div>
 
               <DialogFooter>
-                {isViewMode ? (
-                  <>
-                    <Button type="button" variant="outline" onClick={closeDialog}>
-                      Fechar
-                    </Button>
-                    <Button type="button" onClick={handleEdit} className="bg-emerald-600 hover:bg-emerald-700">
-                      Editar
-                    </Button>
-                  </>
-                ) : (
-                  <>
-                    <Button type="button" variant="outline" onClick={closeDialog}>
-                      Cancelar
-                    </Button>
-                    <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">
-                      {currentTenant ? "Salvar" : "Cadastrar"}
-                    </Button>
-                  </>
-                )}
+                <Button type="button" variant="outline" onClick={closeDialog}>
+                  Cancelar
+                </Button>
+                <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">
+                  Cadastrar
+                </Button>
               </DialogFooter>
             </form>
           </DialogContent>

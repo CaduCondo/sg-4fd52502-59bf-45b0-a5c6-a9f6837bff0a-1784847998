@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useRouter } from "next/router";
 import Head from "next/head";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { applyCepMask, applyRealMask, removeMask, formatCurrency } from "@/lib/masks";
 
 export default function PropertiesPage() {
+  const router = useRouter();
   const { toast } = useToast();
   const [properties, setProperties] = useState<Property[]>([]);
   const [filteredProperties, setFilteredProperties] = useState<Property[]>([]);
@@ -25,8 +27,6 @@ export default function PropertiesPage() {
   const [statusFilter, setStatusFilter] = useState<"all" | "available" | "occupied">("all");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isViewMode, setIsViewMode] = useState(false);
-  const [currentProperty, setCurrentProperty] = useState<Property | null>(null);
   const [loading, setLoading] = useState(true);
   const [locations, setLocations] = useState<Location[]>([]);
 
@@ -91,8 +91,12 @@ export default function PropertiesPage() {
     setFilteredProperties(filtered);
   };
 
-  const openDialog = (property?: Property) => {
-    if (locations.length === 0 && !property) {
+  const handleCardClick = (propertyId: string) => {
+    router.push(`/properties/${propertyId}`);
+  };
+
+  const openDialog = () => {
+    if (locations.length === 0) {
       toast({
         title: "Atenção",
         description: "Nenhum local cadastrado. Por favor, cadastre os locais nas configurações primeiro.",
@@ -101,46 +105,6 @@ export default function PropertiesPage() {
       return;
     }
 
-    if (property) {
-      // Modo visualização ao clicar no card
-      setCurrentProperty(property);
-      setIsViewMode(true);
-      setFormData({
-        location: property.location,
-        cep: property.cep || "",
-        address: property.address || "",
-        number: property.number || "",
-        complement: property.complement,
-        neighborhood: property.neighborhood || "",
-        city: property.city || "",
-        state: property.state || "",
-        rentValue: applyRealMask((property.rentValue * 100).toString()),
-        description: property.description || "",
-      });
-    } else {
-      // Modo criação (novo imóvel)
-      setCurrentProperty(null);
-      setIsViewMode(false);
-      setFormData({
-        location: "",
-        cep: "",
-        address: "",
-        number: "",
-        complement: "",
-        neighborhood: "",
-        city: "",
-        state: "",
-        rentValue: "",
-        description: "",
-      });
-    }
-    setIsDialogOpen(true);
-  };
-
-  const closeDialog = () => {
-    setIsDialogOpen(false);
-    setCurrentProperty(null);
-    setIsViewMode(false);
     setFormData({
       location: "",
       cep: "",
@@ -153,10 +117,23 @@ export default function PropertiesPage() {
       rentValue: "",
       description: "",
     });
+    setIsDialogOpen(true);
   };
 
-  const handleEdit = () => {
-    setIsViewMode(false);
+  const closeDialog = () => {
+    setIsDialogOpen(false);
+    setFormData({
+      location: "",
+      cep: "",
+      address: "",
+      number: "",
+      complement: "",
+      neighborhood: "",
+      city: "",
+      state: "",
+      rentValue: "",
+      description: "",
+    });
   };
 
   const handleLocationChange = (value: string) => {
@@ -179,8 +156,8 @@ export default function PropertiesPage() {
 
   const convertMaskedValueToNumber = (maskedValue: string): number => {
     if (!maskedValue) return 0;
-    const cleanValue = maskedValue.replace(/[^\d,]/g, '');
-    const numericValue = cleanValue.replace(',', '.');
+    const cleanValue = maskedValue.replace(/[^\d,]/g, "");
+    const numericValue = cleanValue.replace(",", ".");
     return parseFloat(numericValue) || 0;
   };
 
@@ -211,23 +188,15 @@ export default function PropertiesPage() {
         monthlyRent: rentValueNumber,
         rentValue: rentValueNumber,
         type: "residential",
-        status: currentProperty?.status || "available",
+        status: "available",
         description: formData.description || undefined,
       };
 
-      if (currentProperty) {
-        await propertyService.update({ ...currentProperty, ...propertyData } as Property);
-        toast({
-          title: "Sucesso",
-          description: "Imóvel atualizado com sucesso!",
-        });
-      } else {
-        await propertyService.create(propertyData as Omit<Property, "id" | "createdAt">);
-        toast({
-          title: "Sucesso",
-          description: "Imóvel cadastrado com sucesso!",
-        });
-      }
+      await propertyService.create(propertyData as Omit<Property, "id" | "createdAt">);
+      toast({
+        title: "Sucesso",
+        description: "Imóvel cadastrado com sucesso!",
+      });
 
       closeDialog();
       loadData();
@@ -313,7 +282,7 @@ export default function PropertiesPage() {
                 Gerencie todos os imóveis cadastrados
               </p>
             </div>
-            <Button onClick={() => openDialog()} className="bg-emerald-600 hover:bg-emerald-700">
+            <Button onClick={openDialog} className="bg-emerald-600 hover:bg-emerald-700">
               <Plus className="mr-2 h-4 w-4" />
               Novo Imóvel
             </Button>
@@ -376,7 +345,7 @@ export default function PropertiesPage() {
                     : "Comece cadastrando seu primeiro imóvel"}
                 </p>
                 {!searchTerm && statusFilter === "all" && (
-                  <Button onClick={() => openDialog()} className="bg-emerald-600 hover:bg-emerald-700">
+                  <Button onClick={openDialog} className="bg-emerald-600 hover:bg-emerald-700">
                     <Plus className="mr-2 h-4 w-4" />
                     Cadastrar Primeiro Imóvel
                   </Button>
@@ -389,7 +358,7 @@ export default function PropertiesPage() {
                 <Card 
                   key={property.id}
                   className="h-full hover:shadow-lg transition-all cursor-pointer group"
-                  onClick={() => openDialog(property)}
+                  onClick={() => handleCardClick(property.id)}
                 >
                   <CardHeader className="pb-3">
                     <div className="flex justify-between items-start mb-2">
@@ -432,7 +401,7 @@ export default function PropertiesPage() {
                 <Card 
                   key={property.id}
                   className="hover:shadow-md transition-all cursor-pointer group"
-                  onClick={() => openDialog(property)}
+                  onClick={() => handleCardClick(property.id)}
                 >
                   <CardContent className="py-4">
                     <div className="flex items-center justify-between">
@@ -473,23 +442,9 @@ export default function PropertiesPage() {
         </div>
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent 
-            className="max-w-2xl max-h-[90vh] overflow-y-auto"
-            onPointerDownOutside={(e) => {
-              if (!isViewMode) {
-                e.preventDefault();
-              }
-            }}
-            onEscapeKeyDown={(e) => {
-              if (!isViewMode) {
-                e.preventDefault();
-              }
-            }}
-          >
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>
-                {isViewMode ? "Detalhes do Imóvel" : currentProperty ? "Editar Imóvel" : "Novo Imóvel"}
-              </DialogTitle>
+              <DialogTitle>Novo Imóvel</DialogTitle>
             </DialogHeader>
 
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -501,7 +456,6 @@ export default function PropertiesPage() {
                   <Select
                     value={formData.location}
                     onValueChange={handleLocationChange}
-                    disabled={isViewMode}
                   >
                     <SelectTrigger id="location">
                       <SelectValue placeholder="Selecione o local" />
@@ -525,7 +479,6 @@ export default function PropertiesPage() {
                     placeholder="Ex: Casa 2, Apto 101"
                     value={formData.complement}
                     onChange={(e) => setFormData({ ...formData, complement: e.target.value })}
-                    disabled={isViewMode}
                   />
                 </div>
               </div>
@@ -539,7 +492,7 @@ export default function PropertiesPage() {
                     value={formData.cep}
                     onChange={(e) => setFormData({ ...formData, cep: applyCepMask(e.target.value) })}
                     maxLength={9}
-                    disabled={isViewMode || !!locations.find(l => l.name === formData.location)}
+                    disabled={!!locations.find(l => l.name === formData.location)}
                   />
                 </div>
 
@@ -552,7 +505,6 @@ export default function PropertiesPage() {
                     placeholder="R$ 0,00"
                     value={formData.rentValue}
                     onChange={(e) => setFormData({ ...formData, rentValue: applyRealMask(e.target.value) })}
-                    disabled={isViewMode}
                   />
                 </div>
               </div>
@@ -564,7 +516,7 @@ export default function PropertiesPage() {
                   placeholder="Rua, Avenida, etc."
                   value={formData.address}
                   onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  disabled={isViewMode || !!locations.find(l => l.name === formData.location)}
+                  disabled={!!locations.find(l => l.name === formData.location)}
                 />
               </div>
 
@@ -575,7 +527,7 @@ export default function PropertiesPage() {
                   placeholder="Bairro"
                   value={formData.neighborhood}
                   onChange={(e) => setFormData({ ...formData, neighborhood: e.target.value })}
-                  disabled={isViewMode || !!locations.find(l => l.name === formData.location)}
+                  disabled={!!locations.find(l => l.name === formData.location)}
                 />
               </div>
 
@@ -587,7 +539,7 @@ export default function PropertiesPage() {
                     placeholder="123"
                     value={formData.number}
                     onChange={(e) => setFormData({ ...formData, number: e.target.value })}
-                    disabled={isViewMode || !!locations.find(l => l.name === formData.location)}
+                    disabled={!!locations.find(l => l.name === formData.location)}
                   />
                 </div>
 
@@ -598,7 +550,7 @@ export default function PropertiesPage() {
                     placeholder="São Paulo"
                     value={formData.city}
                     onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                    disabled={isViewMode || !!locations.find(l => l.name === formData.location)}
+                    disabled={!!locations.find(l => l.name === formData.location)}
                   />
                 </div>
 
@@ -610,7 +562,7 @@ export default function PropertiesPage() {
                     value={formData.state}
                     onChange={(e) => setFormData({ ...formData, state: e.target.value.toUpperCase() })}
                     maxLength={2}
-                    disabled={isViewMode || !!locations.find(l => l.name === formData.location)}
+                    disabled={!!locations.find(l => l.name === formData.location)}
                   />
                 </div>
               </div>
@@ -623,30 +575,16 @@ export default function PropertiesPage() {
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   rows={3}
-                  disabled={isViewMode}
                 />
               </div>
 
               <DialogFooter className="gap-2">
-                {isViewMode ? (
-                  <>
-                    <Button type="button" variant="outline" onClick={closeDialog}>
-                      Fechar
-                    </Button>
-                    <Button type="button" onClick={handleEdit} className="bg-emerald-600 hover:bg-emerald-700">
-                      Editar
-                    </Button>
-                  </>
-                ) : (
-                  <>
-                    <Button type="button" variant="outline" onClick={closeDialog}>
-                      Cancelar
-                    </Button>
-                    <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">
-                      {currentProperty ? "Salvar Alterações" : "Cadastrar Imóvel"}
-                    </Button>
-                  </>
-                )}
+                <Button type="button" variant="outline" onClick={closeDialog}>
+                  Cancelar
+                </Button>
+                <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">
+                  Cadastrar Imóvel
+                </Button>
               </DialogFooter>
             </form>
           </DialogContent>

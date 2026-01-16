@@ -6,27 +6,26 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { isAuthenticated } from "@/lib/auth";
-import { rentalStorage, propertyStorage, tenantStorage } from "@/lib/storage";
-import { Rental, Property, Tenant } from "@/types";
-import { ArrowLeft, Edit, Save, X, Calendar, DollarSign, User, Home, FileText, Trash2 } from "lucide-react";
-import { toast } from "@/hooks/use-toast";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { applyRealMask } from "@/lib/masks";
 import { Checkbox } from "@/components/ui/checkbox";
+import { rentalService, propertyService, tenantService } from "@/services";
+import type { Rental, Property, Tenant } from "@/types";
+import { ArrowLeft, Edit, Save, X, Calendar, DollarSign, User, Home, FileText, Trash2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { applyRealMask, formatCurrency } from "@/lib/masks";
 
 export default function RentalDetails() {
   const router = useRouter();
   const { id } = router.query;
+  const { toast } = useToast();
   const [rental, setRental] = useState<Rental | null>(null);
   const [property, setProperty] = useState<Property | null>(null);
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isEndDialogOpen, setIsEndDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   // Form state
   const [editStartDate, setEditStartDate] = useState("");
@@ -37,37 +36,53 @@ export default function RentalDetails() {
   const [editGarageValue, setEditGarageValue] = useState("");
 
   useEffect(() => {
-    if (!isAuthenticated()) {
-      router.push("/login");
-      return;
-    }
     if (id) {
       loadRental();
     }
-  }, [router, id]);
+  }, [id]);
 
-  const loadRental = () => {
-    const rentalData = rentalStorage.getById(id as string);
-    if (!rentalData) {
-      toast({ title: "Erro", description: "Locação não encontrada", variant: "destructive" });
+  const loadRental = async () => {
+    try {
+      setLoading(true);
+      const rentalData = await rentalService.getById(id as string);
+      
+      if (!rentalData) {
+        toast({ 
+          title: "Erro", 
+          description: "Locação não encontrada", 
+          variant: "destructive" 
+        });
+        router.push("/rentals");
+        return;
+      }
+
+      const [propertyData, tenantData] = await Promise.all([
+        propertyService.getById(rentalData.propertyId),
+        tenantService.getById(rentalData.tenantId),
+      ]);
+
+      setRental(rentalData);
+      setProperty(propertyData || null);
+      setTenant(tenantData || null);
+
+      // Initialize form
+      setEditStartDate(rentalData.startDate);
+      setEditEndDate(rentalData.endDate || "");
+      setEditPaymentDay(rentalData.paymentDay.toString());
+      setEditMonthlyRent(applyRealMask((rentalData.monthlyRent * 100).toString()));
+      setEditHasGarage(rentalData.hasGarage || false);
+      setEditGarageValue(rentalData.garageValue ? applyRealMask((rentalData.garageValue * 100).toString()) : "");
+    } catch (error) {
+      console.error("Error loading rental:", error);
+      toast({ 
+        title: "Erro", 
+        description: "Não foi possível carregar os dados da locação", 
+        variant: "destructive" 
+      });
       router.push("/rentals");
-      return;
+    } finally {
+      setLoading(false);
     }
-
-    const propertyData = propertyStorage.getById(rentalData.propertyId);
-    const tenantData = tenantStorage.getById(rentalData.tenantId);
-
-    setRental(rentalData);
-    setProperty(propertyData);
-    setTenant(tenantData);
-
-    // Initialize form
-    setEditStartDate(rentalData.startDate);
-    setEditEndDate(rentalData.endDate);
-    setEditPaymentDay(rentalData.paymentDay.toString());
-    setEditMonthlyRent(rentalData.monthlyRent.toFixed(2).replace(".", ",") || "");
-    setEditHasGarage(rentalData.hasGarage || false);
-    setEditGarageValue(rentalData.garageValue?.toFixed(2).replace(".", ",") || "");
   };
 
   const handleEdit = () => {
@@ -79,67 +94,127 @@ export default function RentalDetails() {
     loadRental();
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!rental) return;
 
-    const monthlyRent = parseFloat(editMonthlyRent.replace(",", "."));
-    const garageValue = editHasGarage ? parseFloat(editGarageValue.replace(",", ".") || "0") : 0;
+    try {
+      const monthlyRent = parseFloat(editMonthlyRent.replace(/\./g, "").replace(",", "."));
+      const garageValue = editHasGarage ? parseFloat(editGarageValue.replace(/\./g, "").replace(",", ".") || "0") : 0;
 
-    const updatedRental: Rental = {
-      ...rental,
-      paymentDay: parseInt(editPaymentDay),
-      monthlyRent,
-      hasGarage: editHasGarage,
-      garageValue: editHasGarage ? garageValue : undefined
-    };
+      const updatedRental: Rental = {
+        ...rental,
+        startDate: editStartDate,
+        endDate: editEndDate || null,
+        paymentDay: parseInt(editPaymentDay),
+        monthlyRent,
+        value: monthlyRent + garageValue,
+        hasGarage: editHasGarage,
+        garageValue: editHasGarage ? garageValue : undefined,
+      };
 
-    rentalStorage.update(updatedRental);
-    setRental(updatedRental);
-    setIsEditing(false);
-    toast({ title: "Sucesso!", description: "Locação atualizada com sucesso" });
-  };
-
-  const handleEndContract = () => {
-    if (!rental) return;
-
-    const updatedRental: Rental = {
-      ...rental,
-      isActive: false,
-      endDate: new Date().toISOString().split("T")[0]
-    };
-
-    rentalStorage.update(updatedRental);
-
-    // Update property status
-    if (property) {
-      const updatedProperty = { ...property, status: "available" as const };
-      propertyStorage.update(updatedProperty);
+      await rentalService.update(updatedRental);
+      setRental(updatedRental);
+      setIsEditing(false);
+      
+      toast({ 
+        title: "Sucesso!", 
+        description: "Locação atualizada com sucesso" 
+      });
+    } catch (error) {
+      console.error("Error updating rental:", error);
+      toast({ 
+        title: "Erro", 
+        description: "Não foi possível atualizar a locação", 
+        variant: "destructive" 
+      });
     }
-
-    toast({ title: "Sucesso!", description: "Contrato encerrado com sucesso" });
-    router.push("/rentals");
   };
 
-  const handleDelete = () => {
+  const handleEndContract = async () => {
     if (!rental) return;
 
-    rentalStorage.delete(rental.id);
+    try {
+      const updatedRental: Rental = {
+        ...rental,
+        isActive: false,
+        endDate: new Date().toISOString().split("T")[0],
+      };
 
-    // Update property status
-    if (property) {
-      const updatedProperty = { ...property, status: "available" as const };
-      propertyStorage.update(updatedProperty);
+      await rentalService.update(updatedRental);
+
+      // Update property status
+      if (property) {
+        await propertyService.update({ ...property, status: "available" });
+      }
+
+      // Update tenant status
+      if (tenant) {
+        await tenantService.update({ ...tenant, status: "active" });
+      }
+
+      toast({ 
+        title: "Sucesso!", 
+        description: "Contrato encerrado com sucesso" 
+      });
+      
+      router.push("/rentals");
+    } catch (error) {
+      console.error("Error ending contract:", error);
+      toast({ 
+        title: "Erro", 
+        description: "Não foi possível encerrar o contrato", 
+        variant: "destructive" 
+      });
     }
-
-    toast({ title: "Sucesso!", description: "Locação excluída com sucesso" });
-    router.push("/rentals");
   };
+
+  const handleDelete = async () => {
+    if (!rental) return;
+
+    try {
+      await rentalService.delete(rental.id);
+
+      // Update property status
+      if (property) {
+        await propertyService.update({ ...property, status: "available" });
+      }
+
+      // Update tenant status
+      if (tenant) {
+        await tenantService.update({ ...tenant, status: "active" });
+      }
+
+      toast({ 
+        title: "Sucesso!", 
+        description: "Locação excluída com sucesso" 
+      });
+      
+      router.push("/rentals");
+    } catch (error) {
+      console.error("Error deleting rental:", error);
+      toast({ 
+        title: "Erro", 
+        description: "Não foi possível excluir a locação", 
+        variant: "destructive" 
+      });
+    }
+  };
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="flex justify-center items-center h-64">
+          <p className="text-muted-foreground">Carregando detalhes da locação...</p>
+        </div>
+      </Layout>
+    );
+  }
 
   if (!rental || !property || !tenant) {
     return (
       <Layout>
         <div className="flex justify-center items-center h-64">
-          <p>Carregando...</p>
+          <p className="text-muted-foreground">Locação não encontrada</p>
         </div>
       </Layout>
     );
@@ -220,12 +295,12 @@ export default function RentalDetails() {
               </CardHeader>
               <CardContent>
                 <p className="text-2xl font-bold">
-                  R$ {totalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                  {formatCurrency(totalValue)}
                 </p>
                 <div className="text-sm text-muted-foreground mt-2 space-y-1">
-                  <p>Aluguel: R$ {rental.monthlyRent.toFixed(2).replace(".", ",")}</p>
+                  <p>Aluguel: {formatCurrency(rental.monthlyRent)}</p>
                   {rental.hasGarage && (
-                    <p>Garagem: R$ {(rental.garageValue || 0).toFixed(2).replace(".", ",")}</p>
+                    <p>Garagem: {formatCurrency(rental.garageValue || 0)}</p>
                   )}
                 </div>
               </CardContent>
@@ -340,7 +415,7 @@ export default function RentalDetails() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="monthlyRent">Valor do Aluguel (R$)</Label>
                   <Input
@@ -352,7 +427,7 @@ export default function RentalDetails() {
                 </div>
 
                 <div className="space-y-2">
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-2 mb-2">
                     <Checkbox
                       id="hasGarage"
                       checked={editHasGarage}
@@ -366,24 +441,32 @@ export default function RentalDetails() {
                   {editHasGarage && (
                     <Input
                       id="garageValue"
+                      placeholder="Valor da vaga"
                       value={editGarageValue}
                       onChange={(e) => setEditGarageValue(applyRealMask(e.target.value))}
                       disabled={!isEditing}
                     />
                   )}
                 </div>
+              </div>
 
-                <div className="space-y-2">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-slate-600">Aluguel:</span>
-                    <span className="font-semibold text-slate-900">R$ {rental.monthlyRent.toFixed(2).replace(".", ",")}</span>
+              {/* Summary */}
+              <div className="pt-4 border-t">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-muted-foreground">Aluguel</Label>
+                    <p className="text-lg font-semibold">{formatCurrency(rental.monthlyRent)}</p>
                   </div>
                   {rental.hasGarage && (
-                    <div className="flex items-center space-x-2">
-                      <span className="text-slate-600">Vaga Garagem:</span>
-                      <span className="font-semibold text-slate-900">R$ {rental.garageValue?.toFixed(2).replace(".", ",")}</span>
+                    <div>
+                      <Label className="text-muted-foreground">Vaga Garagem</Label>
+                      <p className="text-lg font-semibold">{formatCurrency(rental.garageValue || 0)}</p>
                     </div>
                   )}
+                  <div className="col-span-2">
+                    <Label className="text-muted-foreground">Valor Total</Label>
+                    <p className="text-2xl font-bold text-emerald-600">{formatCurrency(totalValue)}</p>
+                  </div>
                 </div>
               </div>
             </CardContent>

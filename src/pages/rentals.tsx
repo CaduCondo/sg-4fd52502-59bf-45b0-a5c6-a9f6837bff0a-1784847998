@@ -592,8 +592,22 @@ export default function RentalsPage() {
         </div>
 
         {/* New Rental Dialog */}
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <Dialog open={isDialogOpen}>
+          <DialogContent 
+            className="max-w-3xl max-h-[90vh] overflow-y-auto"
+            onPointerDownOutside={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            onEscapeKeyDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            onInteractOutside={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+          >
             <DialogHeader>
               <DialogTitle>Nova Locação</DialogTitle>
               <DialogDescription>
