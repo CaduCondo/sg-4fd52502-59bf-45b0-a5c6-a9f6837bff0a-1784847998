@@ -156,17 +156,11 @@ export default function RentalsPage() {
     
     const payments: Omit<Payment, "id" | "createdAt">[] = [];
     
-    // Para contratos antigos (data início no passado), começar do mês atual
-    // Para contratos novos (data início no futuro ou presente), começar da data início
+    // Define data inicial baseada no contrato
     let currentDate: Date;
     if (startDate < today) {
-      // Contrato antigo: começar do mês atual
+      // Contrato antigo: começar do mês atual sempre (incluir mês atual)
       currentDate = new Date(today.getFullYear(), today.getMonth(), paymentDay);
-      
-      // Se o dia de vencimento já passou neste mês, começar do próximo mês
-      if (currentDate < today) {
-        currentDate.setMonth(currentDate.getMonth() + 1);
-      }
     } else {
       // Contrato novo: começar da data de início
       currentDate = new Date(startDate.getFullYear(), startDate.getMonth(), paymentDay);

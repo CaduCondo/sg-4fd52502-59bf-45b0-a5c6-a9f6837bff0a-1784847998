@@ -305,7 +305,9 @@ export default function RentalDetails() {
                         className="h-8 text-sm"
                       />
                     ) : (
-                      <p className="text-sm font-medium">{new Date(rental.startDate).toLocaleDateString("pt-BR")}</p>
+                      <p className="text-sm font-medium">
+                        {new Date(rental.startDate + "T00:00:00").toLocaleDateString("pt-BR")}
+                      </p>
                     )}
                   </div>
 
@@ -320,7 +322,7 @@ export default function RentalDetails() {
                       />
                     ) : (
                       <p className="text-sm font-medium">
-                        {rental.endDate ? new Date(rental.endDate).toLocaleDateString("pt-BR") : "—"}
+                        {rental.endDate ? new Date(rental.endDate + "T00:00:00").toLocaleDateString("pt-BR") : "—"}
                       </p>
                     )}
                   </div>

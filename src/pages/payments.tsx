@@ -266,12 +266,6 @@ export default function PaymentsPage() {
                     ))}
                   </SelectContent>
                 </Select>
-                
-                {hasActiveFilters && (
-                  <Button variant="ghost" onClick={clearFilters}>
-                    Limpar
-                  </Button>
-                )}
               </div>
             </div>
           </ScrollReveal>
