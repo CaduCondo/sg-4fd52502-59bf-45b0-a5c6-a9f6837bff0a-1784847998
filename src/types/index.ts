@@ -11,6 +11,18 @@ export interface User {
   createdAt: string;
 }
 
+export interface Location {
+  id: string;
+  name: string;
+  cep: string;
+  address: string;
+  number: string;
+  neighborhood: string;
+  city: string;
+  state: string;
+  createdAt: string;
+}
+
 export interface Property {
   id: string;
   location: string;
@@ -54,7 +66,7 @@ export interface Config {
   adminFeePercentage: number;
   lateFeePercentage?: number;
   interestRatePercentage?: number;
-  locations: string[];
+  locations: Location[];
 }
 
 export interface Attachment {
