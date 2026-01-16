@@ -111,7 +111,8 @@ export default function PropertyDetailsPage() {
     setIsEditMode(false);
   };
 
-  const handleSave = async () => {
+  const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
     if (!property) return;
 
     if (!formData.location || !formData.complement || !formData.rentValue) {
@@ -248,158 +249,160 @@ export default function PropertyDetailsPage() {
                 </Badge>
               </div>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="location">
-                    Local <span className="text-red-500">*</span>
-                  </Label>
-                  {isEditMode ? (
-                    <Select
-                      value={formData.location}
-                      onValueChange={(value) => setFormData({ ...formData, location: value })}
-                    >
-                      <SelectTrigger id="location">
-                        <SelectValue placeholder="Selecione o local" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {locations.map((location) => (
-                          <SelectItem key={location} value={location}>
-                            {location}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <p className="text-lg font-medium">{property.location}</p>
-                  )}
+            <CardContent>
+              <form onSubmit={(e) => { e.preventDefault(); }} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="location">
+                      Local <span className="text-red-500">*</span>
+                    </Label>
+                    {isEditMode ? (
+                      <Select
+                        value={formData.location}
+                        onValueChange={(value) => setFormData({ ...formData, location: value })}
+                      >
+                        <SelectTrigger id="location">
+                          <SelectValue placeholder="Selecione o local" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {locations.map((location) => (
+                            <SelectItem key={location} value={location}>
+                              {location}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <p className="text-lg font-medium">{property.location}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="complement">
+                      Complemento <span className="text-red-500">*</span>
+                    </Label>
+                    {isEditMode ? (
+                      <Input
+                        id="complement"
+                        placeholder="Ex: Casa 2, Apto 101"
+                        value={formData.complement}
+                        onChange={(e) => setFormData({ ...formData, complement: e.target.value })}
+                      />
+                    ) : (
+                      <p className="text-lg font-medium">{property.complement}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="cep">CEP</Label>
+                    {isEditMode ? (
+                      <Input
+                        id="cep"
+                        placeholder="00000-000"
+                        value={formData.cep}
+                        onChange={(e) => setFormData({ ...formData, cep: applyCepMask(e.target.value) })}
+                        maxLength={9}
+                      />
+                    ) : (
+                      <p className="text-lg font-medium">{property.cep || "—"}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="rentValue">
+                      Valor do Aluguel <span className="text-red-500">*</span>
+                    </Label>
+                    {isEditMode ? (
+                      <Input
+                        id="rentValue"
+                        placeholder="R$ 0,00"
+                        value={formData.rentValue}
+                        onChange={(e) => setFormData({ ...formData, rentValue: applyRealMask(e.target.value) })}
+                      />
+                    ) : (
+                      <p className="text-2xl font-bold text-emerald-600">
+                        {formatCurrency(property.rentValue)}
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="complement">
-                    Complemento <span className="text-red-500">*</span>
-                  </Label>
-                  {isEditMode ? (
-                    <Input
-                      id="complement"
-                      placeholder="Ex: Casa 2, Apto 101"
-                      value={formData.complement}
-                      onChange={(e) => setFormData({ ...formData, complement: e.target.value })}
-                    />
-                  ) : (
-                    <p className="text-lg font-medium">{property.complement}</p>
-                  )}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="cep">CEP</Label>
-                  {isEditMode ? (
-                    <Input
-                      id="cep"
-                      placeholder="00000-000"
-                      value={formData.cep}
-                      onChange={(e) => setFormData({ ...formData, cep: applyCepMask(e.target.value) })}
-                      maxLength={9}
-                    />
-                  ) : (
-                    <p className="text-lg font-medium">{property.cep || "—"}</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="rentValue">
-                    Valor do Aluguel <span className="text-red-500">*</span>
-                  </Label>
-                  {isEditMode ? (
-                    <Input
-                      id="rentValue"
-                      placeholder="R$ 0,00"
-                      value={formData.rentValue}
-                      onChange={(e) => setFormData({ ...formData, rentValue: applyRealMask(e.target.value) })}
-                    />
-                  ) : (
-                    <p className="text-2xl font-bold text-emerald-600">
-                      {formatCurrency(property.rentValue)}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="address">Endereço</Label>
-                {isEditMode ? (
-                  <Input
-                    id="address"
-                    placeholder="Rua, Avenida, etc."
-                    value={formData.address}
-                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  />
-                ) : (
-                  <p className="text-lg font-medium">{property.address || "—"}</p>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="number">Número</Label>
+                  <Label htmlFor="address">Endereço</Label>
                   {isEditMode ? (
                     <Input
-                      id="number"
-                      placeholder="123"
-                      value={formData.number}
-                      onChange={(e) => setFormData({ ...formData, number: e.target.value })}
+                      id="address"
+                      placeholder="Rua, Avenida, etc."
+                      value={formData.address}
+                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                     />
                   ) : (
-                    <p className="text-lg font-medium">{property.number || "—"}</p>
+                    <p className="text-lg font-medium">{property.address || "—"}</p>
                   )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="number">Número</Label>
+                    {isEditMode ? (
+                      <Input
+                        id="number"
+                        placeholder="123"
+                        value={formData.number}
+                        onChange={(e) => setFormData({ ...formData, number: e.target.value })}
+                      />
+                    ) : (
+                      <p className="text-lg font-medium">{property.number || "—"}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="city">Cidade</Label>
+                    {isEditMode ? (
+                      <Input
+                        id="city"
+                        placeholder="São Paulo"
+                        value={formData.city}
+                        onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                      />
+                    ) : (
+                      <p className="text-lg font-medium">{property.city || "—"}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="state">Estado</Label>
+                    {isEditMode ? (
+                      <Input
+                        id="state"
+                        placeholder="SP"
+                        value={formData.state}
+                        onChange={(e) => setFormData({ ...formData, state: e.target.value.toUpperCase() })}
+                        maxLength={2}
+                      />
+                    ) : (
+                      <p className="text-lg font-medium">{property.state || "—"}</p>
+                    )}
+                  </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="city">Cidade</Label>
+                  <Label htmlFor="description">Descrição</Label>
                   {isEditMode ? (
-                    <Input
-                      id="city"
-                      placeholder="São Paulo"
-                      value={formData.city}
-                      onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                    <Textarea
+                      id="description"
+                      placeholder="Informações adicionais sobre o imóvel..."
+                      value={formData.description}
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      rows={3}
                     />
                   ) : (
-                    <p className="text-lg font-medium">{property.city || "—"}</p>
+                    <p className="text-lg font-medium whitespace-pre-wrap">{property.description || "—"}</p>
                   )}
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="state">Estado</Label>
-                  {isEditMode ? (
-                    <Input
-                      id="state"
-                      placeholder="SP"
-                      value={formData.state}
-                      onChange={(e) => setFormData({ ...formData, state: e.target.value.toUpperCase() })}
-                      maxLength={2}
-                    />
-                  ) : (
-                    <p className="text-lg font-medium">{property.state || "—"}</p>
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="description">Descrição</Label>
-                {isEditMode ? (
-                  <Textarea
-                    id="description"
-                    placeholder="Informações adicionais sobre o imóvel..."
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    rows={3}
-                  />
-                ) : (
-                  <p className="text-lg font-medium whitespace-pre-wrap">{property.description || "—"}</p>
-                )}
-              </div>
+              </form>
             </CardContent>
           </Card>
         </div>
