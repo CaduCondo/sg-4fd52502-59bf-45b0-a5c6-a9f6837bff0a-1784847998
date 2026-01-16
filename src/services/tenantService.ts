@@ -64,7 +64,6 @@ export const tenantService = {
       name: data.name,
       cpf: data.cpf || data.document || "",
       document: data.document || data.cpf || "",
-      rg: data.rg,
       documentType: data.document_type || "cpf",
       email: data.email,
       phone: data.phone,

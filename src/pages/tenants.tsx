@@ -36,10 +36,8 @@ export default function TenantsPage() {
     name: "",
     documentType: "cpf" as "cpf" | "cnpj",
     document: "",
-    rg: "",
     email: "",
     phone: "",
-    description: "",
   });
 
   const [newTenant, setNewTenant] = useState<Partial<Tenant>>({
@@ -105,10 +103,8 @@ export default function TenantsPage() {
         document: tenant.documentType === "cpf" 
           ? applyCpfMask(tenant.document || "") 
           : applyCnpjMask(tenant.document || ""),
-        rg: tenant.rg || "",
         email: tenant.email || "",
         phone: applyPhoneMask(tenant.phone || ""),
-        description: tenant.description || "",
       });
       setIsViewMode(!!viewMode);
     } else {
@@ -117,10 +113,8 @@ export default function TenantsPage() {
         name: "",
         documentType: "cpf",
         document: "",
-        rg: "",
         email: "",
         phone: "",
-        description: "",
       });
       setIsViewMode(false);
     }
@@ -172,10 +166,8 @@ export default function TenantsPage() {
         name: formData.name,
         documentType: formData.documentType,
         document: removeMask(formData.document),
-        rg: formData.rg || undefined,
         email: formData.email || undefined,
         phone: removeMask(formData.phone) || undefined,
-        description: formData.description || undefined,
         status: currentTenant?.status || "active",
       };
 
@@ -505,19 +497,6 @@ export default function TenantsPage() {
                   </div>
                 </div>
 
-                {formData.documentType === "cpf" && (
-                  <div className="space-y-2">
-                    <Label htmlFor="rg">RG</Label>
-                    <Input
-                      id="rg"
-                      value={formData.rg}
-                      onChange={(e) => setFormData({ ...formData, rg: e.target.value })}
-                      placeholder="Digite o RG"
-                      disabled={isViewMode}
-                    />
-                  </div>
-                )}
-
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="email">E-mail</Label>
@@ -541,18 +520,6 @@ export default function TenantsPage() {
                       disabled={isViewMode}
                     />
                   </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="description">Descrição</Label>
-                  <Textarea
-                    id="description"
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    placeholder="Informações adicionais sobre o inquilino"
-                    rows={3}
-                    disabled={isViewMode}
-                  />
                 </div>
               </div>
 
