@@ -145,7 +145,7 @@ export default function PropertyDetailsPage() {
     }
 
     try {
-      const updatedProperty: Property = {
+      const updatedProperty = {
         ...property,
         location: formData.location,
         cep: formData.cep || undefined,
@@ -155,17 +155,17 @@ export default function PropertyDetailsPage() {
         neighborhood: formData.neighborhood || undefined,
         city: formData.city || undefined,
         state: formData.state || undefined,
-        monthlyRent: parseFloat(removeMask(formData.rentValue)),
-        rentValue: parseFloat(removeMask(formData.rentValue)),
+        monthlyRent: convertMaskedValueToNumber(formData.rentValue),
+        rentValue: convertMaskedValueToNumber(formData.rentValue),
         description: formData.description || undefined,
       };
 
-      await propertyService.update(updatedProperty);
+      await propertyService.update(updatedProperty as Property);
       toast({
         title: "Sucesso",
         description: "Imóvel atualizado com sucesso!",
       });
-      setProperty(updatedProperty);
+      setProperty(updatedProperty as Property);
       setIsEditMode(false);
     } catch (error) {
       console.error("Error updating property:", error);
