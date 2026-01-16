@@ -119,6 +119,8 @@ export interface Payment {
 
 export interface SystemConfig {
   adminFeePercentage: number;
+  lateFeePercentage: number;
+  interestRatePercentage: number;
   lastUpdated: string;
   locations?: string[];
 }

@@ -155,11 +155,8 @@ export const paymentService = {
       // Check if exceeded max date
       if (dueDate > maxDate) break;
       
-      // Format date as YYYY-MM-DD maintaining local timezone
-      const year = dueDate.getFullYear();
-      const month = String(dueDate.getMonth() + 1).padStart(2, "0");
-      const day = String(dueDate.getDate()).padStart(2, "0");
-      const dueDateString = `${year}-${month}-${day}`;
+      // Format date as YYYY-MM-DD maintaining local timezone (NO UTC!)
+      const dueDateString = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(validDay).padStart(2, "0")}`;
       
       // Create payment
       const payment: Omit<Payment, "id" | "createdAt"> = {

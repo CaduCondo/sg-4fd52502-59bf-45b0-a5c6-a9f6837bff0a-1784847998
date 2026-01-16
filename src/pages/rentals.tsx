@@ -155,7 +155,7 @@ export default function RentalsPage() {
     
     const payments: Omit<Payment, "id" | "createdAt">[] = [];
     
-    // Parse dates correctly in local timezone
+    // Parse rental dates as LOCAL dates (not UTC)
     const [startYear, startMonth, startDay] = rental.startDate.split("-").map(Number);
     const startDate = new Date(startYear, startMonth - 1, startDay);
     startDate.setHours(0, 0, 0, 0);
@@ -167,45 +167,42 @@ export default function RentalsPage() {
       endDate.setHours(0, 0, 0, 0);
     }
     
-    // Determinar mês/ano inicial: mês atual ou início do contrato (o que for mais tarde)
+    // Determine starting month/year
     let currentYear: number;
     let currentMonth: number;
     
     if (startDate <= today) {
-      // Contrato já começou - usar mês ATUAL
+      // Contract already started - use CURRENT month
       currentYear = today.getFullYear();
       currentMonth = today.getMonth();
     } else {
-      // Contrato é futuro - usar início do contrato
+      // Future contract - use contract start month
       currentYear = startDate.getFullYear();
       currentMonth = startDate.getMonth();
     }
     
-    // Definir data máxima: término do contrato ou 12 meses à frente
+    // Set max date: contract end or 12 months ahead
     const maxDate = endDate || new Date(currentYear + 1, currentMonth, paymentDay);
     
-    // Gerar pagamentos mensais
+    // Generate monthly payments
     while (true) {
-      // Calcular o último dia do mês atual
+      // Get last day of current month
       const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
       
-      // Ajustar o dia de vencimento se exceder os dias do mês
+      // Adjust payment day if it exceeds month days
       const validDay = Math.min(paymentDay, lastDayOfMonth);
       
-      // Criar a data de vencimento para este mês em local timezone
+      // Create due date in LOCAL timezone
       const dueDate = new Date(currentYear, currentMonth, validDay);
       dueDate.setHours(0, 0, 0, 0);
       
-      // Verificar se ultrapassou a data máxima
+      // Check if exceeded max date
       if (dueDate > maxDate) break;
       
-      // Formatar data como YYYY-MM-DD mantendo timezone local
-      const year = dueDate.getFullYear();
-      const month = String(dueDate.getMonth() + 1).padStart(2, "0");
-      const day = String(dueDate.getDate()).padStart(2, "0");
-      const dueDateString = `${year}-${month}-${day}`;
+      // Format date as YYYY-MM-DD in LOCAL timezone (NO UTC conversion!)
+      const dueDateString = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(validDay).padStart(2, "0")}`;
       
-      // Criar o pagamento
+      // Create payment
       const payment: Omit<Payment, "id" | "createdAt"> = {
         rentalId: rental.id,
         referenceMonth: currentMonth + 1,
@@ -225,7 +222,7 @@ export default function RentalsPage() {
       
       payments.push(payment);
       
-      // Avançar para o próximo mês
+      // Move to next month
       currentMonth++;
       if (currentMonth > 11) {
         currentMonth = 0;
@@ -233,7 +230,7 @@ export default function RentalsPage() {
       }
     }
     
-    // Criar todos os pagamentos no banco
+    // Create all payments in database
     for (const payment of payments) {
       await paymentService.create(payment);
     }
@@ -280,7 +277,7 @@ export default function RentalsPage() {
 
       const createdRental = await rentalService.create(rental);
 
-      // Gerar pagamentos mensais
+      // Generate monthly payments
       await generatePayments({ ...createdRental, ...rental });
 
       // Update property status to occupied
