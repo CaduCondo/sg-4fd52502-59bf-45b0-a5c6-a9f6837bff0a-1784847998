@@ -14,6 +14,7 @@ import { ArrowLeft, DollarSign, Calendar, Home, User, X, Upload, Camera, Papercl
 import type { Payment, Rental, Property, Tenant, Config } from "@/types";
 import { paymentService, rentalService, propertyService, tenantService, configService } from "@/services";
 import { applyRealMask, removeMask, formatCurrency } from "@/lib/masks";
+import { PaymentReceipt } from "@/components/PaymentReceipt";
 
 interface ManagePaymentContentProps {
   paymentId: string;
@@ -30,6 +31,7 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [config, setConfig] = useState<Config | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showReceipt, setShowReceipt] = useState(false);
 
   const [formData, setFormData] = useState({
     paymentDate: new Date().toISOString().split("T")[0],
@@ -48,7 +50,7 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
     totalAmount: 0,
   });
 
-  const [waiveLateFee, setWaiveLateFee] = useState(false);
+  const [waiveLateFees, setWaiveLateFees] = useState(false);
 
   useEffect(() => {
     const id = embedded ? paymentId : (router.query.id as string);
@@ -61,7 +63,7 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
     if (payment && rental && config) {
       calculateValues();
     }
-  }, [formData.paymentDate, payment, rental, config, waiveLateFee]);
+  }, [formData.paymentDate, payment, rental, config, waiveLateFees]);
 
   useEffect(() => {
     // Auto-generate payment code when method or location changes
@@ -95,11 +97,11 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
           setTenant(tenantData);
         }
 
-        // Set initial form data
+        // Set initial form data with lowercase payment method
         setFormData({
           paymentDate: paymentData.paymentDate || new Date().toISOString().split("T")[0],
           paidAmount: applyRealMask((paymentData.expectedAmount * 100).toString()),
-          paymentMethod: paymentData.paymentMethod || "pix",
+          paymentMethod: (paymentData.paymentMethod || "pix").toLowerCase(),
           paymentLocation: paymentData.paymentLocation || "CP",
           paymentCode: paymentData.paymentCode || "",
           notes: paymentData.notes || "",
@@ -142,7 +144,7 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
     }
 
     // Apply or remove fees based on waiveLateFees checkbox
-    const totalAmount = waiveLateFee ? baseAmount : baseAmount + lateFee + interest;
+    const totalAmount = waiveLateFees ? baseAmount : baseAmount + lateFee + interest;
 
     setCalculatedValues({
       baseAmount,
@@ -218,8 +220,11 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
       const paidAmount = parseFloat(removeMask(formData.paidAmount));
 
       // Determine status based on paid amount vs expected amount
+      // Allow small difference for floating point comparisons
       let status: Payment["status"] = "pending";
-      if (paidAmount >= calculatedValues.totalAmount) {
+      const diff = Math.abs(paidAmount - calculatedValues.totalAmount);
+      
+      if (paidAmount >= calculatedValues.totalAmount || diff < 0.01) {
         status = "paid";
       } else if (paidAmount > 0) {
         status = "partial";
@@ -229,73 +234,38 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
         ...payment,
         paidAmount,
         paymentDate: formData.paymentDate,
-        paymentMethod: formData.paymentMethod,
+        paymentMethod: formData.paymentMethod.toLowerCase(), // Ensure lowercase
         paymentLocation: formData.paymentMethod === "pix" ? formData.paymentLocation : undefined,
         paymentCode: formData.paymentMethod === "pix" ? formData.paymentCode : undefined,
         status,
-        lateFee: waiveLateFee ? 0 : calculatedValues.lateFee,
-        interest: waiveLateFee ? 0 : calculatedValues.interest,
+        lateFee: waiveLateFees ? 0 : calculatedValues.lateFee,
+        interest: waiveLateFees ? 0 : calculatedValues.interest,
         notes: formData.notes,
         attachments: formData.attachments,
       };
 
-      await paymentService.update(updatedPayment);
+      const savedPayment = await paymentService.update(updatedPayment);
+      
+      // Update local state with saved payment to ensure receipt has latest data
+      setPayment(savedPayment);
 
       toast({
         title: "Sucesso",
         description: "Recebimento registrado com sucesso!",
       });
 
-      // Generate receipt if payment is complete
-      if (status === "paid" && rental && property && tenant) {
-        const { PaymentReceipt } = await import("@/components/PaymentReceipt");
-        const receiptData = {
-          payment: updatedPayment,
-          rental,
-          property,
-          tenant,
-        };
-        
-        // Open receipt in new window
-        const receiptWindow = window.open("", "_blank");
-        if (receiptWindow) {
-          const receipt = PaymentReceipt(receiptData);
-          receiptWindow.document.write(`
-            <!DOCTYPE html>
-            <html>
-              <head>
-                <title>Recibo de Pagamento</title>
-                <style>
-                  body { margin: 0; padding: 20px; font-family: Arial, sans-serif; }
-                  @media print {
-                    body { margin: 0; }
-                  }
-                </style>
-              </head>
-              <body>
-                <div id="receipt"></div>
-                <script>
-                  window.onload = function() {
-                    window.print();
-                  };
-                </script>
-              </body>
-            </html>
-          `);
-          receiptWindow.document.close();
-        }
+      // Show receipt if paid fully
+      if (status === "paid") {
+        setShowReceipt(true);
+      } else {
+        handleBack();
       }
 
-      if (embedded && onClose) {
-        onClose();
-      } else {
-        router.push("/payments");
-      }
     } catch (error) {
       console.error("Error updating payment:", error);
       toast({
         title: "Erro",
-        description: "Não foi possível registrar o recebimento.",
+        description: "Não foi possível registrar o recebimento. Verifique os dados e tente novamente.",
         variant: "destructive",
       });
     }
@@ -307,6 +277,11 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
     } else {
       router.push("/payments");
     }
+  };
+  
+  const handleReceiptClose = () => {
+    setShowReceipt(false);
+    handleBack();
   };
 
   if (loading) {
@@ -412,10 +387,10 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
 
             {calculatedValues.lateFee > 0 && (
               <div className="flex justify-between">
-                <span className={`text-sm ${waiveLateFee ? "line-through text-muted-foreground" : "text-muted-foreground"}`}>
+                <span className={`text-sm ${waiveLateFees ? "line-through text-muted-foreground" : "text-muted-foreground"}`}>
                   Multa ({config?.lateFeePercentage || 2}%):
                 </span>
-                <span className={`text-sm font-medium ${waiveLateFee ? "line-through text-muted-foreground" : "text-red-600"}`}>
+                <span className={`text-sm font-medium ${waiveLateFees ? "line-through text-muted-foreground" : "text-red-600"}`}>
                   {formatCurrency(calculatedValues.lateFee)}
                 </span>
               </div>
@@ -423,10 +398,10 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
 
             {calculatedValues.interest > 0 && (
               <div className="flex justify-between">
-                <span className={`text-sm ${waiveLateFee ? "line-through text-muted-foreground" : "text-muted-foreground"}`}>
+                <span className={`text-sm ${waiveLateFees ? "line-through text-muted-foreground" : "text-muted-foreground"}`}>
                   Juros ({config?.interestRatePercentage || 0.033}% ao dia):
                 </span>
-                <span className={`text-sm font-medium ${waiveLateFee ? "line-through text-muted-foreground" : "text-red-600"}`}>
+                <span className={`text-sm font-medium ${waiveLateFees ? "line-through text-muted-foreground" : "text-red-600"}`}>
                   {formatCurrency(calculatedValues.interest)}
                 </span>
               </div>
@@ -437,8 +412,8 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
                 <input
                   type="checkbox"
                   id="waiveLateFees"
-                  checked={waiveLateFee}
-                  onChange={(e) => setWaiveLateFee(e.target.checked)}
+                  checked={waiveLateFees}
+                  onChange={(e) => setWaiveLateFees(e.target.checked)}
                   className="h-4 w-4 rounded border-gray-300"
                 />
                 <Label htmlFor="waiveLateFees" className="text-sm cursor-pointer">
@@ -631,6 +606,18 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
           </form>
         </CardContent>
       </Card>
+      
+      {/* Receipt Modal */}
+      {payment && rental && property && tenant && (
+        <PaymentReceipt
+          isOpen={showReceipt}
+          onClose={handleReceiptClose}
+          payment={payment}
+          rental={rental}
+          property={property}
+          tenant={tenant}
+        />
+      )}
     </div>
   );
 
