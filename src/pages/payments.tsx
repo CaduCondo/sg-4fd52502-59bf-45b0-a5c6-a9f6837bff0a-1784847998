@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { DollarSign, Calendar, Home, User, AlertCircle, CheckCircle } from "lucide-react";
+import { DollarSign, Calendar, Home, User, AlertCircle, CheckCircle, Filter } from "lucide-react";
 import type { Payment, Rental, Property, Tenant } from "@/types";
 import { paymentService, rentalService, propertyService, tenantService } from "@/services";
 import { formatCurrency } from "@/lib/masks";
@@ -28,20 +28,13 @@ export default function PaymentsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   // Filter state
+  const [showFilters, setShowFilters] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState<string>("");
   const [selectedYear, setSelectedYear] = useState<string>("");
 
   useEffect(() => {
-    const currentDate = new Date();
-    setSelectedMonth((currentDate.getMonth() + 1).toString());
-    setSelectedYear(currentDate.getFullYear().toString());
+    loadData();
   }, []);
-
-  useEffect(() => {
-    if (selectedMonth && selectedYear) {
-      loadData();
-    }
-  }, [selectedMonth, selectedYear]);
 
   const loadData = async () => {
     try {
@@ -96,6 +89,10 @@ export default function PaymentsPage() {
     return tenants.find((t) => t.id === rental.tenantId);
   };
 
+  const getRentalInfo = (rentalId: string) => {
+    return rentals.find((r) => r.id === rentalId);
+  };
+
   const getStatusBadge = (status: Payment["status"]) => {
     switch (status) {
       case "paid":
@@ -117,10 +114,44 @@ export default function PaymentsPage() {
     return months[month - 1] || "";
   };
 
-  // Filter payments by selected month and year
-  const filteredPayments = payments.filter(
-    (p) => p.referenceMonth === parseInt(selectedMonth) && p.referenceYear === parseInt(selectedYear)
-  );
+  // Filter payments: show all from active contracts by default, or filter by month/year if selected
+  const getFilteredPayments = () => {
+    const activeRentals = rentals.filter(r => r.status === "active");
+    const today = new Date();
+    
+    const filtered = payments.filter(payment => {
+      const rental = getRentalInfo(payment.rentalId);
+      if (!rental) return false;
+      
+      // Only show payments from active rentals
+      if (!activeRentals.some(r => r.id === rental.id)) return false;
+      
+      // If no filters, show payments within contract period
+      if (!selectedMonth && !selectedYear) {
+        const startDate = new Date(rental.startDate);
+        const endDate = rental.endDate ? new Date(rental.endDate) : new Date(today.getFullYear() + 10, 11, 31);
+        const paymentDate = new Date(payment.referenceYear, payment.referenceMonth - 1, 1);
+        
+        // Include current month and all months within contract period
+        return paymentDate >= startDate && paymentDate <= endDate;
+      }
+      
+      // Apply month/year filters if selected
+      if (selectedMonth && payment.referenceMonth !== parseInt(selectedMonth)) return false;
+      if (selectedYear && payment.referenceYear !== parseInt(selectedYear)) return false;
+      
+      return true;
+    });
+    
+    // Sort by due date (oldest first)
+    return filtered.sort((a, b) => {
+      const dateA = new Date(a.dueDate);
+      const dateB = new Date(b.dueDate);
+      return dateA.getTime() - dateB.getTime();
+    });
+  };
+
+  const filteredPayments = getFilteredPayments();
 
   const unpaidPayments = filteredPayments.filter(
     (p) => p.status === "pending" || p.status === "partial" || p.status === "overdue"
@@ -146,6 +177,13 @@ export default function PaymentsPage() {
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 5 }, (_, i) => (currentYear - 2 + i).toString());
 
+  const clearFilters = () => {
+    setSelectedMonth("");
+    setSelectedYear("");
+  };
+
+  const hasActiveFilters = selectedMonth || selectedYear;
+
   return (
     <>
       <Head>
@@ -158,49 +196,69 @@ export default function PaymentsPage() {
               <div>
                 <h1 className="text-3xl font-bold tracking-tight">Recebimentos</h1>
                 <p className="text-muted-foreground mt-2">
-                  {getMonthName(parseInt(selectedMonth))} de {selectedYear}
+                  {hasActiveFilters 
+                    ? `${selectedMonth ? getMonthName(parseInt(selectedMonth)) : "Todos os meses"} de ${selectedYear || "todos os anos"}`
+                    : "Todos os recebimentos dos contratos ativos"
+                  }
                 </p>
               </div>
+              <Button
+                variant={showFilters ? "default" : "outline"}
+                onClick={() => setShowFilters(!showFilters)}
+                className="gap-2"
+              >
+                <Filter className="h-4 w-4" />
+                {showFilters ? "Ocultar Filtros" : "Filtrar"}
+              </Button>
             </div>
           </ScrollReveal>
 
-          {/* Month/Year Selector */}
-          <ScrollReveal delay={0.1}>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex gap-4 items-center">
-                  <div className="w-full md:w-1/4">
-                    <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Mês" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {months.map((month) => (
-                          <SelectItem key={month.value} value={month.value}>
-                            {month.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+          {/* Month/Year Filters (Optional) */}
+          {showFilters && (
+            <ScrollReveal delay={0.1}>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex gap-4 items-center flex-wrap">
+                    <div className="w-full md:w-1/4">
+                      <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Todos os meses" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">Todos os meses</SelectItem>
+                          {months.map((month) => (
+                            <SelectItem key={month.value} value={month.value}>
+                              {month.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="w-full md:w-1/4">
+                      <Select value={selectedYear} onValueChange={setSelectedYear}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Todos os anos" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">Todos os anos</SelectItem>
+                          {years.map((year) => (
+                            <SelectItem key={year} value={year}>
+                              {year}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {hasActiveFilters && (
+                      <Button variant="ghost" onClick={clearFilters}>
+                        Limpar Filtros
+                      </Button>
+                    )}
                   </div>
-                  <div className="w-full md:w-1/4">
-                    <Select value={selectedYear} onValueChange={setSelectedYear}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Ano" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {years.map((year) => (
-                          <SelectItem key={year} value={year}>
-                            {year}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </ScrollReveal>
+                </CardContent>
+              </Card>
+            </ScrollReveal>
+          )}
 
           {loading ? (
             <div className="text-center py-12">
@@ -212,7 +270,7 @@ export default function PaymentsPage() {
               <div className="space-y-4">
                 <ScrollReveal delay={0.2}>
                   <div className="flex items-center gap-2">
-                    <h2 className="text-2xl font-bold">Locações Não Pagas Este Mês</h2>
+                    <h2 className="text-2xl font-bold">Recebimentos Pendentes</h2>
                     <Badge variant="destructive" className="text-sm">
                       {unpaidPayments.length}
                     </Badge>
@@ -226,7 +284,7 @@ export default function PaymentsPage() {
                         <CheckCircle className="mx-auto h-12 w-12 text-green-500 mb-4" />
                         <h3 className="text-lg font-semibold mb-2">Nenhum recebimento pendente</h3>
                         <p className="text-muted-foreground">
-                          Todos os recebimentos deste mês foram pagos!
+                          Todos os recebimentos foram pagos!
                         </p>
                       </CardContent>
                     </Card>
@@ -243,13 +301,25 @@ export default function PaymentsPage() {
                             className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-l-red-500"
                             onClick={() => handleCardClick(payment.id)}
                           >
-                            <CardHeader>
+                            <CardHeader className="pb-3">
                               <div className="flex items-center justify-between mb-2">
                                 {getStatusBadge(payment.status)}
+                                <span className="text-xs text-muted-foreground">
+                                  {getMonthName(payment.referenceMonth)}/{payment.referenceYear}
+                                </span>
                               </div>
                               <CardTitle className="flex items-center gap-2 text-lg">
-                                <Home className="h-5 w-5 text-red-600" />
-                                {property?.location || "N/A"}
+                                <div className="flex flex-col gap-1 flex-1">
+                                  <span className="flex items-center gap-2">
+                                    <Home className="h-5 w-5 text-red-600" />
+                                    {property?.location || "N/A"}
+                                  </span>
+                                  {property?.complement && (
+                                    <span className="text-sm font-normal text-muted-foreground ml-7">
+                                      {property.complement}
+                                    </span>
+                                  )}
+                                </div>
                               </CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-3">
@@ -298,7 +368,7 @@ export default function PaymentsPage() {
               <div className="space-y-4">
                 <ScrollReveal delay={0.4}>
                   <div className="flex items-center gap-2">
-                    <h2 className="text-2xl font-bold">Locações Pagas</h2>
+                    <h2 className="text-2xl font-bold">Recebimentos Pagos</h2>
                     <Badge variant="default" className="bg-green-500 text-sm">
                       {paidPayments.length}
                     </Badge>
@@ -312,7 +382,7 @@ export default function PaymentsPage() {
                         <AlertCircle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
                         <h3 className="text-lg font-semibold mb-2">Nenhum recebimento pago</h3>
                         <p className="text-muted-foreground">
-                          Ainda não há recebimentos pagos neste mês.
+                          Ainda não há recebimentos pagos no período selecionado.
                         </p>
                       </CardContent>
                     </Card>
@@ -329,13 +399,25 @@ export default function PaymentsPage() {
                             className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-l-green-500"
                             onClick={() => handleCardClick(payment.id)}
                           >
-                            <CardHeader>
+                            <CardHeader className="pb-3">
                               <div className="flex items-center justify-between mb-2">
                                 {getStatusBadge(payment.status)}
+                                <span className="text-xs text-muted-foreground">
+                                  {getMonthName(payment.referenceMonth)}/{payment.referenceYear}
+                                </span>
                               </div>
                               <CardTitle className="flex items-center gap-2 text-lg">
-                                <Home className="h-5 w-5 text-green-600" />
-                                {property?.location || "N/A"}
+                                <div className="flex flex-col gap-1 flex-1">
+                                  <span className="flex items-center gap-2">
+                                    <Home className="h-5 w-5 text-green-600" />
+                                    {property?.location || "N/A"}
+                                  </span>
+                                  {property?.complement && (
+                                    <span className="text-sm font-normal text-muted-foreground ml-7">
+                                      {property.complement}
+                                    </span>
+                                  )}
+                                </div>
                               </CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-3">
