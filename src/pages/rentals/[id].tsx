@@ -10,11 +10,12 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { rentalService, propertyService, tenantService, paymentService } from "@/services";
 import type { Rental, Property, Tenant } from "@/types";
-import { ArrowLeft, Edit, Save, X, Trash2, Camera, Paperclip } from "lucide-react";
+import { ArrowLeft, Edit, Save, X, Trash2, Camera, Paperclip, Download, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { applyRealMask, formatCurrency } from "@/lib/masks";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AttachmentViewer } from "@/components/AttachmentViewer";
 
 export default function RentalDetails() {
   const router = useRouter();
@@ -448,7 +449,7 @@ export default function RentalDetails() {
                 </div>
 
                 {isEditing && (
-                  <div className="space-y-4 border-t pt-4 mt-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div className="flex items-center justify-between">
                       <Label className="text-xs text-muted-foreground font-medium">Anexos</Label>
                       <div className="flex gap-2">
@@ -509,6 +510,61 @@ export default function RentalDetails() {
                           </div>
                         ))}
                       </div>
+                    )}
+                  </div>
+                )}
+
+                {!isEditing && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {rental.attachments && rental.attachments.length > 0 ? (
+                      <div className="space-y-2">
+                        {rental.attachments.map((attachment, index) => (
+                          <div
+                            key={index}
+                            className="flex items-center justify-between p-3 bg-muted rounded-lg"
+                          >
+                            <span className="text-sm truncate flex-1">
+                              Arquivo {index + 1}
+                            </span>
+                            <div className="flex gap-2">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  const link = document.createElement("a");
+                                  link.href = attachment;
+                                  link.download = `arquivo-${index + 1}.jpg`;
+                                  document.body.appendChild(link);
+                                  link.click();
+                                  document.body.removeChild(link);
+                                }}
+                              >
+                                <Download className="h-4 w-4 mr-2" />
+                                Baixar
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  const link = document.createElement("a");
+                                  link.href = attachment;
+                                  link.target = "_blank";
+                                  document.body.appendChild(link);
+                                  link.click();
+                                  document.body.removeChild(link);
+                                }}
+                              >
+                                <Eye className="h-4 w-4 mr-2" />
+                                Visualizar
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">Nenhum anexo disponível.</p>
                     )}
                   </div>
                 )}

@@ -15,6 +15,7 @@ import type { Payment, Rental, Property, Tenant, Config } from "@/types";
 import { paymentService, rentalService, propertyService, tenantService, configService } from "@/services";
 import { applyRealMask, removeMask, formatCurrency, parseCurrencyToFloat } from "@/lib/masks";
 import { PaymentReceipt } from "@/components/PaymentReceipt";
+import { AttachmentViewer } from "@/components/AttachmentViewer";
 
 interface ManagePaymentContentProps {
   paymentId: string;

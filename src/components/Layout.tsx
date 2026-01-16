@@ -325,7 +325,7 @@ export function Layout({ children }: LayoutProps) {
                       <Button 
                         variant={isActive(item.path) ? "default" : "ghost"}
                         size="sm"
-                        className="flex items-center space-x-2 transition-all hover:scale-105"
+                        className="flex items-center space-x-1 transition-all hover:scale-105"
                       >
                         <motion.div
                           whileHover={{ rotate: 15, scale: 1.1 }}
@@ -365,7 +365,7 @@ export function Layout({ children }: LayoutProps) {
                       <Button 
                         variant={isActive(item.path) ? "default" : "ghost"}
                         size="sm"
-                        className="w-full justify-start flex items-center space-x-2"
+                        className="w-full justify-start flex items-center space-x-1"
                         onClick={() => setMenuOpen(false)}
                       >
                         <item.icon size={16} />
