@@ -7,7 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Users, ArrowLeft, Edit, X } from "lucide-react";
@@ -191,7 +190,7 @@ export default function TenantDetailsPage() {
         <title>Detalhes do Inquilino - Gerenciador de Locações</title>
       </Head>
       <Layout>
-        <div className="space-y-6">
+        <div className="space-y-4">
           <div className="flex items-center justify-between">
             <Button
               variant="ghost"
@@ -204,16 +203,16 @@ export default function TenantDetailsPage() {
             <div className="flex gap-2">
               {isEditMode ? (
                 <>
-                  <Button variant="outline" onClick={handleCancel}>
+                  <Button variant="outline" onClick={handleCancel} size="sm">
                     <X className="h-4 w-4 mr-2" />
                     Cancelar
                   </Button>
-                  <Button onClick={handleSave} className="bg-emerald-600 hover:bg-emerald-700">
-                    Salvar Alterações
+                  <Button onClick={handleSave} className="bg-emerald-600 hover:bg-emerald-700" size="sm">
+                    Salvar
                   </Button>
                 </>
               ) : (
-                <Button onClick={handleEdit} className="bg-emerald-600 hover:bg-emerald-700">
+                <Button onClick={handleEdit} className="bg-emerald-600 hover:bg-emerald-700" size="sm">
                   <Edit className="h-4 w-4 mr-2" />
                   Editar
                 </Button>
@@ -222,106 +221,101 @@ export default function TenantDetailsPage() {
           </div>
 
           <Card>
-            <CardHeader>
+            <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <Users className="h-8 w-8 text-emerald-600" />
-                  <div>
-                    <CardTitle className="text-2xl">{tenant.name}</CardTitle>
-                    {tenant.phone && (
-                      <p className="text-muted-foreground">{applyPhoneMask(tenant.phone)}</p>
-                    )}
-                  </div>
+                  <Users className="h-5 w-5 text-emerald-600" />
+                  <CardTitle className="text-lg">{tenant.name}</CardTitle>
                 </div>
                 <Badge className={getStatusColor(tenant.status)}>
                   {getStatusLabel(tenant.status)}
                 </Badge>
               </div>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="name">
-                  Nome Completo <span className="text-red-500">*</span>
-                </Label>
-                {isEditMode ? (
-                  <Input
-                    id="name"
-                    placeholder="João da Silva"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  />
-                ) : (
-                  <p className="text-lg font-medium">{tenant.name}</p>
-                )}
-              </div>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Nome Completo</Label>
+                  {isEditMode ? (
+                    <Input
+                      placeholder="João da Silva"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      className="h-8 text-sm"
+                    />
+                  ) : (
+                    <p className="text-sm font-medium">{tenant.name}</p>
+                  )}
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="email">E-mail</Label>
-                {isEditMode ? (
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="joao@email.com"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  />
-                ) : (
-                  <p className="text-lg font-medium">{tenant.email || "—"}</p>
-                )}
-              </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Tipo de Documento</Label>
+                  {isEditMode ? (
+                    <Select
+                      value={formData.documentType}
+                      onValueChange={(value: "cpf" | "cnpj") => {
+                        setFormData({ ...formData, documentType: value, document: "" });
+                      }}
+                    >
+                      <SelectTrigger className="h-8 text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="cpf">CPF</SelectItem>
+                        <SelectItem value="cnpj">CNPJ</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="text-sm font-medium">{tenant.documentType === "cpf" ? "CPF" : "CNPJ"}</p>
+                  )}
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="phone">Telefone</Label>
-                {isEditMode ? (
-                  <Input
-                    id="phone"
-                    placeholder="(00) 00000-0000"
-                    value={applyPhoneMask(formData.phone)}
-                    onChange={(e) => setFormData({ ...formData, phone: removeMask(e.target.value) })}
-                    maxLength={15}
-                  />
-                ) : (
-                  <p className="text-lg font-medium">{tenant.phone ? applyPhoneMask(tenant.phone) : "—"}</p>
-                )}
-              </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">
+                    {formData.documentType === "cpf" ? "CPF" : "CNPJ"}
+                  </Label>
+                  {isEditMode ? (
+                    <Input
+                      placeholder={formData.documentType === "cpf" ? "000.000.000-00" : "00.000.000/0000-00"}
+                      value={formData.document}
+                      onChange={(e) => handleDocumentChange(e.target.value)}
+                      maxLength={formData.documentType === "cpf" ? 14 : 18}
+                      className="h-8 text-sm"
+                    />
+                  ) : (
+                    <p className="text-sm font-medium">{tenant.document || "—"}</p>
+                  )}
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="documentType">Tipo de Documento</Label>
-                {isEditMode ? (
-                  <Select
-                    value={formData.documentType}
-                    onValueChange={(value: "cpf" | "cnpj") => {
-                      setFormData({ ...formData, documentType: value, document: "" });
-                    }}
-                  >
-                    <SelectTrigger id="documentType">
-                      <SelectValue placeholder="Selecione o tipo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="cpf">CPF</SelectItem>
-                      <SelectItem value="cnpj">CNPJ</SelectItem>
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <p className="text-lg font-medium">{tenant.documentType === "cpf" ? "CPF" : "CNPJ"}</p>
-                )}
-              </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">E-mail</Label>
+                  {isEditMode ? (
+                    <Input
+                      type="email"
+                      placeholder="joao@email.com"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      className="h-8 text-sm"
+                    />
+                  ) : (
+                    <p className="text-sm font-medium">{tenant.email || "—"}</p>
+                  )}
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="document">
-                  {formData.documentType === "cpf" ? "CPF" : "CNPJ"}
-                </Label>
-                {isEditMode ? (
-                  <Input
-                    id="document"
-                    placeholder={formData.documentType === "cpf" ? "000.000.000-00" : "00.000.000/0000-00"}
-                    value={formData.document}
-                    onChange={(e) => handleDocumentChange(e.target.value)}
-                    maxLength={formData.documentType === "cpf" ? 14 : 18}
-                  />
-                ) : (
-                  <p className="text-lg font-medium">{tenant.document || "—"}</p>
-                )}
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Telefone</Label>
+                  {isEditMode ? (
+                    <Input
+                      placeholder="(00) 00000-0000"
+                      value={applyPhoneMask(formData.phone)}
+                      onChange={(e) => setFormData({ ...formData, phone: removeMask(e.target.value) })}
+                      maxLength={15}
+                      className="h-8 text-sm"
+                    />
+                  ) : (
+                    <p className="text-sm font-medium">{tenant.phone ? applyPhoneMask(tenant.phone) : "—"}</p>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>

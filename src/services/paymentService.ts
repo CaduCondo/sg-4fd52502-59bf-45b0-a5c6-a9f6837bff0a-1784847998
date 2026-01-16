@@ -81,6 +81,18 @@ export const paymentService = {
     if (error) throw error;
   },
 
+  async updateFuturePaymentsOnRentalValueChange(rentalId: string, newRentalValue: number): Promise<void> {
+    const today = new Date().toISOString().split("T")[0];
+    
+    const { error } = await supabase
+      .from("payments")
+      .update({ expected_amount: newRentalValue })
+      .gt("due_date", today)
+      .eq("rental_id", rentalId);
+    
+    if (error) throw error;
+  },
+
   mapFromDB(data: any): Payment {
     return {
       id: data.id,

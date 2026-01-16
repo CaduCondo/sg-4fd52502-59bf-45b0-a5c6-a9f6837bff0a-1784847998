@@ -14,7 +14,7 @@ import { Building2, ArrowLeft, Edit, X } from "lucide-react";
 import { Property, Location } from "@/types";
 import { propertyService } from "@/services";
 import { configService } from "@/services/configService";
-import { applyCepMask, applyRealMask, removeMask, formatCurrency } from "@/lib/masks";
+import { applyCepMask, applyRealMask, formatCurrency } from "@/lib/masks";
 
 export default function PropertyDetailsPage() {
   const router = useRouter();
@@ -134,9 +134,7 @@ export default function PropertyDetailsPage() {
 
   const convertMaskedValueToNumber = (maskedValue: string): number => {
     if (!maskedValue) return 0;
-    // Remove tudo exceto números e vírgula
     const cleanValue = maskedValue.replace(/[^\d,]/g, '');
-    // Substitui vírgula por ponto para conversão
     const numericValue = cleanValue.replace(',', '.');
     return parseFloat(numericValue) || 0;
   };
@@ -234,7 +232,7 @@ export default function PropertyDetailsPage() {
         <title>Detalhes do Imóvel - Gerenciador de Locações</title>
       </Head>
       <Layout>
-        <div className="space-y-6">
+        <div className="space-y-4">
           <div className="flex items-center justify-between">
             <Button
               variant="ghost"
@@ -247,16 +245,16 @@ export default function PropertyDetailsPage() {
             <div className="flex gap-2">
               {isEditMode ? (
                 <>
-                  <Button variant="outline" onClick={handleCancel}>
+                  <Button variant="outline" onClick={handleCancel} size="sm">
                     <X className="h-4 w-4 mr-2" />
                     Cancelar
                   </Button>
-                  <Button onClick={handleSave} className="bg-emerald-600 hover:bg-emerald-700">
-                    Salvar Alterações
+                  <Button onClick={handleSave} className="bg-emerald-600 hover:bg-emerald-700" size="sm">
+                    Salvar
                   </Button>
                 </>
               ) : (
-                <Button onClick={handleEdit} className="bg-emerald-600 hover:bg-emerald-700">
+                <Button onClick={handleEdit} className="bg-emerald-600 hover:bg-emerald-700" size="sm">
                   <Edit className="h-4 w-4 mr-2" />
                   Editar
                 </Button>
@@ -265,34 +263,36 @@ export default function PropertyDetailsPage() {
           </div>
 
           <Card>
-            <CardHeader>
+            <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <Building2 className="h-8 w-8 text-emerald-600" />
+                  <Building2 className="h-5 w-5 text-emerald-600" />
                   <div>
-                    <CardTitle className="text-2xl">{property.location}</CardTitle>
-                    <p className="text-muted-foreground">{property.complement}</p>
+                    <CardTitle className="text-lg">{property.location}</CardTitle>
+                    <p className="text-xs text-muted-foreground">{property.complement}</p>
                   </div>
                 </div>
-                <Badge className={getStatusColor(property.status)}>
-                  {getStatusLabel(property.status)}
-                </Badge>
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <p className="text-lg font-bold text-emerald-600">
+                      {formatCurrency(property.rentValue)}
+                    </p>
+                  </div>
+                  <Badge className={getStatusColor(property.status)}>
+                    {getStatusLabel(property.status)}
+                  </Badge>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="location">
-                      Local <span className="text-red-500">*</span>
-                    </Label>
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Local</Label>
                     {isEditMode ? (
-                      <Select
-                        value={formData.location}
-                        onValueChange={handleLocationChange}
-                      >
-                        <SelectTrigger id="location">
-                          <SelectValue placeholder="Selecione o local" />
+                      <Select value={formData.location} onValueChange={handleLocationChange}>
+                        <SelectTrigger className="h-8 text-sm">
+                          <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                           {locations.map((location) => (
@@ -303,155 +303,153 @@ export default function PropertyDetailsPage() {
                         </SelectContent>
                       </Select>
                     ) : (
-                      <p className="text-lg font-medium">{property.location}</p>
+                      <p className="text-sm font-medium">{property.location}</p>
                     )}
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="complement">
-                      Complemento <span className="text-red-500">*</span>
-                    </Label>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Complemento</Label>
                     {isEditMode ? (
                       <Input
-                        id="complement"
                         placeholder="Ex: Casa 2, Apto 101"
                         value={formData.complement}
                         onChange={(e) => setFormData({ ...formData, complement: e.target.value })}
+                        className="h-8 text-sm"
                       />
                     ) : (
-                      <p className="text-lg font-medium">{property.complement}</p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="cep">CEP</Label>
-                    {isEditMode ? (
-                      <Input
-                        id="cep"
-                        placeholder="00000-000"
-                        value={formData.cep}
-                        onChange={(e) => setFormData({ ...formData, cep: applyCepMask(e.target.value) })}
-                        maxLength={9}
-                        disabled={!!locations.find(l => l.name === formData.location)}
-                      />
-                    ) : (
-                      <p className="text-lg font-medium">{property.cep || "—"}</p>
+                      <p className="text-sm font-medium">{property.complement}</p>
                     )}
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="rentValue">
-                      Valor do Aluguel <span className="text-red-500">*</span>
-                    </Label>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Valor do Aluguel</Label>
                     {isEditMode ? (
                       <Input
-                        id="rentValue"
                         placeholder="R$ 0,00"
                         value={formData.rentValue}
                         onChange={(e) => setFormData({ ...formData, rentValue: applyRealMask(e.target.value) })}
+                        className="h-8 text-sm"
                       />
                     ) : (
-                      <p className="text-2xl font-bold text-emerald-600">
+                      <p className="text-sm font-bold text-emerald-600">
                         {formatCurrency(property.rentValue)}
                       </p>
                     )}
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="address">Endereço</Label>
-                  {isEditMode ? (
-                    <Input
-                      id="address"
-                      placeholder="Rua, Avenida, etc."
-                      value={formData.address}
-                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                      disabled={!!locations.find(l => l.name === formData.location)}
-                    />
-                  ) : (
-                    <p className="text-lg font-medium">{property.address || "—"}</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="neighborhood">Bairro</Label>
-                  {isEditMode ? (
-                    <Input
-                      id="neighborhood"
-                      placeholder="Bairro"
-                      value={formData.neighborhood}
-                      onChange={(e) => setFormData({ ...formData, neighborhood: e.target.value })}
-                      disabled={!!locations.find(l => l.name === formData.location)}
-                    />
-                  ) : (
-                    <p className="text-lg font-medium">{property.neighborhood || "—"}</p>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="number">Número</Label>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">CEP</Label>
                     {isEditMode ? (
                       <Input
-                        id="number"
+                        placeholder="00000-000"
+                        value={formData.cep}
+                        onChange={(e) => setFormData({ ...formData, cep: applyCepMask(e.target.value) })}
+                        maxLength={9}
+                        disabled={!!locations.find(l => l.name === formData.location)}
+                        className="h-8 text-sm"
+                      />
+                    ) : (
+                      <p className="text-sm font-medium">{property.cep || "—"}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1 md:col-span-2">
+                    <Label className="text-xs text-muted-foreground">Endereço</Label>
+                    {isEditMode ? (
+                      <Input
+                        placeholder="Rua, Avenida, etc."
+                        value={formData.address}
+                        onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                        disabled={!!locations.find(l => l.name === formData.location)}
+                        className="h-8 text-sm"
+                      />
+                    ) : (
+                      <p className="text-sm font-medium">{property.address || "—"}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Número</Label>
+                    {isEditMode ? (
+                      <Input
                         placeholder="123"
                         value={formData.number}
                         onChange={(e) => setFormData({ ...formData, number: e.target.value })}
                         disabled={!!locations.find(l => l.name === formData.location)}
+                        className="h-8 text-sm"
                       />
                     ) : (
-                      <p className="text-lg font-medium">{property.number || "—"}</p>
+                      <p className="text-sm font-medium">{property.number || "—"}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Bairro</Label>
+                    {isEditMode ? (
+                      <Input
+                        placeholder="Bairro"
+                        value={formData.neighborhood}
+                        onChange={(e) => setFormData({ ...formData, neighborhood: e.target.value })}
+                        disabled={!!locations.find(l => l.name === formData.location)}
+                        className="h-8 text-sm"
+                      />
+                    ) : (
+                      <p className="text-sm font-medium">{property.neighborhood || "—"}</p>
                     )}
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="city">Cidade</Label>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Cidade</Label>
                     {isEditMode ? (
                       <Input
-                        id="city"
                         placeholder="São Paulo"
                         value={formData.city}
                         onChange={(e) => setFormData({ ...formData, city: e.target.value })}
                         disabled={!!locations.find(l => l.name === formData.location)}
+                        className="h-8 text-sm"
                       />
                     ) : (
-                      <p className="text-lg font-medium">{property.city || "—"}</p>
+                      <p className="text-sm font-medium">{property.city || "—"}</p>
                     )}
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="state">Estado</Label>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Estado</Label>
                     {isEditMode ? (
                       <Input
-                        id="state"
                         placeholder="SP"
                         value={formData.state}
                         onChange={(e) => setFormData({ ...formData, state: e.target.value.toUpperCase() })}
                         maxLength={2}
                         disabled={!!locations.find(l => l.name === formData.location)}
+                        className="h-8 text-sm"
                       />
                     ) : (
-                      <p className="text-lg font-medium">{property.state || "—"}</p>
+                      <p className="text-sm font-medium">{property.state || "—"}</p>
                     )}
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="description">Descrição</Label>
-                  {isEditMode ? (
-                    <Textarea
-                      id="description"
-                      placeholder="Informações adicionais sobre o imóvel..."
-                      value={formData.description}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                      rows={3}
-                    />
-                  ) : (
-                    <p className="text-lg font-medium whitespace-pre-wrap">{property.description || "—"}</p>
-                  )}
-                </div>
+                {(isEditMode || property.description) && (
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Descrição</Label>
+                    {isEditMode ? (
+                      <Textarea
+                        placeholder="Informações adicionais sobre o imóvel..."
+                        value={formData.description}
+                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                        rows={2}
+                        className="text-sm resize-none"
+                      />
+                    ) : (
+                      <p className="text-sm whitespace-pre-wrap">{property.description}</p>
+                    )}
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
