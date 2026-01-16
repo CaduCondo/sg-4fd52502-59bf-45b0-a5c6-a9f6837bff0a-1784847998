@@ -273,8 +273,9 @@ export default function DashboardPage() {
 
   const stats = {
     totalProperties: properties.length,
-    occupiedProperties: properties.filter((p) => p.status === "occupied").length,
     availableProperties: properties.filter((p) => p.status === "available").length,
+    occupiedProperties: properties.filter((p) => p.status === "occupied").length,
+    unavailableProperties: properties.filter((p) => p.status === "unavailable").length,
     totalTenants: tenants.filter((t) => t.status === "active" || t.status === "rented").length,
     activeRentals: rentals.filter(r => r.isActive).length,
     pendingPayments: pendingPayments.length,
@@ -392,7 +393,7 @@ export default function DashboardPage() {
                 <CardContent className="p-4 pt-0">
                   <div className="text-2xl font-bold">{stats.totalProperties}</div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Cadastrados
+                    Cadastrados e {stats.occupiedProperties} Ocupados
                   </p>
                 </CardContent>
               </Card>
@@ -417,15 +418,15 @@ export default function DashboardPage() {
             <FloatingCard delay={0.3}>
               <Card
                 className="cursor-pointer hover:shadow-lg transition-shadow border-l-4 border-l-amber-500 h-full"
-                onClick={() => router.push("/properties?filter=occupied")}
+                onClick={() => router.push("/properties?filter=unavailable")}
               >
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4">
                   <CardTitle className="text-sm font-medium">Imóveis Indisponíveis</CardTitle>
                   <Home className="h-4 w-4 text-amber-500" />
                 </CardHeader>
                 <CardContent className="p-4 pt-0">
-                  <div className="text-2xl font-bold">{stats.occupiedProperties}</div>
-                  <p className="text-xs text-muted-foreground mt-1">Alugados/Ocupados</p>
+                  <div className="text-2xl font-bold">{stats.unavailableProperties}</div>
+                  <p className="text-xs text-muted-foreground mt-1">Construindo/Reformando</p>
                 </CardContent>
               </Card>
             </FloatingCard>

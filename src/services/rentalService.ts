@@ -73,6 +73,7 @@ export const rentalService = {
       value: data.value ? parseFloat(data.value) : ((parseFloat(data.monthly_rent) || 0) + (data.garage_value ? parseFloat(data.garage_value) : 0)),
       deposit: data.deposit,
       contractAttachments: data.contract_attachments || [],
+      attachments: data.attachments || [],
       isActive: data.is_active,
       createdAt: data.created_at
     };
@@ -91,6 +92,7 @@ export const rentalService = {
       value: rental.value,
       deposit: rental.deposit,
       contract_attachments: rental.contractAttachments || [],
+      attachments: rental.attachments || [],
       is_active: rental.isActive
     };
   }

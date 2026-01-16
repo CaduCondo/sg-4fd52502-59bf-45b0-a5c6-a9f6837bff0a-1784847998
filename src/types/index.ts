@@ -38,7 +38,7 @@ export interface Property {
   monthlyRent: number;
   rentValue: number;
   type: string;
-  status: "available" | "occupied";
+  status: "available" | "occupied" | "unavailable";
   description?: string;
   createdAt: string;
 }

@@ -244,6 +244,8 @@ export const paymentService = {
       dueDate: data.due_date,
       paymentDate: data.payment_date,
       paymentMethod: data.payment_method,
+      paymentLocation: data.payment_location,
+      paymentCode: data.payment_code,
       status: data.status,
       lateFee: parseFloat(data.late_fee || 0),
       interest: parseFloat(data.interest || 0),
@@ -265,11 +267,13 @@ export const paymentService = {
       payment_date: payment.paymentDate,
       status: payment.status,
       payment_method: payment.paymentMethod,
+      payment_location: payment.paymentLocation,
+      payment_code: payment.paymentCode,
       notes: payment.notes,
       late_fee: payment.lateFee || 0,
       interest: payment.interest || 0,
       attachments: payment.attachments || [],
-      partial_payments: []
+      partial_payments: payment.partialPayments || []
     };
   }
 };

@@ -24,7 +24,7 @@ export default function PropertiesPage() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [filteredProperties, setFilteredProperties] = useState<Property[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "available" | "occupied">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "available" | "occupied" | "unavailable">("all");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -191,7 +191,7 @@ export default function PropertiesPage() {
         monthlyRent: rentValueNumber,
         rentValue: rentValueNumber,
         type: "residential",
-        status: formData.status as "available" | "occupied",
+        status: formData.status as "available" | "occupied" | "unavailable",
         description: formData.description || undefined,
       };
 
@@ -252,6 +252,8 @@ export default function PropertiesPage() {
         return "bg-green-500";
       case "occupied":
         return "bg-blue-500";
+      case "unavailable":
+        return "bg-amber-500";
       default:
         return "bg-gray-500";
     }
@@ -263,6 +265,8 @@ export default function PropertiesPage() {
         return "Disponível";
       case "occupied":
         return "Alugado";
+      case "unavailable":
+        return "Indisponível";
       default:
         return status;
     }
@@ -311,6 +315,7 @@ export default function PropertiesPage() {
                     <SelectItem value="all">Todos os Status</SelectItem>
                     <SelectItem value="available">Disponível</SelectItem>
                     <SelectItem value="occupied">Alugado</SelectItem>
+                    <SelectItem value="unavailable">Indisponível</SelectItem>
                   </SelectContent>
                 </Select>
                 <div className="flex gap-2">
@@ -579,6 +584,25 @@ export default function PropertiesPage() {
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   rows={3}
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="status">
+                  Status <span className="text-red-500">*</span>
+                </Label>
+                <Select
+                  value={formData.status}
+                  onValueChange={(value) => setFormData({ ...formData, status: value })}
+                >
+                  <SelectTrigger id="status">
+                    <SelectValue placeholder="Selecione o status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="available">Disponível</SelectItem>
+                    <SelectItem value="occupied">Alugado</SelectItem>
+                    <SelectItem value="unavailable">Indisponível</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <DialogFooter className="gap-2">
