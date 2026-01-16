@@ -149,13 +149,23 @@ export default function RentalsPage() {
   };
 
   const generatePayments = async (rental: Rental) => {
-    const startDate = new Date(rental.startDate + "T00:00:00");
-    const endDate = rental.endDate ? new Date(rental.endDate + "T00:00:00") : null;
     const paymentDay = rental.paymentDay;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
     const payments: Omit<Payment, "id" | "createdAt">[] = [];
+    
+    // Parse dates correctly in local timezone
+    const [startYear, startMonth, startDay] = rental.startDate.split("-").map(Number);
+    const startDate = new Date(startYear, startMonth - 1, startDay);
+    startDate.setHours(0, 0, 0, 0);
+    
+    let endDate: Date | null = null;
+    if (rental.endDate) {
+      const [endYear, endMonth, endDay] = rental.endDate.split("-").map(Number);
+      endDate = new Date(endYear, endMonth - 1, endDay);
+      endDate.setHours(0, 0, 0, 0);
+    }
     
     // Determinar mês/ano inicial: mês atual ou início do contrato (o que for mais tarde)
     let currentYear: number;
@@ -182,18 +192,25 @@ export default function RentalsPage() {
       // Ajustar o dia de vencimento se exceder os dias do mês
       const validDay = Math.min(paymentDay, lastDayOfMonth);
       
-      // Criar a data de vencimento para este mês
+      // Criar a data de vencimento para este mês em local timezone
       const dueDate = new Date(currentYear, currentMonth, validDay);
+      dueDate.setHours(0, 0, 0, 0);
       
       // Verificar se ultrapassou a data máxima
       if (dueDate > maxDate) break;
+      
+      // Formatar data como YYYY-MM-DD mantendo timezone local
+      const year = dueDate.getFullYear();
+      const month = String(dueDate.getMonth() + 1).padStart(2, "0");
+      const day = String(dueDate.getDate()).padStart(2, "0");
+      const dueDateString = `${year}-${month}-${day}`;
       
       // Criar o pagamento
       const payment: Omit<Payment, "id" | "createdAt"> = {
         rentalId: rental.id,
         referenceMonth: currentMonth + 1,
         referenceYear: currentYear,
-        dueDate: dueDate.toISOString().split("T")[0],
+        dueDate: dueDateString,
         expectedAmount: rental.value,
         paidAmount: 0,
         paymentDate: null,

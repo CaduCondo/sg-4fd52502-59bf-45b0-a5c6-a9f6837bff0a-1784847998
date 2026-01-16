@@ -115,6 +115,89 @@ export const paymentService = {
     if (error) throw error;
   },
 
+  async regeneratePaymentsFromCurrentMonth(rentalId: string, rental: { value: number; paymentDay: number; endDate: string | null; }): Promise<void> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Delete unpaid future payments from current month onwards
+    await this.deleteFuturePaymentsFromCurrentMonth(rentalId);
+    
+    const paymentDay = rental.paymentDay;
+    const payments: Omit<Payment, "id" | "createdAt">[] = [];
+    
+    // Start from current month
+    let currentYear = today.getFullYear();
+    let currentMonth = today.getMonth();
+    
+    // Parse end date if exists
+    let endDate: Date | null = null;
+    if (rental.endDate) {
+      const [endYear, endMonth, endDay] = rental.endDate.split("-").map(Number);
+      endDate = new Date(endYear, endMonth - 1, endDay);
+      endDate.setHours(0, 0, 0, 0);
+    }
+    
+    // Define max date: end date or 12 months ahead
+    const maxDate = endDate || new Date(currentYear + 1, currentMonth, paymentDay);
+    
+    // Generate monthly payments
+    while (true) {
+      // Calculate last day of current month
+      const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+      
+      // Adjust payment day if it exceeds month days
+      const validDay = Math.min(paymentDay, lastDayOfMonth);
+      
+      // Create due date in local timezone
+      const dueDate = new Date(currentYear, currentMonth, validDay);
+      dueDate.setHours(0, 0, 0, 0);
+      
+      // Check if exceeded max date
+      if (dueDate > maxDate) break;
+      
+      // Format date as YYYY-MM-DD maintaining local timezone
+      const year = dueDate.getFullYear();
+      const month = String(dueDate.getMonth() + 1).padStart(2, "0");
+      const day = String(dueDate.getDate()).padStart(2, "0");
+      const dueDateString = `${year}-${month}-${day}`;
+      
+      // Create payment
+      const payment: Omit<Payment, "id" | "createdAt"> = {
+        rentalId: rentalId,
+        referenceMonth: currentMonth + 1,
+        referenceYear: currentYear,
+        dueDate: dueDateString,
+        expectedAmount: rental.value,
+        paidAmount: 0,
+        paymentDate: null,
+        status: "pending",
+        paymentMethod: null,
+        lateFee: 0,
+        interest: 0,
+        notes: null,
+        attachments: [],
+        partialPayments: [],
+      };
+      
+      payments.push(payment);
+      
+      // Move to next month
+      currentMonth++;
+      if (currentMonth > 11) {
+        currentMonth = 0;
+        currentYear++;
+      }
+    }
+    
+    // Create all payments
+    for (const payment of payments) {
+      await this.create(payment);
+    }
+  },
+
+  async deleteFuturePaymentsFromCurrentMonth(rentalId: string): Promise<void> {
+  },
+
   mapFromDB(data: any): Payment {
     return {
       id: data.id,
