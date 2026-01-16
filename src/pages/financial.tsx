@@ -37,6 +37,7 @@ export default function FinancialPage() {
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [totalAdminFee, setTotalAdminFee] = useState(0);
   const [netRevenue, setNetRevenue] = useState(0);
+  const [expectedGrossRevenue, setExpectedGrossRevenue] = useState(0);
 
   useEffect(() => {
     const currentDate = new Date();
@@ -84,6 +85,14 @@ export default function FinancialPage() {
     const month = parseInt(selectedMonth);
     const year = parseInt(selectedYear);
 
+    // All payments for the month (any status) for expected gross revenue
+    const allMonthPayments = paymentsData.filter(
+      p => p.referenceMonth === month && p.referenceYear === year
+    );
+    
+    const expectedGross = allMonthPayments.reduce((sum, p) => sum + (p.expectedAmount || 0), 0);
+
+    // Only paid payments for actual revenue
     const currentMonthPayments = paymentsData.filter(
       p => p.referenceMonth === month && p.referenceYear === year && p.status === "paid"
     );
@@ -107,6 +116,7 @@ export default function FinancialPage() {
     setTotalRevenue(totalRev);
     setTotalAdminFee(adminFeeTotal);
     setNetRevenue(totalRev - adminFeeTotal);
+    setExpectedGrossRevenue(expectedGross);
   };
 
   const handlePixCodeChange = (paymentId: string, value: string) => {
@@ -242,7 +252,17 @@ export default function FinancialPage() {
             </div>
           </Card>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <Card className="border-cyan-200 bg-gradient-to-br from-cyan-50 to-white">
+              <CardHeader>
+                <CardTitle className="text-cyan-700 text-lg">📊 Valor Bruto Esperado</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-bold text-cyan-900">{formatCurrency(expectedGrossRevenue)}</p>
+                <p className="text-sm text-cyan-600 mt-1">Soma de todos os recebimentos</p>
+              </CardContent>
+            </Card>
+
             <Card className="border-emerald-200 bg-gradient-to-br from-emerald-50 to-white">
               <CardHeader>
                 <CardTitle className="text-emerald-700 text-lg">💰 Valor Bruto Recebido</CardTitle>
@@ -250,26 +270,6 @@ export default function FinancialPage() {
               <CardContent>
                 <p className="text-3xl font-bold text-emerald-900">{formatCurrency(totalRevenue)}</p>
                 <p className="text-sm text-emerald-600 mt-1">Todos os pagamentos recebidos</p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-white">
-              <CardHeader>
-                <CardTitle className="text-blue-700 text-lg">📊 Taxa de Administração</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-bold text-blue-900">{formatCurrency(totalAdminFee)}</p>
-                <p className="text-sm text-blue-600 mt-1">{config.adminFeePercentage}% (exceto &quot;Outros&quot;)</p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-purple-200 bg-gradient-to-br from-purple-50 to-white">
-              <CardHeader>
-                <CardTitle className="text-purple-700 text-lg">🏠 Valor Líquido Recebido</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-bold text-purple-900">{formatCurrency(netRevenue)}</p>
-                <p className="text-sm text-purple-600 mt-1">Após taxa administrativa</p>
               </CardContent>
             </Card>
           </div>
@@ -343,6 +343,19 @@ export default function FinancialPage() {
                           </TableCell>
                         </TableRow>
                       ))
+                    )}
+                    {paymentsWithDetails.length > 0 && (
+                      <TableRow className="bg-slate-100 font-bold">
+                        <TableCell colSpan={8} className="text-right">
+                          TOTAIS:
+                        </TableCell>
+                        <TableCell className="font-bold text-slate-900">
+                          {formatCurrency(paymentsWithDetails.reduce((sum, p) => sum + (p.expectedAmount || 0), 0))}
+                        </TableCell>
+                        <TableCell className="font-bold text-emerald-700">
+                          {formatCurrency(paymentsWithDetails.reduce((sum, p) => sum + (p.paidAmount || 0), 0))}
+                        </TableCell>
+                      </TableRow>
                     )}
                   </TableBody>
                 </Table>

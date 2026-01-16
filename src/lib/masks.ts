@@ -232,3 +232,22 @@ export const applyMoneyMask = (value: string): string => {
 export const removeMask = (value: string): string => {
   return value.replace(/\D/g, "");
 };
+
+// Parse currency string to float (handles Brazilian format: 1.534,95 -> 1534.95)
+export const parseCurrencyToFloat = (value: string): number => {
+  if (!value) return 0;
+  
+  // Remove currency symbol and spaces
+  let cleanValue = value.replace(/[R$\s]/g, "");
+  
+  // Replace dots (thousand separator) with nothing
+  cleanValue = cleanValue.replace(/\./g, "");
+  
+  // Replace comma (decimal separator) with dot
+  cleanValue = cleanValue.replace(/,/g, ".");
+  
+  // Parse to float
+  const numValue = parseFloat(cleanValue);
+  
+  return isNaN(numValue) ? 0 : numValue;
+};

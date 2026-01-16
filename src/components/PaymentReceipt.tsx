@@ -30,7 +30,10 @@ export function PaymentReceipt({ isOpen, onClose, payment, rental, property, ten
     const tens = ["", "", "vinte", "trinta", "quarenta", "cinquenta", "sessenta", "setenta", "oitenta", "noventa"];
     const hundreds = ["", "cento", "duzentos", "trezentos", "quatrocentos", "quinhentos", "seiscentos", "setecentos", "oitocentos", "novecentos"];
 
-    if (value === 0) return "zero reais";
+    // Handle zero
+    if (value === 0 || !value || isNaN(value)) return "zero reais";
+    
+    // Handle exactly 100
     if (value === 100) return "cem reais";
 
     const integerPart = Math.floor(value);
@@ -38,35 +41,78 @@ export function PaymentReceipt({ isOpen, onClose, payment, rental, property, ten
 
     let result = "";
 
+    // Handle thousands (1,000 - 999,999)
     if (integerPart >= 1000) {
       const thousands = Math.floor(integerPart / 1000);
-      result += thousands === 1 ? "mil" : `${units[thousands]} mil`;
-      if (integerPart % 1000 > 0) result += " e ";
+      
+      if (thousands === 1) {
+        result = "mil";
+      } else if (thousands < 10) {
+        result = units[thousands] + " mil";
+      } else if (thousands < 20) {
+        result = teens[thousands - 10] + " mil";
+      } else if (thousands < 100) {
+        const tensDigit = Math.floor(thousands / 10);
+        const unitsDigit = thousands % 10;
+        result = tens[tensDigit];
+        if (unitsDigit > 0) result += " e " + units[unitsDigit];
+        result += " mil";
+      } else {
+        // 100-999 thousand
+        const hundredsDigit = Math.floor(thousands / 100);
+        const remainder = thousands % 100;
+        result = hundreds[hundredsDigit];
+        if (remainder > 0) {
+          result += " e ";
+          if (remainder < 10) {
+            result += units[remainder];
+          } else if (remainder < 20) {
+            result += teens[remainder - 10];
+          } else {
+            const tensDigit = Math.floor(remainder / 10);
+            const unitsDigit = remainder % 10;
+            result += tens[tensDigit];
+            if (unitsDigit > 0) result += " e " + units[unitsDigit];
+          }
+        }
+        result += " mil";
+      }
+      
+      const afterThousands = integerPart % 1000;
+      if (afterThousands > 0) {
+        result += " ";
+        if (afterThousands < 100) result += "e ";
+      }
     }
 
+    // Handle hundreds (100-999)
     const remainder = integerPart % 1000;
     if (remainder >= 100) {
-      result += hundreds[Math.floor(remainder / 100)];
+      const hundredsDigit = Math.floor(remainder / 100);
+      result += hundreds[hundredsDigit];
       if (remainder % 100 > 0) result += " e ";
     }
 
+    // Handle tens and units (0-99)
     const lastTwo = remainder % 100;
     if (lastTwo >= 20) {
       result += tens[Math.floor(lastTwo / 10)];
-      if (lastTwo % 10 > 0) result += ` e ${units[lastTwo % 10]}`;
+      if (lastTwo % 10 > 0) result += " e " + units[lastTwo % 10];
     } else if (lastTwo >= 10) {
       result += teens[lastTwo - 10];
     } else if (lastTwo > 0) {
       result += units[lastTwo];
     }
 
+    // Add "real" or "reais"
     result += integerPart === 1 ? " real" : " reais";
 
+    // Handle decimal part (cents)
     if (decimalPart > 0) {
       result += " e ";
       if (decimalPart >= 20) {
         result += tens[Math.floor(decimalPart / 10)];
-        if (decimalPart % 10 > 0) result += ` e ${units[decimalPart % 10]}`;
+        if (decimalPart % 10 > 0) result += " e " + units[decimalPart % 10];
       } else if (decimalPart >= 10) {
         result += teens[decimalPart - 10];
       } else {
@@ -75,7 +121,7 @@ export function PaymentReceipt({ isOpen, onClose, payment, rental, property, ten
       result += decimalPart === 1 ? " centavo" : " centavos";
     }
 
-    return result;
+    return result.trim();
   };
 
   const baseRent = rental.monthlyRent;

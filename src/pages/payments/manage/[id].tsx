@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, DollarSign, Calendar, Home, User, X, Upload, Camera, Paperclip } from "lucide-react";
 import type { Payment, Rental, Property, Tenant, Config } from "@/types";
 import { paymentService, rentalService, propertyService, tenantService, configService } from "@/services";
-import { applyRealMask, removeMask, formatCurrency } from "@/lib/masks";
+import { applyRealMask, removeMask, formatCurrency, parseCurrencyToFloat } from "@/lib/masks";
 import { PaymentReceipt } from "@/components/PaymentReceipt";
 
 interface ManagePaymentContentProps {
@@ -217,7 +217,8 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
     if (!payment) return;
 
     try {
-      const paidAmount = parseFloat(removeMask(formData.paidAmount));
+      // ✅ Use parseCurrencyToFloat to correctly convert "1.534,95" -> 1534.95
+      const paidAmount = parseCurrencyToFloat(formData.paidAmount);
 
       // Determine status based on paid amount vs expected amount
       // Allow small difference for floating point comparisons

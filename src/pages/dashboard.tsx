@@ -235,9 +235,26 @@ export default function DashboardPage() {
     (p) => p.status === "pending" || p.status === "partial"
   );
 
+  // Calculate monthly revenue (all paid payments)
   const monthlyRevenue = paidPayments.reduce((sum, p) => sum + (p.paidAmount || 0), 0);
-  const adminFee = monthlyRevenue * (adminFeePercentage / 100);
+  
+  // Calculate admin fee (exclude "Outros" location)
+  let adminFee = 0;
+  for (const payment of paidPayments) {
+    const rental = rentals.find(r => r.id === payment.rentalId);
+    const property = rental ? properties.find(p => p.id === rental.propertyId) : undefined;
+    
+    // Only apply admin fee if property location is NOT "Outros"
+    if (property && property.location.toLowerCase() !== "outros") {
+      const fee = (payment.paidAmount || 0) * (adminFeePercentage / 100);
+      adminFee += fee;
+    }
+  }
+  
   const netRevenue = monthlyRevenue - adminFee;
+  
+  // Calculate expected value (all payments for the month, any status)
+  const expectedValue = filteredPayments.reduce((sum, p) => sum + (p.expectedAmount || 0), 0);
 
   const dueSoonPayments = filteredPayments.filter((p) => {
     // Skip paid payments - use negation to avoid type error
@@ -262,6 +279,7 @@ export default function DashboardPage() {
     monthlyRevenue: monthlyRevenue,
     adminFee: adminFee,
     netRevenue: netRevenue,
+    expectedValue: expectedValue,
   };
 
   const monthNames = [
@@ -478,6 +496,24 @@ export default function DashboardPage() {
                   <div className="text-2xl font-bold">{formatCurrency(stats.monthlyRevenue)}</div>
                   <p className="text-xs text-muted-foreground mt-1">
                     {monthNames[selectedMonth - 1]} de {selectedYear}
+                  </p>
+                </CardContent>
+              </Card>
+            </FloatingCard>
+
+            <FloatingCard delay={0.75}>
+              <Card
+                className="cursor-pointer hover:shadow-lg transition-shadow border-l-4 border-l-cyan-500"
+                onClick={() => router.push("/financial")}
+              >
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Valor Esperado</CardTitle>
+                  <DollarSign className="h-4 w-4 text-cyan-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{formatCurrency(stats.expectedValue)}</div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Todos os recebimentos de {monthNames[selectedMonth - 1]}
                   </p>
                 </CardContent>
               </Card>
