@@ -10,20 +10,21 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { configStorage, userStorage } from "@/lib/storage";
+import { userStorage } from "@/lib/storage";
 import { configService } from "@/services/configService";
-import { SystemConfig, User, Config } from "@/types";
+import { User, Config, Location } from "@/types";
 import { Trash2, Edit, Key, Plus, Save, MapPin } from "lucide-react";
 import { isAuthenticated } from "@/lib/auth";
 import { StaggerContainer, StaggerItem } from "@/components/animations/ScrollReveal";
 import { FloatingCard } from "@/components/animations/FloatingCard";
+import { applyCepMask, applyRealMask, removeMask } from "@/lib/masks";
 
 export default function Settings() {
   const router = useRouter();
   const { toast } = useToast();
   const [config, setConfig] = useState<Config>({ adminFeePercentage: 6, locations: [] });
   const [users, setUsers] = useState<User[]>([]);
-  const [locations, setLocations] = useState<string[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // User Form State
@@ -46,9 +47,18 @@ export default function Settings() {
   const [userToReset, setUserToReset] = useState<User | null>(null);
 
   // Location State
-  const [newLocation, setNewLocation] = useState("");
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
+  const [locationForm, setLocationForm] = useState({
+    name: "",
+    cep: "",
+    address: "",
+    number: "",
+    neighborhood: "",
+    city: "",
+    state: ""
+  });
 
-  const sortedLocations = [...locations].sort((a, b) => a.localeCompare(b));
+  const sortedLocations = [...locations].sort((a, b) => a.name.localeCompare(b.name));
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -63,13 +73,9 @@ export default function Settings() {
       const configData = await configService.get();
       const users = userStorage.getAll();
       
-      // Ensure "Outros" is always present
-      const locs = configData.locations || ["Jd. Colombo", "Signore", "Lemos", "Marrom", "Cinza", "Dora", "Acacias", "Outros"];
-      if (!locs.includes("Outros")) locs.push("Outros");
-      
       setConfig(configData);
       setUsers(users);
-      setLocations(locs);
+      setLocations(configData.locations || []);
       setIsLoading(false);
     } catch (error) {
       console.error("Error loading settings:", error);
@@ -193,34 +199,54 @@ export default function Settings() {
     }
   };
 
-  const handleAddLocation = async () => {
-    if (newLocation.trim()) {
-      try {
-        await configService.addLocation(newLocation.trim());
-        setNewLocation("");
-        await loadSettings();
-        toast({
-          title: "Sucesso",
-          description: `Local "${newLocation}" adicionado`,
-        });
-      } catch (error) {
-        console.error("Error adding location:", error);
-        toast({
-          title: "Erro",
-          description: "Erro ao adicionar local",
-          variant: "destructive"
-        });
-      }
+  const handleSaveLocation = async () => {
+    if (!locationForm.name || !locationForm.cep || !locationForm.address || !locationForm.number || !locationForm.city || !locationForm.state) {
+      toast({
+        title: "Erro",
+        description: "Preencha todos os campos obrigatórios.",
+        variant: "destructive"
+      });
+      return;
     }
-  };
 
-  const handleRemoveLocation = async (location: string) => {
     try {
-      await configService.removeLocation(location);
+      const newLocation: Location = {
+        id: crypto.randomUUID(),
+        name: locationForm.name,
+        cep: locationForm.cep,
+        address: locationForm.address,
+        number: locationForm.number,
+        neighborhood: locationForm.neighborhood,
+        city: locationForm.city,
+        state: locationForm.state,
+        createdAt: new Date().toISOString()
+      };
+
+      await configService.addLocation(newLocation);
+      setLocationForm({ name: "", cep: "", address: "", number: "", neighborhood: "", city: "", state: "" });
+      setIsLocationModalOpen(false);
       await loadSettings();
       toast({
         title: "Sucesso",
-        description: `Local "${location}" removido`,
+        description: `Local "${newLocation.name}" adicionado`,
+      });
+    } catch (error) {
+      console.error("Error adding location:", error);
+      toast({
+        title: "Erro",
+        description: "Erro ao adicionar local",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleRemoveLocation = async (locationId: string) => {
+    try {
+      await configService.removeLocation(locationId);
+      await loadSettings();
+      toast({
+        title: "Sucesso",
+        description: "Local removido",
       });
     } catch (error) {
       console.error("Error removing location:", error);
@@ -232,22 +258,25 @@ export default function Settings() {
     }
   };
 
-  const handleUpdateAdminFee = async () => {
-    if (!config) return;
-    const newAdminFee = Number((document.getElementById("adminFee") as HTMLInputElement).value);
-    if (isNaN(newAdminFee) || newAdminFee < 0 || newAdminFee > 100) return;
-    
+  const fetchAddressByCep = async (cep: string) => {
+    const cleanCep = cep.replace(/\D/g, "");
+    if (cleanCep.length !== 8) return;
+
     try {
-      await configService.save({ ...config, adminFeePercentage: newAdminFee });
-      await loadSettings();
-      toast({ title: "Taxa de administração atualizada" });
+      const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
+      const data = await response.json();
+
+      if (!data.erro) {
+        setLocationForm(prev => ({
+          ...prev,
+          address: data.logradouro,
+          neighborhood: data.bairro,
+          city: data.localidade,
+          state: data.uf
+        }));
+      }
     } catch (error) {
-      console.error("Error updating admin fee:", error);
-      toast({
-        title: "Erro",
-        description: "Erro ao atualizar taxa",
-        variant: "destructive"
-      });
+      console.error("Erro ao buscar CEP:", error);
     }
   };
 
@@ -380,59 +409,46 @@ export default function Settings() {
           <TabsContent value="locations">
             <FloatingCard delay={0.1}>
               <Card>
-                <CardHeader>
-                  <CardTitle>Gerenciar Locais</CardTitle>
-                  <CardDescription>Adicione ou remova locais disponíveis para cadastro de imóveis</CardDescription>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle>Gerenciar Locais</CardTitle>
+                    <CardDescription>Adicione ou remova locais (condomínios/prédios)</CardDescription>
+                  </div>
+                  <Button onClick={() => setIsLocationModalOpen(true)} className="bg-emerald-600 hover:bg-emerald-700">
+                    <Plus className="mr-2 h-4 w-4" /> Novo Local
+                  </Button>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">Locais Cadastrados</h3>
-                    <div className="flex gap-4 mb-8 items-end max-w-lg">
-                      <div className="flex-1 space-y-2">
-                        <Label htmlFor="new-location">Novo Local</Label>
-                        <Input 
-                          id="new-location"
-                          placeholder="Nome do condomínio ou bairro..." 
-                          value={newLocation}
-                          onChange={(e) => setNewLocation(e.target.value)}
-                          onKeyDown={(e) => e.key === 'Enter' && handleAddLocation()}
-                        />
-                      </div>
-                      <Button onClick={handleAddLocation} disabled={!newLocation} className="bg-emerald-600 hover:bg-emerald-700">
-                        <Plus className="mr-2 h-4 w-4" /> Adicionar
-                      </Button>
-                    </div>
-                    
                     <div className="bg-slate-50 rounded-lg p-6 border">
-                      <h3 className="text-sm font-medium text-slate-500 mb-4 uppercase tracking-wider">Locais Cadastrados</h3>
                       <StaggerContainer staggerDelay={0.05}>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                           {sortedLocations.length === 0 ? (
                             <p className="text-sm text-slate-500 italic">Nenhum local cadastrado</p>
                           ) : (
                             sortedLocations.map((location) => (
-                              <StaggerItem key={location}>
-                                <div className="group flex items-center justify-between p-3 bg-white border rounded-md shadow-sm hover:shadow-md transition-all">
-                                  <div className="flex items-center gap-3">
+                              <StaggerItem key={location.id}>
+                                <div className="group flex flex-col p-4 bg-white border rounded-md shadow-sm hover:shadow-md transition-all relative">
+                                  <div className="flex items-center gap-3 mb-2">
                                     <div className="p-2 bg-slate-100 rounded-full text-slate-600 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
                                       <MapPin className="h-4 w-4" />
                                     </div>
-                                    <span className="font-medium text-slate-700">{location}</span>
+                                    <span className="font-medium text-slate-700">{location.name}</span>
                                   </div>
-                                  {location !== "Outros" && (
-                                    <Button 
-                                      variant="ghost" 
-                                      size="sm" 
-                                      onClick={() => handleRemoveLocation(location)}
-                                      className="opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-700 hover:bg-red-50"
-                                      title="Excluir local"
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  )}
-                                  {location === "Outros" && (
-                                    <span className="text-xs text-slate-400 px-2 italic">Padrão</span>
-                                  )}
+                                  <div className="text-xs text-muted-foreground ml-11">
+                                    <p>{location.address}, {location.number}</p>
+                                    <p>{location.neighborhood} - {location.city}/{location.state}</p>
+                                  </div>
+                                  
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    onClick={() => handleRemoveLocation(location.id)}
+                                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                    title="Excluir local"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
                                 </div>
                               </StaggerItem>
                             ))
@@ -509,6 +525,67 @@ export default function Settings() {
             </div>
             <DialogFooter>
               <Button onClick={handleSaveUser}>Salvar</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Location Dialog */}
+        <Dialog open={isLocationModalOpen} onOpenChange={setIsLocationModalOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Novo Local</DialogTitle>
+              <CardDescription>Cadastre um condomínio ou prédio.</CardDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <Label>Nome do Local (Ex: Ed. Solar)</Label>
+                <Input value={locationForm.name} onChange={(e) => setLocationForm({...locationForm, name: e.target.value})} placeholder="Nome do condomínio" />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>CEP</Label>
+                  <Input 
+                    value={locationForm.cep} 
+                    onChange={(e) => {
+                      const masked = applyCepMask(e.target.value);
+                      setLocationForm({...locationForm, cep: masked});
+                      if (masked.length === 9) fetchAddressByCep(masked);
+                    }} 
+                    maxLength={9}
+                    placeholder="00000-000" 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Número</Label>
+                  <Input value={locationForm.number} onChange={(e) => setLocationForm({...locationForm, number: e.target.value})} />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Endereço</Label>
+                <Input value={locationForm.address} onChange={(e) => setLocationForm({...locationForm, address: e.target.value})} />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Bairro</Label>
+                <Input value={locationForm.neighborhood} onChange={(e) => setLocationForm({...locationForm, neighborhood: e.target.value})} />
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="col-span-2 space-y-2">
+                  <Label>Cidade</Label>
+                  <Input value={locationForm.city} onChange={(e) => setLocationForm({...locationForm, city: e.target.value})} />
+                </div>
+                <div className="space-y-2">
+                  <Label>UF</Label>
+                  <Input value={locationForm.state} onChange={(e) => setLocationForm({...locationForm, state: e.target.value.toUpperCase()})} maxLength={2} />
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsLocationModalOpen(false)}>Cancelar</Button>
+              <Button onClick={handleSaveLocation}>Salvar Local</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
