@@ -157,47 +157,43 @@ export default function RentalsPage() {
     
     const payments: Omit<Payment, "id" | "createdAt">[] = [];
     
-    // ✅ LÓGICA SUPER SIMPLES:
-    // Sempre começar do mês ATUAL ou do início do contrato (o que for mais tarde)
-    const currentYear = today.getFullYear();
-    const currentMonth = today.getMonth();
-    const startYear = startDate.getFullYear();
-    const startMonth = startDate.getMonth();
+    // Determinar mês/ano inicial: mês atual ou início do contrato (o que for mais tarde)
+    let currentYear: number;
+    let currentMonth: number;
     
-    let yearToStart: number;
-    let monthToStart: number;
-    
-    // Se contrato já começou, usar mês ATUAL
-    // Se contrato é futuro, usar mês do início do contrato
     if (startDate <= today) {
-      yearToStart = currentYear;
-      monthToStart = currentMonth; // ✅ MÊS ATUAL SEMPRE!
+      // Contrato já começou - usar mês ATUAL
+      currentYear = today.getFullYear();
+      currentMonth = today.getMonth();
     } else {
-      yearToStart = startYear;
-      monthToStart = startMonth;
+      // Contrato é futuro - usar início do contrato
+      currentYear = startDate.getFullYear();
+      currentMonth = startDate.getMonth();
     }
     
-    const currentDate = new Date(yearToStart, monthToStart, paymentDay);
+    // Definir data máxima: término do contrato ou 12 meses à frente
+    const maxDate = endDate || new Date(currentYear + 1, currentMonth, paymentDay);
     
-    // Define data máxima: data de término ou 12 meses se não houver término
-    const maxDate = endDate || new Date(currentDate.getFullYear() + 1, currentDate.getMonth(), paymentDay);
-    
-    // ✅ GERA PAGAMENTOS MENSAIS (incluindo mês atual SEMPRE)
-    while (currentDate <= maxDate) {
-      // ✅ Validar se o dia existe no mês atual (ex: 31 de fevereiro não existe)
-      const year = currentDate.getFullYear();
-      const month = currentDate.getMonth();
-      const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
+    // Gerar pagamentos mensais
+    while (true) {
+      // Calcular o último dia do mês atual
+      const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+      
+      // Ajustar o dia de vencimento se exceder os dias do mês
       const validDay = Math.min(paymentDay, lastDayOfMonth);
       
-      // Criar data válida para o mês
-      const validDate = new Date(year, month, validDay);
+      // Criar a data de vencimento para este mês
+      const dueDate = new Date(currentYear, currentMonth, validDay);
       
+      // Verificar se ultrapassou a data máxima
+      if (dueDate > maxDate) break;
+      
+      // Criar o pagamento
       const payment: Omit<Payment, "id" | "createdAt"> = {
         rentalId: rental.id,
-        referenceMonth: validDate.getMonth() + 1,
-        referenceYear: validDate.getFullYear(),
-        dueDate: validDate.toISOString().split("T")[0],
+        referenceMonth: currentMonth + 1,
+        referenceYear: currentYear,
+        dueDate: dueDate.toISOString().split("T")[0],
         expectedAmount: rental.value,
         paidAmount: 0,
         paymentDate: null,
@@ -211,10 +207,16 @@ export default function RentalsPage() {
       };
       
       payments.push(payment);
-      currentDate.setMonth(currentDate.getMonth() + 1);
+      
+      // Avançar para o próximo mês
+      currentMonth++;
+      if (currentMonth > 11) {
+        currentMonth = 0;
+        currentYear++;
+      }
     }
     
-    // Criar todos os pagamentos
+    // Criar todos os pagamentos no banco
     for (const payment of payments) {
       await paymentService.create(payment);
     }
