@@ -57,38 +57,27 @@ export function Layout({ children }: LayoutProps) {
   const [confirmPassword, setConfirmPassword] = useState("");
 
   useEffect(() => {
-    const checkAuth = () => {
-      const userStr = localStorage.getItem("user");
-      if (!userStr) {
-        router.push("/login");
-      } else {
-        const userData = JSON.parse(userStr);
-        setUser(userData);
+    // Load current user on mount
+    const currentUser = getCurrentUser();
+    if (currentUser) {
+      setUser(currentUser);
+    }
+  }, []);
 
-        // Block financial users from restricted pages
-        if (userData.role === "financial") {
-          const restrictedPaths = ["/properties", "/tenants", "/rentals", "/payments"];
-          if (restrictedPaths.some(path => router.pathname.startsWith(path))) {
-            toast({
-              title: "Acesso negado",
-              description: "Você não tem permissão para acessar esta página.",
-              variant: "destructive",
-            });
-            router.push("/dashboard");
-          }
-        }
-
-        // Check if financial user is trying to access restricted pages
-        if (userData.role === "broker") {
-          const restrictedPaths = ["/settings"];
-          if (restrictedPaths.some(path => router.pathname.startsWith(path))) {
-            router.push("/dashboard");
-          }
-        }
+  // Block financial users from accessing restricted pages
+  useEffect(() => {
+    const currentUser = getCurrentUser();
+    if (currentUser?.role === "financial") {
+      const restrictedPaths = ["/properties", "/tenants", "/rentals", "/payments"];
+      if (restrictedPaths.some(path => router.pathname.startsWith(path))) {
+        toast({
+          title: "Acesso negado",
+          description: "Você não tem permissão para acessar esta página.",
+          variant: "destructive",
+        });
+        router.push("/dashboard");
       }
-    };
-
-    checkAuth();
+    }
   }, [router]);
 
   const handleLogout = () => {

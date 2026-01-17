@@ -2,39 +2,67 @@ import { supabase } from "@/integrations/supabase/client";
 import type { CompanyConfig, Location } from "@/types";
 
 export const configService = {
-  async getConfig(): Promise<CompanyConfig | null> {
-    const { data, error } = await supabase
-      .from("configs")
-      .select("*")
-      .single();
-
-    if (error) {
-      if (error.code === "PGRST116") return null; // Not found
-      throw error;
-    }
-
-    // Map database fields to frontend interface
+  getDefaultConfig(): CompanyConfig {
     return {
-      companyName: data.company_name || "",
-      cnpj: data.cnpj || "",
-      email: data.email || "",
-      phone: data.phone || "",
-      address: data.address || "",
-      city: data.city || "",
-      state: data.state || "",
-      zipCode: data.zip_code || "",
-      adminFeePercentage: data.admin_fee_percentage || 0,
-      lateFeePercentage: data.late_fee_percentage || 0,
-      interestRatePercentage: data.interest_rate_percentage || 0,
-      locations: (data.locations as any[])?.map((loc: any) => ({
-        id: loc.id,
-        name: loc.name,
-        cep: loc.cep,
-        address: loc.address,
-        city: loc.city,
-        state: loc.state,
-      })) || [],
+      companyName: "Minha Imobiliária",
+      cnpj: "",
+      email: "",
+      phone: "",
+      address: "",
+      city: "",
+      state: "",
+      zipCode: "",
+      adminFeePercentage: 10,
+      lateFeePercentage: 2,
+      interestRatePercentage: 1,
+      locations: [],
     };
+  },
+
+  async getConfig(): Promise<CompanyConfig> {
+    try {
+      // Usamos limit(1).maybeSingle() para evitar erro 406 se houver mais de 1 linha
+      const { data, error } = await supabase
+        .from("configs")
+        .select("*")
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        console.error("Error fetching config:", error);
+        return this.getDefaultConfig();
+      }
+
+      if (!data) {
+        return this.getDefaultConfig();
+      }
+
+      // Map database fields to frontend interface
+      return {
+        companyName: data.company_name || "",
+        cnpj: data.cnpj || "",
+        email: data.email || "",
+        phone: data.phone || "",
+        address: data.address || "",
+        city: data.city || "",
+        state: data.state || "",
+        zipCode: data.zip_code || "",
+        adminFeePercentage: data.admin_fee_percentage || 0,
+        lateFeePercentage: data.late_fee_percentage || 0,
+        interestRatePercentage: data.interest_rate_percentage || 0,
+        locations: (data.locations as any[])?.map((loc: any) => ({
+          id: loc.id,
+          name: loc.name,
+          cep: loc.cep,
+          address: loc.address,
+          city: loc.city,
+          state: loc.state,
+        })) || [],
+      };
+    } catch (error) {
+      console.error("Error in getConfig:", error);
+      return this.getDefaultConfig();
+    }
   },
 
   async updateConfig(config: Partial<CompanyConfig>) {
@@ -59,24 +87,23 @@ export const configService = {
       updated_at: new Date().toISOString(),
     };
 
-    // Check if config exists
-    const { count } = await supabase
+    // Check if config exists using maybeSingle to avoid 406
+    const { data } = await supabase
       .from("configs")
-      .select("*", { count: "exact", head: true });
+      .select("id")
+      .limit(1)
+      .maybeSingle();
 
-    if (count === 0) {
+    if (!data) {
       // Insert new
       const { error } = await supabase.from("configs").insert([dbData]);
       if (error) throw error;
     } else {
-      // Update existing (assuming single row for config)
-      // Since we don't have an ID, we update the first row found or use a fixed logic
-      // Ideally configs table should have a single row constraint or known ID
-      // For now, let's update all rows (expecting only 1)
+      // Update existing by ID
       const { error } = await supabase
         .from("configs")
         .update(dbData)
-        .neq("id", "00000000-0000-0000-0000-000000000000"); // Update all rows basically
+        .eq("id", data.id);
       
       if (error) throw error;
     }
@@ -84,18 +111,15 @@ export const configService = {
 
   async createLocation(location: Location) {
     const config = await this.getConfig();
-    if (!config) {
-      // Create initial config with this location
-      await this.updateConfig({ locations: [location] });
-    } else {
-      const newLocations = [...config.locations, location];
-      await this.updateConfig({ locations: newLocations });
-    }
+    // Ensure locations is initialized
+    const currentLocations = config.locations || [];
+    const newLocations = [...currentLocations, location];
+    await this.updateConfig({ locations: newLocations });
   },
 
   async updateLocation(location: Location) {
     const config = await this.getConfig();
-    if (config) {
+    if (config && config.locations) {
       const newLocations = config.locations.map((l) =>
         l.id === location.id ? location : l
       );
@@ -105,7 +129,7 @@ export const configService = {
 
   async deleteLocation(id: string) {
     const config = await this.getConfig();
-    if (config) {
+    if (config && config.locations) {
       const newLocations = config.locations.filter((l) => l.id !== id);
       await this.updateConfig({ locations: newLocations });
     }
