@@ -89,7 +89,7 @@ export function Layout({ children }: LayoutProps) {
           
           console.log("✅ Layout: Usuário validado com sucesso");
           // Atualiza com os dados mais recentes do banco se possível, ou usa o do localStorage
-          setUser(userExists || currentUser);
+          setUser((userExists as unknown as UserType) || currentUser);
         } catch (error) {
           console.error("Erro ao validar usuário:", error);
           // Em caso de erro de rede, mantém o usuário do cache para não bloquear
