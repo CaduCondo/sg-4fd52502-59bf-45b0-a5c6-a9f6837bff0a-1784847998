@@ -33,6 +33,7 @@ import { Label } from "@/components/ui/label";
 import { userStorage } from "@/lib/storage";
 import { systemUserService } from "@/services/systemUserService";
 import { useToast } from "@/hooks/use-toast";
+import { EditProfileDialog } from "@/components/EditProfileDialog";
 
 interface LayoutProps {
   children: ReactNode;
@@ -50,14 +51,6 @@ export function Layout({ children }: LayoutProps) {
   const scrollProgress = useScrollProgress();
   const scrollDirection = useScrollDirection();
   
-  // Profile edit state
-  const [profileName, setProfileName] = useState("");
-  const [profileRg, setProfileRg] = useState("");
-  const [profileCpf, setProfileCpf] = useState("");
-  const [profilePhone, setProfilePhone] = useState("");
-  const [profileEmail, setProfileEmail] = useState("");
-  const [profilePhoto, setProfilePhoto] = useState("");
-
   // Password change state
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -67,94 +60,12 @@ export function Layout({ children }: LayoutProps) {
     const currentUser = getCurrentUser();
     if (currentUser) {
       setUser(currentUser);
-      setProfileName(currentUser.name);
-      setProfileRg(currentUser.rg || "");
-      setProfileCpf(currentUser.cpf || "");
-      setProfilePhone(currentUser.phone || "");
-      setProfileEmail(currentUser.email || "");
-      setProfilePhoto(currentUser.photo || "");
     }
   }, []);
-
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    const file = files[0];
-    
-    if (!file.type.startsWith("image/")) {
-      alert("Por favor, selecione apenas arquivos de imagem.");
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      alert("A imagem deve ter no máximo 5MB.");
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64String = reader.result as string;
-      setProfilePhoto(base64String);
-    };
-    reader.readAsDataURL(file);
-  };
 
   const handleLogout = () => {
     logout();
     router.push("/login");
-  };
-
-  const handleSaveProfile = async () => {
-    if (!user) return;
-    
-    try {
-      console.log("💾 Salvando perfil via Supabase...");
-      
-      const updatedData = {
-        name: profileName,
-        rg: profileRg || undefined,
-        cpf: profileCpf || undefined,
-        phone: profilePhone || undefined,
-        email: profileEmail,
-        photo: profilePhoto || undefined,
-      };
-      
-      console.log("📦 Dados a serem atualizados:", updatedData);
-      
-      // Update in Supabase
-      const result = await systemUserService.update(user.id, updatedData);
-      
-      console.log("✅ Resultado da atualização:", result);
-      
-      if (result) {
-        // Update local user state
-        const updatedUser: UserType = {
-          ...user,
-          ...updatedData,
-        };
-        
-        // Update localStorage for auth
-        if (typeof window !== "undefined") {
-          localStorage.setItem("rental_auth_user", JSON.stringify(updatedUser));
-        }
-        
-        setUser(updatedUser);
-        setShowProfileDialog(false);
-        
-        toast({
-          title: "Sucesso",
-          description: "Perfil atualizado com sucesso!",
-        });
-      }
-    } catch (error) {
-      console.error("❌ Erro ao salvar perfil:", error);
-      toast({
-        title: "Erro",
-        description: "Erro ao atualizar perfil. Tente novamente.",
-        variant: "destructive",
-      });
-    }
   };
 
   const handleChangePassword = () => {
@@ -448,126 +359,18 @@ export function Layout({ children }: LayoutProps) {
       </motion.main>
       
       {/* Edit Profile Dialog */}
-      <Dialog open={showProfileDialog} onOpenChange={setShowProfileDialog}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Editar Perfil</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="flex flex-col items-center space-y-3">
-              <div className="relative">
-                <div className="w-24 h-24 rounded-full overflow-hidden bg-slate-200 flex items-center justify-center">
-                  {profilePhoto ? (
-                    <img 
-                      src={profilePhoto} 
-                      alt="Profile" 
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <User className="w-12 h-12 text-slate-400" />
-                  )}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => document.getElementById("profile-photo-upload")?.click()}
-                  className="absolute bottom-0 right-0 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full p-2 shadow-lg transition-colors"
-                >
-                  <svg 
-                    xmlns="http://www.w3.org/2000/svg" 
-                    className="h-4 w-4" 
-                    viewBox="0 0 20 20" 
-                    fill="currentColor"
-                  >
-                    <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                  </svg>
-                </button>
-                <input
-                  id="profile-photo-upload"
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handlePhotoUpload}
-                />
-              </div>
-              <p className="text-xs text-slate-500 text-center">
-                Clique no ícone para alterar a foto<br />
-                (Máximo 5MB)
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Nome Completo *</Label>
-              <Input
-                value={profileName}
-                onChange={(e) => setProfileName(e.target.value)}
-                placeholder="Ex: Carlos Eduardo Pires"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>RG</Label>
-                <Input
-                  value={profileRg}
-                  onChange={(e) => setProfileRg(e.target.value)}
-                  placeholder="00.000.000-0"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>CPF</Label>
-                <Input
-                  value={profileCpf}
-                  onChange={(e) => setProfileCpf(e.target.value)}
-                  placeholder="000.000.000-00"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Celular</Label>
-                <Input
-                  value={profilePhone}
-                  onChange={(e) => setProfilePhone(e.target.value)}
-                  placeholder="(00) 00000-0000"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Email *</Label>
-                <Input
-                  type="email"
-                  value={profileEmail}
-                  onChange={(e) => setProfileEmail(e.target.value)}
-                  placeholder="usuario@exemplo.com"
-                />
-              </div>
-            </div>
-          </div>
-          <div className="flex justify-end gap-2 mt-6 pt-4 border-t">
-            <Button 
-              type="button"
-              variant="outline" 
-              onClick={() => {
-                console.log("🚫 Cancelar perfil - Dialog fechado");
-                setShowProfileDialog(false);
-              }}
-            >
-              Cancelar
-            </Button>
-            <Button 
-              type="button"
-              onClick={() => {
-                console.log("💾 Botão Salvar Perfil clicado DIRETAMENTE");
-                handleSaveProfile();
-              }}
-            >
-              Salvar
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <EditProfileDialog
+        open={showProfileDialog}
+        onOpenChange={setShowProfileDialog}
+        userId={user?.id || ""}
+        onSuccess={() => {
+          // Reload user data after successful update
+          const updatedUser = getCurrentUser();
+          if (updatedUser) {
+            setUser(updatedUser);
+          }
+        }}
+      />
       
       {/* Change Password Dialog */}
       <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
