@@ -308,31 +308,18 @@ export default function TenantsPage() {
                       </p>
                     </div>
 
-                    {/* Email e Telefone */}
-                    <div className="space-y-2 mb-3">
-                      {tenant.email && (
-                        <div className="flex items-center gap-2 text-sm">
-                          <Mail className="h-4 w-4 text-muted-foreground" />
-                          <span className="truncate">{tenant.email}</span>
-                        </div>
-                      )}
-                      {tenant.phone && (
-                        <div className="flex items-center gap-2 text-sm">
-                          <Phone className="h-4 w-4 text-muted-foreground" />
-                          <span>{tenant.phone}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Ícone da Lixeira - Canto Inferior Direito */}
+                    {/* Ações - Lixeira no canto inferior direito */}
                     <div className="flex justify-end">
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                        onClick={(e) => handleDelete(e, tenant)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(e, tenant);
+                        }}
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-5 w-5" />
                       </Button>
                     </div>
                   </CardContent>

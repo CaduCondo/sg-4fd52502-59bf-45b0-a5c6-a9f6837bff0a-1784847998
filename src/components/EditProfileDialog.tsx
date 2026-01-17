@@ -1,306 +1,365 @@
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { SystemUser } from "@/types";
 import { systemUserService } from "@/services/systemUserService";
-import { Loader2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { getCurrentUser } from "@/lib/auth";
-import { User } from "@/types";
+import { User, Mail, Building2, Phone, MapPin, Calendar, Shield, Save, KeyRound, Unlock } from "lucide-react";
+import { applyCpfMask, applyPhoneMask, applyCepMask, removeMask } from "@/lib/masks";
 
 interface EditProfileDialogProps {
-  user: User | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess?: () => void;
+  user: SystemUser;
+  onSuccess: () => void;
 }
 
-export function EditProfileDialog({ user, open, onOpenChange, onSuccess }: EditProfileDialogProps) {
+export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditProfileDialogProps) {
   const { toast } = useToast();
-  const [loading, setLoading] = useState(false);
-  const [userId, setUserId] = useState<string>("");
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    cpf: "",
-    rg: "",
-  });
+  const [selectedUser, setSelectedUser] = useState<SystemUser | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [isUnlocking, setIsUnlocking] = useState(false);
 
-  // Load authenticated user's data on dialog open
   useEffect(() => {
-    if (!open) return;
-
-    const loadUserData = async () => {
-      console.log("🔓 Dialog aberto, iniciando fluxo de carregamento...");
-      setLoading(true);
-
-      try {
-        let userId: string | null = null;
-
-        // Etapa 1: Tentar obter usuário autenticado do Supabase
-        console.log("📡 Etapa 1: Buscando usuário autenticado do Supabase...");
-        const {
-          data: { user: supabaseUser },
-        } = await supabase.auth.getUser();
-
-        if (supabaseUser) {
-          console.log("✅ Usuário autenticado do Supabase encontrado:", supabaseUser.id);
-          userId = supabaseUser.id;
-        } else {
-          console.warn("⚠️ Nenhuma sessão Supabase encontrada, tentando localStorage...");
-          const user = getCurrentUser();
-          if (user) {
-            console.log("✅ Usuário do localStorage encontrado:", user.id);
-            userId = user.id;
-          }
-        }
-
-        if (!userId) {
-          console.error("❌ Nenhum usuário encontrado! Redirecionando para login...");
-          localStorage.removeItem("isAuthenticated");
-          localStorage.removeItem("currentUser");
-          toast({
-            title: "Sessão Expirada",
-            description: "Por favor, faça login novamente.",
-            variant: "destructive",
-          });
-          setLoading(false);
-          onOpenChange(false);
-          setTimeout(() => {
-            window.location.href = "/login";
-          }, 1500);
-          return;
-        }
-
-        // Etapa 2: Load user data from database
-        console.log("📡 Etapa 2: Carregando dados do perfil do banco...");
-        const userData = await systemUserService.getById(userId);
-
-        if (!userData) {
-          console.error("❌ Nenhum dado de perfil encontrado para o user ID:", userId);
-          console.error("🔄 DETECTADO: ID no localStorage não existe no banco de dados!");
-          console.log("🧹 Limpando dados corrompidos do localStorage...");
-          
-          // Clear corrupted localStorage data
-          localStorage.removeItem("isAuthenticated");
-          localStorage.removeItem("currentUser");
-          
-          toast({
-            title: "Sessão Inválida",
-            description: "Seus dados de sessão estão corrompidos. Por favor, faça login novamente.",
-            variant: "destructive"
-          });
-          
-          setLoading(false);
-          onOpenChange(false);
-          
-          // Redirect to login after 2 seconds
-          setTimeout(() => {
-            window.location.href = "/login";
-          }, 2000);
-          
-          return;
-        }
-
-        console.log("✅ Etapa 2 completa: Dados carregados:", userData);
-
-        // Fill form with user data
-        setFormData({
-          name: userData.name || "",
-          email: userData.email || "",
-          phone: userData.phone || "",
-          cpf: userData.cpf || "",
-          rg: userData.rg || ""
-        });
-
-        console.log("✅ Formulário preenchido com sucesso!");
-        setLoading(false);
-      } catch (error) {
-        console.error("❌ ERRO FATAL ao carregar dados:", error);
-        
-        // Check if it's a 406 error (user not found)
-        if (error && typeof error === 'object' && 'code' in error && error.code === 'PGRST116') {
-          console.error("🔄 DETECTADO: Erro 406 - Usuário não existe no banco!");
-          console.log("🧹 Limpando dados corrompidos do localStorage...");
-          
-          localStorage.removeItem("isAuthenticated");
-          localStorage.removeItem("currentUser");
-          
-          toast({
-            title: "Sessão Inválida",
-            description: "Seus dados de sessão estão corrompidos. Redirecionando para login...",
-            variant: "destructive"
-          });
-          
-          setLoading(false);
-          onOpenChange(false);
-          
-          setTimeout(() => {
-            window.location.href = "/login";
-          }, 2000);
-          
-          return;
-        }
-        
-        toast({
-          title: "Erro",
-          description: "Erro ao carregar dados do perfil. Tente novamente.",
-          variant: "destructive"
-        });
-        setLoading(false);
-        onOpenChange(false);
-      }
-    };
-
-    loadUserData();
-  }, [open, onOpenChange, toast]);
-
-  const handleSave = async () => {
-    if (!userId) {
-      console.error("❌ ERRO: userId está vazio no momento do salvamento!");
-      toast({
-        title: "Erro",
-        description: "Erro interno: ID de usuário não encontrado.",
-        variant: "destructive",
-      });
-      return;
+    if (open && user) {
+      setSelectedUser({ ...user });
     }
+  }, [open, user]);
 
+  const handleResetPassword = async () => {
+    if (!selectedUser) return;
+
+    setIsResettingPassword(true);
     try {
-      setLoading(true);
-      console.log("💾 Etapa 3: Iniciando salvamento...");
-      console.log("📦 User ID:", userId);
-      console.log("📦 Dados a serem salvos:", formData);
-
-      const updatedUser = await systemUserService.update(userId, formData);
-      
-      if (!updatedUser) {
-        console.error("❌ systemUserService.update retornou null!");
-        throw new Error("Falha ao atualizar perfil");
-      }
-      
-      console.log("✅ Etapa 3 completa: Perfil atualizado com sucesso:", updatedUser);
+      await systemUserService.resetPassword(selectedUser.id);
       
       toast({
-        title: "Sucesso",
-        description: "Perfil atualizado com sucesso!",
+        title: "Senha zerada com sucesso!",
+        description: `A senha do usuário ${selectedUser.name} foi redefinida para a senha padrão.`,
       });
-
-      console.log("🔄 Fechando dialog e chamando callback onSuccess...");
-      onOpenChange(false);
       
-      if (onSuccess) {
-        console.log("🔄 Executando callback onSuccess...");
-        onSuccess();
-      }
-      
-      console.log("✅ Processo completo finalizado com sucesso!");
-      
+      onSuccess();
     } catch (error) {
-      console.error("❌ ERRO FATAL ao salvar perfil:", error);
+      console.error("Erro ao zerar senha:", error);
       toast({
-        title: "Erro",
-        description: "Erro ao atualizar perfil. Tente novamente.",
+        title: "Erro ao zerar senha",
+        description: error instanceof Error ? error.message : "Não foi possível zerar a senha do usuário.",
         variant: "destructive",
       });
     } finally {
-      setLoading(false);
+      setIsResettingPassword(false);
     }
   };
 
+  const handleUnlockUser = async () => {
+    if (!selectedUser) return;
+
+    setIsUnlocking(true);
+    try {
+      await systemUserService.unlockUser(selectedUser.id);
+      
+      toast({
+        title: "Usuário desbloqueado!",
+        description: `O usuário ${selectedUser.name} foi desbloqueado com sucesso.`,
+      });
+      
+      onSuccess();
+      onOpenChange(false);
+    } catch (error) {
+      console.error("Erro ao desbloquear usuário:", error);
+      toast({
+        title: "Erro ao desbloquear usuário",
+        description: error instanceof Error ? error.message : "Não foi possível desbloquear o usuário.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUnlocking(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedUser) return;
+
+    setIsSubmitting(true);
+    try {
+      const cleanDocument = removeMask(selectedUser.document);
+      const cleanPhone = removeMask(selectedUser.phone);
+      const cleanCep = selectedUser.cep ? removeMask(selectedUser.cep) : undefined;
+
+      await systemUserService.update(selectedUser.id, {
+        ...selectedUser,
+        document: cleanDocument,
+        phone: cleanPhone,
+        cep: cleanCep,
+      });
+
+      toast({
+        title: "Perfil atualizado!",
+        description: "As informações do usuário foram atualizadas com sucesso.",
+      });
+
+      onSuccess();
+      onOpenChange(false);
+    } catch (error) {
+      console.error("Erro ao atualizar perfil:", error);
+      toast({
+        title: "Erro ao atualizar perfil",
+        description: error instanceof Error ? error.message : "Não foi possível atualizar o perfil.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleChange = (field: keyof SystemUser, value: string) => {
+    if (!selectedUser) return;
+
+    if (field === "document") {
+      const masked = applyCpfMask(value);
+      setSelectedUser({ ...selectedUser, [field]: masked });
+    } else if (field === "phone") {
+      const masked = applyPhoneMask(value);
+      setSelectedUser({ ...selectedUser, [field]: masked });
+    } else if (field === "cep") {
+      const masked = applyCepMask(value);
+      setSelectedUser({ ...selectedUser, [field]: masked });
+    } else {
+      setSelectedUser({ ...selectedUser, [field]: value });
+    }
+  };
+
+  if (!selectedUser) return null;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Editar Perfil</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <User className="h-5 w-5" />
+            Editar Perfil do Usuário
+          </DialogTitle>
         </DialogHeader>
 
-        {loading && !formData.name ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-        ) : (
-          <>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="name">Nome Completo</Label>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Informações Pessoais */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+              Informações Pessoais
+            </h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="name" className="flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  Nome Completo
+                </Label>
                 <Input
                   id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Digite o nome completo"
+                  value={selectedUser.name}
+                  onChange={(e) => handleChange("name", e.target.value)}
+                  required
                 />
               </div>
 
-              <div className="grid gap-2">
-                <Label htmlFor="email">Email</Label>
+              <div className="space-y-2">
+                <Label htmlFor="document" className="flex items-center gap-2">
+                  <Shield className="h-4 w-4" />
+                  CPF
+                </Label>
+                <Input
+                  id="document"
+                  value={selectedUser.document}
+                  onChange={(e) => handleChange("document", e.target.value)}
+                  placeholder="000.000.000-00"
+                  maxLength={14}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="email" className="flex items-center gap-2">
+                  <Mail className="h-4 w-4" />
+                  E-mail
+                </Label>
                 <Input
                   id="email"
                   type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  placeholder="Digite o email"
+                  value={selectedUser.email}
+                  onChange={(e) => handleChange("email", e.target.value)}
+                  required
                 />
               </div>
 
-              <div className="grid gap-2">
-                <Label htmlFor="phone">Celular</Label>
+              <div className="space-y-2">
+                <Label htmlFor="phone" className="flex items-center gap-2">
+                  <Phone className="h-4 w-4" />
+                  Telefone
+                </Label>
                 <Input
                   id="phone"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  value={selectedUser.phone}
+                  onChange={(e) => handleChange("phone", e.target.value)}
                   placeholder="(00) 00000-0000"
+                  maxLength={15}
+                  required
                 />
               </div>
 
-              <div className="grid gap-2">
-                <Label htmlFor="cpf">CPF</Label>
+              <div className="space-y-2">
+                <Label htmlFor="birthDate" className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  Data de Nascimento
+                </Label>
                 <Input
-                  id="cpf"
-                  value={formData.cpf}
-                  onChange={(e) => setFormData({ ...formData, cpf: e.target.value })}
-                  placeholder="000.000.000-00"
+                  id="birthDate"
+                  type="date"
+                  value={selectedUser.birthDate}
+                  onChange={(e) => handleChange("birthDate", e.target.value)}
+                  required
                 />
               </div>
 
-              <div className="grid gap-2">
-                <Label htmlFor="rg">RG</Label>
+              <div className="space-y-2">
+                <Label htmlFor="role" className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4" />
+                  Função
+                </Label>
+                <Select
+                  value={selectedUser.role}
+                  onValueChange={(value) => handleChange("role", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin">Administrador</SelectItem>
+                    <SelectItem value="manager">Gerente</SelectItem>
+                    <SelectItem value="broker">Corretor</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+
+          {/* Endereço */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+              Endereço
+            </h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="cep" className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4" />
+                  CEP
+                </Label>
                 <Input
-                  id="rg"
-                  value={formData.rg}
-                  onChange={(e) => setFormData({ ...formData, rg: e.target.value })}
-                  placeholder="00.000.000-0"
+                  id="cep"
+                  value={selectedUser.cep || ""}
+                  onChange={(e) => handleChange("cep", e.target.value)}
+                  placeholder="00000-000"
+                  maxLength={9}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="street">Rua</Label>
+                <Input
+                  id="street"
+                  value={selectedUser.street || ""}
+                  onChange={(e) => handleChange("street", e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="number">Número</Label>
+                <Input
+                  id="number"
+                  value={selectedUser.number || ""}
+                  onChange={(e) => handleChange("number", e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="complement">Complemento</Label>
+                <Input
+                  id="complement"
+                  value={selectedUser.complement || ""}
+                  onChange={(e) => handleChange("complement", e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="neighborhood">Bairro</Label>
+                <Input
+                  id="neighborhood"
+                  value={selectedUser.neighborhood || ""}
+                  onChange={(e) => handleChange("neighborhood", e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="city">Cidade</Label>
+                <Input
+                  id="city"
+                  value={selectedUser.city || ""}
+                  onChange={(e) => handleChange("city", e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="state">Estado</Label>
+                <Input
+                  id="state"
+                  value={selectedUser.state || ""}
+                  onChange={(e) => handleChange("state", e.target.value)}
+                  maxLength={2}
+                  placeholder="SP"
                 />
               </div>
             </div>
+          </div>
 
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-                disabled={loading}
-              >
-                Cancelar
-              </Button>
-              <Button
-                onClick={handleSave}
-                disabled={loading}
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Salvando...
-                  </>
-                ) : (
-                  "Salvar"
-                )}
-              </Button>
-            </DialogFooter>
-          </>
-        )}
+          {/* Botões de Ação */}
+          <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleResetPassword}
+              disabled={isResettingPassword || isSubmitting || isUnlocking}
+              className="flex-1"
+            >
+              <KeyRound className="h-4 w-4 mr-2" />
+              {isResettingPassword ? "Zerando..." : "Zerar Senha"}
+            </Button>
+
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleUnlockUser}
+              disabled={isUnlocking || isSubmitting || isResettingPassword || selectedUser.active}
+              className="flex-1"
+            >
+              <Unlock className="h-4 w-4 mr-2" />
+              {isUnlocking ? "Desbloqueando..." : selectedUser.active ? "Usuário Ativo" : "Desbloquear"}
+            </Button>
+
+            <Button
+              type="submit"
+              disabled={isSubmitting || isResettingPassword || isUnlocking}
+              className="flex-1"
+            >
+              <Save className="h-4 w-4 mr-2" />
+              {isSubmitting ? "Salvando..." : "Salvar Alterações"}
+            </Button>
+          </div>
+        </form>
       </DialogContent>
     </Dialog>
   );
