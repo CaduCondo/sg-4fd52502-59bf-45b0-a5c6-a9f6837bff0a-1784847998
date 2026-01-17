@@ -10,6 +10,7 @@ import { initializeStorage } from "@/lib/storage";
 import { SEO } from "@/components/SEO";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { systemUserService } from "@/services/systemUserService";
+import { supabase } from "@/lib/supabase";
 
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
@@ -91,6 +92,25 @@ export default function Login() {
         email: user.email,
         role: user.role
       }));
+      
+      // Try to create Supabase session (optional, won't block login if fails)
+      try {
+        console.log("🔄 Tentando sincronizar sessão com Supabase...");
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: user.email,
+          password: password
+        });
+        
+        if (signInError) {
+          console.warn("⚠️ Não foi possível criar sessão Supabase (usuário pode não existir no auth.users):", signInError.message);
+          console.log("✅ Continuando com autenticação via localStorage...");
+        } else {
+          console.log("✅ Sessão Supabase criada com sucesso!");
+        }
+      } catch (syncError) {
+        console.warn("⚠️ Erro ao sincronizar com Supabase (não crítico):", syncError);
+      }
+      
       router.push("/dashboard");
     } else {
       handleLoginAttempt();

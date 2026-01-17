@@ -11,28 +11,26 @@ async function getSupabaseUser(): Promise<User | null> {
     
     if (!supabaseUser) return null;
 
-    // Get user profile from Supabase to get role
+    // Get user profile from system_users table (not user_profiles)
     const { data: profile } = await supabase
-      .from("user_profiles")
+      .from("system_users")
       .select("*")
       .eq("id", supabaseUser.id)
       .single();
 
     if (profile) {
-      // Convert Supabase user to local User format
-      // Note: user_profiles only has basic info. Other fields are defaulted.
       const user: User = {
         id: profile.id,
         name: profile.name || supabaseUser.email?.split("@")[0] || "Admin",
-        username: supabaseUser.email?.split("@")[0] || "",
-        email: supabaseUser.email || "",
+        username: profile.username || supabaseUser.email?.split("@")[0] || "",
+        email: profile.email || supabaseUser.email || "",
         password: "", // Not needed for authenticated users
         role: (profile.role as "admin" | "corretor" | "financeiro") || "admin",
-        phone: "", // Not present in user_profiles
-        rg: "",    // Not present in user_profiles
-        cpf: "",   // Not present in user_profiles
-        active: true, // Default to true if authenticated
-        createdAt: supabaseUser.created_at
+        phone: profile.phone || "",
+        rg: profile.rg || "",
+        cpf: profile.cpf || "",
+        active: profile.active ?? true,
+        createdAt: profile.created_at || supabaseUser.created_at
       };
 
       // Sync to localStorage for compatibility
@@ -90,6 +88,8 @@ export async function logout(): Promise<void> {
   // Clear localStorage
   if (typeof window !== "undefined") {
     localStorage.removeItem(AUTH_KEY);
+    localStorage.removeItem("isAuthenticated");
+    localStorage.removeItem("currentUser");
   }
 }
 

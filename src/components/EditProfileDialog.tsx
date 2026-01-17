@@ -26,88 +26,114 @@ export function EditProfileDialog({ open, onOpenChange, onSuccess }: EditProfile
     rg: "",
   });
 
+  // Load authenticated user's data on dialog open
   useEffect(() => {
-    if (open) {
-      console.log("🔓 Dialog aberto, iniciando fluxo de carregamento...");
-      loadUserData();
-    } else {
-      // Reset form when dialog closes
-      console.log("🔒 Dialog fechado, resetando formulário...");
-      setFormData({
-        name: "",
-        email: "",
-        phone: "",
-        cpf: "",
-        rg: "",
-      });
-      setUserId("");
+    if (!open) {
+      setIsLoading(false);
+      return;
     }
-  }, [open]);
 
-  const loadUserData = async () => {
-    try {
-      setLoading(true);
-      console.log("📡 Etapa 1: Buscando usuário autenticado do Supabase...");
-      
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      
-      if (authError) {
-        console.error("❌ Erro ao buscar usuário autenticado:", authError);
-        throw authError;
-      }
-      
-      if (!user?.id) {
-        console.error("❌ Nenhum usuário autenticado encontrado!");
-        toast({
-          title: "Erro de Autenticação",
-          description: "Você precisa estar logado para editar o perfil.",
-          variant: "destructive",
+    const loadUserData = async () => {
+      try {
+        setIsLoading(true);
+        console.log("🔓 Dialog aberto, iniciando fluxo de carregamento...");
+        
+        console.log("📡 Etapa 1: Buscando usuário autenticado do Supabase...");
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (!user) {
+          console.warn("⚠️ Nenhuma sessão Supabase encontrada, tentando localStorage...");
+          
+          // Fallback to localStorage for legacy auth
+          const localUser = getCurrentUser();
+          if (!localUser) {
+            console.error("❌ Nenhum usuário autenticado encontrado!");
+            toast({
+              title: "Erro",
+              description: "Você precisa estar autenticado para editar o perfil.",
+              variant: "destructive"
+            });
+            onOpenChange(false);
+            return;
+          }
+          
+          console.log("✅ Usuário do localStorage encontrado:", localUser.id);
+          setUserId(localUser.id);
+          
+          // Load user data from system_users table
+          const userData = await systemUserService.getById(localUser.id);
+          if (!userData) {
+            console.error("❌ Nenhum dado de perfil encontrado para o user ID:", localUser.id);
+            toast({
+              title: "Erro",
+              description: "Não foi possível carregar os dados do perfil.",
+              variant: "destructive"
+            });
+            onOpenChange(false);
+            return;
+          }
+          
+          console.log("✅ Dados carregados do localStorage:", userData);
+          setFormData({
+            name: userData.name || "",
+            username: userData.username || "",
+            email: userData.email || "",
+            phone: userData.phone || "",
+            rg: userData.rg || "",
+            cpf: userData.cpf || "",
+            role: userData.role || "corretor",
+            active: userData.active ?? true
+          });
+          console.log("✅ Formulário preenchido com sucesso!");
+          setIsLoading(false);
+          return;
+        }
+        
+        console.log("✅ Etapa 1 completa: User ID do Supabase:", user.id);
+        setUserId(user.id);
+
+        console.log("📡 Etapa 2: Carregando dados do perfil do banco...");
+        const userData = await systemUserService.getById(user.id);
+        
+        if (!userData) {
+          console.error("❌ Nenhum dado de perfil encontrado para o user ID:", user.id);
+          toast({
+            title: "Erro",
+            description: "Não foi possível carregar os dados do perfil.",
+            variant: "destructive"
+          });
+          onOpenChange(false);
+          return;
+        }
+        
+        console.log("✅ Etapa 2 completa: Dados carregados:", userData);
+
+        setFormData({
+          name: userData.name || "",
+          username: userData.username || "",
+          email: userData.email || "",
+          phone: userData.phone || "",
+          rg: userData.rg || "",
+          cpf: userData.cpf || "",
+          role: userData.role || "corretor",
+          active: userData.active ?? true
         });
-        onOpenChange(false);
-        return;
-      }
-
-      console.log("✅ Etapa 1 completa: User ID do Supabase:", user.id);
-      setUserId(user.id);
-      
-      console.log("📡 Etapa 2: Carregando dados do perfil do banco...");
-      const userData = await systemUserService.getById(user.id);
-      
-      if (!userData) {
-        console.error("❌ Nenhum dado de perfil encontrado para o user ID:", user.id);
+        
+        console.log("✅ Formulário preenchido com sucesso!");
+        setIsLoading(false);
+      } catch (error) {
+        console.error("❌ ERRO FATAL ao carregar dados:", error);
         toast({
           title: "Erro",
-          description: "Não foi possível carregar os dados do perfil.",
-          variant: "destructive",
+          description: "Erro ao carregar dados do perfil.",
+          variant: "destructive"
         });
         onOpenChange(false);
-        return;
       }
+    };
 
-      console.log("✅ Etapa 2 completa: Dados carregados:", userData);
-      
-      setFormData({
-        name: userData.name || "",
-        email: userData.email || "",
-        phone: userData.phone || "",
-        cpf: userData.cpf || "",
-        rg: userData.rg || "",
-      });
-      
-      console.log("✅ Formulário preenchido com sucesso!");
-      
-    } catch (error) {
-      console.error("❌ ERRO FATAL ao carregar dados:", error);
-      toast({
-        title: "Erro",
-        description: "Erro ao carregar dados do perfil. Tente novamente.",
-        variant: "destructive",
-      });
-      onOpenChange(false);
-    } finally {
-      setLoading(false);
-    }
-  };
+    loadUserData();
+  }, [open, onOpenChange, toast]);
 
   const handleSave = async () => {
     if (!userId) {
