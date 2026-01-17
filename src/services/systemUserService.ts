@@ -169,13 +169,15 @@ export const systemUserService = {
     }
   },
 
-  // Redefinir senha do usuário
-  async resetPassword(id: string, newPassword: string): Promise<boolean> {
+  // Redefinir senha do usuário para senha padrão
+  async resetPassword(id: string): Promise<boolean> {
     try {
+      const defaultPassword = "123456"; // Senha padrão
+      
       const { error } = await supabase
         .from("system_users")
         .update({
-          password: newPassword,
+          password: defaultPassword,
           updated_at: new Date().toISOString()
         })
         .eq("id", id);
@@ -184,6 +186,25 @@ export const systemUserService = {
       return true;
     } catch (error) {
       console.error("Error resetting password:", error);
+      return false;
+    }
+  },
+
+  // Desbloquear usuário (ativar conta)
+  async unlockUser(id: string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from("system_users")
+        .update({
+          active: true,
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", id);
+
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.error("Error unlocking user:", error);
       return false;
     }
   },

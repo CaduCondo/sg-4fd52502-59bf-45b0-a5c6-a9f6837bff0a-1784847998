@@ -23,6 +23,15 @@ export interface SystemUser {
   phone?: string;
   rg?: string;
   cpf?: string;
+  document?: string;
+  birthDate?: string;
+  cep?: string;
+  street?: string;
+  number?: string;
+  complement?: string;
+  neighborhood?: string;
+  city?: string;
+  state?: string;
   role: "user" | "broker" | "financial" | "admin";
   active: boolean;
   created_at?: string;
