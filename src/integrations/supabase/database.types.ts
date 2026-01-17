@@ -17,55 +17,31 @@ export type Database = {
     Tables: {
       configs: {
         Row: {
-          address: string | null
           admin_fee_percentage: number
-          city: string | null
-          cnpj: string | null
-          company_name: string | null
           created_at: string | null
-          email: string | null
           id: string
           interest_rate_percentage: number | null
           late_fee_percentage: number | null
           locations: Json | null
-          phone: string | null
-          state: string | null
           updated_at: string | null
-          zip_code: string | null
         }
         Insert: {
-          address?: string | null
           admin_fee_percentage?: number
-          city?: string | null
-          cnpj?: string | null
-          company_name?: string | null
           created_at?: string | null
-          email?: string | null
           id?: string
           interest_rate_percentage?: number | null
           late_fee_percentage?: number | null
           locations?: Json | null
-          phone?: string | null
-          state?: string | null
           updated_at?: string | null
-          zip_code?: string | null
         }
         Update: {
-          address?: string | null
           admin_fee_percentage?: number
-          city?: string | null
-          cnpj?: string | null
-          company_name?: string | null
           created_at?: string | null
-          email?: string | null
           id?: string
           interest_rate_percentage?: number | null
           late_fee_percentage?: number | null
           locations?: Json | null
-          phone?: string | null
-          state?: string | null
           updated_at?: string | null
-          zip_code?: string | null
         }
         Relationships: []
       }

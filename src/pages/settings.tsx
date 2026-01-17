@@ -1,725 +1,688 @@
 import { useEffect, useState } from "react";
+import { useRouter } from "next/router";
 import { Layout } from "@/components/Layout";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
-import { 
-  Building2, 
-  Users, 
-  MapPin, 
-  Save, 
-  Plus, 
-  Trash2, 
-  Percent, 
-  FileText,
-  AlertCircle,
-  Coins
-} from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
 import { configService } from "@/services/configService";
-import { systemUserService } from "@/services/systemUserService";
-import type { CompanyConfig, Location, SystemUser } from "@/types";
-import { applyCepMask, applyPhoneMask, applyCnpjMask } from "@/lib/masks";
+import { systemUserService, SystemUser } from "@/services/systemUserService";
+import { Config, Location } from "@/types";
+import { Trash2, Edit, Key, Plus, Save, MapPin, Percent, UserPlus } from "lucide-react";
+import { isAuthenticated, isAuthenticatedAsync } from "@/lib/auth";
+import { StaggerContainer, StaggerItem } from "@/components/animations/ScrollReveal";
+import { FloatingCard } from "@/components/animations/FloatingCard";
+import { applyCepMask, removeMask } from "@/lib/masks";
+import { EditProfileDialog } from "@/components/EditProfileDialog";
 
 export default function Settings() {
+  const router = useRouter();
   const { toast } = useToast();
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("company");
-  
-  // Config State
-  const [config, setConfig] = useState<CompanyConfig>({
-    companyName: "",
-    cnpj: "",
-    email: "",
-    phone: "",
+  const [config, setConfig] = useState<Config>({ adminFeePercentage: 6, lateFeePercentage: 2, interestRatePercentage: 0.033, locations: [] });
+  const [systemUsers, setSystemUsers] = useState<SystemUser[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Location State
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
+  const [locationForm, setLocationForm] = useState({
+    name: "",
+    cep: "",
     address: "",
+    number: "",
+    neighborhood: "",
     city: "",
-    state: "",
-    zipCode: "",
-    adminFeePercentage: 0,
-    lateFeePercentage: 0,
-    interestRatePercentage: 0,
-    locations: [],
+    state: ""
   });
 
-  // Users State
-  const [users, setUsers] = useState<SystemUser[]>([]);
-  const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState<SystemUser | null>(null);
-  const [userFormData, setUserFormData] = useState({
+  // System User Form State
+  const [isSystemUserModalOpen, setIsSystemUserModalOpen] = useState(false);
+  const [editingSystemUser, setEditingSystemUser] = useState<SystemUser | null>(null);
+  const [systemUserForm, setSystemUserForm] = useState({
     name: "",
+    username: "",
     email: "",
     phone: "",
-    username: "",
+    rg: "",
+    cpf: "",
     password: "",
-    role: "user",
-    isActive: true
+    role: "corretor",
+    active: true
   });
 
-  // Locations State
-  const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false);
-  const [locationFormData, setLocationFormData] = useState({
-    name: "",
-    cep: ""
-  });
+  // System User Password Reset State
+  const [isResetSystemPasswordOpen, setIsResetSystemPasswordOpen] = useState(false);
+  const [resetSystemPasswordValue, setResetSystemPasswordValue] = useState("");
+  const [systemUserToReset, setSystemUserToReset] = useState<SystemUser | null>(null);
+  
+  // Edit Profile Dialog State
+  const [showEditProfileDialog, setShowEditProfileDialog] = useState(false);
+  const [userIdToEdit, setUserIdToEdit] = useState<string>("");
+
+  const sortedLocations = [...locations].sort((a, b) => a.name.localeCompare(b.name));
+
+  // useEffect(() => {
+  //   const checkAuth = async () => {
+  //     const isAuth = await isAuthenticatedAsync();
+  //     if (!isAuth) {
+  //       router.push("/login");
+  //       return;
+  //     }
+  //     loadSettings();
+  //   };
+  //   checkAuth();
+  // }, [router]);
 
   useEffect(() => {
-    loadData();
+    loadSettings();
   }, []);
 
-  const loadData = async () => {
+  const loadSettings = async () => {
     try {
-      setLoading(true);
-      const [configData, usersData] = await Promise.all([
-        configService.getConfig(),
-        systemUserService.getAll()
-      ]);
+      const configData = await configService.get();
+      const sysUsers = await systemUserService.getAll();
       
-      if (configData) setConfig(configData);
-      if (usersData) setUsers(usersData);
+      setConfig(configData);
+      setSystemUsers(sysUsers);
+      setLocations(configData.locations || []);
+      setIsLoading(false);
     } catch (error) {
-      console.error("Erro ao carregar configurações:", error);
+      console.error("Error loading settings:", error);
       toast({
         title: "Erro",
-        description: "Não foi possível carregar as configurações.",
-        variant: "destructive",
+        description: "Erro ao carregar configurações",
+        variant: "destructive"
       });
-    } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  // --- CONFIG HANDLERS ---
-
-  const handleConfigSubmit = async (e: React.FormEvent) => {
+  const handleUpdateConfig = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!config) return;
+
     try {
-      await configService.updateConfig(config);
+      await configService.save({
+        ...config,
+        locations: locations
+      });
+
       toast({
         title: "Sucesso",
-        description: "Configurações salvas com sucesso!",
+        description: "Configurações atualizadas com sucesso.",
       });
     } catch (error) {
       console.error("Error saving config:", error);
       toast({
         title: "Erro",
-        description: "Erro ao salvar configurações.",
-        variant: "destructive",
+        description: "Erro ao salvar configurações",
+        variant: "destructive"
       });
     }
   };
 
-  // --- USERS HANDLERS ---
-
-  const handleUserSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      if (editingUser) {
-        // Update existing user
-        // Note: Password update logic would be separate or require current password check in a real app
-        // Here we just update basic info
-        await systemUserService.update(editingUser.id, {
-          name: userFormData.name,
-          email: userFormData.email,
-          phone: userFormData.phone,
-          role: userFormData.role as any,
-          active: userFormData.isActive
-        });
-        toast({ title: "Sucesso", description: "Usuário atualizado!" });
-      } else {
-        // Create new user
-        await systemUserService.create({
-          name: userFormData.name,
-          email: userFormData.email,
-          phone: userFormData.phone,
-          username: userFormData.username,
-          password: userFormData.password,
-          role: userFormData.role as any,
-          active: true, // Fix: Missing required property
-        });
-        toast({ title: "Sucesso", description: "Usuário criado!" });
-      }
-      
-      setIsUserDialogOpen(false);
-      loadData(); // Reload users
-    } catch (error) {
-      console.error("Error saving user:", error);
+  const handleSaveLocation = async () => {
+    if (!locationForm.name || !locationForm.cep || !locationForm.address || !locationForm.number || !locationForm.city || !locationForm.state) {
       toast({
         title: "Erro",
-        description: "Erro ao salvar usuário.",
-        variant: "destructive",
+        description: "Preencha todos os campos obrigatórios.",
+        variant: "destructive"
       });
+      return;
     }
-  };
-
-  const openUserDialog = (user?: SystemUser) => {
-    if (user) {
-      setEditingUser(user);
-      setUserFormData({
-        name: user.name,
-        email: user.email,
-        phone: user.phone || "",
-        username: user.username,
-        password: "", // Don't show password
-        role: user.role,
-        isActive: user.active
-      });
-    } else {
-      setEditingUser(null);
-      setUserFormData({
-        name: "",
-        email: "",
-        phone: "",
-        username: "",
-        password: "",
-        role: "user",
-        isActive: true
-      });
-    }
-    setIsUserDialogOpen(true);
-  };
-
-  const handleDeleteUser = async (id: string) => {
-    if (!confirm("Tem certeza que deseja excluir este usuário?")) return;
-    try {
-      await systemUserService.delete(id);
-      toast({ title: "Sucesso", description: "Usuário excluído!" });
-      loadData();
-    } catch (error) {
-      toast({ title: "Erro", description: "Erro ao excluir usuário.", variant: "destructive" });
-    }
-  };
-
-  // --- LOCATIONS HANDLERS ---
-
-  const handleLocationSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!locationFormData.name) return;
 
     try {
-      const locationData: Location = {
+      const newLocation: Location = {
         id: crypto.randomUUID(),
-        name: locationFormData.name,
-        cep: locationFormData.cep
+        name: locationForm.name,
+        cep: locationForm.cep,
+        address: locationForm.address,
+        number: locationForm.number,
+        neighborhood: locationForm.neighborhood,
+        city: locationForm.city,
+        state: locationForm.state,
+        createdAt: new Date().toISOString()
       };
 
-      await configService.createLocation(locationData);
-      
-      // Update local state
-      setConfig(prev => ({
-        ...prev,
-        locations: [...prev.locations, locationData]
-      }));
-      
+      await configService.addLocation(newLocation);
+      setLocationForm({ name: "", cep: "", address: "", number: "", neighborhood: "", city: "", state: "" });
+      setIsLocationModalOpen(false);
+      await loadSettings();
       toast({
         title: "Sucesso",
-        description: "Local adicionado com sucesso!",
+        description: `Local "${newLocation.name}" adicionado`,
       });
-      setIsLocationDialogOpen(false);
-      setLocationFormData({ name: "", cep: "" });
     } catch (error) {
       console.error("Error adding location:", error);
       toast({
         title: "Erro",
-        description: "Erro ao adicionar local.",
-        variant: "destructive",
+        description: "Erro ao adicionar local",
+        variant: "destructive"
       });
     }
   };
 
-  const handleDeleteLocation = async (id: string) => {
-    if (!confirm("Tem certeza que deseja excluir este local?")) return;
+  const handleRemoveLocation = async (locationId: string) => {
     try {
-      await configService.deleteLocation(id);
-      setConfig(prev => ({
-        ...prev,
-        locations: prev.locations.filter(l => l.id !== id)
-      }));
-      toast({ title: "Sucesso", description: "Local excluído!" });
+      await configService.removeLocation(locationId);
+      await loadSettings();
+      toast({
+        title: "Sucesso",
+        description: "Local removido",
+      });
     } catch (error) {
-      toast({ title: "Erro", description: "Erro ao excluir local.", variant: "destructive" });
+      console.error("Error removing location:", error);
+      toast({
+        title: "Erro",
+        description: "Erro ao remover local",
+        variant: "destructive"
+      });
     }
   };
+
+  const handleSaveSystemUser = async () => {
+    console.log("🔍 handleSaveSystemUser iniciado", { editingSystemUser, systemUserForm });
+    
+    if (!systemUserForm.name || !systemUserForm.email || (!editingSystemUser && !systemUserForm.password)) {
+      toast({
+        title: "Erro",
+        description: "Preencha os campos obrigatórios (Nome, Email e Senha).",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      console.log("🔄 Tentando salvar usuário...");
+      
+      if (editingSystemUser) {
+        console.log("✏️ Modo EDIÇÃO - ID:", editingSystemUser.id);
+        
+        const updates: any = {
+          name: systemUserForm.name,
+          username: systemUserForm.username,
+          email: systemUserForm.email,
+          phone: systemUserForm.phone,
+          rg: systemUserForm.rg,
+          cpf: systemUserForm.cpf,
+          role: systemUserForm.role,
+          active: systemUserForm.active
+        };
+        
+        if (systemUserForm.password) {
+          updates.password = systemUserForm.password;
+        }
+
+        console.log("📦 Payload de atualização:", updates);
+        
+        const result = await systemUserService.update(editingSystemUser.id, updates);
+        console.log("✅ Resultado da atualização:", result);
+        
+        if (result) {
+          toast({ title: "Usuário atualizado com sucesso" });
+        } else {
+          throw new Error("Falha ao atualizar usuário");
+        }
+      } else {
+        console.log("➕ Modo CRIAÇÃO");
+        
+        const result = await systemUserService.create({
+          name: systemUserForm.name,
+          username: systemUserForm.username,
+          email: systemUserForm.email,
+          phone: systemUserForm.phone,
+          rg: systemUserForm.rg,
+          cpf: systemUserForm.cpf,
+          password: systemUserForm.password,
+          role: systemUserForm.role,
+          active: systemUserForm.active
+        });
+        
+        console.log("✅ Resultado da criação:", result);
+        
+        if (result) {
+          toast({ title: "Usuário criado com sucesso" });
+        } else {
+          throw new Error("Falha ao criar usuário");
+        }
+      }
+
+      setIsSystemUserModalOpen(false);
+      setEditingSystemUser(null);
+      setSystemUserForm({ name: "", username: "", email: "", phone: "", rg: "", cpf: "", password: "", role: "corretor", active: true });
+      
+      console.log("🔄 Recarregando lista de usuários...");
+      await loadSettings();
+      console.log("✅ handleSaveSystemUser finalizado com sucesso");
+    } catch (error) {
+      console.error("❌ Error saving system user:", error);
+      toast({
+        title: "Erro",
+        description: "Erro ao salvar usuário",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleEditSystemUser = (user: SystemUser) => {
+    setUserIdToEdit(user.id);
+    setShowEditProfileDialog(true);
+  };
+
+  const handleDeleteSystemUser = async (id: string) => {
+    if (confirm("Tem certeza que deseja excluir este usuário?")) {
+      const success = await systemUserService.delete(id);
+      if (success) {
+        loadSettings();
+        toast({ title: "Usuário excluído com sucesso" });
+      } else {
+        toast({
+          title: "Erro",
+          description: "Erro ao excluir usuário",
+          variant: "destructive"
+        });
+      }
+    }
+  };
+
+  const handleResetSystemPassword = async () => {
+    if (systemUserToReset && resetSystemPasswordValue) {
+      const success = await systemUserService.resetPassword(systemUserToReset.id, resetSystemPasswordValue);
+      if (success) {
+        setIsResetSystemPasswordOpen(false);
+        setResetSystemPasswordValue("");
+        setSystemUserToReset(null);
+        toast({ title: "Senha alterada com sucesso" });
+      } else {
+        toast({
+          title: "Erro",
+          description: "Erro ao alterar senha",
+          variant: "destructive"
+        });
+      }
+    }
+  };
+
+  const fetchAddressByCep = async (cep: string) => {
+    const cleanCep = cep.replace(/\D/g, "");
+    if (cleanCep.length !== 8) return;
+
+    try {
+      const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
+      const data = await response.json();
+
+      if (!data.erro) {
+        setLocationForm(prev => ({
+          ...prev,
+          address: data.logradouro,
+          neighborhood: data.bairro,
+          city: data.localidade,
+          state: data.uf
+        }));
+      }
+    } catch (error) {
+      console.error("Erro ao buscar CEP:", error);
+    }
+  };
+
+  if (isLoading) return null;
 
   return (
     <Layout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Configurações</h1>
-          <p className="text-muted-foreground mt-2">
-            Gerencie os dados da empresa, usuários e parâmetros do sistema
+          <h1 className="text-3xl font-bold tracking-tight">Configurações</h1>
+          <p className="text-muted-foreground">
+            Gerencie as configurações do sistema, usuários e locais.
           </p>
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5 h-auto">
-            <TabsTrigger value="company" className="gap-2 py-3">
-              <Building2 className="h-4 w-4" />
-              Dados Gerais
-            </TabsTrigger>
-            <TabsTrigger value="admin-fees" className="gap-2 py-3">
-              <Percent className="h-4 w-4" />
-              Taxas Admin
-            </TabsTrigger>
-            <TabsTrigger value="fines" className="gap-2 py-3">
-              <AlertCircle className="h-4 w-4" />
-              Multas e Juros
-            </TabsTrigger>
-            <TabsTrigger value="users" className="gap-2 py-3">
-              <Users className="h-4 w-4" />
-              Usuários
-            </TabsTrigger>
-            <TabsTrigger value="locations" className="gap-2 py-3">
-              <MapPin className="h-4 w-4" />
-              Locais
-            </TabsTrigger>
+        <Tabs defaultValue="general" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="general">Geral</TabsTrigger>
+            <TabsTrigger value="fees">Multa e Juros</TabsTrigger>
+            <TabsTrigger value="users">Usuários</TabsTrigger>
+            <TabsTrigger value="locations">Locais</TabsTrigger>
           </TabsList>
 
-          {/* DADOS DA EMPRESA */}
-          <TabsContent value="company">
-            <Card>
-              <CardHeader>
-                <CardTitle>Dados da Empresa</CardTitle>
-                <CardDescription>
-                  Informações cadastrais exibidas em relatórios e contratos
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleConfigSubmit} className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="companyName">Razão Social</Label>
-                      <Input 
-                        id="companyName" 
-                        value={config.companyName}
-                        onChange={(e) => setConfig({...config, companyName: e.target.value})}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="cnpj">CNPJ</Label>
-                      <Input 
-                        id="cnpj" 
-                        value={config.cnpj}
-                        onChange={(e) => setConfig({...config, cnpj: applyCnpjMask(e.target.value)})}
-                        maxLength={18}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="email">E-mail</Label>
-                      <Input 
-                        id="email" 
-                        type="email"
-                        value={config.email}
-                        onChange={(e) => setConfig({...config, email: e.target.value})}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="phone">Telefone</Label>
-                      <Input 
-                        id="phone" 
-                        value={config.phone}
-                        onChange={(e) => setConfig({...config, phone: applyPhoneMask(e.target.value)})}
-                        maxLength={15}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="address">Endereço</Label>
-                    <Input 
-                      id="address" 
-                      value={config.address}
-                      onChange={(e) => setConfig({...config, address: e.target.value})}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="city">Cidade</Label>
-                      <Input 
-                        id="city" 
-                        value={config.city}
-                        onChange={(e) => setConfig({...config, city: e.target.value})}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="state">Estado</Label>
-                      <Input 
-                        id="state" 
-                        value={config.state}
-                        onChange={(e) => setConfig({...config, state: e.target.value})}
-                        maxLength={2}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="zipCode">CEP</Label>
-                      <Input 
-                        id="zipCode" 
-                        value={config.zipCode}
-                        onChange={(e) => setConfig({...config, zipCode: applyCepMask(e.target.value)})}
-                        maxLength={9}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end pt-4">
-                    <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">
-                      <Save className="h-4 w-4 mr-2" />
-                      Salvar Alterações
-                    </Button>
-                  </div>
-                </form>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* TAXAS ADMINISTRATIVAS */}
-          <TabsContent value="admin-fees">
-            <Card>
-              <CardHeader>
-                <CardTitle>Taxa de Administração</CardTitle>
-                <CardDescription>
-                  Percentual padrão cobrado sobre os aluguéis
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleConfigSubmit} className="space-y-4">
-                  <div className="max-w-xs space-y-2">
-                    <Label htmlFor="adminFee">Taxa Administrativa (%)</Label>
-                    <div className="relative">
-                      <Input 
-                        id="adminFee" 
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        max="100"
-                        value={config.adminFeePercentage}
-                        onChange={(e) => setConfig({...config, adminFeePercentage: parseFloat(e.target.value) || 0})}
-                        className="pr-8"
-                      />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Esta taxa será sugerida ao criar novos contratos de locação.
-                    </p>
-                  </div>
-
-                  <div className="flex justify-end pt-4">
-                    <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">
-                      <Save className="h-4 w-4 mr-2" />
-                      Salvar Taxas
-                    </Button>
-                  </div>
-                </form>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* MULTAS E JUROS */}
-          <TabsContent value="fines">
-            <Card>
-              <CardHeader>
-                <CardTitle>Multas e Juros</CardTitle>
-                <CardDescription>
-                  Configuração de encargos para pagamentos em atraso
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleConfigSubmit} className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="lateFee">Multa por Atraso (%)</Label>
-                      <div className="relative">
-                        <Input 
-                          id="lateFee" 
+          <TabsContent value="general">
+            <FloatingCard delay={0.1}>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Configurações Gerais</CardTitle>
+                  <CardDescription>
+                    Parâmetros financeiros do sistema
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handleUpdateConfig} className="space-y-6">
+                    <div className="grid w-full max-w-sm items-center gap-1.5">
+                      <Label htmlFor="adminFee">Taxa de Administração (%)</Label>
+                      <div className="flex items-center gap-2">
+                        <Input
                           type="number"
-                          step="0.01"
+                          id="adminFee"
+                          value={config?.adminFeePercentage}
+                          onChange={(e) => setConfig(config ? { ...config, adminFeePercentage: Number(e.target.value) } : config)}
+                          step="0.1"
                           min="0"
                           max="100"
-                          value={config.lateFeePercentage}
-                          onChange={(e) => setConfig({...config, lateFeePercentage: parseFloat(e.target.value) || 0})}
-                          className="pr-8"
+                          className="w-24"
                         />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
+                        <span className="text-sm text-muted-foreground">%</span>
                       </div>
-                      <p className="text-sm text-muted-foreground">
-                        Cobrado uma única vez sobre o valor do boleto vencido.
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Esta taxa será aplicada a todos os cálculos de receita, exceto imóveis classificados como "Outros".
                       </p>
                     </div>
+                    <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
+                      <Save className="w-4 h-4 mr-2" /> Salvar Alterações
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
+            </FloatingCard>
+          </TabsContent>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="interestRate">Juros Diários (%)</Label>
-                      <div className="relative">
-                        <Input 
-                          id="interestRate" 
-                          type="number"
-                          step="0.001"
-                          min="0"
-                          max="100"
-                          value={config.interestRatePercentage}
-                          onChange={(e) => setConfig({...config, interestRatePercentage: parseFloat(e.target.value) || 0})}
-                          className="pr-8"
-                        />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        Cobrado por dia de atraso (Pro Rata Die).
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="bg-amber-50 p-4 rounded-md border border-amber-200 mt-4">
-                    <div className="flex items-start gap-3">
-                      <Coins className="h-5 w-5 text-amber-600 mt-0.5" />
-                      <div>
-                        <p className="font-medium text-amber-800">Exemplo de Cálculo</p>
-                        <p className="text-sm text-amber-700 mt-1">
-                          Para um boleto de R$ 1.000,00 com 10 dias de atraso:
+          <TabsContent value="fees">
+            <FloatingCard delay={0.1}>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Percent className="h-5 w-5" />
+                    Configuração de Multa e Juros
+                  </CardTitle>
+                  <CardDescription>
+                    Configure as porcentagens aplicadas em pagamentos atrasados
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handleUpdateConfig} className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <Label htmlFor="lateFee">Multa por Atraso (%)</Label>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            id="lateFee"
+                            value={config?.lateFeePercentage || 2}
+                            onChange={(e) => setConfig(config ? { ...config, lateFeePercentage: Number(e.target.value) } : config)}
+                            step="0.01"
+                            min="0"
+                            max="100"
+                            className="w-32"
+                          />
+                          <span className="text-sm text-muted-foreground">%</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Multa aplicada sobre o valor do aluguel quando o pagamento atrasa (padrão: 2%)
                         </p>
-                        <ul className="text-sm text-amber-700 list-disc ml-5 mt-1">
-                          <li>Multa ({config.lateFeePercentage}%): R$ {(1000 * (config.lateFeePercentage/100)).toFixed(2)}</li>
-                          <li>Juros ({config.interestRatePercentage}% ao dia × 10): R$ {(1000 * (config.interestRatePercentage/100) * 10).toFixed(2)}</li>
-                          <li><strong>Total a Pagar: R$ {(1000 * (1 + (config.lateFeePercentage/100) + ((config.interestRatePercentage/100) * 10))).toFixed(2)}</strong></li>
-                        </ul>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="interestRate">Juros Diário (%)</Label>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            id="interestRate"
+                            value={config?.interestRatePercentage || 0.033}
+                            onChange={(e) => setConfig(config ? { ...config, interestRatePercentage: Number(e.target.value) } : config)}
+                            step="0.001"
+                            min="0"
+                            max="10"
+                            className="w-32"
+                          />
+                          <span className="text-sm text-muted-foreground">% ao dia</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Juros aplicado por dia de atraso sobre o valor do aluguel (padrão: 0.033% = 1% ao mês)
+                        </p>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="flex justify-end pt-4">
-                    <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">
-                      <Save className="h-4 w-4 mr-2" />
-                      Salvar Encargos
-                    </Button>
-                  </div>
-                </form>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* USUÁRIOS */}
-          <TabsContent value="users">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold">Usuários do Sistema</h2>
-              <Button onClick={() => openUserDialog()} className="bg-emerald-600 hover:bg-emerald-700">
-                <Plus className="h-4 w-4 mr-2" />
-                Novo Usuário
-              </Button>
-            </div>
-
-            <Card>
-              <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Nome</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Perfil</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Ações</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {users.map((user) => (
-                      <TableRow key={user.id}>
-                        <TableCell className="font-medium">{user.name}</TableCell>
-                        <TableCell>{user.email}</TableCell>
-                        <TableCell>
-                          <Badge variant={
-                            user.role === "admin" ? "default" : 
-                            user.role === "financial" ? "secondary" : 
-                            user.role === "broker" ? "outline" : "secondary"
-                          }>
-                            {user.role === "admin" ? "Admin" : 
-                             user.role === "financial" ? "Financeiro" : 
-                             user.role === "broker" ? "Corretor" : "Usuário"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={user.active ? "success" : "destructive"} className={user.active ? "bg-green-100 text-green-800" : ""}>
-                            {user.active ? "Ativo" : "Inativo"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button variant="ghost" size="sm" onClick={() => openUserDialog(user)}>
-                            Editar
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="text-red-600 hover:text-red-700"
-                            onClick={() => handleDeleteUser(user.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* LOCAIS */}
-          <TabsContent value="locations">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold">Locais e Condomínios</h2>
-              <Button onClick={() => setIsLocationDialogOpen(true)} className="bg-emerald-600 hover:bg-emerald-700">
-                <Plus className="h-4 w-4 mr-2" />
-                Novo Local
-              </Button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {config.locations.map((location) => (
-                <Card key={location.id}>
-                  <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <CardTitle className="text-base font-medium">
-                      {location.name}
-                    </CardTitle>
-                    <MapPin className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground mb-4">CEP: {location.cep || "—"}</p>
-                    <div className="flex justify-end gap-2">
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        className="text-red-600 hover:text-red-700 h-8"
-                        onClick={() => handleDeleteLocation(location.id)}
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Excluir
-                      </Button>
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <h4 className="font-semibold text-blue-900 mb-2">Exemplo de Cálculo</h4>
+                      <div className="text-sm text-blue-800 space-y-1">
+                        <p>• Valor do aluguel: R$ 1.500,00</p>
+                        <p>• Vencimento: 10/01/2026</p>
+                        <p>• Pagamento: 20/01/2026 (10 dias de atraso)</p>
+                        <p className="font-semibold mt-2">Cálculo:</p>
+                        <p>• Multa ({config?.lateFeePercentage || 2}%): R$ {((config?.lateFeePercentage || 2) * 15).toFixed(2)}</p>
+                        <p>• Juros ({config?.interestRatePercentage || 0.033}% × 10 dias): R$ {((config?.interestRatePercentage || 0.033) * 10 * 15).toFixed(2)}</p>
+                        <p className="font-bold text-blue-900 mt-2">
+                          Total a pagar: R$ {(1500 + ((config?.lateFeePercentage || 2) * 15) + ((config?.interestRatePercentage || 0.033) * 10 * 15)).toFixed(2)}
+                        </p>
+                      </div>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+
+                    <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
+                      <Save className="w-4 h-4 mr-2" /> Salvar Configurações
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
+            </FloatingCard>
+          </TabsContent>
+
+          <TabsContent value="users">
+            <FloatingCard delay={0.1}>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle>Usuários do Sistema</CardTitle>
+                    <CardDescription>
+                      Gerencie os usuários que têm acesso ao sistema
+                    </CardDescription>
+                  </div>
+                  <Button onClick={() => {
+                    setEditingSystemUser(null);
+                    setSystemUserForm({ name: "", username: "", email: "", phone: "", rg: "", cpf: "", password: "", role: "corretor", active: true });
+                    setIsSystemUserModalOpen(true);
+                  }} className="bg-emerald-600 hover:bg-emerald-700">
+                    <UserPlus className="mr-2 h-4 w-4" /> Novo Usuário
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Nome</TableHead>
+                          <TableHead>Email</TableHead>
+                          <TableHead>Perfil</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Ações</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {systemUsers.map((user) => (
+                          <TableRow key={user.id}>
+                            <TableCell className="font-medium">{user.name}</TableCell>
+                            <TableCell>{user.email}</TableCell>
+                            <TableCell>
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize
+                                ${user.role === 'admin' ? 'bg-purple-100 text-purple-800' : 
+                                  user.role === 'financeiro' ? 'bg-blue-100 text-blue-800' : 
+                                  'bg-green-100 text-green-800'}`}>
+                                {user.role}
+                              </span>
+                            </TableCell>
+                            <TableCell>
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                ${user.active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                                {user.active ? 'Ativo' : 'Inativo'}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-right space-x-1">
+                              <Button variant="ghost" size="sm" onClick={() => {
+                                setSystemUserToReset(user);
+                                setIsResetSystemPasswordOpen(true);
+                              }} title="Redefinir Senha">
+                                <Key className="h-4 w-4 text-slate-500" />
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => handleEditSystemUser(user)} title="Editar">
+                                <Edit className="h-4 w-4 text-blue-600" />
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => handleDeleteSystemUser(user.id)} title="Excluir">
+                                <Trash2 className="h-4 w-4 text-red-600" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            </FloatingCard>
+          </TabsContent>
+
+          <TabsContent value="locations">
+            <FloatingCard delay={0.1}>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle>Gerenciar Locais</CardTitle>
+                    <CardDescription>Adicione ou remova locais (condomínios/prédios)</CardDescription>
+                  </div>
+                  <Button onClick={() => setIsLocationModalOpen(true)} className="bg-emerald-600 hover:bg-emerald-700">
+                    <Plus className="mr-2 h-4 w-4" /> Novo Local
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="bg-slate-50 rounded-lg p-6 border">
+                      <StaggerContainer staggerDelay={0.05}>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                          {sortedLocations.length === 0 ? (
+                            <p className="text-sm text-slate-500 italic">Nenhum local cadastrado</p>
+                          ) : (
+                            sortedLocations.map((location) => (
+                              <StaggerItem key={location.id}>
+                                <div className="group flex flex-col p-4 bg-white border rounded-md shadow-sm hover:shadow-md transition-all relative">
+                                  <div className="flex items-center gap-3 mb-2">
+                                    <div className="p-2 bg-slate-100 rounded-full text-slate-600 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
+                                      <MapPin className="h-4 w-4" />
+                                    </div>
+                                    <span className="font-medium text-slate-700">{location.name}</span>
+                                  </div>
+                                  <div className="text-xs text-muted-foreground ml-11">
+                                    <p>{location.address}, {location.number}</p>
+                                    <p>{location.neighborhood} - {location.city}/{location.state}</p>
+                                  </div>
+                                  
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    onClick={() => handleRemoveLocation(location.id)}
+                                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                    title="Excluir local"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </StaggerItem>
+                            ))
+                          )}
+                        </div>
+                      </StaggerContainer>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </FloatingCard>
           </TabsContent>
         </Tabs>
 
-        {/* DIALOG DE USUÁRIO */}
-        <Dialog open={isUserDialogOpen} onOpenChange={setIsUserDialogOpen}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        {/* System User Dialog */}
+        <EditProfileDialog
+          open={showEditProfileDialog}
+          onOpenChange={setShowEditProfileDialog}
+          onSuccess={() => {
+            loadSettings();
+          }}
+        />
+
+        {/* Location Dialog */}
+        <Dialog open={isLocationModalOpen} onOpenChange={setIsLocationModalOpen}>
+          <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle>{editingUser ? "Editar Usuário" : "Novo Usuário"}</DialogTitle>
+              <DialogTitle>Novo Local</DialogTitle>
+              <CardDescription>Cadastre um condomínio ou prédio.</CardDescription>
             </DialogHeader>
-            <form onSubmit={handleUserSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="userName">Nome Completo</Label>
-                  <Input 
-                    id="userName" 
-                    value={userFormData.name} 
-                    onChange={(e) => setUserFormData({...userFormData, name: e.target.value})}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="userEmail">Email</Label>
-                  <Input 
-                    id="userEmail" 
-                    type="email" 
-                    value={userFormData.email} 
-                    onChange={(e) => setUserFormData({...userFormData, email: e.target.value})}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="userPhone">Telefone</Label>
-                  <Input 
-                    id="userPhone" 
-                    value={userFormData.phone} 
-                    onChange={(e) => setUserFormData({...userFormData, phone: applyPhoneMask(e.target.value)})}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="userRole">Perfil de Acesso</Label>
-                  <Select 
-                    value={userFormData.role} 
-                    onValueChange={(value) => setUserFormData({...userFormData, role: value})}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="user">Usuário</SelectItem>
-                      <SelectItem value="broker">Corretor</SelectItem>
-                      <SelectItem value="financial">Financeiro</SelectItem>
-                      <SelectItem value="admin">Administrador</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                {!editingUser && (
-                  <>
-                    <div className="space-y-2">
-                      <Label htmlFor="userUsername">Usuário (Login)</Label>
-                      <Input 
-                        id="userUsername" 
-                        value={userFormData.username} 
-                        onChange={(e) => setUserFormData({...userFormData, username: e.target.value})}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="userPassword">Senha</Label>
-                      <Input 
-                        id="userPassword" 
-                        type="password"
-                        value={userFormData.password} 
-                        onChange={(e) => setUserFormData({...userFormData, password: e.target.value})}
-                        required
-                      />
-                    </div>
-                  </>
-                )}
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <Label>Nome do Local (Ex: Ed. Solar)</Label>
+                <Input value={locationForm.name} onChange={(e) => setLocationForm({...locationForm, name: e.target.value})} placeholder="Nome do condomínio" />
               </div>
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsUserDialogOpen(false)}>Cancelar</Button>
-                <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">Salvar Usuário</Button>
-              </DialogFooter>
-            </form>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>CEP</Label>
+                  <Input 
+                    value={locationForm.cep} 
+                    onChange={(e) => {
+                      const masked = applyCepMask(e.target.value);
+                      setLocationForm({...locationForm, cep: masked});
+                      if (masked.length === 9) fetchAddressByCep(masked);
+                    }} 
+                    maxLength={9}
+                    placeholder="00000-000" 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Número</Label>
+                  <Input value={locationForm.number} onChange={(e) => setLocationForm({...locationForm, number: e.target.value})} />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Endereço</Label>
+                <Input value={locationForm.address} onChange={(e) => setLocationForm({...locationForm, address: e.target.value})} />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Bairro</Label>
+                <Input value={locationForm.neighborhood} onChange={(e) => setLocationForm({...locationForm, neighborhood: e.target.value})} />
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="col-span-2 space-y-2">
+                  <Label>Cidade</Label>
+                  <Input value={locationForm.city} onChange={(e) => setLocationForm({...locationForm, city: e.target.value})} />
+                </div>
+                <div className="space-y-2">
+                  <Label>UF</Label>
+                  <Input value={locationForm.state} onChange={(e) => setLocationForm({...locationForm, state: e.target.value.toUpperCase()})} maxLength={2} />
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsLocationModalOpen(false)}>Cancelar</Button>
+              <Button onClick={handleSaveLocation}>Salvar Local</Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
 
-        {/* DIALOG DE LOCAL */}
-        <Dialog open={isLocationDialogOpen} onOpenChange={setIsLocationDialogOpen}>
+        {/* Reset System User Password Dialog */}
+        <Dialog open={isResetSystemPasswordOpen} onOpenChange={setIsResetSystemPasswordOpen}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Novo Local</DialogTitle>
+              <DialogTitle>Redefinir Senha - {systemUserToReset?.name}</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleLocationSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="locName">Nome do Local / Condomínio</Label>
-                <Input 
-                  id="locName" 
-                  value={locationFormData.name} 
-                  onChange={(e) => setLocationFormData({...locationFormData, name: e.target.value})}
-                  placeholder="Ex: Edifício Central"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="locCep">CEP</Label>
-                <Input 
-                  id="locCep" 
-                  value={locationFormData.cep} 
-                  onChange={(e) => setLocationFormData({...locationFormData, cep: applyCepMask(e.target.value)})}
-                  placeholder="00000-000"
-                />
-              </div>
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsLocationDialogOpen(false)}>Cancelar</Button>
-                <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">Adicionar Local</Button>
-              </DialogFooter>
-            </form>
+            <div className="py-4">
+              <Label>Nova Senha</Label>
+              <Input type="password" value={resetSystemPasswordValue} onChange={(e) => setResetSystemPasswordValue(e.target.value)} />
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsResetSystemPasswordOpen(false)}>Cancelar</Button>
+              <Button onClick={handleResetSystemPassword}>Salvar Nova Senha</Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>

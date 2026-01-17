@@ -46,55 +46,22 @@ export function Layout({ children }: LayoutProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showProfileDialog, setShowProfileDialog] = useState(false);
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
-
+  
   // Scroll effects
   const scrollProgress = useScrollProgress();
   const scrollDirection = useScrollDirection();
-
+  
   // Password change state
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
   useEffect(() => {
-    const validateAndLoadUser = async () => {
-      const currentUser = getCurrentUser();
-
-      if (currentUser) {
-        console.log("🔍 Layout: Validando usuário do localStorage:", currentUser.id);
-
-        // Validar se o usuário realmente existe no banco
-        const userExists = await systemUserService.getById(currentUser.id);
-
-        if (!userExists) {
-          console.error("🔄 DETECTADO: Usuário do localStorage não existe no banco!");
-          console.log("🧹 Limpando dados corrompidos e redirecionando...");
-
-          // LIMPEZA FORÇADA TOTAL
-          localStorage.removeItem("isAuthenticated");
-          localStorage.removeItem("currentUser");
-          localStorage.clear(); // Limpa TUDO por garantia
-
-          toast({
-            title: "Sessão Inválida",
-            description: "Seus dados de sessão expiraram. Por favor, faça login novamente.",
-            variant: "destructive",
-          });
-
-          setTimeout(() => {
-            window.location.href = "/login";
-          }, 2000);
-
-          return;
-        }
-
-        console.log("✅ Layout: Usuário validado com sucesso");
-        setUser(currentUser);
-      }
-    };
-
-    validateAndLoadUser();
-  }, [toast]);
+    const currentUser = getCurrentUser();
+    if (currentUser) {
+      setUser(currentUser);
+    }
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -103,39 +70,38 @@ export function Layout({ children }: LayoutProps) {
 
   const handleChangePassword = () => {
     if (!user) return;
-
+    
     if (currentPassword !== user.password) {
       alert("Senha atual incorreta!");
       return;
     }
-
+    
     if (newPassword !== confirmPassword) {
       alert("As senhas não coincidem!");
       return;
     }
-
+    
     if (newPassword.length < 6) {
       alert("A nova senha deve ter no mínimo 6 caracteres!");
       return;
     }
-
+    
     const updatedUser: UserType = {
       ...user,
       password: newPassword,
     };
-
+    
     userStorage.update(updatedUser);
-
+    
     if (typeof window !== "undefined") {
       localStorage.setItem("rental_auth_user", JSON.stringify(updatedUser));
     }
-
+    
     setUser(updatedUser);
     setShowPasswordDialog(false);
     setCurrentPassword("");
     setNewPassword("");
     setConfirmPassword("");
-
     alert("Senha alterada com sucesso!");
   };
 
@@ -162,6 +128,7 @@ export function Layout({ children }: LayoutProps) {
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="h-16 flex items-center justify-between gap-4">
+            
             {/* LOGO - Left */}
             <Link href="/dashboard" className="flex items-center gap-2 flex-shrink-0">
               <Building2 className="h-6 w-6 text-emerald-600" />
@@ -316,7 +283,6 @@ export function Layout({ children }: LayoutProps) {
                   Dashboard
                 </Button>
               </Link>
-
               <Link href="/properties">
                 <Button 
                   variant={isActive("/properties") ? "default" : "ghost"}
@@ -327,7 +293,6 @@ export function Layout({ children }: LayoutProps) {
                   Imóveis
                 </Button>
               </Link>
-
               <Link href="/tenants">
                 <Button 
                   variant={isActive("/tenants") ? "default" : "ghost"}
@@ -338,7 +303,6 @@ export function Layout({ children }: LayoutProps) {
                   Inquilinos
                 </Button>
               </Link>
-
               <Link href="/rentals">
                 <Button 
                   variant={isActive("/rentals") ? "default" : "ghost"}
@@ -349,7 +313,6 @@ export function Layout({ children }: LayoutProps) {
                   Locações
                 </Button>
               </Link>
-
               <Link href="/payments">
                 <Button 
                   variant={isActive("/payments") ? "default" : "ghost"}
@@ -360,7 +323,6 @@ export function Layout({ children }: LayoutProps) {
                   Recebimentos
                 </Button>
               </Link>
-
               <Link href="/financial">
                 <Button 
                   variant={isActive("/financial") ? "default" : "ghost"}
@@ -371,7 +333,6 @@ export function Layout({ children }: LayoutProps) {
                   Financeiro
                 </Button>
               </Link>
-
               <Link href="/settings">
                 <Button 
                   variant={isActive("/settings") ? "default" : "ghost"}
@@ -386,7 +347,7 @@ export function Layout({ children }: LayoutProps) {
           )}
         </div>
       </motion.nav>
-
+      
       {/* Main content */}
       <motion.main
         className="pt-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"
@@ -396,10 +357,9 @@ export function Layout({ children }: LayoutProps) {
       >
         {children}
       </motion.main>
-
+      
       {/* Edit Profile Dialog */}
       <EditProfileDialog
-        user={user}
         open={showProfileDialog}
         onOpenChange={setShowProfileDialog}
         onSuccess={() => {
@@ -407,7 +367,7 @@ export function Layout({ children }: LayoutProps) {
           window.location.reload();
         }}
       />
-
+      
       {/* Change Password Dialog */}
       <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
         <DialogContent>

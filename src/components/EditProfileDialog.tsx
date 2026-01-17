@@ -8,16 +8,14 @@ import { systemUserService } from "@/services/systemUserService";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getCurrentUser } from "@/lib/auth";
-import { User } from "@/types";
 
 interface EditProfileDialogProps {
-  user: User | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
 }
 
-export function EditProfileDialog({ user, open, onOpenChange, onSuccess }: EditProfileDialogProps) {
+export function EditProfileDialog({ open, onOpenChange, onSuccess }: EditProfileDialogProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [userId, setUserId] = useState<string>("");
@@ -31,126 +29,100 @@ export function EditProfileDialog({ user, open, onOpenChange, onSuccess }: EditP
 
   // Load authenticated user's data on dialog open
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      setLoading(false);
+      return;
+    }
 
     const loadUserData = async () => {
-      console.log("🔓 Dialog aberto, iniciando fluxo de carregamento...");
-      setLoading(true);
-
       try {
-        let userId: string | null = null;
-
-        // Etapa 1: Tentar obter usuário autenticado do Supabase
+        setLoading(true);
+        console.log("🔓 Dialog aberto, iniciando fluxo de carregamento...");
+        
         console.log("📡 Etapa 1: Buscando usuário autenticado do Supabase...");
-        const {
-          data: { user: supabaseUser },
-        } = await supabase.auth.getUser();
-
-        if (supabaseUser) {
-          console.log("✅ Usuário autenticado do Supabase encontrado:", supabaseUser.id);
-          userId = supabaseUser.id;
-        } else {
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (!user) {
           console.warn("⚠️ Nenhuma sessão Supabase encontrada, tentando localStorage...");
-          const user = getCurrentUser();
-          if (user) {
-            console.log("✅ Usuário do localStorage encontrado:", user.id);
-            userId = user.id;
+          
+          // Fallback to localStorage for legacy auth
+          const localUser = getCurrentUser();
+          if (!localUser) {
+            console.error("❌ Nenhum usuário autenticado encontrado!");
+            toast({
+              title: "Erro",
+              description: "Você precisa estar autenticado para editar o perfil.",
+              variant: "destructive"
+            });
+            onOpenChange(false);
+            return;
           }
-        }
-
-        if (!userId) {
-          console.error("❌ Nenhum usuário encontrado! Redirecionando para login...");
-          localStorage.removeItem("isAuthenticated");
-          localStorage.removeItem("currentUser");
-          toast({
-            title: "Sessão Expirada",
-            description: "Por favor, faça login novamente.",
-            variant: "destructive",
+          
+          console.log("✅ Usuário do localStorage encontrado:", localUser.id);
+          setUserId(localUser.id);
+          
+          // Load user data from system_users table
+          const userData = await systemUserService.getById(localUser.id);
+          if (!userData) {
+            console.error("❌ Nenhum dado de perfil encontrado para o user ID:", localUser.id);
+            toast({
+              title: "Erro",
+              description: "Não foi possível carregar os dados do perfil.",
+              variant: "destructive"
+            });
+            onOpenChange(false);
+            return;
+          }
+          
+          console.log("✅ Dados carregados do localStorage:", userData);
+          setFormData({
+            name: userData.name || "",
+            email: userData.email || "",
+            phone: userData.phone || "",
+            rg: userData.rg || "",
+            cpf: userData.cpf || ""
           });
+          console.log("✅ Formulário preenchido com sucesso!");
           setLoading(false);
-          onOpenChange(false);
-          setTimeout(() => {
-            window.location.href = "/login";
-          }, 1500);
           return;
         }
+        
+        console.log("✅ Etapa 1 completa: User ID do Supabase:", user.id);
+        setUserId(user.id);
 
-        // Etapa 2: Load user data from database
         console.log("📡 Etapa 2: Carregando dados do perfil do banco...");
-        const userData = await systemUserService.getById(userId);
-
+        const userData = await systemUserService.getById(user.id);
+        
         if (!userData) {
-          console.error("❌ Nenhum dado de perfil encontrado para o user ID:", userId);
-          console.error("🔄 DETECTADO: ID no localStorage não existe no banco de dados!");
-          console.log("🧹 Limpando dados corrompidos do localStorage...");
-          
-          // Clear corrupted localStorage data
-          localStorage.removeItem("isAuthenticated");
-          localStorage.removeItem("currentUser");
-          
+          console.error("❌ Nenhum dado de perfil encontrado para o user ID:", user.id);
           toast({
-            title: "Sessão Inválida",
-            description: "Seus dados de sessão estão corrompidos. Por favor, faça login novamente.",
+            title: "Erro",
+            description: "Não foi possível carregar os dados do perfil.",
             variant: "destructive"
           });
-          
-          setLoading(false);
           onOpenChange(false);
-          
-          // Redirect to login after 2 seconds
-          setTimeout(() => {
-            window.location.href = "/login";
-          }, 2000);
-          
           return;
         }
-
+        
         console.log("✅ Etapa 2 completa: Dados carregados:", userData);
 
-        // Fill form with user data
         setFormData({
           name: userData.name || "",
           email: userData.email || "",
           phone: userData.phone || "",
-          cpf: userData.cpf || "",
-          rg: userData.rg || ""
+          rg: userData.rg || "",
+          cpf: userData.cpf || ""
         });
-
+        
         console.log("✅ Formulário preenchido com sucesso!");
         setLoading(false);
       } catch (error) {
         console.error("❌ ERRO FATAL ao carregar dados:", error);
-        
-        // Check if it's a 406 error (user not found)
-        if (error && typeof error === 'object' && 'code' in error && error.code === 'PGRST116') {
-          console.error("🔄 DETECTADO: Erro 406 - Usuário não existe no banco!");
-          console.log("🧹 Limpando dados corrompidos do localStorage...");
-          
-          localStorage.removeItem("isAuthenticated");
-          localStorage.removeItem("currentUser");
-          
-          toast({
-            title: "Sessão Inválida",
-            description: "Seus dados de sessão estão corrompidos. Redirecionando para login...",
-            variant: "destructive"
-          });
-          
-          setLoading(false);
-          onOpenChange(false);
-          
-          setTimeout(() => {
-            window.location.href = "/login";
-          }, 2000);
-          
-          return;
-        }
-        
         toast({
           title: "Erro",
-          description: "Erro ao carregar dados do perfil. Tente novamente.",
+          description: "Erro ao carregar dados do perfil.",
           variant: "destructive"
         });
-        setLoading(false);
         onOpenChange(false);
       }
     };

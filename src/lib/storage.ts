@@ -1,12 +1,4 @@
-import { 
-  User, 
-  Property, 
-  Tenant, 
-  Rental, 
-  Payment,
-  CompanyConfig as Config,
-  CompanyConfig 
-} from "@/types";
+import { Property, Tenant, Rental, Payment, SystemConfig, User, Config } from "@/types";
 
 const PROPERTIES_KEY = "rental_properties";
 const TENANTS_KEY = "rental_tenants";
@@ -36,12 +28,12 @@ export function initializeStorage(): void {
   if (typeof window === "undefined") return;
   
   if (!localStorage.getItem(CONFIG_KEY)) {
-    const defaultConfig: CompanyConfig = {
+    const defaultConfig: SystemConfig = {
       adminFeePercentage: 6,
       lateFeePercentage: 2,
       interestRatePercentage: 0.033,
-      locations: [{ id: "1", name: "Jd. Colombo", cep: "00000-000" }],
-      companyName: "", cnpj: "", email: "", phone: "", address: "", city: "", state: "", zipCode: ""
+      lastUpdated: new Date().toISOString(),
+      locations: ["Jd. Colombo", "Signore", "Lemos", "Marrom", "Cinza", "Dora", "Acacias", "Outros"]
     };
     localStorage.setItem(CONFIG_KEY, JSON.stringify(defaultConfig));
   }
@@ -54,7 +46,6 @@ export function initializeStorage(): void {
         username: "admin",
         password: "123", // In a real app, this should be hashed
         name: "Administrador",
-        email: "admin@example.com",
         role: "admin",
         createdAt: new Date().toISOString()
       },
@@ -63,7 +54,6 @@ export function initializeStorage(): void {
         username: "cadu.pires",
         password: "teste123",
         name: "Cadu Pires",
-        email: "cadu@example.com",
         role: "admin", // Assuming admin role for full access
         createdAt: new Date().toISOString()
       }
@@ -91,9 +81,8 @@ export function initializeStorage(): void {
 // Utility function to clean orphaned payments
 export const cleanOrphanedPayments = () => {
   const payments = paymentStorage.getAll();
-  const rentals = rentalStorage.getAll(); // Fix rentalStorage access
   const validPayments = payments.filter(p => {
-    const rental = rentals.find(r => r.id === p.rentalId);
+    const rental = rentalStorage.getAll().find(r => r.id === p.rentalId);
     return !!rental;
   });
   localStorage.setItem(PAYMENTS_KEY, JSON.stringify(validPayments));
@@ -302,22 +291,10 @@ export const userStorage = {
 export const configStorage = {
   KEY: "imovcontrol_config",
   
-  get(): CompanyConfig {
-    if (typeof window === "undefined") return { 
-      adminFeePercentage: 6, 
-      lateFeePercentage: 2, 
-      interestRatePercentage: 0.033,
-      locations: [],
-      companyName: "", cnpj: "", email: "", phone: "", address: "", city: "", state: "", zipCode: ""
-    };
+  get(): Config {
+    if (typeof window === "undefined") return { adminFeePercentage: 6, locations: [] };
     const data = localStorage.getItem(this.KEY);
-    return data ? JSON.parse(data) : { 
-      adminFeePercentage: 6, 
-      lateFeePercentage: 2, 
-      interestRatePercentage: 0.033,
-      locations: [],
-      companyName: "", cnpj: "", email: "", phone: "", address: "", city: "", state: "", zipCode: ""
-    };
+    return data ? JSON.parse(data) : { adminFeePercentage: 6, locations: [] };
   },
   
   save(config: Config): void {
@@ -345,10 +322,10 @@ export const configStorage = {
   }
 };
 
-const DEFAULT_CONFIG: CompanyConfig = {
+const DEFAULT_CONFIG: SystemConfig = {
   adminFeePercentage: 10,
   lateFeePercentage: 2, // 2% padrão
   interestRatePercentage: 0.033, // 0.033% ao dia padrão
+  lastUpdated: new Date().toISOString(),
   locations: [],
-  companyName: "", cnpj: "", email: "", phone: "", address: "", city: "", state: "", zipCode: ""
 };

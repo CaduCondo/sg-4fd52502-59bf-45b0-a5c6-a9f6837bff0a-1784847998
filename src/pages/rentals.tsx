@@ -262,35 +262,29 @@ export default function RentalsPage() {
       const garageValue = formData.hasGarage ? parseFloat(formData.garageValue.replace(/\./g, "").replace(",", ".")) : 0;
       const rentValue = parseFloat(formData.value.replace(/\./g, "").replace(",", "."));
 
-      const rentalData: Omit<Rental, "id" | "createdAt"> = {
+      const rental: Omit<Rental, "id" | "createdAt"> = {
         propertyId: formData.propertyId,
         tenantId: formData.tenantId,
         startDate: formData.startDate,
-        endDate: formData.endDate,
+        endDate: formData.endDate || null,
         value: rentValue + garageValue,
-        rentAmount: rentValue,
         monthlyRent: rentValue,
         hasGarage: formData.hasGarage,
         garageValue: formData.hasGarage ? garageValue : undefined,
         paymentDay: parseInt(formData.paymentDay),
         isActive: true,
-        status: "active",
-        autoRenew: false,
         attachments: formData.attachments,
       };
 
-      const createdRental = await rentalService.create(rentalData);
+      const createdRental = await rentalService.create(rental);
 
       // Generate monthly payments
-      await generatePayments({ ...createdRental, ...rentalData });
+      await generatePayments({ ...createdRental, ...rental });
 
       // Update property status to occupied
       const property = properties.find((p) => p.id === formData.propertyId);
       if (property) {
-        await propertyService.update(property.id, {
-          ...property,
-          status: "occupied",
-        });
+        await propertyService.update({ ...property, status: "occupied" });
       }
 
       // Update tenant status to rented
@@ -318,7 +312,7 @@ export default function RentalsPage() {
 
   const handleDelete = async (rental: Rental) => {
     // Check if user is corretor and rental has payments
-    if (currentUser?.role === "broker") {
+    if (currentUser?.role === "corretor") {
       const payments = await paymentService.getByRentalId(rental.id);
       if (payments.length > 0) {
         toast({
@@ -342,10 +336,7 @@ export default function RentalsPage() {
       // Update property status to available
       const property = properties.find((p) => p.id === rental.propertyId);
       if (property) {
-        await propertyService.update(property.id, {
-          ...property,
-          status: "available",
-        });
+        await propertyService.update({ ...property, status: "available" });
       }
 
       // Update tenant status to active
@@ -383,10 +374,7 @@ export default function RentalsPage() {
       // Update property status to available
       const property = properties.find((p) => p.id === rental.propertyId);
       if (property) {
-        await propertyService.update(property.id, {
-          ...property,
-          status: "available",
-        });
+        await propertyService.update({ ...property, status: "available" });
       }
 
       // Update tenant status to active

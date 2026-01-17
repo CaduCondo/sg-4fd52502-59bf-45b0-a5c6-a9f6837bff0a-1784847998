@@ -147,7 +147,7 @@ export default function TenantsPage() {
     e.stopPropagation();
     
     const currentUser = getCurrentUser();
-    if (currentUser?.role === "broker" && tenant.status === "rented") {
+    if (currentUser?.role === "corretor" && tenant.status === "rented") {
       toast({
         title: "Ação não permitida",
         description: "Corretores não podem deletar inquilinos locadores.",

@@ -1,142 +1,160 @@
 import { supabase } from "@/integrations/supabase/client";
-import type { CompanyConfig, Location } from "@/types";
+import type { Config, Location } from "@/types";
+
+const DEFAULT_CONFIG: Config = {
+  adminFeePercentage: 6,
+  lateFeePercentage: 2,
+  interestRatePercentage: 1,
+  locations: []
+};
 
 export const configService = {
-  getDefaultConfig(): CompanyConfig {
-    return {
-      companyName: "Minha Imobiliária",
-      cnpj: "",
-      email: "",
-      phone: "",
-      address: "",
-      city: "",
-      state: "",
-      zipCode: "",
-      adminFeePercentage: 10,
-      lateFeePercentage: 2,
-      interestRatePercentage: 1,
-      locations: [],
-    };
-  },
-
-  async getConfig(): Promise<CompanyConfig> {
+  async get(): Promise<Config> {
     try {
-      // Usamos limit(1).maybeSingle() para evitar erro 406 se houver mais de 1 linha
       const { data, error } = await supabase
         .from("configs")
         .select("*")
-        .limit(1)
-        .maybeSingle();
-
-      if (error) {
-        console.error("Error fetching config:", error);
-        return this.getDefaultConfig();
-      }
-
-      if (!data) {
-        return this.getDefaultConfig();
-      }
-
-      // Map database fields to frontend interface
-      return {
-        companyName: data.company_name || "",
-        cnpj: data.cnpj || "",
-        email: data.email || "",
-        phone: data.phone || "",
-        address: data.address || "",
-        city: data.city || "",
-        state: data.state || "",
-        zipCode: data.zip_code || "",
-        adminFeePercentage: data.admin_fee_percentage || 0,
-        lateFeePercentage: data.late_fee_percentage || 0,
-        interestRatePercentage: data.interest_rate_percentage || 0,
-        locations: (data.locations as any[])?.map((loc: any) => ({
-          id: loc.id,
-          name: loc.name,
-          cep: loc.cep,
-          address: loc.address,
-          city: loc.city,
-          state: loc.state,
-        })) || [],
-      };
-    } catch (error) {
-      console.error("Error in getConfig:", error);
-      return this.getDefaultConfig();
-    }
-  },
-
-  async updateConfig(config: Partial<CompanyConfig>) {
-    // First get existing config to merge
-    const existing = await this.getConfig();
-    const merged = { ...existing, ...config };
-
-    // Map frontend interface to database fields
-    const dbData = {
-      company_name: merged.companyName,
-      cnpj: merged.cnpj,
-      email: merged.email,
-      phone: merged.phone,
-      address: merged.address,
-      city: merged.city,
-      state: merged.state,
-      zip_code: merged.zipCode,
-      admin_fee_percentage: merged.adminFeePercentage,
-      late_fee_percentage: merged.lateFeePercentage,
-      interest_rate_percentage: merged.interestRatePercentage,
-      locations: merged.locations, // Stored as JSONB
-      updated_at: new Date().toISOString(),
-    };
-
-    // Check if config exists using maybeSingle to avoid 406
-    const { data } = await supabase
-      .from("configs")
-      .select("id")
-      .limit(1)
-      .maybeSingle();
-
-    if (!data) {
-      // Insert new
-      const { error } = await supabase.from("configs").insert([dbData]);
-      if (error) throw error;
-    } else {
-      // Update existing by ID
-      const { error } = await supabase
-        .from("configs")
-        .update(dbData)
-        .eq("id", data.id);
+        .limit(1);
       
       if (error) throw error;
+      
+      // If no config exists, create default
+      if (!data || data.length === 0) {
+        return await this.save(DEFAULT_CONFIG);
+      }
+      
+      // Return first config
+      const config = data[0];
+      
+      // Handle legacy locations (strings) vs new locations (objects)
+      let locations: Location[] = [];
+      if (Array.isArray(config.locations)) {
+        locations = config.locations.map((l: any) => {
+          if (typeof l === 'string') {
+            // Convert legacy string location to object
+            return {
+              id: crypto.randomUUID(),
+              name: l,
+              cep: "",
+              address: "",
+              number: "",
+              neighborhood: "",
+              city: "",
+              state: "",
+              createdAt: new Date().toISOString()
+            };
+          }
+          return l as Location;
+        });
+      }
+
+      return {
+        adminFeePercentage: Number(config.admin_fee_percentage) || 6,
+        lateFeePercentage: Number(config.late_fee_percentage) || 2,
+        interestRatePercentage: Number(config.interest_rate_percentage) || 1,
+        locations: locations
+      };
+    } catch (error) {
+      console.error("Error loading config:", error);
+      // Return default config if error
+      return DEFAULT_CONFIG;
     }
   },
 
-  async createLocation(location: Location) {
-    const config = await this.getConfig();
-    // Ensure locations is initialized
-    const currentLocations = config.locations || [];
-    const newLocations = [...currentLocations, location];
-    await this.updateConfig({ locations: newLocations });
-  },
+  async save(config: Config): Promise<Config> {
+    try {
+      // Check if config exists
+      const { data: existing } = await supabase
+        .from("configs")
+        .select("*")
+        .limit(1);
+      
+      // Prepare data for DB - converting Location objects to JSON-compatible array
+      const locationsJson = config.locations.map(l => ({
+        id: l.id,
+        name: l.name,
+        cep: l.cep,
+        address: l.address,
+        number: l.number,
+        neighborhood: l.neighborhood,
+        city: l.city,
+        state: l.state,
+        createdAt: l.createdAt
+      }));
+      
+      const configData = {
+        admin_fee_percentage: config.adminFeePercentage,
+        late_fee_percentage: config.lateFeePercentage,
+        interest_rate_percentage: config.interestRatePercentage,
+        locations: locationsJson, // Supabase will handle JSON conversion
+        updated_at: new Date().toISOString()
+      };
 
-  async updateLocation(location: Location) {
-    const config = await this.getConfig();
-    if (config && config.locations) {
-      const newLocations = config.locations.map((l) =>
-        l.id === location.id ? location : l
-      );
-      await this.updateConfig({ locations: newLocations });
+      if (existing && existing.length > 0) {
+        // Update existing config
+        const { data, error } = await supabase
+          .from("configs")
+          .update(configData)
+          .eq("id", existing[0].id)
+          .select()
+          .single();
+        
+        if (error) throw error;
+        
+        return {
+          adminFeePercentage: Number(data.admin_fee_percentage),
+          lateFeePercentage: Number(data.late_fee_percentage),
+          interestRatePercentage: Number(data.interest_rate_percentage),
+          locations: (data.locations as any[]).map(l => l as Location)
+        };
+      } else {
+        // Insert new config
+        const { data, error } = await supabase
+          .from("configs")
+          .insert([configData])
+          .select()
+          .single();
+        
+        if (error) throw error;
+        
+        return {
+          adminFeePercentage: Number(data.admin_fee_percentage),
+          lateFeePercentage: Number(data.late_fee_percentage),
+          interestRatePercentage: Number(data.interest_rate_percentage),
+          locations: (data.locations as any[]).map(l => l as Location)
+        };
+      }
+    } catch (error) {
+      console.error("Error saving config:", error);
+      throw error;
     }
   },
 
-  async deleteLocation(id: string) {
-    const config = await this.getConfig();
-    if (config && config.locations) {
-      const newLocations = config.locations.filter((l) => l.id !== id);
-      await this.updateConfig({ locations: newLocations });
+  async addLocation(location: Location): Promise<Config> {
+    try {
+      const config = await this.get();
+      // Check for duplicates by name or ID
+      if (!config.locations.some(l => l.id === location.id || l.name === location.name)) {
+        config.locations.push(location);
+        // Sort by name
+        config.locations.sort((a, b) => a.name.localeCompare(b.name));
+        return await this.save(config);
+      }
+      return config;
+    } catch (error) {
+      console.error("Error adding location:", error);
+      throw error;
     }
   },
 
-  // Alias for backward compatibility
-  async get() {
-    return this.getConfig();
-  },
+  async removeLocation(locationId: string): Promise<Config> {
+    try {
+      const config = await this.get();
+      config.locations = config.locations.filter((l) => l.id !== locationId);
+      return await this.save(config);
+    } catch (error) {
+      console.error("Error removing location:", error);
+      throw error;
+    }
+  }
 };
