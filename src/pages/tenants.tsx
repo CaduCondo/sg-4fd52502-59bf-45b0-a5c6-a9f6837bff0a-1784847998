@@ -308,8 +308,24 @@ export default function TenantsPage() {
                       </p>
                     </div>
 
+                    {/* Contato */}
+                    <div className="space-y-1 text-sm text-muted-foreground mb-3">
+                      {tenant.email && (
+                        <div className="flex items-center gap-2">
+                          <Mail className="h-4 w-4" />
+                          <span className="truncate">{tenant.email}</span>
+                        </div>
+                      )}
+                      {tenant.phone && (
+                        <div className="flex items-center gap-2">
+                          <Phone className="h-4 w-4" />
+                          <span>{applyPhoneMask(tenant.phone)}</span>
+                        </div>
+                      )}
+                    </div>
+
                     {/* Ações - Lixeira no canto inferior direito */}
-                    <div className="flex justify-end">
+                    <div className="flex justify-end mt-4 mb-2">
                       <Button
                         variant="ghost"
                         size="icon"
