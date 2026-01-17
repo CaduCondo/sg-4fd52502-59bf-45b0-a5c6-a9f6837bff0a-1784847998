@@ -364,41 +364,70 @@ export default function PropertiesPage() {
           ) : viewMode === "grid" ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {filteredProperties.map((property) => (
-                <Card 
+                <Card
                   key={property.id}
-                  className="h-full hover:shadow-lg transition-all cursor-pointer group"
+                  className="group hover:shadow-lg transition-all duration-300 cursor-pointer"
                   onClick={() => handleCardClick(property.id)}
                 >
-                  <CardHeader className="pb-2 p-2.5">
-                    <div className="flex justify-between items-start mb-2">
-                      <Building2 className="h-4 w-4 text-emerald-600" />
-                      <Badge className={getStatusColor(property.status)}>
-                        {getStatusLabel(property.status)}
+                  <CardContent className="p-3">
+                    {/* Header: Ícone + Local + Badge */}
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <Building2 className="w-6 h-6 text-emerald-600 flex-shrink-0" />
+                        <span className="font-bold text-lg text-gray-900 leading-none mt-1">
+                          {property.location}
+                        </span>
+                      </div>
+                      <Badge
+                        variant={
+                          property.status === "available"
+                            ? "default"
+                            : property.status === "occupied"
+                            ? "secondary"
+                            : "outline"
+                        }
+                        className={
+                          property.status === "available"
+                            ? "bg-emerald-500 hover:bg-emerald-600"
+                            : property.status === "occupied"
+                            ? "bg-blue-500 hover:bg-blue-600"
+                            : "bg-amber-500 hover:bg-amber-600 text-white"
+                        }
+                      >
+                        {property.status === "available"
+                          ? "Disponível"
+                          : property.status === "occupied"
+                          ? "Alugado"
+                          : "Indisponível"}
                       </Badge>
                     </div>
-                    <CardTitle className="text-sm group-hover:text-emerald-600 transition-colors">
-                      {property.location}
-                    </CardTitle>
-                    <p className="text-xs text-muted-foreground">
-                      {property.complement}
-                    </p>
-                  </CardHeader>
-                  <CardContent className="pt-0 p-2.5">
-                    <div className="flex items-baseline justify-between">
+
+                    {/* Complemento em destaque */}
+                    <div className="bg-black text-white px-3 py-1.5 rounded mb-2 inline-block">
+                      <span className="font-medium text-base">
+                        {property.complement || "Sem complemento"}
+                      </span>
+                    </div>
+
+                    {/* Footer: Valor + Botão Delete */}
+                    <div className="flex items-end justify-between mt-1">
                       <div>
-                        <p className="text-base font-bold text-emerald-600">
-                          {formatCurrency(property.rentValue)}
+                        <p className="text-3xl font-bold text-emerald-600 leading-tight">
+                          {property.monthlyRent.toLocaleString("pt-BR", {
+                            style: "currency",
+                            currency: "BRL",
+                          })}
                         </p>
-                        <p className="text-xs text-muted-foreground">por mês</p>
+                        <p className="text-sm text-muted-foreground">por mês</p>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-red-500 hover:text-red-700 hover:bg-red-50"
-                        onClick={(e) => handleDelete(e, property)}
+                      <button
+                        onClick={(e) => {
+                          handleDelete(e, property);
+                        }}
+                        className="p-2 hover:bg-red-50 rounded-lg transition-colors group/delete"
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
+                        <Trash2 className="w-5 h-5 text-red-500 group-hover/delete:text-red-700" />
+                      </button>
                     </div>
                   </CardContent>
                 </Card>
