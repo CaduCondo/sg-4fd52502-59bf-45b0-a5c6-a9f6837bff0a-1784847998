@@ -20,17 +20,18 @@ async function getSupabaseUser(): Promise<User | null> {
 
     if (profile) {
       // Convert Supabase user to local User format
+      // Note: user_profiles only has basic info. Other fields are defaulted.
       const user: User = {
         id: profile.id,
         name: profile.name || supabaseUser.email?.split("@")[0] || "Admin",
-        username: profile.username || supabaseUser.email?.split("@")[0] || "",
+        username: supabaseUser.email?.split("@")[0] || "",
         email: supabaseUser.email || "",
         password: "", // Not needed for authenticated users
         role: (profile.role as "admin" | "corretor" | "financeiro") || "admin",
-        phone: profile.phone || "",
-        rg: profile.rg || "",
-        cpf: profile.cpf || "",
-        active: profile.active !== false,
+        phone: "", // Not present in user_profiles
+        rg: "",    // Not present in user_profiles
+        cpf: "",   // Not present in user_profiles
+        active: true, // Default to true if authenticated
         createdAt: supabaseUser.created_at
       };
 

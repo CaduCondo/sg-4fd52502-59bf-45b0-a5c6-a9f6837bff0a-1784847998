@@ -14,7 +14,7 @@ import { configService } from "@/services/configService";
 import { systemUserService, SystemUser } from "@/services/systemUserService";
 import { Config, Location } from "@/types";
 import { Trash2, Edit, Key, Plus, Save, MapPin, Percent, UserPlus } from "lucide-react";
-import { isAuthenticated } from "@/lib/auth";
+import { isAuthenticated, isAuthenticatedAsync } from "@/lib/auth";
 import { StaggerContainer, StaggerItem } from "@/components/animations/ScrollReveal";
 import { FloatingCard } from "@/components/animations/FloatingCard";
 import { applyCepMask, removeMask } from "@/lib/masks";
@@ -63,7 +63,8 @@ export default function Settings() {
 
   useEffect(() => {
     const checkAuth = async () => {
-      if (!isAuthenticated()) {
+      const isAuth = await isAuthenticatedAsync();
+      if (!isAuth) {
         router.push("/login");
         return;
       }
