@@ -98,11 +98,9 @@ export const systemUserService = {
         active: user.active
       };
 
-      // Cast the table ref to any to bypass strict type checking for insert
-      const { data, error } = await (supabase.from("system_users") as any)
-        .insert(payload)
-        .select("*")
-        .single();
+      // Bypass TypeScript excessive depth check by completely escaping type inference
+      const table: any = supabase.from("system_users");
+      const { data, error } = await table.insert(payload).select("*").single();
 
       if (error) throw error;
       return data as SystemUser;
@@ -126,12 +124,9 @@ export const systemUserService = {
       if (updates.rg === "") payload.rg = null;
       if (updates.cpf === "") payload.cpf = null;
 
-      // Cast the table ref to any to bypass strict type checking for update
-      const { data, error } = await (supabase.from("system_users") as any)
-        .update(payload)
-        .eq("id", id)
-        .select("*")
-        .single();
+      // Bypass TypeScript excessive depth check
+      const table: any = supabase.from("system_users");
+      const { data, error } = await table.update(payload).eq("id", id).select("*").single();
 
       if (error) throw error;
       return data as SystemUser;
