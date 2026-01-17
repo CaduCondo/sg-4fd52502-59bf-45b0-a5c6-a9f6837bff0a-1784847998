@@ -404,7 +404,7 @@ export default function PropertiesPage() {
 
                     {/* Complemento em destaque */}
                     <div className="bg-black text-white px-3 py-1.5 rounded mb-2 inline-block">
-                      <span className="font-medium text-base">
+                      <span className="font-medium text-sm">
                         {property.complement || "Sem complemento"}
                       </span>
                     </div>
@@ -412,7 +412,7 @@ export default function PropertiesPage() {
                     {/* Footer: Valor + Botão Delete */}
                     <div className="flex items-end justify-between mt-1">
                       <div>
-                        <p className="text-3xl font-bold text-emerald-600 leading-tight">
+                        <p className="text-2xl font-bold text-emerald-600 leading-tight">
                           {property.monthlyRent.toLocaleString("pt-BR", {
                             style: "currency",
                             currency: "BRL",
