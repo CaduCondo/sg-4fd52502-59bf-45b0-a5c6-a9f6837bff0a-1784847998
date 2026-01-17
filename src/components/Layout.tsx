@@ -210,124 +210,197 @@ export function Layout({ children }: LayoutProps) {
         transition={{ duration: 0.3, ease: "easeInOut" }}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            {/* Left: Mobile menu + Logo */}
-            <div className="flex items-center gap-4 flex-shrink-0">
-              {/* Mobile menu button */}
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setMenuOpen(!menuOpen)}
-                className="lg:hidden"
-              >
-                <AnimatePresence mode="wait">
+          <div className="h-16">
+            {/* Desktop Layout - Grid with 3 columns */}
+            <div className="hidden lg:grid lg:grid-cols-3 lg:gap-4 lg:items-center h-full">
+              {/* Left: Logo */}
+              <div className="flex items-center justify-start">
+                <Link href="/dashboard" className="flex items-center space-x-2 group">
                   <motion.div
-                    key={menuOpen ? "close" : "open"}
-                    initial={{ rotate: 0, opacity: 0 }}
-                    animate={{ rotate: 0, opacity: 1 }}
-                    exit={{ rotate: 90, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
+                    whileHover={{ rotate: 360 }}
+                    transition={{ duration: 0.5 }}
                   >
-                    {menuOpen ? <X size={20} /> : <Menu size={20} />}
+                    <Building2 className="h-7 w-7 text-emerald-600 group-hover:text-emerald-700 transition-colors" />
                   </motion.div>
-                </AnimatePresence>
-              </Button>
-              
-              {/* Logo */}
-              <Link href="/dashboard" className="flex items-center space-x-2 group">
-                <motion.div
-                  whileHover={{ rotate: 360 }}
-                  transition={{ duration: 0.5 }}
-                >
-                  <Building2 className="h-7 w-7 text-emerald-600 group-hover:text-emerald-700 transition-colors" />
-                </motion.div>
-                <motion.span className="text-lg font-bold text-slate-900 group-hover:text-emerald-600 transition-colors">
-                  ImóvelControl
-                </motion.span>
-              </Link>
+                  <motion.span className="text-lg font-bold text-slate-900 group-hover:text-emerald-600 transition-colors">
+                    ImóvelControl
+                  </motion.span>
+                </Link>
+              </div>
+
+              {/* Center: Menu Items */}
+              <div className="flex items-center justify-center gap-2">
+                {menuItems.map((item, index) => (
+                  <motion.div
+                    key={item.path}
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05, duration: 0.3 }}
+                  >
+                    <Link href={item.path}>
+                      <Button 
+                        variant={isActive(item.path) ? "default" : "ghost"}
+                        size="sm"
+                        className="flex items-center gap-1.5 transition-all hover:scale-105"
+                      >
+                        <motion.div
+                          whileHover={{ rotate: 15, scale: 1.1 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <item.icon size={16} />
+                        </motion.div>
+                        <span className="text-sm">{item.label}</span>
+                      </Button>
+                    </Link>
+                  </motion.div>
+                ))}
+              </div>
+
+              {/* Right: User Profile */}
+              <div className="flex items-center justify-end">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="flex items-center space-x-2 hover:bg-emerald-50 transition-colors">
+                      <motion.div
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.95 }}
+                        className="relative"
+                      >
+                        {user?.photo ? (
+                          <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-emerald-600">
+                            <img 
+                              src={user.photo} 
+                              alt={user.name} 
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        ) : (
+                          <User size={18} />
+                        )}
+                      </motion.div>
+                      <span className="text-sm">{user?.name}</span>
+                      <motion.div
+                        animate={{ rotate: 0 }}
+                        whileHover={{ rotate: 180 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        <ChevronDown size={16} />
+                      </motion.div>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <div className="px-2 py-1.5">
+                      <p className="text-sm font-medium">{user?.name}</p>
+                      <p className="text-xs text-slate-500 capitalize">{user?.role}</p>
+                    </div>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setShowProfileDialog(true)}>
+                      <User className="mr-2 h-4 w-4" />
+                      Editar Perfil
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setShowPasswordDialog(true)}>
+                      <Lock className="mr-2 h-4 w-4" />
+                      Trocar Senha
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleLogout} className="text-red-600">
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Sair
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
 
-            {/* Center: Desktop Menu - MUST be in the same flex row */}
-            <div className="hidden lg:flex items-center gap-2 flex-1 justify-center">
-              {menuItems.map((item, index) => (
-                <motion.div
-                  key={item.path}
-                  initial={{ opacity: 0, y: -20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05, duration: 0.3 }}
+            {/* Mobile Layout - Flex */}
+            <div className="lg:hidden flex items-center justify-between h-full">
+              {/* Left: Mobile menu button + Logo */}
+              <div className="flex items-center gap-4">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setMenuOpen(!menuOpen)}
                 >
-                  <Link href={item.path}>
-                    <Button 
-                      variant={isActive(item.path) ? "default" : "ghost"}
-                      size="sm"
-                      className="flex items-center gap-1.5 transition-all hover:scale-105"
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={menuOpen ? "close" : "open"}
+                      initial={{ rotate: 0, opacity: 0 }}
+                      animate={{ rotate: 0, opacity: 1 }}
+                      exit={{ rotate: 90, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
                     >
+                      {menuOpen ? <X size={20} /> : <Menu size={20} />}
+                    </motion.div>
+                  </AnimatePresence>
+                </Button>
+                
+                <Link href="/dashboard" className="flex items-center space-x-2 group">
+                  <motion.div
+                    whileHover={{ rotate: 360 }}
+                    transition={{ duration: 0.5 }}
+                  >
+                    <Building2 className="h-7 w-7 text-emerald-600 group-hover:text-emerald-700 transition-colors" />
+                  </motion.div>
+                  <motion.span className="text-lg font-bold text-slate-900 group-hover:text-emerald-600 transition-colors">
+                    ImóvelControl
+                  </motion.span>
+                </Link>
+              </div>
+              
+              {/* Right: User Profile */}
+              <div className="flex items-center">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="flex items-center space-x-2 hover:bg-emerald-50 transition-colors">
                       <motion.div
-                        whileHover={{ rotate: 15, scale: 1.1 }}
-                        transition={{ duration: 0.2 }}
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.95 }}
+                        className="relative"
                       >
-                        <item.icon size={16} />
+                        {user?.photo ? (
+                          <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-emerald-600">
+                            <img 
+                              src={user.photo} 
+                              alt={user.name} 
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        ) : (
+                          <User size={18} />
+                        )}
                       </motion.div>
-                      <span className="text-sm">{item.label}</span>
+                      <span className="hidden sm:inline text-sm">{user?.name}</span>
+                      <motion.div
+                        animate={{ rotate: 0 }}
+                        whileHover={{ rotate: 180 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        <ChevronDown size={16} />
+                      </motion.div>
                     </Button>
-                  </Link>
-                </motion.div>
-              ))}
-            </div>
-            
-            {/* Right: User Profile */}
-            <div className="flex items-center flex-shrink-0">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="flex items-center space-x-2 hover:bg-emerald-50 transition-colors">
-                    <motion.div
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.95 }}
-                      className="relative"
-                    >
-                      {user?.photo ? (
-                        <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-emerald-600">
-                          <img 
-                            src={user.photo} 
-                            alt={user.name} 
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                      ) : (
-                        <User size={18} />
-                      )}
-                    </motion.div>
-                    <span className="hidden sm:inline text-sm">{user?.name}</span>
-                    <motion.div
-                      animate={{ rotate: 0 }}
-                      whileHover={{ rotate: 180 }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      <ChevronDown size={16} />
-                    </motion.div>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <div className="px-2 py-1.5">
-                    <p className="text-sm font-medium">{user?.name}</p>
-                    <p className="text-xs text-slate-500 capitalize">{user?.role}</p>
-                  </div>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setShowProfileDialog(true)}>
-                    <User className="mr-2 h-4 w-4" />
-                    Editar Perfil
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setShowPasswordDialog(true)}>
-                    <Lock className="mr-2 h-4 w-4" />
-                    Trocar Senha
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout} className="text-red-600">
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Sair
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <div className="px-2 py-1.5">
+                      <p className="text-sm font-medium">{user?.name}</p>
+                      <p className="text-xs text-slate-500 capitalize">{user?.role}</p>
+                    </div>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setShowProfileDialog(true)}>
+                      <User className="mr-2 h-4 w-4" />
+                      Editar Perfil
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setShowPasswordDialog(true)}>
+                      <Lock className="mr-2 h-4 w-4" />
+                      Trocar Senha
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleLogout} className="text-red-600">
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Sair
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
           </div>
         </div>
