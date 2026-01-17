@@ -1,19 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-
-export interface SystemUser {
-  id: string;
-  name: string;
-  username?: string;
-  email: string;
-  phone?: string;
-  rg?: string;
-  cpf?: string;
-  password: string;
-  role: string; // "admin" | "corretor" | "financeiro"
-  active: boolean;
-  created_at: string;
-  updated_at: string;
-}
+import type { SystemUser } from "@/types";
 
 export const systemUserService = {
   /**

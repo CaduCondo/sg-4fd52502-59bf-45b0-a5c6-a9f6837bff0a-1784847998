@@ -76,7 +76,7 @@ export default function Users() {
         username: user.username,
         password: "", // Não carrega senha por segurança
         role: user.role,
-        isActive: user.isActive
+        isActive: user.active
       });
     } else {
       console.log("➕ Abrindo criação de novo usuário");
@@ -149,7 +149,7 @@ export default function Users() {
           phone: formData.phone,
           username: formData.username,
           role: formData.role,
-          isActive: formData.isActive
+          active: formData.isActive
         };
 
         // Só atualiza senha se foi preenchida
@@ -166,14 +166,14 @@ export default function Users() {
       } else {
         // Criação
         console.log("➕ Criando novo usuário...");
-        const newUser: Omit<SystemUser, "id" | "createdAt" | "updatedAt"> = {
+        const newUser: Omit<SystemUser, "id" | "created_at" | "updated_at"> = {
           name: formData.name,
           email: formData.email,
           phone: formData.phone,
           username: formData.username,
           password: formData.password,
           role: formData.role,
-          isActive: formData.isActive
+          active: formData.isActive
         };
 
         await systemUserService.create(newUser);
@@ -208,10 +208,10 @@ export default function Users() {
 
   const handleToggleActive = async (user: SystemUser) => {
     try {
-      const newStatus = !user.isActive;
+      const newStatus = !user.active;
       console.log(`🔄 ${newStatus ? "Ativando" : "Desativando"} usuário:`, user.id);
       
-      await systemUserService.update(user.id, { isActive: newStatus });
+      await systemUserService.update(user.id, { active: newStatus });
       
       console.log(`✅ Usuário ${newStatus ? "ativado" : "desativado"} com sucesso`);
       toast({
@@ -291,7 +291,7 @@ export default function Users() {
                       <StaggerItem key={user.id}>
                         <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-slate-50 transition-colors">
                           <div className="flex items-center gap-4">
-                            <div className={`p-3 rounded-full ${user.isActive ? "bg-blue-100 text-blue-600" : "bg-gray-100 text-gray-400"}`}>
+                            <div className={`p-3 rounded-full ${user.active ? "bg-blue-100 text-blue-600" : "bg-gray-100 text-gray-400"}`}>
                               {user.role === "admin" ? (
                                 <Shield className="h-5 w-5" />
                               ) : (
@@ -304,8 +304,8 @@ export default function Users() {
                                 <Badge variant={user.role === "admin" ? "default" : "secondary"}>
                                   {user.role === "admin" ? "Administrador" : "Usuário"}
                                 </Badge>
-                                <Badge variant={user.isActive ? "default" : "destructive"}>
-                                  {user.isActive ? "Ativo" : "Inativo"}
+                                <Badge variant={user.active ? "default" : "destructive"}>
+                                  {user.active ? "Ativo" : "Inativo"}
                                 </Badge>
                               </div>
                               <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
@@ -326,11 +326,11 @@ export default function Users() {
                               <Edit className="h-4 w-4 mr-2" /> Editar
                             </Button>
                             <Button
-                              variant={user.isActive ? "destructive" : "default"}
+                              variant={user.active ? "destructive" : "default"}
                               size="sm"
                               onClick={() => handleToggleActive(user)}
                             >
-                              {user.isActive ? (
+                              {user.active ? (
                                 <>
                                   <UserX className="h-4 w-4 mr-2" /> Desativar
                                 </>

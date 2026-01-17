@@ -13,6 +13,19 @@ export interface User {
   createdAt: string;
 }
 
+export interface SystemUser {
+  id: string;
+  name: string;
+  username: string;
+  email: string;
+  phone?: string;
+  password: string;
+  role: string;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Location {
   id: string;
   name: string;
