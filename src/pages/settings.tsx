@@ -611,132 +611,130 @@ export default function Settings() {
             <DialogHeader>
               <DialogTitle>{editingSystemUser ? "Editar Usuário" : "Novo Usuário"}</DialogTitle>
             </DialogHeader>
-            <form onSubmit={(e) => {
-              e.preventDefault();
-              console.log("✅ FORM SUBMITTED - Chamando handleSaveSystemUser");
-              handleSaveSystemUser();
-            }}>
-              <div className="grid gap-4 py-4">
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <Label>Nome Completo *</Label>
+                <Input 
+                  value={systemUserForm.name} 
+                  onChange={(e) => setSystemUserForm({...systemUserForm, name: e.target.value})}
+                  placeholder="Ex: Carlos Eduardo Pires"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Usuário</Label>
+                <Input 
+                  value={systemUserForm.username} 
+                  onChange={(e) => setSystemUserForm({...systemUserForm, username: e.target.value})}
+                  placeholder="Ex: cadu.pires"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Nome Completo *</Label>
+                  <Label>Email *</Label>
                   <Input 
-                    value={systemUserForm.name} 
-                    onChange={(e) => setSystemUserForm({...systemUserForm, name: e.target.value})}
-                    placeholder="Ex: Carlos Eduardo Pires"
+                    type="email"
+                    value={systemUserForm.email} 
+                    onChange={(e) => setSystemUserForm({...systemUserForm, email: e.target.value})}
+                    placeholder="usuario@exemplo.com"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Usuário</Label>
+                  <Label>Celular</Label>
                   <Input 
-                    value={systemUserForm.username} 
-                    onChange={(e) => setSystemUserForm({...systemUserForm, username: e.target.value})}
-                    placeholder="Ex: cadu.pires"
+                    value={systemUserForm.phone} 
+                    onChange={(e) => setSystemUserForm({...systemUserForm, phone: e.target.value})}
+                    placeholder="(00) 00000-0000"
                   />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Email *</Label>
-                    <Input 
-                      type="email"
-                      value={systemUserForm.email} 
-                      onChange={(e) => setSystemUserForm({...systemUserForm, email: e.target.value})}
-                      placeholder="usuario@exemplo.com"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Celular</Label>
-                    <Input 
-                      value={systemUserForm.phone} 
-                      onChange={(e) => setSystemUserForm({...systemUserForm, phone: e.target.value})}
-                      placeholder="(00) 00000-0000"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>RG</Label>
-                    <Input 
-                      value={systemUserForm.rg} 
-                      onChange={(e) => setSystemUserForm({...systemUserForm, rg: e.target.value})}
-                      placeholder="00.000.000-0"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>CPF</Label>
-                    <Input 
-                      value={systemUserForm.cpf} 
-                      onChange={(e) => setSystemUserForm({...systemUserForm, cpf: e.target.value})}
-                      placeholder="000.000.000-00"
-                    />
-                  </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>Senha {editingSystemUser && "(deixe em branco para manter a atual)"}</Label>
-                  <Input 
-                    type="password" 
-                    value={systemUserForm.password} 
-                    onChange={(e) => setSystemUserForm({...systemUserForm, password: e.target.value})}
-                    placeholder={editingSystemUser ? "Nova senha (opcional)" : "Senha *"}
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Perfil *</Label>
-                    <Select value={systemUserForm.role} onValueChange={(val) => setSystemUserForm({...systemUserForm, role: val})}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="admin">Administrador</SelectItem>
-                        <SelectItem value="corretor">Corretor</SelectItem>
-                        <SelectItem value="financeiro">Financeiro</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Status *</Label>
-                    <Select 
-                      value={systemUserForm.active ? "active" : "inactive"} 
-                      onValueChange={(val) => setSystemUserForm({...systemUserForm, active: val === "active"})}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="active">Ativo</SelectItem>
-                        <SelectItem value="inactive">Inativo</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
                 </div>
               </div>
-              <div className="flex justify-end gap-2 mt-6 pt-4 border-t">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    console.log("🚫 Botão Cancelar clicado");
-                    setIsSystemUserModalOpen(false);
-                    setEditingSystemUser(null);
-                  }}
-                >
-                  Cancelar
-                </Button>
-                <Button type="submit">
-                  Salvar
-                </Button>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>RG</Label>
+                  <Input 
+                    value={systemUserForm.rg} 
+                    onChange={(e) => setSystemUserForm({...systemUserForm, rg: e.target.value})}
+                    placeholder="00.000.000-0"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>CPF</Label>
+                  <Input 
+                    value={systemUserForm.cpf} 
+                    onChange={(e) => setSystemUserForm({...systemUserForm, cpf: e.target.value})}
+                    placeholder="000.000.000-00"
+                  />
+                </div>
               </div>
-            </form>
+              
+              <div className="space-y-2">
+                <Label>Senha {editingSystemUser && "(deixe em branco para manter a atual)"}</Label>
+                <Input 
+                  type="password" 
+                  value={systemUserForm.password} 
+                  onChange={(e) => setSystemUserForm({...systemUserForm, password: e.target.value})}
+                  placeholder={editingSystemUser ? "Nova senha (opcional)" : "Senha *"}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Perfil *</Label>
+                  <Select value={systemUserForm.role} onValueChange={(val) => setSystemUserForm({...systemUserForm, role: val})}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="admin">Administrador</SelectItem>
+                      <SelectItem value="corretor">Corretor</SelectItem>
+                      <SelectItem value="financeiro">Financeiro</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Status *</Label>
+                  <Select 
+                    value={systemUserForm.active ? "active" : "inactive"} 
+                    onValueChange={(val) => setSystemUserForm({...systemUserForm, active: val === "active"})}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Ativo</SelectItem>
+                      <SelectItem value="inactive">Inativo</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-6 pt-4 border-t">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => {
+                  console.log("🚫 Botão Cancelar clicado");
+                  setIsSystemUserModalOpen(false);
+                  setEditingSystemUser(null);
+                }}
+              >
+                Cancelar
+              </Button>
+              <Button 
+                type="button"
+                onClick={() => {
+                  console.log("💾 Botão Salvar clicado DIRETAMENTE");
+                  handleSaveSystemUser();
+                }}
+              >
+                Salvar
+              </Button>
+            </div>
           </DialogContent>
         </Dialog>
 
