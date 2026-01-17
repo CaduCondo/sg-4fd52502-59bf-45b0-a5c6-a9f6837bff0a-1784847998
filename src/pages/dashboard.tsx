@@ -25,7 +25,7 @@ export default function DashboardPage() {
   const [rentals, setRentals] = useState<Rental[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [adminFeePercentage, setAdminFeePercentage] = useState(6);
-  const [userName, setUserName] = useState("Carregando...");
+  const [userName, setUserName] = useState("Administrador");
   const [mounted, setMounted] = useState(false);
   
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
@@ -203,11 +203,19 @@ export default function DashboardPage() {
         .eq("id", user.id)
         .single();
 
-      if (error || !data || !data.name) {
+      if (error) {
+        console.error("Error loading user profile:", error);
         const emailName = user.email?.split("@")[0] || "Administrador";
-        setUserName(emailName);
+        setUserName(emailName.charAt(0).toUpperCase() + emailName.slice(1));
+        return;
+      }
+
+      if (data?.name) {
+        const firstName = data.name.split(" ")[0];
+        setUserName(firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase());
       } else {
-        setUserName(data.name);
+        const emailName = user.email?.split("@")[0] || "Administrador";
+        setUserName(emailName.charAt(0).toUpperCase() + emailName.slice(1));
       }
     } catch (error) {
       console.error("Error loading user name:", error);
