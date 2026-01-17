@@ -226,8 +226,8 @@ export function Layout({ children }: LayoutProps) {
               </Link>
             </div>
 
-            {/* Center: Desktop Menu - FORCED TO SHOW WITHOUT ANY CONDITIONS */}
-            <nav className="flex items-center gap-2 flex-1 justify-center bg-red-500 p-4 min-h-[60px] min-w-[600px]">
+            {/* Center: Desktop Menu - FORCED TO SHOW */}
+            <nav className="flex items-center gap-2 flex-1 min-w-[600px] bg-red-500 p-4 min-h-[60px]">
               <span className="text-white font-bold text-2xl">🔴 MENU DEBUG 🔴</span>
               {menuItems.map((item) => (
                 <Link key={item.path} href={item.path}>
