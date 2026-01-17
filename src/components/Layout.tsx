@@ -449,11 +449,11 @@ export function Layout({ children }: LayoutProps) {
       
       {/* Edit Profile Dialog */}
       <Dialog open={showProfileDialog} onOpenChange={setShowProfileDialog}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Editar Perfil</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="grid gap-4 py-4">
             <div className="flex flex-col items-center space-y-3">
               <div className="relative">
                 <div className="w-24 h-24 rounded-full overflow-hidden bg-slate-200 flex items-center justify-center">
@@ -495,65 +495,76 @@ export function Layout({ children }: LayoutProps) {
               </p>
             </div>
 
-            <div>
-              <Label htmlFor="profile-name">Nome Completo</Label>
+            <div className="space-y-2">
+              <Label>Nome Completo *</Label>
               <Input
-                id="profile-name"
                 value={profileName}
                 onChange={(e) => setProfileName(e.target.value)}
+                placeholder="Ex: Carlos Eduardo Pires"
               />
             </div>
-            <div>
-              <Label htmlFor="profile-rg">RG</Label>
-              <Input
-                id="profile-rg"
-                value={profileRg}
-                onChange={(e) => setProfileRg(e.target.value)}
-              />
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>RG</Label>
+                <Input
+                  value={profileRg}
+                  onChange={(e) => setProfileRg(e.target.value)}
+                  placeholder="00.000.000-0"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>CPF</Label>
+                <Input
+                  value={profileCpf}
+                  onChange={(e) => setProfileCpf(e.target.value)}
+                  placeholder="000.000.000-00"
+                />
+              </div>
             </div>
-            <div>
-              <Label htmlFor="profile-cpf">CPF</Label>
-              <Input
-                id="profile-cpf"
-                value={profileCpf}
-                onChange={(e) => setProfileCpf(e.target.value)}
-              />
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Celular</Label>
+                <Input
+                  value={profilePhone}
+                  onChange={(e) => setProfilePhone(e.target.value)}
+                  placeholder="(00) 00000-0000"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Email *</Label>
+                <Input
+                  type="email"
+                  value={profileEmail}
+                  onChange={(e) => setProfileEmail(e.target.value)}
+                  placeholder="usuario@exemplo.com"
+                />
+              </div>
             </div>
-            <div>
-              <Label htmlFor="profile-phone">Celular</Label>
-              <Input
-                id="profile-phone"
-                value={profilePhone}
-                onChange={(e) => setProfilePhone(e.target.value)}
-              />
-            </div>
-            <div>
-              <Label htmlFor="profile-email">Email</Label>
-              <Input
-                id="profile-email"
-                type="email"
-                value={profileEmail}
-                onChange={(e) => setProfileEmail(e.target.value)}
-              />
-            </div>
-            <div className="flex justify-end gap-2 mt-4 pt-4 border-t">
-              <Button 
-                type="button"
-                variant="outline" 
-                onClick={() => setShowProfileDialog(false)}
-              >
-                Cancelar
-              </Button>
-              <Button 
-                type="button"
-                onClick={() => {
-                  console.log("💾 Botão Salvar Perfil clicado");
-                  handleSaveProfile();
-                }}
-              >
-                Salvar
-              </Button>
-            </div>
+          </div>
+          <div className="flex justify-end gap-2 mt-6 pt-4 border-t">
+            <Button 
+              type="button"
+              variant="outline" 
+              onClick={() => {
+                console.log("🚫 Cancelar perfil - Dialog fechado");
+                setShowProfileDialog(false);
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button 
+              type="button"
+              onClick={() => {
+                console.log("💾 Botão Salvar Perfil clicado DIRETAMENTE");
+                handleSaveProfile();
+              }}
+            >
+              Salvar
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
