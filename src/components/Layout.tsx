@@ -364,11 +364,13 @@ export function Layout({ children }: LayoutProps) {
         onOpenChange={setShowProfileDialog}
         userId={user?.id || ""}
         onSuccess={() => {
-          // Reload user data after successful update
-          const updatedUser = getCurrentUser();
-          if (updatedUser) {
-            setUser(updatedUser);
-          }
+          // Delay state update to prevent interface freeze
+          setTimeout(() => {
+            const updatedUser = getCurrentUser();
+            if (updatedUser) {
+              setUser(updatedUser);
+            }
+          }, 100);
         }}
       />
       
