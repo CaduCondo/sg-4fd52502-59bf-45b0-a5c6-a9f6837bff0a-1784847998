@@ -1,30 +1,23 @@
 import { useEffect, useState } from "react";
-import { useRouter } from "next/router";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { configService } from "@/services/configService";
-import { systemUserService, SystemUser } from "@/services/systemUserService";
 import { Config, Location } from "@/types";
-import { Trash2, Edit, Key, Plus, Save, MapPin, Percent, UserPlus } from "lucide-react";
-import { isAuthenticated, isAuthenticatedAsync } from "@/lib/auth";
+import { Trash2, Plus, Save, MapPin, Percent } from "lucide-react";
 import { StaggerContainer, StaggerItem } from "@/components/animations/ScrollReveal";
 import { FloatingCard } from "@/components/animations/FloatingCard";
-import { applyCepMask, removeMask } from "@/lib/masks";
-import { EditProfileDialog } from "@/components/EditProfileDialog";
+import { applyCepMask } from "@/lib/masks";
+import { SEO } from "@/components/SEO";
 
 export default function Settings() {
-  const router = useRouter();
   const { toast } = useToast();
   const [config, setConfig] = useState<Config>({ adminFeePercentage: 6, lateFeePercentage: 2, interestRatePercentage: 0.033, locations: [] });
-  const [systemUsers, setSystemUsers] = useState<SystemUser[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -40,43 +33,7 @@ export default function Settings() {
     state: ""
   });
 
-  // System User Form State
-  const [isSystemUserModalOpen, setIsSystemUserModalOpen] = useState(false);
-  const [editingSystemUser, setEditingSystemUser] = useState<SystemUser | null>(null);
-  const [systemUserForm, setSystemUserForm] = useState({
-    name: "",
-    username: "",
-    email: "",
-    phone: "",
-    rg: "",
-    cpf: "",
-    password: "",
-    role: "corretor",
-    active: true
-  });
-
-  // System User Password Reset State
-  const [isResetSystemPasswordOpen, setIsResetSystemPasswordOpen] = useState(false);
-  const [resetSystemPasswordValue, setResetSystemPasswordValue] = useState("");
-  const [systemUserToReset, setSystemUserToReset] = useState<SystemUser | null>(null);
-  
-  // Edit Profile Dialog State
-  const [showEditProfileDialog, setShowEditProfileDialog] = useState(false);
-  const [userIdToEdit, setUserIdToEdit] = useState<string>("");
-
   const sortedLocations = [...locations].sort((a, b) => a.name.localeCompare(b.name));
-
-  // useEffect(() => {
-  //   const checkAuth = async () => {
-  //     const isAuth = await isAuthenticatedAsync();
-  //     if (!isAuth) {
-  //       router.push("/login");
-  //       return;
-  //     }
-  //     loadSettings();
-  //   };
-  //   checkAuth();
-  // }, [router]);
 
   useEffect(() => {
     loadSettings();
@@ -85,10 +42,7 @@ export default function Settings() {
   const loadSettings = async () => {
     try {
       const configData = await configService.get();
-      const sysUsers = await systemUserService.getAll();
-      
       setConfig(configData);
-      setSystemUsers(sysUsers);
       setLocations(configData.locations || []);
       setIsLoading(false);
     } catch (error) {
@@ -185,129 +139,6 @@ export default function Settings() {
     }
   };
 
-  const handleSaveSystemUser = async () => {
-    console.log("🔍 handleSaveSystemUser iniciado", { editingSystemUser, systemUserForm });
-    
-    if (!systemUserForm.name || !systemUserForm.email || (!editingSystemUser && !systemUserForm.password)) {
-      toast({
-        title: "Erro",
-        description: "Preencha os campos obrigatórios (Nome, Email e Senha).",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    try {
-      console.log("🔄 Tentando salvar usuário...");
-      
-      if (editingSystemUser) {
-        console.log("✏️ Modo EDIÇÃO - ID:", editingSystemUser.id);
-        
-        const updates: any = {
-          name: systemUserForm.name,
-          username: systemUserForm.username,
-          email: systemUserForm.email,
-          phone: systemUserForm.phone,
-          rg: systemUserForm.rg,
-          cpf: systemUserForm.cpf,
-          role: systemUserForm.role,
-          active: systemUserForm.active
-        };
-        
-        if (systemUserForm.password) {
-          updates.password = systemUserForm.password;
-        }
-
-        console.log("📦 Payload de atualização:", updates);
-        
-        const result = await systemUserService.update(editingSystemUser.id, updates);
-        console.log("✅ Resultado da atualização:", result);
-        
-        if (result) {
-          toast({ title: "Usuário atualizado com sucesso" });
-        } else {
-          throw new Error("Falha ao atualizar usuário");
-        }
-      } else {
-        console.log("➕ Modo CRIAÇÃO");
-        
-        const result = await systemUserService.create({
-          name: systemUserForm.name,
-          username: systemUserForm.username,
-          email: systemUserForm.email,
-          phone: systemUserForm.phone,
-          rg: systemUserForm.rg,
-          cpf: systemUserForm.cpf,
-          password: systemUserForm.password,
-          role: systemUserForm.role,
-          active: systemUserForm.active
-        });
-        
-        console.log("✅ Resultado da criação:", result);
-        
-        if (result) {
-          toast({ title: "Usuário criado com sucesso" });
-        } else {
-          throw new Error("Falha ao criar usuário");
-        }
-      }
-
-      setIsSystemUserModalOpen(false);
-      setEditingSystemUser(null);
-      setSystemUserForm({ name: "", username: "", email: "", phone: "", rg: "", cpf: "", password: "", role: "corretor", active: true });
-      
-      console.log("🔄 Recarregando lista de usuários...");
-      await loadSettings();
-      console.log("✅ handleSaveSystemUser finalizado com sucesso");
-    } catch (error) {
-      console.error("❌ Error saving system user:", error);
-      toast({
-        title: "Erro",
-        description: "Erro ao salvar usuário",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleEditSystemUser = (user: SystemUser) => {
-    setUserIdToEdit(user.id);
-    setShowEditProfileDialog(true);
-  };
-
-  const handleDeleteSystemUser = async (id: string) => {
-    if (confirm("Tem certeza que deseja excluir este usuário?")) {
-      const success = await systemUserService.delete(id);
-      if (success) {
-        loadSettings();
-        toast({ title: "Usuário excluído com sucesso" });
-      } else {
-        toast({
-          title: "Erro",
-          description: "Erro ao excluir usuário",
-          variant: "destructive"
-        });
-      }
-    }
-  };
-
-  const handleResetSystemPassword = async () => {
-    if (systemUserToReset && resetSystemPasswordValue) {
-      const success = await systemUserService.resetPassword(systemUserToReset.id, resetSystemPasswordValue);
-      if (success) {
-        setIsResetSystemPasswordOpen(false);
-        setResetSystemPasswordValue("");
-        setSystemUserToReset(null);
-        toast({ title: "Senha alterada com sucesso" });
-      } else {
-        toast({
-          title: "Erro",
-          description: "Erro ao alterar senha",
-          variant: "destructive"
-        });
-      }
-    }
-  };
-
   const fetchAddressByCep = async (cep: string) => {
     const cleanCep = cep.replace(/\D/g, "");
     if (cleanCep.length !== 8) return;
@@ -334,23 +165,25 @@ export default function Settings() {
 
   return (
     <Layout>
-      <div className="space-y-6">
+      <SEO 
+        title="Configurações - Sistema de Locações"
+        description="Configure suas preferências e dados da empresa"
+      />
+      
+      <div className="space-y-8">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Configurações</h1>
-          <p className="text-muted-foreground">
-            Gerencie as configurações do sistema, usuários e locais.
+          <h1 className="text-3xl font-bold">Configurações</h1>
+          <p className="text-muted-foreground mt-2">
+            Configure suas preferências e dados da empresa
           </p>
         </div>
 
-        <Tabs defaultValue="general" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="general">Geral</TabsTrigger>
-            <TabsTrigger value="fees">Multa e Juros</TabsTrigger>
-            <TabsTrigger value="users">Usuários</TabsTrigger>
-            <TabsTrigger value="locations">Locais</TabsTrigger>
+        <Tabs defaultValue="company" className="w-full">
+          <TabsList className="grid w-full grid-cols-1 max-w-md">
+            <TabsTrigger value="company">Dados da Empresa</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="general">
+          <TabsContent value="company" className="space-y-6">
             <FloatingCard delay={0.1}>
               <Card>
                 <CardHeader>
@@ -387,9 +220,7 @@ export default function Settings() {
                 </CardContent>
               </Card>
             </FloatingCard>
-          </TabsContent>
 
-          <TabsContent value="fees">
             <FloatingCard delay={0.1}>
               <Card>
                 <CardHeader>
@@ -467,82 +298,7 @@ export default function Settings() {
                 </CardContent>
               </Card>
             </FloatingCard>
-          </TabsContent>
 
-          <TabsContent value="users">
-            <FloatingCard delay={0.1}>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <div>
-                    <CardTitle>Usuários do Sistema</CardTitle>
-                    <CardDescription>
-                      Gerencie os usuários que têm acesso ao sistema
-                    </CardDescription>
-                  </div>
-                  <Button onClick={() => {
-                    setEditingSystemUser(null);
-                    setSystemUserForm({ name: "", username: "", email: "", phone: "", rg: "", cpf: "", password: "", role: "corretor", active: true });
-                    setIsSystemUserModalOpen(true);
-                  }} className="bg-emerald-600 hover:bg-emerald-700">
-                    <UserPlus className="mr-2 h-4 w-4" /> Novo Usuário
-                  </Button>
-                </CardHeader>
-                <CardContent>
-                  <div className="rounded-md border">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Nome</TableHead>
-                          <TableHead>Email</TableHead>
-                          <TableHead>Perfil</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead className="text-right">Ações</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {systemUsers.map((user) => (
-                          <TableRow key={user.id}>
-                            <TableCell className="font-medium">{user.name}</TableCell>
-                            <TableCell>{user.email}</TableCell>
-                            <TableCell>
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize
-                                ${user.role === 'admin' ? 'bg-purple-100 text-purple-800' : 
-                                  user.role === 'financeiro' ? 'bg-blue-100 text-blue-800' : 
-                                  'bg-green-100 text-green-800'}`}>
-                                {user.role}
-                              </span>
-                            </TableCell>
-                            <TableCell>
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                                ${user.active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-                                {user.active ? 'Ativo' : 'Inativo'}
-                              </span>
-                            </TableCell>
-                            <TableCell className="text-right space-x-1">
-                              <Button variant="ghost" size="sm" onClick={() => {
-                                setSystemUserToReset(user);
-                                setIsResetSystemPasswordOpen(true);
-                              }} title="Redefinir Senha">
-                                <Key className="h-4 w-4 text-slate-500" />
-                              </Button>
-                              <Button variant="ghost" size="sm" onClick={() => handleEditSystemUser(user)} title="Editar">
-                                <Edit className="h-4 w-4 text-blue-600" />
-                              </Button>
-                              <Button variant="ghost" size="sm" onClick={() => handleDeleteSystemUser(user.id)} title="Excluir">
-                                <Trash2 className="h-4 w-4 text-red-600" />
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </CardContent>
-              </Card>
-            </FloatingCard>
-          </TabsContent>
-
-          <TabsContent value="locations">
             <FloatingCard delay={0.1}>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
@@ -598,15 +354,6 @@ export default function Settings() {
             </FloatingCard>
           </TabsContent>
         </Tabs>
-
-        {/* System User Dialog */}
-        <EditProfileDialog
-          open={showEditProfileDialog}
-          onOpenChange={setShowEditProfileDialog}
-          onSuccess={() => {
-            loadSettings();
-          }}
-        />
 
         {/* Location Dialog */}
         <Dialog open={isLocationModalOpen} onOpenChange={setIsLocationModalOpen}>
@@ -665,23 +412,6 @@ export default function Settings() {
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsLocationModalOpen(false)}>Cancelar</Button>
               <Button onClick={handleSaveLocation}>Salvar Local</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Reset System User Password Dialog */}
-        <Dialog open={isResetSystemPasswordOpen} onOpenChange={setIsResetSystemPasswordOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Redefinir Senha - {systemUserToReset?.name}</DialogTitle>
-            </DialogHeader>
-            <div className="py-4">
-              <Label>Nova Senha</Label>
-              <Input type="password" value={resetSystemPasswordValue} onChange={(e) => setResetSystemPasswordValue(e.target.value)} />
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsResetSystemPasswordOpen(false)}>Cancelar</Button>
-              <Button onClick={handleResetSystemPassword}>Salvar Nova Senha</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
