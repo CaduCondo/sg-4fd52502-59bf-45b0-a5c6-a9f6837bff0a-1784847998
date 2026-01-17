@@ -202,7 +202,7 @@ export default function RentalDetails() {
       await rentalService.update(updatedRental);
 
       if (property) {
-        await propertyService.update({ ...property, status: "available" });
+        await propertyService.update(property.id, { ...property, status: "available" });
       }
 
       if (tenant) {
@@ -232,7 +232,7 @@ export default function RentalDetails() {
       await rentalService.delete(rental.id);
 
       if (property) {
-        await propertyService.update({ ...property, status: "available" });
+        await propertyService.update(property.id, { ...property, status: "available" });
       }
 
       if (tenant) {
