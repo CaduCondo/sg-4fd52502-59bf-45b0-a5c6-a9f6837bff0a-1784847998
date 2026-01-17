@@ -470,7 +470,7 @@ export default function DashboardPage() {
                 onClick={() => router.push("/payments")}
               >
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4">
-                  <CardTitle className="text-sm font-medium">Pendentes</CardTitle>
+                  <CardTitle className="text-sm font-medium">Recebimentos Pendentes</CardTitle>
                   <AlertCircle className="h-4 w-4 text-red-500" />
                 </CardHeader>
                 <CardContent className="p-4 pt-0">
@@ -488,7 +488,7 @@ export default function DashboardPage() {
                 onClick={() => router.push("/payments")}
               >
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4">
-                  <CardTitle className="text-sm font-medium">Realizados</CardTitle>
+                  <CardTitle className="text-sm font-medium">Recebimentos Realizados</CardTitle>
                   <Calendar className="h-4 w-4 text-emerald-500" />
                 </CardHeader>
                 <CardContent className="p-4 pt-0">

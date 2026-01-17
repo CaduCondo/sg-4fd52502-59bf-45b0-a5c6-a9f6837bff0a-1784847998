@@ -247,6 +247,34 @@ export function Layout({ children }: LayoutProps) {
                   ImóvelControl
                 </motion.span>
               </Link>
+
+              {/* Desktop Menu - Moved to same row */}
+              <div className="hidden lg:flex space-x-1 ml-8">
+                {menuItems.map((item, index) => (
+                  <motion.div
+                    key={item.path}
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05, duration: 0.3 }}
+                  >
+                    <Link href={item.path}>
+                      <Button 
+                        variant={isActive(item.path) ? "default" : "ghost"}
+                        size="sm"
+                        className="flex items-center gap-1.5 transition-all hover:scale-105"
+                      >
+                        <motion.div
+                          whileHover={{ rotate: 15, scale: 1.1 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <item.icon size={16} />
+                        </motion.div>
+                        <span>{item.label}</span>
+                      </Button>
+                    </Link>
+                  </motion.div>
+                ))}
+              </div>
             </div>
             
             <div className="flex items-center space-x-4">
@@ -304,43 +332,7 @@ export function Layout({ children }: LayoutProps) {
             </div>
           </div>
           
-          {/* Desktop Menu with stagger animation */}
-          <AnimatePresence>
-            {!menuOpen && (
-              <motion.div
-                className="hidden lg:flex space-x-1 pb-3 overflow-x-auto"
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.3 }}
-              >
-                {menuItems.map((item, index) => (
-                  <motion.div
-                    key={item.path}
-                    initial={{ opacity: 0, y: -20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.05, duration: 0.3 }}
-                  >
-                    <Link href={item.path}>
-                      <Button 
-                        variant={isActive(item.path) ? "default" : "ghost"}
-                        size="sm"
-                        className="flex items-center space-x-1 transition-all hover:scale-105"
-                      >
-                        <motion.div
-                          whileHover={{ rotate: 15, scale: 1.1 }}
-                          transition={{ duration: 0.2 }}
-                        >
-                          <item.icon size={16} />
-                        </motion.div>
-                        <span>{item.label}</span>
-                      </Button>
-                    </Link>
-                  </motion.div>
-                ))}
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {/* Remove the separate desktop menu row below - it's now integrated above */}
         </div>
         
         {/* Mobile Menu with slide animation */}
