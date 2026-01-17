@@ -10,43 +10,22 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { userStorage } from "@/lib/storage";
 import { configService } from "@/services/configService";
 import { systemUserService, SystemUser } from "@/services/systemUserService";
-import { User, Config, Location, SystemConfig } from "@/types";
+import { Config, Location } from "@/types";
 import { Trash2, Edit, Key, Plus, Save, MapPin, Percent, UserPlus } from "lucide-react";
 import { isAuthenticated } from "@/lib/auth";
 import { StaggerContainer, StaggerItem } from "@/components/animations/ScrollReveal";
 import { FloatingCard } from "@/components/animations/FloatingCard";
-import { applyCepMask, applyRealMask, removeMask } from "@/lib/masks";
+import { applyCepMask, removeMask } from "@/lib/masks";
 
 export default function Settings() {
   const router = useRouter();
   const { toast } = useToast();
   const [config, setConfig] = useState<Config>({ adminFeePercentage: 6, lateFeePercentage: 2, interestRatePercentage: 0.033, locations: [] });
-  const [users, setUsers] = useState<User[]>([]);
   const [systemUsers, setSystemUsers] = useState<SystemUser[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-
-  // User Form State
-  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [userForm, setUserForm] = useState({
-    name: "",
-    username: "",
-    password: "",
-    role: "corretor",
-    rg: "",
-    cpf: "",
-    email: "",
-    phone: ""
-  });
-
-  // Password Reset State
-  const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
-  const [resetPasswordValue, setResetPasswordValue] = useState("");
-  const [userToReset, setUserToReset] = useState<User | null>(null);
 
   // Location State
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
@@ -68,6 +47,8 @@ export default function Settings() {
     username: "",
     email: "",
     phone: "",
+    rg: "",
+    cpf: "",
     password: "",
     role: "corretor",
     active: true
@@ -91,11 +72,9 @@ export default function Settings() {
   const loadSettings = async () => {
     try {
       const configData = await configService.get();
-      const users = userStorage.getAll();
       const sysUsers = await systemUserService.getAll();
       
       setConfig(configData);
-      setUsers(users);
       setSystemUsers(sysUsers);
       setLocations(configData.locations || []);
       setIsLoading(false);
@@ -131,93 +110,6 @@ export default function Settings() {
         description: "Erro ao salvar configurações",
         variant: "destructive"
       });
-    }
-  };
-
-  const handleSaveUser = () => {
-    if (!userForm.name || !userForm.username || (!editingUser && !userForm.password)) {
-      toast({
-        title: "Erro",
-        description: "Preencha os campos obrigatórios.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (editingUser) {
-      userStorage.update({
-        ...editingUser,
-        name: userForm.name,
-        username: userForm.username,
-        role: userForm.role as any,
-        rg: userForm.rg,
-        cpf: userForm.cpf,
-        email: userForm.email,
-        phone: userForm.phone
-      });
-      toast({ title: "Usuário atualizado" });
-    } else {
-      const newUser: User = {
-        id: crypto.randomUUID(),
-        name: userForm.name,
-        username: userForm.username,
-        password: userForm.password,
-        role: userForm.role as any,
-        rg: userForm.rg,
-        cpf: userForm.cpf,
-        email: userForm.email,
-        phone: userForm.phone,
-        createdAt: new Date().toISOString()
-      };
-      userStorage.save(newUser);
-      toast({ title: "Usuário criado" });
-    }
-
-    setIsUserModalOpen(false);
-    setEditingUser(null);
-    setUserForm({
-      name: "",
-      username: "",
-      password: "",
-      role: "corretor",
-      rg: "",
-      cpf: "",
-      email: "",
-      phone: ""
-    });
-    loadSettings();
-  };
-
-  const handleEditUser = (user: User) => {
-    setEditingUser(user);
-    setUserForm({
-      name: user.name,
-      username: user.username,
-      password: "",
-      role: user.role,
-      rg: user.rg || "",
-      cpf: user.cpf || "",
-      email: user.email || "",
-      phone: user.phone || ""
-    });
-    setIsUserModalOpen(true);
-  };
-
-  const handleDeleteUser = (id: string) => {
-    if (confirm("Tem certeza que deseja excluir este usuário?")) {
-      userStorage.delete(id);
-      loadSettings();
-      toast({ title: "Usuário excluído" });
-    }
-  };
-
-  const handleResetPassword = () => {
-    if (userToReset && resetPasswordValue) {
-      userStorage.resetPassword(userToReset.id, resetPasswordValue);
-      setIsResetPasswordOpen(false);
-      setResetPasswordValue("");
-      setUserToReset(null);
-      toast({ title: "Senha alterada com sucesso" });
     }
   };
 
@@ -284,7 +176,7 @@ export default function Settings() {
     if (!systemUserForm.name || !systemUserForm.email || (!editingSystemUser && !systemUserForm.password)) {
       toast({
         title: "Erro",
-        description: "Preencha os campos obrigatórios.",
+        description: "Preencha os campos obrigatórios (Nome, Email e Senha).",
         variant: "destructive"
       });
       return;
@@ -297,6 +189,8 @@ export default function Settings() {
           username: systemUserForm.username,
           email: systemUserForm.email,
           phone: systemUserForm.phone,
+          rg: systemUserForm.rg,
+          cpf: systemUserForm.cpf,
           role: systemUserForm.role,
           active: systemUserForm.active
         };
@@ -313,6 +207,8 @@ export default function Settings() {
           username: systemUserForm.username,
           email: systemUserForm.email,
           phone: systemUserForm.phone,
+          rg: systemUserForm.rg,
+          cpf: systemUserForm.cpf,
           password: systemUserForm.password,
           role: systemUserForm.role,
           active: systemUserForm.active
@@ -322,7 +218,7 @@ export default function Settings() {
 
       setIsSystemUserModalOpen(false);
       setEditingSystemUser(null);
-      setSystemUserForm({ name: "", username: "", email: "", phone: "", password: "", role: "corretor", active: true });
+      setSystemUserForm({ name: "", username: "", email: "", phone: "", rg: "", cpf: "", password: "", role: "corretor", active: true });
       loadSettings();
     } catch (error) {
       console.error("Error saving system user:", error);
@@ -341,6 +237,8 @@ export default function Settings() {
       username: user.username || "",
       email: user.email,
       phone: user.phone || "",
+      rg: user.rg || "",
+      cpf: user.cpf || "",
       password: "",
       role: user.role,
       active: user.active
@@ -420,8 +318,7 @@ export default function Settings() {
           <TabsList>
             <TabsTrigger value="general">Geral</TabsTrigger>
             <TabsTrigger value="fees">Multa e Juros</TabsTrigger>
-            <TabsTrigger value="system-users">Usuários</TabsTrigger>
-            <TabsTrigger value="users">Corretores</TabsTrigger>
+            <TabsTrigger value="users">Usuários</TabsTrigger>
             <TabsTrigger value="locations">Locais</TabsTrigger>
           </TabsList>
 
@@ -544,7 +441,7 @@ export default function Settings() {
             </FloatingCard>
           </TabsContent>
 
-          <TabsContent value="system-users">
+          <TabsContent value="users">
             <FloatingCard delay={0.1}>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
@@ -556,7 +453,7 @@ export default function Settings() {
                   </div>
                   <Button onClick={() => {
                     setEditingSystemUser(null);
-                    setSystemUserForm({ name: "", username: "", email: "", phone: "", password: "", role: "corretor", active: true });
+                    setSystemUserForm({ name: "", username: "", email: "", phone: "", rg: "", cpf: "", password: "", role: "corretor", active: true });
                     setIsSystemUserModalOpen(true);
                   }} className="bg-emerald-600 hover:bg-emerald-700">
                     <UserPlus className="mr-2 h-4 w-4" /> Novo Usuário
@@ -604,74 +501,6 @@ export default function Settings() {
                                 <Edit className="h-4 w-4 text-blue-600" />
                               </Button>
                               <Button variant="ghost" size="sm" onClick={() => handleDeleteSystemUser(user.id)} title="Excluir">
-                                <Trash2 className="h-4 w-4 text-red-600" />
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </CardContent>
-              </Card>
-            </FloatingCard>
-          </TabsContent>
-
-          <TabsContent value="users">
-            <FloatingCard delay={0.1}>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <div>
-                    <CardTitle>Corretores (Legado)</CardTitle>
-                    <CardDescription>
-                      Sistema antigo de usuários (localStorage)
-                    </CardDescription>
-                  </div>
-                  <Button onClick={() => {
-                    setEditingUser(null);
-                    setUserForm({ name: "", username: "", password: "", role: "corretor", rg: "", cpf: "", email: "", phone: "" });
-                    setIsUserModalOpen(true);
-                  }} className="bg-emerald-600 hover:bg-emerald-700">
-                    <Plus className="mr-2 h-4 w-4" /> Novo Usuário
-                  </Button>
-                </CardHeader>
-                <CardContent>
-                  <div className="rounded-md border">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Nome</TableHead>
-                          <TableHead>Usuário</TableHead>
-                          <TableHead>Perfil</TableHead>
-                          <TableHead>Contato</TableHead>
-                          <TableHead className="text-right">Ações</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {users.map((user) => (
-                          <TableRow key={user.id}>
-                            <TableCell className="font-medium">{user.name}</TableCell>
-                            <TableCell>{user.username}</TableCell>
-                            <TableCell>
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize
-                                ${user.role === 'admin' ? 'bg-purple-100 text-purple-800' : 
-                                  user.role === 'financeiro' ? 'bg-blue-100 text-blue-800' : 
-                                  'bg-green-100 text-green-800'}`}>
-                                {user.role}
-                              </span>
-                            </TableCell>
-                            <TableCell>{user.email || user.phone || "-"}</TableCell>
-                            <TableCell className="text-right space-x-1">
-                              <Button variant="ghost" size="sm" onClick={() => {
-                                setUserToReset(user);
-                                setIsResetPasswordOpen(true);
-                              }} title="Alterar Senha">
-                                <Key className="h-4 w-4 text-slate-500" />
-                              </Button>
-                              <Button variant="ghost" size="sm" onClick={() => handleEditUser(user)} title="Editar">
-                                <Edit className="h-4 w-4 text-blue-600" />
-                              </Button>
-                              <Button variant="ghost" size="sm" onClick={() => handleDeleteUser(user.id)} disabled={user.username === 'cadu.pires'} title="Excluir">
                                 <Trash2 className="h-4 w-4 text-red-600" />
                               </Button>
                             </TableCell>
@@ -744,13 +573,13 @@ export default function Settings() {
 
         {/* System User Dialog */}
         <Dialog open={isSystemUserModalOpen} onOpenChange={setIsSystemUserModalOpen}>
-          <DialogContent>
+          <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>{editingSystemUser ? "Editar Usuário" : "Novo Usuário"}</DialogTitle>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="space-y-2">
-                <Label>Nome Completo</Label>
+                <Label>Nome Completo *</Label>
                 <Input 
                   value={systemUserForm.name} 
                   onChange={(e) => setSystemUserForm({...systemUserForm, name: e.target.value})}
@@ -767,23 +596,45 @@ export default function Settings() {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label>Email</Label>
-                <Input 
-                  type="email"
-                  value={systemUserForm.email} 
-                  onChange={(e) => setSystemUserForm({...systemUserForm, email: e.target.value})}
-                  placeholder="usuario@exemplo.com"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Email *</Label>
+                  <Input 
+                    type="email"
+                    value={systemUserForm.email} 
+                    onChange={(e) => setSystemUserForm({...systemUserForm, email: e.target.value})}
+                    placeholder="usuario@exemplo.com"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Celular</Label>
+                  <Input 
+                    value={systemUserForm.phone} 
+                    onChange={(e) => setSystemUserForm({...systemUserForm, phone: e.target.value})}
+                    placeholder="(00) 00000-0000"
+                  />
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <Label>Celular</Label>
-                <Input 
-                  value={systemUserForm.phone} 
-                  onChange={(e) => setSystemUserForm({...systemUserForm, phone: e.target.value})}
-                  placeholder="(00) 00000-0000"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>RG</Label>
+                  <Input 
+                    value={systemUserForm.rg} 
+                    onChange={(e) => setSystemUserForm({...systemUserForm, rg: e.target.value})}
+                    placeholder="00.000.000-0"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>CPF</Label>
+                  <Input 
+                    value={systemUserForm.cpf} 
+                    onChange={(e) => setSystemUserForm({...systemUserForm, cpf: e.target.value})}
+                    placeholder="000.000.000-00"
+                  />
+                </div>
               </div>
               
               <div className="space-y-2">
@@ -792,13 +643,13 @@ export default function Settings() {
                   type="password" 
                   value={systemUserForm.password} 
                   onChange={(e) => setSystemUserForm({...systemUserForm, password: e.target.value})}
-                  placeholder={editingSystemUser ? "Nova senha (opcional)" : "Senha"}
+                  placeholder={editingSystemUser ? "Nova senha (opcional)" : "Senha *"}
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Perfil</Label>
+                  <Label>Perfil *</Label>
                   <Select value={systemUserForm.role} onValueChange={(val) => setSystemUserForm({...systemUserForm, role: val})}>
                     <SelectTrigger>
                       <SelectValue />
@@ -812,7 +663,7 @@ export default function Settings() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Status</Label>
+                  <Label>Status *</Label>
                   <Select 
                     value={systemUserForm.active ? "active" : "inactive"} 
                     onValueChange={(val) => setSystemUserForm({...systemUserForm, active: val === "active"})}
@@ -831,72 +682,6 @@ export default function Settings() {
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsSystemUserModalOpen(false)}>Cancelar</Button>
               <Button onClick={handleSaveSystemUser}>Salvar</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* User Dialog */}
-        <Dialog open={isUserModalOpen} onOpenChange={setIsUserModalOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{editingUser ? "Editar Usuário" : "Novo Usuário"}</DialogTitle>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Nome</Label>
-                  <Input value={userForm.name} onChange={(e) => setUserForm({...userForm, name: e.target.value})} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Usuário</Label>
-                  <Input value={userForm.username} onChange={(e) => setUserForm({...userForm, username: e.target.value})} />
-                </div>
-              </div>
-              
-              {!editingUser && (
-                <div className="space-y-2">
-                  <Label>Senha</Label>
-                  <Input type="password" value={userForm.password} onChange={(e) => setUserForm({...userForm, password: e.target.value})} />
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <Label>Perfil</Label>
-                <Select value={userForm.role} onValueChange={(val) => setUserForm({...userForm, role: val})}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="admin">Administrador</SelectItem>
-                    <SelectItem value="corretor">Corretor</SelectItem>
-                    <SelectItem value="financeiro">Financeiro</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>RG</Label>
-                  <Input value={userForm.rg} onChange={(e) => setUserForm({...userForm, rg: e.target.value})} />
-                </div>
-                <div className="space-y-2">
-                  <Label>CPF</Label>
-                  <Input value={userForm.cpf} onChange={(e) => setUserForm({...userForm, cpf: e.target.value})} />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Email</Label>
-                <Input type="email" value={userForm.email} onChange={(e) => setUserForm({...userForm, email: e.target.value})} />
-              </div>
-              
-              <div className="space-y-2">
-                <Label>Celular</Label>
-                <Input value={userForm.phone} onChange={(e) => setUserForm({...userForm, phone: e.target.value})} />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button onClick={handleSaveUser}>Salvar</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -958,22 +743,6 @@ export default function Settings() {
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsLocationModalOpen(false)}>Cancelar</Button>
               <Button onClick={handleSaveLocation}>Salvar Local</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Reset Password Dialog */}
-        <Dialog open={isResetPasswordOpen} onOpenChange={setIsResetPasswordOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Redefinir Senha - {userToReset?.name}</DialogTitle>
-            </DialogHeader>
-            <div className="py-4">
-              <Label>Nova Senha</Label>
-              <Input type="password" value={resetPasswordValue} onChange={(e) => setResetPasswordValue(e.target.value)} />
-            </div>
-            <DialogFooter>
-              <Button onClick={handleResetPassword}>Salvar Nova Senha</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

@@ -6,6 +6,8 @@ export interface SystemUser {
   username?: string;
   email: string;
   phone?: string;
+  rg?: string;
+  cpf?: string;
   password: string;
   role: string; // "admin" | "corretor" | "financeiro"
   active: boolean;
@@ -64,6 +66,23 @@ export const systemUserService = {
     }
   },
 
+  // Buscar usuário por username (para login alternativo)
+  async getByUsername(username: string): Promise<SystemUser | null> {
+    try {
+      const { data, error } = await supabase
+        .from("system_users")
+        .select("*")
+        .eq("username", username)
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error("Error fetching system user by username:", error);
+      return null;
+    }
+  },
+
   // Criar novo usuário
   async create(user: Omit<SystemUser, "id" | "created_at" | "updated_at">): Promise<SystemUser | null> {
     try {
@@ -74,6 +93,8 @@ export const systemUserService = {
           username: user.username,
           email: user.email,
           phone: user.phone,
+          rg: user.rg,
+          cpf: user.cpf,
           password: user.password,
           role: user.role,
           active: user.active
@@ -165,6 +186,40 @@ export const systemUserService = {
     } catch (error) {
       console.error("Error fetching current user name:", error);
       return "Administrador";
+    }
+  },
+
+  // Validar login (username ou email + senha)
+  async validateLogin(usernameOrEmail: string, password: string): Promise<SystemUser | null> {
+    try {
+      // Tentar buscar por email primeiro
+      let { data, error } = await supabase
+        .from("system_users")
+        .select("*")
+        .eq("email", usernameOrEmail)
+        .eq("password", password)
+        .eq("active", true)
+        .single();
+
+      // Se não encontrar por email, tentar por username
+      if (error) {
+        const result = await supabase
+          .from("system_users")
+          .select("*")
+          .eq("username", usernameOrEmail)
+          .eq("password", password)
+          .eq("active", true)
+          .single();
+        
+        data = result.data;
+        error = result.error;
+      }
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error("Error validating login:", error);
+      return null;
     }
   }
 };

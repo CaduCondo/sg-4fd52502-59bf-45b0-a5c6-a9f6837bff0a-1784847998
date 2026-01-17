@@ -5,11 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Building2, AlertCircle, Lock } from "lucide-react";
-import { login, isAuthenticated } from "@/lib/auth";
+import { isAuthenticated } from "@/lib/auth";
 import { initializeStorage } from "@/lib/storage";
 import { SEO } from "@/components/SEO";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { authService } from "@/services";
+import { systemUserService } from "@/services/systemUserService";
 
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
@@ -76,11 +76,21 @@ export default function Login() {
     // Simulate network delay for better UX/security
     await new Promise(resolve => setTimeout(resolve, 800));
 
-    const user = login(username, password);
+    // Validar login usando system_users
+    const user = await systemUserService.validateLogin(username, password);
     
     if (user) {
+      // Login bem-sucedido
       localStorage.removeItem("loginAttempts");
       localStorage.removeItem("lockoutTime");
+      localStorage.setItem("isAuthenticated", "true");
+      localStorage.setItem("currentUser", JSON.stringify({
+        id: user.id,
+        name: user.name,
+        username: user.username,
+        email: user.email,
+        role: user.role
+      }));
       router.push("/dashboard");
     } else {
       handleLoginAttempt();
@@ -104,15 +114,7 @@ export default function Login() {
     setResetLoading(true);
     
     try {
-      // Integration with Supabase auth service for password reset
-      // Note: This assumes authService has a resetPassword method or similar
-      // Since I can't check authService right now, I'll assume we can use supabase client directly if needed
-      // but for consistency let's use a mock or try authService if it exists
-      
-      // Simulating API call if service method doesn't exist yet, 
-      // but in a real scenario we would call: await authService.resetPassword(resetEmail);
-      
-      // Using direct supabase logic simulation for now as fallback
+      // Simulating API call - in real scenario would send reset email
       await new Promise(resolve => setTimeout(resolve, 1500));
       
       setResetSuccess(true);
@@ -146,13 +148,13 @@ export default function Login() {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="username">Usuário</Label>
+                <Label htmlFor="username">Usuário ou Email</Label>
                 <Input
                   id="username"
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Digite seu usuário"
+                  placeholder="Digite seu usuário ou email"
                   required
                   className="h-11"
                   disabled={isLocked}

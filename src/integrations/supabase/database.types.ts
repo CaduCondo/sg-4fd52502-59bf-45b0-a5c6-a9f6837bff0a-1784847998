@@ -257,36 +257,42 @@ export type Database = {
       system_users: {
         Row: {
           active: boolean
+          cpf: string | null
           created_at: string | null
           email: string
           id: string
           name: string
           password: string
           phone: string | null
+          rg: string | null
           role: string
           updated_at: string | null
           usuario: string | null
         }
         Insert: {
           active?: boolean
+          cpf?: string | null
           created_at?: string | null
           email: string
           id?: string
           name: string
           password: string
           phone?: string | null
+          rg?: string | null
           role?: string
           updated_at?: string | null
           usuario?: string | null
         }
         Update: {
           active?: boolean
+          cpf?: string | null
           created_at?: string | null
           email?: string
           id?: string
           name?: string
           password?: string
           phone?: string | null
+          rg?: string | null
           role?: string
           updated_at?: string | null
           usuario?: string | null
