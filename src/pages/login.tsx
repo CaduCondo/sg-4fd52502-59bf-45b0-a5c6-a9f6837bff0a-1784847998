@@ -93,24 +93,6 @@ export default function Login() {
         role: user.role
       }));
       
-      // Try to create Supabase session (optional, won't block login if fails)
-      try {
-        console.log("🔄 Tentando sincronizar sessão com Supabase...");
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email: user.email,
-          password: password
-        });
-        
-        if (signInError) {
-          console.warn("⚠️ Não foi possível criar sessão Supabase (usuário pode não existir no auth.users):", signInError.message);
-          console.log("✅ Continuando com autenticação via localStorage...");
-        } else {
-          console.log("✅ Sessão Supabase criada com sucesso!");
-        }
-      } catch (syncError) {
-        console.warn("⚠️ Erro ao sincronizar com Supabase (não crítico):", syncError);
-      }
-      
       // ALWAYS redirect to dashboard after successful localStorage login
       console.log("✅ Login bem-sucedido! Redirecionando para dashboard...");
       window.location.href = "/dashboard";
