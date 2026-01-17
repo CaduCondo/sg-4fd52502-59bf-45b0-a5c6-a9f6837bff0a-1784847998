@@ -9,6 +9,7 @@ export interface User {
   email?: string;
   phone?: string;
   photo?: string;
+  active?: boolean;
   createdAt: string;
 }
 
