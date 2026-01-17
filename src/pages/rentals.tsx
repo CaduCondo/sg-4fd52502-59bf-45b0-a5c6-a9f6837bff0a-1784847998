@@ -287,10 +287,7 @@ export default function RentalsPage() {
       // Update property status to occupied
       const property = properties.find((p) => p.id === formData.propertyId);
       if (property) {
-        await propertyService.update(property.id, {
-          ...property,
-          status: "occupied",
-        });
+        await propertyService.update({ ...property, status: "occupied" });
       }
 
       // Update tenant status to rented
@@ -342,10 +339,7 @@ export default function RentalsPage() {
       // Update property status to available
       const property = properties.find((p) => p.id === rental.propertyId);
       if (property) {
-        await propertyService.update(property.id, {
-          ...property,
-          status: "available",
-        });
+        await propertyService.update({ ...property, status: "available" });
       }
 
       // Update tenant status to active
@@ -383,10 +377,7 @@ export default function RentalsPage() {
       // Update property status to available
       const property = properties.find((p) => p.id === rental.propertyId);
       if (property) {
-        await propertyService.update(property.id, {
-          ...property,
-          status: "available",
-        });
+        await propertyService.update({ ...property, status: "available" });
       }
 
       // Update tenant status to active

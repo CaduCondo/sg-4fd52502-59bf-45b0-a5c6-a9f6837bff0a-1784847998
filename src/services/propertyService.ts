@@ -3,135 +3,65 @@ import type { Property } from "@/types";
 
 export const propertyService = {
   async getAll(): Promise<Property[]> {
-    try {
-      const { data, error } = await supabase
-        .from("properties")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (error) {
-        console.error("Error fetching properties:", error);
-        throw error;
-      }
-
-      return (data || []).map((item) => this.mapFromDB(item));
-    } catch (error) {
-      console.error("Error in getAll:", error);
-      throw error;
-    }
+    const { data, error } = await supabase
+      .from("properties")
+      .select("*")
+      .order("location", { ascending: true });
+    
+    if (error) throw error;
+    return data.map(this.mapFromDB);
   },
 
   async getById(id: string): Promise<Property | null> {
-    try {
-      const { data, error } = await supabase
-        .from("properties")
-        .select("*")
-        .eq("id", id)
-        .single();
-
-      if (error) {
-        console.error("Error fetching property:", error);
-        throw error;
-      }
-
-      return data ? this.mapFromDB(data) : null;
-    } catch (error) {
-      console.error("Error in getById:", error);
-      throw error;
-    }
+    const { data, error } = await supabase
+      .from("properties")
+      .select("*")
+      .eq("id", id)
+      .single();
+    
+    if (error) throw error;
+    return data ? this.mapFromDB(data) : null;
   },
 
-  async create(property: Partial<Property>): Promise<Property> {
-    try {
-      const propertyData = this.mapToDB(property);
-      
-      const { data, error } = await supabase
-        .from("properties")
-        .insert(propertyData)
-        .select()
-        .single();
-
-      if (error) {
-        console.error("Error creating property:", error);
-        throw error;
-      }
-
-      return this.mapFromDB(data);
-    } catch (error) {
-      console.error("Error in create:", error);
-      throw error;
-    }
+  async create(property: Omit<Property, "id" | "createdAt">): Promise<Property> {
+    const { data, error } = await supabase
+      .from("properties")
+      .insert([this.mapToDB(property)])
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return this.mapFromDB(data);
   },
 
-  async update(id: string, property: Partial<Property>): Promise<Property> {
-    try {
-      const propertyData = this.mapToDB(property);
-      
-      const { data, error } = await supabase
-        .from("properties")
-        .update(propertyData)
-        .eq("id", id)
-        .select()
-        .single();
-
-      if (error) {
-        console.error("Error updating property:", error);
-        throw error;
-      }
-
-      return this.mapFromDB(data);
-    } catch (error) {
-      console.error("Error in update:", error);
-      throw error;
-    }
+  async update(property: Property): Promise<Property> {
+    const { data, error } = await supabase
+      .from("properties")
+      .update({
+        ...this.mapToDB(property),
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", property.id)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return this.mapFromDB(data);
   },
 
   async delete(id: string): Promise<void> {
-    try {
-      const { error } = await supabase
-        .from("properties")
-        .delete()
-        .eq("id", id);
-
-      if (error) {
-        console.error("Error deleting property:", error);
-        throw error;
-      }
-    } catch (error) {
-      console.error("Error in delete:", error);
-      throw error;
-    }
-  },
-
-  mapToDB(property: any): any {
-    console.log("🔵 mapToDB - Input:", property);
+    const { error } = await supabase
+      .from("properties")
+      .delete()
+      .eq("id", id);
     
-    const dbData = {
-      location: property.location || "",
-      address: property.address || "",
-      number: property.number || "",
-      complement: property.complement || null,
-      neighborhood: property.neighborhood || null,
-      city: property.city || null,
-      state: property.state || null,
-      cep: property.zipCode || property.cep || null,
-      zip_code: property.zipCode || property.cep || null,
-      monthly_rent: property.monthlyRent || property.rentValue || 0,
-      type: property.type || "residential",
-      status: property.status || "available",
-      description: property.description || null,
-    };
-    
-    console.log("🔵 mapToDB - Output:", dbData);
-    return dbData;
+    if (error) throw error;
   },
 
   mapFromDB(data: any): Property {
-    console.log("🟢 mapFromDB - Input:", data);
-    
-    const property = {
+    return {
       id: data.id,
-      name: `${data.location || ""} ${data.number || ""}`.trim() || "Sem nome",
+      name: data.name || "",
       address: data.address || "",
       location: data.location || "",
       number: data.number || "",
@@ -139,22 +69,43 @@ export const propertyService = {
       neighborhood: data.neighborhood || "",
       city: data.city || "",
       state: data.state || "",
-      zipCode: data.zip_code || data.cep || "",
-      monthlyRent: Number(data.monthly_rent) || 0,
-      rentValue: Number(data.monthly_rent) || 0,
-      size: 0,
-      rooms: 0,
-      bathrooms: 0,
-      parkingSpots: 0,
+      cep: data.cep || "",
+      zipCode: data.zip_code || "",
+      
+      // Required fields with defaults
       type: data.type || "residential",
-      status: data.status || "available",
+      size: data.size || 0,
+      rooms: data.rooms || 0,
+      bathrooms: data.bathrooms || 0,
+      parkingSpots: data.parking_spots || 0,
+      
+      monthlyRent: data.monthly_rent || 0,
+      rentValue: data.rent_value || 0,
+      
       description: data.description || "",
-      images: [],
-      features: [],
+      status: (data.status as any) || "available",
+      images: data.images || [],
+      features: data.features || [],
+      
       createdAt: data.created_at,
     };
-    
-    console.log("🟢 mapFromDB - Output:", property);
-    return property;
   },
+
+  mapToDB(property: any): any {
+    return {
+      location: property.location,
+      address: property.address || "",
+      number: property.number || "",
+      complement: property.complement,
+      neighborhood: property.neighborhood,
+      city: property.city,
+      state: property.state,
+      zip_code: property.zipCode || "",
+      cep: property.zipCode || "",
+      monthly_rent: property.monthlyRent,
+      type: property.type,
+      status: property.status,
+      description: property.description
+    };
+  }
 };
