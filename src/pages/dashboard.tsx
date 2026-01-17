@@ -222,7 +222,27 @@ export default function DashboardPage() {
     });
   };
 
-  const activeRentals = rentals.filter((r) => r.isActive);
+  // Calcular contratos ativos no período selecionado
+  const activeRentalsInPeriod = rentals.filter((rental) => {
+    if (!rental.isActive) return false;
+    
+    const startDate = new Date(rental.startDate);
+    const endDate = rental.endDate ? new Date(rental.endDate) : null;
+    
+    // Definir início e fim do mês selecionado
+    const monthStart = new Date(selectedYear, selectedMonth - 1, 1);
+    const monthEnd = new Date(selectedYear, selectedMonth, 0); // Último dia do mês
+
+    // Lógica de sobreposição:
+    // O contrato está ativo no mês se:
+    // 1. Começou antes ou durante o mês (startDate <= monthEnd)
+    // 2. Terminou depois ou durante o mês, ou não terminou (endDate >= monthStart OR endDate is null)
+    
+    const startsBeforeMonthEnd = startDate <= monthEnd;
+    const endsAfterMonthStart = !endDate || endDate >= monthStart;
+
+    return startsBeforeMonthEnd && endsAfterMonthStart;
+  });
 
   const filteredPayments = payments.filter(
     (p) => p.referenceMonth === selectedMonth && p.referenceYear === selectedYear
@@ -266,13 +286,8 @@ export default function DashboardPage() {
   const stats = {
     totalProperties: properties.length,
     availableProperties: properties.filter((p) => p.status === "available").length,
-    occupiedProperties: properties.filter((p) => p.status === "occupied").length,
-    unavailableProperties: properties.filter((p) => p.status === "unavailable").length,
-    totalTenants: tenants.filter((t) => t.status === "active" || t.status === "rented").length,
-    activeRentals: rentals.filter(r => r.isActive).length,
-    pendingPayments: pendingPayments.length,
-    overduePayments: overduePayments.length,
-    paidPayments: paidPayments.length,
+    activeRentals: activeRentalsInPeriod.length, // Usando o valor filtrado por data
+    totalTenants: tenants.length,
     monthlyRevenue: monthlyRevenue,
     adminFee: adminFee,
     netRevenue: netRevenue,

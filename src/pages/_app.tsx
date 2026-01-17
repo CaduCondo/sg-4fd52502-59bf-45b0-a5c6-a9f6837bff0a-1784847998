@@ -6,21 +6,12 @@ import { useEffect } from "react";
 import { validateAndCleanLocalStorage, checkBlacklistSync } from "@/lib/localStorageGuard";
 
 export default function App({ Component, pageProps }: AppProps) {
-  // PROTEÇÃO SÍNCRONA: Verifica blacklist IMEDIATAMENTE
-  if (typeof window !== "undefined") {
-    const isClean = checkBlacklistSync();
-    if (!isClean) {
-      console.log("🚨 ID BLACKLISTED detectado! Redirecionando...");
-      // O redirect já foi feito dentro do checkBlacklistSync
-      return null; // Não renderiza nada
-    }
-  }
-
+  // 1. HOOKS PRIMEIRO (Para satisfazer regras do React)
   // MIDDLEWARE DE PROTEÇÃO: Valida localStorage em TODA carga de página
   useEffect(() => {
     console.log("🚀 App iniciando, ativando LocalStorage Guard...");
     
-    // Executar validação imediatamente
+    // Executar validação async
     validateAndCleanLocalStorage().then((isValid) => {
       if (!isValid) {
         console.log("⚠️ LocalStorage inválido detectado!");
@@ -31,6 +22,18 @@ export default function App({ Component, pageProps }: AppProps) {
       }
     });
   }, []);
+
+  // 2. PROTEÇÃO SÍNCRONA DEPOIS DOS HOOKS
+  // Verifica blacklist IMEDIATAMENTE antes de renderizar conteúdo
+  if (typeof window !== "undefined") {
+    const isClean = checkBlacklistSync();
+    if (!isClean) {
+      console.log("🚨 ID BLACKLISTED detectado! Bloqueando renderização...");
+      // Retorna null para não renderizar nada enquanto redireciona
+      // Como os hooks já foram chamados acima, isso é válido
+      return null;
+    }
+  }
 
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
