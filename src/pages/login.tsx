@@ -85,16 +85,31 @@ export default function Login() {
       localStorage.removeItem("loginAttempts");
       localStorage.removeItem("lockoutTime");
       localStorage.setItem("isAuthenticated", "true");
+      
+      // Normalize role to English (support Portuguese values from database)
+      let normalizedRole: "admin" | "user" | "broker" | "financial" = "user";
+      const dbRole = user.role?.toLowerCase();
+      
+      if (dbRole === "admin" || dbRole === "administrador") {
+        normalizedRole = "admin";
+      } else if (dbRole === "corretor" || dbRole === "broker") {
+        normalizedRole = "broker";
+      } else if (dbRole === "financeiro" || dbRole === "financial") {
+        normalizedRole = "financial";
+      } else {
+        normalizedRole = "user";
+      }
+      
       localStorage.setItem("currentUser", JSON.stringify({
         id: user.id,
         name: user.name,
         username: user.username,
         email: user.email,
-        role: user.role
+        role: normalizedRole  // Always save normalized English role
       }));
       
-      // ALWAYS redirect to dashboard after successful localStorage login
-      console.log("✅ Login bem-sucedido! Redirecionando para dashboard...");
+      console.log("✅ Login bem-sucedido! Role normalizado:", normalizedRole);
+      console.log("✅ Redirecionando para dashboard...");
       window.location.href = "/dashboard";
     } else {
       handleLoginAttempt();

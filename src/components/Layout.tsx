@@ -63,6 +63,7 @@ export function Layout({ children }: LayoutProps) {
       if (currentUser) {
         console.log("🔍 Layout: Validando usuário do localStorage:", currentUser.id);
         console.log("🔍 Layout: Role do usuário:", currentUser.role);
+        console.log("🔍 Layout: É admin?", currentUser.role === "admin");
 
         // Validar se o usuário realmente existe no banco
         const userExists = await systemUserService.getById(currentUser.id);
