@@ -251,17 +251,6 @@ export function Layout({ children }: LayoutProps) {
                   <span>Configurações</span>
                 </Button>
               </Link>
-
-              <Link href="/users">
-                <Button 
-                  variant={isActive("/users") ? "default" : "ghost"}
-                  size="sm"
-                  className="gap-1.5"
-                >
-                  <User className="h-4 w-4" />
-                  <span>Usuários</span>
-                </Button>
-              </Link>
             </div>
 
             {/* USER PROFILE - Right */}
@@ -391,17 +380,6 @@ export function Layout({ children }: LayoutProps) {
                 >
                   <Settings className="h-4 w-4" />
                   Configurações
-                </Button>
-              </Link>
-
-              <Link href="/users">
-                <Button 
-                  variant={isActive("/users") ? "default" : "ghost"}
-                  className="w-full justify-start gap-2"
-                  onClick={() => setShowMobileMenu(false)}
-                >
-                  <User className="h-4 w-4" />
-                  Usuários
                 </Button>
               </Link>
             </div>

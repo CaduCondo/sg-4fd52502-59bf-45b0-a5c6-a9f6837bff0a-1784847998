@@ -1,37 +1,131 @@
 import { supabase } from "@/integrations/supabase/client";
-import type { Config, Location } from "@/types";
+import type { CompanyConfig, Location, Config } from "@/types";
 
-const DEFAULT_CONFIG: Config = {
-  adminFeePercentage: 6,
-  lateFeePercentage: 2,
-  interestRatePercentage: 1,
-  locations: []
+const DEFAULT_COMPANY_CONFIG: CompanyConfig = {
+  companyName: "",
+  cnpj: "",
+  email: "",
+  phone: "",
+  address: "",
+  city: "",
+  state: "",
+  zipCode: "",
+  adminFee: 6,
+  lateFeePercent: 2,
+  interestRate: 1
 };
 
 export const configService = {
-  async get(): Promise<Config> {
+  // === MÉTODOS PARA DADOS DA EMPRESA ===
+
+  async getConfig(): Promise<CompanyConfig> {
     try {
       const { data, error } = await supabase
         .from("configs")
         .select("*")
-        .limit(1);
+        .limit(1)
+        .single();
       
-      if (error) throw error;
-      
-      // If no config exists, create default
-      if (!data || data.length === 0) {
-        return await this.save(DEFAULT_CONFIG);
+      if (error) {
+        // Se não existir, retorna padrão
+        if (error.code === 'PGRST116') return DEFAULT_COMPANY_CONFIG;
+        throw error;
       }
       
-      // Return first config
-      const config = data[0];
+      return {
+        companyName: data.company_name || "",
+        cnpj: data.cnpj || "",
+        email: data.email || "",
+        phone: data.phone || "",
+        address: data.address || "",
+        city: data.city || "",
+        state: data.state || "",
+        zipCode: data.zip_code || "",
+        adminFee: Number(data.admin_fee_percentage) || 6,
+        lateFeePercent: Number(data.late_fee_percentage) || 2,
+        interestRate: Number(data.interest_rate_percentage) || 1
+      };
+    } catch (error) {
+      console.error("Error loading company config:", error);
+      return DEFAULT_COMPANY_CONFIG;
+    }
+  },
+
+  async updateConfig(config: CompanyConfig): Promise<CompanyConfig> {
+    try {
+      // Verificar se existe config
+      const { data: existing } = await supabase
+        .from("configs")
+        .select("id")
+        .limit(1);
+
+      const payload = {
+        company_name: config.companyName,
+        cnpj: config.cnpj,
+        email: config.email,
+        phone: config.phone,
+        address: config.address,
+        city: config.city,
+        state: config.state,
+        zip_code: config.zipCode,
+        admin_fee_percentage: config.adminFee,
+        late_fee_percentage: config.lateFeePercent,
+        interest_rate_percentage: config.interestRate,
+        updated_at: new Date().toISOString()
+      };
+
+      if (existing && existing.length > 0) {
+        const { error } = await supabase
+          .from("configs")
+          .update(payload)
+          .eq("id", existing[0].id);
+        
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("configs")
+          .insert([payload]);
+        
+        if (error) throw error;
+      }
+
+      return config;
+    } catch (error) {
+      console.error("Error updating company config:", error);
+      throw error;
+    }
+  },
+
+  // === MÉTODOS COMPATIBILIDADE LEGADO (usado em outros lugares) ===
+  
+  async get(): Promise<Config> {
+    const config = await this.getConfig();
+    const locations = await this.getLocations();
+    return {
+      adminFeePercentage: config.adminFee,
+      lateFeePercentage: config.lateFeePercent,
+      interestRatePercentage: config.interestRate,
+      locations: locations
+    };
+  },
+
+  // === MÉTODOS PARA LOCAIS ===
+
+  async getLocations(): Promise<Location[]> {
+    try {
+      const { data, error } = await supabase
+        .from("configs")
+        .select("locations")
+        .limit(1)
+        .single();
       
-      // Handle legacy locations (strings) vs new locations (objects)
-      let locations: Location[] = [];
-      if (Array.isArray(config.locations)) {
-        locations = config.locations.map((l: any) => {
-          if (typeof l === 'string') {
-            // Convert legacy string location to object
+      if (error && error.code !== 'PGRST116') throw error;
+      
+      if (!data || !data.locations) return [];
+      
+      const locations = data.locations as any[];
+      return locations.map(l => {
+         if (typeof l === 'string') {
             return {
               id: crypto.randomUUID(),
               name: l,
@@ -45,32 +139,71 @@ export const configService = {
             };
           }
           return l as Location;
-        });
-      }
-
-      return {
-        adminFeePercentage: Number(config.admin_fee_percentage) || 6,
-        lateFeePercentage: Number(config.late_fee_percentage) || 2,
-        interestRatePercentage: Number(config.interest_rate_percentage) || 1,
-        locations: locations
-      };
+      });
     } catch (error) {
-      console.error("Error loading config:", error);
-      // Return default config if error
-      return DEFAULT_CONFIG;
+      console.error("Error loading locations:", error);
+      return [];
     }
   },
 
-  async save(config: Config): Promise<Config> {
+  async createLocation(locationData: Omit<Location, "id" | "createdAt">): Promise<Location> {
     try {
-      // Check if config exists
-      const { data: existing } = await supabase
-        .from("configs")
-        .select("*")
-        .limit(1);
+      const newLocation: Location = {
+        ...locationData,
+        id: crypto.randomUUID(),
+        createdAt: new Date().toISOString()
+      };
+
+      const locations = await this.getLocations();
+      locations.push(newLocation);
       
-      // Prepare data for DB - converting Location objects to JSON-compatible array
-      const locationsJson = config.locations.map(l => ({
+      // Salvar no banco
+      await this.saveLocations(locations);
+      
+      return newLocation;
+    } catch (error) {
+      console.error("Error creating location:", error);
+      throw error;
+    }
+  },
+
+  async updateLocation(id: string, updates: Partial<Location>): Promise<Location> {
+    try {
+      const locations = await this.getLocations();
+      const index = locations.findIndex(l => l.id === id);
+      
+      if (index === -1) throw new Error("Location not found");
+      
+      locations[index] = { ...locations[index], ...updates };
+      
+      await this.saveLocations(locations);
+      
+      return locations[index];
+    } catch (error) {
+      console.error("Error updating location:", error);
+      throw error;
+    }
+  },
+
+  async deleteLocation(id: string): Promise<void> {
+    try {
+      const locations = await this.getLocations();
+      const filtered = locations.filter(l => l.id !== id);
+      await this.saveLocations(filtered);
+    } catch (error) {
+      console.error("Error deleting location:", error);
+      throw error;
+    }
+  },
+
+  // Helper privado
+  async saveLocations(locations: Location[]): Promise<void> {
+     const { data: existing } = await supabase
+        .from("configs")
+        .select("id")
+        .limit(1);
+        
+     const locationsJson = locations.map(l => ({
         id: l.id,
         name: l.name,
         cep: l.cep,
@@ -81,80 +214,16 @@ export const configService = {
         state: l.state,
         createdAt: l.createdAt
       }));
-      
-      const configData = {
-        admin_fee_percentage: config.adminFeePercentage,
-        late_fee_percentage: config.lateFeePercentage,
-        interest_rate_percentage: config.interestRatePercentage,
-        locations: locationsJson, // Supabase will handle JSON conversion
-        updated_at: new Date().toISOString()
-      };
 
-      if (existing && existing.length > 0) {
-        // Update existing config
-        const { data, error } = await supabase
+     if (existing && existing.length > 0) {
+        await supabase
           .from("configs")
-          .update(configData)
-          .eq("id", existing[0].id)
-          .select()
-          .single();
-        
-        if (error) throw error;
-        
-        return {
-          adminFeePercentage: Number(data.admin_fee_percentage),
-          lateFeePercentage: Number(data.late_fee_percentage),
-          interestRatePercentage: Number(data.interest_rate_percentage),
-          locations: (data.locations as any[]).map(l => l as Location)
-        };
-      } else {
-        // Insert new config
-        const { data, error } = await supabase
+          .update({ locations: locationsJson })
+          .eq("id", existing[0].id);
+     } else {
+        await supabase
           .from("configs")
-          .insert([configData])
-          .select()
-          .single();
-        
-        if (error) throw error;
-        
-        return {
-          adminFeePercentage: Number(data.admin_fee_percentage),
-          lateFeePercentage: Number(data.late_fee_percentage),
-          interestRatePercentage: Number(data.interest_rate_percentage),
-          locations: (data.locations as any[]).map(l => l as Location)
-        };
-      }
-    } catch (error) {
-      console.error("Error saving config:", error);
-      throw error;
-    }
-  },
-
-  async addLocation(location: Location): Promise<Config> {
-    try {
-      const config = await this.get();
-      // Check for duplicates by name or ID
-      if (!config.locations.some(l => l.id === location.id || l.name === location.name)) {
-        config.locations.push(location);
-        // Sort by name
-        config.locations.sort((a, b) => a.name.localeCompare(b.name));
-        return await this.save(config);
-      }
-      return config;
-    } catch (error) {
-      console.error("Error adding location:", error);
-      throw error;
-    }
-  },
-
-  async removeLocation(locationId: string): Promise<Config> {
-    try {
-      const config = await this.get();
-      config.locations = config.locations.filter((l) => l.id !== locationId);
-      return await this.save(config);
-    } catch (error) {
-      console.error("Error removing location:", error);
-      throw error;
-    }
+          .insert([{ locations: locationsJson }]);
+     }
   }
 };

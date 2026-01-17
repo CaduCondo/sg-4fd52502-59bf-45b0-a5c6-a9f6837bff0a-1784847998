@@ -19,8 +19,14 @@ export const systemUserService = {
         throw error;
       }
 
-      console.log(`✅ ${data?.length || 0} usuários encontrados`);
-      return data || [];
+      // Casting manual do role para garantir tipagem
+      const users = (data || []).map(user => ({
+        ...user,
+        role: user.role as "admin" | "user" | "broker" | "financial"
+      }));
+
+      console.log(`✅ ${users.length} usuários encontrados`);
+      return users;
     } catch (error) {
       console.error("❌ Erro ao buscar usuários:", error);
       throw error;
@@ -37,7 +43,11 @@ export const systemUserService = {
         .single();
 
       if (error) throw error;
-      return data as any;
+      
+      return {
+        ...data,
+        role: data.role as "admin" | "user" | "broker" | "financial"
+      } as SystemUser;
     } catch (error) {
       console.error("Error fetching system user:", error);
       return null;
@@ -54,7 +64,10 @@ export const systemUserService = {
         .single();
 
       if (error) throw error;
-      return data as any;
+       return {
+        ...data,
+        role: data.role as "admin" | "user" | "broker" | "financial"
+      } as SystemUser;
     } catch (error) {
       console.error("Error fetching system user by email:", error);
       return null;
@@ -71,7 +84,10 @@ export const systemUserService = {
         .single();
 
       if (error) throw error;
-      return data as any;
+       return {
+        ...data,
+        role: data.role as "admin" | "user" | "broker" | "financial"
+      } as SystemUser;
     } catch (error) {
       console.error("Error fetching system user by username:", error);
       return null;
@@ -93,12 +109,15 @@ export const systemUserService = {
         active: user.active
       };
 
-      // Bypass TypeScript excessive depth check by completely escaping type inference
       const table: any = supabase.from("system_users");
       const { data, error } = await table.insert(payload).select("*").single();
 
       if (error) throw error;
-      return data as SystemUser;
+      
+       return {
+        ...data,
+        role: data.role as "admin" | "user" | "broker" | "financial"
+      } as SystemUser;
     } catch (error) {
       console.error("Error creating system user:", error);
       return null;
@@ -119,12 +138,15 @@ export const systemUserService = {
       if (updates.rg === "") payload.rg = null;
       if (updates.cpf === "") payload.cpf = null;
 
-      // Bypass TypeScript excessive depth check
       const table: any = supabase.from("system_users");
       const { data, error } = await table.update(payload).eq("id", id).select("*").single();
 
       if (error) throw error;
-      return data as SystemUser;
+      
+       return {
+        ...data,
+        role: data.role as "admin" | "user" | "broker" | "financial"
+      } as SystemUser;
     } catch (error) {
       console.error("Error updating system user:", error);
       return null;
@@ -169,32 +191,41 @@ export const systemUserService = {
   // Buscar nome do usuário logado (para dashboard)
   async getCurrentUserName(): Promise<string> {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      // Verifica se temos um usuário logado no localStorage (sistema customizado)
+      // 1. Tentar pegar do localStorage (sistema atual)
       const storedUser = typeof window !== 'undefined' ? localStorage.getItem("currentUser") : null;
-      
       if (storedUser) {
-        const parsedUser = JSON.parse(storedUser);
-        return parsedUser.name.split(" ")[0];
+        try {
+           const parsedUser = JSON.parse(storedUser);
+           // Se tiver ID, buscar nome atualizado no banco
+           if (parsedUser.id) {
+             const { data } = await supabase.from("system_users").select("name").eq("id", parsedUser.id).single();
+             if (data) return data.name.split(" ")[0];
+           }
+           return parsedUser.name.split(" ")[0];
+        } catch (e) {
+           return "Usuário";
+        }
       }
 
-      if (!user?.email) return "Administrador";
+      // 2. Fallback para Supabase Auth (se vier a ser usado)
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.email) return "Visitante";
 
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("system_users")
         .select("name")
         .eq("email", user.email)
-        .single();
+        .maybeSingle();
 
-      if (error || !data) {
-        return user.email.split("@")[0];
+      if (data) {
+         const firstName = data.name.split(" ")[0];
+         return firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
       }
 
-      const firstName = data.name.split(" ")[0];
-      return firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
+      return user.email.split("@")[0];
     } catch (error) {
       console.error("Error fetching current user name:", error);
-      return "Administrador";
+      return "Usuário";
     }
   },
 
@@ -225,7 +256,13 @@ export const systemUserService = {
       }
 
       if (error) throw error;
-      return data as SystemUser | null;
+      
+      if (!data) return null;
+
+      return {
+        ...data,
+        role: data.role as "admin" | "user" | "broker" | "financial"
+      } as SystemUser;
     } catch (error) {
       console.error("Error validating login:", error);
       return null;

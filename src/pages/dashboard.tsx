@@ -149,19 +149,17 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    loadData();
-    loadConfig();
+    loadDashboardData();
     loadUserName();
-    setMounted(true);
   }, []);
 
   useEffect(() => {
     if (properties.length > 0 || tenants.length > 0 || rentals.length > 0 || payments.length > 0) {
-      loadData();
+      loadDashboardData();
     }
   }, [selectedMonth, selectedYear]);
 
-  const loadData = async () => {
+  const loadDashboardData = async () => {
     try {
       const [propertiesData, tenantsData, rentalsData, paymentsData] = await Promise.all([
         propertyService.getAll(),
@@ -192,17 +190,18 @@ export default function DashboardPage() {
 
   const loadUserName = async () => {
     try {
-      const name = await systemUserService.getCurrentUserName();
-      
-      if (name && name !== "Administrador") {
-        const firstName = name.split(" ")[0];
-        setUserName(firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase());
-      } else {
-        setUserName("Administrador");
+      const currentUserStr = localStorage.getItem("currentUser");
+      if (currentUserStr) {
+        const currentUser = JSON.parse(currentUserStr);
+        if (currentUser.id) {
+          const userData = await systemUserService.getById(currentUser.id);
+          if (userData) {
+            setUserName(userData.name);
+          }
+        }
       }
     } catch (error) {
-      console.error("Error loading user name:", error);
-      setUserName("Administrador");
+      console.error("Erro ao carregar nome do usuário:", error);
     }
   };
 

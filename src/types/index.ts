@@ -22,7 +22,7 @@ export interface SystemUser {
   rg?: string;
   cpf?: string;
   password: string;
-  role: string;
+  role: "user" | "broker" | "financial" | "admin";
   active: boolean;
   created_at: string;
   updated_at: string;
@@ -32,9 +32,10 @@ export interface Location {
   id: string;
   name: string;
   cep: string;
+  zipCode?: string; // Alias for cep to support settings page usage
   address: string;
-  number: string;
-  neighborhood: string;
+  number?: string;
+  neighborhood?: string;
   city: string;
   state: string;
   createdAt: string;
@@ -75,6 +76,20 @@ export interface Tenant {
   complement?: string;
   city?: string;
   state?: string;
+}
+
+export interface CompanyConfig {
+  companyName: string;
+  cnpj: string;
+  email: string;
+  phone: string;
+  address: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  adminFee: number;
+  lateFeePercent: number;
+  interestRate: number;
 }
 
 export interface Config {
