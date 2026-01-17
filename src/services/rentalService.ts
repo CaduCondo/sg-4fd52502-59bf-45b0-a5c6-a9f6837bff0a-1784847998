@@ -83,6 +83,7 @@ export const rentalService = {
       attachments: data.attachments || [],
       
       isActive: data.is_active,
+      pixCode: data.pix_code,
       createdAt: data.created_at,
     };
   },
@@ -101,7 +102,8 @@ export const rentalService = {
       deposit: rental.deposit,
       contract_attachments: rental.contractAttachments || [],
       attachments: rental.attachments || [],
-      is_active: rental.isActive
+      is_active: rental.isActive,
+      pix_code: rental.pixCode
     };
   }
 };

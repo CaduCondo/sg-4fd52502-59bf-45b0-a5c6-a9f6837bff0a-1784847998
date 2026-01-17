@@ -48,6 +48,10 @@ export default function Financial() {
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth().toString());
   const [selectedYear, setSelectedYear] = useState(now.getFullYear().toString());
 
+  // PIX Code editing state
+  const [editingPixCode, setEditingPixCode] = useState<{ [key: string]: string }>({});
+  const [savingPixCode, setSavingPixCode] = useState<string | null>(null);
+
   useEffect(() => {
     loadData();
   }, []);
@@ -70,6 +74,33 @@ export default function Financial() {
       console.error("Error loading financial data:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSavePixCode = async (rentalId: string) => {
+    const newPixCode = editingPixCode[rentalId];
+    if (!newPixCode) return;
+
+    setSavingPixCode(rentalId);
+    try {
+      const rental = rentals.find(r => r.id === rentalId);
+      if (!rental) return;
+
+      const updatedRental = { ...rental, pixCode: newPixCode };
+      await rentalService.update(updatedRental);
+
+      // Update local state
+      setRentals(rentals.map(r => r.id === rentalId ? updatedRental : r));
+      
+      // Clear editing state
+      const newEditingState = { ...editingPixCode };
+      delete newEditingState[rentalId];
+      setEditingPixCode(newEditingState);
+    } catch (error) {
+      console.error("Error saving PIX code:", error);
+      alert("Erro ao salvar código PIX");
+    } finally {
+      setSavingPixCode(null);
     }
   };
 
@@ -127,10 +158,11 @@ export default function Financial() {
     const tenant = tenants.find((t) => t.id === rental?.tenantId);
 
     return {
-      local: property?.address || "N/A",
+      local: property?.name || property?.address || "N/A",
       complemento: property?.number || "N/A",
       tenantName: tenant?.name || "N/A",
-      pixCode: "00020126580014BR.GOV.BCB.PIX0136...", // Mock PIX
+      rental: rental,
+      pixCode: rental?.pixCode || "",
     };
   };
 
@@ -339,15 +371,30 @@ export default function Financial() {
                             {getStatusBadge(payment.status)}
                           </TableCell>
                           <TableCell>
-                            <Button variant="outline" size="sm" className="h-8 text-xs gap-2 text-slate-600">
-                              <QrCode className="h-3 w-3" />
-                              Código PIX
-                            </Button>
+                            <Input
+                              value={editingPixCode[details.rental?.id || ""] ?? details.pixCode}
+                              onChange={(e) => {
+                                if (details.rental?.id) {
+                                  setEditingPixCode({
+                                    ...editingPixCode,
+                                    [details.rental.id]: e.target.value
+                                  });
+                                }
+                              }}
+                              placeholder="Código PIX"
+                              className="h-8 text-xs"
+                            />
                           </TableCell>
                           <TableCell>
-                             <Button variant="ghost" size="icon" className="h-8 w-8 text-purple-600">
-                                <Save className="h-4 w-4" />
-                             </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8 text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                              onClick={() => details.rental?.id && handleSavePixCode(details.rental.id)}
+                              disabled={savingPixCode === details.rental?.id}
+                            >
+                              <Save className="h-4 w-4" />
+                            </Button>
                           </TableCell>
                           <TableCell className="text-slate-600">
                             {format(new Date(payment.dueDate), "dd/MM/yyyy")}

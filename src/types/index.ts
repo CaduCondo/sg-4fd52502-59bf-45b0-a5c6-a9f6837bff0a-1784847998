@@ -112,6 +112,7 @@ export interface Rental {
   attachments?: string[];
   contractAttachments?: string[]; // Added to fix error in rentalService
   deposit?: number;
+  pixCode?: string; // PIX code for this rental
   createdAt?: string;
 }
 
