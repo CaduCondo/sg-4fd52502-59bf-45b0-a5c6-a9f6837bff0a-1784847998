@@ -289,7 +289,7 @@ export default function RentalsPage() {
       if (property) {
         await propertyService.update(property.id, {
           ...property,
-          status: "rented",
+          status: "occupied",
         });
       }
 
