@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { systemUserService } from "@/services/systemUserService";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { getCurrentUser } from "@/lib/auth";
 
 interface EditProfileDialogProps {
   open: boolean;
@@ -29,13 +30,13 @@ export function EditProfileDialog({ open, onOpenChange, onSuccess }: EditProfile
   // Load authenticated user's data on dialog open
   useEffect(() => {
     if (!open) {
-      setIsLoading(false);
+      setLoading(false);
       return;
     }
 
     const loadUserData = async () => {
       try {
-        setIsLoading(true);
+        setLoading(true);
         console.log("🔓 Dialog aberto, iniciando fluxo de carregamento...");
         
         console.log("📡 Etapa 1: Buscando usuário autenticado do Supabase...");
@@ -76,16 +77,13 @@ export function EditProfileDialog({ open, onOpenChange, onSuccess }: EditProfile
           console.log("✅ Dados carregados do localStorage:", userData);
           setFormData({
             name: userData.name || "",
-            username: userData.username || "",
             email: userData.email || "",
             phone: userData.phone || "",
             rg: userData.rg || "",
-            cpf: userData.cpf || "",
-            role: userData.role || "corretor",
-            active: userData.active ?? true
+            cpf: userData.cpf || ""
           });
           console.log("✅ Formulário preenchido com sucesso!");
-          setIsLoading(false);
+          setLoading(false);
           return;
         }
         
@@ -110,17 +108,14 @@ export function EditProfileDialog({ open, onOpenChange, onSuccess }: EditProfile
 
         setFormData({
           name: userData.name || "",
-          username: userData.username || "",
           email: userData.email || "",
           phone: userData.phone || "",
           rg: userData.rg || "",
-          cpf: userData.cpf || "",
-          role: userData.role || "corretor",
-          active: userData.active ?? true
+          cpf: userData.cpf || ""
         });
         
         console.log("✅ Formulário preenchido com sucesso!");
-        setIsLoading(false);
+        setLoading(false);
       } catch (error) {
         console.error("❌ ERRO FATAL ao carregar dados:", error);
         toast({
