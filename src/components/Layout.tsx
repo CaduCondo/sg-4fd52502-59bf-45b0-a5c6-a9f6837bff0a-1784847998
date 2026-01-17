@@ -226,8 +226,8 @@ export function Layout({ children }: LayoutProps) {
               </Link>
             </div>
 
-            {/* Center: Desktop Menu - FORCED TO SHOW */}
-            <nav className="hidden lg:flex items-center gap-2 flex-shrink-0">
+            {/* Center: Desktop Menu - FORCED TO SHOW WITHOUT ANY CONDITIONS */}
+            <nav className="lg:flex items-center gap-2 flex-shrink-0 bg-red-500 p-2">
               {menuItems.map((item) => (
                 <Link key={item.path} href={item.path}>
                   <Button 
