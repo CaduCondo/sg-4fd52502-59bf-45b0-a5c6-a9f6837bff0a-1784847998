@@ -396,7 +396,7 @@ export function Layout({ children }: LayoutProps) {
       {/* Edit Profile Dialog */}
       {user?.id && (
         <EditProfileDialog
-          user={user}
+          user={user as unknown as import("@/types").SystemUser}
           open={showProfileDialog}
           onOpenChange={setShowProfileDialog}
           onSuccess={() => {

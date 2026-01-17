@@ -324,20 +324,18 @@ export default function TenantsPage() {
                       )}
                     </div>
 
-                    {/* Ações - Lixeira no canto inferior direito */}
-                    <div className="flex justify-end mt-4 mb-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(e, tenant);
-                        }}
-                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                      >
-                        <Trash2 className="h-5 w-5" />
-                      </Button>
-                    </div>
+                    {/* Ações - Lixeira no canto inferior direito (absolute para posicionar mais acima) */}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(e, tenant);
+                      }}
+                      className="absolute bottom-8 right-3 text-destructive hover:text-destructive hover:bg-destructive/10"
+                    >
+                      <Trash2 className="h-5 w-5" />
+                    </Button>
                   </CardContent>
                 </Card>
               ))}
