@@ -12,7 +12,6 @@ import {
   Settings,
   LogOut,
   Menu,
-  X,
   User,
   Lock,
   ChevronDown,
@@ -27,6 +26,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,6 +40,7 @@ import { userStorage } from "@/lib/storage";
 import { systemUserService } from "@/services/systemUserService";
 import { useToast } from "@/hooks/use-toast";
 import { EditProfileDialog } from "@/components/EditProfileDialog";
+import { Separator } from "@/components/ui/separator";
 
 interface LayoutProps {
   children: ReactNode;
@@ -43,7 +50,7 @@ export function Layout({ children }: LayoutProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [user, setUser] = useState<UserType | null>(null);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showProfileDialog, setShowProfileDialog] = useState(false);
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
 
@@ -62,8 +69,7 @@ export function Layout({ children }: LayoutProps) {
 
       if (currentUser) {
         console.log("🔍 Layout: Validando usuário do localStorage:", currentUser.id);
-        console.log("🔍 Layout: Role do usuário:", currentUser.role);
-        console.log("🔍 Layout: É admin?", currentUser.role === "admin");
+        console.log("🔍 Layout: Role do usuário (localStorage):", currentUser.role);
 
         // Validar se o usuário realmente existe no banco
         const userExists = await systemUserService.getById(currentUser.id);
@@ -91,7 +97,7 @@ export function Layout({ children }: LayoutProps) {
         }
 
         console.log("✅ Layout: Usuário validado com sucesso");
-        console.log("✅ Layout: Menu Configurações visível?", userExists.role === "admin");
+        console.log("🔍 Layout: Role no banco:", userExists.role);
         setUser(currentUser);
       }
     };
@@ -144,6 +150,26 @@ export function Layout({ children }: LayoutProps) {
 
   const isActive = (path: string) => router.pathname === path;
 
+  const roleDisplayName = (role?: string) => {
+    const roleMap: Record<string, string> = {
+      admin: "Administrador",
+      broker: "Corretor",
+      financial: "Financeiro",
+      user: "Usuário",
+    };
+    return roleMap[role || "user"] || "Usuário";
+  };
+
+  const navigationItems = [
+    { href: "/dashboard", icon: Home, label: "Dashboard" },
+    { href: "/properties", icon: Building2, label: "Imóveis" },
+    { href: "/tenants", icon: Users, label: "Inquilinos" },
+    { href: "/rentals", icon: Building2, label: "Locações" },
+    { href: "/payments", icon: DollarSign, label: "Recebimentos" },
+    { href: "/financial", icon: Calculator, label: "Financeiro" },
+    { href: "/settings", icon: Settings, label: "Configurações" },
+  ];
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       {/* Scroll Progress Bar */}
@@ -166,103 +192,130 @@ export function Layout({ children }: LayoutProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="h-16 flex items-center justify-between gap-4">
             {/* LOGO - Left */}
-            <Link href="/dashboard" className="flex items-center gap-2 flex-shrink-0">
-              <Building2 className="h-6 w-6 text-emerald-600" />
-              <span className="font-bold text-slate-900">ImóvelControl</span>
-            </Link>
+            <div className="flex items-center gap-3">
+              {/* Mobile Menu Button - VISIBLE ONLY ON MOBILE */}
+              <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+                <SheetTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="md:hidden"
+                  >
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-[280px] sm:w-[320px]">
+                  <SheetHeader>
+                    <SheetTitle className="text-left">
+                      <div className="flex items-center gap-2">
+                        <Building2 className="h-5 w-5 text-emerald-600" />
+                        <span className="font-bold text-slate-900">ImóvelControl</span>
+                      </div>
+                    </SheetTitle>
+                  </SheetHeader>
 
-            {/* MENU DESKTOP - Center - HARDCODED TO ALWAYS SHOW */}
-            <div className="hidden md:flex items-center gap-1 flex-1 justify-center">
-              <Link href="/dashboard">
-                <Button 
-                  variant={isActive("/dashboard") ? "default" : "ghost"}
-                  size="sm"
-                  className="gap-1.5"
-                >
-                  <Home className="h-4 w-4" />
-                  <span>Dashboard</span>
-                </Button>
-              </Link>
+                  {/* User Info Section */}
+                  <div className="mt-6 mb-6">
+                    <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                      {user?.photo ? (
+                        <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-emerald-600 flex-shrink-0">
+                          <img 
+                            src={user.photo} 
+                            alt={user.name} 
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                          <User className="h-6 w-6 text-emerald-600" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-slate-900 truncate">{user?.name}</p>
+                        <p className="text-xs text-slate-500">{roleDisplayName(user?.role)}</p>
+                      </div>
+                    </div>
+                  </div>
 
-              <Link href="/properties">
-                <Button 
-                  variant={isActive("/properties") ? "default" : "ghost"}
-                  size="sm"
-                  className="gap-1.5"
-                >
-                  <Building2 className="h-4 w-4" />
-                  <span>Imóveis</span>
-                </Button>
-              </Link>
+                  <Separator className="my-4" />
 
-              <Link href="/tenants">
-                <Button 
-                  variant={isActive("/tenants") ? "default" : "ghost"}
-                  size="sm"
-                  className="gap-1.5"
-                >
-                  <Users className="h-4 w-4" />
-                  <span>Inquilinos</span>
-                </Button>
-              </Link>
+                  {/* Navigation Links */}
+                  <nav className="space-y-1">
+                    {navigationItems.map((item) => {
+                      const Icon = item.icon;
+                      const active = isActive(item.href);
+                      return (
+                        <Link key={item.href} href={item.href}>
+                          <Button
+                            variant={active ? "default" : "ghost"}
+                            className="w-full justify-start gap-3 h-11"
+                            onClick={() => setMobileMenuOpen(false)}
+                          >
+                            <Icon className="h-5 w-5" />
+                            <span className="text-sm font-medium">{item.label}</span>
+                          </Button>
+                        </Link>
+                      );
+                    })}
+                  </nav>
 
-              <Link href="/rentals">
-                <Button 
-                  variant={isActive("/rentals") ? "default" : "ghost"}
-                  size="sm"
-                  className="gap-1.5"
-                >
-                  <Building2 className="h-4 w-4" />
-                  <span>Locações</span>
-                </Button>
-              </Link>
+                  <Separator className="my-4" />
 
-              <Link href="/payments">
-                <Button 
-                  variant={isActive("/payments") ? "default" : "ghost"}
-                  size="sm"
-                  className="gap-1.5"
-                >
-                  <DollarSign className="h-4 w-4" />
-                  <span>Recebimentos</span>
-                </Button>
-              </Link>
+                  {/* Action Buttons */}
+                  <div className="space-y-2">
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start gap-3 h-11"
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        setShowPasswordDialog(true);
+                      }}
+                    >
+                      <Lock className="h-5 w-5" />
+                      <span className="text-sm font-medium">Trocar Senha</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start gap-3 h-11 text-red-600 hover:text-red-700 hover:bg-red-50"
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        handleLogout();
+                      }}
+                    >
+                      <LogOut className="h-5 w-5" />
+                      <span className="text-sm font-medium">Sair</span>
+                    </Button>
+                  </div>
+                </SheetContent>
+              </Sheet>
 
-              <Link href="/financial">
-                <Button 
-                  variant={isActive("/financial") ? "default" : "ghost"}
-                  size="sm"
-                  className="gap-1.5"
-                >
-                  <Calculator className="h-4 w-4" />
-                  <span>Financeiro</span>
-                </Button>
-              </Link>
-
-              <Link href="/settings">
-                <Button 
-                  variant={isActive("/settings") ? "default" : "ghost"}
-                  size="sm"
-                  className="gap-1.5"
-                >
-                  <Settings className="h-4 w-4" />
-                  <span>Configurações</span>
-                </Button>
+              <Link href="/dashboard" className="flex items-center gap-2 flex-shrink-0">
+                <Building2 className="h-6 w-6 text-emerald-600" />
+                <span className="font-bold text-slate-900 hidden xs:inline">ImóvelControl</span>
               </Link>
             </div>
 
-            {/* USER PROFILE - Right */}
-            <div className="flex items-center gap-2 flex-shrink-0">
-              {/* Mobile Menu Button */}
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setMenuOpen(!menuOpen)}
-                className="md:hidden"
-              >
-                {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-              </Button>
+            {/* MENU DESKTOP - Center - HIDDEN ON MOBILE */}
+            <div className="hidden md:flex items-center gap-1 flex-1 justify-center">
+              {navigationItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <Link key={item.href} href={item.href}>
+                    <Button 
+                      variant={isActive(item.href) ? "default" : "ghost"}
+                      size="sm"
+                      className="gap-1.5"
+                    >
+                      <Icon className="h-4 w-4" />
+                      <span>{item.label}</span>
+                    </Button>
+                  </Link>
+                );
+              })}
+            </div>
 
+            {/* USER PROFILE - Right - HIDDEN ON MOBILE */}
+            <div className="hidden md:flex items-center gap-2 flex-shrink-0">
               {/* User Dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -285,7 +338,7 @@ export function Layout({ children }: LayoutProps) {
                 <DropdownMenuContent align="end" className="w-56">
                   <div className="px-2 py-1.5">
                     <p className="text-sm font-medium">{user?.name}</p>
-                    <p className="text-xs text-slate-500 capitalize">{user?.role}</p>
+                    <p className="text-xs text-slate-500">{roleDisplayName(user?.role)}</p>
                   </div>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => setShowPasswordDialog(true)}>
@@ -301,88 +354,6 @@ export function Layout({ children }: LayoutProps) {
               </DropdownMenu>
             </div>
           </div>
-
-          {/* Mobile Menu Dropdown */}
-          {menuOpen && (
-            <div className="md:hidden pb-4 space-y-1">
-              <Link href="/dashboard">
-                <Button 
-                  variant={isActive("/dashboard") ? "default" : "ghost"}
-                  className="w-full justify-start gap-2"
-                  onClick={() => setMenuOpen(false)}
-                >
-                  <Home className="h-4 w-4" />
-                  Dashboard
-                </Button>
-              </Link>
-
-              <Link href="/properties">
-                <Button 
-                  variant={isActive("/properties") ? "default" : "ghost"}
-                  className="w-full justify-start gap-2"
-                  onClick={() => setMenuOpen(false)}
-                >
-                  <Building2 className="h-4 w-4" />
-                  Imóveis
-                </Button>
-              </Link>
-
-              <Link href="/tenants">
-                <Button 
-                  variant={isActive("/tenants") ? "default" : "ghost"}
-                  className="w-full justify-start gap-2"
-                  onClick={() => setMenuOpen(false)}
-                >
-                  <Users className="h-4 w-4" />
-                  Inquilinos
-                </Button>
-              </Link>
-
-              <Link href="/rentals">
-                <Button 
-                  variant={isActive("/rentals") ? "default" : "ghost"}
-                  className="w-full justify-start gap-2"
-                  onClick={() => setMenuOpen(false)}
-                >
-                  <Building2 className="h-4 w-4" />
-                  Locações
-                </Button>
-              </Link>
-
-              <Link href="/payments">
-                <Button 
-                  variant={isActive("/payments") ? "default" : "ghost"}
-                  className="w-full justify-start gap-2"
-                  onClick={() => setMenuOpen(false)}
-                >
-                  <DollarSign className="h-4 w-4" />
-                  Recebimentos
-                </Button>
-              </Link>
-
-              <Link href="/financial">
-                <Button 
-                  variant={isActive("/financial") ? "default" : "ghost"}
-                  className="w-full justify-start gap-2"
-                  onClick={() => setMenuOpen(false)}
-                >
-                  <Calculator className="h-4 w-4" />
-                  Financeiro
-                </Button>
-              </Link>
-
-              <Link href="/settings">
-                <Button 
-                  variant={isActive("/settings") ? "default" : "ghost"}
-                  className="w-full justify-start gap-2"
-                  onClick={() => setMenuOpen(false)}
-                >
-                  <Settings className="h-4 w-4" />
-                  Configurações
-                </Button>
-              </Link>
-            </div>
-          )}
         </div>
       </motion.nav>
 
