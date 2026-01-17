@@ -57,11 +57,43 @@ export function Layout({ children }: LayoutProps) {
   const [confirmPassword, setConfirmPassword] = useState("");
 
   useEffect(() => {
-    const currentUser = getCurrentUser();
-    if (currentUser) {
-      setUser(currentUser);
-    }
-  }, []);
+    const validateAndLoadUser = async () => {
+      const currentUser = getCurrentUser();
+      if (currentUser) {
+        console.log("🔍 Layout: Validando usuário do localStorage:", currentUser.id);
+        
+        // Validar se o usuário realmente existe no banco
+        const userExists = await systemUserService.getById(currentUser.id);
+        
+        if (!userExists) {
+          console.error("🔄 DETECTADO: Usuário do localStorage não existe no banco!");
+          console.log("🧹 Limpando dados corrompidos e redirecionando...");
+          
+          // LIMPEZA FORÇADA TOTAL
+          localStorage.removeItem("isAuthenticated");
+          localStorage.removeItem("currentUser");
+          localStorage.clear(); // Limpa TUDO por garantia
+          
+          toast({
+            title: "Sessão Inválida",
+            description: "Seus dados de sessão expiraram. Por favor, faça login novamente.",
+            variant: "destructive",
+          });
+          
+          setTimeout(() => {
+            window.location.href = "/login";
+          }, 2000);
+          
+          return;
+        }
+        
+        console.log("✅ Layout: Usuário validado com sucesso");
+        setUser(currentUser);
+      }
+    };
+    
+    validateAndLoadUser();
+  }, [toast]);
 
   const handleLogout = () => {
     logout();

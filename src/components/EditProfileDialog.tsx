@@ -29,45 +29,48 @@ export function EditProfileDialog({ open, onOpenChange, onSuccess }: EditProfile
 
   // Load authenticated user's data on dialog open
   useEffect(() => {
-    if (!open) {
-      setLoading(true);
-      setFormData({ name: "", email: "", phone: "", cpf: "", rg: "" });
-      return;
-    }
+    if (!open) return;
 
     const loadUserData = async () => {
-      setLoading(true);
       console.log("🔓 Dialog aberto, iniciando fluxo de carregamento...");
+      setLoading(true);
 
       try {
-        // Etapa 1: Try to get user from Supabase
-        console.log("📡 Etapa 1: Buscando usuário autenticado do Supabase...");
-        const { data: { user } } = await supabase.auth.getUser();
-
         let userId: string | null = null;
 
-        if (user) {
-          console.log("✅ Etapa 1 completa: User ID do Supabase:", user.id);
-          userId = user.id;
+        // Etapa 1: Tentar obter usuário autenticado do Supabase
+        console.log("📡 Etapa 1: Buscando usuário autenticado do Supabase...");
+        const {
+          data: { user: supabaseUser },
+        } = await supabase.auth.getUser();
+
+        if (supabaseUser) {
+          console.log("✅ Usuário autenticado do Supabase encontrado:", supabaseUser.id);
+          userId = supabaseUser.id;
         } else {
-          // Fallback: Try localStorage
           console.warn("⚠️ Nenhuma sessão Supabase encontrada, tentando localStorage...");
-          const localUser = getCurrentUser();
-          
-          if (localUser) {
-            console.log("✅ Usuário do localStorage encontrado:", localUser.id);
-            userId = localUser.id;
-          } else {
-            console.error("❌ Nenhum usuário autenticado encontrado!");
-            toast({
-              title: "Erro",
-              description: "Sessão expirada. Faça login novamente.",
-              variant: "destructive"
-            });
-            setLoading(false);
-            onOpenChange(false);
-            return;
+          const user = getCurrentUser();
+          if (user) {
+            console.log("✅ Usuário do localStorage encontrado:", user.id);
+            userId = user.id;
           }
+        }
+
+        if (!userId) {
+          console.error("❌ Nenhum usuário encontrado! Redirecionando para login...");
+          localStorage.removeItem("isAuthenticated");
+          localStorage.removeItem("currentUser");
+          toast({
+            title: "Sessão Expirada",
+            description: "Por favor, faça login novamente.",
+            variant: "destructive",
+          });
+          setLoading(false);
+          onOpenChange(false);
+          setTimeout(() => {
+            window.location.href = "/login";
+          }, 1500);
+          return;
         }
 
         // Etapa 2: Load user data from database
