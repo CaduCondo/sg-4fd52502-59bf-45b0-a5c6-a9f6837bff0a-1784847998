@@ -75,7 +75,7 @@ export default function Users() {
         phone: user.phone || "",
         username: user.username,
         password: "", // Não carrega senha por segurança
-        role: user.role,
+        role: user.role as "admin" | "user",
         isActive: user.active
       });
     } else {

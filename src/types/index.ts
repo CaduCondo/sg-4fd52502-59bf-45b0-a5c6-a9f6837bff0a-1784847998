@@ -19,6 +19,8 @@ export interface SystemUser {
   username: string;
   email: string;
   phone?: string;
+  rg?: string;
+  cpf?: string;
   password: string;
   role: string;
   active: boolean;
