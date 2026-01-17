@@ -15,6 +15,7 @@ import { Tenant } from "@/types";
 import { tenantService } from "@/services";
 import { getCurrentUser } from "@/lib/auth";
 import { applyCpfMask, applyCnpjMask, applyPhoneMask, removeMask } from "@/lib/masks";
+import { isAuthenticatedAsync } from "@/lib/auth";
 
 export default function TenantsPage() {
   const router = useRouter();
@@ -36,8 +37,16 @@ export default function TenantsPage() {
   });
 
   useEffect(() => {
-    loadTenants();
-  }, []);
+    const checkAuth = async () => {
+      const isAuth = await isAuthenticatedAsync();
+      if (!isAuth) {
+        router.push("/login");
+        return;
+      }
+      loadTenants();
+    };
+    checkAuth();
+  }, [router]);
 
   useEffect(() => {
     filterTenants();

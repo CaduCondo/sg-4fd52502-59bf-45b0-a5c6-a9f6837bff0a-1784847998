@@ -15,6 +15,7 @@ import { formatCurrency } from "@/lib/masks";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
 import { FloatingCard } from "@/components/animations/FloatingCard";
 import ManagePaymentContent from "@/pages/payments/manage/[id]";
+import { isAuthenticatedAsync } from "@/lib/auth";
 
 export default function PaymentsPage() {
   const router = useRouter();
@@ -34,10 +35,18 @@ export default function PaymentsPage() {
   const [selectedYear, setSelectedYear] = useState<string>(currentDate.getFullYear().toString());
 
   useEffect(() => {
-    loadData();
-  }, []);
+    const checkAuth = async () => {
+      const isAuth = await isAuthenticatedAsync();
+      if (!isAuth) {
+        router.push("/login");
+        return;
+      }
+      loadPayments();
+    };
+    checkAuth();
+  }, [router]);
 
-  const loadData = async () => {
+  const loadPayments = async () => {
     try {
       setLoading(true);
       
@@ -75,7 +84,7 @@ export default function PaymentsPage() {
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
     setSelectedPaymentId(null);
-    loadData();
+    loadPayments();
   };
 
   const handleCancelPayment = async (paymentId: string, e: React.MouseEvent) => {
@@ -107,7 +116,7 @@ export default function PaymentsPage() {
         description: "Pagamento cancelado com sucesso!",
       });
 
-      loadData();
+      loadPayments();
     } catch (error) {
       console.error("Error canceling payment:", error);
       toast({

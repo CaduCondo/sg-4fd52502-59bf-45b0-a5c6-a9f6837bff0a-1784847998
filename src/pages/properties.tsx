@@ -17,6 +17,7 @@ import { propertyService } from "@/services";
 import { configService } from "@/services/configService";
 import { getCurrentUser } from "@/lib/auth";
 import { applyCepMask, applyRealMask, removeMask, formatCurrency } from "@/lib/masks";
+import { isAuthenticatedAsync } from "@/lib/auth";
 
 export default function PropertiesPage() {
   const router = useRouter();
@@ -45,14 +46,22 @@ export default function PropertiesPage() {
   });
 
   useEffect(() => {
-    loadData();
-  }, []);
+    const checkAuth = async () => {
+      const isAuth = await isAuthenticatedAsync();
+      if (!isAuth) {
+        router.push("/login");
+        return;
+      }
+      loadProperties();
+    };
+    checkAuth();
+  }, [router]);
 
   useEffect(() => {
     filterProperties();
   }, [properties, searchTerm, statusFilter]);
 
-  const loadData = async () => {
+  const loadProperties = async () => {
     try {
       setLoading(true);
       const config = await configService.get();
@@ -202,7 +211,7 @@ export default function PropertiesPage() {
       });
 
       closeDialog();
-      loadData();
+      loadProperties();
     } catch (error) {
       console.error("Error saving property:", error);
       toast({
@@ -235,7 +244,7 @@ export default function PropertiesPage() {
         title: "Sucesso",
         description: "Imóvel excluído com sucesso!",
       });
-      loadData();
+      loadProperties();
     } catch (error) {
       console.error("Error deleting property:", error);
       toast({

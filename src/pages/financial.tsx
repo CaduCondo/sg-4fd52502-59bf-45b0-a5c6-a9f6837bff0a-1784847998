@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
+import { isAuthenticatedAsync } from "@/lib/auth";
 import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -46,10 +47,16 @@ export default function FinancialPage() {
   }, []);
 
   useEffect(() => {
-    if (selectedMonth && selectedYear) {
+    const checkAuth = async () => {
+      const isAuth = await isAuthenticatedAsync();
+      if (!isAuth) {
+        router.push("/login");
+        return;
+      }
       loadData();
-    }
-  }, [selectedMonth, selectedYear]);
+    };
+    checkAuth();
+  }, [router]);
 
   const loadData = async () => {
     try {

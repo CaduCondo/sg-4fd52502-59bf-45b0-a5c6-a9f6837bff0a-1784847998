@@ -18,6 +18,7 @@ import { formatCurrency, applyRealMask, removeMask } from "@/lib/masks";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
 import { FloatingCard } from "@/components/animations/FloatingCard";
 import { getCurrentUser } from "@/lib/auth";
+import { isAuthenticatedAsync } from "@/lib/auth";
 
 export default function RentalsPage() {
   const router = useRouter();
@@ -47,8 +48,16 @@ export default function RentalsPage() {
   });
 
   useEffect(() => {
-    loadData();
-  }, []);
+    const checkAuth = async () => {
+      const isAuth = await isAuthenticatedAsync();
+      if (!isAuth) {
+        router.push("/login");
+        return;
+      }
+      loadData();
+    };
+    checkAuth();
+  }, [router]);
 
   useEffect(() => {
     // Filter available properties and active tenants - sort properties alphabetically
