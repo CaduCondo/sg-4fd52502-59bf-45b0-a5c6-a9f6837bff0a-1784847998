@@ -37,16 +37,8 @@ export default function TenantsPage() {
   });
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const isAuth = await isAuthenticatedAsync();
-      if (!isAuth) {
-        router.push("/login");
-        return;
-      }
-      loadTenants();
-    };
-    checkAuth();
-  }, [router]);
+    loadTenants();
+  }, []);
 
   useEffect(() => {
     filterTenants();

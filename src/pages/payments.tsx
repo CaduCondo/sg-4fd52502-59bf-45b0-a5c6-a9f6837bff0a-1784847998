@@ -34,17 +34,21 @@ export default function PaymentsPage() {
   const [selectedMonth, setSelectedMonth] = useState<string>((currentDate.getMonth() + 1).toString());
   const [selectedYear, setSelectedYear] = useState<string>(currentDate.getFullYear().toString());
 
+  // useEffect(() => {
+  //   const checkAuth = async () => {
+  //     const isAuth = await isAuthenticatedAsync();
+  //     if (!isAuth) {
+  //       router.push("/login");
+  //       return;
+  //     }
+  //     loadPayments();
+  //   };
+  //   checkAuth();
+  // }, [router]);
+
   useEffect(() => {
-    const checkAuth = async () => {
-      const isAuth = await isAuthenticatedAsync();
-      if (!isAuth) {
-        router.push("/login");
-        return;
-      }
-      loadPayments();
-    };
-    checkAuth();
-  }, [router]);
+    loadPayments();
+  }, []);
 
   const loadPayments = async () => {
     try {

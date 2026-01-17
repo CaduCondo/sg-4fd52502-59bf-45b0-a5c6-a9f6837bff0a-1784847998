@@ -48,16 +48,8 @@ export default function RentalsPage() {
   });
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const isAuth = await isAuthenticatedAsync();
-      if (!isAuth) {
-        router.push("/login");
-        return;
-      }
-      loadData();
-    };
-    checkAuth();
-  }, [router]);
+    loadData();
+  }, []);
 
   useEffect(() => {
     // Filter available properties and active tenants - sort properties alphabetically

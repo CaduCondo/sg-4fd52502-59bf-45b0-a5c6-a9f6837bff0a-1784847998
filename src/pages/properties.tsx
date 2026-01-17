@@ -46,16 +46,8 @@ export default function PropertiesPage() {
   });
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const isAuth = await isAuthenticatedAsync();
-      if (!isAuth) {
-        router.push("/login");
-        return;
-      }
-      loadProperties();
-    };
-    checkAuth();
-  }, [router]);
+    loadProperties();
+  }, []);
 
   useEffect(() => {
     filterProperties();

@@ -61,17 +61,21 @@ export default function Settings() {
 
   const sortedLocations = [...locations].sort((a, b) => a.name.localeCompare(b.name));
 
+  // useEffect(() => {
+  //   const checkAuth = async () => {
+  //     const isAuth = await isAuthenticatedAsync();
+  //     if (!isAuth) {
+  //       router.push("/login");
+  //       return;
+  //     }
+  //     loadSettings();
+  //   };
+  //   checkAuth();
+  // }, [router]);
+
   useEffect(() => {
-    const checkAuth = async () => {
-      const isAuth = await isAuthenticatedAsync();
-      if (!isAuth) {
-        router.push("/login");
-        return;
-      }
-      loadSettings();
-    };
-    checkAuth();
-  }, [router]);
+    loadSettings();
+  }, []);
 
   const loadSettings = async () => {
     try {
@@ -177,6 +181,8 @@ export default function Settings() {
   };
 
   const handleSaveSystemUser = async () => {
+    console.log("🔍 handleSaveSystemUser iniciado", { editingSystemUser, systemUserForm });
+    
     if (!systemUserForm.name || !systemUserForm.email || (!editingSystemUser && !systemUserForm.password)) {
       toast({
         title: "Erro",
@@ -187,7 +193,11 @@ export default function Settings() {
     }
 
     try {
+      console.log("🔄 Tentando salvar usuário...");
+      
       if (editingSystemUser) {
+        console.log("✏️ Modo EDIÇÃO - ID:", editingSystemUser.id);
+        
         const updates: any = {
           name: systemUserForm.name,
           username: systemUserForm.username,
@@ -203,10 +213,20 @@ export default function Settings() {
           updates.password = systemUserForm.password;
         }
 
-        await systemUserService.update(editingSystemUser.id, updates);
-        toast({ title: "Usuário atualizado com sucesso" });
+        console.log("📦 Payload de atualização:", updates);
+        
+        const result = await systemUserService.update(editingSystemUser.id, updates);
+        console.log("✅ Resultado da atualização:", result);
+        
+        if (result) {
+          toast({ title: "Usuário atualizado com sucesso" });
+        } else {
+          throw new Error("Falha ao atualizar usuário");
+        }
       } else {
-        await systemUserService.create({
+        console.log("➕ Modo CRIAÇÃO");
+        
+        const result = await systemUserService.create({
           name: systemUserForm.name,
           username: systemUserForm.username,
           email: systemUserForm.email,
@@ -217,15 +237,25 @@ export default function Settings() {
           role: systemUserForm.role,
           active: systemUserForm.active
         });
-        toast({ title: "Usuário criado com sucesso" });
+        
+        console.log("✅ Resultado da criação:", result);
+        
+        if (result) {
+          toast({ title: "Usuário criado com sucesso" });
+        } else {
+          throw new Error("Falha ao criar usuário");
+        }
       }
 
       setIsSystemUserModalOpen(false);
       setEditingSystemUser(null);
       setSystemUserForm({ name: "", username: "", email: "", phone: "", rg: "", cpf: "", password: "", role: "corretor", active: true });
-      loadSettings();
+      
+      console.log("🔄 Recarregando lista de usuários...");
+      await loadSettings();
+      console.log("✅ handleSaveSystemUser finalizado com sucesso");
     } catch (error) {
-      console.error("Error saving system user:", error);
+      console.error("❌ Error saving system user:", error);
       toast({
         title: "Erro",
         description: "Erro ao salvar usuário",

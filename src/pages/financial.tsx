@@ -46,17 +46,21 @@ export default function FinancialPage() {
     setSelectedYear(currentDate.getFullYear().toString());
   }, []);
 
+  // useEffect(() => {
+  //   const checkAuth = async () => {
+  //     const isAuth = await isAuthenticatedAsync();
+  //     if (!isAuth) {
+  //       router.push("/login");
+  //       return;
+  //     }
+  //     loadData();
+  //   };
+  //   checkAuth();
+  // }, [router]);
+
   useEffect(() => {
-    const checkAuth = async () => {
-      const isAuth = await isAuthenticatedAsync();
-      if (!isAuth) {
-        router.push("/login");
-        return;
-      }
-      loadData();
-    };
-    checkAuth();
-  }, [router]);
+    loadData();
+  }, []);
 
   const loadData = async () => {
     try {
