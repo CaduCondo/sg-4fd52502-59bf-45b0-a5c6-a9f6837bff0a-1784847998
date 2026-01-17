@@ -65,9 +65,22 @@ export function Layout({ children }: LayoutProps) {
         const userData = JSON.parse(userStr);
         setUser(userData);
 
-        // Check if financial user is trying to access restricted pages
+        // Block financial users from restricted pages
         if (userData.role === "financial") {
           const restrictedPaths = ["/properties", "/tenants", "/rentals", "/payments"];
+          if (restrictedPaths.some(path => router.pathname.startsWith(path))) {
+            toast({
+              title: "Acesso negado",
+              description: "Você não tem permissão para acessar esta página.",
+              variant: "destructive",
+            });
+            router.push("/dashboard");
+          }
+        }
+
+        // Check if financial user is trying to access restricted pages
+        if (userData.role === "broker") {
+          const restrictedPaths = ["/settings"];
           if (restrictedPaths.some(path => router.pathname.startsWith(path))) {
             router.push("/dashboard");
           }
@@ -168,49 +181,53 @@ export function Layout({ children }: LayoutProps) {
                 </Button>
               </Link>
 
-              <Link href="/properties" className={linkClasses("/properties")}>
-                <Button 
-                  variant={isActive("/properties") ? "default" : "ghost"}
-                  size="sm"
-                  className="gap-1.5"
-                >
-                  <Building2 className="h-4 w-4" />
-                  <span>Imóveis</span>
-                </Button>
-              </Link>
+              {user?.role !== "financial" && (
+                <>
+                  <Link href="/properties" className={linkClasses("/properties")}>
+                    <Button 
+                      variant={isActive("/properties") ? "default" : "ghost"}
+                      size="sm"
+                      className="gap-1.5"
+                    >
+                      <Building2 className="h-4 w-4" />
+                      <span>Imóveis</span>
+                    </Button>
+                  </Link>
 
-              <Link href="/tenants" className={linkClasses("/tenants")}>
-                <Button 
-                  variant={isActive("/tenants") ? "default" : "ghost"}
-                  size="sm"
-                  className="gap-1.5"
-                >
-                  <Users className="h-4 w-4" />
-                  <span>Inquilinos</span>
-                </Button>
-              </Link>
+                  <Link href="/tenants" className={linkClasses("/tenants")}>
+                    <Button 
+                      variant={isActive("/tenants") ? "default" : "ghost"}
+                      size="sm"
+                      className="gap-1.5"
+                    >
+                      <Users className="h-4 w-4" />
+                      <span>Inquilinos</span>
+                    </Button>
+                  </Link>
 
-              <Link href="/rentals" className={linkClasses("/rentals")}>
-                <Button 
-                  variant={isActive("/rentals") ? "default" : "ghost"}
-                  size="sm"
-                  className="gap-1.5"
-                >
-                  <Building2 className="h-4 w-4" />
-                  <span>Locações</span>
-                </Button>
-              </Link>
+                  <Link href="/rentals" className={linkClasses("/rentals")}>
+                    <Button 
+                      variant={isActive("/rentals") ? "default" : "ghost"}
+                      size="sm"
+                      className="gap-1.5"
+                    >
+                      <Building2 className="h-4 w-4" />
+                      <span>Locações</span>
+                    </Button>
+                  </Link>
 
-              <Link href="/payments" className={linkClasses("/payments")}>
-                <Button 
-                  variant={isActive("/payments") ? "default" : "ghost"}
-                  size="sm"
-                  className="gap-1.5"
-                >
-                  <DollarSign className="h-4 w-4" />
-                  <span>Recebimentos</span>
-                </Button>
-              </Link>
+                  <Link href="/payments" className={linkClasses("/payments")}>
+                    <Button 
+                      variant={isActive("/payments") ? "default" : "ghost"}
+                      size="sm"
+                      className="gap-1.5"
+                    >
+                      <DollarSign className="h-4 w-4" />
+                      <span>Recebimentos</span>
+                    </Button>
+                  </Link>
+                </>
+              )}
 
               <Link href="/financial" className={linkClasses("/financial")}>
                 <Button 
@@ -306,46 +323,52 @@ export function Layout({ children }: LayoutProps) {
                   Dashboard
                 </Button>
               </Link>
-              <Link href="/properties" className={linkClasses("/properties")}>
-                <Button 
-                  variant={isActive("/properties") ? "default" : "ghost"}
-                  className="w-full justify-start gap-2"
-                  onClick={() => setShowMobileMenu(false)}
-                >
-                  <Building2 className="h-4 w-4" />
-                  Imóveis
-                </Button>
-              </Link>
-              <Link href="/tenants" className={linkClasses("/tenants")}>
-                <Button 
-                  variant={isActive("/tenants") ? "default" : "ghost"}
-                  className="w-full justify-start gap-2"
-                  onClick={() => setShowMobileMenu(false)}
-                >
-                  <Users className="h-4 w-4" />
-                  Inquilinos
-                </Button>
-              </Link>
-              <Link href="/rentals" className={linkClasses("/rentals")}>
-                <Button 
-                  variant={isActive("/rentals") ? "default" : "ghost"}
-                  className="w-full justify-start gap-2"
-                  onClick={() => setShowMobileMenu(false)}
-                >
-                  <Building2 className="h-4 w-4" />
-                  Locações
-                </Button>
-              </Link>
-              <Link href="/payments" className={linkClasses("/payments")}>
-                <Button 
-                  variant={isActive("/payments") ? "default" : "ghost"}
-                  className="w-full justify-start gap-2"
-                  onClick={() => setShowMobileMenu(false)}
-                >
-                  <DollarSign className="h-4 w-4" />
-                  Recebimentos
-                </Button>
-              </Link>
+              
+              {user?.role !== "financial" && (
+                <>
+                  <Link href="/properties" className={linkClasses("/properties")}>
+                    <Button 
+                      variant={isActive("/properties") ? "default" : "ghost"}
+                      className="w-full justify-start gap-2"
+                      onClick={() => setShowMobileMenu(false)}
+                    >
+                      <Building2 className="h-4 w-4" />
+                      Imóveis
+                    </Button>
+                  </Link>
+                  <Link href="/tenants" className={linkClasses("/tenants")}>
+                    <Button 
+                      variant={isActive("/tenants") ? "default" : "ghost"}
+                      className="w-full justify-start gap-2"
+                      onClick={() => setShowMobileMenu(false)}
+                    >
+                      <Users className="h-4 w-4" />
+                      Inquilinos
+                    </Button>
+                  </Link>
+                  <Link href="/rentals" className={linkClasses("/rentals")}>
+                    <Button 
+                      variant={isActive("/rentals") ? "default" : "ghost"}
+                      className="w-full justify-start gap-2"
+                      onClick={() => setShowMobileMenu(false)}
+                    >
+                      <Building2 className="h-4 w-4" />
+                      Locações
+                    </Button>
+                  </Link>
+                  <Link href="/payments" className={linkClasses("/payments")}>
+                    <Button 
+                      variant={isActive("/payments") ? "default" : "ghost"}
+                      className="w-full justify-start gap-2"
+                      onClick={() => setShowMobileMenu(false)}
+                    >
+                      <DollarSign className="h-4 w-4" />
+                      Recebimentos
+                    </Button>
+                  </Link>
+                </>
+              )}
+              
               <Link href="/financial" className={linkClasses("/financial")}>
                 <Button 
                   variant={isActive("/financial") ? "default" : "ghost"}
@@ -356,6 +379,7 @@ export function Layout({ children }: LayoutProps) {
                   Financeiro
                 </Button>
               </Link>
+              
               {user?.role !== "broker" && user?.role !== "financial" && (
                 <Link href="/settings" className={linkClasses("/settings")}>
                   <Button 

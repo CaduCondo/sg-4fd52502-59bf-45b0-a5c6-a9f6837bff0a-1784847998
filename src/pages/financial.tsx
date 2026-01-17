@@ -9,9 +9,10 @@ import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
 import { formatCurrency } from "@/lib/masks";
-import { paymentService, propertyService, configService } from "@/services";
-import type { Payment, Property, Location } from "@/types";
+import { paymentService, propertyService, configService, rentalService } from "@/services";
+import type { Payment, Property, Location, Rental } from "@/types";
 import { getCurrentUser } from "@/lib/auth";
+import { useToast } from "@/hooks/use-toast";
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -26,8 +27,10 @@ import {
 type SortOption = "location" | "dueDate" | "paymentDate" | "status";
 
 export default function FinancialPage() {
+  const { toast } = useToast();
   const [payments, setPayments] = useState<Payment[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
+  const [rentals, setRentals] = useState<Rental[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -62,17 +65,55 @@ export default function FinancialPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [paymentsData, propertiesData, configData] = await Promise.all([
-        paymentService.getAll(),
+      
+      // Check user role
+      const userStr = localStorage.getItem("user");
+      const currentUser = userStr ? JSON.parse(userStr) : null;
+
+      const config = await configService.getConfig();
+      setLocations(config.locations || []);
+
+      const [propertiesData, rentalsData, paymentsData] = await Promise.all([
         propertyService.getAll(),
-        configService.getConfig()
+        rentalService.getAll(),
+        paymentService.getAll(),
       ]);
 
-      setPayments(paymentsData);
-      setProperties(propertiesData);
-      setLocations(configData?.locations || []);
+      // Apply location filter for financial users
+      let filteredProperties = propertiesData;
+      let filteredRentals = rentalsData;
+      let filteredPayments = paymentsData;
+
+      if (currentUser?.role === "financial") {
+        const allowedLocations = ["Jd. Colombo", "Signore"];
+        
+        filteredProperties = propertiesData.filter(p => 
+          allowedLocations.some(loc => p.location?.includes(loc))
+        );
+        
+        const allowedPropertyIds = filteredProperties.map(p => p.id);
+        filteredRentals = rentalsData.filter(r => allowedPropertyIds.includes(r.propertyId));
+        
+        const allowedRentalIds = filteredRentals.map(r => r.id);
+        filteredPayments = paymentsData.filter(p => allowedRentalIds.includes(p.rentalId));
+        
+        // Auto-select only allowed locations for financial users
+        setSelectedLocations(allowedLocations);
+      } else {
+        // Select all locations by default for other users
+        setSelectedLocations(config.locations.map(l => l.name));
+      }
+
+      setProperties(filteredProperties);
+      setRentals(filteredRentals);
+      setPayments(filteredPayments);
     } catch (error) {
-      console.error("Error loading financial data:", error);
+      console.error("Erro ao carregar dados:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar os dados financeiros.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }

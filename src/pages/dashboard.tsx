@@ -30,6 +30,23 @@ export default function DashboardPage() {
   const [userName, setUserName] = useState("Usuário");
   const [currentDate, setCurrentDate] = useState("");
   const [mounted, setMounted] = useState(false);
+  const [filteredPayments, setFilteredPayments] = useState<Payment[]>([]);
+  const [dueSoonPayments, setDueSoonPayments] = useState<Payment[]>([]);
+  const [stats, setStats] = useState({
+    totalProperties: 0,
+    availableProperties: 0,
+    occupiedProperties: 0,
+    unavailableProperties: 0,
+    activeRentals: 0,
+    totalTenants: 0,
+    monthlyRevenue: 0,
+    adminFee: 0,
+    netRevenue: 0,
+    expectedValue: 0,
+    paidPayments: 0,
+    pendingPayments: 0,
+    overduePayments: 0,
+  });
   
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
@@ -177,37 +194,40 @@ export default function DashboardPage() {
     try {
       // Check user role for filtering
       const userStr = localStorage.getItem("user");
-      let locationFilter: string[] | null = null;
+      const currentUser = userStr ? JSON.parse(userStr) : null;
       
-      if (userStr) {
-        const user = JSON.parse(userStr);
-        if (user.role === "financial") {
-          locationFilter = ["Jd. Colombo", "Signore"];
-        }
-      }
-
-      const [propertiesData, tenantsData, rentalsData] = await Promise.all([
+      const [propertiesData, tenantsData, rentalsData, paymentsData] = await Promise.all([
         propertyService.getAll(),
         tenantService.getAll(),
         rentalService.getAll(),
+        paymentService.getAll(),
       ]);
 
-      // Apply location filter if needed
-      const filteredProperties = locationFilter
-        ? propertiesData.filter((p) => locationFilter!.includes(p.location))
-        : propertiesData;
+      // Apply location filter for financial users
+      let filteredProperties = propertiesData;
+      let filteredRentals = rentalsData;
+      let filteredPayments = paymentsData;
 
-      const filteredRentals = locationFilter
-        ? rentalsData.filter((r) =>
-            r.property?.location
-              ? locationFilter!.includes(r.property.location)
-              : false
-          )
-        : rentalsData;
+      if (currentUser?.role === "financial") {
+        const allowedLocations = ["Jd. Colombo", "Signore"];
+        
+        filteredProperties = propertiesData.filter(p => 
+          allowedLocations.some(loc => p.location?.includes(loc))
+        );
+        
+        const allowedPropertyIds = filteredProperties.map(p => p.id);
+        filteredRentals = rentalsData.filter(r => allowedPropertyIds.includes(r.propertyId));
+        
+        const allowedRentalIds = filteredRentals.map(r => r.id);
+        filteredPayments = paymentsData.filter(p => allowedRentalIds.includes(p.rentalId));
+      }
 
       setProperties(filteredProperties);
       setTenants(tenantsData);
       setRentals(filteredRentals);
+      setPayments(filteredPayments);
+
+      calculateStats(filteredProperties, filteredRentals, filteredPayments);
     } catch (error) {
       console.error("Erro ao carregar dados do dashboard:", error);
     }
@@ -272,81 +292,84 @@ export default function DashboardPage() {
     });
   };
 
-  // Calcular contratos ativos no período selecionado
-  const activeRentalsInPeriod = rentals.filter((rental) => {
-    if (!rental.isActive) return false;
+  const calculateStats = (
+    currentProperties: Property[],
+    currentRentals: Rental[],
+    currentPayments: Payment[]
+  ) => {
+    // Filter active rentals in period
+    const activeRentalsInPeriod = currentRentals.filter((rental) => {
+      if (!rental.isActive) return false;
+      
+      const startDate = new Date(rental.startDate);
+      const endDate = rental.endDate ? new Date(rental.endDate) : null;
+      
+      const monthStart = new Date(selectedYear, selectedMonth - 1, 1);
+      const monthEnd = new Date(selectedYear, selectedMonth, 0);
+
+      const startsBeforeMonthEnd = startDate <= monthEnd;
+      const endsAfterMonthStart = !endDate || endDate >= monthStart;
+
+      return startsBeforeMonthEnd && endsAfterMonthStart;
+    });
+
+    // Filter payments for selected period
+    const periodPayments = currentPayments.filter(
+      (p) => p.referenceMonth === selectedMonth && p.referenceYear === selectedYear
+    );
+
+    const paid = periodPayments.filter((p) => p.status === "paid");
+    const overdue = periodPayments.filter((p) => p.status === "overdue");
+    const pending = periodPayments.filter(
+      (p) => p.status === "pending" || p.status === "partial"
+    );
+
+    const revenue = paid.reduce((sum, p) => sum + (p.paidAmount || 0), 0);
     
-    const startDate = new Date(rental.startDate);
-    const endDate = rental.endDate ? new Date(rental.endDate) : null;
-    
-    // Definir início e fim do mês selecionado
-    const monthStart = new Date(selectedYear, selectedMonth - 1, 1);
-    const monthEnd = new Date(selectedYear, selectedMonth, 0); // Último dia do mês
-
-    // Lógica de sobreposição:
-    // O contrato está ativo no mês se:
-    // 1. Começou antes ou durante o mês (startDate <= monthEnd)
-    // 2. Terminou depois ou durante o mês, ou não terminou (endDate >= monthStart OR endDate is null)
-    
-    const startsBeforeMonthEnd = startDate <= monthEnd;
-    const endsAfterMonthStart = !endDate || endDate >= monthStart;
-
-    return startsBeforeMonthEnd && endsAfterMonthStart;
-  });
-
-  const filteredPayments = payments.filter(
-    (p) => p.referenceMonth === selectedMonth && p.referenceYear === selectedYear
-  );
-
-  const paidPayments = filteredPayments.filter((p) => p.status === "paid");
-  const overduePayments = filteredPayments.filter((p) => p.status === "overdue");
-  const pendingPayments = filteredPayments.filter(
-    (p) => p.status === "pending" || p.status === "partial"
-  );
-
-  const monthlyRevenue = paidPayments.reduce((sum, p) => sum + (p.paidAmount || 0), 0);
-  
-  let adminFee = 0;
-  for (const payment of paidPayments) {
-    const rental = rentals.find(r => r.id === payment.rentalId);
-    const property = rental ? properties.find(p => p.id === rental.propertyId) : undefined;
-    
-    if (property && property.location.toLowerCase() !== "outros") {
-      const fee = (payment.paidAmount || 0) * (adminFeePercentage / 100);
-      adminFee += fee;
+    // Calculate admin fee
+    let fee = 0;
+    for (const payment of paid) {
+      const rental = currentRentals.find(r => r.id === payment.rentalId);
+      const property = rental ? currentProperties.find(p => p.id === rental.propertyId) : undefined;
+      
+      if (property && property.location.toLowerCase() !== "outros") {
+        const paymentFee = (payment.paidAmount || 0) * (adminFeePercentage / 100);
+        fee += paymentFee;
+      }
     }
-  }
-  
-  const netRevenue = monthlyRevenue - adminFee;
-  
-  const expectedValue = filteredPayments.reduce((sum, p) => sum + (p.expectedAmount || 0), 0);
-
-  const dueSoonPayments = filteredPayments.filter((p) => {
-    if (p.status !== "pending" && p.status !== "partial" && p.status !== "overdue") return false;
     
-    const rental = rentals.find((r) => r.id === p.rentalId);
-    if (!rental) return false;
+    const net = revenue - fee;
+    const expected = periodPayments.reduce((sum, p) => sum + (p.expectedAmount || 0), 0);
 
+    // Calculate due soon (today)
     const today = new Date();
-    const dueDate = new Date(selectedYear, selectedMonth - 1, rental.paymentDay);
+    today.setHours(0, 0, 0, 0);
     
-    return dueDate.getMonth() === today.getMonth() && dueDate.getFullYear() === today.getFullYear();
-  });
+    const dueSoon = currentPayments.filter(p => {
+      if (p.status === "paid") return false;
+      const dueDate = new Date(p.dueDate);
+      dueDate.setHours(0, 0, 0, 0);
+      return dueDate.getTime() === today.getTime();
+    });
 
-  const stats = {
-    totalProperties: properties.length,
-    availableProperties: properties.filter((p) => p.status === "available").length,
-    occupiedProperties: properties.filter((p) => p.status === "occupied").length,
-    unavailableProperties: properties.filter((p) => p.status === "unavailable").length,
-    activeRentals: activeRentalsInPeriod.length, // Usando o valor filtrado por data
-    totalTenants: tenants.length,
-    monthlyRevenue: monthlyRevenue,
-    adminFee: adminFee,
-    netRevenue: netRevenue,
-    expectedValue: expectedValue,
-    paidPayments: paidPayments.length,
-    pendingPayments: pendingPayments.length,
-    overduePayments: overduePayments.length,
+    setFilteredPayments(periodPayments);
+    setDueSoonPayments(dueSoon);
+
+    setStats({
+      totalProperties: currentProperties.length,
+      availableProperties: currentProperties.filter((p) => p.status === "available").length,
+      occupiedProperties: currentProperties.filter((p) => p.status === "occupied").length,
+      unavailableProperties: currentProperties.filter((p) => p.status === "unavailable").length,
+      activeRentals: activeRentalsInPeriod.length,
+      totalTenants: tenants.length,
+      monthlyRevenue: revenue,
+      adminFee: fee,
+      netRevenue: net,
+      expectedValue: expected,
+      paidPayments: paid.length,
+      pendingPayments: pending.length,
+      overduePayments: overdue.length,
+    });
   };
 
   const monthNames = [
