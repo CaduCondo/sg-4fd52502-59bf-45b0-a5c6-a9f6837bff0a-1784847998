@@ -211,7 +211,8 @@ export function Layout({ children }: LayoutProps) {
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-8">
+            {/* Left side: Mobile menu button + Logo */}
+            <div className="flex items-center space-x-4">
               <Button
                 variant="ghost"
                 size="icon"
@@ -242,37 +243,38 @@ export function Layout({ children }: LayoutProps) {
                   ImóvelControl
                 </motion.span>
               </Link>
+            </div>
 
-              {/* Desktop Menu */}
-              <div className="hidden lg:flex items-center space-x-1">
-                {menuItems.map((item, index) => (
-                  <motion.div
-                    key={item.path}
-                    initial={{ opacity: 0, y: -20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.05, duration: 0.3 }}
-                  >
-                    <Link href={item.path}>
-                      <Button 
-                        variant={isActive(item.path) ? "default" : "ghost"}
-                        size="sm"
-                        className="flex items-center gap-1.5 transition-all hover:scale-105"
+            {/* Center: Desktop Menu */}
+            <div className="hidden lg:flex items-center space-x-1 flex-1 justify-center">
+              {menuItems.map((item, index) => (
+                <motion.div
+                  key={item.path}
+                  initial={{ opacity: 0, y: -20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05, duration: 0.3 }}
+                >
+                  <Link href={item.path}>
+                    <Button 
+                      variant={isActive(item.path) ? "default" : "ghost"}
+                      size="sm"
+                      className="flex items-center gap-1.5 transition-all hover:scale-105"
+                    >
+                      <motion.div
+                        whileHover={{ rotate: 15, scale: 1.1 }}
+                        transition={{ duration: 0.2 }}
                       >
-                        <motion.div
-                          whileHover={{ rotate: 15, scale: 1.1 }}
-                          transition={{ duration: 0.2 }}
-                        >
-                          <item.icon size={16} />
-                        </motion.div>
-                        <span>{item.label}</span>
-                      </Button>
-                    </Link>
-                  </motion.div>
-                ))}
-              </div>
+                        <item.icon size={16} />
+                      </motion.div>
+                      <span>{item.label}</span>
+                    </Button>
+                  </Link>
+                </motion.div>
+              ))}
             </div>
             
-            <div className="flex items-center space-x-4">
+            {/* Right side: User Profile */}
+            <div className="flex items-center">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="flex items-center space-x-2 hover:bg-emerald-50 transition-colors">
@@ -326,8 +328,6 @@ export function Layout({ children }: LayoutProps) {
               </DropdownMenu>
             </div>
           </div>
-          
-          {/* Remove the separate desktop menu row below - it's now integrated above */}
         </div>
         
         {/* Mobile Menu with slide animation */}
@@ -352,7 +352,7 @@ export function Layout({ children }: LayoutProps) {
                       <Button 
                         variant={isActive(item.path) ? "default" : "ghost"}
                         size="sm"
-                        className="w-full justify-start flex items-center space-x-1"
+                        className="w-full justify-start flex items-center space-x-2"
                         onClick={() => setMenuOpen(false)}
                       >
                         <item.icon size={16} />
