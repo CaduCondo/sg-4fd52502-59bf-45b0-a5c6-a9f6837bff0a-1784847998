@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -16,7 +17,15 @@ import {
   Percent, 
   FileText,
   AlertCircle,
-  Coins
+  Coins,
+  User,
+  Shield,
+  Mail,
+  Phone,
+  Calendar,
+  Edit,
+  Key,
+  Unlock
 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
@@ -73,6 +82,8 @@ export default function Settings() {
     city: "",
     state: ""
   });
+  const [newLocation, setNewLocation] = useState({ name: "", address: "" });
+  const [isAddingLocation, setIsAddingLocation] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -186,14 +197,35 @@ export default function Settings() {
     setIsUserDialogOpen(true);
   };
 
-  const handleDeleteUser = async (id: string) => {
+  const handleDeleteUser = async (userId: string) => {
     if (!confirm("Tem certeza que deseja excluir este usuário?")) return;
     try {
-      await systemUserService.delete(id);
+      await systemUserService.delete(userId);
       toast({ title: "Sucesso", description: "Usuário excluído!" });
       loadData();
     } catch (error) {
       toast({ title: "Erro", description: "Erro ao excluir usuário.", variant: "destructive" });
+    }
+  };
+
+  const handleResetPassword = async (userId: string) => {
+    if (!confirm("Tem certeza que deseja resetar a senha deste usuário?")) return;
+    try {
+      await systemUserService.resetPassword(userId);
+      toast({ title: "Sucesso", description: "Senha resetada!" });
+    } catch (error) {
+      toast({ title: "Erro", description: "Erro ao resetar senha.", variant: "destructive" });
+    }
+  };
+
+  const handleUnlockUser = async (userId: string) => {
+    if (!confirm("Tem certeza que deseja desbloquear este usuário?")) return;
+    try {
+      await systemUserService.unlockUser(userId);
+      toast({ title: "Sucesso", description: "Usuário desbloqueado!" });
+      loadData();
+    } catch (error) {
+      toast({ title: "Erro", description: "Erro ao desbloquear usuário.", variant: "destructive" });
     }
   };
 
@@ -294,13 +326,13 @@ export default function Settings() {
     }
   };
 
-  const handleDeleteLocation = async (id: string) => {
+  const handleDeleteLocation = async (locationId: string) => {
     if (!confirm("Tem certeza que deseja excluir este local?")) return;
     try {
-      await configService.deleteLocation(id);
+      await configService.deleteLocation(locationId);
       setConfig(prev => ({
         ...prev,
-        locations: prev.locations.filter(l => l.id !== id)
+        locations: prev.locations.filter(l => l.id !== locationId)
       }));
       toast({ title: "Sucesso", description: "Local excluído!" });
     } catch (error) {
@@ -631,17 +663,48 @@ export default function Settings() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button variant="ghost" size="sm" onClick={() => openUserDialog(user)}>
-                            Editar
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="text-red-600 hover:text-red-700"
-                            onClick={() => handleDeleteUser(user.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center justify-end gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openUserDialog(user)}
+                            >
+                              <Edit className="h-3 w-3 mr-1" />
+                              Editar
+                            </Button>
+                            
+                            {!user.active && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleUnlockUser(user.id)}
+                                className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                title="Desbloquear Usuário"
+                              >
+                                <Unlock className="h-4 w-4" />
+                              </Button>
+                            )}
+                            
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleResetPassword(user.id)}
+                              className="h-8 w-8 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                              title="Zerar Senha"
+                            >
+                              <Key className="h-4 w-4" />
+                            </Button>
+
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeleteUser(user.id)}
+                              className="h-8 w-8 text-destructive hover:text-destructive"
+                              title="Excluir Usuário"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -651,48 +714,54 @@ export default function Settings() {
             </Card>
           </TabsContent>
 
-          {/* LOCAIS */}
-          <TabsContent value="locations">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold">Locais e Condomínios</h2>
-              <Button onClick={() => setIsLocationDialogOpen(true)} className="bg-emerald-600 hover:bg-emerald-700">
+          {/* Locais Section */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Building2 className="h-5 w-5" />
+                Locais
+              </CardTitle>
+              <Button onClick={() => setIsLocationDialogOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
-                Novo Local
+                Adicionar Local
               </Button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {config.locations.map((location) => (
-                <Card key={location.id}>
-                  <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <CardTitle className="text-base font-medium">
-                      {location.name}
-                    </CardTitle>
-                    <MapPin className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-1 text-sm text-muted-foreground mb-4">
-                      <p>CEP: {location.cep || "—"}</p>
-                      {location.address && <p>{location.address}, {location.number || "S/N"}</p>}
-                      {location.neighborhood && <p>{location.neighborhood}</p>}
-                      {location.city && location.state && <p>{location.city} - {location.state}</p>}
-                    </div>
-                    <div className="flex justify-end gap-2">
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        className="text-red-600 hover:text-red-700 h-8"
-                        onClick={() => handleDeleteLocation(location.id)}
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Excluir
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </TabsContent>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {config?.locations.map((location) => (
+                  <div key={location.id} className="relative group">
+                    <Link href={`/locations/${location.id}`}>
+                      <Card className="hover:border-primary transition-colors cursor-pointer h-full">
+                        <CardContent className="pt-6 pb-12">
+                          <div className="flex items-center gap-2 mb-2">
+                            <MapPin className="h-5 w-5 text-primary" />
+                            <h3 className="font-semibold text-lg">{location.name}</h3>
+                          </div>
+                          <div className="text-sm text-muted-foreground space-y-1">
+                            <p>{location.address}, {location.number}</p>
+                            <p>{location.neighborhood} - {location.city}/{location.state}</p>
+                            <p>CEP: {location.cep}</p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </Link>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        handleDeleteLocation(location.id);
+                      }}
+                      className="absolute bottom-2 right-2 h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10 z-10"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </Tabs>
 
         {/* DIALOG DE USUÁRIO */}
