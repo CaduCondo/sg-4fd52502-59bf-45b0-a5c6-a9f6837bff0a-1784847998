@@ -66,7 +66,12 @@ export default function Settings() {
   const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false);
   const [locationFormData, setLocationFormData] = useState({
     name: "",
-    cep: ""
+    cep: "",
+    address: "",
+    number: "",
+    neighborhood: "",
+    city: "",
+    state: ""
   });
 
   useEffect(() => {
@@ -121,9 +126,6 @@ export default function Settings() {
     e.preventDefault();
     try {
       if (editingUser) {
-        // Update existing user
-        // Note: Password update logic would be separate or require current password check in a real app
-        // Here we just update basic info
         await systemUserService.update(editingUser.id, {
           name: userFormData.name,
           email: userFormData.email,
@@ -133,7 +135,6 @@ export default function Settings() {
         });
         toast({ title: "Sucesso", description: "Usuário atualizado!" });
       } else {
-        // Create new user
         await systemUserService.create({
           name: userFormData.name,
           email: userFormData.email,
@@ -141,13 +142,13 @@ export default function Settings() {
           username: userFormData.username,
           password: userFormData.password,
           role: userFormData.role as any,
-          active: true, // Fix: Missing required property
+          active: true,
         });
         toast({ title: "Sucesso", description: "Usuário criado!" });
       }
       
       setIsUserDialogOpen(false);
-      loadData(); // Reload users
+      loadData();
     } catch (error) {
       console.error("Error saving user:", error);
       toast({
@@ -166,7 +167,7 @@ export default function Settings() {
         email: user.email,
         phone: user.phone || "",
         username: user.username,
-        password: "", // Don't show password
+        password: "",
         role: user.role,
         isActive: user.active
       });
@@ -198,6 +199,54 @@ export default function Settings() {
 
   // --- LOCATIONS HANDLERS ---
 
+  const fetchAddressByCep = async (cep: string) => {
+    const cleanCep = cep.replace(/\D/g, "");
+    if (cleanCep.length !== 8) return;
+
+    try {
+      const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
+      const data = await response.json();
+
+      if (data.erro) {
+        toast({
+          title: "CEP não encontrado",
+          description: "Não foi possível encontrar o endereço para este CEP.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setLocationFormData(prev => ({
+        ...prev,
+        address: data.logradouro || "",
+        neighborhood: data.bairro || "",
+        city: data.localidade || "",
+        state: data.uf || ""
+      }));
+
+      toast({
+        title: "Endereço encontrado!",
+        description: "Os campos foram preenchidos automaticamente.",
+      });
+    } catch (error) {
+      console.error("Error fetching address:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível buscar o endereço.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCepChange = (value: string) => {
+    const masked = applyCepMask(value);
+    setLocationFormData(prev => ({ ...prev, cep: masked }));
+    
+    if (masked.replace(/\D/g, "").length === 8) {
+      fetchAddressByCep(masked);
+    }
+  };
+
   const handleLocationSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!locationFormData.name) return;
@@ -206,12 +255,16 @@ export default function Settings() {
       const locationData: Location = {
         id: crypto.randomUUID(),
         name: locationFormData.name,
-        cep: locationFormData.cep
+        cep: locationFormData.cep,
+        address: locationFormData.address,
+        number: locationFormData.number,
+        neighborhood: locationFormData.neighborhood,
+        city: locationFormData.city,
+        state: locationFormData.state
       };
 
       await configService.createLocation(locationData);
       
-      // Update local state
       setConfig(prev => ({
         ...prev,
         locations: [...prev.locations, locationData]
@@ -222,7 +275,15 @@ export default function Settings() {
         description: "Local adicionado com sucesso!",
       });
       setIsLocationDialogOpen(false);
-      setLocationFormData({ name: "", cep: "" });
+      setLocationFormData({ 
+        name: "", 
+        cep: "",
+        address: "",
+        number: "",
+        neighborhood: "",
+        city: "",
+        state: ""
+      });
     } catch (error) {
       console.error("Error adding location:", error);
       toast({
@@ -244,6 +305,36 @@ export default function Settings() {
       toast({ title: "Sucesso", description: "Local excluído!" });
     } catch (error) {
       toast({ title: "Erro", description: "Erro ao excluir local.", variant: "destructive" });
+    }
+  };
+
+  const handleAdminFeeChange = (value: string) => {
+    const numValue = value.replace(/[^\d.,]/g, "").replace(",", ".");
+    const parsed = parseFloat(numValue);
+    if (!isNaN(parsed) && parsed >= 0 && parsed <= 100) {
+      setConfig({...config, adminFeePercentage: parsed});
+    } else if (value === "") {
+      setConfig({...config, adminFeePercentage: 0});
+    }
+  };
+
+  const handleLateFeeChange = (value: string) => {
+    const numValue = value.replace(/[^\d.,]/g, "").replace(",", ".");
+    const parsed = parseFloat(numValue);
+    if (!isNaN(parsed) && parsed >= 0 && parsed <= 100) {
+      setConfig({...config, lateFeePercentage: parsed});
+    } else if (value === "") {
+      setConfig({...config, lateFeePercentage: 0});
+    }
+  };
+
+  const handleInterestRateChange = (value: string) => {
+    const numValue = value.replace(/[^\d.,]/g, "").replace(",", ".");
+    const parsed = parseFloat(numValue);
+    if (!isNaN(parsed) && parsed >= 0 && parsed <= 100) {
+      setConfig({...config, interestRatePercentage: parsed});
+    } else if (value === "") {
+      setConfig({...config, interestRatePercentage: 0});
     }
   };
 
@@ -395,13 +486,11 @@ export default function Settings() {
                     <div className="relative">
                       <Input 
                         id="adminFee" 
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        max="100"
+                        type="text"
                         value={config.adminFeePercentage}
-                        onChange={(e) => setConfig({...config, adminFeePercentage: parseFloat(e.target.value) || 0})}
+                        onChange={(e) => handleAdminFeeChange(e.target.value)}
                         className="pr-8"
+                        placeholder="0.00"
                       />
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
                     </div>
@@ -438,13 +527,11 @@ export default function Settings() {
                       <div className="relative">
                         <Input 
                           id="lateFee" 
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          max="100"
+                          type="text"
                           value={config.lateFeePercentage}
-                          onChange={(e) => setConfig({...config, lateFeePercentage: parseFloat(e.target.value) || 0})}
+                          onChange={(e) => handleLateFeeChange(e.target.value)}
                           className="pr-8"
+                          placeholder="0.00"
                         />
                         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
                       </div>
@@ -458,13 +545,11 @@ export default function Settings() {
                       <div className="relative">
                         <Input 
                           id="interestRate" 
-                          type="number"
-                          step="0.001"
-                          min="0"
-                          max="100"
+                          type="text"
                           value={config.interestRatePercentage}
-                          onChange={(e) => setConfig({...config, interestRatePercentage: parseFloat(e.target.value) || 0})}
+                          onChange={(e) => handleInterestRateChange(e.target.value)}
                           className="pr-8"
+                          placeholder="0.000"
                         />
                         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
                       </div>
@@ -586,7 +671,12 @@ export default function Settings() {
                     <MapPin className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-muted-foreground mb-4">CEP: {location.cep || "—"}</p>
+                    <div className="space-y-1 text-sm text-muted-foreground mb-4">
+                      <p>CEP: {location.cep || "—"}</p>
+                      {location.address && <p>{location.address}, {location.number || "S/N"}</p>}
+                      {location.neighborhood && <p>{location.neighborhood}</p>}
+                      {location.city && location.state && <p>{location.city} - {location.state}</p>}
+                    </div>
                     <div className="flex justify-end gap-2">
                       <Button 
                         variant="ghost" 
@@ -691,30 +781,86 @@ export default function Settings() {
 
         {/* DIALOG DE LOCAL */}
         <Dialog open={isLocationDialogOpen} onOpenChange={setIsLocationDialogOpen}>
-          <DialogContent>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Novo Local</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleLocationSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="locName">Nome do Local / Condomínio</Label>
-                <Input 
-                  id="locName" 
-                  value={locationFormData.name} 
-                  onChange={(e) => setLocationFormData({...locationFormData, name: e.target.value})}
-                  placeholder="Ex: Edifício Central"
-                  required
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="locName">Nome do Local / Condomínio</Label>
+                  <Input 
+                    id="locName" 
+                    value={locationFormData.name} 
+                    onChange={(e) => setLocationFormData({...locationFormData, name: e.target.value})}
+                    placeholder="Ex: Edifício Central"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="locCep">CEP</Label>
+                  <Input 
+                    id="locCep" 
+                    value={locationFormData.cep} 
+                    onChange={(e) => handleCepChange(e.target.value)}
+                    placeholder="00000-000"
+                    maxLength={9}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="locNumber">Número</Label>
+                  <Input 
+                    id="locNumber" 
+                    value={locationFormData.number} 
+                    onChange={(e) => setLocationFormData({...locationFormData, number: e.target.value})}
+                    placeholder="123"
+                  />
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="locAddress">Endereço</Label>
+                  <Input 
+                    id="locAddress" 
+                    value={locationFormData.address} 
+                    onChange={(e) => setLocationFormData({...locationFormData, address: e.target.value})}
+                    placeholder="Rua, Avenida..."
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="locNeighborhood">Bairro</Label>
+                  <Input 
+                    id="locNeighborhood" 
+                    value={locationFormData.neighborhood} 
+                    onChange={(e) => setLocationFormData({...locationFormData, neighborhood: e.target.value})}
+                    placeholder="Centro"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="locCity">Cidade</Label>
+                  <Input 
+                    id="locCity" 
+                    value={locationFormData.city} 
+                    onChange={(e) => setLocationFormData({...locationFormData, city: e.target.value})}
+                    placeholder="São Paulo"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="locState">Estado</Label>
+                  <Input 
+                    id="locState" 
+                    value={locationFormData.state} 
+                    onChange={(e) => setLocationFormData({...locationFormData, state: e.target.value.toUpperCase()})}
+                    placeholder="SP"
+                    maxLength={2}
+                  />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="locCep">CEP</Label>
-                <Input 
-                  id="locCep" 
-                  value={locationFormData.cep} 
-                  onChange={(e) => setLocationFormData({...locationFormData, cep: applyCepMask(e.target.value)})}
-                  placeholder="00000-000"
-                />
-              </div>
+
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setIsLocationDialogOpen(false)}>Cancelar</Button>
                 <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">Adicionar Local</Button>
