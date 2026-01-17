@@ -61,21 +61,33 @@ export const propertyService = {
   mapFromDB(data: any): Property {
     return {
       id: data.id,
-      location: data.location,
-      address: data.address,
-      number: data.number,
-      complement: data.complement,
-      neighborhood: data.neighborhood,
-      city: data.city,
-      state: data.state,
-      cep: data.zip_code || data.cep || "",
-      zipCode: data.zip_code || data.cep || "",
-      monthlyRent: parseFloat(data.monthly_rent) || 0,
-      rentValue: parseFloat(data.monthly_rent) || 0,
-      type: data.type,
-      status: data.status,
-      description: data.description,
-      createdAt: data.created_at
+      name: data.name || "",
+      address: data.address || "",
+      location: data.location || "",
+      number: data.number || "",
+      complement: data.complement || "",
+      neighborhood: data.neighborhood || "",
+      city: data.city || "",
+      state: data.state || "",
+      cep: data.cep || "",
+      zipCode: data.zip_code || "",
+      
+      // Required fields with defaults
+      type: data.type || "residential",
+      size: data.size || 0,
+      rooms: data.rooms || 0,
+      bathrooms: data.bathrooms || 0,
+      parkingSpots: data.parking_spots || 0,
+      
+      monthlyRent: data.monthly_rent || 0,
+      rentValue: data.rent_value || 0,
+      
+      description: data.description || "",
+      status: (data.status as any) || "available",
+      images: data.images || [],
+      features: data.features || [],
+      
+      createdAt: data.created_at,
     };
   },
 

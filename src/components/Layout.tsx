@@ -16,6 +16,7 @@ import {
   User,
   ChevronDown,
   Calculator,
+  FileText,
 } from "lucide-react";
 import { logout, getCurrentUser } from "@/lib/auth";
 import { User as UserType } from "@/types";
@@ -56,50 +57,26 @@ export function Layout({ children }: LayoutProps) {
   const [confirmPassword, setConfirmPassword] = useState("");
 
   useEffect(() => {
-    const validateAndLoadUser = async () => {
-      const currentUser = getCurrentUser();
-      if (currentUser) {
-        console.log("🔍 Layout: Validando usuário do localStorage:", currentUser.id);
-        
-        // Validar se o usuário realmente existe no banco
-        try {
-          const userExists = await systemUserService.getById(currentUser.id);
-          
-          if (!userExists) {
-            console.error("🔄 DETECTADO: Usuário do localStorage não existe no banco!");
-            console.log("🧹 Limpando dados corrompidos e redirecionando...");
-            
-            // LIMPEZA FORÇADA TOTAL
-            localStorage.removeItem("isAuthenticated");
-            localStorage.removeItem("currentUser");
-            localStorage.clear(); 
-            
-            toast({
-              title: "Sessão Inválida",
-              description: "Seus dados de sessão expiraram. Por favor, faça login novamente.",
-              variant: "destructive",
-            });
-            
-            setTimeout(() => {
-              window.location.href = "/login";
-            }, 2000);
-            
-            return;
+    const checkAuth = () => {
+      const userStr = localStorage.getItem("user");
+      if (!userStr) {
+        router.push("/login");
+      } else {
+        const userData = JSON.parse(userStr);
+        setUser(userData);
+
+        // Check if financial user is trying to access restricted pages
+        if (userData.role === "financial") {
+          const restrictedPaths = ["/properties", "/tenants", "/rentals", "/payments"];
+          if (restrictedPaths.some(path => router.pathname.startsWith(path))) {
+            router.push("/dashboard");
           }
-          
-          console.log("✅ Layout: Usuário validado com sucesso");
-          // Atualiza com os dados mais recentes do banco se possível, ou usa o do localStorage
-          setUser((userExists as unknown as UserType) || currentUser);
-        } catch (error) {
-          console.error("Erro ao validar usuário:", error);
-          // Em caso de erro de rede, mantém o usuário do cache para não bloquear
-          setUser(currentUser);
         }
       }
     };
-    
-    validateAndLoadUser();
-  }, [toast]);
+
+    checkAuth();
+  }, [router]);
 
   const handleLogout = () => {
     logout();
@@ -145,6 +122,11 @@ export function Layout({ children }: LayoutProps) {
 
   const isActive = (path: string) => router.pathname === path;
 
+  const linkClasses = (path: string) =>
+    `flex items-center gap-1.5 transition-colors ${
+      isActive(path) ? "text-emerald-600 font-medium" : "text-muted-foreground hover:text-slate-900"
+    }`;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       {/* Scroll Progress Bar */}
@@ -186,7 +168,7 @@ export function Layout({ children }: LayoutProps) {
                 </Button>
               </Link>
 
-              <Link href="/properties">
+              <Link href="/properties" className={linkClasses("/properties")}>
                 <Button 
                   variant={isActive("/properties") ? "default" : "ghost"}
                   size="sm"
@@ -197,7 +179,7 @@ export function Layout({ children }: LayoutProps) {
                 </Button>
               </Link>
 
-              <Link href="/tenants">
+              <Link href="/tenants" className={linkClasses("/tenants")}>
                 <Button 
                   variant={isActive("/tenants") ? "default" : "ghost"}
                   size="sm"
@@ -208,7 +190,7 @@ export function Layout({ children }: LayoutProps) {
                 </Button>
               </Link>
 
-              <Link href="/rentals">
+              <Link href="/rentals" className={linkClasses("/rentals")}>
                 <Button 
                   variant={isActive("/rentals") ? "default" : "ghost"}
                   size="sm"
@@ -219,7 +201,7 @@ export function Layout({ children }: LayoutProps) {
                 </Button>
               </Link>
 
-              <Link href="/payments">
+              <Link href="/payments" className={linkClasses("/payments")}>
                 <Button 
                   variant={isActive("/payments") ? "default" : "ghost"}
                   size="sm"
@@ -230,7 +212,7 @@ export function Layout({ children }: LayoutProps) {
                 </Button>
               </Link>
 
-              <Link href="/financial">
+              <Link href="/financial" className={linkClasses("/financial")}>
                 <Button 
                   variant={isActive("/financial") ? "default" : "ghost"}
                   size="sm"
@@ -241,16 +223,18 @@ export function Layout({ children }: LayoutProps) {
                 </Button>
               </Link>
 
-              <Link href="/settings">
-                <Button 
-                  variant={isActive("/settings") ? "default" : "ghost"}
-                  size="sm"
-                  className="gap-1.5"
-                >
-                  <Settings className="h-4 w-4" />
-                  <span>Configurações</span>
-                </Button>
-              </Link>
+              {user?.role !== "broker" && user?.role !== "financial" && (
+                <Link href="/settings" className={linkClasses("/settings")}>
+                  <Button 
+                    variant={isActive("/settings") ? "default" : "ghost"}
+                    size="sm"
+                    className="gap-1.5"
+                  >
+                    <Settings className="h-4 w-4" />
+                    <span>Configurações</span>
+                  </Button>
+                </Link>
+              )}
             </div>
 
             {/* USER PROFILE - Right */}
@@ -322,7 +306,7 @@ export function Layout({ children }: LayoutProps) {
                   Dashboard
                 </Button>
               </Link>
-              <Link href="/properties">
+              <Link href="/properties" className={linkClasses("/properties")}>
                 <Button 
                   variant={isActive("/properties") ? "default" : "ghost"}
                   className="w-full justify-start gap-2"
@@ -332,7 +316,7 @@ export function Layout({ children }: LayoutProps) {
                   Imóveis
                 </Button>
               </Link>
-              <Link href="/tenants">
+              <Link href="/tenants" className={linkClasses("/tenants")}>
                 <Button 
                   variant={isActive("/tenants") ? "default" : "ghost"}
                   className="w-full justify-start gap-2"
@@ -342,7 +326,7 @@ export function Layout({ children }: LayoutProps) {
                   Inquilinos
                 </Button>
               </Link>
-              <Link href="/rentals">
+              <Link href="/rentals" className={linkClasses("/rentals")}>
                 <Button 
                   variant={isActive("/rentals") ? "default" : "ghost"}
                   className="w-full justify-start gap-2"
@@ -352,7 +336,7 @@ export function Layout({ children }: LayoutProps) {
                   Locações
                 </Button>
               </Link>
-              <Link href="/payments">
+              <Link href="/payments" className={linkClasses("/payments")}>
                 <Button 
                   variant={isActive("/payments") ? "default" : "ghost"}
                   className="w-full justify-start gap-2"
@@ -362,7 +346,7 @@ export function Layout({ children }: LayoutProps) {
                   Recebimentos
                 </Button>
               </Link>
-              <Link href="/financial">
+              <Link href="/financial" className={linkClasses("/financial")}>
                 <Button 
                   variant={isActive("/financial") ? "default" : "ghost"}
                   className="w-full justify-start gap-2"
@@ -372,16 +356,18 @@ export function Layout({ children }: LayoutProps) {
                   Financeiro
                 </Button>
               </Link>
-              <Link href="/settings">
-                <Button 
-                  variant={isActive("/settings") ? "default" : "ghost"}
-                  className="w-full justify-start gap-2"
-                  onClick={() => setShowMobileMenu(false)}
-                >
-                  <Settings className="h-4 w-4" />
-                  Configurações
-                </Button>
-              </Link>
+              {user?.role !== "broker" && user?.role !== "financial" && (
+                <Link href="/settings" className={linkClasses("/settings")}>
+                  <Button 
+                    variant={isActive("/settings") ? "default" : "ghost"}
+                    className="w-full justify-start gap-2"
+                    onClick={() => setShowMobileMenu(false)}
+                  >
+                    <Settings className="h-4 w-4" />
+                    Configurações
+                  </Button>
+                </Link>
+              )}
             </div>
           )}
         </div>

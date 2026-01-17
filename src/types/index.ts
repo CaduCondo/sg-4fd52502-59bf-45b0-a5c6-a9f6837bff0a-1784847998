@@ -1,16 +1,17 @@
 export interface User {
-  id: string;
+  id?: string;
   name: string;
-  username: string;
-  password: string;
-  role: "admin" | "corretor" | "financeiro";
+  email: string;
+  photo?: string;
+  role: "admin" | "user" | "broker" | "financial";
+  token?: string;
+  username?: string;
+  password?: string;
+  phone?: string;
   rg?: string;
   cpf?: string;
-  email?: string;
-  phone?: string;
-  photo?: string;
   active?: boolean;
-  createdAt: string;
+  createdAt?: string;
 }
 
 export interface SystemUser {
@@ -18,64 +19,140 @@ export interface SystemUser {
   name: string;
   username: string;
   email: string;
+  password?: string;
   phone?: string;
   rg?: string;
   cpf?: string;
-  password: string;
   role: "user" | "broker" | "financial" | "admin";
   active: boolean;
-  created_at: string;
-  updated_at: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface Property {
+  id: string;
+  name: string;
+  address: string;
+  location: string;
+  // Added optional fields for compatibility
+  number?: string;
+  complement?: string;
+  cep?: string;
+  rentValue?: number; // Alias for monthlyRent in some contexts
+  
+  type: string;
+  size: number;
+  rooms: number;
+  bathrooms: number;
+  parkingSpots: number;
+  monthlyRent: number;
+  description: string;
+  status: "available" | "occupied" | "unavailable";
+  images: string[];
+  features: string[];
+  neighborhood?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  iptu?: number;
+  condoFee?: number;
+  createdAt?: string;
+}
+
+export interface Tenant {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  cpf: string;
+  rg?: string;
+  // Added optional fields for compatibility
+  document?: string; // Often used as alias for CPF
+  documentType?: string;
+  
+  status: "active" | "inactive" | "rented";
+  birthDate?: string;
+  profession?: string;
+  income?: number;
+  notes?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  createdAt?: string;
+}
+
+export interface Rental {
+  id: string;
+  propertyId: string;
+  tenantId: string;
+  startDate: string;
+  endDate?: string;
+  rentAmount: number;
+  depositAmount?: number;
+  status: "pending" | "active" | "completed" | "paid" | "overdue";
+  paymentDay: number;
+  contractUrl?: string;
+  autoRenew: boolean;
+  notes?: string;
+  adminFee?: number;
+  property?: Property;
+  tenant?: Tenant;
+  dueDate?: string;
+  receivedDate?: string;
+  paidAmount?: number;
+  referenceMonth?: number;
+  referenceYear?: number;
+  // Compatibility
+  monthlyRent?: number;
+  value?: number;
+  isActive?: boolean;
+  hasGarage?: boolean;
+  garageValue?: number;
+  attachments?: string[];
+  contractAttachments?: string[]; // Added to fix error in rentalService
+  deposit?: number;
+  createdAt?: string;
+}
+
+export interface Payment {
+  id: string;
+  rentalId: string;
+  dueDate: string;
+  expectedAmount: number;
+  paidAmount?: number;
+  paymentDate?: string;
+  status: "pending" | "paid" | "overdue" | "partial";
+  paymentMethod?: string;
+  notes?: string;
+  referenceMonth: number;
+  referenceYear: number;
+  receiptUrl?: string;
+  penaltyAmount?: number;
+  interestAmount?: number;
+  discountAmount?: number;
+  // Compatibility fields
+  paymentCode?: string;
+  lateFee?: number;
+  interest?: number;
+  paymentLocation?: string;
+  attachments?: string[];
+  partialPayments?: any[];
+  createdAt?: string;
 }
 
 export interface Location {
   id: string;
   name: string;
   cep: string;
-  zipCode?: string; // Alias for cep to support settings page usage
-  address: string;
-  number?: string;
-  neighborhood?: string;
-  city: string;
-  state: string;
-  createdAt: string;
-}
-
-export interface Property {
-  id: string;
-  location: string;
-  address: string;
-  number?: string;
-  complement: string;
-  neighborhood?: string;
-  city?: string;
-  state?: string;
-  cep?: string;
-  zipCode?: string;
-  monthlyRent: number;
-  rentValue: number;
-  type: string;
-  status: "available" | "occupied" | "unavailable";
-  description?: string;
-  createdAt: string;
-}
-
-export interface Tenant {
-  id: string;
-  name: string;
-  document: string | null;
-  documentType?: "cpf" | "cnpj";
-  cpf?: string; // Add optional for backward compatibility during migration
-  email: string | null;
-  phone: string | null;
-  status: "active" | "inactive" | "rented" | "locador";
-  createdAt: string;
-  cep?: string;
   address?: string;
-  number?: string;
-  complement?: string;
   city?: string;
   state?: string;
+  createdAt?: string;
+  // Compatibility fields
+  number?: string;
+  neighborhood?: string;
+  zipCode?: string;
 }
 
 export interface CompanyConfig {
@@ -87,84 +164,10 @@ export interface CompanyConfig {
   city: string;
   state: string;
   zipCode: string;
-  adminFee: number;
-  lateFeePercent: number;
-  interestRate: number;
-}
-
-export interface Config {
-  adminFeePercentage: number;
-  lateFeePercentage?: number;
-  interestRatePercentage?: number;
-  locations: Location[];
-}
-
-export interface Attachment {
-  name: string;
-  url: string;
-  date: string;
-  type?: string;
-}
-
-export interface Rental {
-  id: string;
-  propertyId: string;
-  tenantId: string;
-  startDate: string;
-  endDate: string;
-  monthlyRent: number;
-  paymentDay: number;
-  hasGarage: boolean;
-  garageValue?: number;
-  value: number;
-  deposit?: string;
-  contractAttachments?: Attachment[];
-  attachments?: string[];
-  isActive: boolean;
-  createdAt: string;
-}
-
-export interface Payment {
-  id: string;
-  rentalId: string;
-  referenceMonth: number;
-  referenceYear: number;
-  expectedAmount: number;
-  paidAmount: number;
-  dueDate: string;
-  paymentDate?: string;
-  paymentMethod?: string;
-  paymentLocation?: string;
-  paymentCode?: string;
-  status: "paid" | "pending" | "partial" | "overdue";
-  lateFee: number;
-  interest: number;
-  notes?: string;
-  attachments: string[];
-  partialPayments: Array<{
-    amount: number;
-    date: string;
-    method: string;
-  }>;
-  createdAt: string;
-}
-
-export interface SystemConfig {
+  
   adminFeePercentage: number;
   lateFeePercentage: number;
   interestRatePercentage: number;
-  lastUpdated: string;
-  locations?: string[];
-}
-
-export interface DashboardStats {
-  totalProperties: number;
-  rentedProperties: number;
-  availableProperties: number;
-  totalTenants: number;
-  paidThisMonth: number;
-  unpaidThisMonth: number;
-  totalRevenue: number;
-  adminFee: number;
-  dueThisMonth: number;
+  
+  locations: Location[];
 }

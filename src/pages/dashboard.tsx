@@ -17,6 +17,7 @@ import type { Property, Tenant, Rental, Payment } from "@/types";
 import { FloatingCard } from "@/components/animations/FloatingCard";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { ScrollReveal } from "@/components/animations/ScrollReveal";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -26,7 +27,8 @@ export default function DashboardPage() {
   const [rentals, setRentals] = useState<Rental[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [adminFeePercentage, setAdminFeePercentage] = useState(6);
-  const [userName, setUserName] = useState("Administrador");
+  const [userName, setUserName] = useState("Usuário");
+  const [currentDate, setCurrentDate] = useState("");
   const [mounted, setMounted] = useState(false);
   
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
@@ -149,6 +151,18 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
+    // Set current date
+    const now = new Date();
+    const options: Intl.DateTimeFormatOptions = {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    };
+    setCurrentDate(
+      now.toLocaleDateString("pt-BR", options).replace(/^\w/, (c) => c.toUpperCase())
+    );
+
     loadDashboardData();
     loadUserName();
   }, []);
@@ -161,19 +175,41 @@ export default function DashboardPage() {
 
   const loadDashboardData = async () => {
     try {
-      const [propertiesData, tenantsData, rentalsData, paymentsData] = await Promise.all([
+      // Check user role for filtering
+      const userStr = localStorage.getItem("user");
+      let locationFilter: string[] | null = null;
+      
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        if (user.role === "financial") {
+          locationFilter = ["Jd. Colombo", "Signore"];
+        }
+      }
+
+      const [propertiesData, tenantsData, rentalsData] = await Promise.all([
         propertyService.getAll(),
         tenantService.getAll(),
         rentalService.getAll(),
-        paymentService.getAll(),
       ]);
 
-      setProperties(propertiesData);
+      // Apply location filter if needed
+      const filteredProperties = locationFilter
+        ? propertiesData.filter((p) => locationFilter!.includes(p.location))
+        : propertiesData;
+
+      const filteredRentals = locationFilter
+        ? rentalsData.filter((r) =>
+            r.property?.location
+              ? locationFilter!.includes(r.property.location)
+              : false
+          )
+        : rentalsData;
+
+      setProperties(filteredProperties);
       setTenants(tenantsData);
-      setRentals(rentalsData);
-      setPayments(paymentsData);
+      setRentals(filteredRentals);
     } catch (error) {
-      console.error("Error loading dashboard data:", error);
+      console.error("Erro ao carregar dados do dashboard:", error);
     }
   };
 
@@ -190,15 +226,30 @@ export default function DashboardPage() {
 
   const loadUserName = async () => {
     try {
-      const currentUserStr = localStorage.getItem("currentUser");
-      if (currentUserStr) {
-        const currentUser = JSON.parse(currentUserStr);
-        if (currentUser.id) {
-          const userData = await systemUserService.getById(currentUser.id);
-          if (userData) {
-            setUserName(userData.name);
-          }
-        }
+      const userStr = localStorage.getItem("user");
+      if (!userStr) {
+        setUserName("Visitante");
+        return;
+      }
+
+      const localUser = JSON.parse(userStr);
+      
+      // Fetch full name from system_users table
+      const { data, error } = await supabase
+        .from("system_users")
+        .select("name")
+        .eq("id", localUser.id)
+        .single();
+
+      if (error) {
+        console.error("Erro ao buscar nome do usuário:", error);
+        setUserName(localUser.name || "Usuário");
+        return;
+      }
+
+      if (data) {
+        setUserName(data.name);
+        console.log("✅ Nome do usuário carregado:", data.name);
       }
     } catch (error) {
       console.error("Erro ao carregar nome do usuário:", error);
@@ -313,37 +364,16 @@ export default function DashboardPage() {
       />
       <Layout>
         <div className="space-y-6">
-          <FloatingCard delay={0}>
-            <Card className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white border-none">
-              <CardContent className="pt-6">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                  <div>
-                    <h1 className="text-3xl font-bold mb-2">
-                      {mounted ? `${getGreeting()}, ${userName}! 👋` : `Olá, ${userName}! 👋`}
-                    </h1>
-                    <p className="text-emerald-50 capitalize">
-                      {mounted ? getCurrentDate() : "Carregando..."}
-                    </p>
-                  </div>
-                  
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 text-center">
-                      <p className="text-xs text-emerald-100 mb-1">Receita do Mês</p>
-                      <p className="text-lg font-bold">{formatCurrency(stats.monthlyRevenue)}</p>
-                    </div>
-                    <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 text-center">
-                      <p className="text-xs text-emerald-100 mb-1">Taxa Admin</p>
-                      <p className="text-lg font-bold">{formatCurrency(stats.adminFee)}</p>
-                    </div>
-                    <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 text-center">
-                      <p className="text-xs text-emerald-100 mb-1">Líquido</p>
-                      <p className="text-lg font-bold">{formatCurrency(stats.netRevenue)}</p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
+          <ScrollReveal>
+            <Card className="bg-gradient-to-br from-blue-500 to-blue-700 text-white">
+              <CardHeader>
+                <CardTitle className="text-2xl">
+                  Bom dia, {userName}! 👋
+                </CardTitle>
+                <p className="text-blue-100">{currentDate}</p>
+              </CardHeader>
             </Card>
-          </FloatingCard>
+          </ScrollReveal>
 
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
             <h2 className="text-2xl font-bold">Visão Geral</h2>

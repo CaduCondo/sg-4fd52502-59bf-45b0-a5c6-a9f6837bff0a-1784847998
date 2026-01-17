@@ -1,229 +1,118 @@
 import { supabase } from "@/integrations/supabase/client";
-import type { CompanyConfig, Location, Config } from "@/types";
-
-const DEFAULT_COMPANY_CONFIG: CompanyConfig = {
-  companyName: "",
-  cnpj: "",
-  email: "",
-  phone: "",
-  address: "",
-  city: "",
-  state: "",
-  zipCode: "",
-  adminFee: 6,
-  lateFeePercent: 2,
-  interestRate: 1
-};
+import type { CompanyConfig, Location } from "@/types";
 
 export const configService = {
-  // === MÉTODOS PARA DADOS DA EMPRESA ===
+  async getConfig(): Promise<CompanyConfig | null> {
+    const { data, error } = await supabase
+      .from("configs")
+      .select("*")
+      .single();
 
-  async getConfig(): Promise<CompanyConfig> {
-    try {
-      const { data, error } = await supabase
-        .from("configs")
-        .select("*")
-        .limit(1)
-        .single();
-      
-      if (error) {
-        // Se não existir, retorna padrão
-        if (error.code === 'PGRST116') return DEFAULT_COMPANY_CONFIG;
-        throw error;
-      }
-      
-      return {
-        companyName: data.company_name || "",
-        cnpj: data.cnpj || "",
-        email: data.email || "",
-        phone: data.phone || "",
-        address: data.address || "",
-        city: data.city || "",
-        state: data.state || "",
-        zipCode: data.zip_code || "",
-        adminFee: Number(data.admin_fee_percentage) || 6,
-        lateFeePercent: Number(data.late_fee_percentage) || 2,
-        interestRate: Number(data.interest_rate_percentage) || 1
-      };
-    } catch (error) {
-      console.error("Error loading company config:", error);
-      return DEFAULT_COMPANY_CONFIG;
-    }
-  },
-
-  async updateConfig(config: CompanyConfig): Promise<CompanyConfig> {
-    try {
-      // Verificar se existe config
-      const { data: existing } = await supabase
-        .from("configs")
-        .select("id")
-        .limit(1);
-
-      const payload = {
-        company_name: config.companyName,
-        cnpj: config.cnpj,
-        email: config.email,
-        phone: config.phone,
-        address: config.address,
-        city: config.city,
-        state: config.state,
-        zip_code: config.zipCode,
-        admin_fee_percentage: config.adminFee,
-        late_fee_percentage: config.lateFeePercent,
-        interest_rate_percentage: config.interestRate,
-        updated_at: new Date().toISOString()
-      };
-
-      if (existing && existing.length > 0) {
-        const { error } = await supabase
-          .from("configs")
-          .update(payload)
-          .eq("id", existing[0].id);
-        
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from("configs")
-          .insert([payload]);
-        
-        if (error) throw error;
-      }
-
-      return config;
-    } catch (error) {
-      console.error("Error updating company config:", error);
+    if (error) {
+      if (error.code === "PGRST116") return null; // Not found
       throw error;
     }
-  },
 
-  // === MÉTODOS COMPATIBILIDADE LEGADO (usado em outros lugares) ===
-  
-  async get(): Promise<Config> {
-    const config = await this.getConfig();
-    const locations = await this.getLocations();
+    // Map database fields to frontend interface
     return {
-      adminFeePercentage: config.adminFee,
-      lateFeePercentage: config.lateFeePercent,
-      interestRatePercentage: config.interestRate,
-      locations: locations
+      companyName: data.company_name || "",
+      cnpj: data.cnpj || "",
+      email: data.email || "",
+      phone: data.phone || "",
+      address: data.address || "",
+      city: data.city || "",
+      state: data.state || "",
+      zipCode: data.zip_code || "",
+      adminFeePercentage: data.admin_fee_percentage || 0,
+      lateFeePercentage: data.late_fee_percentage || 0,
+      interestRatePercentage: data.interest_rate_percentage || 0,
+      locations: (data.locations as any[])?.map((loc: any) => ({
+        id: loc.id,
+        name: loc.name,
+        cep: loc.cep,
+        address: loc.address,
+        city: loc.city,
+        state: loc.state,
+      })) || [],
     };
   },
 
-  // === MÉTODOS PARA LOCAIS ===
+  async updateConfig(config: Partial<CompanyConfig>) {
+    // First get existing config to merge
+    const existing = await this.getConfig();
+    const merged = { ...existing, ...config };
 
-  async getLocations(): Promise<Location[]> {
-    try {
-      const { data, error } = await supabase
+    // Map frontend interface to database fields
+    const dbData = {
+      company_name: merged.companyName,
+      cnpj: merged.cnpj,
+      email: merged.email,
+      phone: merged.phone,
+      address: merged.address,
+      city: merged.city,
+      state: merged.state,
+      zip_code: merged.zipCode,
+      admin_fee_percentage: merged.adminFeePercentage,
+      late_fee_percentage: merged.lateFeePercentage,
+      interest_rate_percentage: merged.interestRatePercentage,
+      locations: merged.locations, // Stored as JSONB
+      updated_at: new Date().toISOString(),
+    };
+
+    // Check if config exists
+    const { count } = await supabase
+      .from("configs")
+      .select("*", { count: "exact", head: true });
+
+    if (count === 0) {
+      // Insert new
+      const { error } = await supabase.from("configs").insert([dbData]);
+      if (error) throw error;
+    } else {
+      // Update existing (assuming single row for config)
+      // Since we don't have an ID, we update the first row found or use a fixed logic
+      // Ideally configs table should have a single row constraint or known ID
+      // For now, let's update all rows (expecting only 1)
+      const { error } = await supabase
         .from("configs")
-        .select("locations")
-        .limit(1)
-        .single();
+        .update(dbData)
+        .neq("id", "00000000-0000-0000-0000-000000000000"); // Update all rows basically
       
-      if (error && error.code !== 'PGRST116') throw error;
-      
-      if (!data || !data.locations) return [];
-      
-      const locations = data.locations as any[];
-      return locations.map(l => {
-         if (typeof l === 'string') {
-            return {
-              id: crypto.randomUUID(),
-              name: l,
-              cep: "",
-              address: "",
-              number: "",
-              neighborhood: "",
-              city: "",
-              state: "",
-              createdAt: new Date().toISOString()
-            };
-          }
-          return l as Location;
-      });
-    } catch (error) {
-      console.error("Error loading locations:", error);
-      return [];
+      if (error) throw error;
     }
   },
 
-  async createLocation(locationData: Omit<Location, "id" | "createdAt">): Promise<Location> {
-    try {
-      const newLocation: Location = {
-        ...locationData,
-        id: crypto.randomUUID(),
-        createdAt: new Date().toISOString()
-      };
-
-      const locations = await this.getLocations();
-      locations.push(newLocation);
-      
-      // Salvar no banco
-      await this.saveLocations(locations);
-      
-      return newLocation;
-    } catch (error) {
-      console.error("Error creating location:", error);
-      throw error;
+  async createLocation(location: Location) {
+    const config = await this.getConfig();
+    if (!config) {
+      // Create initial config with this location
+      await this.updateConfig({ locations: [location] });
+    } else {
+      const newLocations = [...config.locations, location];
+      await this.updateConfig({ locations: newLocations });
     }
   },
 
-  async updateLocation(id: string, updates: Partial<Location>): Promise<Location> {
-    try {
-      const locations = await this.getLocations();
-      const index = locations.findIndex(l => l.id === id);
-      
-      if (index === -1) throw new Error("Location not found");
-      
-      locations[index] = { ...locations[index], ...updates };
-      
-      await this.saveLocations(locations);
-      
-      return locations[index];
-    } catch (error) {
-      console.error("Error updating location:", error);
-      throw error;
+  async updateLocation(location: Location) {
+    const config = await this.getConfig();
+    if (config) {
+      const newLocations = config.locations.map((l) =>
+        l.id === location.id ? location : l
+      );
+      await this.updateConfig({ locations: newLocations });
     }
   },
 
-  async deleteLocation(id: string): Promise<void> {
-    try {
-      const locations = await this.getLocations();
-      const filtered = locations.filter(l => l.id !== id);
-      await this.saveLocations(filtered);
-    } catch (error) {
-      console.error("Error deleting location:", error);
-      throw error;
+  async deleteLocation(id: string) {
+    const config = await this.getConfig();
+    if (config) {
+      const newLocations = config.locations.filter((l) => l.id !== id);
+      await this.updateConfig({ locations: newLocations });
     }
   },
 
-  // Helper privado
-  async saveLocations(locations: Location[]): Promise<void> {
-     const { data: existing } = await supabase
-        .from("configs")
-        .select("id")
-        .limit(1);
-        
-     const locationsJson = locations.map(l => ({
-        id: l.id,
-        name: l.name,
-        cep: l.cep,
-        address: l.address,
-        number: l.number,
-        neighborhood: l.neighborhood,
-        city: l.city,
-        state: l.state,
-        createdAt: l.createdAt
-      }));
-
-     if (existing && existing.length > 0) {
-        await supabase
-          .from("configs")
-          .update({ locations: locationsJson })
-          .eq("id", existing[0].id);
-     } else {
-        await supabase
-          .from("configs")
-          .insert([{ locations: locationsJson }]);
-     }
-  }
+  // Alias for backward compatibility
+  async get() {
+    return this.getConfig();
+  },
 };
