@@ -609,7 +609,7 @@ export default function PaymentsPage() {
 
                                 <div className="pt-2 border-t">
                                   <p className="text-[10px] text-muted-foreground mb-1">Valor Pago</p>
-                                  <p className="text-lg font-bold text-green-600">
+                                  <p className="text-xl font-bold text-green-600">
                                     {formatCurrency(payment.paidAmount)}
                                   </p>
                                 </div>

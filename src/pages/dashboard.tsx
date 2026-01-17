@@ -352,6 +352,9 @@ export default function DashboardPage() {
       return dueDate.getTime() === today.getTime();
     });
 
+    // Count only active and rented tenants
+    const activeTenants = tenants.filter(t => t.status === "active" || t.status === "rented");
+
     setFilteredPayments(periodPayments);
     setDueSoonPayments(dueSoon);
 
@@ -361,7 +364,7 @@ export default function DashboardPage() {
       occupiedProperties: currentProperties.filter((p) => p.status === "occupied").length,
       unavailableProperties: currentProperties.filter((p) => p.status === "unavailable").length,
       activeRentals: activeRentalsInPeriod.length,
-      totalTenants: tenants.length,
+      totalTenants: activeTenants.length,
       monthlyRevenue: revenue,
       adminFee: fee,
       netRevenue: net,
