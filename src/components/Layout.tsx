@@ -175,6 +175,8 @@ export function Layout({ children }: LayoutProps) {
   const getMenuItems = () => {
     if (!user) return [];
     
+    const userRole = user.role.toLowerCase();
+    
     const allMenus = [
       { path: "/dashboard", icon: Home, label: "Dashboard", roles: ["admin", "corretor", "financeiro"] },
       { path: "/properties", icon: Building2, label: "Imóveis", roles: ["admin", "corretor"] },
@@ -185,7 +187,7 @@ export function Layout({ children }: LayoutProps) {
       { path: "/settings", icon: Settings, label: "Configurações", roles: ["admin"] },
     ];
     
-    return allMenus.filter(menu => menu.roles.includes(user.role));
+    return allMenus.filter(menu => menu.roles.includes(userRole));
   };
 
   const menuItems = getMenuItems();
