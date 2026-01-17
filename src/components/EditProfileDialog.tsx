@@ -4,8 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { systemUserService } from "@/services/systemUserService";
-import { SystemUser } from "@/types";
+import { systemUserService, SystemUser } from "@/services/systemUserService";
 import { Loader2 } from "lucide-react";
 
 interface EditProfileDialogProps {
