@@ -19,6 +19,42 @@ const BLACKLISTED_IDS = [
 ];
 
 /**
+ * FUNÇÃO SÍNCRONA: Verifica blacklist IMEDIATAMENTE sem async
+ * Esta roda ANTES de qualquer requisição ao banco
+ */
+export function checkBlacklistSync(): boolean {
+  if (typeof window === "undefined") return true;
+  
+  try {
+    const currentUserStr = localStorage.getItem("currentUser");
+    if (!currentUserStr) return true;
+    
+    const currentUser = JSON.parse(currentUserStr);
+    const userId = currentUser?.id;
+    
+    if (!userId) {
+      console.error("❌ LocalStorage Guard (SYNC): ID não encontrado, limpando...");
+      forceCleanLocalStorage();
+      return false;
+    }
+    
+    if (BLACKLISTED_IDS.includes(userId)) {
+      console.error("🚫 LocalStorage Guard (SYNC): ID BLACKLISTED detectado:", userId);
+      console.log("🧹 LIMPEZA IMEDIATA DO ID FANTASMA!");
+      forceCleanLocalStorage();
+      window.location.href = "/login";
+      return false;
+    }
+    
+    return true;
+  } catch (e) {
+    console.error("❌ LocalStorage Guard (SYNC): Erro ao verificar:", e);
+    forceCleanLocalStorage();
+    return false;
+  }
+}
+
+/**
  * Valida o localStorage e limpa se estiver corrompido
  * DEVE SER CHAMADO NO _app.tsx ANTES DE QUALQUER OUTRA COISA
  */
