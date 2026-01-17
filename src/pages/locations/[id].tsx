@@ -22,7 +22,7 @@ export default function LocationEditPage() {
     cep: "",
     address: "",
     number: "",
-    complement: "",
+    // complement: "", // Removido
     neighborhood: "",
     city: "",
     state: ""
