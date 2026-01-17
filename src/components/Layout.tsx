@@ -2,8 +2,8 @@ import { ReactNode, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { Button } from "@/components/ui/button";
-import { motion, AnimatePresence } from "framer-motion";
-import { useScrollProgress, useScrollDirection, useIsScrolled } from "@/hooks/useScrollProgress";
+import { motion } from "framer-motion";
+import { useScrollProgress, useScrollDirection } from "@/hooks/useScrollProgress";
 import {
   Building2,
   Users,
@@ -17,7 +17,6 @@ import {
   Lock,
   ChevronDown,
   Calculator,
-  FileText
 } from "lucide-react";
 import { logout, getCurrentUser } from "@/lib/auth";
 import { User as UserType } from "@/types";
@@ -47,7 +46,6 @@ export function Layout({ children }: LayoutProps) {
   // Scroll effects
   const scrollProgress = useScrollProgress();
   const scrollDirection = useScrollDirection();
-  const isScrolled = useIsScrolled(10);
   
   // Profile edit state
   const [profileName, setProfileName] = useState("");
@@ -81,13 +79,11 @@ export function Layout({ children }: LayoutProps) {
 
     const file = files[0];
     
-    // Validate file type
     if (!file.type.startsWith("image/")) {
       alert("Por favor, selecione apenas arquivos de imagem.");
       return;
     }
 
-    // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       alert("A imagem deve ter no máximo 5MB.");
       return;
@@ -121,7 +117,6 @@ export function Layout({ children }: LayoutProps) {
     
     userStorage.update(updatedUser);
     
-    // Update localStorage auth
     if (typeof window !== "undefined") {
       localStorage.setItem("rental_auth_user", JSON.stringify(updatedUser));
     }
@@ -156,7 +151,6 @@ export function Layout({ children }: LayoutProps) {
     
     userStorage.update(updatedUser);
     
-    // Update localStorage auth
     if (typeof window !== "undefined") {
       localStorage.setItem("rental_auth_user", JSON.stringify(updatedUser));
     }
@@ -171,27 +165,6 @@ export function Layout({ children }: LayoutProps) {
 
   const isActive = (path: string) => router.pathname === path;
 
-  // Menu items based on user role
-  const getMenuItems = () => {
-    if (!user) return [];
-    
-    const userRole = user.role.toLowerCase();
-    
-    const allMenus = [
-      { path: "/dashboard", icon: Home, label: "Dashboard", roles: ["admin", "corretor", "financeiro"] },
-      { path: "/properties", icon: Building2, label: "Imóveis", roles: ["admin", "corretor"] },
-      { path: "/tenants", icon: Users, label: "Inquilinos", roles: ["admin", "corretor"] },
-      { path: "/rentals", icon: Building2, label: "Locações", roles: ["admin", "corretor"] },
-      { path: "/payments", icon: DollarSign, label: "Recebimentos", roles: ["admin", "corretor"] },
-      { path: "/financial", icon: Calculator, label: "Financeiro", roles: ["admin", "financeiro"] },
-      { path: "/settings", icon: Settings, label: "Configurações", roles: ["admin"] },
-    ];
-    
-    return allMenus.filter(menu => menu.roles.includes(userRole));
-  };
-
-  const menuItems = getMenuItems();
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       {/* Scroll Progress Bar */}
@@ -202,64 +175,120 @@ export function Layout({ children }: LayoutProps) {
         transition={{ duration: 0.1 }}
       />
 
-      {/* Navbar with scroll effects */}
+      {/* Navbar */}
       <motion.nav
-        className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm z-40 transition-all duration-300"
+        className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm z-40"
         initial={{ y: 0 }}
         animate={{
           y: scrollDirection === "down" && scrollProgress > 5 ? -100 : 0,
         }}
-        transition={{ duration: 0.3, ease: "easeInOut" }}
+        transition={{ duration: 0.3 }}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="h-16 flex items-center gap-4">
-            {/* Left: Logo */}
-            <div className="flex items-center gap-3 flex-shrink-0">
-              <Link href="/dashboard" className="flex items-center space-x-2 group">
-                <motion.div
-                  whileHover={{ rotate: 360 }}
-                  transition={{ duration: 0.5 }}
+          <div className="h-16 flex items-center justify-between gap-4">
+            
+            {/* LOGO - Left */}
+            <Link href="/dashboard" className="flex items-center gap-2 flex-shrink-0">
+              <Building2 className="h-6 w-6 text-emerald-600" />
+              <span className="font-bold text-slate-900">ImóvelControl</span>
+            </Link>
+
+            {/* MENU DESKTOP - Center - HARDCODED TO ALWAYS SHOW */}
+            <div className="hidden md:flex items-center gap-1 flex-1 justify-center">
+              <Link href="/dashboard">
+                <Button 
+                  variant={isActive("/dashboard") ? "default" : "ghost"}
+                  size="sm"
+                  className="gap-1.5"
                 >
-                  <Building2 className="h-7 w-7 text-emerald-600 group-hover:text-emerald-700 transition-colors" />
-                </motion.div>
-                <span className="text-lg font-bold text-slate-900 group-hover:text-emerald-600 transition-colors whitespace-nowrap">
-                  ImóvelControl
-                </span>
+                  <Home className="h-4 w-4" />
+                  <span>Dashboard</span>
+                </Button>
+              </Link>
+
+              <Link href="/properties">
+                <Button 
+                  variant={isActive("/properties") ? "default" : "ghost"}
+                  size="sm"
+                  className="gap-1.5"
+                >
+                  <Building2 className="h-4 w-4" />
+                  <span>Imóveis</span>
+                </Button>
+              </Link>
+
+              <Link href="/tenants">
+                <Button 
+                  variant={isActive("/tenants") ? "default" : "ghost"}
+                  size="sm"
+                  className="gap-1.5"
+                >
+                  <Users className="h-4 w-4" />
+                  <span>Inquilinos</span>
+                </Button>
+              </Link>
+
+              <Link href="/rentals">
+                <Button 
+                  variant={isActive("/rentals") ? "default" : "ghost"}
+                  size="sm"
+                  className="gap-1.5"
+                >
+                  <Building2 className="h-4 w-4" />
+                  <span>Locações</span>
+                </Button>
+              </Link>
+
+              <Link href="/payments">
+                <Button 
+                  variant={isActive("/payments") ? "default" : "ghost"}
+                  size="sm"
+                  className="gap-1.5"
+                >
+                  <DollarSign className="h-4 w-4" />
+                  <span>Recebimentos</span>
+                </Button>
+              </Link>
+
+              <Link href="/financial">
+                <Button 
+                  variant={isActive("/financial") ? "default" : "ghost"}
+                  size="sm"
+                  className="gap-1.5"
+                >
+                  <Calculator className="h-4 w-4" />
+                  <span>Financeiro</span>
+                </Button>
+              </Link>
+
+              <Link href="/settings">
+                <Button 
+                  variant={isActive("/settings") ? "default" : "ghost"}
+                  size="sm"
+                  className="gap-1.5"
+                >
+                  <Settings className="h-4 w-4" />
+                  <span>Configurações</span>
+                </Button>
               </Link>
             </div>
 
-            {/* Center: Desktop Menu */}
-            <nav className="hidden lg:flex items-center gap-2 flex-1">
-              {menuItems.map((item) => (
-                <Link key={item.path} href={item.path}>
-                  <Button 
-                    variant={isActive(item.path) ? "default" : "ghost"}
-                    size="sm"
-                    className="flex items-center gap-1.5 whitespace-nowrap"
-                  >
-                    <item.icon size={16} />
-                    <span className="text-sm">{item.label}</span>
-                  </Button>
-                </Link>
-              ))}
-            </nav>
-
-            {/* Right: User Profile + Mobile Menu Button */}
+            {/* USER PROFILE - Right */}
             <div className="flex items-center gap-2 flex-shrink-0">
               {/* Mobile Menu Button */}
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => setMenuOpen(!menuOpen)}
-                className="lg:hidden"
+                className="md:hidden"
               >
-                {menuOpen ? <X size={20} /> : <Menu size={20} />}
+                {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
               </Button>
 
               {/* User Dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="flex items-center space-x-2 hover:bg-emerald-50 transition-colors">
+                  <Button variant="ghost" className="flex items-center gap-2">
                     {user?.photo ? (
                       <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-emerald-600">
                         <img 
@@ -269,10 +298,10 @@ export function Layout({ children }: LayoutProps) {
                         />
                       </div>
                     ) : (
-                      <User size={18} />
+                      <User className="h-4 w-4" />
                     )}
-                    <span className="text-sm hidden sm:inline whitespace-nowrap">{user?.name}</span>
-                    <ChevronDown size={16} />
+                    <span className="text-sm hidden sm:inline">{user?.name}</span>
+                    <ChevronDown className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
@@ -298,10 +327,86 @@ export function Layout({ children }: LayoutProps) {
               </DropdownMenu>
             </div>
           </div>
+
+          {/* Mobile Menu Dropdown */}
+          {menuOpen && (
+            <div className="md:hidden pb-4 space-y-1">
+              <Link href="/dashboard">
+                <Button 
+                  variant={isActive("/dashboard") ? "default" : "ghost"}
+                  className="w-full justify-start gap-2"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  <Home className="h-4 w-4" />
+                  Dashboard
+                </Button>
+              </Link>
+              <Link href="/properties">
+                <Button 
+                  variant={isActive("/properties") ? "default" : "ghost"}
+                  className="w-full justify-start gap-2"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  <Building2 className="h-4 w-4" />
+                  Imóveis
+                </Button>
+              </Link>
+              <Link href="/tenants">
+                <Button 
+                  variant={isActive("/tenants") ? "default" : "ghost"}
+                  className="w-full justify-start gap-2"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  <Users className="h-4 w-4" />
+                  Inquilinos
+                </Button>
+              </Link>
+              <Link href="/rentals">
+                <Button 
+                  variant={isActive("/rentals") ? "default" : "ghost"}
+                  className="w-full justify-start gap-2"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  <Building2 className="h-4 w-4" />
+                  Locações
+                </Button>
+              </Link>
+              <Link href="/payments">
+                <Button 
+                  variant={isActive("/payments") ? "default" : "ghost"}
+                  className="w-full justify-start gap-2"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  <DollarSign className="h-4 w-4" />
+                  Recebimentos
+                </Button>
+              </Link>
+              <Link href="/financial">
+                <Button 
+                  variant={isActive("/financial") ? "default" : "ghost"}
+                  className="w-full justify-start gap-2"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  <Calculator className="h-4 w-4" />
+                  Financeiro
+                </Button>
+              </Link>
+              <Link href="/settings">
+                <Button 
+                  variant={isActive("/settings") ? "default" : "ghost"}
+                  className="w-full justify-start gap-2"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  <Settings className="h-4 w-4" />
+                  Configurações
+                </Button>
+              </Link>
+            </div>
+          )}
         </div>
       </motion.nav>
       
-      {/* Main content with padding for fixed navbar */}
+      {/* Main content */}
       <motion.main
         className="pt-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"
         initial={{ opacity: 0 }}
@@ -318,7 +423,6 @@ export function Layout({ children }: LayoutProps) {
             <DialogTitle>Editar Perfil</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            {/* Profile Photo Upload */}
             <div className="flex flex-col items-center space-y-3">
               <div className="relative">
                 <div className="w-24 h-24 rounded-full overflow-hidden bg-slate-200 flex items-center justify-center">
