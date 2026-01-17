@@ -5,7 +5,7 @@ export interface SystemUser {
   name: string;
   email: string;
   password: string;
-  role: string;
+  role: string; // "admin" | "user" | "corretor" | "financeiro"
   active: boolean;
   created_at: string;
   updated_at: string;

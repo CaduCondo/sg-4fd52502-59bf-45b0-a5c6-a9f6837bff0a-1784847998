@@ -402,11 +402,6 @@ export default function PaymentsPage() {
                                 <div className="flex items-center justify-between mb-2">
                                   <div className="flex items-center gap-2">
                                     {getStatusBadge(payment.status)}
-                                    {isActuallyOverdue && (
-                                      <Badge variant="destructive" className="text-xs">
-                                        Atrasado
-                                      </Badge>
-                                    )}
                                   </div>
                                   <span className="text-xs text-muted-foreground">
                                     {getMonthName(payment.referenceMonth)}/{payment.referenceYear}
@@ -477,11 +472,6 @@ export default function PaymentsPage() {
                                     <div className="flex-1 min-w-0">
                                       <div className="flex items-center gap-2 mb-1">
                                         {getStatusBadge(payment.status)}
-                                        {isActuallyOverdue && (
-                                          <Badge variant="destructive" className="text-[10px] px-2 py-0.5">
-                                            Atrasado
-                                          </Badge>
-                                        )}
                                         <span className="text-xs text-muted-foreground">
                                           {getMonthName(payment.referenceMonth)}/{payment.referenceYear}
                                         </span>
