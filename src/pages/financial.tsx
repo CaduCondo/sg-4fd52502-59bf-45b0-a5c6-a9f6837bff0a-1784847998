@@ -18,7 +18,7 @@ import { paymentService } from "@/services/paymentService";
 import { propertyService } from "@/services/propertyService";
 import { rentalService } from "@/services/rentalService";
 import { tenantService } from "@/services/tenantService";
-import ScrollReveal from "@/components/animations/ScrollReveal";
+import { ScrollReveal } from "@/components/animations/ScrollReveal";
 
 export default function Financial() {
   const [payments, setPayments] = useState<Payment[]>([]);
