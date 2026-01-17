@@ -267,6 +267,7 @@ export type Database = {
           rg: string | null
           role: string
           updated_at: string | null
+          username: string | null
           usuario: string | null
         }
         Insert: {
@@ -281,6 +282,7 @@ export type Database = {
           rg?: string | null
           role?: string
           updated_at?: string | null
+          username?: string | null
           usuario?: string | null
         }
         Update: {
@@ -295,6 +297,7 @@ export type Database = {
           rg?: string | null
           role?: string
           updated_at?: string | null
+          username?: string | null
           usuario?: string | null
         }
         Relationships: []
