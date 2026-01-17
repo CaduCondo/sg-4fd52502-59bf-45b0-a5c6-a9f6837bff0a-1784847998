@@ -713,7 +713,7 @@ export default function Settings() {
                 </div>
               </div>
             </div>
-            <DialogFooter>
+            <div className="flex justify-end gap-2 mt-6 pt-4 border-t">
               <Button variant="outline" onClick={() => {
                 console.log("🚫 Botão Cancelar clicado");
                 setIsSystemUserModalOpen(false);
@@ -722,7 +722,7 @@ export default function Settings() {
                 console.log("✅ Botão Salvar clicado - chamando handleSaveSystemUser");
                 handleSaveSystemUser();
               }}>Salvar</Button>
-            </DialogFooter>
+            </div>
           </DialogContent>
         </Dialog>
 
