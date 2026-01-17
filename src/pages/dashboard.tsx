@@ -229,6 +229,7 @@ export default function DashboardPage() {
   );
 
   const paidPayments = filteredPayments.filter((p) => p.status === "paid");
+  const overduePayments = filteredPayments.filter((p) => p.status === "overdue");
   const pendingPayments = filteredPayments.filter(
     (p) => p.status === "pending" || p.status === "partial"
   );
@@ -270,6 +271,7 @@ export default function DashboardPage() {
     totalTenants: tenants.filter((t) => t.status === "active" || t.status === "rented").length,
     activeRentals: rentals.filter(r => r.isActive).length,
     pendingPayments: pendingPayments.length,
+    overduePayments: overduePayments.length,
     paidPayments: paidPayments.length,
     monthlyRevenue: monthlyRevenue,
     adminFee: adminFee,
@@ -458,16 +460,16 @@ export default function DashboardPage() {
             <FloatingCard delay={0.6}>
               <Card
                 className="cursor-pointer hover:shadow-lg transition-shadow border-l-4 border-l-red-500 h-full"
-                onClick={() => router.push("/payments")}
+                onClick={() => router.push("/payments?filter=overdue")}
               >
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4">
-                  <CardTitle className="text-sm font-medium">Recebimentos Pendentes</CardTitle>
+                  <CardTitle className="text-sm font-medium">Recebimentos Atrasados</CardTitle>
                   <AlertCircle className="h-4 w-4 text-red-500" />
                 </CardHeader>
                 <CardContent className="p-4 pt-0">
-                  <div className="text-2xl font-bold">{stats.pendingPayments}</div>
+                  <div className="text-2xl font-bold">{stats.overduePayments}</div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Aguardando pagamento
+                    Pagamentos em atraso
                   </p>
                 </CardContent>
               </Card>
