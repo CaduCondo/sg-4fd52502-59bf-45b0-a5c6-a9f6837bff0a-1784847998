@@ -284,46 +284,56 @@ export default function TenantsPage() {
               {filteredTenants.map((tenant) => (
                 <Card
                   key={tenant.id}
-                  className="hover:shadow-lg transition-shadow cursor-pointer"
+                  className="cursor-pointer hover:shadow-lg transition-shadow relative"
                   onClick={() => router.push(`/tenants/${tenant.id}`)}
                 >
-                  <CardContent className="p-5">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center gap-4 flex-1">
-                        <Avatar className="h-14 w-14">
-                          <AvatarFallback className="text-lg font-semibold">
-                            {tenant.name
-                              .split(" ")
-                              .map((n) => n[0])
-                              .join("")
-                              .toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <h3 className="text-lg font-bold leading-none mb-1">{tenant.name}</h3>
-                          <p className="text-sm text-muted-foreground">
-                            {tenant.documentType === "cpf" ? "CPF" : "CNPJ"}: {tenant.documentType === "cpf" ? applyCpfMask(tenant.document || "") : applyCnpjMask(tenant.document || "")}
-                          </p>
+                  <CardContent className="p-4">
+                    {/* Badge de Status - Canto Superior Direito */}
+                    <div className="absolute top-3 right-3">
+                      <Badge className={getStatusColor(tenant.status)}>
+                        {getStatusLabel(tenant.status)}
+                      </Badge>
+                    </div>
+
+                    {/* Nome e CPF/CNPJ */}
+                    <div className="mb-3 pr-24">
+                      <h3 className="text-lg font-semibold mb-1 truncate" title={tenant.name}>
+                        {tenant.name}
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        {tenant.documentType === "cpf" ? "CPF" : "CNPJ"}:{" "}
+                        {tenant.documentType === "cpf" 
+                          ? applyCpfMask(tenant.document || "") 
+                          : applyCnpjMask(tenant.document || "")}
+                      </p>
+                    </div>
+
+                    {/* Email e Telefone */}
+                    <div className="space-y-2 mb-3">
+                      {tenant.email && (
+                        <div className="flex items-center gap-2 text-sm">
+                          <Mail className="h-4 w-4 text-muted-foreground" />
+                          <span className="truncate">{tenant.email}</span>
                         </div>
-                      </div>
+                      )}
+                      {tenant.phone && (
+                        <div className="flex items-center gap-2 text-sm">
+                          <Phone className="h-4 w-4 text-muted-foreground" />
+                          <span>{tenant.phone}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Ícone da Lixeira - Canto Inferior Direito */}
+                    <div className="flex justify-end">
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="text-destructive hover:text-destructive hover:bg-destructive/10 -mt-2 -mr-2"
+                        className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
                         onClick={(e) => handleDelete(e, tenant)}
                       >
-                        <Trash2 className="h-5 w-5" />
+                        <Trash2 className="h-4 w-4" />
                       </Button>
-                    </div>
-                    <div className="space-y-3 text-base text-muted-foreground">
-                      <div className="flex items-center gap-3">
-                        <Mail className="h-5 w-5 text-emerald-600" />
-                        <span className="truncate">{tenant.email || "Sem email"}</span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <Phone className="h-5 w-5 text-emerald-600" />
-                        <span>{tenant.phone || "Sem telefone"}</span>
-                      </div>
                     </div>
                   </CardContent>
                 </Card>
