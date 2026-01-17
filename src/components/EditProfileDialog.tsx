@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { systemUserService, SystemUser } from "@/services/systemUserService";
 import { Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface EditProfileDialogProps {
   open: boolean;
@@ -14,9 +15,10 @@ interface EditProfileDialogProps {
   onSuccess?: () => void;
 }
 
-export function EditProfileDialog({ open, onOpenChange, userId, onSuccess }: EditProfileDialogProps) {
+export function EditProfileDialog({ open, onOpenChange, userId: userIdProp, onSuccess }: EditProfileDialogProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [userId, setUserId] = useState(userIdProp);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -25,8 +27,34 @@ export function EditProfileDialog({ open, onOpenChange, userId, onSuccess }: Edi
     rg: "",
   });
 
+  // Get Supabase user ID if prop is empty
   useEffect(() => {
-    if (open && userId) {
+    const getSupabaseUserId = async () => {
+      if (!userIdProp || userIdProp === "") {
+        console.log("🔍 userId vazio, buscando do Supabase...");
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user?.id) {
+            console.log("✅ User ID do Supabase encontrado:", user.id);
+            setUserId(user.id);
+          } else {
+            console.error("❌ Nenhum usuário autenticado no Supabase");
+          }
+        } catch (error) {
+          console.error("❌ Erro ao buscar user ID do Supabase:", error);
+        }
+      } else {
+        setUserId(userIdProp);
+      }
+    };
+
+    if (open) {
+      getSupabaseUserId();
+    }
+  }, [open, userIdProp]);
+
+  useEffect(() => {
+    if (open && userId && userId !== "") {
       loadUserData();
     }
   }, [open, userId]);
