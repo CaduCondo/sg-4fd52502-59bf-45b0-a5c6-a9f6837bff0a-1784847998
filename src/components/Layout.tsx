@@ -14,7 +14,6 @@ import {
   Menu,
   X,
   User,
-  Lock,
   ChevronDown,
   Calculator,
 } from "lucide-react";
@@ -26,6 +25,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -33,7 +33,6 @@ import { Label } from "@/components/ui/label";
 import { userStorage } from "@/lib/storage";
 import { systemUserService } from "@/services/systemUserService";
 import { useToast } from "@/hooks/use-toast";
-import { EditProfileDialog } from "@/components/EditProfileDialog";
 
 interface LayoutProps {
   children: ReactNode;
@@ -42,9 +41,9 @@ interface LayoutProps {
 export function Layout({ children }: LayoutProps) {
   const router = useRouter();
   const { toast } = useToast();
+  // Corrigido: Usando o tipo UserType completo para evitar erros de propriedades faltantes (id, password, photo, etc.)
   const [user, setUser] = useState<UserType | null>(null);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [showProfileDialog, setShowProfileDialog] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   
   // Scroll effects
@@ -63,32 +62,39 @@ export function Layout({ children }: LayoutProps) {
         console.log("🔍 Layout: Validando usuário do localStorage:", currentUser.id);
         
         // Validar se o usuário realmente existe no banco
-        const userExists = await systemUserService.getById(currentUser.id);
-        
-        if (!userExists) {
-          console.error("🔄 DETECTADO: Usuário do localStorage não existe no banco!");
-          console.log("🧹 Limpando dados corrompidos e redirecionando...");
+        try {
+          const userExists = await systemUserService.getById(currentUser.id);
           
-          // LIMPEZA FORÇADA TOTAL
-          localStorage.removeItem("isAuthenticated");
-          localStorage.removeItem("currentUser");
-          localStorage.clear(); // Limpa TUDO por garantia
+          if (!userExists) {
+            console.error("🔄 DETECTADO: Usuário do localStorage não existe no banco!");
+            console.log("🧹 Limpando dados corrompidos e redirecionando...");
+            
+            // LIMPEZA FORÇADA TOTAL
+            localStorage.removeItem("isAuthenticated");
+            localStorage.removeItem("currentUser");
+            localStorage.clear(); 
+            
+            toast({
+              title: "Sessão Inválida",
+              description: "Seus dados de sessão expiraram. Por favor, faça login novamente.",
+              variant: "destructive",
+            });
+            
+            setTimeout(() => {
+              window.location.href = "/login";
+            }, 2000);
+            
+            return;
+          }
           
-          toast({
-            title: "Sessão Inválida",
-            description: "Seus dados de sessão expiraram. Por favor, faça login novamente.",
-            variant: "destructive",
-          });
-          
-          setTimeout(() => {
-            window.location.href = "/login";
-          }, 2000);
-          
-          return;
+          console.log("✅ Layout: Usuário validado com sucesso");
+          // Atualiza com os dados mais recentes do banco se possível, ou usa o do localStorage
+          setUser(userExists || currentUser);
+        } catch (error) {
+          console.error("Erro ao validar usuário:", error);
+          // Em caso de erro de rede, mantém o usuário do cache para não bloquear
+          setUser(currentUser);
         }
-        
-        console.log("✅ Layout: Usuário validado com sucesso");
-        setUser(currentUser);
       }
     };
     
@@ -167,7 +173,7 @@ export function Layout({ children }: LayoutProps) {
               <span className="font-bold text-slate-900">ImóvelControl</span>
             </Link>
 
-            {/* MENU DESKTOP - Center - HARDCODED TO ALWAYS SHOW */}
+            {/* MENU DESKTOP - Center */}
             <div className="hidden md:flex items-center gap-1 flex-1 justify-center">
               <Link href="/dashboard">
                 <Button 
@@ -253,10 +259,10 @@ export function Layout({ children }: LayoutProps) {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => setMenuOpen(!menuOpen)}
+                onClick={() => setShowMobileMenu(!showMobileMenu)}
                 className="md:hidden"
               >
-                {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+                {showMobileMenu ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
               </Button>
 
               {/* User Dropdown */}
@@ -279,23 +285,24 @@ export function Layout({ children }: LayoutProps) {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
-                  <div className="px-2 py-1.5">
-                    <p className="text-sm font-medium">{user?.name}</p>
-                    <p className="text-xs text-slate-500 capitalize">{user?.role}</p>
-                  </div>
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">{user?.name || "Usuário"}</p>
+                      <p className="text-xs leading-none text-muted-foreground">
+                        {user?.email || ""}
+                      </p>
+                    </div>
+                  </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setShowProfileDialog(true)}>
-                    <User className="mr-2 h-4 w-4" />
-                    Editar Perfil
+                  <DropdownMenuItem onClick={() => router.push("/settings")}>
+                    <Settings className="mr-2 h-4 w-4" />
+                    <span>Configurações</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setShowPasswordDialog(true)}>
-                    <Lock className="mr-2 h-4 w-4" />
-                    Trocar Senha
-                  </DropdownMenuItem>
+                  {/* Opção "Editar Perfil" removida conforme solicitado */}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout} className="text-red-600">
                     <LogOut className="mr-2 h-4 w-4" />
-                    Sair
+                    <span>Sair</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -303,13 +310,13 @@ export function Layout({ children }: LayoutProps) {
           </div>
 
           {/* Mobile Menu Dropdown */}
-          {menuOpen && (
+          {showMobileMenu && (
             <div className="md:hidden pb-4 space-y-1">
               <Link href="/dashboard">
                 <Button 
                   variant={isActive("/dashboard") ? "default" : "ghost"}
                   className="w-full justify-start gap-2"
-                  onClick={() => setMenuOpen(false)}
+                  onClick={() => setShowMobileMenu(false)}
                 >
                   <Home className="h-4 w-4" />
                   Dashboard
@@ -319,7 +326,7 @@ export function Layout({ children }: LayoutProps) {
                 <Button 
                   variant={isActive("/properties") ? "default" : "ghost"}
                   className="w-full justify-start gap-2"
-                  onClick={() => setMenuOpen(false)}
+                  onClick={() => setShowMobileMenu(false)}
                 >
                   <Building2 className="h-4 w-4" />
                   Imóveis
@@ -329,7 +336,7 @@ export function Layout({ children }: LayoutProps) {
                 <Button 
                   variant={isActive("/tenants") ? "default" : "ghost"}
                   className="w-full justify-start gap-2"
-                  onClick={() => setMenuOpen(false)}
+                  onClick={() => setShowMobileMenu(false)}
                 >
                   <Users className="h-4 w-4" />
                   Inquilinos
@@ -339,7 +346,7 @@ export function Layout({ children }: LayoutProps) {
                 <Button 
                   variant={isActive("/rentals") ? "default" : "ghost"}
                   className="w-full justify-start gap-2"
-                  onClick={() => setMenuOpen(false)}
+                  onClick={() => setShowMobileMenu(false)}
                 >
                   <Building2 className="h-4 w-4" />
                   Locações
@@ -349,7 +356,7 @@ export function Layout({ children }: LayoutProps) {
                 <Button 
                   variant={isActive("/payments") ? "default" : "ghost"}
                   className="w-full justify-start gap-2"
-                  onClick={() => setMenuOpen(false)}
+                  onClick={() => setShowMobileMenu(false)}
                 >
                   <DollarSign className="h-4 w-4" />
                   Recebimentos
@@ -359,7 +366,7 @@ export function Layout({ children }: LayoutProps) {
                 <Button 
                   variant={isActive("/financial") ? "default" : "ghost"}
                   className="w-full justify-start gap-2"
-                  onClick={() => setMenuOpen(false)}
+                  onClick={() => setShowMobileMenu(false)}
                 >
                   <Calculator className="h-4 w-4" />
                   Financeiro
@@ -369,7 +376,7 @@ export function Layout({ children }: LayoutProps) {
                 <Button 
                   variant={isActive("/settings") ? "default" : "ghost"}
                   className="w-full justify-start gap-2"
-                  onClick={() => setMenuOpen(false)}
+                  onClick={() => setShowMobileMenu(false)}
                 >
                   <Settings className="h-4 w-4" />
                   Configurações
@@ -389,16 +396,6 @@ export function Layout({ children }: LayoutProps) {
       >
         {children}
       </motion.main>
-      
-      {/* Edit Profile Dialog */}
-      <EditProfileDialog
-        open={showProfileDialog}
-        onOpenChange={setShowProfileDialog}
-        onSuccess={() => {
-          // Reload page to ensure all data is synced
-          window.location.reload();
-        }}
-      />
       
       {/* Change Password Dialog */}
       <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
