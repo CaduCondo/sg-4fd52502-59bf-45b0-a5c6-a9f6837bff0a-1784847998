@@ -227,7 +227,7 @@ export function Layout({ children }: LayoutProps) {
             </div>
 
             {/* Center: Desktop Menu - FORCED TO SHOW */}
-            <div className="hidden lg:flex items-center justify-center gap-1 px-4">
+            <nav className="hidden lg:flex items-center gap-2 flex-shrink-0">
               {menuItems.map((item) => (
                 <Link key={item.path} href={item.path}>
                   <Button 
@@ -240,7 +240,7 @@ export function Layout({ children }: LayoutProps) {
                   </Button>
                 </Link>
               ))}
-            </div>
+            </nav>
 
             {/* Right: User Profile + Mobile Menu Button */}
             <div className="flex items-center gap-2 min-w-fit">
