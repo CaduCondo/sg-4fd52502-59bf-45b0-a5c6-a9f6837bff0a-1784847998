@@ -1,17 +1,13 @@
 import { supabase } from "@/integrations/supabase/client";
-import { Database } from "@/integrations/supabase/types";
-
-// Tipo derivado diretamente do Supabase para garantir compatibilidade
-type UserRow = Database['public']['Tables']['system_users']['Row'];
 
 export interface SystemUser {
   id: string;
   name: string;
-  username: string | null;
+  username?: string;
   email: string;
-  phone: string | null;
-  rg: string | null;
-  cpf: string | null;
+  phone?: string;
+  rg?: string;
+  cpf?: string;
   password: string;
   role: string; // "admin" | "corretor" | "financeiro"
   active: boolean;
@@ -29,8 +25,7 @@ export const systemUserService = {
         .order("name", { ascending: true });
 
       if (error) throw error;
-      // Casting seguro pois as colunas batem
-      return (data as unknown as SystemUser[]) || [];
+      return (data as any[]) || [];
     } catch (error) {
       console.error("Error fetching system users:", error);
       return [];
@@ -47,7 +42,7 @@ export const systemUserService = {
         .single();
 
       if (error) throw error;
-      return data as unknown as SystemUser;
+      return data as any;
     } catch (error) {
       console.error("Error fetching system user:", error);
       return null;
@@ -64,7 +59,7 @@ export const systemUserService = {
         .single();
 
       if (error) throw error;
-      return data as unknown as SystemUser;
+      return data as any;
     } catch (error) {
       console.error("Error fetching system user by email:", error);
       return null;
@@ -81,7 +76,7 @@ export const systemUserService = {
         .single();
 
       if (error) throw error;
-      return data as unknown as SystemUser;
+      return data as any;
     } catch (error) {
       console.error("Error fetching system user by username:", error);
       return null;
@@ -91,8 +86,7 @@ export const systemUserService = {
   // Criar novo usuário
   async create(user: Omit<SystemUser, "id" | "created_at" | "updated_at">): Promise<SystemUser | null> {
     try {
-      // Usando any para evitar erro de complexidade de tipos do Supabase (TS2589)
-      const payload: any = {
+      const payload = {
         name: user.name,
         username: user.username || null,
         email: user.email,
@@ -104,14 +98,15 @@ export const systemUserService = {
         active: user.active
       };
 
-      const { data, error } = await supabase
+      // Cast to any to avoid TS2589 excessive depth error
+      const { data, error } = await (supabase
         .from("system_users")
-        .insert(payload)
+        .insert(payload) as any)
         .select("*")
         .single();
 
       if (error) throw error;
-      return data as unknown as SystemUser;
+      return data as SystemUser;
     } catch (error) {
       console.error("Error creating system user:", error);
       return null;
@@ -132,15 +127,15 @@ export const systemUserService = {
       if (updates.rg === "") payload.rg = null;
       if (updates.cpf === "") payload.cpf = null;
 
-      const { data, error } = await supabase
+      const { data, error } = await (supabase
         .from("system_users")
         .update(payload)
-        .eq("id", id)
+        .eq("id", id) as any)
         .select("*")
         .single();
 
       if (error) throw error;
-      return data as unknown as SystemUser;
+      return data as SystemUser;
     } catch (error) {
       console.error("Error updating system user:", error);
       return null;
@@ -241,7 +236,7 @@ export const systemUserService = {
       }
 
       if (error) throw error;
-      return data as unknown as SystemUser;
+      return data as any;
     } catch (error) {
       console.error("Error validating login:", error);
       return null;
