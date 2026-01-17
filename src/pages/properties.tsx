@@ -368,24 +368,24 @@ export default function PropertiesPage() {
                   className="h-full hover:shadow-lg transition-all cursor-pointer group"
                   onClick={() => handleCardClick(property.id)}
                 >
-                  <CardHeader className="pb-3">
+                  <CardHeader className="pb-2 p-3">
                     <div className="flex justify-between items-start mb-2">
-                      <Building2 className="h-6 w-6 text-emerald-600" />
+                      <Building2 className="h-5 w-5 text-emerald-600" />
                       <Badge className={getStatusColor(property.status)}>
                         {getStatusLabel(property.status)}
                       </Badge>
                     </div>
-                    <CardTitle className="text-base group-hover:text-emerald-600 transition-colors">
+                    <CardTitle className="text-sm group-hover:text-emerald-600 transition-colors">
                       {property.location}
                     </CardTitle>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                       {property.complement}
                     </p>
                   </CardHeader>
-                  <CardContent className="pt-0">
+                  <CardContent className="pt-0 p-3">
                     <div className="flex items-baseline justify-between">
                       <div>
-                        <p className="text-xl font-bold text-emerald-600">
+                        <p className="text-lg font-bold text-emerald-600">
                           {formatCurrency(property.rentValue)}
                         </p>
                         <p className="text-xs text-muted-foreground">por mês</p>
@@ -411,10 +411,10 @@ export default function PropertiesPage() {
                   className="hover:shadow-md transition-all cursor-pointer group"
                   onClick={() => handleCardClick(property.id)}
                 >
-                  <CardContent className="py-3">
+                  <CardContent className="py-2 px-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4 flex-1">
-                        <Building2 className="h-8 w-8 text-emerald-600 flex-shrink-0" />
+                        <Building2 className="h-6 w-6 text-emerald-600 flex-shrink-0" />
                         <div className="flex-1">
                           <h3 className="font-semibold text-lg group-hover:text-emerald-600 transition-colors">
                             {property.location}

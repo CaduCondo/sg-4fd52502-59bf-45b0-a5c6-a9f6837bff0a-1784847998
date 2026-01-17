@@ -211,7 +211,7 @@ export function Layout({ children }: LayoutProps) {
         transition={{ duration: 0.3, ease: "easeInOut" }}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-14 lg:h-16 transition-all duration-300">
+          <div className="flex justify-between items-center h-12 lg:h-14 transition-all duration-300">
             <div className="flex items-center space-x-4">
               <Button
                 variant="ghost"
@@ -374,7 +374,7 @@ export function Layout({ children }: LayoutProps) {
       
       {/* Main content with padding for fixed navbar */}
       <motion.main
-        className="pt-32 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"
+        className="pt-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5 }}
