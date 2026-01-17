@@ -16,19 +16,28 @@ export interface SystemUser {
 }
 
 export const systemUserService = {
-  // Buscar todos os usuários
+  /**
+   * Buscar todos os usuários
+   */
   async getAll(): Promise<SystemUser[]> {
     try {
+      console.log("📡 Buscando todos os usuários...");
+      
       const { data, error } = await supabase
         .from("system_users")
         .select("*")
         .order("name", { ascending: true });
 
-      if (error) throw error;
-      return (data as any[]) || [];
+      if (error) {
+        console.error("❌ Erro ao buscar usuários:", error);
+        throw error;
+      }
+
+      console.log(`✅ ${data?.length || 0} usuários encontrados`);
+      return data || [];
     } catch (error) {
-      console.error("Error fetching system users:", error);
-      return [];
+      console.error("❌ Erro ao buscar usuários:", error);
+      throw error;
     }
   },
 
