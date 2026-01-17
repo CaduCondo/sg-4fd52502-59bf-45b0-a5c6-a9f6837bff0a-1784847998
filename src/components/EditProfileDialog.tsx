@@ -4,21 +4,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { systemUserService, SystemUser } from "@/services/systemUserService";
+import { systemUserService } from "@/services/systemUserService";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface EditProfileDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  userId: string;
   onSuccess?: () => void;
 }
 
-export function EditProfileDialog({ open, onOpenChange, userId: userIdProp, onSuccess }: EditProfileDialogProps) {
+export function EditProfileDialog({ open, onOpenChange, onSuccess }: EditProfileDialogProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  const [userId, setUserId] = useState(userIdProp);
+  const [userId, setUserId] = useState<string>("");
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -27,89 +26,132 @@ export function EditProfileDialog({ open, onOpenChange, userId: userIdProp, onSu
     rg: "",
   });
 
-  // Get Supabase user ID if prop is empty
   useEffect(() => {
-    const getSupabaseUserId = async () => {
-      if (!userIdProp || userIdProp === "") {
-        console.log("🔍 userId vazio, buscando do Supabase...");
-        try {
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user?.id) {
-            console.log("✅ User ID do Supabase encontrado:", user.id);
-            setUserId(user.id);
-          } else {
-            console.error("❌ Nenhum usuário autenticado no Supabase");
-          }
-        } catch (error) {
-          console.error("❌ Erro ao buscar user ID do Supabase:", error);
-        }
-      } else {
-        setUserId(userIdProp);
-      }
-    };
-
     if (open) {
-      getSupabaseUserId();
-    }
-  }, [open, userIdProp]);
-
-  useEffect(() => {
-    if (open && userId && userId !== "") {
+      console.log("🔓 Dialog aberto, iniciando fluxo de carregamento...");
       loadUserData();
+    } else {
+      // Reset form when dialog closes
+      console.log("🔒 Dialog fechado, resetando formulário...");
+      setFormData({
+        name: "",
+        email: "",
+        phone: "",
+        cpf: "",
+        rg: "",
+      });
+      setUserId("");
     }
-  }, [open, userId]);
+  }, [open]);
 
   const loadUserData = async () => {
     try {
       setLoading(true);
-      console.log("🔍 Carregando dados do usuário:", userId);
+      console.log("📡 Etapa 1: Buscando usuário autenticado do Supabase...");
       
-      const user = await systemUserService.getById(userId);
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
       
-      if (user) {
-        console.log("✅ Dados carregados:", user);
-        setFormData({
-          name: user.name || "",
-          email: user.email || "",
-          phone: user.phone || "",
-          cpf: user.cpf || "",
-          rg: user.rg || "",
-        });
+      if (authError) {
+        console.error("❌ Erro ao buscar usuário autenticado:", authError);
+        throw authError;
       }
+      
+      if (!user?.id) {
+        console.error("❌ Nenhum usuário autenticado encontrado!");
+        toast({
+          title: "Erro de Autenticação",
+          description: "Você precisa estar logado para editar o perfil.",
+          variant: "destructive",
+        });
+        onOpenChange(false);
+        return;
+      }
+
+      console.log("✅ Etapa 1 completa: User ID do Supabase:", user.id);
+      setUserId(user.id);
+      
+      console.log("📡 Etapa 2: Carregando dados do perfil do banco...");
+      const userData = await systemUserService.getById(user.id);
+      
+      if (!userData) {
+        console.error("❌ Nenhum dado de perfil encontrado para o user ID:", user.id);
+        toast({
+          title: "Erro",
+          description: "Não foi possível carregar os dados do perfil.",
+          variant: "destructive",
+        });
+        onOpenChange(false);
+        return;
+      }
+
+      console.log("✅ Etapa 2 completa: Dados carregados:", userData);
+      
+      setFormData({
+        name: userData.name || "",
+        email: userData.email || "",
+        phone: userData.phone || "",
+        cpf: userData.cpf || "",
+        rg: userData.rg || "",
+      });
+      
+      console.log("✅ Formulário preenchido com sucesso!");
+      
     } catch (error) {
-      console.error("❌ Erro ao carregar dados:", error);
+      console.error("❌ ERRO FATAL ao carregar dados:", error);
       toast({
         title: "Erro",
-        description: "Erro ao carregar dados do perfil.",
+        description: "Erro ao carregar dados do perfil. Tente novamente.",
         variant: "destructive",
       });
+      onOpenChange(false);
     } finally {
       setLoading(false);
     }
   };
 
   const handleSave = async () => {
+    if (!userId) {
+      console.error("❌ ERRO: userId está vazio no momento do salvamento!");
+      toast({
+        title: "Erro",
+        description: "Erro interno: ID de usuário não encontrado.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setLoading(true);
-      console.log("💾 Salvando perfil do usuário:", userId);
+      console.log("💾 Etapa 3: Iniciando salvamento...");
+      console.log("📦 User ID:", userId);
       console.log("📦 Dados a serem salvos:", formData);
 
       const updatedUser = await systemUserService.update(userId, formData);
       
-      console.log("✅ Perfil atualizado com sucesso:", updatedUser);
+      if (!updatedUser) {
+        console.error("❌ systemUserService.update retornou null!");
+        throw new Error("Falha ao atualizar perfil");
+      }
+      
+      console.log("✅ Etapa 3 completa: Perfil atualizado com sucesso:", updatedUser);
       
       toast({
         title: "Sucesso",
         description: "Perfil atualizado com sucesso!",
       });
 
+      console.log("🔄 Fechando dialog e chamando callback onSuccess...");
       onOpenChange(false);
       
       if (onSuccess) {
+        console.log("🔄 Executando callback onSuccess...");
         onSuccess();
       }
+      
+      console.log("✅ Processo completo finalizado com sucesso!");
+      
     } catch (error) {
-      console.error("❌ Erro ao salvar perfil:", error);
+      console.error("❌ ERRO FATAL ao salvar perfil:", error);
       toast({
         title: "Erro",
         description: "Erro ao atualizar perfil. Tente novamente.",

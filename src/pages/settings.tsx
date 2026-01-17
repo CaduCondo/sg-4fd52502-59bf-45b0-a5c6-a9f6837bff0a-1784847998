@@ -603,7 +603,6 @@ export default function Settings() {
         <EditProfileDialog
           open={showEditProfileDialog}
           onOpenChange={setShowEditProfileDialog}
-          userId={userIdToEdit}
           onSuccess={() => {
             loadSettings();
           }}

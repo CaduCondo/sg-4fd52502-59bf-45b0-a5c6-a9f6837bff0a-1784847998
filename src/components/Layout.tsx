@@ -362,15 +362,9 @@ export function Layout({ children }: LayoutProps) {
       <EditProfileDialog
         open={showProfileDialog}
         onOpenChange={setShowProfileDialog}
-        userId={user?.id || ""}
         onSuccess={() => {
-          // Delay state update to prevent interface freeze
-          setTimeout(() => {
-            const updatedUser = getCurrentUser();
-            if (updatedUser) {
-              setUser(updatedUser);
-            }
-          }, 100);
+          // Reload page to ensure all data is synced
+          window.location.reload();
         }}
       />
       
