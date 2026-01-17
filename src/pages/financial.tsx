@@ -1,23 +1,39 @@
 import { useState, useEffect } from "react";
 import { Layout } from "@/components/Layout";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { 
+  BarChart3, 
   DollarSign, 
-  TrendingUp, 
-  Clock, 
-  AlertTriangle,
-  Calendar,
-  Building2,
-  User
+  HeartHandshake, 
+  Target, 
+  FileText, 
+  Save,
+  QrCode
 } from "lucide-react";
+import { Payment, Property, Rental, Tenant } from "@/types";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { paymentService } from "@/services/paymentService";
 import { propertyService } from "@/services/propertyService";
 import { rentalService } from "@/services/rentalService";
 import { tenantService } from "@/services/tenantService";
-import { Payment, Property, Rental, Tenant } from "@/types";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
 
 export default function Financial() {
@@ -27,11 +43,17 @@ export default function Financial() {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Date State
+  const now = new Date();
+  const [selectedMonth, setSelectedMonth] = useState(now.getMonth().toString());
+  const [selectedYear, setSelectedYear] = useState(now.getFullYear().toString());
+
   useEffect(() => {
     loadData();
   }, []);
 
   const loadData = async () => {
+    setLoading(true);
     try {
       const [paymentsData, propertiesData, rentalsData, tenantsData] = await Promise.all([
         paymentService.getAll(),
@@ -39,6 +61,7 @@ export default function Financial() {
         rentalService.getAll(),
         tenantService.getAll(),
       ]);
+
       setPayments(paymentsData);
       setProperties(propertiesData);
       setRentals(rentalsData);
@@ -50,220 +73,303 @@ export default function Financial() {
     }
   };
 
-  // Filter payments for current month
-  const currentMonth = new Date().getMonth();
-  const currentYear = new Date().getFullYear();
-  const currentMonthPayments = payments.filter(payment => {
+  const months = [
+    { value: "0", label: "Janeiro" },
+    { value: "1", label: "Fevereiro" },
+    { value: "2", label: "Março" },
+    { value: "3", label: "Abril" },
+    { value: "4", label: "Maio" },
+    { value: "5", label: "Junho" },
+    { value: "6", label: "Julho" },
+    { value: "7", label: "Agosto" },
+    { value: "8", label: "Setembro" },
+    { value: "9", label: "Outubro" },
+    { value: "10", label: "Novembro" },
+    { value: "11", label: "Dezembro" },
+  ];
+
+  const years = ["2024", "2025", "2026", "2027"];
+
+  // Filter logic
+  const filteredPayments = payments.filter((payment) => {
     const dueDate = new Date(payment.dueDate);
-    return dueDate.getMonth() === currentMonth && dueDate.getFullYear() === currentYear;
+    return (
+      dueDate.getMonth() === parseInt(selectedMonth) &&
+      dueDate.getFullYear() === parseInt(selectedYear)
+    );
   });
 
-  // Calculate financial metrics
-  const totalExpected = currentMonthPayments.reduce((sum, p) => sum + p.expectedAmount, 0);
-  const totalReceived = currentMonthPayments
-    .filter(p => p.status === "paid" || p.status === "partial")
+  // KPI Calculations
+  const totalExpected = filteredPayments.reduce((sum, p) => sum + p.expectedAmount, 0);
+  
+  const totalReceived = filteredPayments
+    .filter((p) => p.status === "paid" || p.status === "partial")
     .reduce((sum, p) => sum + (p.paidAmount || 0), 0);
-  const totalPending = currentMonthPayments
-    .filter(p => p.status === "pending")
-    .reduce((sum, p) => sum + p.expectedAmount, 0);
-  const totalOverdue = currentMonthPayments
-    .filter(p => p.status === "overdue")
-    .reduce((sum, p) => sum + p.expectedAmount, 0);
 
-  const getStatusBadge = (status: Payment["status"]) => {
-    const variants = {
-      paid: { label: "Pago", className: "bg-green-100 text-green-800" },
-      pending: { label: "Pendente", className: "bg-yellow-100 text-yellow-800" },
-      overdue: { label: "Atrasado", className: "bg-red-100 text-red-800" },
-      partial: { label: "Parcial", className: "bg-blue-100 text-blue-800" },
+  const adminFeeRate = 0.05; // 5%
+  const adminFee = totalReceived * adminFeeRate;
+  
+  const netRevenue = totalReceived - adminFee;
+
+  const getStatusBadge = (status: string) => {
+    const badges = {
+      paid: <Badge className="bg-green-100 text-green-700 hover:bg-green-200 border-green-200">Pago</Badge>,
+      pending: <Badge className="bg-yellow-100 text-yellow-700 hover:bg-yellow-200 border-yellow-200">Pendente</Badge>,
+      overdue: <Badge className="bg-red-100 text-red-700 hover:bg-red-200 border-red-200">Atrasado</Badge>,
+      partial: <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200 border-blue-200">Parcial</Badge>,
     };
-    const variant = variants[status];
-    return <Badge className={variant.className}>{variant.label}</Badge>;
+    return badges[status as keyof typeof badges] || <Badge variant="outline">{status}</Badge>;
   };
 
   const getPaymentDetails = (payment: Payment) => {
-    const rental = rentals.find(r => r.id === payment.rentalId);
-    const property = properties.find(p => p.id === rental?.propertyId);
-    const tenant = tenants.find(t => t.id === rental?.tenantId);
+    const rental = rentals.find((r) => r.id === payment.rentalId);
+    const property = properties.find((p) => p.id === rental?.propertyId);
+    const tenant = tenants.find((t) => t.id === rental?.tenantId);
 
     return {
-      propertyAddress: property ? `${property.address}, ${property.number}` : "N/A",
+      local: property?.address || "N/A",
+      complemento: property?.number || "N/A",
       tenantName: tenant?.name || "N/A",
-      amount: payment.status === "paid" ? (payment.paidAmount || 0) : payment.expectedAmount,
+      pixCode: "00020126580014BR.GOV.BCB.PIX0136...", // Mock PIX
     };
   };
 
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("pt-BR", {
+    return value.toLocaleString("pt-BR", {
       style: "currency",
       currency: "BRL",
-    }).format(value);
+    });
   };
-
-  if (loading) {
-    return (
-      <Layout>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
-        </div>
-      </Layout>
-    );
-  }
 
   return (
     <Layout>
-      <div className="space-y-8">
-        {/* Header */}
+      <div className="space-y-6">
+        {/* Header Title */}
         <ScrollReveal>
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900">Financeiro</h1>
-            <p className="text-slate-600 mt-2">
-              Gestão completa de recebimentos e fluxo de caixa
-            </p>
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-medium text-slate-500">
+              {months[parseInt(selectedMonth)].label} de {selectedYear}
+            </h1>
           </div>
         </ScrollReveal>
 
-        {/* Financial Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <ScrollReveal delay={0.1}>
-            <Card className="p-6 border-l-4 border-l-blue-500">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-600">Valor Esperado</p>
-                  <p className="text-2xl font-bold text-slate-900 mt-1">
-                    {formatCurrency(totalExpected)}
-                  </p>
-                </div>
-                <div className="p-3 bg-blue-100 rounded-lg">
-                  <DollarSign className="h-6 w-6 text-blue-600" />
-                </div>
+        {/* Filters Card */}
+        <ScrollReveal delay={0.1}>
+          <Card className="bg-white border-slate-200 shadow-sm">
+            <CardContent className="p-4 flex gap-4">
+              <div className="w-[200px]">
+                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                  <SelectTrigger className="bg-slate-50 border-slate-200">
+                    <SelectValue placeholder="Mês" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {months.map((month) => (
+                      <SelectItem key={month.value} value={month.value}>
+                        {month.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            </Card>
-          </ScrollReveal>
+              <div className="w-[120px]">
+                <Select value={selectedYear} onValueChange={setSelectedYear}>
+                  <SelectTrigger className="bg-slate-50 border-slate-200">
+                    <SelectValue placeholder="Ano" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {years.map((year) => (
+                      <SelectItem key={year} value={year}>
+                        {year}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
+        </ScrollReveal>
 
+        {/* KPI Cards Grid */}
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          {/* Card 1: Valor Bruto Esperado */}
           <ScrollReveal delay={0.2}>
-            <Card className="p-6 border-l-4 border-l-green-500">
-              <div className="flex items-center justify-between">
+            <Card className="border-blue-100 bg-blue-50/30 shadow-sm h-full">
+              <CardContent className="p-6 space-y-4">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-blue-100 rounded-lg">
+                    <BarChart3 className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <span className="text-sm font-medium text-slate-600">Valor Bruto Esperado</span>
+                </div>
                 <div>
-                  <p className="text-sm font-medium text-slate-600">Valor Recebido</p>
-                  <p className="text-2xl font-bold text-slate-900 mt-1">
-                    {formatCurrency(totalReceived)}
-                  </p>
+                  <div className="text-3xl font-bold text-slate-900">
+                    {formatCurrency(totalExpected)}
+                  </div>
+                  <p className="text-xs text-blue-500 mt-1">Soma de todos os recebimentos</p>
                 </div>
-                <div className="p-3 bg-green-100 rounded-lg">
-                  <TrendingUp className="h-6 w-6 text-green-600" />
-                </div>
-              </div>
+              </CardContent>
             </Card>
           </ScrollReveal>
 
+          {/* Card 2: Valor Bruto Recebido */}
           <ScrollReveal delay={0.3}>
-            <Card className="p-6 border-l-4 border-l-yellow-500">
-              <div className="flex items-center justify-between">
+            <Card className="border-green-100 bg-green-50/30 shadow-sm h-full">
+              <CardContent className="p-6 space-y-4">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-green-100 rounded-lg">
+                    <DollarSign className="h-5 w-5 text-green-600" />
+                  </div>
+                  <span className="text-sm font-medium text-slate-600">Valor Bruto Recebido</span>
+                </div>
                 <div>
-                  <p className="text-sm font-medium text-slate-600">Valor Pendente</p>
-                  <p className="text-2xl font-bold text-slate-900 mt-1">
-                    {formatCurrency(totalPending)}
-                  </p>
+                  <div className="text-3xl font-bold text-slate-900">
+                    {formatCurrency(totalReceived)}
+                  </div>
+                  <p className="text-xs text-green-600 mt-1">Todos os pagamentos recebidos</p>
                 </div>
-                <div className="p-3 bg-yellow-100 rounded-lg">
-                  <Clock className="h-6 w-6 text-yellow-600" />
-                </div>
-              </div>
+              </CardContent>
             </Card>
           </ScrollReveal>
 
+          {/* Card 3: Taxa de Administração */}
           <ScrollReveal delay={0.4}>
-            <Card className="p-6 border-l-4 border-l-red-500">
-              <div className="flex items-center justify-between">
+            <Card className="border-purple-100 bg-purple-50/30 shadow-sm h-full">
+              <CardContent className="p-6 space-y-4">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-purple-100 rounded-lg">
+                    <HeartHandshake className="h-5 w-5 text-purple-600" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium text-slate-600">Taxa de</span>
+                    <span className="text-sm font-medium text-slate-600">Administração</span>
+                  </div>
+                </div>
                 <div>
-                  <p className="text-sm font-medium text-slate-600">Valor Atrasado</p>
-                  <p className="text-2xl font-bold text-slate-900 mt-1">
-                    {formatCurrency(totalOverdue)}
-                  </p>
+                  <div className="text-3xl font-bold text-purple-900">
+                    {formatCurrency(adminFee)}
+                  </div>
+                  <p className="text-xs text-purple-600 mt-1">5% da receita</p>
                 </div>
-                <div className="p-3 bg-red-100 rounded-lg">
-                  <AlertTriangle className="h-6 w-6 text-red-600" />
+              </CardContent>
+            </Card>
+          </ScrollReveal>
+
+          {/* Card 4: Receita Líquida */}
+          <ScrollReveal delay={0.5}>
+            <Card className="border-indigo-100 bg-indigo-50/30 shadow-sm h-full">
+              <CardContent className="p-6 space-y-4">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-indigo-100 rounded-lg">
+                    <Target className="h-5 w-5 text-indigo-600" />
+                  </div>
+                  <span className="text-sm font-medium text-slate-600">Receita Líquida</span>
                 </div>
-              </div>
+                <div>
+                  <div className="text-3xl font-bold text-indigo-900">
+                    {formatCurrency(netRevenue)}
+                  </div>
+                  <p className="text-xs text-indigo-600 mt-1">Receita após taxa administrativa</p>
+                </div>
+              </CardContent>
             </Card>
           </ScrollReveal>
         </div>
 
-        {/* Payments Table */}
-        <ScrollReveal delay={0.5}>
-          <Card className="overflow-hidden">
-            <div className="p-6 border-b border-slate-200">
-              <h2 className="text-xl font-semibold text-slate-900">
-                Recebimentos do Mês
-              </h2>
-            </div>
-            {currentMonthPayments.length === 0 ? (
-              <div className="p-12 text-center">
-                <Calendar className="h-12 w-12 text-slate-400 mx-auto mb-4" />
-                <p className="text-slate-600">
-                  Nenhum pagamento registrado neste mês
-                </p>
+        {/* Detailed Table */}
+        <ScrollReveal delay={0.6}>
+          <Card className="border-slate-200 shadow-sm overflow-hidden">
+            <CardHeader className="border-b border-slate-100 bg-white pb-4">
+              <div className="flex items-center gap-2">
+                <FileText className="h-5 w-5 text-slate-400" />
+                <CardTitle className="text-base font-medium text-slate-700">
+                  Detalhamento de Locações - {months[parseInt(selectedMonth)].label} {selectedYear}
+                </CardTitle>
               </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-slate-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                        Inquilino
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                        Imóvel
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                        Vencimento
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                        Valor
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                        Status
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-slate-200">
-                    {currentMonthPayments.map((payment) => {
+            </CardHeader>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-slate-50/50 hover:bg-slate-50/50">
+                    <TableHead className="w-[150px] text-xs font-semibold text-slate-500 uppercase tracking-wider">Local</TableHead>
+                    <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Complemento</TableHead>
+                    <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Ano</TableHead>
+                    <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Mês</TableHead>
+                    <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</TableHead>
+                    <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Código PIX</TableHead>
+                    <TableHead className="w-[50px]"></TableHead>
+                    <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Data Vencimento</TableHead>
+                    <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Data Recebida</TableHead>
+                    <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Valor Esperado</TableHead>
+                    <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Valor Pago</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={11} className="h-24 text-center text-slate-500">
+                        Carregando...
+                      </TableCell>
+                    </TableRow>
+                  ) : filteredPayments.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={11} className="h-24 text-center text-slate-500">
+                        Nenhum registro encontrado para este período.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredPayments.map((payment) => {
                       const details = getPaymentDetails(payment);
+                      const monthName = months[parseInt(selectedMonth)].label;
+                      
                       return (
-                        <tr key={payment.id} className="hover:bg-slate-50 transition-colors">
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center">
-                              <User className="h-4 w-4 text-slate-400 mr-2" />
-                              <span className="text-sm font-medium text-slate-900">
-                                {details.tenantName}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center">
-                              <Building2 className="h-4 w-4 text-slate-400 mr-2" />
-                              <span className="text-sm text-slate-600">
-                                {details.propertyAddress}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
-                            {format(new Date(payment.dueDate), "dd/MM/yyyy", { locale: ptBR })}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
-                            {formatCurrency(details.amount)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
+                        <TableRow key={payment.id} className="hover:bg-slate-50 transition-colors">
+                          <TableCell className="font-medium text-slate-900">
+                            {details.local}
+                          </TableCell>
+                          <TableCell className="text-slate-600">
+                            {details.complemento}
+                          </TableCell>
+                          <TableCell className="text-slate-600">
+                            {selectedYear}
+                          </TableCell>
+                          <TableCell className="text-slate-600">
+                            {monthName}
+                          </TableCell>
+                          <TableCell>
                             {getStatusBadge(payment.status)}
-                          </td>
-                        </tr>
+                          </TableCell>
+                          <TableCell>
+                            <Button variant="outline" size="sm" className="h-8 text-xs gap-2 text-slate-600">
+                              <QrCode className="h-3 w-3" />
+                              Código PIX
+                            </Button>
+                          </TableCell>
+                          <TableCell>
+                             <Button variant="ghost" size="icon" className="h-8 w-8 text-purple-600">
+                                <Save className="h-4 w-4" />
+                             </Button>
+                          </TableCell>
+                          <TableCell className="text-slate-600">
+                            {format(new Date(payment.dueDate), "dd/MM/yyyy")}
+                          </TableCell>
+                          <TableCell className="text-slate-600">
+                            {payment.paymentDate 
+                              ? format(new Date(payment.paymentDate), "dd/MM/yyyy")
+                              : "-"}
+                          </TableCell>
+                          <TableCell className="text-right font-medium text-slate-900">
+                            {formatCurrency(payment.expectedAmount)}
+                          </TableCell>
+                          <TableCell className="text-right font-bold text-green-600">
+                            {formatCurrency(payment.paidAmount || 0)}
+                          </TableCell>
+                        </TableRow>
                       );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
           </Card>
         </ScrollReveal>
       </div>
