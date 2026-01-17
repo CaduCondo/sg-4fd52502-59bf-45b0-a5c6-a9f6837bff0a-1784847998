@@ -65,11 +65,18 @@ export default function Settings() {
   const [editingSystemUser, setEditingSystemUser] = useState<SystemUser | null>(null);
   const [systemUserForm, setSystemUserForm] = useState({
     name: "",
+    username: "",
     email: "",
+    phone: "",
     password: "",
-    role: "user",
+    role: "corretor",
     active: true
   });
+
+  // System User Password Reset State
+  const [isResetSystemPasswordOpen, setIsResetSystemPasswordOpen] = useState(false);
+  const [resetSystemPasswordValue, setResetSystemPasswordValue] = useState("");
+  const [systemUserToReset, setSystemUserToReset] = useState<SystemUser | null>(null);
 
   const sortedLocations = [...locations].sort((a, b) => a.name.localeCompare(b.name));
 
@@ -287,7 +294,9 @@ export default function Settings() {
       if (editingSystemUser) {
         const updates: any = {
           name: systemUserForm.name,
+          username: systemUserForm.username,
           email: systemUserForm.email,
+          phone: systemUserForm.phone,
           role: systemUserForm.role,
           active: systemUserForm.active
         };
@@ -301,7 +310,9 @@ export default function Settings() {
       } else {
         await systemUserService.create({
           name: systemUserForm.name,
+          username: systemUserForm.username,
           email: systemUserForm.email,
+          phone: systemUserForm.phone,
           password: systemUserForm.password,
           role: systemUserForm.role,
           active: systemUserForm.active
@@ -311,7 +322,7 @@ export default function Settings() {
 
       setIsSystemUserModalOpen(false);
       setEditingSystemUser(null);
-      setSystemUserForm({ name: "", email: "", password: "", role: "user", active: true });
+      setSystemUserForm({ name: "", username: "", email: "", phone: "", password: "", role: "corretor", active: true });
       loadSettings();
     } catch (error) {
       console.error("Error saving system user:", error);
@@ -327,7 +338,9 @@ export default function Settings() {
     setEditingSystemUser(user);
     setSystemUserForm({
       name: user.name,
+      username: user.username || "",
       email: user.email,
+      phone: user.phone || "",
       password: "",
       role: user.role,
       active: user.active
@@ -345,6 +358,24 @@ export default function Settings() {
         toast({
           title: "Erro",
           description: "Erro ao excluir usuário",
+          variant: "destructive"
+        });
+      }
+    }
+  };
+
+  const handleResetSystemPassword = async () => {
+    if (systemUserToReset && resetSystemPasswordValue) {
+      const success = await systemUserService.resetPassword(systemUserToReset.id, resetSystemPasswordValue);
+      if (success) {
+        setIsResetSystemPasswordOpen(false);
+        setResetSystemPasswordValue("");
+        setSystemUserToReset(null);
+        toast({ title: "Senha alterada com sucesso" });
+      } else {
+        toast({
+          title: "Erro",
+          description: "Erro ao alterar senha",
           variant: "destructive"
         });
       }
@@ -525,7 +556,7 @@ export default function Settings() {
                   </div>
                   <Button onClick={() => {
                     setEditingSystemUser(null);
-                    setSystemUserForm({ name: "", email: "", password: "", role: "user", active: true });
+                    setSystemUserForm({ name: "", username: "", email: "", phone: "", password: "", role: "corretor", active: true });
                     setIsSystemUserModalOpen(true);
                   }} className="bg-emerald-600 hover:bg-emerald-700">
                     <UserPlus className="mr-2 h-4 w-4" /> Novo Usuário
@@ -563,6 +594,12 @@ export default function Settings() {
                               </span>
                             </TableCell>
                             <TableCell className="text-right space-x-1">
+                              <Button variant="ghost" size="sm" onClick={() => {
+                                setSystemUserToReset(user);
+                                setIsResetSystemPasswordOpen(true);
+                              }} title="Redefinir Senha">
+                                <Key className="h-4 w-4 text-slate-500" />
+                              </Button>
                               <Button variant="ghost" size="sm" onClick={() => handleEditSystemUser(user)} title="Editar">
                                 <Edit className="h-4 w-4 text-blue-600" />
                               </Button>
@@ -722,12 +759,30 @@ export default function Settings() {
               </div>
 
               <div className="space-y-2">
+                <Label>Usuário</Label>
+                <Input 
+                  value={systemUserForm.username} 
+                  onChange={(e) => setSystemUserForm({...systemUserForm, username: e.target.value})}
+                  placeholder="Ex: cadu.pires"
+                />
+              </div>
+
+              <div className="space-y-2">
                 <Label>Email</Label>
                 <Input 
                   type="email"
                   value={systemUserForm.email} 
                   onChange={(e) => setSystemUserForm({...systemUserForm, email: e.target.value})}
                   placeholder="usuario@exemplo.com"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Celular</Label>
+                <Input 
+                  value={systemUserForm.phone} 
+                  onChange={(e) => setSystemUserForm({...systemUserForm, phone: e.target.value})}
+                  placeholder="(00) 00000-0000"
                 />
               </div>
               
@@ -750,7 +805,7 @@ export default function Settings() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="admin">Administrador</SelectItem>
-                      <SelectItem value="user">Usuário</SelectItem>
+                      <SelectItem value="corretor">Corretor</SelectItem>
                       <SelectItem value="financeiro">Financeiro</SelectItem>
                     </SelectContent>
                   </Select>
@@ -919,6 +974,23 @@ export default function Settings() {
             </div>
             <DialogFooter>
               <Button onClick={handleResetPassword}>Salvar Nova Senha</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Reset System User Password Dialog */}
+        <Dialog open={isResetSystemPasswordOpen} onOpenChange={setIsResetSystemPasswordOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Redefinir Senha - {systemUserToReset?.name}</DialogTitle>
+            </DialogHeader>
+            <div className="py-4">
+              <Label>Nova Senha</Label>
+              <Input type="password" value={resetSystemPasswordValue} onChange={(e) => setResetSystemPasswordValue(e.target.value)} />
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsResetSystemPasswordOpen(false)}>Cancelar</Button>
+              <Button onClick={handleResetSystemPassword}>Salvar Nova Senha</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

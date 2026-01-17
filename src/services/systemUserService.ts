@@ -3,9 +3,11 @@ import { supabase } from "@/integrations/supabase/client";
 export interface SystemUser {
   id: string;
   name: string;
+  username?: string;
   email: string;
+  phone?: string;
   password: string;
-  role: string; // "admin" | "user" | "corretor" | "financeiro"
+  role: string; // "admin" | "corretor" | "financeiro"
   active: boolean;
   created_at: string;
   updated_at: string;
@@ -69,7 +71,9 @@ export const systemUserService = {
         .from("system_users")
         .insert({
           name: user.name,
+          username: user.username,
           email: user.email,
+          phone: user.phone,
           password: user.password,
           role: user.role,
           active: user.active
@@ -118,6 +122,25 @@ export const systemUserService = {
       return true;
     } catch (error) {
       console.error("Error deleting system user:", error);
+      return false;
+    }
+  },
+
+  // Redefinir senha do usuário
+  async resetPassword(id: string, newPassword: string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from("system_users")
+        .update({
+          password: newPassword,
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", id);
+
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.error("Error resetting password:", error);
       return false;
     }
   },

@@ -262,8 +262,10 @@ export type Database = {
           id: string
           name: string
           password: string
+          phone: string | null
           role: string
           updated_at: string | null
+          usuario: string | null
         }
         Insert: {
           active?: boolean
@@ -272,8 +274,10 @@ export type Database = {
           id?: string
           name: string
           password: string
+          phone?: string | null
           role?: string
           updated_at?: string | null
+          usuario?: string | null
         }
         Update: {
           active?: boolean
@@ -282,8 +286,10 @@ export type Database = {
           id?: string
           name?: string
           password?: string
+          phone?: string | null
           role?: string
           updated_at?: string | null
+          usuario?: string | null
         }
         Relationships: []
       }
