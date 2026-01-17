@@ -399,7 +399,6 @@ export function Layout({ children }: LayoutProps) {
 
       {/* Edit Profile Dialog */}
       <EditProfileDialog
-        user={user}
         open={showProfileDialog}
         onOpenChange={setShowProfileDialog}
         onSuccess={() => {
