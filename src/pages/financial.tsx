@@ -1,12 +1,24 @@
 import { useState, useEffect } from "react";
 import { Layout } from "@/components/Layout";
-import { SEO } from "@/components/SEO";
 import { Card } from "@/components/ui/card";
-import { DollarSign, TrendingUp, TrendingDown, Clock } from "lucide-react";
-import { paymentService, propertyService, rentalService, tenantService } from "@/services";
-import type { Payment, Property, Rental, Tenant } from "@/types";
-import { applyRealMask } from "@/lib/masks";
-import { ScrollReveal } from "@/components/animations/ScrollReveal";
+import { Badge } from "@/components/ui/badge";
+import { 
+  DollarSign, 
+  TrendingUp, 
+  Clock, 
+  AlertTriangle,
+  Calendar,
+  Building2,
+  User
+} from "lucide-react";
+import { paymentService } from "@/services/paymentService";
+import { propertyService } from "@/services/propertyService";
+import { rentalService } from "@/services/rentalService";
+import { tenantService } from "@/services/tenantService";
+import { Payment, Property, Rental, Tenant } from "@/types";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import ScrollReveal from "@/components/animations/ScrollReveal";
 
 export default function Financial() {
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -21,14 +33,12 @@ export default function Financial() {
 
   const loadData = async () => {
     try {
-      setLoading(true);
       const [paymentsData, propertiesData, rentalsData, tenantsData] = await Promise.all([
         paymentService.getAll(),
         propertyService.getAll(),
         rentalService.getAll(),
         tenantService.getAll(),
       ]);
-      
       setPayments(paymentsData);
       setProperties(propertiesData);
       setRentals(rentalsData);
@@ -40,207 +50,211 @@ export default function Financial() {
     }
   };
 
-  // Helper function to get payment details
+  // Filter payments for current month
+  const currentMonth = new Date().getMonth();
+  const currentYear = new Date().getFullYear();
+  const currentMonthPayments = payments.filter(payment => {
+    const dueDate = new Date(payment.dueDate);
+    return dueDate.getMonth() === currentMonth && dueDate.getFullYear() === currentYear;
+  });
+
+  // Calculate financial metrics
+  const totalExpected = currentMonthPayments.reduce((sum, p) => sum + p.expectedAmount, 0);
+  const totalReceived = currentMonthPayments
+    .filter(p => p.status === "paid" || p.status === "partial")
+    .reduce((sum, p) => sum + (p.paidAmount || 0), 0);
+  const totalPending = currentMonthPayments
+    .filter(p => p.status === "pending")
+    .reduce((sum, p) => sum + p.expectedAmount, 0);
+  const totalOverdue = currentMonthPayments
+    .filter(p => p.status === "overdue")
+    .reduce((sum, p) => sum + p.expectedAmount, 0);
+
+  const getStatusBadge = (status: Payment["status"]) => {
+    const variants = {
+      paid: { label: "Pago", className: "bg-green-100 text-green-800" },
+      pending: { label: "Pendente", className: "bg-yellow-100 text-yellow-800" },
+      overdue: { label: "Atrasado", className: "bg-red-100 text-red-800" },
+      partial: { label: "Parcial", className: "bg-blue-100 text-blue-800" },
+    };
+    const variant = variants[status];
+    return <Badge className={variant.className}>{variant.label}</Badge>;
+  };
+
   const getPaymentDetails = (payment: Payment) => {
     const rental = rentals.find(r => r.id === payment.rentalId);
     const property = properties.find(p => p.id === rental?.propertyId);
     const tenant = tenants.find(t => t.id === rental?.tenantId);
 
     return {
-      rental,
-      propertyAddress: property ? `${property.address}, ${property.number}` : "Imóvel não encontrado",
-      tenantName: tenant?.name || "Inquilino não encontrado",
-      amount: payment.status === 'paid' ? (payment.paidAmount || 0) : payment.expectedAmount
+      propertyAddress: property ? `${property.address}, ${property.number}` : "N/A",
+      tenantName: tenant?.name || "N/A",
+      amount: payment.status === "paid" ? (payment.paidAmount || 0) : payment.expectedAmount,
     };
   };
 
-  // Calculate financial metrics
-  const currentMonth = new Date().getMonth();
-  const currentYear = new Date().getFullYear();
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(value);
+  };
 
-  const monthlyPayments = payments.filter((payment) => {
-    const paymentDate = new Date(payment.dueDate);
+  if (loading) {
     return (
-      paymentDate.getMonth() === currentMonth &&
-      paymentDate.getFullYear() === currentYear
+      <Layout>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
+        </div>
+      </Layout>
     );
-  });
-
-  const totalExpected = monthlyPayments.reduce(
-    (sum, payment) => sum + payment.expectedAmount,
-    0
-  );
-
-  const totalReceived = monthlyPayments
-    .filter((payment) => payment.status === "paid" || payment.status === "partial")
-    .reduce((sum, payment) => sum + (payment.paidAmount || 0), 0);
-
-  const totalPending = monthlyPayments
-    .filter((payment) => payment.status === "pending")
-    .reduce((sum, payment) => sum + payment.expectedAmount, 0);
-
-  const totalOverdue = monthlyPayments
-    .filter((payment) => payment.status === "overdue")
-    .reduce((sum, payment) => sum + payment.expectedAmount, 0);
-
-  const stats = [
-    {
-      title: "Valor Esperado",
-      value: applyRealMask(totalExpected.toString()),
-      icon: DollarSign,
-      color: "from-blue-500 to-blue-600",
-    },
-    {
-      title: "Valor Recebido",
-      value: applyRealMask(totalReceived.toString()),
-      icon: TrendingUp,
-      color: "from-green-500 to-green-600",
-    },
-    {
-      title: "Valor Pendente",
-      value: applyRealMask(totalPending.toString()),
-      icon: Clock,
-      color: "from-yellow-500 to-yellow-600",
-    },
-    {
-      title: "Valor Atrasado",
-      value: applyRealMask(totalOverdue.toString()),
-      icon: TrendingDown,
-      color: "from-red-500 to-red-600",
-    },
-  ];
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("pt-BR");
-  };
-
-  const getStatusBadge = (status: string) => {
-    const statusMap = {
-      paid: { label: "Pago", color: "bg-green-100 text-green-800" },
-      pending: { label: "Pendente", color: "bg-yellow-100 text-yellow-800" },
-      overdue: { label: "Atrasado", color: "bg-red-100 text-red-800" },
-      partial: { label: "Parcial", color: "bg-orange-100 text-orange-800" },
-    };
-    const statusInfo = statusMap[status as keyof typeof statusMap] || {
-      label: status,
-      color: "bg-gray-100 text-gray-800",
-    };
-    return (
-      <span
-        className={`px-2 py-1 rounded-full text-xs font-medium ${statusInfo.color}`}
-      >
-        {statusInfo.label}
-      </span>
-    );
-  };
+  }
 
   return (
     <Layout>
-      <SEO
-        title="Financeiro - Gerenciador de Locações"
-        description="Gestão financeira completa de recebimentos e pagamentos"
-      />
-
       <div className="space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Financeiro
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">
-            Gestão completa de recebimentos e fluxo de caixa
-          </p>
-        </div>
+        {/* Header */}
+        <ScrollReveal>
+          <div>
+            <h1 className="text-3xl font-bold text-slate-900">Financeiro</h1>
+            <p className="text-slate-600 mt-2">
+              Gestão completa de recebimentos e fluxo de caixa
+            </p>
+          </div>
+        </ScrollReveal>
 
-        {/* Stats Cards */}
+        {/* Financial Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {stats.map((stat, index) => (
-            <ScrollReveal key={stat.title} delay={index * 0.1}>
-              <Card className="p-6 hover:shadow-lg transition-shadow">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                      {stat.title}
-                    </p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white mt-2">
-                      {stat.value}
-                    </p>
-                  </div>
-                  <div
-                    className={`p-3 rounded-lg bg-gradient-to-br ${stat.color}`}
-                  >
-                    <stat.icon className="w-6 h-6 text-white" />
-                  </div>
+          <ScrollReveal delay={0.1}>
+            <Card className="p-6 border-l-4 border-l-blue-500">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-600">Valor Esperado</p>
+                  <p className="text-2xl font-bold text-slate-900 mt-1">
+                    {formatCurrency(totalExpected)}
+                  </p>
                 </div>
-              </Card>
-            </ScrollReveal>
-          ))}
+                <div className="p-3 bg-blue-100 rounded-lg">
+                  <DollarSign className="h-6 w-6 text-blue-600" />
+                </div>
+              </div>
+            </Card>
+          </ScrollReveal>
+
+          <ScrollReveal delay={0.2}>
+            <Card className="p-6 border-l-4 border-l-green-500">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-600">Valor Recebido</p>
+                  <p className="text-2xl font-bold text-slate-900 mt-1">
+                    {formatCurrency(totalReceived)}
+                  </p>
+                </div>
+                <div className="p-3 bg-green-100 rounded-lg">
+                  <TrendingUp className="h-6 w-6 text-green-600" />
+                </div>
+              </div>
+            </Card>
+          </ScrollReveal>
+
+          <ScrollReveal delay={0.3}>
+            <Card className="p-6 border-l-4 border-l-yellow-500">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-600">Valor Pendente</p>
+                  <p className="text-2xl font-bold text-slate-900 mt-1">
+                    {formatCurrency(totalPending)}
+                  </p>
+                </div>
+                <div className="p-3 bg-yellow-100 rounded-lg">
+                  <Clock className="h-6 w-6 text-yellow-600" />
+                </div>
+              </div>
+            </Card>
+          </ScrollReveal>
+
+          <ScrollReveal delay={0.4}>
+            <Card className="p-6 border-l-4 border-l-red-500">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-600">Valor Atrasado</p>
+                  <p className="text-2xl font-bold text-slate-900 mt-1">
+                    {formatCurrency(totalOverdue)}
+                  </p>
+                </div>
+                <div className="p-3 bg-red-100 rounded-lg">
+                  <AlertTriangle className="h-6 w-6 text-red-600" />
+                </div>
+              </div>
+            </Card>
+          </ScrollReveal>
         </div>
 
         {/* Payments Table */}
-        <ScrollReveal>
-          <Card className="p-6">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
-              Recebimentos do Mês
-            </h2>
-
-            {loading ? (
-              <div className="text-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-                <p className="text-gray-600 dark:text-gray-400 mt-4">
-                  Carregando pagamentos...
-                </p>
-              </div>
-            ) : monthlyPayments.length === 0 ? (
-              <div className="text-center py-12">
-                <DollarSign className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600 dark:text-gray-400">
+        <ScrollReveal delay={0.5}>
+          <Card className="overflow-hidden">
+            <div className="p-6 border-b border-slate-200">
+              <h2 className="text-xl font-semibold text-slate-900">
+                Recebimentos do Mês
+              </h2>
+            </div>
+            {currentMonthPayments.length === 0 ? (
+              <div className="p-12 text-center">
+                <Calendar className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+                <p className="text-slate-600">
                   Nenhum pagamento registrado neste mês
                 </p>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-gray-200 dark:border-gray-700">
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                  <thead className="bg-slate-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                         Inquilino
                       </th>
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                         Imóvel
                       </th>
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                         Vencimento
                       </th>
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                         Valor
                       </th>
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                         Status
                       </th>
                     </tr>
                   </thead>
-                  <tbody>
-                    {monthlyPayments.map((payment) => {
+                  <tbody className="bg-white divide-y divide-slate-200">
+                    {currentMonthPayments.map((payment) => {
                       const details = getPaymentDetails(payment);
                       return (
-                        <tr
-                          key={payment.id}
-                          className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
-                        >
-                          <td className="py-4 px-4 text-sm text-gray-900 dark:text-white">
-                            {details.tenantName}
+                        <tr key={payment.id} className="hover:bg-slate-50 transition-colors">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <User className="h-4 w-4 text-slate-400 mr-2" />
+                              <span className="text-sm font-medium text-slate-900">
+                                {details.tenantName}
+                              </span>
+                            </div>
                           </td>
-                          <td className="py-4 px-4 text-sm text-gray-600 dark:text-gray-400">
-                            {details.propertyAddress}
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <Building2 className="h-4 w-4 text-slate-400 mr-2" />
+                              <span className="text-sm text-slate-600">
+                                {details.propertyAddress}
+                              </span>
+                            </div>
                           </td>
-                          <td className="py-4 px-4 text-sm text-gray-600 dark:text-gray-400">
-                            {formatDate(payment.dueDate)}
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
+                            {format(new Date(payment.dueDate), "dd/MM/yyyy", { locale: ptBR })}
                           </td>
-                          <td className="py-4 px-4 text-sm font-semibold text-gray-900 dark:text-white">
-                            {applyRealMask(details.amount.toString())}
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
+                            {formatCurrency(details.amount)}
                           </td>
-                          <td className="py-4 px-4 text-sm">
+                          <td className="px-6 py-4 whitespace-nowrap">
                             {getStatusBadge(payment.status)}
                           </td>
                         </tr>
