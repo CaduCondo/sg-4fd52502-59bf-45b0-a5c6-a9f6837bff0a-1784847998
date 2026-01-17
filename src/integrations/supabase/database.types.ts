@@ -254,6 +254,39 @@ export type Database = {
           },
         ]
       }
+      system_users: {
+        Row: {
+          active: boolean
+          created_at: string | null
+          email: string
+          id: string
+          name: string
+          password: string
+          role: string
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string | null
+          email: string
+          id?: string
+          name: string
+          password: string
+          role?: string
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean
+          created_at?: string | null
+          email?: string
+          id?: string
+          name?: string
+          password?: string
+          role?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       tenants: {
         Row: {
           cpf: string | null

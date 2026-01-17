@@ -11,6 +11,7 @@ import { tenantService } from "@/services/tenantService";
 import { rentalService } from "@/services/rentalService";
 import { paymentService } from "@/services/paymentService";
 import { configService } from "@/services/configService";
+import { systemUserService } from "@/services/systemUserService";
 import { formatCurrency } from "@/lib/masks";
 import type { Property, Tenant, Rental, Payment } from "@/types";
 import { FloatingCard } from "@/components/animations/FloatingCard";
@@ -191,31 +192,13 @@ export default function DashboardPage() {
 
   const loadUserName = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setUserName("Administrador");
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from("user_profiles")
-        .select("name")
-        .eq("id", user.id)
-        .single();
-
-      if (error) {
-        console.error("Error loading user profile:", error);
-        const emailName = user.email?.split("@")[0] || "Administrador";
-        setUserName(emailName.charAt(0).toUpperCase() + emailName.slice(1));
-        return;
-      }
-
-      if (data?.name) {
-        const firstName = data.name.split(" ")[0];
+      const name = await systemUserService.getCurrentUserName();
+      
+      if (name && name !== "Administrador") {
+        const firstName = name.split(" ")[0];
         setUserName(firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase());
       } else {
-        const emailName = user.email?.split("@")[0] || "Administrador";
-        setUserName(emailName.charAt(0).toUpperCase() + emailName.slice(1));
+        setUserName("Administrador");
       }
     } catch (error) {
       console.error("Error loading user name:", error);
