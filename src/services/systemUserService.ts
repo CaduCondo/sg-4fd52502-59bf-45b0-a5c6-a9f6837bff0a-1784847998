@@ -98,10 +98,9 @@ export const systemUserService = {
         active: user.active
       };
 
-      // Cast to any to avoid TS2589 excessive depth error
-      const { data, error } = await (supabase
-        .from("system_users")
-        .insert(payload) as any)
+      // Cast the table ref to any to bypass strict type checking for insert
+      const { data, error } = await (supabase.from("system_users") as any)
+        .insert(payload)
         .select("*")
         .single();
 
@@ -127,10 +126,10 @@ export const systemUserService = {
       if (updates.rg === "") payload.rg = null;
       if (updates.cpf === "") payload.cpf = null;
 
-      const { data, error } = await (supabase
-        .from("system_users")
+      // Cast the table ref to any to bypass strict type checking for update
+      const { data, error } = await (supabase.from("system_users") as any)
         .update(payload)
-        .eq("id", id) as any)
+        .eq("id", id)
         .select("*")
         .single();
 
