@@ -245,8 +245,8 @@ export function Layout({ children }: LayoutProps) {
               </Link>
             </div>
 
-            {/* Center: Desktop Menu */}
-            <div className="hidden lg:flex items-center space-x-1 flex-1 justify-center">
+            {/* Center: Desktop Menu - THIS MUST BE VISIBLE */}
+            <div className="hidden lg:flex items-center space-x-2 flex-1 justify-center max-w-3xl">
               {menuItems.map((item, index) => (
                 <motion.div
                   key={item.path}
@@ -266,7 +266,7 @@ export function Layout({ children }: LayoutProps) {
                       >
                         <item.icon size={16} />
                       </motion.div>
-                      <span>{item.label}</span>
+                      <span className="text-xs">{item.label}</span>
                     </Button>
                   </Link>
                 </motion.div>
