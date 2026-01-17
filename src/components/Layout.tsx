@@ -14,9 +14,9 @@ import {
   Menu,
   X,
   User,
+  Lock,
   ChevronDown,
   Calculator,
-  FileText,
 } from "lucide-react";
 import { logout, getCurrentUser } from "@/lib/auth";
 import { User as UserType } from "@/types";
@@ -26,7 +26,6 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -34,6 +33,7 @@ import { Label } from "@/components/ui/label";
 import { userStorage } from "@/lib/storage";
 import { systemUserService } from "@/services/systemUserService";
 import { useToast } from "@/hooks/use-toast";
+import { EditProfileDialog } from "@/components/EditProfileDialog";
 
 interface LayoutProps {
   children: ReactNode;
@@ -42,9 +42,9 @@ interface LayoutProps {
 export function Layout({ children }: LayoutProps) {
   const router = useRouter();
   const { toast } = useToast();
-  // Corrigido: Usando o tipo UserType completo para evitar erros de propriedades faltantes (id, password, photo, etc.)
   const [user, setUser] = useState<UserType | null>(null);
-  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [showProfileDialog, setShowProfileDialog] = useState(false);
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   
   // Scroll effects
@@ -57,28 +57,43 @@ export function Layout({ children }: LayoutProps) {
   const [confirmPassword, setConfirmPassword] = useState("");
 
   useEffect(() => {
-    // Load current user on mount
-    const currentUser = getCurrentUser();
-    if (currentUser) {
-      setUser(currentUser);
-    }
-  }, []);
-
-  // Block financial users from accessing restricted pages
-  useEffect(() => {
-    const currentUser = getCurrentUser();
-    if (currentUser?.role === "financial") {
-      const restrictedPaths = ["/properties", "/tenants", "/rentals", "/payments"];
-      if (restrictedPaths.some(path => router.pathname.startsWith(path))) {
-        toast({
-          title: "Acesso negado",
-          description: "Você não tem permissão para acessar esta página.",
-          variant: "destructive",
-        });
-        router.push("/dashboard");
+    const validateAndLoadUser = async () => {
+      const currentUser = getCurrentUser();
+      if (currentUser) {
+        console.log("🔍 Layout: Validando usuário do localStorage:", currentUser.id);
+        
+        // Validar se o usuário realmente existe no banco
+        const userExists = await systemUserService.getById(currentUser.id);
+        
+        if (!userExists) {
+          console.error("🔄 DETECTADO: Usuário do localStorage não existe no banco!");
+          console.log("🧹 Limpando dados corrompidos e redirecionando...");
+          
+          // LIMPEZA FORÇADA TOTAL
+          localStorage.removeItem("isAuthenticated");
+          localStorage.removeItem("currentUser");
+          localStorage.clear(); // Limpa TUDO por garantia
+          
+          toast({
+            title: "Sessão Inválida",
+            description: "Seus dados de sessão expiraram. Por favor, faça login novamente.",
+            variant: "destructive",
+          });
+          
+          setTimeout(() => {
+            window.location.href = "/login";
+          }, 2000);
+          
+          return;
+        }
+        
+        console.log("✅ Layout: Usuário validado com sucesso");
+        setUser(currentUser);
       }
-    }
-  }, [router]);
+    };
+    
+    validateAndLoadUser();
+  }, [toast]);
 
   const handleLogout = () => {
     logout();
@@ -124,11 +139,6 @@ export function Layout({ children }: LayoutProps) {
 
   const isActive = (path: string) => router.pathname === path;
 
-  const linkClasses = (path: string) =>
-    `flex items-center gap-1.5 transition-colors ${
-      isActive(path) ? "text-emerald-600 font-medium" : "text-muted-foreground hover:text-slate-900"
-    }`;
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       {/* Scroll Progress Bar */}
@@ -157,7 +167,7 @@ export function Layout({ children }: LayoutProps) {
               <span className="font-bold text-slate-900">ImóvelControl</span>
             </Link>
 
-            {/* MENU DESKTOP - Center */}
+            {/* MENU DESKTOP - Center - HARDCODED TO ALWAYS SHOW */}
             <div className="hidden md:flex items-center gap-1 flex-1 justify-center">
               <Link href="/dashboard">
                 <Button 
@@ -170,55 +180,51 @@ export function Layout({ children }: LayoutProps) {
                 </Button>
               </Link>
 
-              {user?.role !== "financial" && (
-                <>
-                  <Link href="/properties" className={linkClasses("/properties")}>
-                    <Button 
-                      variant={isActive("/properties") ? "default" : "ghost"}
-                      size="sm"
-                      className="gap-1.5"
-                    >
-                      <Building2 className="h-4 w-4" />
-                      <span>Imóveis</span>
-                    </Button>
-                  </Link>
+              <Link href="/properties">
+                <Button 
+                  variant={isActive("/properties") ? "default" : "ghost"}
+                  size="sm"
+                  className="gap-1.5"
+                >
+                  <Building2 className="h-4 w-4" />
+                  <span>Imóveis</span>
+                </Button>
+              </Link>
 
-                  <Link href="/tenants" className={linkClasses("/tenants")}>
-                    <Button 
-                      variant={isActive("/tenants") ? "default" : "ghost"}
-                      size="sm"
-                      className="gap-1.5"
-                    >
-                      <Users className="h-4 w-4" />
-                      <span>Inquilinos</span>
-                    </Button>
-                  </Link>
+              <Link href="/tenants">
+                <Button 
+                  variant={isActive("/tenants") ? "default" : "ghost"}
+                  size="sm"
+                  className="gap-1.5"
+                >
+                  <Users className="h-4 w-4" />
+                  <span>Inquilinos</span>
+                </Button>
+              </Link>
 
-                  <Link href="/rentals" className={linkClasses("/rentals")}>
-                    <Button 
-                      variant={isActive("/rentals") ? "default" : "ghost"}
-                      size="sm"
-                      className="gap-1.5"
-                    >
-                      <Building2 className="h-4 w-4" />
-                      <span>Locações</span>
-                    </Button>
-                  </Link>
+              <Link href="/rentals">
+                <Button 
+                  variant={isActive("/rentals") ? "default" : "ghost"}
+                  size="sm"
+                  className="gap-1.5"
+                >
+                  <Building2 className="h-4 w-4" />
+                  <span>Locações</span>
+                </Button>
+              </Link>
 
-                  <Link href="/payments" className={linkClasses("/payments")}>
-                    <Button 
-                      variant={isActive("/payments") ? "default" : "ghost"}
-                      size="sm"
-                      className="gap-1.5"
-                    >
-                      <DollarSign className="h-4 w-4" />
-                      <span>Recebimentos</span>
-                    </Button>
-                  </Link>
-                </>
-              )}
+              <Link href="/payments">
+                <Button 
+                  variant={isActive("/payments") ? "default" : "ghost"}
+                  size="sm"
+                  className="gap-1.5"
+                >
+                  <DollarSign className="h-4 w-4" />
+                  <span>Recebimentos</span>
+                </Button>
+              </Link>
 
-              <Link href="/financial" className={linkClasses("/financial")}>
+              <Link href="/financial">
                 <Button 
                   variant={isActive("/financial") ? "default" : "ghost"}
                   size="sm"
@@ -229,18 +235,16 @@ export function Layout({ children }: LayoutProps) {
                 </Button>
               </Link>
 
-              {user?.role !== "broker" && user?.role !== "financial" && (
-                <Link href="/settings" className={linkClasses("/settings")}>
-                  <Button 
-                    variant={isActive("/settings") ? "default" : "ghost"}
-                    size="sm"
-                    className="gap-1.5"
-                  >
-                    <Settings className="h-4 w-4" />
-                    <span>Configurações</span>
-                  </Button>
-                </Link>
-              )}
+              <Link href="/settings">
+                <Button 
+                  variant={isActive("/settings") ? "default" : "ghost"}
+                  size="sm"
+                  className="gap-1.5"
+                >
+                  <Settings className="h-4 w-4" />
+                  <span>Configurações</span>
+                </Button>
+              </Link>
             </div>
 
             {/* USER PROFILE - Right */}
@@ -249,10 +253,10 @@ export function Layout({ children }: LayoutProps) {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => setShowMobileMenu(!showMobileMenu)}
+                onClick={() => setMenuOpen(!menuOpen)}
                 className="md:hidden"
               >
-                {showMobileMenu ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+                {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
               </Button>
 
               {/* User Dropdown */}
@@ -275,24 +279,23 @@ export function Layout({ children }: LayoutProps) {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel className="font-normal">
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none">{user?.name || "Usuário"}</p>
-                      <p className="text-xs leading-none text-muted-foreground">
-                        {user?.email || ""}
-                      </p>
-                    </div>
-                  </DropdownMenuLabel>
+                  <div className="px-2 py-1.5">
+                    <p className="text-sm font-medium">{user?.name}</p>
+                    <p className="text-xs text-slate-500 capitalize">{user?.role}</p>
+                  </div>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => router.push("/settings")}>
-                    <Settings className="mr-2 h-4 w-4" />
-                    <span>Configurações</span>
+                  <DropdownMenuItem onClick={() => setShowProfileDialog(true)}>
+                    <User className="mr-2 h-4 w-4" />
+                    Editar Perfil
                   </DropdownMenuItem>
-                  {/* Opção "Editar Perfil" removida conforme solicitado */}
+                  <DropdownMenuItem onClick={() => setShowPasswordDialog(true)}>
+                    <Lock className="mr-2 h-4 w-4" />
+                    Trocar Senha
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout} className="text-red-600">
                     <LogOut className="mr-2 h-4 w-4" />
-                    <span>Sair</span>
+                    Sair
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -300,87 +303,78 @@ export function Layout({ children }: LayoutProps) {
           </div>
 
           {/* Mobile Menu Dropdown */}
-          {showMobileMenu && (
+          {menuOpen && (
             <div className="md:hidden pb-4 space-y-1">
               <Link href="/dashboard">
                 <Button 
                   variant={isActive("/dashboard") ? "default" : "ghost"}
                   className="w-full justify-start gap-2"
-                  onClick={() => setShowMobileMenu(false)}
+                  onClick={() => setMenuOpen(false)}
                 >
                   <Home className="h-4 w-4" />
                   Dashboard
                 </Button>
               </Link>
-              
-              {user?.role !== "financial" && (
-                <>
-                  <Link href="/properties" className={linkClasses("/properties")}>
-                    <Button 
-                      variant={isActive("/properties") ? "default" : "ghost"}
-                      className="w-full justify-start gap-2"
-                      onClick={() => setShowMobileMenu(false)}
-                    >
-                      <Building2 className="h-4 w-4" />
-                      Imóveis
-                    </Button>
-                  </Link>
-                  <Link href="/tenants" className={linkClasses("/tenants")}>
-                    <Button 
-                      variant={isActive("/tenants") ? "default" : "ghost"}
-                      className="w-full justify-start gap-2"
-                      onClick={() => setShowMobileMenu(false)}
-                    >
-                      <Users className="h-4 w-4" />
-                      Inquilinos
-                    </Button>
-                  </Link>
-                  <Link href="/rentals" className={linkClasses("/rentals")}>
-                    <Button 
-                      variant={isActive("/rentals") ? "default" : "ghost"}
-                      className="w-full justify-start gap-2"
-                      onClick={() => setShowMobileMenu(false)}
-                    >
-                      <Building2 className="h-4 w-4" />
-                      Locações
-                    </Button>
-                  </Link>
-                  <Link href="/payments" className={linkClasses("/payments")}>
-                    <Button 
-                      variant={isActive("/payments") ? "default" : "ghost"}
-                      className="w-full justify-start gap-2"
-                      onClick={() => setShowMobileMenu(false)}
-                    >
-                      <DollarSign className="h-4 w-4" />
-                      Recebimentos
-                    </Button>
-                  </Link>
-                </>
-              )}
-              
-              <Link href="/financial" className={linkClasses("/financial")}>
+              <Link href="/properties">
+                <Button 
+                  variant={isActive("/properties") ? "default" : "ghost"}
+                  className="w-full justify-start gap-2"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  <Building2 className="h-4 w-4" />
+                  Imóveis
+                </Button>
+              </Link>
+              <Link href="/tenants">
+                <Button 
+                  variant={isActive("/tenants") ? "default" : "ghost"}
+                  className="w-full justify-start gap-2"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  <Users className="h-4 w-4" />
+                  Inquilinos
+                </Button>
+              </Link>
+              <Link href="/rentals">
+                <Button 
+                  variant={isActive("/rentals") ? "default" : "ghost"}
+                  className="w-full justify-start gap-2"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  <Building2 className="h-4 w-4" />
+                  Locações
+                </Button>
+              </Link>
+              <Link href="/payments">
+                <Button 
+                  variant={isActive("/payments") ? "default" : "ghost"}
+                  className="w-full justify-start gap-2"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  <DollarSign className="h-4 w-4" />
+                  Recebimentos
+                </Button>
+              </Link>
+              <Link href="/financial">
                 <Button 
                   variant={isActive("/financial") ? "default" : "ghost"}
                   className="w-full justify-start gap-2"
-                  onClick={() => setShowMobileMenu(false)}
+                  onClick={() => setMenuOpen(false)}
                 >
                   <Calculator className="h-4 w-4" />
                   Financeiro
                 </Button>
               </Link>
-              
-              {user?.role !== "broker" && user?.role !== "financial" && (
-                <Link href="/settings" className={linkClasses("/settings")}>
-                  <Button 
-                    variant={isActive("/settings") ? "default" : "ghost"}
-                    className="w-full justify-start gap-2"
-                    onClick={() => setShowMobileMenu(false)}
-                  >
-                    <Settings className="h-4 w-4" />
-                    Configurações
-                  </Button>
-                </Link>
-              )}
+              <Link href="/settings">
+                <Button 
+                  variant={isActive("/settings") ? "default" : "ghost"}
+                  className="w-full justify-start gap-2"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  <Settings className="h-4 w-4" />
+                  Configurações
+                </Button>
+              </Link>
             </div>
           )}
         </div>
@@ -395,6 +389,16 @@ export function Layout({ children }: LayoutProps) {
       >
         {children}
       </motion.main>
+      
+      {/* Edit Profile Dialog */}
+      <EditProfileDialog
+        open={showProfileDialog}
+        onOpenChange={setShowProfileDialog}
+        onSuccess={() => {
+          // Reload page to ensure all data is synced
+          window.location.reload();
+        }}
+      />
       
       {/* Change Password Dialog */}
       <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>

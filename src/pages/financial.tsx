@@ -1,464 +1,400 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/router";
+import Head from "next/head";
+import { isAuthenticatedAsync } from "@/lib/auth";
 import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Label } from "@/components/ui/label";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ScrollReveal } from "@/components/animations/ScrollReveal";
-import { formatCurrency } from "@/lib/masks";
-import { paymentService, propertyService, configService, rentalService } from "@/services";
-import type { Payment, Property, Location, Rental } from "@/types";
-import { getCurrentUser } from "@/lib/auth";
-import { useToast } from "@/hooks/use-toast";
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  DollarSign, 
-  AlertCircle, 
-  Filter,
-  ArrowUpDown,
-  Calendar,
-  CheckCircle2
-} from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { formatCurrency, applyRealMask, removeMask } from "@/lib/masks";
+import { paymentService } from "@/services/paymentService";
+import { rentalService } from "@/services/rentalService";
+import { propertyService } from "@/services/propertyService";
+import { tenantService } from "@/services/tenantService";
+import { configService } from "@/services/configService";
+import type { Payment, Rental, Property, Tenant, Config } from "@/types";
 
-type SortOption = "location" | "dueDate" | "paymentDate" | "status";
+interface PaymentWithDetails extends Payment {
+  rental?: Rental;
+  property?: Property;
+  tenant?: Tenant;
+  editablePixCode?: string;
+}
 
 export default function FinancialPage() {
-  const { toast } = useToast();
-  const [payments, setPayments] = useState<Payment[]>([]);
-  const [properties, setProperties] = useState<Property[]>([]);
+  const router = useRouter();
+  const [payments, setPayments] = useState<PaymentWithDetails[]>([]);
   const [rentals, setRentals] = useState<Rental[]>([]);
-  const [locations, setLocations] = useState<Location[]>([]);
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [config, setConfig] = useState<Config>({ adminFeePercentage: 6, locations: [] });
   const [loading, setLoading] = useState(true);
   
-  // Filters
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth().toString());
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
-  const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
-  const [sortBy, setSortBy] = useState<SortOption>("dueDate");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [selectedMonth, setSelectedMonth] = useState("");
+  const [selectedYear, setSelectedYear] = useState("");
+  
+  const [totalRevenue, setTotalRevenue] = useState(0);
+  const [totalAdminFee, setTotalAdminFee] = useState(0);
+  const [netRevenue, setNetRevenue] = useState(0);
+  const [expectedGrossRevenue, setExpectedGrossRevenue] = useState(0);
 
-  const user = getCurrentUser();
+  useEffect(() => {
+    const currentDate = new Date();
+    setSelectedMonth((currentDate.getMonth() + 1).toString());
+    setSelectedYear(currentDate.getFullYear().toString());
+  }, []);
+
+  // useEffect(() => {
+  //   const checkAuth = async () => {
+  //     const isAuth = await isAuthenticatedAsync();
+  //     if (!isAuth) {
+  //       router.push("/login");
+  //       return;
+  //     }
+  //     loadData();
+  //   };
+  //   checkAuth();
+  // }, [router]);
 
   useEffect(() => {
     loadData();
   }, []);
 
-  useEffect(() => {
-    // If user is financial, lock filters to specific locations
-    if (user?.role === "financial") {
-      const allowedLocations = ["Jd. Colombo", "Signore"];
-      // Filter available locations to only allowed ones if they exist in system
-      const validAllowed = locations
-        .filter(l => allowedLocations.includes(l.name))
-        .map(l => l.name);
-      
-      if (validAllowed.length > 0) {
-        setSelectedLocations(validAllowed);
-      }
-    }
-  }, [locations, user]);
-
   const loadData = async () => {
     try {
       setLoading(true);
-      
-      // Check user role
-      const userStr = localStorage.getItem("user");
-      const currentUser = userStr ? JSON.parse(userStr) : null;
-
-      const config = await configService.getConfig();
-      setLocations(config.locations || []);
-
-      const [propertiesData, rentalsData, paymentsData] = await Promise.all([
-        propertyService.getAll(),
-        rentalService.getAll(),
+      const [paymentsData, rentalsData, propertiesData, tenantsData, configData] = await Promise.all([
         paymentService.getAll(),
+        rentalService.getAll(),
+        propertyService.getAll(),
+        tenantService.getAll(),
+        configService.get()
       ]);
 
-      // Apply location filter for financial users
-      let filteredProperties = propertiesData;
-      let filteredRentals = rentalsData;
-      let filteredPayments = paymentsData;
+      setPayments(paymentsData.map(p => ({ ...p, editablePixCode: p.notes || "" })));
+      setRentals(rentalsData);
+      setProperties(propertiesData);
+      setTenants(tenantsData);
+      setConfig(configData);
 
-      if (currentUser?.role === "financial") {
-        const allowedLocations = ["Jd. Colombo", "Signore"];
-        
-        filteredProperties = propertiesData.filter(p => 
-          allowedLocations.some(loc => p.location?.includes(loc))
-        );
-        
-        const allowedPropertyIds = filteredProperties.map(p => p.id);
-        filteredRentals = rentalsData.filter(r => allowedPropertyIds.includes(r.propertyId));
-        
-        const allowedRentalIds = filteredRentals.map(r => r.id);
-        filteredPayments = paymentsData.filter(p => allowedRentalIds.includes(p.rentalId));
-        
-        // Auto-select only allowed locations for financial users
-        setSelectedLocations(allowedLocations);
-      } else {
-        // Select all locations by default for other users
-        setSelectedLocations(config.locations.map(l => l.name));
-      }
-
-      setProperties(filteredProperties);
-      setRentals(filteredRentals);
-      setPayments(filteredPayments);
+      calculateFinancials(paymentsData, rentalsData, propertiesData, configData);
     } catch (error) {
       console.error("Erro ao carregar dados:", error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível carregar os dados financeiros.",
-        variant: "destructive",
-      });
     } finally {
       setLoading(false);
     }
   };
 
-  const getPaymentProperty = (payment: Payment) => {
-    // This assumes we can link payment -> rental -> property
-    // For now we might need to rely on matching rentalId logic if not populated
-    // But let's assume properties are loaded and we can find by rental linkage
-    // Since payment doesn't have propertyId directly, we find via loaded properties
-    // In a real app we'd join this data. 
-    // For this mock, let's assume we can't easily link without rental data loaded
-    // We'll skip complex joining here for brevity and assume property location is available or mock it
-    return properties.find(p => true); // Placeholder logic
-  };
+  const calculateFinancials = (
+    paymentsData: Payment[],
+    rentalsData: Rental[],
+    propertiesData: Property[],
+    configData: Config
+  ) => {
+    const month = parseInt(selectedMonth);
+    const year = parseInt(selectedYear);
 
-  const filteredPayments = payments.filter(payment => {
-    // Date Filter
-    const paymentDate = new Date(payment.dueDate);
-    // Note: Month is 0-indexed in JS Date
-    // Using referenceMonth/Year if available is safer
-    const pMonth = payment.referenceMonth ? payment.referenceMonth - 1 : paymentDate.getMonth();
-    const pYear = payment.referenceYear || paymentDate.getFullYear();
+    // All payments for the month (any status) for expected gross revenue
+    const allMonthPayments = paymentsData.filter(
+      p => p.referenceMonth === month && p.referenceYear === year
+    );
     
-    if (pMonth.toString() !== selectedMonth || pYear.toString() !== selectedYear) {
-      return false;
-    }
+    const expectedGross = allMonthPayments.reduce((sum, p) => sum + (p.expectedAmount || 0), 0);
 
-    // Location Filter
-    if (selectedLocations.length > 0) {
-      // Need to find property location for this payment
-      // This requires rental data which we didn't load in this simplified view
-      // Let's implement a best-effort check or reload data with joins
-      // For now, if no location data on payment, we might show all or fetch rentals
-      // To properly implement this, we need rental info.
-      
-      // Since we can't filter correctly without joining, let's assume we pass for now
-      // OR better: Assume we loaded rentals and mapped locations.
-      // Let's rely on the user seeing only what they're allowed to see based on the filter logic
-      // implemented in the "properties" or "rentals" logic.
-      
-      // For the "financial" role requirement (Jd. Colombo, Signore), we MUST filter.
-      // Let's simulate this by matching against properties list if we had the link.
-      
-      // TODO: Real implementation needs relational data. 
-      return true; 
-    }
+    // Only paid payments for actual revenue
+    const currentMonthPayments = paymentsData.filter(
+      p => p.referenceMonth === month && p.referenceYear === year && p.status === "paid"
+    );
 
-    return true;
-  });
+    let totalRev = 0;
+    let adminFeeTotal = 0;
 
-  // Apply location filter logic properly by joining data in memory (since we have small datasets)
-  // We need to fetch rentals to link payments to properties
-  // Let's update loadData to fetch rentals too
-  
-  // Re-implementing sorting and filtering with full data context
-  // See updated logic below in the render
-  
-  // Calculated Totals
-  const totalExpected = filteredPayments.reduce((acc, p) => acc + (p.expectedAmount || 0), 0);
-  const totalReceived = filteredPayments
-    .filter(p => p.status === "paid" || p.status === "partial")
-    .reduce((acc, p) => acc + (p.paidAmount || 0), 0);
-  const totalPending = filteredPayments
-    .filter(p => p.status === "pending" || p.status === "overdue")
-    .reduce((acc, p) => acc + (p.expectedAmount || 0), 0);
+    for (const payment of currentMonthPayments) {
+      const paidAmount = payment.paidAmount || 0;
+      totalRev += paidAmount;
 
-  const toggleLocation = (locationName: string) => {
-    // Prevent financial users from changing their allowed locations
-    if (user?.role === "financial") return;
+      const rental = rentalsData.find(r => r.id === payment.rentalId);
+      const property = rental ? propertiesData.find(p => p.id === rental.propertyId) : undefined;
 
-    setSelectedLocations(prev => {
-      if (prev.includes(locationName)) {
-        return prev.filter(l => l !== locationName);
-      } else {
-        return [...prev, locationName];
+      if (property && property.location.toLowerCase() !== "outros") {
+        const fee = paidAmount * (configData.adminFeePercentage / 100);
+        adminFeeTotal += fee;
       }
-    });
+    }
+
+    setTotalRevenue(totalRev);
+    setTotalAdminFee(adminFeeTotal);
+    setNetRevenue(totalRev - adminFeeTotal);
+    setExpectedGrossRevenue(expectedGross);
   };
 
-  // Sort logic
-  const sortedPayments = [...filteredPayments].sort((a, b) => {
-    let valA: any = "";
-    let valB: any = "";
+  const handlePixCodeChange = (paymentId: string, value: string) => {
+    setPayments(prev =>
+      prev.map(p => p.id === paymentId ? { ...p, editablePixCode: value } : p)
+    );
+  };
 
-    switch (sortBy) {
-      case "dueDate":
-        valA = new Date(a.dueDate).getTime();
-        valB = new Date(b.dueDate).getTime();
-        break;
-      case "paymentDate":
-        valA = a.paymentDate ? new Date(a.paymentDate).getTime() : 0;
-        valB = b.paymentDate ? new Date(b.paymentDate).getTime() : 0;
-        break;
-      case "status":
-        valA = a.status;
-        valB = b.status;
-        break;
-      case "location":
-        // Placeholder for location sort
-        valA = "A"; 
-        valB = "B";
-        break;
+  const handleSavePixCode = async (payment: PaymentWithDetails) => {
+    try {
+      await paymentService.update({
+        ...payment,
+        notes: payment.editablePixCode || ""
+      });
+      loadData();
+    } catch (error) {
+      console.error("Erro ao salvar código PIX:", error);
     }
+  };
 
-    if (valA < valB) return sortOrder === "asc" ? -1 : 1;
-    if (valA > valB) return sortOrder === "asc" ? 1 : -1;
-    return 0;
-  });
+  const getMonthName = (month: number): string => {
+    const months = [
+      "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+      "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+    ];
+    return months[month - 1] || "";
+  };
+
+  const getStatusBadge = (status: string) => {
+    const statusMap = {
+      paid: { label: "Pago", class: "bg-green-100 text-green-800" },
+      pending: { label: "Pendente", class: "bg-yellow-100 text-yellow-800" },
+      partial: { label: "Parcial", class: "bg-orange-100 text-orange-800" },
+      overdue: { label: "Atrasado", class: "bg-red-100 text-red-800" }
+    };
+    const statusInfo = statusMap[status as keyof typeof statusMap] || { label: status, class: "bg-gray-100 text-gray-800" };
+    return (
+      <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusInfo.class}`}>
+        {statusInfo.label}
+      </span>
+    );
+  };
+
+  const paymentsWithDetails: PaymentWithDetails[] = payments
+    .filter(p => p.referenceMonth === parseInt(selectedMonth) && p.referenceYear === parseInt(selectedYear))
+    // No status filtering here, so it shows all receipts (paid, pending, partial, overdue)
+    .map(payment => {
+      const rental = rentals.find(r => r.id === payment.rentalId);
+      const property = rental ? properties.find(p => p.id === rental.propertyId) : undefined;
+      const tenant = rental ? tenants.find(t => t.id === rental.tenantId) : undefined;
+      return { ...payment, rental, property, tenant };
+    });
+
+  const months = [
+    { value: "1", label: "Janeiro" },
+    { value: "2", label: "Fevereiro" },
+    { value: "3", label: "Março" },
+    { value: "4", label: "Abril" },
+    { value: "5", label: "Maio" },
+    { value: "6", label: "Junho" },
+    { value: "7", label: "Julho" },
+    { value: "8", label: "Agosto" },
+    { value: "9", label: "Setembro" },
+    { value: "10", label: "Outubro" },
+    { value: "11", label: "Novembro" },
+    { value: "12", label: "Dezembro" },
+  ];
+
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 5 }, (_, i) => (currentYear - 2 + i).toString());
+
+  if (loading) {
+    return (
+      <>
+        <Head>
+          <title>Financeiro - Sistema de Locações</title>
+        </Head>
+        <Layout>
+          <div className="flex items-center justify-center min-h-screen">
+            <p className="text-slate-600">Carregando...</p>
+          </div>
+        </Layout>
+      </>
+    );
+  }
 
   return (
-    <Layout>
-      <div className="space-y-8">
-        <ScrollReveal>
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <>
+      <Head>
+        <title>Financeiro - Sistema de Locações</title>
+      </Head>
+      <Layout>
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold tracking-tight text-slate-900">Financeiro</h1>
-              <p className="text-muted-foreground mt-2">
-                Gestão completa de recebimentos e fluxo de caixa
+              <h1 className="text-3xl font-bold text-slate-900">Relatório Financeiro</h1>
+              <p className="text-muted-foreground">
+                {getMonthName(parseInt(selectedMonth))} de {selectedYear}
               </p>
             </div>
-            
-            <div className="flex items-center gap-2">
-              <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                <SelectTrigger className="w-[140px]">
-                  <Calendar className="mr-2 h-4 w-4" />
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.from({ length: 12 }, (_, i) => (
-                    <SelectItem key={i} value={i.toString()}>
-                      {new Date(0, i).toLocaleString('pt-BR', { month: 'long' })}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select value={selectedYear} onValueChange={setSelectedYear}>
-                <SelectTrigger className="w-[100px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {[2024, 2025, 2026].map(year => (
-                    <SelectItem key={year} value={year.toString()}>
-                      {year}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
           </div>
-        </ScrollReveal>
 
-        {/* Filters Section */}
-        <ScrollReveal delay={0.1}>
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base font-medium flex items-center gap-2">
-                <Filter className="h-4 w-4" />
-                Filtros de Visualização
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-4 items-end">
-                {/* Location Filter */}
-                <div className="space-y-2">
-                  <Label>Locais</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className="w-[250px] justify-between">
-                        {selectedLocations.length === 0 
-                          ? "Todos os locais" 
-                          : `${selectedLocations.length} locais selecionados`}
-                        <ArrowUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[250px] p-0" align="start">
-                      <div className="p-4 space-y-2">
-                        {locations.length === 0 ? (
-                          <p className="text-sm text-muted-foreground">Nenhum local cadastrado</p>
-                        ) : (
-                          locations.map(location => (
-                            <div key={location.id} className="flex items-center space-x-2">
-                              <Checkbox 
-                                id={`loc-${location.id}`}
-                                checked={selectedLocations.includes(location.name)}
-                                onCheckedChange={() => toggleLocation(location.name)}
-                                disabled={user?.role === "financial" && !["Jd. Colombo", "Signore"].includes(location.name)}
-                              />
-                              <Label 
-                                htmlFor={`loc-${location.id}`}
-                                className="text-sm font-normal cursor-pointer w-full"
-                              >
-                                {location.name}
-                              </Label>
-                            </div>
-                          ))
-                        )}
-                        {selectedLocations.length > 0 && user?.role !== "financial" && (
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="w-full mt-2 h-8 text-xs"
-                            onClick={() => setSelectedLocations([])}
-                          >
-                            Limpar Filtros
-                          </Button>
-                        )}
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                </div>
-
-                {/* Sorting */}
-                <div className="space-y-2">
-                  <Label>Ordenar por</Label>
-                  <Select value={sortBy} onValueChange={(val: any) => setSortBy(val)}>
-                    <SelectTrigger className="w-[200px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="location">Local</SelectItem>
-                      <SelectItem value="dueDate">Data de Vencimento</SelectItem>
-                      <SelectItem value="paymentDate">Data Recebida</SelectItem>
-                      <SelectItem value="status">Status</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <Button 
-                  variant="ghost" 
-                  size="icon"
-                  onClick={() => setSortOrder(prev => prev === "asc" ? "desc" : "asc")}
-                  title={sortOrder === "asc" ? "Crescente" : "Decrescente"}
-                >
-                  <ArrowUpDown className={`h-4 w-4 transition-transform ${sortOrder === "desc" ? "rotate-180" : ""}`} />
-                </Button>
+          <Card className="p-4">
+            <div className="flex gap-4 items-center">
+              <div className="w-full md:w-1/4">
+                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Mês" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {months.map((month) => (
+                      <SelectItem key={month.value} value={month.value}>
+                        {month.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            </CardContent>
+              <div className="w-full md:w-1/4">
+                <Select value={selectedYear} onValueChange={setSelectedYear}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Ano" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {years.map((year) => (
+                      <SelectItem key={year} value={year}>
+                        {year}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </Card>
-        </ScrollReveal>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <ScrollReveal delay={0.2}>
-            <Card className="bg-blue-50 border-blue-100">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-blue-700">Previsto</CardTitle>
-                <DollarSign className="h-4 w-4 text-blue-600" />
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <Card className="border-cyan-200 bg-gradient-to-br from-cyan-50 to-white">
+              <CardHeader>
+                <CardTitle className="text-cyan-700 text-lg">📊 Valor Bruto Esperado</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-blue-700">{formatCurrency(totalExpected)}</div>
-                <p className="text-xs text-blue-600 mt-1">Total a receber no mês</p>
+                <p className="text-3xl font-bold text-cyan-900">{formatCurrency(expectedGrossRevenue)}</p>
+                <p className="text-sm text-cyan-600 mt-1">Soma de todos os recebimentos</p>
               </CardContent>
             </Card>
-          </ScrollReveal>
 
-          <ScrollReveal delay={0.3}>
-            <Card className="bg-emerald-50 border-emerald-100">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-emerald-700">Recebido</CardTitle>
-                <TrendingUp className="h-4 w-4 text-emerald-600" />
+            <Card className="border-emerald-200 bg-gradient-to-br from-emerald-50 to-white">
+              <CardHeader>
+                <CardTitle className="text-emerald-700 text-lg">💰 Valor Bruto Recebido</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-emerald-700">{formatCurrency(totalReceived)}</div>
-                <p className="text-xs text-emerald-600 mt-1">
-                  {((totalReceived / (totalExpected || 1)) * 100).toFixed(1)}% do previsto
-                </p>
+                <p className="text-3xl font-bold text-emerald-900">{formatCurrency(totalRevenue)}</p>
+                <p className="text-sm text-emerald-600 mt-1">Todos os pagamentos recebidos</p>
               </CardContent>
             </Card>
-          </ScrollReveal>
 
-          <ScrollReveal delay={0.4}>
-            <Card className="bg-amber-50 border-amber-100">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-amber-700">Pendente</CardTitle>
-                <AlertCircle className="h-4 w-4 text-amber-600" />
+            <Card className="border-purple-200 bg-gradient-to-br from-purple-50 to-white">
+              <CardHeader>
+                <CardTitle className="text-purple-700 text-lg">💜 Taxa de Administração</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-amber-700">{formatCurrency(totalPending)}</div>
-                <p className="text-xs text-amber-600 mt-1">Aguardando pagamento</p>
+                <p className="text-3xl font-bold text-purple-900">{formatCurrency(totalAdminFee)}</p>
+                <p className="text-sm text-purple-600 mt-1">{config.adminFeePercentage}% da receita</p>
               </CardContent>
             </Card>
-          </ScrollReveal>
-        </div>
 
-        {/* Detailed List */}
-        <ScrollReveal delay={0.5}>
+            <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-white">
+              <CardHeader>
+                <CardTitle className="text-blue-700 text-lg">🎯 Receita Líquida</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-bold text-blue-900">{formatCurrency(netRevenue)}</p>
+                <p className="text-sm text-blue-600 mt-1">Receita após taxa administrativa</p>
+              </CardContent>
+            </Card>
+          </div>
+
           <Card>
             <CardHeader>
-              <CardTitle>Detalhamento de Locações</CardTitle>
+              <CardTitle>📋 Detalhamento de Locações - {getMonthName(parseInt(selectedMonth))} {selectedYear}</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {sortedPayments.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    Nenhum lançamento encontrado para o período selecionado.
-                  </div>
-                ) : (
-                  sortedPayments.map((payment) => (
-                    <div 
-                      key={payment.id}
-                      className="flex items-center justify-between p-4 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors"
-                    >
-                      <div className="flex items-start gap-4">
-                        <div className={`p-2 rounded-full ${
-                          payment.status === "paid" ? "bg-emerald-100 text-emerald-600" :
-                          payment.status === "overdue" ? "bg-red-100 text-red-600" :
-                          "bg-amber-100 text-amber-600"
-                        }`}>
-                          {payment.status === "paid" ? <CheckCircle2 className="h-5 w-5" /> :
-                           payment.status === "overdue" ? <AlertCircle className="h-5 w-5" /> :
-                           <Calendar className="h-5 w-5" />}
-                        </div>
-                        <div>
-                          <p className="font-medium text-slate-900">
-                            Vencimento: {new Date(payment.dueDate).toLocaleDateString('pt-BR')}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {/* Would need rental info here for description */}
-                            Parcela ref. {payment.referenceMonth}/{payment.referenceYear}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="text-right">
-                        <p className="font-bold text-slate-900">{formatCurrency(payment.expectedAmount)}</p>
-                        <Badge variant={
-                          payment.status === "paid" ? "default" :
-                          payment.status === "overdue" ? "destructive" : 
-                          "secondary"
-                        }>
-                          {payment.status === "paid" ? "Pago" :
-                           payment.status === "overdue" ? "Atrasado" :
-                           "Pendente"}
-                        </Badge>
-                      </div>
-                    </div>
-                  ))
-                )}
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Local</TableHead>
+                      <TableHead>Complemento</TableHead>
+                      <TableHead>Ano</TableHead>
+                      <TableHead>Mês</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Código PIX</TableHead>
+                      <TableHead>Data Vencimento</TableHead>
+                      <TableHead>Data Recebida</TableHead>
+                      <TableHead>Valor Esperado</TableHead>
+                      <TableHead>Valor Pago</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paymentsWithDetails.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={10} className="text-center text-slate-500 py-8">
+                          Nenhum recebimento cadastrado para este período
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      paymentsWithDetails.map((payment) => (
+                        <TableRow key={payment.id}>
+                          <TableCell className="font-medium">
+                            {payment.property?.location || "-"}
+                          </TableCell>
+                          <TableCell>{payment.property?.complement || "-"}</TableCell>
+                          <TableCell>{payment.referenceYear}</TableCell>
+                          <TableCell>{getMonthName(payment.referenceMonth)}</TableCell>
+                          <TableCell>{getStatusBadge(payment.status)}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Input
+                                value={payment.editablePixCode || ""}
+                                onChange={(e) => handlePixCodeChange(payment.id, e.target.value)}
+                                placeholder="Código PIX"
+                                className="w-32 text-sm"
+                              />
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleSavePixCode(payment)}
+                              >
+                                💾
+                              </Button>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {new Date(payment.dueDate).toLocaleDateString("pt-BR")}
+                          </TableCell>
+                          <TableCell>
+                            {payment.paymentDate
+                              ? new Date(payment.paymentDate).toLocaleDateString("pt-BR")
+                              : "-"}
+                          </TableCell>
+                          <TableCell>{formatCurrency(payment.expectedAmount)}</TableCell>
+                          <TableCell className="font-semibold text-emerald-700">
+                            {formatCurrency(payment.paidAmount || 0)}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                    {paymentsWithDetails.length > 0 && (
+                      <TableRow className="bg-slate-100 font-bold">
+                        <TableCell colSpan={8} className="text-right">
+                          TOTAIS:
+                        </TableCell>
+                        <TableCell className="font-bold text-slate-900">
+                          {formatCurrency(paymentsWithDetails.reduce((sum, p) => sum + (p.expectedAmount || 0), 0))}
+                        </TableCell>
+                        <TableCell className="font-bold text-emerald-700">
+                          {formatCurrency(paymentsWithDetails.reduce((sum, p) => sum + (p.paidAmount || 0), 0))}
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
               </div>
             </CardContent>
           </Card>
-        </ScrollReveal>
-      </div>
-    </Layout>
+        </div>
+      </Layout>
+    </>
   );
 }

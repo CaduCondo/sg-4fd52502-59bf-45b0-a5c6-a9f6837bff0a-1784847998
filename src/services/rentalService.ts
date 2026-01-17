@@ -66,24 +66,16 @@ export const rentalService = {
       tenantId: data.tenant_id,
       startDate: data.start_date,
       endDate: data.end_date,
-      
-      // Required fields with defaults
-      rentAmount: data.rent_amount || data.value || 0,
-      status: (data.status as any) || "active",
-      autoRenew: data.auto_renew || false,
-      
-      monthlyRent: data.monthly_rent || 0, // Compatibility
+      monthlyRent: parseFloat(data.monthly_rent) || 0,
       paymentDay: data.payment_day,
       hasGarage: data.has_garage,
-      garageValue: data.garage_value || 0,
-      value: data.value || 0, // Compatibility
-      
+      garageValue: data.garage_value ? parseFloat(data.garage_value) : undefined,
+      value: data.value ? parseFloat(data.value) : ((parseFloat(data.monthly_rent) || 0) + (data.garage_value ? parseFloat(data.garage_value) : 0)),
       deposit: data.deposit,
       contractAttachments: data.contract_attachments || [],
       attachments: data.attachments || [],
-      
       isActive: data.is_active,
-      createdAt: data.created_at,
+      createdAt: data.created_at
     };
   },
 

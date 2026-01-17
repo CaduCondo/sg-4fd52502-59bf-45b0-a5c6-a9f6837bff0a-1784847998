@@ -219,7 +219,7 @@ export default function PropertiesPage() {
     e.stopPropagation();
     
     const currentUser = getCurrentUser();
-    if (currentUser?.role === "broker" && property.status === "occupied") {
+    if (currentUser?.role === "corretor" && property.status === "occupied") {
       toast({
         title: "Ação não permitida",
         description: "Corretores não podem deletar imóveis ocupados.",
