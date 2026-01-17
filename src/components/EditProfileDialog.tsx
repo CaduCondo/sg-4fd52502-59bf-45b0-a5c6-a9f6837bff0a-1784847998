@@ -8,14 +8,16 @@ import { systemUserService } from "@/services/systemUserService";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getCurrentUser } from "@/lib/auth";
+import { User } from "@/types";
 
 interface EditProfileDialogProps {
+  user: User | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
 }
 
-export function EditProfileDialog({ open, onOpenChange, onSuccess }: EditProfileDialogProps) {
+export function EditProfileDialog({ user, open, onOpenChange, onSuccess }: EditProfileDialogProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [userId, setUserId] = useState<string>("");

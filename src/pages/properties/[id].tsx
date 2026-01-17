@@ -167,7 +167,19 @@ export default function PropertyDetailsPage() {
         description: formData.description || undefined,
       };
 
-      await propertyService.update(updatedProperty as Property);
+      await propertyService.update(property.id, {
+        location: formData.location,
+        cep: formData.cep || undefined,
+        address: formData.address || undefined,
+        number: formData.number || undefined,
+        complement: formData.complement,
+        neighborhood: formData.neighborhood || undefined,
+        city: formData.city || undefined,
+        state: formData.state || undefined,
+        monthlyRent: convertMaskedValueToNumber(formData.rentValue),
+        rentValue: convertMaskedValueToNumber(formData.rentValue),
+        description: formData.description || undefined,
+      });
       toast({
         title: "Sucesso",
         description: "Imóvel atualizado com sucesso!",
