@@ -714,8 +714,14 @@ export default function Settings() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsSystemUserModalOpen(false)}>Cancelar</Button>
-              <Button onClick={handleSaveSystemUser}>Salvar</Button>
+              <Button variant="outline" onClick={() => {
+                console.log("🚫 Botão Cancelar clicado");
+                setIsSystemUserModalOpen(false);
+              }}>Cancelar</Button>
+              <Button onClick={() => {
+                console.log("✅ Botão Salvar clicado - chamando handleSaveSystemUser");
+                handleSaveSystemUser();
+              }}>Salvar</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
