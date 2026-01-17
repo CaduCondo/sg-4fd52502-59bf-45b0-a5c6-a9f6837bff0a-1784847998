@@ -176,6 +176,34 @@ export const paymentService = {
     }
   },
 
+  async updateFuturePaymentsByPropertyId(propertyId: string, newRentValue: number): Promise<number> {
+    const today = new Date().toISOString().split("T")[0];
+    
+    // Get all rentals for this property
+    const { data: rentals, error: rentalsError } = await supabase
+      .from("rentals")
+      .select("id")
+      .eq("property_id", propertyId);
+    
+    if (rentalsError) throw rentalsError;
+    if (!rentals || rentals.length === 0) return 0;
+    
+    const rentalIds = rentals.map(r => r.id);
+    
+    // Update all future pending payments for these rentals
+    const { data: updatedPayments, error: updateError } = await supabase
+      .from("payments")
+      .update({ expected_amount: newRentValue })
+      .in("rental_id", rentalIds)
+      .gt("due_date", today)
+      .eq("status", "pending")
+      .select();
+    
+    if (updateError) throw updateError;
+    
+    return updatedPayments?.length || 0;
+  },
+
   async regeneratePaymentsFromCurrentMonth(rentalId: string, rental: { value: number; paymentDay: number; endDate: string | null; }): Promise<void> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);

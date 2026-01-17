@@ -152,6 +152,11 @@ export default function PropertyDetailsPage() {
     }
 
     try {
+      const newRentValue = convertMaskedValueToNumber(formData.rentValue);
+      const oldRentValue = property.rentValue;
+      const rentValueChanged = newRentValue !== oldRentValue;
+      const isOccupied = property.status === "occupied";
+
       const updatedProperty = {
         ...property,
         location: formData.location,
@@ -162,8 +167,8 @@ export default function PropertyDetailsPage() {
         neighborhood: formData.neighborhood || undefined,
         city: formData.city || undefined,
         state: formData.state || undefined,
-        monthlyRent: convertMaskedValueToNumber(formData.rentValue),
-        rentValue: convertMaskedValueToNumber(formData.rentValue),
+        monthlyRent: newRentValue,
+        rentValue: newRentValue,
         description: formData.description || undefined,
       };
 
@@ -176,14 +181,37 @@ export default function PropertyDetailsPage() {
         neighborhood: formData.neighborhood || undefined,
         city: formData.city || undefined,
         state: formData.state || undefined,
-        monthlyRent: convertMaskedValueToNumber(formData.rentValue),
-        rentValue: convertMaskedValueToNumber(formData.rentValue),
+        monthlyRent: newRentValue,
+        rentValue: newRentValue,
         description: formData.description || undefined,
       });
-      toast({
-        title: "Sucesso",
-        description: "Imóvel atualizado com sucesso!",
-      });
+
+      // If rent value changed and property is occupied, update future payments
+      if (rentValueChanged && isOccupied) {
+        const { paymentService } = await import("@/services");
+        const updatedCount = await paymentService.updateFuturePaymentsByPropertyId(
+          property.id,
+          newRentValue
+        );
+
+        if (updatedCount > 0) {
+          toast({
+            title: "Sucesso",
+            description: `Imóvel atualizado com sucesso! ${updatedCount} recebimento(s) futuro(s) atualizado(s) com o novo valor.`,
+          });
+        } else {
+          toast({
+            title: "Sucesso",
+            description: "Imóvel atualizado com sucesso!",
+          });
+        }
+      } else {
+        toast({
+          title: "Sucesso",
+          description: "Imóvel atualizado com sucesso!",
+        });
+      }
+
       setProperty(updatedProperty as Property);
       setIsEditMode(false);
     } catch (error) {
