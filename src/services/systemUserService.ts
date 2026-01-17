@@ -213,24 +213,24 @@ export const systemUserService = {
         .eq("email", usernameOrEmail)
         .eq("password", password)
         .eq("active", true)
-        .single();
+        .maybeSingle();
 
       // Se não encontrar por email, tentar por username
-      if (error) {
+      if (!data && !error) {
         const result = await supabase
           .from("system_users")
           .select("*")
           .eq("username", usernameOrEmail)
           .eq("password", password)
           .eq("active", true)
-          .single();
+          .maybeSingle();
         
         data = result.data;
         error = result.error;
       }
 
       if (error) throw error;
-      return data as any;
+      return data as SystemUser | null;
     } catch (error) {
       console.error("Error validating login:", error);
       return null;
