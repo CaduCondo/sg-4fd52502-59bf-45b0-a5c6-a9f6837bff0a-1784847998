@@ -239,18 +239,16 @@ export function Layout({ children }: LayoutProps) {
                 </Button>
               </Link>
 
-              {user?.role === "admin" && (
-                <Link href="/settings">
-                  <Button 
-                    variant={isActive("/settings") ? "default" : "ghost"}
-                    size="sm"
-                    className="gap-1.5"
-                  >
-                    <Settings className="h-4 w-4" />
-                    <span>Configurações</span>
-                  </Button>
-                </Link>
-              )}
+              <Link href="/settings">
+                <Button 
+                  variant={isActive("/settings") ? "default" : "ghost"}
+                  size="sm"
+                  className="gap-1.5"
+                >
+                  <Settings className="h-4 w-4" />
+                  <span>Configurações</span>
+                </Button>
+              </Link>
             </div>
 
             {/* USER PROFILE - Right */}
