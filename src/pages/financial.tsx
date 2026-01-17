@@ -1,62 +1,31 @@
-import { useEffect, useState } from "react";
-import { useRouter } from "next/router";
-import Head from "next/head";
-import { isAuthenticatedAsync } from "@/lib/auth";
+import { useState, useEffect } from "react";
 import { Layout } from "@/components/Layout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { formatCurrency, applyRealMask, removeMask } from "@/lib/masks";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { 
+  DollarSign, 
+  TrendingUp, 
+  Clock, 
+  AlertTriangle,
+  Calendar,
+  Building2,
+  User
+} from "lucide-react";
 import { paymentService } from "@/services/paymentService";
-import { rentalService } from "@/services/rentalService";
 import { propertyService } from "@/services/propertyService";
+import { rentalService } from "@/services/rentalService";
 import { tenantService } from "@/services/tenantService";
-import { configService } from "@/services/configService";
-import type { Payment, Rental, Property, Tenant, Config } from "@/types";
+import { Payment, Property, Rental, Tenant } from "@/types";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { ScrollReveal } from "@/components/animations/ScrollReveal";
 
-interface PaymentWithDetails extends Payment {
-  rental?: Rental;
-  property?: Property;
-  tenant?: Tenant;
-  editablePixCode?: string;
-}
-
-export default function FinancialPage() {
-  const router = useRouter();
-  const [payments, setPayments] = useState<PaymentWithDetails[]>([]);
-  const [rentals, setRentals] = useState<Rental[]>([]);
+export default function Financial() {
+  const [payments, setPayments] = useState<Payment[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
+  const [rentals, setRentals] = useState<Rental[]>([]);
   const [tenants, setTenants] = useState<Tenant[]>([]);
-  const [config, setConfig] = useState<Config>({ adminFeePercentage: 6, locations: [] });
   const [loading, setLoading] = useState(true);
-  
-  const [selectedMonth, setSelectedMonth] = useState("");
-  const [selectedYear, setSelectedYear] = useState("");
-  
-  const [totalRevenue, setTotalRevenue] = useState(0);
-  const [totalAdminFee, setTotalAdminFee] = useState(0);
-  const [netRevenue, setNetRevenue] = useState(0);
-  const [expectedGrossRevenue, setExpectedGrossRevenue] = useState(0);
-
-  useEffect(() => {
-    const currentDate = new Date();
-    setSelectedMonth((currentDate.getMonth() + 1).toString());
-    setSelectedYear(currentDate.getFullYear().toString());
-  }, []);
-
-  // useEffect(() => {
-  //   const checkAuth = async () => {
-  //     const isAuth = await isAuthenticatedAsync();
-  //     if (!isAuth) {
-  //       router.push("/login");
-  //       return;
-  //     }
-  //     loadData();
-  //   };
-  //   checkAuth();
-  // }, [router]);
 
   useEffect(() => {
     loadData();
@@ -64,337 +33,240 @@ export default function FinancialPage() {
 
   const loadData = async () => {
     try {
-      setLoading(true);
-      const [paymentsData, rentalsData, propertiesData, tenantsData, configData] = await Promise.all([
+      const [paymentsData, propertiesData, rentalsData, tenantsData] = await Promise.all([
         paymentService.getAll(),
-        rentalService.getAll(),
         propertyService.getAll(),
+        rentalService.getAll(),
         tenantService.getAll(),
-        configService.get()
       ]);
-
-      setPayments(paymentsData.map(p => ({ ...p, editablePixCode: p.notes || "" })));
-      setRentals(rentalsData);
+      setPayments(paymentsData);
       setProperties(propertiesData);
+      setRentals(rentalsData);
       setTenants(tenantsData);
-      setConfig(configData);
-
-      calculateFinancials(paymentsData, rentalsData, propertiesData, configData);
     } catch (error) {
-      console.error("Erro ao carregar dados:", error);
+      console.error("Error loading financial data:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  const calculateFinancials = (
-    paymentsData: Payment[],
-    rentalsData: Rental[],
-    propertiesData: Property[],
-    configData: Config
-  ) => {
-    const month = parseInt(selectedMonth);
-    const year = parseInt(selectedYear);
-
-    // All payments for the month (any status) for expected gross revenue
-    const allMonthPayments = paymentsData.filter(
-      p => p.referenceMonth === month && p.referenceYear === year
-    );
-    
-    const expectedGross = allMonthPayments.reduce((sum, p) => sum + (p.expectedAmount || 0), 0);
-
-    // Only paid payments for actual revenue
-    const currentMonthPayments = paymentsData.filter(
-      p => p.referenceMonth === month && p.referenceYear === year && p.status === "paid"
-    );
-
-    let totalRev = 0;
-    let adminFeeTotal = 0;
-
-    for (const payment of currentMonthPayments) {
-      const paidAmount = payment.paidAmount || 0;
-      totalRev += paidAmount;
-
-      const rental = rentalsData.find(r => r.id === payment.rentalId);
-      const property = rental ? propertiesData.find(p => p.id === rental.propertyId) : undefined;
-
-      if (property && property.location.toLowerCase() !== "outros") {
-        const fee = paidAmount * (configData.adminFeePercentage / 100);
-        adminFeeTotal += fee;
-      }
-    }
-
-    setTotalRevenue(totalRev);
-    setTotalAdminFee(adminFeeTotal);
-    setNetRevenue(totalRev - adminFeeTotal);
-    setExpectedGrossRevenue(expectedGross);
-  };
-
-  const handlePixCodeChange = (paymentId: string, value: string) => {
-    setPayments(prev =>
-      prev.map(p => p.id === paymentId ? { ...p, editablePixCode: value } : p)
-    );
-  };
-
-  const handleSavePixCode = async (payment: PaymentWithDetails) => {
-    try {
-      await paymentService.update({
-        ...payment,
-        notes: payment.editablePixCode || ""
-      });
-      loadData();
-    } catch (error) {
-      console.error("Erro ao salvar código PIX:", error);
-    }
-  };
-
-  const getMonthName = (month: number): string => {
-    const months = [
-      "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
-      "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
-    ];
-    return months[month - 1] || "";
-  };
-
-  const getStatusBadge = (status: string) => {
-    const statusMap = {
-      paid: { label: "Pago", class: "bg-green-100 text-green-800" },
-      pending: { label: "Pendente", class: "bg-yellow-100 text-yellow-800" },
-      partial: { label: "Parcial", class: "bg-orange-100 text-orange-800" },
-      overdue: { label: "Atrasado", class: "bg-red-100 text-red-800" }
-    };
-    const statusInfo = statusMap[status as keyof typeof statusMap] || { label: status, class: "bg-gray-100 text-gray-800" };
-    return (
-      <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusInfo.class}`}>
-        {statusInfo.label}
-      </span>
-    );
-  };
-
-  const paymentsWithDetails: PaymentWithDetails[] = payments
-    .filter(p => p.referenceMonth === parseInt(selectedMonth) && p.referenceYear === parseInt(selectedYear))
-    // No status filtering here, so it shows all receipts (paid, pending, partial, overdue)
-    .map(payment => {
-      const rental = rentals.find(r => r.id === payment.rentalId);
-      const property = rental ? properties.find(p => p.id === rental.propertyId) : undefined;
-      const tenant = rental ? tenants.find(t => t.id === rental.tenantId) : undefined;
-      return { ...payment, rental, property, tenant };
-    });
-
-  const months = [
-    { value: "1", label: "Janeiro" },
-    { value: "2", label: "Fevereiro" },
-    { value: "3", label: "Março" },
-    { value: "4", label: "Abril" },
-    { value: "5", label: "Maio" },
-    { value: "6", label: "Junho" },
-    { value: "7", label: "Julho" },
-    { value: "8", label: "Agosto" },
-    { value: "9", label: "Setembro" },
-    { value: "10", label: "Outubro" },
-    { value: "11", label: "Novembro" },
-    { value: "12", label: "Dezembro" },
-  ];
-
+  // Filter payments for current month
+  const currentMonth = new Date().getMonth();
   const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: 5 }, (_, i) => (currentYear - 2 + i).toString());
+  const currentMonthPayments = payments.filter(payment => {
+    const dueDate = new Date(payment.dueDate);
+    return dueDate.getMonth() === currentMonth && dueDate.getFullYear() === currentYear;
+  });
+
+  // Calculate financial metrics
+  const totalExpected = currentMonthPayments.reduce((sum, p) => sum + p.expectedAmount, 0);
+  const totalReceived = currentMonthPayments
+    .filter(p => p.status === "paid" || p.status === "partial")
+    .reduce((sum, p) => sum + (p.paidAmount || 0), 0);
+  const totalPending = currentMonthPayments
+    .filter(p => p.status === "pending")
+    .reduce((sum, p) => sum + p.expectedAmount, 0);
+  const totalOverdue = currentMonthPayments
+    .filter(p => p.status === "overdue")
+    .reduce((sum, p) => sum + p.expectedAmount, 0);
+
+  const getStatusBadge = (status: Payment["status"]) => {
+    const variants = {
+      paid: { label: "Pago", className: "bg-green-100 text-green-800" },
+      pending: { label: "Pendente", className: "bg-yellow-100 text-yellow-800" },
+      overdue: { label: "Atrasado", className: "bg-red-100 text-red-800" },
+      partial: { label: "Parcial", className: "bg-blue-100 text-blue-800" },
+    };
+    const variant = variants[status];
+    return <Badge className={variant.className}>{variant.label}</Badge>;
+  };
+
+  const getPaymentDetails = (payment: Payment) => {
+    const rental = rentals.find(r => r.id === payment.rentalId);
+    const property = properties.find(p => p.id === rental?.propertyId);
+    const tenant = tenants.find(t => t.id === rental?.tenantId);
+
+    return {
+      propertyAddress: property ? `${property.address}, ${property.number}` : "N/A",
+      tenantName: tenant?.name || "N/A",
+      amount: payment.status === "paid" ? (payment.paidAmount || 0) : payment.expectedAmount,
+    };
+  };
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(value);
+  };
 
   if (loading) {
     return (
-      <>
-        <Head>
-          <title>Financeiro - Sistema de Locações</title>
-        </Head>
-        <Layout>
-          <div className="flex items-center justify-center min-h-screen">
-            <p className="text-slate-600">Carregando...</p>
-          </div>
-        </Layout>
-      </>
+      <Layout>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
+        </div>
+      </Layout>
     );
   }
 
   return (
-    <>
-      <Head>
-        <title>Financeiro - Sistema de Locações</title>
-      </Head>
-      <Layout>
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-slate-900">Relatório Financeiro</h1>
-              <p className="text-muted-foreground">
-                {getMonthName(parseInt(selectedMonth))} de {selectedYear}
-              </p>
-            </div>
+    <Layout>
+      <div className="space-y-8">
+        {/* Header */}
+        <ScrollReveal>
+          <div>
+            <h1 className="text-3xl font-bold text-slate-900">Financeiro</h1>
+            <p className="text-slate-600 mt-2">
+              Gestão completa de recebimentos e fluxo de caixa
+            </p>
           </div>
+        </ScrollReveal>
 
-          <Card className="p-4">
-            <div className="flex gap-4 items-center">
-              <div className="w-full md:w-1/4">
-                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Mês" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {months.map((month) => (
-                      <SelectItem key={month.value} value={month.value}>
-                        {month.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+        {/* Financial Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <ScrollReveal delay={0.1}>
+            <Card className="p-6 border-l-4 border-l-blue-500">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-600">Valor Esperado</p>
+                  <p className="text-2xl font-bold text-slate-900 mt-1">
+                    {formatCurrency(totalExpected)}
+                  </p>
+                </div>
+                <div className="p-3 bg-blue-100 rounded-lg">
+                  <DollarSign className="h-6 w-6 text-blue-600" />
+                </div>
               </div>
-              <div className="w-full md:w-1/4">
-                <Select value={selectedYear} onValueChange={setSelectedYear}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Ano" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {years.map((year) => (
-                      <SelectItem key={year} value={year}>
-                        {year}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            </Card>
+          </ScrollReveal>
+
+          <ScrollReveal delay={0.2}>
+            <Card className="p-6 border-l-4 border-l-green-500">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-600">Valor Recebido</p>
+                  <p className="text-2xl font-bold text-slate-900 mt-1">
+                    {formatCurrency(totalReceived)}
+                  </p>
+                </div>
+                <div className="p-3 bg-green-100 rounded-lg">
+                  <TrendingUp className="h-6 w-6 text-green-600" />
+                </div>
               </div>
-            </div>
-          </Card>
-
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <Card className="border-cyan-200 bg-gradient-to-br from-cyan-50 to-white">
-              <CardHeader>
-                <CardTitle className="text-cyan-700 text-lg">📊 Valor Bruto Esperado</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-bold text-cyan-900">{formatCurrency(expectedGrossRevenue)}</p>
-                <p className="text-sm text-cyan-600 mt-1">Soma de todos os recebimentos</p>
-              </CardContent>
             </Card>
+          </ScrollReveal>
 
-            <Card className="border-emerald-200 bg-gradient-to-br from-emerald-50 to-white">
-              <CardHeader>
-                <CardTitle className="text-emerald-700 text-lg">💰 Valor Bruto Recebido</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-bold text-emerald-900">{formatCurrency(totalRevenue)}</p>
-                <p className="text-sm text-emerald-600 mt-1">Todos os pagamentos recebidos</p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-purple-200 bg-gradient-to-br from-purple-50 to-white">
-              <CardHeader>
-                <CardTitle className="text-purple-700 text-lg">💜 Taxa de Administração</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-bold text-purple-900">{formatCurrency(totalAdminFee)}</p>
-                <p className="text-sm text-purple-600 mt-1">{config.adminFeePercentage}% da receita</p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-white">
-              <CardHeader>
-                <CardTitle className="text-blue-700 text-lg">🎯 Receita Líquida</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-bold text-blue-900">{formatCurrency(netRevenue)}</p>
-                <p className="text-sm text-blue-600 mt-1">Receita após taxa administrativa</p>
-              </CardContent>
-            </Card>
-          </div>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>📋 Detalhamento de Locações - {getMonthName(parseInt(selectedMonth))} {selectedYear}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Local</TableHead>
-                      <TableHead>Complemento</TableHead>
-                      <TableHead>Ano</TableHead>
-                      <TableHead>Mês</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Código PIX</TableHead>
-                      <TableHead>Data Vencimento</TableHead>
-                      <TableHead>Data Recebida</TableHead>
-                      <TableHead>Valor Esperado</TableHead>
-                      <TableHead>Valor Pago</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {paymentsWithDetails.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={10} className="text-center text-slate-500 py-8">
-                          Nenhum recebimento cadastrado para este período
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      paymentsWithDetails.map((payment) => (
-                        <TableRow key={payment.id}>
-                          <TableCell className="font-medium">
-                            {payment.property?.location || "-"}
-                          </TableCell>
-                          <TableCell>{payment.property?.complement || "-"}</TableCell>
-                          <TableCell>{payment.referenceYear}</TableCell>
-                          <TableCell>{getMonthName(payment.referenceMonth)}</TableCell>
-                          <TableCell>{getStatusBadge(payment.status)}</TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Input
-                                value={payment.editablePixCode || ""}
-                                onChange={(e) => handlePixCodeChange(payment.id, e.target.value)}
-                                placeholder="Código PIX"
-                                className="w-32 text-sm"
-                              />
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleSavePixCode(payment)}
-                              >
-                                💾
-                              </Button>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {new Date(payment.dueDate).toLocaleDateString("pt-BR")}
-                          </TableCell>
-                          <TableCell>
-                            {payment.paymentDate
-                              ? new Date(payment.paymentDate).toLocaleDateString("pt-BR")
-                              : "-"}
-                          </TableCell>
-                          <TableCell>{formatCurrency(payment.expectedAmount)}</TableCell>
-                          <TableCell className="font-semibold text-emerald-700">
-                            {formatCurrency(payment.paidAmount || 0)}
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                    {paymentsWithDetails.length > 0 && (
-                      <TableRow className="bg-slate-100 font-bold">
-                        <TableCell colSpan={8} className="text-right">
-                          TOTAIS:
-                        </TableCell>
-                        <TableCell className="font-bold text-slate-900">
-                          {formatCurrency(paymentsWithDetails.reduce((sum, p) => sum + (p.expectedAmount || 0), 0))}
-                        </TableCell>
-                        <TableCell className="font-bold text-emerald-700">
-                          {formatCurrency(paymentsWithDetails.reduce((sum, p) => sum + (p.paidAmount || 0), 0))}
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
+          <ScrollReveal delay={0.3}>
+            <Card className="p-6 border-l-4 border-l-yellow-500">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-600">Valor Pendente</p>
+                  <p className="text-2xl font-bold text-slate-900 mt-1">
+                    {formatCurrency(totalPending)}
+                  </p>
+                </div>
+                <div className="p-3 bg-yellow-100 rounded-lg">
+                  <Clock className="h-6 w-6 text-yellow-600" />
+                </div>
               </div>
-            </CardContent>
-          </Card>
+            </Card>
+          </ScrollReveal>
+
+          <ScrollReveal delay={0.4}>
+            <Card className="p-6 border-l-4 border-l-red-500">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-600">Valor Atrasado</p>
+                  <p className="text-2xl font-bold text-slate-900 mt-1">
+                    {formatCurrency(totalOverdue)}
+                  </p>
+                </div>
+                <div className="p-3 bg-red-100 rounded-lg">
+                  <AlertTriangle className="h-6 w-6 text-red-600" />
+                </div>
+              </div>
+            </Card>
+          </ScrollReveal>
         </div>
-      </Layout>
-    </>
+
+        {/* Payments Table */}
+        <ScrollReveal delay={0.5}>
+          <Card className="overflow-hidden">
+            <div className="p-6 border-b border-slate-200">
+              <h2 className="text-xl font-semibold text-slate-900">
+                Recebimentos do Mês
+              </h2>
+            </div>
+            {currentMonthPayments.length === 0 ? (
+              <div className="p-12 text-center">
+                <Calendar className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+                <p className="text-slate-600">
+                  Nenhum pagamento registrado neste mês
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-slate-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                        Inquilino
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                        Imóvel
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                        Vencimento
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                        Valor
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-slate-200">
+                    {currentMonthPayments.map((payment) => {
+                      const details = getPaymentDetails(payment);
+                      return (
+                        <tr key={payment.id} className="hover:bg-slate-50 transition-colors">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <User className="h-4 w-4 text-slate-400 mr-2" />
+                              <span className="text-sm font-medium text-slate-900">
+                                {details.tenantName}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <Building2 className="h-4 w-4 text-slate-400 mr-2" />
+                              <span className="text-sm text-slate-600">
+                                {details.propertyAddress}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
+                            {format(new Date(payment.dueDate), "dd/MM/yyyy", { locale: ptBR })}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
+                            {formatCurrency(details.amount)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {getStatusBadge(payment.status)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+        </ScrollReveal>
+      </div>
+    </Layout>
   );
 }

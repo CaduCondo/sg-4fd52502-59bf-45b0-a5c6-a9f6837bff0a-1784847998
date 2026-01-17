@@ -111,11 +111,14 @@ export default function Login() {
         console.warn("⚠️ Erro ao sincronizar com Supabase (não crítico):", syncError);
       }
       
-      router.push("/dashboard");
+      // ALWAYS redirect to dashboard after successful localStorage login
+      console.log("✅ Login bem-sucedido! Redirecionando para dashboard...");
+      window.location.href = "/dashboard";
     } else {
       handleLoginAttempt();
-      setLoading(false);
     }
+    
+    setLoading(false);
   };
 
   const validateEmail = (email: string) => {

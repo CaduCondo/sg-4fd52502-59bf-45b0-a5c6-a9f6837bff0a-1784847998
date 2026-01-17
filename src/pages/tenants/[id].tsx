@@ -28,6 +28,11 @@ export default function TenantDetailsPage() {
     phone: "",
     documentType: "cpf" as "cpf" | "cnpj",
     document: "",
+    birthDate: "",
+    profession: "",
+    income: "",
+    address: "",
+    notes: "",
   });
 
   useEffect(() => {
@@ -39,23 +44,21 @@ export default function TenantDetailsPage() {
   const loadTenant = async (tenantId: string) => {
     try {
       setLoading(true);
-      const tenantData = await tenantService.getById(tenantId);
+      const tenantData = await tenantService.getById(id as string);
       if (tenantData) {
         setTenant(tenantData);
         setFormData({
           name: tenantData.name,
-          email: tenantData.email || "",
-          phone: tenantData.phone || "",
-          documentType: tenantData.documentType || "cpf",
+          email: tenantData.email,
+          phone: tenantData.phone,
           document: tenantData.document || "",
+          documentType: (tenantData.documentType === "cnpj" ? "cnpj" : "cpf") as "cpf" | "cnpj",
+          birthDate: tenantData.birthDate || "",
+          profession: tenantData.profession || "",
+          income: tenantData.income?.toString() || "",
+          address: tenantData.address || "",
+          notes: tenantData.notes || "",
         });
-      } else {
-        toast({
-          title: "Erro",
-          description: "Inquilino não encontrado.",
-          variant: "destructive",
-        });
-        router.push("/tenants");
       }
     } catch (error) {
       console.error("Error loading tenant:", error);
@@ -79,8 +82,13 @@ export default function TenantDetailsPage() {
         name: tenant.name,
         email: tenant.email || "",
         phone: tenant.phone || "",
-        documentType: tenant.documentType || "cpf",
+        documentType: (tenant.documentType === "cnpj" ? "cnpj" : "cpf") as "cpf" | "cnpj",
         document: tenant.document || "",
+        birthDate: tenant.birthDate || "",
+        profession: tenant.profession || "",
+        income: tenant.income?.toString() || "",
+        address: tenant.address || "",
+        notes: tenant.notes || "",
       });
     }
     setIsEditMode(false);

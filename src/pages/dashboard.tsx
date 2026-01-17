@@ -17,6 +17,7 @@ import type { Property, Tenant, Rental, Payment } from "@/types";
 import { FloatingCard } from "@/components/animations/FloatingCard";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { ScrollReveal } from "@/components/animations/ScrollReveal";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -26,8 +27,26 @@ export default function DashboardPage() {
   const [rentals, setRentals] = useState<Rental[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [adminFeePercentage, setAdminFeePercentage] = useState(6);
-  const [userName, setUserName] = useState("Administrador");
+  const [userName, setUserName] = useState("Usuário");
+  const [currentDate, setCurrentDate] = useState("");
   const [mounted, setMounted] = useState(false);
+  const [filteredPayments, setFilteredPayments] = useState<Payment[]>([]);
+  const [dueSoonPayments, setDueSoonPayments] = useState<Payment[]>([]);
+  const [stats, setStats] = useState({
+    totalProperties: 0,
+    availableProperties: 0,
+    occupiedProperties: 0,
+    unavailableProperties: 0,
+    activeRentals: 0,
+    totalTenants: 0,
+    monthlyRevenue: 0,
+    adminFee: 0,
+    netRevenue: 0,
+    expectedValue: 0,
+    paidPayments: 0,
+    pendingPayments: 0,
+    overduePayments: 0,
+  });
   
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
@@ -149,20 +168,34 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    loadData();
-    loadConfig();
+    // Set current date
+    const now = new Date();
+    const options: Intl.DateTimeFormatOptions = {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    };
+    setCurrentDate(
+      now.toLocaleDateString("pt-BR", options).replace(/^\w/, (c) => c.toUpperCase())
+    );
+
+    loadDashboardData();
     loadUserName();
-    setMounted(true);
   }, []);
 
   useEffect(() => {
     if (properties.length > 0 || tenants.length > 0 || rentals.length > 0 || payments.length > 0) {
-      loadData();
+      loadDashboardData();
     }
   }, [selectedMonth, selectedYear]);
 
-  const loadData = async () => {
+  const loadDashboardData = async () => {
     try {
+      // Check user role for filtering
+      const userStr = localStorage.getItem("user");
+      const currentUser = userStr ? JSON.parse(userStr) : null;
+      
       const [propertiesData, tenantsData, rentalsData, paymentsData] = await Promise.all([
         propertyService.getAll(),
         tenantService.getAll(),
@@ -170,12 +203,33 @@ export default function DashboardPage() {
         paymentService.getAll(),
       ]);
 
-      setProperties(propertiesData);
+      // Apply location filter for financial users
+      let filteredProperties = propertiesData;
+      let filteredRentals = rentalsData;
+      let filteredPayments = paymentsData;
+
+      if (currentUser?.role === "financial") {
+        const allowedLocations = ["Jd. Colombo", "Signore"];
+        
+        filteredProperties = propertiesData.filter(p => 
+          allowedLocations.some(loc => p.location?.includes(loc))
+        );
+        
+        const allowedPropertyIds = filteredProperties.map(p => p.id);
+        filteredRentals = rentalsData.filter(r => allowedPropertyIds.includes(r.propertyId));
+        
+        const allowedRentalIds = filteredRentals.map(r => r.id);
+        filteredPayments = paymentsData.filter(p => allowedRentalIds.includes(p.rentalId));
+      }
+
+      setProperties(filteredProperties);
       setTenants(tenantsData);
-      setRentals(rentalsData);
-      setPayments(paymentsData);
+      setRentals(filteredRentals);
+      setPayments(filteredPayments);
+
+      calculateStats(filteredProperties, filteredRentals, filteredPayments);
     } catch (error) {
-      console.error("Error loading dashboard data:", error);
+      console.error("Erro ao carregar dados do dashboard:", error);
     }
   };
 
@@ -192,17 +246,33 @@ export default function DashboardPage() {
 
   const loadUserName = async () => {
     try {
-      const name = await systemUserService.getCurrentUserName();
+      const userStr = localStorage.getItem("user");
+      if (!userStr) {
+        setUserName("Visitante");
+        return;
+      }
+
+      const localUser = JSON.parse(userStr);
       
-      if (name && name !== "Administrador") {
-        const firstName = name.split(" ")[0];
-        setUserName(firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase());
-      } else {
-        setUserName("Administrador");
+      // Fetch full name from system_users table
+      const { data, error } = await supabase
+        .from("system_users")
+        .select("name")
+        .eq("id", localUser.id)
+        .single();
+
+      if (error) {
+        console.error("Erro ao buscar nome do usuário:", error);
+        setUserName(localUser.name || "Usuário");
+        return;
+      }
+
+      if (data) {
+        setUserName(data.name);
+        console.log("✅ Nome do usuário carregado:", data.name);
       }
     } catch (error) {
-      console.error("Error loading user name:", error);
-      setUserName("Administrador");
+      console.error("Erro ao carregar nome do usuário:", error);
     }
   };
 
@@ -222,61 +292,84 @@ export default function DashboardPage() {
     });
   };
 
-  const activeRentals = rentals.filter((r) => r.isActive);
+  const calculateStats = (
+    currentProperties: Property[],
+    currentRentals: Rental[],
+    currentPayments: Payment[]
+  ) => {
+    // Filter active rentals in period
+    const activeRentalsInPeriod = currentRentals.filter((rental) => {
+      if (!rental.isActive) return false;
+      
+      const startDate = new Date(rental.startDate);
+      const endDate = rental.endDate ? new Date(rental.endDate) : null;
+      
+      const monthStart = new Date(selectedYear, selectedMonth - 1, 1);
+      const monthEnd = new Date(selectedYear, selectedMonth, 0);
 
-  const filteredPayments = payments.filter(
-    (p) => p.referenceMonth === selectedMonth && p.referenceYear === selectedYear
-  );
+      const startsBeforeMonthEnd = startDate <= monthEnd;
+      const endsAfterMonthStart = !endDate || endDate >= monthStart;
 
-  const paidPayments = filteredPayments.filter((p) => p.status === "paid");
-  const overduePayments = filteredPayments.filter((p) => p.status === "overdue");
-  const pendingPayments = filteredPayments.filter(
-    (p) => p.status === "pending" || p.status === "partial"
-  );
+      return startsBeforeMonthEnd && endsAfterMonthStart;
+    });
 
-  const monthlyRevenue = paidPayments.reduce((sum, p) => sum + (p.paidAmount || 0), 0);
-  
-  let adminFee = 0;
-  for (const payment of paidPayments) {
-    const rental = rentals.find(r => r.id === payment.rentalId);
-    const property = rental ? properties.find(p => p.id === rental.propertyId) : undefined;
+    // Filter payments for selected period
+    const periodPayments = currentPayments.filter(
+      (p) => p.referenceMonth === selectedMonth && p.referenceYear === selectedYear
+    );
+
+    const paid = periodPayments.filter((p) => p.status === "paid");
+    const overdue = periodPayments.filter((p) => p.status === "overdue");
+    const pending = periodPayments.filter(
+      (p) => p.status === "pending" || p.status === "partial"
+    );
+
+    const revenue = paid.reduce((sum, p) => sum + (p.paidAmount || 0), 0);
     
-    if (property && property.location.toLowerCase() !== "outros") {
-      const fee = (payment.paidAmount || 0) * (adminFeePercentage / 100);
-      adminFee += fee;
+    // Calculate admin fee
+    let fee = 0;
+    for (const payment of paid) {
+      const rental = currentRentals.find(r => r.id === payment.rentalId);
+      const property = rental ? currentProperties.find(p => p.id === rental.propertyId) : undefined;
+      
+      if (property && property.location.toLowerCase() !== "outros") {
+        const paymentFee = (payment.paidAmount || 0) * (adminFeePercentage / 100);
+        fee += paymentFee;
+      }
     }
-  }
-  
-  const netRevenue = monthlyRevenue - adminFee;
-  
-  const expectedValue = filteredPayments.reduce((sum, p) => sum + (p.expectedAmount || 0), 0);
-
-  const dueSoonPayments = filteredPayments.filter((p) => {
-    if (p.status !== "pending" && p.status !== "partial" && p.status !== "overdue") return false;
     
-    const rental = rentals.find((r) => r.id === p.rentalId);
-    if (!rental) return false;
+    const net = revenue - fee;
+    const expected = periodPayments.reduce((sum, p) => sum + (p.expectedAmount || 0), 0);
 
+    // Calculate due soon (today)
     const today = new Date();
-    const dueDate = new Date(selectedYear, selectedMonth - 1, rental.paymentDay);
+    today.setHours(0, 0, 0, 0);
     
-    return dueDate.getMonth() === today.getMonth() && dueDate.getFullYear() === today.getFullYear();
-  });
+    const dueSoon = currentPayments.filter(p => {
+      if (p.status === "paid") return false;
+      const dueDate = new Date(p.dueDate);
+      dueDate.setHours(0, 0, 0, 0);
+      return dueDate.getTime() === today.getTime();
+    });
 
-  const stats = {
-    totalProperties: properties.length,
-    availableProperties: properties.filter((p) => p.status === "available").length,
-    occupiedProperties: properties.filter((p) => p.status === "occupied").length,
-    unavailableProperties: properties.filter((p) => p.status === "unavailable").length,
-    totalTenants: tenants.filter((t) => t.status === "active" || t.status === "rented").length,
-    activeRentals: rentals.filter(r => r.isActive).length,
-    pendingPayments: pendingPayments.length,
-    overduePayments: overduePayments.length,
-    paidPayments: paidPayments.length,
-    monthlyRevenue: monthlyRevenue,
-    adminFee: adminFee,
-    netRevenue: netRevenue,
-    expectedValue: expectedValue,
+    setFilteredPayments(periodPayments);
+    setDueSoonPayments(dueSoon);
+
+    setStats({
+      totalProperties: currentProperties.length,
+      availableProperties: currentProperties.filter((p) => p.status === "available").length,
+      occupiedProperties: currentProperties.filter((p) => p.status === "occupied").length,
+      unavailableProperties: currentProperties.filter((p) => p.status === "unavailable").length,
+      activeRentals: activeRentalsInPeriod.length,
+      totalTenants: tenants.length,
+      monthlyRevenue: revenue,
+      adminFee: fee,
+      netRevenue: net,
+      expectedValue: expected,
+      paidPayments: paid.length,
+      pendingPayments: pending.length,
+      overduePayments: overdue.length,
+    });
   };
 
   const monthNames = [
@@ -294,37 +387,16 @@ export default function DashboardPage() {
       />
       <Layout>
         <div className="space-y-6">
-          <FloatingCard delay={0}>
-            <Card className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white border-none">
-              <CardContent className="pt-6">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                  <div>
-                    <h1 className="text-3xl font-bold mb-2">
-                      {mounted ? `${getGreeting()}, ${userName}! 👋` : `Olá, ${userName}! 👋`}
-                    </h1>
-                    <p className="text-emerald-50 capitalize">
-                      {mounted ? getCurrentDate() : "Carregando..."}
-                    </p>
-                  </div>
-                  
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 text-center">
-                      <p className="text-xs text-emerald-100 mb-1">Receita do Mês</p>
-                      <p className="text-lg font-bold">{formatCurrency(stats.monthlyRevenue)}</p>
-                    </div>
-                    <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 text-center">
-                      <p className="text-xs text-emerald-100 mb-1">Taxa Admin</p>
-                      <p className="text-lg font-bold">{formatCurrency(stats.adminFee)}</p>
-                    </div>
-                    <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 text-center">
-                      <p className="text-xs text-emerald-100 mb-1">Líquido</p>
-                      <p className="text-lg font-bold">{formatCurrency(stats.netRevenue)}</p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
+          <ScrollReveal>
+            <Card className="bg-gradient-to-br from-blue-500 to-blue-700 text-white">
+              <CardHeader>
+                <CardTitle className="text-2xl">
+                  Bom dia, {userName}! 👋
+                </CardTitle>
+                <p className="text-blue-100">{currentDate}</p>
+              </CardHeader>
             </Card>
-          </FloatingCard>
+          </ScrollReveal>
 
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
             <h2 className="text-2xl font-bold">Visão Geral</h2>

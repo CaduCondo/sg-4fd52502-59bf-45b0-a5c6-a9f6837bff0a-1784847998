@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, DollarSign, Calendar, Home, User, X, Upload, Camera, Paperclip, Eye, Download } from "lucide-react";
-import type { Payment, Rental, Property, Tenant, Config } from "@/types";
+import type { Payment, Rental, Property, Tenant, CompanyConfig } from "@/types";
 import { paymentService, rentalService, propertyService, tenantService, configService } from "@/services";
 import { applyRealMask, removeMask, formatCurrency, parseCurrencyToFloat } from "@/lib/masks";
 import { PaymentReceipt } from "@/components/PaymentReceipt";
@@ -30,7 +30,7 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
   const [rental, setRental] = useState<Rental | null>(null);
   const [property, setProperty] = useState<Property | null>(null);
   const [tenant, setTenant] = useState<Tenant | null>(null);
-  const [config, setConfig] = useState<Config | null>(null);
+  const [config, setConfig] = useState<CompanyConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [showReceipt, setShowReceipt] = useState(false);
 
@@ -76,6 +76,15 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
       setFormData((prev) => ({ ...prev, paymentCode: code }));
     }
   }, [formData.paymentMethod, formData.paymentLocation]);
+
+  useEffect(() => {
+    loadConfig();
+  }, []);
+
+  const loadConfig = async () => {
+    const data = await configService.getConfig();
+    setConfig(data);
+  };
 
   const loadData = async (id: string) => {
     try {
