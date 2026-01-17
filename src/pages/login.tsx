@@ -113,7 +113,7 @@ export default function Login() {
       
       // ALWAYS redirect to dashboard after successful localStorage login
       console.log("✅ Login bem-sucedido! Redirecionando para dashboard...");
-      router.push("/dashboard");
+      window.location.href = "/dashboard";
     } else {
       handleLoginAttempt();
     }
