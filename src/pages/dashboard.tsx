@@ -286,12 +286,17 @@ export default function DashboardPage() {
   const stats = {
     totalProperties: properties.length,
     availableProperties: properties.filter((p) => p.status === "available").length,
+    occupiedProperties: properties.filter((p) => p.status === "occupied").length,
+    unavailableProperties: properties.filter((p) => p.status === "unavailable").length,
     activeRentals: activeRentalsInPeriod.length, // Usando o valor filtrado por data
     totalTenants: tenants.length,
     monthlyRevenue: monthlyRevenue,
     adminFee: adminFee,
     netRevenue: netRevenue,
     expectedValue: expectedValue,
+    paidPayments: paidPayments.length,
+    pendingPayments: pendingPayments.length,
+    overduePayments: overduePayments.length,
   };
 
   const monthNames = [
