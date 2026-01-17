@@ -394,15 +394,17 @@ export function Layout({ children }: LayoutProps) {
       </motion.main>
 
       {/* Edit Profile Dialog */}
-      <EditProfileDialog
-        user={user}
-        open={showProfileDialog}
-        onOpenChange={setShowProfileDialog}
-        onSuccess={() => {
-          // Reload page to ensure all data is synced
-          window.location.reload();
-        }}
-      />
+      {user?.id && (
+        <EditProfileDialog
+          user={user}
+          open={showProfileDialog}
+          onOpenChange={setShowProfileDialog}
+          onSuccess={() => {
+            // Reload page to ensure all data is synced
+            window.location.reload();
+          }}
+        />
+      )}
 
       {/* Change Password Dialog */}
       <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
