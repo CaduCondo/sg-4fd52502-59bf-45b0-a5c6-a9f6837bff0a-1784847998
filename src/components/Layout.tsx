@@ -31,6 +31,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { userStorage } from "@/lib/storage";
+import { systemUserService } from "@/services/systemUserService";
+import { useToast } from "@/hooks/use-toast";
 
 interface LayoutProps {
   children: ReactNode;
@@ -38,6 +40,7 @@ interface LayoutProps {
 
 export function Layout({ children }: LayoutProps) {
   const router = useRouter();
+  const { toast } = useToast();
   const [user, setUser] = useState<UserType | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [showProfileDialog, setShowProfileDialog] = useState(false);
@@ -102,28 +105,56 @@ export function Layout({ children }: LayoutProps) {
     router.push("/login");
   };
 
-  const handleSaveProfile = () => {
+  const handleSaveProfile = async () => {
     if (!user) return;
     
-    const updatedUser: UserType = {
-      ...user,
-      name: profileName,
-      rg: profileRg,
-      cpf: profileCpf,
-      phone: profilePhone,
-      email: profileEmail,
-      photo: profilePhoto,
-    };
-    
-    userStorage.update(updatedUser);
-    
-    if (typeof window !== "undefined") {
-      localStorage.setItem("rental_auth_user", JSON.stringify(updatedUser));
+    try {
+      console.log("💾 Salvando perfil via Supabase...");
+      
+      const updatedData = {
+        name: profileName,
+        rg: profileRg || undefined,
+        cpf: profileCpf || undefined,
+        phone: profilePhone || undefined,
+        email: profileEmail,
+        photo: profilePhoto || undefined,
+      };
+      
+      console.log("📦 Dados a serem atualizados:", updatedData);
+      
+      // Update in Supabase
+      const result = await systemUserService.update(user.id, updatedData);
+      
+      console.log("✅ Resultado da atualização:", result);
+      
+      if (result) {
+        // Update local user state
+        const updatedUser: UserType = {
+          ...user,
+          ...updatedData,
+        };
+        
+        // Update localStorage for auth
+        if (typeof window !== "undefined") {
+          localStorage.setItem("rental_auth_user", JSON.stringify(updatedUser));
+        }
+        
+        setUser(updatedUser);
+        setShowProfileDialog(false);
+        
+        toast({
+          title: "Sucesso",
+          description: "Perfil atualizado com sucesso!",
+        });
+      }
+    } catch (error) {
+      console.error("❌ Erro ao salvar perfil:", error);
+      toast({
+        title: "Erro",
+        description: "Erro ao atualizar perfil. Tente novamente.",
+        variant: "destructive",
+      });
     }
-    
-    setUser(updatedUser);
-    setShowProfileDialog(false);
-    alert("Perfil atualizado com sucesso!");
   };
 
   const handleChangePassword = () => {
@@ -505,12 +536,22 @@ export function Layout({ children }: LayoutProps) {
                 onChange={(e) => setProfileEmail(e.target.value)}
               />
             </div>
-            <div className="flex space-x-2">
-              <Button onClick={handleSaveProfile} className="flex-1">
-                Salvar
-              </Button>
-              <Button variant="outline" onClick={() => setShowProfileDialog(false)} className="flex-1">
+            <div className="flex justify-end gap-2 mt-4 pt-4 border-t">
+              <Button 
+                type="button"
+                variant="outline" 
+                onClick={() => setShowProfileDialog(false)}
+              >
                 Cancelar
+              </Button>
+              <Button 
+                type="button"
+                onClick={() => {
+                  console.log("💾 Botão Salvar Perfil clicado");
+                  handleSaveProfile();
+                }}
+              >
+                Salvar
               </Button>
             </div>
           </div>
