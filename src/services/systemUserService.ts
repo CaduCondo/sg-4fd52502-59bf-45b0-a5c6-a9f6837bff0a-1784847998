@@ -99,7 +99,6 @@ export const systemUserService = {
       };
 
       // Bypass TypeScript excessive depth check by completely escaping type inference
-      // @ts-expect-error - Supabase generated types can cause TS2589 with complex schemas
       const table: any = supabase.from("system_users");
       const { data, error } = await table.insert(payload).select("*").single();
 
@@ -126,7 +125,6 @@ export const systemUserService = {
       if (updates.cpf === "") payload.cpf = null;
 
       // Bypass TypeScript excessive depth check
-      // @ts-expect-error - Supabase generated types can cause TS2589 with complex schemas
       const table: any = supabase.from("system_users");
       const { data, error } = await table.update(payload).eq("id", id).select("*").single();
 
