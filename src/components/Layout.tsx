@@ -212,7 +212,7 @@ export function Layout({ children }: LayoutProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Left: Mobile menu + Logo */}
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 flex-shrink-0">
               {/* Mobile menu button */}
               <Button
                 variant="ghost"
@@ -247,8 +247,8 @@ export function Layout({ children }: LayoutProps) {
               </Link>
             </div>
 
-            {/* Center: Desktop Menu - MUST BE VISIBLE */}
-            <div className="hidden lg:flex items-center gap-2">
+            {/* Center: Desktop Menu - MUST be in the same flex row */}
+            <div className="hidden lg:flex items-center gap-2 flex-1 justify-center">
               {menuItems.map((item, index) => (
                 <motion.div
                   key={item.path}
@@ -276,7 +276,7 @@ export function Layout({ children }: LayoutProps) {
             </div>
             
             {/* Right: User Profile */}
-            <div className="flex items-center">
+            <div className="flex items-center flex-shrink-0">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="flex items-center space-x-2 hover:bg-emerald-50 transition-colors">
