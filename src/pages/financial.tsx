@@ -159,8 +159,8 @@ export default function Financial() {
     const tenant = tenants.find((t) => t.id === rental?.tenantId);
 
     return {
-      local: property?.name || property?.address || "N/A",
-      complemento: property?.number || "N/A",
+      local: property?.address || "N/A",
+      complemento: property?.complement || "N/A",
       tenantName: tenant?.name || "N/A",
       rental: rental,
       pixCode: rental?.pixCode || "",

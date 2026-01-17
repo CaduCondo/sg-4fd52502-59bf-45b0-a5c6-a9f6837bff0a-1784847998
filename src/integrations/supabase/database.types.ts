@@ -219,6 +219,7 @@ export type Database = {
           is_active: boolean | null
           monthly_rent: number
           payment_day: number
+          pix_code: string | null
           property_id: string
           start_date: string
           tenant_id: string
@@ -237,6 +238,7 @@ export type Database = {
           is_active?: boolean | null
           monthly_rent: number
           payment_day: number
+          pix_code?: string | null
           property_id: string
           start_date: string
           tenant_id: string
@@ -255,6 +257,7 @@ export type Database = {
           is_active?: boolean | null
           monthly_rent?: number
           payment_day?: number
+          pix_code?: string | null
           property_id?: string
           start_date?: string
           tenant_id?: string
@@ -332,10 +335,10 @@ export type Database = {
           created_at: string | null
           document: string | null
           document_type: string | null
-          email: string
+          email: string | null
           id: string
           name: string
-          phone: string
+          phone: string | null
           status: string
           updated_at: string | null
         }
@@ -344,10 +347,10 @@ export type Database = {
           created_at?: string | null
           document?: string | null
           document_type?: string | null
-          email: string
+          email?: string | null
           id?: string
           name: string
-          phone: string
+          phone?: string | null
           status: string
           updated_at?: string | null
         }
@@ -356,10 +359,10 @@ export type Database = {
           created_at?: string | null
           document?: string | null
           document_type?: string | null
-          email?: string
+          email?: string | null
           id?: string
           name?: string
-          phone?: string
+          phone?: string | null
           status?: string
           updated_at?: string | null
         }
