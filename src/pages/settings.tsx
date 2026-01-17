@@ -62,11 +62,14 @@ export default function Settings() {
   const sortedLocations = [...locations].sort((a, b) => a.name.localeCompare(b.name));
 
   useEffect(() => {
-    if (!isAuthenticated()) {
-      router.push("/login");
-      return;
-    }
-    loadSettings();
+    const checkAuth = async () => {
+      if (!isAuthenticated()) {
+        router.push("/login");
+        return;
+      }
+      loadSettings();
+    };
+    checkAuth();
   }, [router]);
 
   const loadSettings = async () => {
