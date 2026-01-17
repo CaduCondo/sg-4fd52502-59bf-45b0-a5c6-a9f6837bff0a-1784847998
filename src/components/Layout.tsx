@@ -211,8 +211,9 @@ export function Layout({ children }: LayoutProps) {
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            {/* Left side: Mobile menu button + Logo */}
-            <div className="flex items-center space-x-4">
+            {/* Left: Mobile menu + Logo */}
+            <div className="flex items-center gap-4">
+              {/* Mobile menu button */}
               <Button
                 variant="ghost"
                 size="icon"
@@ -232,6 +233,7 @@ export function Layout({ children }: LayoutProps) {
                 </AnimatePresence>
               </Button>
               
+              {/* Logo */}
               <Link href="/dashboard" className="flex items-center space-x-2 group">
                 <motion.div
                   whileHover={{ rotate: 360 }}
@@ -245,8 +247,8 @@ export function Layout({ children }: LayoutProps) {
               </Link>
             </div>
 
-            {/* Center: Desktop Menu - THIS MUST BE VISIBLE */}
-            <div className="hidden lg:flex items-center space-x-2 flex-1 justify-center max-w-3xl">
+            {/* Center: Desktop Menu - MUST BE VISIBLE */}
+            <div className="hidden lg:flex items-center gap-2">
               {menuItems.map((item, index) => (
                 <motion.div
                   key={item.path}
@@ -266,14 +268,14 @@ export function Layout({ children }: LayoutProps) {
                       >
                         <item.icon size={16} />
                       </motion.div>
-                      <span className="text-xs">{item.label}</span>
+                      <span className="text-sm">{item.label}</span>
                     </Button>
                   </Link>
                 </motion.div>
               ))}
             </div>
             
-            {/* Right side: User Profile */}
+            {/* Right: User Profile */}
             <div className="flex items-center">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -295,7 +297,7 @@ export function Layout({ children }: LayoutProps) {
                         <User size={18} />
                       )}
                     </motion.div>
-                    <span className="hidden sm:inline">{user?.name}</span>
+                    <span className="hidden sm:inline text-sm">{user?.name}</span>
                     <motion.div
                       animate={{ rotate: 0 }}
                       whileHover={{ rotate: 180 }}
