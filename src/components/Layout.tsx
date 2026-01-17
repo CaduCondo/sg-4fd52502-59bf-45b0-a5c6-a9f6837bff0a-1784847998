@@ -210,9 +210,9 @@ export function Layout({ children }: LayoutProps) {
         transition={{ duration: 0.3, ease: "easeInOut" }}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="h-16 flex items-center justify-between">
+          <div className="h-16 flex items-center gap-4">
             {/* Left: Logo */}
-            <div className="flex items-center gap-3 min-w-fit">
+            <div className="flex items-center gap-3 flex-shrink-0">
               <Link href="/dashboard" className="flex items-center space-x-2 group">
                 <motion.div
                   whileHover={{ rotate: 360 }}
@@ -227,7 +227,8 @@ export function Layout({ children }: LayoutProps) {
             </div>
 
             {/* Center: Desktop Menu - FORCED TO SHOW WITHOUT ANY CONDITIONS */}
-            <nav className="lg:flex items-center gap-2 flex-shrink-0 bg-red-500 p-2">
+            <nav className="flex items-center gap-2 flex-1 justify-center bg-red-500 p-4 min-h-[60px] min-w-[600px]">
+              <span className="text-white font-bold text-2xl">🔴 MENU DEBUG 🔴</span>
               {menuItems.map((item) => (
                 <Link key={item.path} href={item.path}>
                   <Button 
@@ -243,7 +244,7 @@ export function Layout({ children }: LayoutProps) {
             </nav>
 
             {/* Right: User Profile + Mobile Menu Button */}
-            <div className="flex items-center gap-2 min-w-fit">
+            <div className="flex items-center gap-2 flex-shrink-0">
               {/* Mobile Menu Button */}
               <Button
                 variant="ghost"
