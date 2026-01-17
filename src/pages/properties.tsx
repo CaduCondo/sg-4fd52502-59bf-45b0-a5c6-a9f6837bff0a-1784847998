@@ -366,38 +366,38 @@ export default function PropertiesPage() {
               {filteredProperties.map((property) => (
                 <Card 
                   key={property.id}
-                  className="hover:shadow-lg transition-all cursor-pointer group relative"
+                  className="h-full hover:shadow-lg transition-all cursor-pointer group"
                   onClick={() => handleCardClick(property.id)}
                 >
-                  <CardHeader className="pb-3 space-y-3">
-                    <div className="flex justify-between items-start">
-                      <div className="flex items-center gap-2">
-                        <Building2 className="h-5 w-5 text-emerald-600 flex-shrink-0" />
-                        <span className="font-semibold text-base">{property.location}</span>
-                      </div>
+                  <CardHeader className="pb-2 p-2.5">
+                    <div className="flex justify-between items-start mb-2">
+                      <Building2 className="h-4 w-4 text-emerald-600" />
                       <Badge className={getStatusColor(property.status)}>
                         {getStatusLabel(property.status)}
                       </Badge>
                     </div>
-                    <div className="bg-black text-white px-3 py-1.5 rounded-md inline-block self-start">
-                      <p className="text-sm font-medium">{property.complement}</p>
-                    </div>
+                    <CardTitle className="text-sm group-hover:text-emerald-600 transition-colors">
+                      {property.location}
+                    </CardTitle>
+                    <p className="text-xs text-muted-foreground">
+                      {property.complement}
+                    </p>
                   </CardHeader>
-                  <CardContent className="pt-0">
-                    <div className="flex items-end justify-between">
+                  <CardContent className="pt-0 p-2.5">
+                    <div className="flex items-baseline justify-between">
                       <div>
-                        <p className="text-2xl font-bold text-emerald-600">
+                        <p className="text-base font-bold text-emerald-600">
                           {formatCurrency(property.rentValue)}
                         </p>
-                        <p className="text-sm text-muted-foreground">por mês</p>
+                        <p className="text-xs text-muted-foreground">por mês</p>
                       </div>
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50"
+                        className="h-7 w-7 text-red-500 hover:text-red-700 hover:bg-red-50"
                         onClick={(e) => handleDelete(e, property)}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </div>
                   </CardContent>
