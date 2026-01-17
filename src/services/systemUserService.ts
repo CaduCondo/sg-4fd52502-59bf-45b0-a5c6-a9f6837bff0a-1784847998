@@ -1,13 +1,17 @@
 import { supabase } from "@/integrations/supabase/client";
+import { Database } from "@/integrations/supabase/types";
+
+// Tipo derivado diretamente do Supabase para garantir compatibilidade
+type UserRow = Database['public']['Tables']['system_users']['Row'];
 
 export interface SystemUser {
   id: string;
   name: string;
-  username?: string;
+  username: string | null;
   email: string;
-  phone?: string;
-  rg?: string;
-  cpf?: string;
+  phone: string | null;
+  rg: string | null;
+  cpf: string | null;
   password: string;
   role: string; // "admin" | "corretor" | "financeiro"
   active: boolean;
@@ -25,7 +29,8 @@ export const systemUserService = {
         .order("name", { ascending: true });
 
       if (error) throw error;
-      return data || [];
+      // Casting seguro pois as colunas batem
+      return (data as unknown as SystemUser[]) || [];
     } catch (error) {
       console.error("Error fetching system users:", error);
       return [];
@@ -42,7 +47,7 @@ export const systemUserService = {
         .single();
 
       if (error) throw error;
-      return data;
+      return data as unknown as SystemUser;
     } catch (error) {
       console.error("Error fetching system user:", error);
       return null;
@@ -59,7 +64,7 @@ export const systemUserService = {
         .single();
 
       if (error) throw error;
-      return data;
+      return data as unknown as SystemUser;
     } catch (error) {
       console.error("Error fetching system user by email:", error);
       return null;
@@ -76,7 +81,7 @@ export const systemUserService = {
         .single();
 
       if (error) throw error;
-      return data;
+      return data as unknown as SystemUser;
     } catch (error) {
       console.error("Error fetching system user by username:", error);
       return null;
@@ -86,24 +91,27 @@ export const systemUserService = {
   // Criar novo usuário
   async create(user: Omit<SystemUser, "id" | "created_at" | "updated_at">): Promise<SystemUser | null> {
     try {
+      // Usando any para evitar erro de complexidade de tipos do Supabase (TS2589)
+      const payload: any = {
+        name: user.name,
+        username: user.username || null,
+        email: user.email,
+        phone: user.phone || null,
+        rg: user.rg || null,
+        cpf: user.cpf || null,
+        password: user.password,
+        role: user.role,
+        active: user.active
+      };
+
       const { data, error } = await supabase
         .from("system_users")
-        .insert({
-          name: user.name,
-          username: user.username,
-          email: user.email,
-          phone: user.phone,
-          rg: user.rg,
-          cpf: user.cpf,
-          password: user.password,
-          role: user.role,
-          active: user.active
-        })
-        .select()
+        .insert(payload)
+        .select("*")
         .single();
 
       if (error) throw error;
-      return data;
+      return data as unknown as SystemUser;
     } catch (error) {
       console.error("Error creating system user:", error);
       return null;
@@ -113,18 +121,26 @@ export const systemUserService = {
   // Atualizar usuário
   async update(id: string, updates: Partial<Omit<SystemUser, "id" | "created_at">>): Promise<SystemUser | null> {
     try {
+      const payload: any = {
+        ...updates,
+        updated_at: new Date().toISOString()
+      };
+
+      // Garantir que campos opcionais vazios virem null
+      if (updates.username === "") payload.username = null;
+      if (updates.phone === "") payload.phone = null;
+      if (updates.rg === "") payload.rg = null;
+      if (updates.cpf === "") payload.cpf = null;
+
       const { data, error } = await supabase
         .from("system_users")
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString()
-        })
+        .update(payload)
         .eq("id", id)
-        .select()
+        .select("*")
         .single();
 
       if (error) throw error;
-      return data;
+      return data as unknown as SystemUser;
     } catch (error) {
       console.error("Error updating system user:", error);
       return null;
@@ -170,6 +186,14 @@ export const systemUserService = {
   async getCurrentUserName(): Promise<string> {
     try {
       const { data: { user } } = await supabase.auth.getUser();
+      // Verifica se temos um usuário logado no localStorage (sistema customizado)
+      const storedUser = typeof window !== 'undefined' ? localStorage.getItem("currentUser") : null;
+      
+      if (storedUser) {
+        const parsedUser = JSON.parse(storedUser);
+        return parsedUser.name.split(" ")[0];
+      }
+
       if (!user?.email) return "Administrador";
 
       const { data, error } = await supabase
@@ -182,7 +206,8 @@ export const systemUserService = {
         return user.email.split("@")[0];
       }
 
-      return data.name;
+      const firstName = data.name.split(" ")[0];
+      return firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
     } catch (error) {
       console.error("Error fetching current user name:", error);
       return "Administrador";
@@ -216,7 +241,7 @@ export const systemUserService = {
       }
 
       if (error) throw error;
-      return data;
+      return data as unknown as SystemUser;
     } catch (error) {
       console.error("Error validating login:", error);
       return null;
