@@ -206,13 +206,12 @@ export function Layout({ children }: LayoutProps) {
         initial={{ y: 0 }}
         animate={{
           y: scrollDirection === "down" && scrollProgress > 5 ? -100 : 0,
-          height: isScrolled ? "56px" : "64px",
         }}
         transition={{ duration: 0.3, ease: "easeInOut" }}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-12 lg:h-14 transition-all duration-300">
-            <div className="flex items-center space-x-4">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center space-x-8">
               <Button
                 variant="ghost"
                 size="icon"
@@ -239,17 +238,13 @@ export function Layout({ children }: LayoutProps) {
                 >
                   <Building2 className="h-7 w-7 text-emerald-600 group-hover:text-emerald-700 transition-colors" />
                 </motion.div>
-                <motion.span
-                  className="text-lg font-bold text-slate-900 group-hover:text-emerald-600 transition-colors"
-                  animate={{ fontSize: isScrolled ? "1rem" : "1.125rem" }}
-                  transition={{ duration: 0.3 }}
-                >
+                <motion.span className="text-lg font-bold text-slate-900 group-hover:text-emerald-600 transition-colors">
                   ImóvelControl
                 </motion.span>
               </Link>
 
-              {/* Desktop Menu - Moved to same row */}
-              <div className="hidden lg:flex space-x-1 ml-8">
+              {/* Desktop Menu */}
+              <div className="hidden lg:flex items-center space-x-1">
                 {menuItems.map((item, index) => (
                   <motion.div
                     key={item.path}
