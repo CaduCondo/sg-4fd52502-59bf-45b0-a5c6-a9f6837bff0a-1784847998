@@ -15,36 +15,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      config: {
-        Row: {
-          admin_fee_percentage: number
-          created_at: string | null
-          id: string
-          interest_rate_percentage: number
-          late_fee_percentage: number
-          locations: Json | null
-          updated_at: string | null
-        }
-        Insert: {
-          admin_fee_percentage?: number
-          created_at?: string | null
-          id?: string
-          interest_rate_percentage?: number
-          late_fee_percentage?: number
-          locations?: Json | null
-          updated_at?: string | null
-        }
-        Update: {
-          admin_fee_percentage?: number
-          created_at?: string | null
-          id?: string
-          interest_rate_percentage?: number
-          late_fee_percentage?: number
-          locations?: Json | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
       configs: {
         Row: {
           admin_fee_percentage: number
@@ -72,63 +42,6 @@ export type Database = {
           late_fee_percentage?: number | null
           locations?: Json | null
           updated_at?: string | null
-        }
-        Relationships: []
-      }
-      kv_store_3f6e5f02: {
-        Row: {
-          key: string
-          value: Json
-        }
-        Insert: {
-          key: string
-          value: Json
-        }
-        Update: {
-          key?: string
-          value?: Json
-        }
-        Relationships: []
-      }
-      leases: {
-        Row: {
-          created_at: string | null
-          end_date: string | null
-          id: string
-          monthly_rent: number
-          payment_day: number
-          property_id: string | null
-          start_date: string
-          status: string
-          tenant_id: string | null
-          updated_at: string | null
-          user_id: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          end_date?: string | null
-          id?: string
-          monthly_rent: number
-          payment_day: number
-          property_id?: string | null
-          start_date: string
-          status?: string
-          tenant_id?: string | null
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          end_date?: string | null
-          id?: string
-          monthly_rent?: number
-          payment_day?: number
-          property_id?: string | null
-          start_date?: string
-          status?: string
-          tenant_id?: string | null
-          updated_at?: string | null
-          user_id?: string | null
         }
         Relationships: []
       }
@@ -211,33 +124,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      profiles: {
-        Row: {
-          avatar_url: string | null
-          created_at: string | null
-          email: string | null
-          full_name: string | null
-          id: string
-          updated_at: string | null
-        }
-        Insert: {
-          avatar_url?: string | null
-          created_at?: string | null
-          email?: string | null
-          full_name?: string | null
-          id: string
-          updated_at?: string | null
-        }
-        Update: {
-          avatar_url?: string | null
-          created_at?: string | null
-          email?: string | null
-          full_name?: string | null
-          id?: string
-          updated_at?: string | null
-        }
-        Relationships: []
       }
       properties: {
         Row: {
@@ -367,33 +253,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      system_settings: {
-        Row: {
-          admin_fee_percentage: number | null
-          created_at: string | null
-          daily_interest_percentage: number | null
-          id: string
-          late_fee_percentage: number | null
-          updated_at: string | null
-        }
-        Insert: {
-          admin_fee_percentage?: number | null
-          created_at?: string | null
-          daily_interest_percentage?: number | null
-          id?: string
-          late_fee_percentage?: number | null
-          updated_at?: string | null
-        }
-        Update: {
-          admin_fee_percentage?: number | null
-          created_at?: string | null
-          daily_interest_percentage?: number | null
-          id?: string
-          late_fee_percentage?: number | null
-          updated_at?: string | null
-        }
-        Relationships: []
       }
       tenants: {
         Row: {
