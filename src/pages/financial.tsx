@@ -18,7 +18,7 @@ import { tenantService } from "@/services/tenantService";
 import { Payment, Property, Rental, Tenant } from "@/types";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import ScrollReveal from "@/components/animations/ScrollReveal";
+import { ScrollReveal } from "@/components/animations/ScrollReveal";
 
 export default function Financial() {
   const [payments, setPayments] = useState<Payment[]>([]);
