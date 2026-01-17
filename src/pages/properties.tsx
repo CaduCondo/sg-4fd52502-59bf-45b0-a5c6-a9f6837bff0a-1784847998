@@ -402,11 +402,11 @@ export default function PropertiesPage() {
                       </Badge>
                     </div>
 
-                    {/* Complemento em destaque */}
-                    <div className="bg-black text-white px-3 py-1.5 rounded mb-2 inline-block">
-                      <span className="font-medium text-sm">
+                    {/* Complemento */}
+                    <div className="mb-2">
+                      <p className="text-sm text-foreground font-medium">
                         {property.complement || "Sem complemento"}
-                      </span>
+                      </p>
                     </div>
 
                     {/* Footer: Valor + Botão Delete */}

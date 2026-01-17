@@ -10,7 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Users, Plus, Search, Trash2, LayoutGrid, List } from "lucide-react";
+import { Users, Plus, Search, Trash2, LayoutGrid, List, Mail, Phone } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tenant } from "@/types";
 import { tenantService } from "@/services";
 import { getCurrentUser } from "@/lib/auth";
@@ -279,36 +280,50 @@ export default function TenantsPage() {
               </CardContent>
             </Card>
           ) : viewMode === "grid" ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredTenants.map((tenant) => (
-                <Card 
+                <Card
                   key={tenant.id}
-                  className="cursor-pointer hover:shadow-lg transition-all duration-300 group"
-                  onClick={() => handleCardClick(tenant.id)}
+                  className="hover:shadow-lg transition-shadow cursor-pointer"
+                  onClick={() => router.push(`/tenants/${tenant.id}`)}
                 >
-                  <CardHeader className="pb-2 p-2.5">
-                    <div className="flex items-start justify-between mb-2">
-                      <Badge className={getStatusColor(tenant.status)}>
-                        {getStatusLabel(tenant.status)}
-                      </Badge>
-                    </div>
-                    <CardTitle className="text-sm group-hover:text-emerald-600 transition-colors">
-                      {tenant.name}
-                    </CardTitle>
-                    <p className="text-xs text-muted-foreground">
-                      {tenant.documentType?.toUpperCase()}: {tenant.documentType === "cpf" ? applyCpfMask(tenant.document || "") : applyCnpjMask(tenant.document || "")}
-                    </p>
-                  </CardHeader>
-                  <CardContent className="pt-0 pb-2 px-2.5">
-                    <div className="flex items-center justify-end">
+                  <CardContent className="p-5">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center gap-4 flex-1">
+                        <Avatar className="h-14 w-14">
+                          <AvatarFallback className="text-lg font-semibold">
+                            {tenant.name
+                              .split(" ")
+                              .map((n) => n[0])
+                              .join("")
+                              .toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <h3 className="text-lg font-bold leading-none mb-1">{tenant.name}</h3>
+                          <p className="text-sm text-muted-foreground">
+                            {tenant.documentType === "cpf" ? "CPF" : "CNPJ"}: {tenant.documentType === "cpf" ? applyCpfMask(tenant.document || "") : applyCnpjMask(tenant.document || "")}
+                          </p>
+                        </div>
+                      </div>
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-7 w-7 text-red-500 hover:text-red-700 hover:bg-red-50"
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10 -mt-2 -mr-2"
                         onClick={(e) => handleDelete(e, tenant)}
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
+                        <Trash2 className="h-5 w-5" />
                       </Button>
+                    </div>
+                    <div className="space-y-3 text-base text-muted-foreground">
+                      <div className="flex items-center gap-3">
+                        <Mail className="h-5 w-5 text-emerald-600" />
+                        <span className="truncate">{tenant.email || "Sem email"}</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Phone className="h-5 w-5 text-emerald-600" />
+                        <span>{tenant.phone || "Sem telefone"}</span>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
