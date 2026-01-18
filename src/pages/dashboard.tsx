@@ -32,6 +32,7 @@ export default function DashboardPage() {
   const [mounted, setMounted] = useState(false);
   const [filteredPayments, setFilteredPayments] = useState<Payment[]>([]);
   const [dueSoonPayments, setDueSoonPayments] = useState<Payment[]>([]);
+  const [greeting, setGreeting] = useState("Olá");
   const [stats, setStats] = useState({
     totalProperties: 0,
     availableProperties: 0,
@@ -168,6 +169,8 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
+    setMounted(true);
+    
     // Set current date
     const now = new Date();
     const options: Intl.DateTimeFormatOptions = {
@@ -179,6 +182,16 @@ export default function DashboardPage() {
     setCurrentDate(
       now.toLocaleDateString("pt-BR", options).replace(/^\w/, (c) => c.toUpperCase())
     );
+
+    // Set greeting based on time
+    const hour = now.getHours();
+    if (hour < 12) {
+      setGreeting("Bom dia");
+    } else if (hour < 18) {
+      setGreeting("Boa tarde");
+    } else {
+      setGreeting("Boa noite");
+    }
 
     loadDashboardData();
     loadUserName();
@@ -290,13 +303,6 @@ export default function DashboardPage() {
       console.error("❌ Erro ao carregar nome do usuário:", error);
       setUserName("Usuário");
     }
-  };
-
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Bom dia";
-    if (hour < 18) return "Boa tarde";
-    return "Boa noite";
   };
 
   const getCurrentDate = () => {
@@ -412,7 +418,7 @@ export default function DashboardPage() {
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                   <div className="space-y-2">
                     <h1 className="text-3xl font-bold tracking-tight">
-                      {getGreeting()}, {userName}! 👋
+                      {mounted ? `${greeting}, ${userName}! 👋` : "Olá! 👋"}
                     </h1>
                     <p className="text-blue-100 opacity-90 capitalize">
                       {currentDate}
