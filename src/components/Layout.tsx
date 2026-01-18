@@ -212,7 +212,7 @@ export function Layout({ children }: LayoutProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="h-16 flex items-center justify-between gap-4">
             {/* LOGO - Left */}
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
               {/* Mobile Menu Button - VISIBLE ONLY ON MOBILE */}
               <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
                 <SheetTrigger asChild>
@@ -228,9 +228,7 @@ export function Layout({ children }: LayoutProps) {
                   <SheetHeader>
                     <SheetTitle className="text-left">
                       <div className="flex items-center gap-2">
-                        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center shadow-md">
-                          <Building2 className="w-6 h-6 text-white" />
-                        </div>
+                        <Building2 className="h-5 w-5 text-emerald-600" />
                         <span className="font-bold text-slate-900">D</span>
                       </div>
                     </SheetTitle>
@@ -312,9 +310,7 @@ export function Layout({ children }: LayoutProps) {
               </Sheet>
 
               <Link href="/dashboard" className="flex items-center gap-2 flex-shrink-0">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center shadow-md">
-                  <Building2 className="w-6 h-6 text-white" />
-                </div>
+                <Building2 className="h-6 w-6 text-emerald-600" />
                 <span className="font-bold text-slate-900 text-base sm:text-lg">D&apos;Uvo Enterprise</span>
               </Link>
             </div>

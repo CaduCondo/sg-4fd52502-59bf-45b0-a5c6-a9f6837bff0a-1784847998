@@ -10,7 +10,6 @@ import { systemUserService } from "@/services/systemUserService";
 import { User, Mail, Building2, Phone, MapPin, Calendar, Shield, Save, KeyRound, Unlock, Camera } from "lucide-react";
 import { applyCpfMask, applyPhoneMask, applyCepMask, removeMask } from "@/lib/masks";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { getCurrentUser } from "@/lib/auth";
 
 interface EditProfileDialogProps {
   open: boolean;
@@ -26,8 +25,6 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
   const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [isUnlocking, setIsUnlocking] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
-  
-  const loggedInUser = getCurrentUser();
 
   useEffect(() => {
     if (open && user) {
@@ -281,27 +278,25 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
                 />
               </div>
 
-              {loggedInUser?.role === "admin" && (
-                <div className="space-y-2">
-                  <Label htmlFor="role" className="flex items-center gap-2">
-                    <Building2 className="h-4 w-4" />
-                    Função
-                  </Label>
-                  <Select
-                    value={selectedUser.role}
-                    onValueChange={(value) => handleChange("role", value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="admin">Administrador</SelectItem>
-                      <SelectItem value="manager">Gerente</SelectItem>
-                      <SelectItem value="broker">Corretor</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
+              <div className="space-y-2">
+                <Label htmlFor="role" className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4" />
+                  Função
+                </Label>
+                <Select
+                  value={selectedUser.role}
+                  onValueChange={(value) => handleChange("role", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin">Administrador</SelectItem>
+                    <SelectItem value="manager">Gerente</SelectItem>
+                    <SelectItem value="broker">Corretor</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 

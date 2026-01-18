@@ -394,46 +394,28 @@ export default function Settings() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="flex flex-wrap h-auto w-full justify-start gap-2 bg-transparent p-0">
-            <TabsTrigger 
-              value="company" 
-              className="gap-2 px-4 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm border bg-background"
-            >
+          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-6 h-auto">
+            <TabsTrigger value="company" className="gap-2 py-3">
               <Building2 className="h-4 w-4" />
               Dados da Empresa
             </TabsTrigger>
-            <TabsTrigger 
-              value="admin-fees" 
-              className="gap-2 px-4 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm border bg-background"
-            >
+            <TabsTrigger value="admin-fees" className="gap-2 py-3">
               <Percent className="h-4 w-4" />
               Taxas Admin
             </TabsTrigger>
-            <TabsTrigger 
-              value="fines" 
-              className="gap-2 px-4 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm border bg-background"
-            >
+            <TabsTrigger value="fines" className="gap-2 py-3">
               <AlertCircle className="h-4 w-4" />
               Multas e Juros
             </TabsTrigger>
-            <TabsTrigger 
-              value="users" 
-              className="gap-2 px-4 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm border bg-background"
-            >
+            <TabsTrigger value="users" className="gap-2 py-3">
               <Users className="h-4 w-4" />
               Usuários
             </TabsTrigger>
-            <TabsTrigger 
-              value="permissions" 
-              className="gap-2 px-4 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm border bg-background"
-            >
+            <TabsTrigger value="permissions" className="gap-2 py-3">
               <Shield className="h-4 w-4" />
               Permissões
             </TabsTrigger>
-            <TabsTrigger 
-              value="locations" 
-              className="gap-2 px-4 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm border bg-background"
-            >
+            <TabsTrigger value="locations" className="gap-2 py-3">
               <MapPin className="h-4 w-4" />
               Locais
             </TabsTrigger>
