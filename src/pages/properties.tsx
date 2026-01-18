@@ -32,11 +32,9 @@ export default function Properties() {
   const [formData, setFormData] = useState({
     locationId: "",
     location: "",
-    type: "",
     monthlyRent: "",
     status: "available" as "available" | "occupied" | "unavailable",
     description: "",
-    propertyIdentifier: "",
   });
 
   useEffect(() => {
@@ -46,26 +44,21 @@ export default function Properties() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [propertiesData, locationsData, permissions] = await Promise.all([
+      console.log("🔍 Loading data...");
+      
+      const [propertiesData, locationsData] = await Promise.all([
         propertyService.getAll(),
         locationService.getAll(),
-        userLocationPermissionService.getUserPermissions(),
       ]);
 
-      const allowedLocationIds = new Set(
-        permissions
-          .filter((p) => p.canView)
-          .map((p) => p.locationId)
-      );
+      console.log("📦 Properties loaded:", propertiesData);
+      console.log("📍 Locations loaded:", locationsData);
 
-      const filteredProperties = propertiesData.filter((property) =>
-        property.locationId ? allowedLocationIds.has(property.locationId) : true
-      );
-
-      setProperties(filteredProperties);
+      // Não filtrar por permissões por enquanto - mostrar todos os imóveis
+      setProperties(propertiesData);
       setLocations(locationsData);
     } catch (error) {
-      console.error("Error loading data:", error);
+      console.error("❌ Error loading data:", error);
       toast({
         title: "Erro",
         description: "Erro ao carregar dados. Tente novamente.",
@@ -92,13 +85,14 @@ export default function Properties() {
       const propertyData = {
         locationId: formData.locationId,
         location: formData.location,
-        type: formData.type || "residential",
+        type: "residential", // Valor padrão
         monthlyRent: parseCurrency(formData.monthlyRent),
         status: formData.status,
         description: formData.description,
-        propertyIdentifier: formData.propertyIdentifier,
+        propertyIdentifier: "", // Valor padrão vazio
       };
 
+      console.log("📤 Creating property:", propertyData);
       await propertyService.create(propertyData);
 
       toast({
@@ -110,7 +104,7 @@ export default function Properties() {
       resetForm();
       loadData();
     } catch (error) {
-      console.error("Error creating property:", error);
+      console.error("❌ Error creating property:", error);
       toast({
         title: "Erro",
         description: "Erro ao cadastrar imóvel. Tente novamente.",
@@ -135,13 +129,14 @@ export default function Properties() {
       const propertyData = {
         locationId: formData.locationId,
         location: formData.location,
-        type: formData.type || "residential",
+        type: selectedProperty.type || "residential",
         monthlyRent: parseCurrency(formData.monthlyRent),
         status: formData.status,
         description: formData.description || "",
-        propertyIdentifier: formData.propertyIdentifier || "",
+        propertyIdentifier: selectedProperty.propertyIdentifier || "",
       };
 
+      console.log("📤 Updating property:", propertyData);
       await propertyService.update(selectedProperty.id, propertyData);
 
       toast({
@@ -155,7 +150,7 @@ export default function Properties() {
       resetForm();
       loadData();
     } catch (error) {
-      console.error("Error updating property:", error);
+      console.error("❌ Error updating property:", error);
       toast({
         title: "Erro",
         description: "Erro ao atualizar imóvel. Tente novamente.",
@@ -177,7 +172,7 @@ export default function Properties() {
       setSelectedProperty(null);
       loadData();
     } catch (error) {
-      console.error("Error deleting property:", error);
+      console.error("❌ Error deleting property:", error);
       toast({
         title: "Erro",
         description: "Erro ao excluir imóvel. Tente novamente.",
@@ -187,6 +182,7 @@ export default function Properties() {
   };
 
   const handleCardClick = (property: Property) => {
+    console.log("👆 Card clicked:", property);
     setSelectedProperty(property);
     setIsViewDialogOpen(true);
     setIsEditMode(false);
@@ -198,11 +194,9 @@ export default function Properties() {
     setFormData({
       locationId: selectedProperty.locationId || "",
       location: selectedProperty.location || "",
-      type: selectedProperty.type || "",
       monthlyRent: formatCurrency(selectedProperty.monthlyRent),
       status: selectedProperty.status,
       description: selectedProperty.description || "",
-      propertyIdentifier: selectedProperty.propertyIdentifier || "",
     });
     setIsEditMode(true);
   };
@@ -216,11 +210,9 @@ export default function Properties() {
     setFormData({
       locationId: "",
       location: "",
-      type: "",
       monthlyRent: "",
       status: "available",
       description: "",
-      propertyIdentifier: "",
     });
   };
 
@@ -372,32 +364,6 @@ export default function Properties() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="propertyIdentifier">Identificador</Label>
-                  <Input
-                    id="propertyIdentifier"
-                    value={formData.propertyIdentifier}
-                    onChange={(e) => setFormData({ ...formData, propertyIdentifier: e.target.value })}
-                    placeholder="Ex: CASA-01"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="type">Tipo</Label>
-                  <Select
-                    value={formData.type}
-                    onValueChange={(value) => setFormData({ ...formData, type: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o tipo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="residential">Residencial</SelectItem>
-                      <SelectItem value="commercial">Comercial</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
                   <Label htmlFor="monthlyRent">Valor do Aluguel *</Label>
                   <Input
                     id="monthlyRent"
@@ -507,7 +473,7 @@ export default function Properties() {
                     <DialogFooter className="gap-2">
                       <Button variant="destructive" onClick={() => handleDelete(selectedProperty.id)}>
                         <Trash2 className="mr-2 h-4 w-4" />
-                        Excluir Imóvel
+                        Excluir
                       </Button>
                       <Button variant="outline" onClick={() => setIsViewDialogOpen(false)}>
                         <X className="mr-2 h-4 w-4" />
@@ -551,32 +517,6 @@ export default function Properties() {
                           onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                           placeholder="Ex: Casa 1, Apto 101"
                         />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="edit-propertyIdentifier">Identificador</Label>
-                        <Input
-                          id="edit-propertyIdentifier"
-                          value={formData.propertyIdentifier}
-                          onChange={(e) => setFormData({ ...formData, propertyIdentifier: e.target.value })}
-                          placeholder="Ex: CASA-01"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="edit-type">Tipo</Label>
-                        <Select
-                          value={formData.type}
-                          onValueChange={(value) => setFormData({ ...formData, type: value })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione o tipo" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="residential">Residencial</SelectItem>
-                            <SelectItem value="commercial">Comercial</SelectItem>
-                          </SelectContent>
-                        </Select>
                       </div>
 
                       <div className="space-y-2">
@@ -627,7 +567,7 @@ export default function Properties() {
                       </Button>
                       <Button type="submit">
                         <Save className="mr-2 h-4 w-4" />
-                        Salvar Alterações
+                        Salvar
                       </Button>
                     </DialogFooter>
                   </form>
