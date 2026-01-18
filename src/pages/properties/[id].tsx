@@ -1,31 +1,32 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
-import Head from "next/head";
 import { Layout } from "@/components/Layout";
+import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Building2, ArrowLeft, Edit, X } from "lucide-react";
+import { Building2, ArrowLeft, Save } from "lucide-react";
 import { Property, Location } from "@/types";
 import { propertyService } from "@/services";
-import { configService } from "@/services/configService";
-import { applyCepMask, applyRealMask, formatCurrency } from "@/lib/masks";
+import { locationService } from "@/services/locationService";
+import { applyCepMask, applyRealMask } from "@/lib/masks";
 
-export default function PropertyDetailsPage() {
+export default function PropertyDetailPage() {
   const router = useRouter();
   const { id } = router.query;
   const { toast } = useToast();
+
   const [property, setProperty] = useState<Property | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [isEditMode, setIsEditMode] = useState(false);
   const [locations, setLocations] = useState<Location[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   const [formData, setFormData] = useState({
+    locationId: "",
     location: "",
     cep: "",
     address: "",
@@ -36,19 +37,20 @@ export default function PropertyDetailsPage() {
     state: "",
     rentValue: "",
     description: "",
+    status: "available" as "available" | "occupied" | "unavailable",
   });
 
   useEffect(() => {
-    if (id) {
-      loadProperty(id as string);
+    if (id && typeof id === "string") {
+      loadProperty(id);
       loadLocations();
     }
   }, [id]);
 
   const loadLocations = async () => {
     try {
-      const config = await configService.get();
-      setLocations(config.locations || []);
+      const locationsData = await locationService.getAll();
+      setLocations(locationsData);
     } catch (error) {
       console.error("Error loading locations:", error);
     }
@@ -57,28 +59,24 @@ export default function PropertyDetailsPage() {
   const loadProperty = async (propertyId: string) => {
     try {
       setLoading(true);
-      const propertyData = await propertyService.getById(propertyId);
-      if (propertyData) {
-        setProperty(propertyData);
+      const data = await propertyService.getById(propertyId);
+      
+      if (data) {
+        setProperty(data);
         setFormData({
-          location: propertyData.location,
-          cep: propertyData.cep || "",
-          address: propertyData.address || "",
-          number: propertyData.number || "",
-          complement: propertyData.complement,
-          neighborhood: propertyData.neighborhood || "",
-          city: propertyData.city || "",
-          state: propertyData.state || "",
-          rentValue: applyRealMask((propertyData.rentValue * 100).toString()),
-          description: propertyData.description || "",
+          locationId: "",
+          location: data.location || "",
+          cep: applyCepMask(data.cep || ""),
+          address: data.address || "",
+          number: data.number || "",
+          complement: data.complement || "",
+          neighborhood: data.neighborhood || "",
+          city: data.city || "",
+          state: data.state || "",
+          rentValue: applyRealMask(data.rentValue?.toString() || "0"),
+          description: data.description || "",
+          status: data.status || "available",
         });
-      } else {
-        toast({
-          title: "Erro",
-          description: "Imóvel não encontrado.",
-          variant: "destructive",
-        });
-        router.push("/properties");
       }
     } catch (error) {
       console.error("Error loading property:", error);
@@ -91,410 +89,4 @@ export default function PropertyDetailsPage() {
       setLoading(false);
     }
   };
-
-  const handleEdit = () => {
-    setIsEditMode(true);
-  };
-
-  const handleCancel = () => {
-    if (property) {
-      setFormData({
-        location: property.location,
-        cep: property.cep || "",
-        address: property.address || "",
-        number: property.number || "",
-        complement: property.complement,
-        neighborhood: property.neighborhood || "",
-        city: property.city || "",
-        state: property.state || "",
-        rentValue: applyRealMask((property.rentValue * 100).toString()),
-        description: property.description || "",
-      });
-    }
-    setIsEditMode(false);
-  };
-
-  const handleLocationChange = (value: string) => {
-    const selectedLocation = locations.find(l => l.name === value);
-    if (selectedLocation) {
-      setFormData(prev => ({
-        ...prev,
-        location: selectedLocation.name,
-        cep: selectedLocation.cep,
-        address: selectedLocation.address,
-        number: selectedLocation.number,
-        neighborhood: selectedLocation.neighborhood,
-        city: selectedLocation.city,
-        state: selectedLocation.state
-      }));
-    } else {
-      setFormData(prev => ({ ...prev, location: value }));
-    }
-  };
-
-  const convertMaskedValueToNumber = (maskedValue: string): number => {
-    if (!maskedValue) return 0;
-    const cleanValue = maskedValue.replace(/[^\d,]/g, '');
-    const numericValue = cleanValue.replace(',', '.');
-    return parseFloat(numericValue) || 0;
-  };
-
-  const handleSave = async () => {
-    if (!property) return;
-
-    if (!formData.location || !formData.complement || !formData.rentValue) {
-      toast({
-        title: "Campos obrigatórios",
-        description: "Preencha todos os campos obrigatórios: Local, Complemento e Valor do Aluguel.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      const newRentValue = convertMaskedValueToNumber(formData.rentValue);
-      const oldRentValue = property.rentValue;
-      const rentValueChanged = newRentValue !== oldRentValue;
-      const isOccupied = property.status === "occupied";
-
-      const updatedProperty = {
-        ...property,
-        location: formData.location,
-        cep: formData.cep || undefined,
-        address: formData.address || undefined,
-        number: formData.number || undefined,
-        complement: formData.complement,
-        neighborhood: formData.neighborhood || undefined,
-        city: formData.city || undefined,
-        state: formData.state || undefined,
-        monthlyRent: newRentValue,
-        rentValue: newRentValue,
-        description: formData.description || undefined,
-      };
-
-      await propertyService.update(property.id, {
-        location: formData.location,
-        cep: formData.cep || undefined,
-        address: formData.address || undefined,
-        number: formData.number || undefined,
-        complement: formData.complement,
-        neighborhood: formData.neighborhood || undefined,
-        city: formData.city || undefined,
-        state: formData.state || undefined,
-        monthlyRent: newRentValue,
-        rentValue: newRentValue,
-        description: formData.description || undefined,
-      });
-
-      // If rent value changed and property is occupied, update future payments
-      if (rentValueChanged && isOccupied) {
-        const { paymentService } = await import("@/services");
-        const updatedCount = await paymentService.updateFuturePaymentsByPropertyId(
-          property.id,
-          newRentValue
-        );
-
-        if (updatedCount > 0) {
-          toast({
-            title: "Sucesso",
-            description: `Imóvel atualizado com sucesso! ${updatedCount} recebimento(s) futuro(s) atualizado(s) com o novo valor.`,
-          });
-        } else {
-          toast({
-            title: "Sucesso",
-            description: "Imóvel atualizado com sucesso!",
-          });
-        }
-      } else {
-        toast({
-          title: "Sucesso",
-          description: "Imóvel atualizado com sucesso!",
-        });
-      }
-
-      setProperty(updatedProperty as Property);
-      setIsEditMode(false);
-    } catch (error) {
-      console.error("Error updating property:", error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível atualizar o imóvel.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "available":
-        return "bg-green-500";
-      case "occupied":
-        return "bg-blue-500";
-      default:
-        return "bg-gray-500";
-    }
-  };
-
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case "available":
-        return "Disponível";
-      case "occupied":
-        return "Alugado";
-      default:
-        return status;
-    }
-  };
-
-  if (loading) {
-    return (
-      <Layout>
-        <div className="flex items-center justify-center min-h-[400px]">
-          <p className="text-muted-foreground">Carregando...</p>
-        </div>
-      </Layout>
-    );
-  }
-
-  if (!property) {
-    return (
-      <Layout>
-        <div className="flex items-center justify-center min-h-[400px]">
-          <p className="text-muted-foreground">Imóvel não encontrado</p>
-        </div>
-      </Layout>
-    );
-  }
-
-  return (
-    <>
-      <Head>
-        <title>Detalhes do Imóvel - Gerenciador de Locações</title>
-      </Head>
-      <Layout>
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <Button
-              variant="ghost"
-              onClick={() => router.push("/properties")}
-              className="gap-2"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Voltar
-            </Button>
-            <div className="flex gap-2">
-              {isEditMode ? (
-                <>
-                  <Button variant="outline" onClick={handleCancel}>
-                    <X className="h-4 w-4 mr-2" />
-                    Cancelar
-                  </Button>
-                  <Button onClick={handleSave} className="bg-emerald-600 hover:bg-emerald-700">
-                    Salvar
-                  </Button>
-                </>
-              ) : (
-                <Button onClick={handleEdit} className="bg-emerald-600 hover:bg-emerald-700">
-                  <Edit className="h-4 w-4 mr-2" />
-                  Editar
-                </Button>
-              )}
-            </div>
-          </div>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Building2 className="h-5 w-5 text-emerald-600" />
-                  <div>
-                    <CardTitle className="text-lg">{property.location}</CardTitle>
-                    <p className="text-xs text-muted-foreground">{property.complement}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="text-right">
-                    <p className="text-lg font-bold text-emerald-600">
-                      {formatCurrency(property.rentValue)}
-                    </p>
-                  </div>
-                  <Badge className={getStatusColor(property.status)}>
-                    {getStatusLabel(property.status)}
-                  </Badge>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Local</Label>
-                    {isEditMode ? (
-                      <Select value={formData.location} onValueChange={handleLocationChange}>
-                        <SelectTrigger className="h-8 text-sm">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {locations.map((location) => (
-                            <SelectItem key={location.id} value={location.name}>
-                              {location.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <p className="text-sm font-medium">{property.location}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Complemento</Label>
-                    {isEditMode ? (
-                      <Input
-                        placeholder="Ex: Casa 2, Apto 101"
-                        value={formData.complement}
-                        onChange={(e) => setFormData({ ...formData, complement: e.target.value })}
-                        className="h-8 text-sm"
-                      />
-                    ) : (
-                      <p className="text-sm font-medium">{property.complement}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Valor do Aluguel</Label>
-                    {isEditMode ? (
-                      <Input
-                        placeholder="R$ 0,00"
-                        value={formData.rentValue}
-                        onChange={(e) => setFormData({ ...formData, rentValue: applyRealMask(e.target.value) })}
-                        className="h-8 text-sm"
-                      />
-                    ) : (
-                      <p className="text-sm font-bold text-emerald-600">
-                        {formatCurrency(property.rentValue)}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">CEP</Label>
-                    {isEditMode ? (
-                      <Input
-                        placeholder="00000-000"
-                        value={formData.cep}
-                        onChange={(e) => setFormData({ ...formData, cep: applyCepMask(e.target.value) })}
-                        maxLength={9}
-                        disabled={!!locations.find(l => l.name === formData.location)}
-                        className="h-8 text-sm"
-                      />
-                    ) : (
-                      <p className="text-sm font-medium">{property.cep || "—"}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-1 md:col-span-2">
-                    <Label className="text-xs text-muted-foreground">Endereço</Label>
-                    {isEditMode ? (
-                      <Input
-                        placeholder="Rua, Avenida, etc."
-                        value={formData.address}
-                        onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                        disabled={!!locations.find(l => l.name === formData.location)}
-                        className="h-8 text-sm"
-                      />
-                    ) : (
-                      <p className="text-sm font-medium">{property.address || "—"}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Número</Label>
-                    {isEditMode ? (
-                      <Input
-                        placeholder="123"
-                        value={formData.number}
-                        onChange={(e) => setFormData({ ...formData, number: e.target.value })}
-                        disabled={!!locations.find(l => l.name === formData.location)}
-                        className="h-8 text-sm"
-                      />
-                    ) : (
-                      <p className="text-sm font-medium">{property.number || "—"}</p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Bairro</Label>
-                    {isEditMode ? (
-                      <Input
-                        placeholder="Bairro"
-                        value={formData.neighborhood}
-                        onChange={(e) => setFormData({ ...formData, neighborhood: e.target.value })}
-                        disabled={!!locations.find(l => l.name === formData.location)}
-                        className="h-8 text-sm"
-                      />
-                    ) : (
-                      <p className="text-sm font-medium">{property.neighborhood || "—"}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Cidade</Label>
-                    {isEditMode ? (
-                      <Input
-                        placeholder="São Paulo"
-                        value={formData.city}
-                        onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                        disabled={!!locations.find(l => l.name === formData.location)}
-                        className="h-8 text-sm"
-                      />
-                    ) : (
-                      <p className="text-sm font-medium">{property.city || "—"}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Estado</Label>
-                    {isEditMode ? (
-                      <Input
-                        placeholder="SP"
-                        value={formData.state}
-                        onChange={(e) => setFormData({ ...formData, state: e.target.value.toUpperCase() })}
-                        maxLength={2}
-                        disabled={!!locations.find(l => l.name === formData.location)}
-                        className="h-8 text-sm"
-                      />
-                    ) : (
-                      <p className="text-sm font-medium">{property.state || "—"}</p>
-                    )}
-                  </div>
-                </div>
-
-                {(isEditMode || property.description) && (
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Descrição</Label>
-                    {isEditMode ? (
-                      <Textarea
-                        placeholder="Informações adicionais sobre o imóvel..."
-                        value={formData.description}
-                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                        rows={2}
-                        className="text-sm resize-none"
-                      />
-                    ) : (
-                      <p className="text-sm whitespace-pre-wrap">{property.description}</p>
-                    )}
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </Layout>
-    </>
-  );
 }
