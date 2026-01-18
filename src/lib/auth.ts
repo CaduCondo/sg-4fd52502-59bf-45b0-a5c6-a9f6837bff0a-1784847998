@@ -22,7 +22,7 @@ const SESSION_DURATION = 3600000; // 1 hora em milissegundos
  */
 function mapSystemUserToUserType(systemUser: any): UserType {
   let role: "admin" | "user" | "broker" | "financial" = "user";
-  const dbRole = systemUser.role?.toLowerCase();
+  const dbRole = (systemUser.role || systemUser.user_role)?.toLowerCase();
   
   if (dbRole === "admin" || dbRole === "administrador") role = "admin";
   else if (dbRole === "corretor" || dbRole === "broker") role = "broker";
@@ -30,17 +30,17 @@ function mapSystemUserToUserType(systemUser: any): UserType {
 
   return {
     id: systemUser.id || systemUser.user_id,
-    name: systemUser.name || systemUser.email?.split("@")[0] || "Usuário",
-    username: systemUser.username || systemUser.email?.split("@")[0] || "",
-    email: systemUser.email || "",
+    name: systemUser.name || systemUser.user_name || systemUser.email?.split("@")[0] || systemUser.user_email?.split("@")[0] || "Usuário",
+    username: systemUser.username || systemUser.user_username || systemUser.email?.split("@")[0] || systemUser.user_email?.split("@")[0] || "",
+    email: systemUser.email || systemUser.user_email || "",
     password: "",
     role: role,
-    phone: systemUser.phone || "",
-    rg: systemUser.rg || "",
-    cpf: systemUser.cpf || "",
-    active: systemUser.active ?? true,
+    phone: systemUser.phone || systemUser.user_phone || "",
+    rg: systemUser.rg || systemUser.user_rg || "",
+    cpf: systemUser.cpf || systemUser.user_cpf || "",
+    active: systemUser.active ?? systemUser.user_active ?? true,
     createdAt: systemUser.created_at || new Date().toISOString(),
-    photo: systemUser.photo || undefined,
+    photo: systemUser.photo || systemUser.user_photo || undefined,
   };
 }
 
@@ -140,17 +140,17 @@ export async function loginWithSupabaseAuth(emailOrUsername: string, password: s
     }
 
     const systemUser = data[0];
-    const authUserId = systemUser.auth_user_id;
+    const authUserId = systemUser.auth_id;
 
     console.log("✅ Credenciais validadas");
-    console.log("✅ Usuário:", systemUser.name);
+    console.log("✅ Usuário:", systemUser.user_name);
     console.log("✅ Auth User ID:", authUserId);
 
     // PASSO 2: Fazer login no Supabase Auth para obter tokens JWT
     if (authUserId) {
       try {
         const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-          email: systemUser.email,
+          email: systemUser.user_email,
           password: password
         });
 
