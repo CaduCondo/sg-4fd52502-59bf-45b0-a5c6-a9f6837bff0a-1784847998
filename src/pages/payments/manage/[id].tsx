@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, DollarSign, Calendar, Home, User, X, Upload, Camera, Paperclip, Eye, Download } from "lucide-react";
 import type { Payment, Rental, Property, Tenant, CompanyConfig } from "@/types";
 import { paymentService, rentalService, propertyService, tenantService, configService } from "@/services";
-import { applyRealMask, removeMask, formatCurrency, parseCurrencyToFloat } from "@/lib/masks";
+import { applyRealMask, removeMask, formatCurrency, parseCurrencyToFloat, formatPercentage } from "@/lib/masks";
 import { PaymentReceipt } from "@/components/PaymentReceipt";
 import { AttachmentViewer } from "@/components/AttachmentViewer";
 
@@ -451,7 +451,7 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
             {calculatedValues.lateFee > 0 && (
               <div className="flex justify-between">
                 <span className={`text-sm ${waiveLateFees ? "line-through text-muted-foreground" : "text-muted-foreground"}`}>
-                  Multa ({config?.lateFeePercentage || 2}%):
+                  Multa ({formatPercentage(config?.lateFeePercentage || 2)}%):
                 </span>
                 <span className={`text-sm font-medium ${waiveLateFees ? "line-through text-muted-foreground" : "text-red-600"}`}>
                   {formatCurrency(calculatedValues.lateFee)}
@@ -462,7 +462,7 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
             {calculatedValues.interest > 0 && (
               <div className="flex justify-between">
                 <span className={`text-sm ${waiveLateFees ? "line-through text-muted-foreground" : "text-muted-foreground"}`}>
-                  Juros ({config?.interestRatePercentage || 0.033}% ao dia):
+                  Juros ({formatPercentage(config?.interestRatePercentage || 0.033)}% ao dia):
                 </span>
                 <span className={`text-sm font-medium ${waiveLateFees ? "line-through text-muted-foreground" : "text-red-600"}`}>
                   {formatCurrency(calculatedValues.interest)}

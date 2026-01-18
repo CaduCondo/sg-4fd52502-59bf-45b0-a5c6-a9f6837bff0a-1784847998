@@ -34,7 +34,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { configService } from "@/services/configService";
 import { systemUserService } from "@/services/systemUserService";
 import type { CompanyConfig, Location, SystemUser } from "@/types";
-import { applyCepMask, applyPhoneMask, applyCnpjMask } from "@/lib/masks";
+import { applyCepMask, applyPhoneMask, applyCnpjMask, parsePercentageToFloat, formatPercentage } from "@/lib/masks";
 
 export default function Settings() {
   const { toast } = useToast();
