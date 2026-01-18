@@ -15,6 +15,41 @@ export type Database = {
   }
   public: {
     Tables: {
+      auth_user_mapping: {
+        Row: {
+          auth_user_id: string
+          created_at: string | null
+          email: string
+          id: string
+          system_user_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          auth_user_id: string
+          created_at?: string | null
+          email: string
+          id?: string
+          system_user_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          auth_user_id?: string
+          created_at?: string | null
+          email?: string
+          id?: string
+          system_user_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auth_user_mapping_system_user_id_fkey"
+            columns: ["system_user_id"]
+            isOneToOne: true
+            referencedRelation: "system_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       configs: {
         Row: {
           address: string | null
@@ -523,6 +558,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_system_user_id: { Args: never; Returns: string }
+      migrate_system_user_to_auth: {
+        Args: { p_email: string; p_password: string; p_system_user_id: string }
+        Returns: string
+      }
       migrate_user_to_auth: {
         Args: { p_email: string; p_password: string; p_user_id?: string }
         Returns: string

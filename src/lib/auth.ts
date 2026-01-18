@@ -4,6 +4,125 @@ import { supabase } from "@/integrations/supabase/client";
 
 const AUTH_KEY = "rental_auth_user";
 
+/**
+ * Migra um usuário de system_users para auth.users
+ * @param email - Email do usuário
+ * @param password - Senha do usuário (será usada no Supabase Auth)
+ * @returns O ID do usuário em auth.users
+ */
+export async function migrateUserToSupabaseAuth(email: string, password: string): Promise<string | null> {
+  try {
+    // Chamar função do banco que cria usuário em auth.users e mapeia com system_users
+    const { data, error } = await supabase.rpc("migrate_system_user_to_auth", {
+      p_email: email,
+      p_password: password
+    });
+
+    if (error) {
+      console.error("❌ Erro ao migrar usuário:", error);
+      return null;
+    }
+
+    console.log("✅ Usuário migrado com sucesso! Auth ID:", data);
+    return data;
+  } catch (error) {
+    console.error("❌ Erro ao migrar usuário:", error);
+    return null;
+  }
+}
+
+/**
+ * Login usando Supabase Auth (novo sistema)
+ * @param emailOrUsername - Email ou username do usuário
+ * @param password - Senha do usuário
+ * @returns Usuário autenticado ou null
+ */
+export async function loginWithSupabaseAuth(emailOrUsername: string, password: string): Promise<UserType | null> {
+  try {
+    // Tentar buscar usuário em system_users por email ou username
+    const { data: systemUser } = await supabase
+      .from("system_users")
+      .select("*")
+      .or(`email.eq.${emailOrUsername},username.eq.${emailOrUsername}`)
+      .single();
+
+    if (!systemUser) {
+      console.log("❌ Usuário não encontrado em system_users");
+      return null;
+    }
+
+    // Verificar se usuário já foi migrado para auth.users
+    const { data: mapping } = await supabase
+      .from("auth_user_mapping")
+      .select("auth_user_id")
+      .eq("system_user_id", systemUser.id)
+      .single();
+
+    // Se não foi migrado, migrar agora
+    if (!mapping) {
+      console.log("⚠️ Usuário não migrado. Migrando agora...");
+      const authUserId = await migrateUserToSupabaseAuth(systemUser.email, password);
+      if (!authUserId) {
+        console.log("❌ Falha ao migrar usuário");
+        return null;
+      }
+    }
+
+    // Tentar fazer login no Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email: systemUser.email,
+      password: password
+    });
+
+    if (authError || !authData.user) {
+      console.log("❌ Erro ao autenticar no Supabase Auth:", authError?.message);
+      return null;
+    }
+
+    console.log("✅ Autenticado no Supabase Auth! User ID:", authData.user.id);
+
+    // Mapear role do sistema
+    let role: "admin" | "user" | "broker" | "financial" = "user";
+    const dbRole = systemUser.role?.toLowerCase();
+    
+    if (dbRole === "admin" || dbRole === "administrador") role = "admin";
+    else if (dbRole === "corretor" || dbRole === "broker") role = "broker";
+    else if (dbRole === "financeiro" || dbRole === "financial") role = "financial";
+
+    const user: UserType = {
+      id: systemUser.id,
+      name: systemUser.name || systemUser.email?.split("@")[0] || "Admin",
+      username: systemUser.username || systemUser.email?.split("@")[0] || "",
+      email: systemUser.email || authData.user.email || "",
+      password: "",
+      role: role,
+      phone: systemUser.phone || "",
+      rg: systemUser.rg || "",
+      cpf: systemUser.cpf || "",
+      active: systemUser.active ?? true,
+      createdAt: systemUser.created_at || authData.user.created_at
+    };
+
+    // Sincronizar com localStorage para compatibilidade
+    if (typeof window !== "undefined") {
+      localStorage.setItem(AUTH_KEY, JSON.stringify(user));
+      localStorage.setItem("isAuthenticated", "true");
+      localStorage.setItem("currentUser", JSON.stringify({
+        id: user.id,
+        name: user.name,
+        username: user.username,
+        email: user.email,
+        role: role
+      }));
+    }
+
+    return user;
+  } catch (error) {
+    console.error("❌ Erro no login com Supabase Auth:", error);
+    return null;
+  }
+}
+
 // Helper function to check if user is authenticated via Supabase
 async function getSupabaseUser(): Promise<UserType | null> {
   try {

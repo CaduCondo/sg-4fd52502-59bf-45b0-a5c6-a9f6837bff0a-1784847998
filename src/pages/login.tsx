@@ -75,48 +75,69 @@ export default function Login() {
     setError("");
     setLoading(true);
 
-    // Simulate network delay for better UX/security
-    await new Promise(resolve => setTimeout(resolve, 800));
-
-    // Validar login usando system_users
-    const user = await systemUserService.validateLogin(username, password);
-    
-    if (user) {
-      // Login bem-sucedido
-      localStorage.removeItem("loginAttempts");
-      localStorage.removeItem("lockoutTime");
-      localStorage.setItem("isAuthenticated", "true");
+    try {
+      // Tentar login com Supabase Auth (novo sistema)
+      const { loginWithSupabaseAuth } = await import("@/lib/auth");
+      const user = await loginWithSupabaseAuth(username, password);
       
-      // Normalize role to English (support Portuguese values from database)
-      let normalizedRole: "admin" | "user" | "broker" | "financial" = "user";
-      const dbRole = user.role?.toLowerCase();
-      
-      if (dbRole === "admin" || dbRole === "administrador") {
-        normalizedRole = "admin";
-      } else if (dbRole === "corretor" || dbRole === "broker") {
-        normalizedRole = "broker";
-      } else if (dbRole === "financeiro" || dbRole === "financial") {
-        normalizedRole = "financial";
-      } else {
-        normalizedRole = "user";
+      if (user) {
+        // Login bem-sucedido
+        localStorage.removeItem("loginAttempts");
+        localStorage.removeItem("lockoutTime");
+        
+        console.log("✅ Login com Supabase Auth bem-sucedido!");
+        console.log("✅ Role:", user.role);
+        console.log("✅ Redirecionando para dashboard...");
+        
+        // Aguardar um pouco para garantir que tudo foi sincronizado
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        window.location.href = "/dashboard";
+        return;
       }
+
+      // Se falhar, tentar sistema legado (localStorage)
+      console.log("⚠️ Tentando sistema legado...");
+      const { default: systemUserService } = await import("@/services/systemUserService");
+      const legacyUser = await systemUserService.validateLogin(username, password);
       
-      localStorage.setItem("currentUser", JSON.stringify({
-        id: user.id,
-        name: user.name,
-        username: user.username,
-        email: user.email,
-        role: normalizedRole  // Always save normalized English role
-      }));
-      
-      console.log("✅ Login bem-sucedido! Role normalizado:", normalizedRole);
-      console.log("✅ Redirecionando para dashboard...");
-      window.location.href = "/dashboard";
-    } else {
+      if (legacyUser) {
+        localStorage.removeItem("loginAttempts");
+        localStorage.removeItem("lockoutTime");
+        localStorage.setItem("isAuthenticated", "true");
+        
+        let normalizedRole: "admin" | "user" | "broker" | "financial" = "user";
+        const dbRole = legacyUser.role?.toLowerCase();
+        
+        if (dbRole === "admin" || dbRole === "administrador") {
+          normalizedRole = "admin";
+        } else if (dbRole === "corretor" || dbRole === "broker") {
+          normalizedRole = "broker";
+        } else if (dbRole === "financeiro" || dbRole === "financial") {
+          normalizedRole = "financial";
+        }
+        
+        localStorage.setItem("currentUser", JSON.stringify({
+          id: legacyUser.id,
+          name: legacyUser.name,
+          username: legacyUser.username,
+          email: legacyUser.email,
+          role: normalizedRole
+        }));
+        
+        console.log("✅ Login legado bem-sucedido!");
+        window.location.href = "/dashboard";
+        return;
+      }
+
+      // Se ambos falharem, registrar tentativa falha
       handleLoginAttempt();
+    } catch (error) {
+      console.error("❌ Erro no login:", error);
+      handleLoginAttempt();
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
   };
 
   const validateEmail = (email: string) => {
