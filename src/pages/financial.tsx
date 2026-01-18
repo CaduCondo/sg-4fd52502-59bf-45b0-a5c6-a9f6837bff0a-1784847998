@@ -35,6 +35,8 @@ import { paymentService } from "@/services/paymentService";
 import { propertyService } from "@/services/propertyService";
 import { rentalService } from "@/services/rentalService";
 import { tenantService } from "@/services/tenantService";
+import { userLocationPermissionService } from "@/services/userLocationPermissionService";
+import { userStorage } from "@/lib/storage";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
 
 export default function Financial() {
@@ -43,6 +45,7 @@ export default function Financial() {
   const [rentals, setRentals] = useState<Rental[]>([]);
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
+  const [allowedLocationIds, setAllowedLocationIds] = useState<string[]>([]);
 
   // Date State
   const now = new Date();
@@ -60,6 +63,16 @@ export default function Financial() {
   const loadData = async () => {
     setLoading(true);
     try {
+      // Carregar dados do usuário logado
+      const currentUser = userStorage.getUser();
+      
+      // Se for usuário financeiro, carregar permissões de locais
+      let allowedLocations: string[] = [];
+      if (currentUser && currentUser.role === "financial") {
+        allowedLocations = await userLocationPermissionService.getByUserId(currentUser.id);
+        setAllowedLocationIds(allowedLocations);
+      }
+
       const [paymentsData, propertiesData, rentalsData, tenantsData] = await Promise.all([
         paymentService.getAll(),
         propertyService.getAll(),
@@ -67,9 +80,29 @@ export default function Financial() {
         tenantService.getAll(),
       ]);
 
-      setPayments(paymentsData);
-      setProperties(propertiesData);
-      setRentals(rentalsData);
+      // Filtrar propriedades por locais permitidos (se for financeiro)
+      let filteredProperties = propertiesData;
+      if (currentUser && currentUser.role === "financial" && allowedLocations.length > 0) {
+        filteredProperties = propertiesData.filter(prop => 
+          allowedLocations.includes(prop.locationId || "")
+        );
+      }
+
+      // Filtrar rentals baseado nas propriedades filtradas
+      const filteredPropertyIds = filteredProperties.map(p => p.id);
+      const filteredRentals = rentalsData.filter(r => 
+        filteredPropertyIds.includes(r.propertyId)
+      );
+
+      // Filtrar pagamentos baseado nos rentals filtrados
+      const filteredRentalIds = filteredRentals.map(r => r.id);
+      const filteredPayments = paymentsData.filter(p => 
+        filteredRentalIds.includes(p.rentalId)
+      );
+
+      setPayments(filteredPayments);
+      setProperties(filteredProperties);
+      setRentals(filteredRentals);
       setTenants(tenantsData);
     } catch (error) {
       console.error("Error loading financial data:", error);
