@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Building2, Plus, Search, Trash2, LayoutGrid, List } from "lucide-react";
 import { Property, Location } from "@/types";
 import { propertyService } from "@/services";
-import { configService } from "@/services/configService";
+import { locationService } from "@/services/locationService";
 import { getCurrentUser } from "@/lib/auth";
 import { applyCepMask, applyRealMask, removeMask, formatCurrency } from "@/lib/masks";
 import { isAuthenticatedAsync } from "@/lib/auth";
@@ -56,8 +56,8 @@ export default function PropertiesPage() {
   const loadProperties = async () => {
     try {
       setLoading(true);
-      const config = await configService.get();
-      setLocations(config.locations || []);
+      const locationsData = await locationService.getAll();
+      setLocations(locationsData);
       
       const propertiesData = await propertyService.getAll();
       setProperties(propertiesData);
