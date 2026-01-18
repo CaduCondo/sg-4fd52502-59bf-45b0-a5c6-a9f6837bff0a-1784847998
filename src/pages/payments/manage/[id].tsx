@@ -399,11 +399,23 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Home className="h-4 w-4 text-muted-foreground" />
+            <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <p className="text-sm font-medium">{property?.location}</p>
-                <p className="text-xs text-muted-foreground">{property?.complement}</p>
+                <p className="text-muted-foreground">Imóvel</p>
+                <p className="font-medium">{rental.property?.property_identifier}</p>
+                <p className="text-xs text-muted-foreground">
+                  {(rental.property as any)?.locationData?.name || rental.property?.location}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Endereço</p>
+                {(rental.property as any)?.locationData ? (
+                  <p className="font-medium">
+                    {(rental.property as any).locationData.street}, {(rental.property as any).locationData.number}
+                  </p>
+                ) : (
+                  <p className="font-medium">Endereço não disponível</p>
+                )}
               </div>
             </div>
 

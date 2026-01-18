@@ -495,12 +495,14 @@ export default function RentalsPage() {
                                 <div className="flex items-center gap-3">
                                   <Home className="h-4 w-4 text-emerald-600" />
                                   <div>
-                                    <p className="font-medium text-sm">{property.location}</p>
-                                    <p className="text-xs text-muted-foreground">{property.complement}</p>
+                                    <p className="font-medium text-sm">{property.location} - {property.property_identifier}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {property.locationData?.street}, {property.locationData?.number}
+                                    </p>
                                   </div>
                                 </div>
                                 <p className="text-sm font-semibold text-emerald-600">
-                                  {formatCurrency(property.rentValue)}
+                                  {formatCurrency(property.monthly_rent)}
                                 </p>
                               </div>
                             ))}
@@ -714,7 +716,7 @@ export default function RentalsPage() {
                     <SelectContent>
                       {availableProperties.map((property) => (
                         <SelectItem key={property.id} value={property.id}>
-                          {property.location} - {property.complement} - {formatCurrency(property.rentValue)}
+                          {property.location} - {property.property_identifier} - {formatCurrency(property.monthly_rent)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -986,7 +988,7 @@ export default function RentalsPage() {
                         <div className="flex items-center gap-2 pt-2 border-t">
                           <DollarSign className="h-4 w-4 text-muted-foreground" />
                           <span className="text-sm font-medium text-muted-foreground">
-                            {formatCurrency(rental.value)}
+                            {formatCurrency(rental.rentAmount || rental.property?.monthly_rent || 0)}
                           </span>
                         </div>
                       </CardContent>

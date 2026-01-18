@@ -426,9 +426,9 @@ export default function PaymentsPage() {
                                       <Home className={`h-4 w-4 ${colors.icon}`} />
                                       {property?.location || "N/A"}
                                     </span>
-                                    {property?.complement && (
+                                    {property?.locationData?.complement && (
                                       <span className="text-xs font-normal text-muted-foreground ml-5">
-                                        {property.complement}
+                                        {property.locationData.complement}
                                       </span>
                                     )}
                                   </div>
@@ -490,8 +490,8 @@ export default function PaymentsPage() {
                                         </span>
                                       </div>
                                       <h3 className="text-sm font-semibold truncate">{property?.location || "N/A"}</h3>
-                                      {property?.complement && (
-                                        <p className="text-xs text-muted-foreground truncate">{property.complement}</p>
+                                      {property?.locationData?.complement && (
+                                        <p className="text-xs text-muted-foreground truncate">{property.locationData.complement}</p>
                                       )}
                                     </div>
                                   </div>
@@ -581,9 +581,9 @@ export default function PaymentsPage() {
                                       <Home className="h-4 w-4 text-green-600" />
                                       {property?.location || "N/A"}
                                     </span>
-                                    {property?.complement && (
+                                    {property?.locationData?.complement && (
                                       <span className="text-xs font-normal text-muted-foreground ml-5">
-                                        {property.complement}
+                                        {property.locationData.complement}
                                       </span>
                                     )}
                                   </div>
@@ -655,8 +655,8 @@ export default function PaymentsPage() {
                                         </span>
                                       </div>
                                       <h3 className="text-sm font-semibold truncate">{property?.location || "N/A"}</h3>
-                                      {property?.complement && (
-                                        <p className="text-xs text-muted-foreground truncate">{property.complement}</p>
+                                      {property?.locationData?.complement && (
+                                        <p className="text-xs text-muted-foreground truncate">{property.locationData.complement}</p>
                                       )}
                                     </div>
                                   </div>

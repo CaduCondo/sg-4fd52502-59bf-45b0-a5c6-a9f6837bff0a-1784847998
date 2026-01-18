@@ -39,6 +39,14 @@ import { userLocationPermissionService } from "@/services/userLocationPermission
 import { userStorage } from "@/lib/storage";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
 
+interface PropertyWithLocation {
+  id: string;
+  location: string;
+  location_id: string;
+  property_identifier: string;
+  monthly_rent: number;
+}
+
 export default function Financial() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
@@ -389,11 +397,18 @@ export default function Financial() {
                       
                       return (
                         <TableRow key={payment.id} className="hover:bg-slate-50 transition-colors">
-                          <TableCell className="font-medium text-slate-900">
-                            {details.local}
+                          <TableCell>
+                            <div>
+                              <p className="font-medium">
+                                {payment.rental?.property?.property_identifier}
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                {payment.rental?.property?.locationData?.name || payment.rental?.property?.location}
+                              </p>
+                            </div>
                           </TableCell>
                           <TableCell className="text-slate-600">
-                            {details.complemento}
+                            {payment.rental?.property?.locationData?.complement || "-"}
                           </TableCell>
                           <TableCell className="text-slate-600">
                             {selectedYear}

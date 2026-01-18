@@ -70,15 +70,22 @@ export default function DashboardPage() {
         taxaAdministracao: formatCurrency(stats.adminFee),
         receitaLiquida: formatCurrency(stats.netRevenue),
       },
-      imoveis: properties.map(p => ({
-        local: p.location,
-        endereco: p.address,
-        bairro: p.neighborhood,
-        cidade: p.city,
-        valorAluguel: formatCurrency(p.monthlyRent),
-        tipo: p.type,
-        status: p.status === "occupied" ? "Ocupado" : "Disponível",
-      })),
+      imoveis: properties.map(p => {
+        const locationData = p.locationData;
+        const address = locationData
+          ? `${locationData.street}, ${locationData.number}`
+          : p.location;
+        
+        return {
+          local: p.location,
+          endereco: address,
+          bairro: locationData?.neighborhood,
+          cidade: locationData?.city,
+          valorAluguel: formatCurrency(p.monthly_rent),
+          tipo: p.type,
+          status: p.status === "occupied" ? "Ocupado" : "Disponível",
+        };
+      }),
       inquilinos: tenants.filter(t => t.status === "active" || t.status === "rented").map(t => ({
         nome: t.name,
         cpf: t.cpf,
@@ -216,18 +223,32 @@ export default function DashboardPage() {
         paymentService.getAll(),
       ]);
 
-      // Apply location filter for financial users
+      // Base data (default to everything)
       let filteredProperties = propertiesData;
       let filteredRentals = rentalsData;
       let filteredPayments = paymentsData;
 
+      // Filter logic based on role
       if (currentUser?.role === "financial") {
-        const allowedLocations = ["Jd. Colombo", "Signore"];
+        // Financial sees specific locations
+        const allowedLocations = ["Jd. Colombo", "Signore"]; // This logic might need to be dynamic or fetched from permissions service
         
         filteredProperties = propertiesData.filter(p => 
-          allowedLocations.some(loc => p.location?.includes(loc))
+          p.location && allowedLocations.some(loc => p.location.includes(loc))
         );
-        
+      } else if (currentUser?.role === "broker") {
+        // Brokers might only see what they manage, or everything if they are general brokers
+        // For now, let's allow brokers to see everything to fix "zeroed dashboard"
+        // If specific restriction needed, implement here
+        filteredProperties = propertiesData;
+      } else if (currentUser?.role === "user") {
+        // Regular users might have restrictions, but for now show everything to avoid "zeroed" state
+        // unless there's a specific requirement to hide data
+        filteredProperties = propertiesData;
+      }
+      
+      // Filter related data based on filtered properties
+      if (filteredProperties.length !== propertiesData.length) {
         const allowedPropertyIds = filteredProperties.map(p => p.id);
         filteredRentals = rentalsData.filter(r => allowedPropertyIds.includes(r.propertyId));
         
@@ -236,7 +257,7 @@ export default function DashboardPage() {
       }
 
       setProperties(filteredProperties);
-      setTenants(tenantsData);
+      setTenants(tenantsData); // Tenants are usually global, or could be filtered by rental relationship
       setRentals(filteredRentals);
       setPayments(filteredPayments);
 
