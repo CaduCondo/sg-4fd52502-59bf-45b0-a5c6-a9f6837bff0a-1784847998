@@ -32,6 +32,7 @@ export default function PropertiesPage() {
   const [locations, setLocations] = useState<Location[]>([]);
 
   const [formData, setFormData] = useState({
+    locationId: "",
     location: "",
     cep: "",
     address: "",
@@ -108,6 +109,7 @@ export default function PropertiesPage() {
     }
 
     setFormData({
+      locationId: "",
       location: "",
       cep: "",
       address: "",
@@ -126,6 +128,7 @@ export default function PropertiesPage() {
   const closeDialog = () => {
     setIsDialogOpen(false);
     setFormData({
+      locationId: "",
       location: "",
       cep: "",
       address: "",
@@ -491,21 +494,22 @@ export default function PropertiesPage() {
                   <Label htmlFor="location">
                     Local <span className="text-red-500">*</span>
                   </Label>
-                  <Select
-                    value={formData.location}
-                    onValueChange={handleLocationChange}
+                  <select
+                    name="locationId"
+                    value={formData.locationId}
+                    onChange={(e) => setFormData({ ...formData, locationId: e.target.value })}
+                    className="w-full p-2 border rounded-md"
+                    required
                   >
-                    <SelectTrigger id="location">
-                      <SelectValue placeholder="Selecione o local" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {locations.map((location) => (
-                        <SelectItem key={location.id} value={location.name}>
+                    <option value="">Selecione um local</option>
+                    {locations
+                      .sort((a, b) => a.name.localeCompare(b.name))
+                      .map((location) => (
+                        <option key={location.id} value={location.id}>
                           {location.name}
-                        </SelectItem>
+                        </option>
                       ))}
-                    </SelectContent>
-                  </Select>
+                  </select>
                 </div>
 
                 <div className="space-y-2">

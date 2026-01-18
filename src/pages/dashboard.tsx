@@ -18,6 +18,8 @@ import { FloatingCard } from "@/components/animations/FloatingCard";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
+import { userLocationPermissionService } from "@/services/userLocationPermissionService";
+import { getCurrentUser } from "@/lib/auth";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -240,7 +242,7 @@ export default function DashboardPage() {
       setRentals(filteredRentals);
       setPayments(filteredPayments);
 
-      calculateStats(filteredProperties, filteredRentals, filteredPayments);
+      calculateStats(filteredProperties, filteredRentals, filteredPayments, tenantsData);
     } catch (error) {
       console.error("Erro ao carregar dados do dashboard:", error);
     }
@@ -315,12 +317,13 @@ export default function DashboardPage() {
   };
 
   const calculateStats = (
-    currentProperties: Property[],
-    currentRentals: Rental[],
-    currentPayments: Payment[]
+    props: Property[],
+    rents: Rental[],
+    pays: Payment[],
+    tens: Tenant[]
   ) => {
     // Filter active rentals in period
-    const activeRentalsInPeriod = currentRentals.filter((rental) => {
+    const activeRentalsInPeriod = rents.filter((rental) => {
       if (!rental.isActive) return false;
       
       const startDate = new Date(rental.startDate);
@@ -336,7 +339,7 @@ export default function DashboardPage() {
     });
 
     // Filter payments for selected period
-    const periodPayments = currentPayments.filter(
+    const periodPayments = pays.filter(
       (p) => p.referenceMonth === selectedMonth && p.referenceYear === selectedYear
     );
 
@@ -351,8 +354,8 @@ export default function DashboardPage() {
     // Calculate admin fee
     let fee = 0;
     for (const payment of paid) {
-      const rental = currentRentals.find(r => r.id === payment.rentalId);
-      const property = rental ? currentProperties.find(p => p.id === rental.propertyId) : undefined;
+      const rental = rents.find(r => r.id === payment.rentalId);
+      const property = rental ? props.find(p => p.id === rental.propertyId) : undefined;
       
       if (property && property.location.toLowerCase() !== "outros") {
         const paymentFee = (payment.paidAmount || 0) * (adminFeePercentage / 100);
@@ -367,7 +370,7 @@ export default function DashboardPage() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    const dueSoon = currentPayments.filter(p => {
+    const dueSoon = pays.filter(p => {
       if (p.status === "paid") return false;
       const dueDate = new Date(p.dueDate);
       dueDate.setHours(0, 0, 0, 0);
@@ -375,16 +378,16 @@ export default function DashboardPage() {
     });
 
     // Count only active and rented tenants
-    const activeTenants = tenants.filter(t => t.status === "active" || t.status === "rented");
+    const activeTenants = tens.filter(t => t.status === "active" || t.status === "rented");
 
     setFilteredPayments(periodPayments);
     setDueSoonPayments(dueSoon);
 
     setStats({
-      totalProperties: currentProperties.length,
-      availableProperties: currentProperties.filter((p) => p.status === "available").length,
-      occupiedProperties: currentProperties.filter((p) => p.status === "occupied").length,
-      unavailableProperties: currentProperties.filter((p) => p.status === "unavailable").length,
+      totalProperties: props.length,
+      availableProperties: props.filter((p) => p.status === "available").length,
+      occupiedProperties: props.filter((p) => p.status === "occupied").length,
+      unavailableProperties: props.filter((p) => p.status === "unavailable").length,
       activeRentals: activeRentalsInPeriod.length,
       totalTenants: activeTenants.length,
       monthlyRevenue: revenue,
