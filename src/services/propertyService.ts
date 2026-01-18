@@ -106,20 +106,15 @@ export const propertyService = {
   mapToDB(property: any): any {
     console.log("🔵 mapToDB - Input:", property);
     
+    // Mapeia APENAS os campos que existem na tabela properties
     const dbData = {
+      location_id: property.locationId || null,
       location: property.location || "",
-      address: property.address || "",
-      number: property.number || "",
-      complement: property.complement || null,
-      neighborhood: property.neighborhood || null,
-      city: property.city || null,
-      state: property.state || null,
-      cep: property.zipCode || property.cep || null,
-      zip_code: property.zipCode || property.cep || null,
-      monthly_rent: property.monthlyRent || property.rentValue || 0,
       type: property.type || "residential",
+      monthly_rent: property.monthlyRent || 0,
       status: property.status || "available",
       description: property.description || null,
+      property_identifier: property.propertyIdentifier || null,
     };
     
     console.log("🔵 mapToDB - Output:", dbData);
@@ -129,26 +124,30 @@ export const propertyService = {
   mapFromDB(data: any): Property {
     console.log("🟢 mapFromDB - Input:", data);
     
-    const property = {
+    // Mapeia os dados do banco para o tipo Property
+    const property: Property = {
       id: data.id,
-      name: `${data.location || ""} ${data.number || ""}`.trim() || "Sem nome",
-      address: data.address || "",
+      locationId: data.location_id,
       location: data.location || "",
-      number: data.number || "",
-      complement: data.complement || "",
-      neighborhood: data.neighborhood || "",
-      city: data.city || "",
-      state: data.state || "",
-      zipCode: data.zip_code || data.cep || "",
+      name: data.location || "Sem nome",
+      type: data.type || "residential",
       monthlyRent: Number(data.monthly_rent) || 0,
+      status: data.status || "available",
+      description: data.description || "",
+      propertyIdentifier: data.property_identifier || "",
+      // Campos que não estão em properties (valores padrão)
+      address: "",
+      number: "",
+      complement: "",
+      neighborhood: "",
+      city: "",
+      state: "",
+      zipCode: "",
       rentValue: Number(data.monthly_rent) || 0,
       size: 0,
       rooms: 0,
       bathrooms: 0,
       parkingSpots: 0,
-      type: data.type || "residential",
-      status: data.status || "available",
-      description: data.description || "",
       images: [],
       features: [],
       createdAt: data.created_at,
