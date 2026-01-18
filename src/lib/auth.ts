@@ -30,7 +30,7 @@ function mapSystemUserToUserType(systemUser: any): UserType {
 
   return {
     id: systemUser.id || systemUser.user_id,
-    name: systemUser.full_name || systemUser.name || systemUser.email?.split("@")[0] || "Usuário",
+    name: systemUser.name || systemUser.email?.split("@")[0] || "Usuário",
     username: systemUser.username || systemUser.email?.split("@")[0] || "",
     email: systemUser.email || "",
     password: "",
@@ -143,7 +143,7 @@ export async function loginWithSupabaseAuth(emailOrUsername: string, password: s
     const authUserId = systemUser.auth_user_id;
 
     console.log("✅ Credenciais validadas");
-    console.log("✅ Usuário:", systemUser.full_name);
+    console.log("✅ Usuário:", systemUser.name);
     console.log("✅ Auth User ID:", authUserId);
 
     // PASSO 2: Fazer login no Supabase Auth para obter tokens JWT

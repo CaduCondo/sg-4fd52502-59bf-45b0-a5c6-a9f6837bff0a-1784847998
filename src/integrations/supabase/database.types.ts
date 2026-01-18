@@ -537,18 +537,18 @@ export type Database = {
       authenticate_user_simple: {
         Args: { p_password: string; p_username_or_email: string }
         Returns: {
-          active: boolean
-          auth_user_id: string
-          cpf: string
-          created_at: string
-          email: string
-          full_name: string
-          phone: string
-          photo: string
-          rg: string
-          role: string
+          auth_id: string
+          user_active: boolean
+          user_cpf: string
+          user_email: string
           user_id: string
-          username: string
+          user_name: string
+          user_phone: string
+          user_photo: string
+          user_rg: string
+          user_role: string
+          user_username: string
+          user_usuario: string
         }[]
       }
       create_auth_mapping_for_migration: {
