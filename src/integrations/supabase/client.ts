@@ -8,4 +8,39 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: false,
+    storageKey: 'rental-auth-token',
+  },
+});
+
+// Helper function to set session after manual login
+export const setSupabaseSession = async (accessToken: string, refreshToken: string) => {
+  const { data, error } = await supabase.auth.setSession({
+    access_token: accessToken,
+    refresh_token: refreshToken,
+  });
+  
+  if (error) {
+    console.error('❌ Erro ao configurar sessão Supabase:', error);
+    return false;
+  }
+  
+  console.log('✅ Sessão Supabase configurada com sucesso');
+  return true;
+};
+
+// Helper to get current session
+export const getSupabaseSession = async () => {
+  const { data: { session }, error } = await supabase.auth.getSession();
+  
+  if (error) {
+    console.error('❌ Erro ao obter sessão:', error);
+    return null;
+  }
+  
+  return session;
+};

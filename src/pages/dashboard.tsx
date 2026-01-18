@@ -418,7 +418,7 @@ export default function DashboardPage() {
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                   <div className="space-y-2">
                     <h1 className="text-3xl font-bold tracking-tight">
-                      {mounted ? `${greeting}, ${userName}! 👋` : "Olá! 👋"}
+                      {mounted ? `${greeting}, ${userName} 👋` : "Olá! 👋"}
                     </h1>
                     <p className="text-blue-100 opacity-90 capitalize">
                       {currentDate}
