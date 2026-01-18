@@ -423,7 +423,7 @@ export default function Settings() {
           <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5 h-auto">
             <TabsTrigger value="company" className="gap-2 py-3">
               <Building2 className="h-4 w-4" />
-              Dados Gerais
+              Dados da Empresa
             </TabsTrigger>
             <TabsTrigger value="admin-fees" className="gap-2 py-3">
               <Percent className="h-4 w-4" />
@@ -440,10 +440,6 @@ export default function Settings() {
             <TabsTrigger value="locations" className="gap-2 py-3">
               <MapPin className="h-4 w-4" />
               Locais
-            </TabsTrigger>
-            <TabsTrigger value="permissions" className="gap-2 py-3">
-              <Shield className="h-4 w-4" />
-              Permissões
             </TabsTrigger>
           </TabsList>
 
@@ -861,176 +857,6 @@ export default function Settings() {
               </CardContent>
             </Card>
           </TabsContent>
-
-          {/* PERMISSÕES POR PERFIL */}
-          <TabsContent value="permissions" className="space-y-6">
-            <Card className="border-2 shadow-lg">
-              <CardHeader className="border-b bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2.5 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-lg">
-                      <Shield className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-xl">Permissões por Perfil</CardTitle>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Gerencie o que cada perfil de usuário pode acessar e fazer no sistema
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="p-6">
-                {isLoadingPermissions ? (
-                  <div className="flex items-center justify-center py-12">
-                    <div className="text-center space-y-3">
-                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto" />
-                      <p className="text-sm text-muted-foreground">Carregando permissões...</p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-6">
-                    <div className="rounded-lg border overflow-hidden">
-                      <Table>
-                        <TableHeader>
-                          <TableRow className="bg-muted/50">
-                            <TableHead className="w-[200px] font-semibold">Recurso</TableHead>
-                            {roles.map((role) => (
-                              <TableHead key={role} className="text-center font-semibold">
-                                {roleLabels[role]}
-                              </TableHead>
-                            ))}
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {resources.map((resource) => (
-                            <TableRow key={resource} className="hover:bg-muted/30">
-                              <TableCell className="font-medium">
-                                {resourceLabels[resource]}
-                              </TableCell>
-                              {roles.map((role) => {
-                                const perm = getPermission(role, resource);
-                                return (
-                                  <TableCell key={`${role}_${resource}`} className="p-2">
-                                    <div className="flex flex-col gap-1.5">
-                                      <label className="flex items-center gap-2 text-xs cursor-pointer hover:bg-muted/50 p-1.5 rounded">
-                                        <input
-                                          type="checkbox"
-                                          checked={perm?.can_view || false}
-                                          disabled={editingPermissions[`${role}_${resource}_can_view`]}
-                                          onChange={(e) =>
-                                            handlePermissionChange(
-                                              role,
-                                              resource,
-                                              "can_view",
-                                              e.target.checked
-                                            )
-                                          }
-                                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                        />
-                                        <span>Visualizar</span>
-                                      </label>
-                                      <label className="flex items-center gap-2 text-xs cursor-pointer hover:bg-muted/50 p-1.5 rounded">
-                                        <input
-                                          type="checkbox"
-                                          checked={perm?.can_create || false}
-                                          disabled={editingPermissions[`${role}_${resource}_can_create`]}
-                                          onChange={(e) =>
-                                            handlePermissionChange(
-                                              role,
-                                              resource,
-                                              "can_create",
-                                              e.target.checked
-                                            )
-                                          }
-                                          className="rounded border-gray-300 text-green-600 focus:ring-green-500"
-                                        />
-                                        <span>Criar</span>
-                                      </label>
-                                      <label className="flex items-center gap-2 text-xs cursor-pointer hover:bg-muted/50 p-1.5 rounded">
-                                        <input
-                                          type="checkbox"
-                                          checked={perm?.can_edit || false}
-                                          disabled={editingPermissions[`${role}_${resource}_can_edit`]}
-                                          onChange={(e) =>
-                                            handlePermissionChange(
-                                              role,
-                                              resource,
-                                              "can_edit",
-                                              e.target.checked
-                                            )
-                                          }
-                                          className="rounded border-gray-300 text-yellow-600 focus:ring-yellow-500"
-                                        />
-                                        <span>Editar</span>
-                                      </label>
-                                      <label className="flex items-center gap-2 text-xs cursor-pointer hover:bg-muted/50 p-1.5 rounded">
-                                        <input
-                                          type="checkbox"
-                                          checked={perm?.can_delete || false}
-                                          disabled={editingPermissions[`${role}_${resource}_can_delete`]}
-                                          onChange={(e) =>
-                                            handlePermissionChange(
-                                              role,
-                                              resource,
-                                              "can_delete",
-                                              e.target.checked
-                                            )
-                                          }
-                                          className="rounded border-gray-300 text-red-600 focus:ring-red-500"
-                                        />
-                                        <span>Deletar</span>
-                                      </label>
-                                    </div>
-                                  </TableCell>
-                                );
-                              })}
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-
-                    <div className="rounded-lg border bg-blue-50 dark:bg-blue-950/20 p-4">
-                      <div className="flex gap-3">
-                        <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30 h-fit">
-                          <Shield className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                        </div>
-                        <div className="space-y-1.5 text-sm">
-                          <p className="font-medium text-blue-900 dark:text-blue-100">
-                            ℹ️ Como funcionam as permissões
-                          </p>
-                          <ul className="space-y-1 text-blue-700 dark:text-blue-300">
-                            <li>
-                              <strong>Visualizar:</strong> Usuário pode acessar a tela e ver os dados
-                            </li>
-                            <li>
-                              <strong>Criar:</strong> Usuário pode adicionar novos registros
-                            </li>
-                            <li>
-                              <strong>Editar:</strong> Usuário pode modificar registros existentes
-                            </li>
-                            <li>
-                              <strong>Deletar:</strong> Usuário pode excluir registros
-                            </li>
-                          </ul>
-                          <p className="text-xs text-blue-600 dark:text-blue-400 pt-2">
-                            💡 As alterações são aplicadas imediatamente e afetam todos os usuários com o perfil correspondente
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between pt-2">
-                      <Badge variant="outline" className="text-xs">
-                        Total: {permissions.length} permissão(ões) configurada(s)
-                      </Badge>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
         </Tabs>
 
         {/* DIALOG DE USUÁRIO */}
@@ -1078,10 +904,9 @@ export default function Settings() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="user">Usuário</SelectItem>
+                      <SelectItem value="admin">Administrador</SelectItem>
                       <SelectItem value="broker">Corretor</SelectItem>
                       <SelectItem value="financial">Financeiro</SelectItem>
-                      <SelectItem value="admin">Administrador</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

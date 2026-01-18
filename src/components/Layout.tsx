@@ -229,7 +229,7 @@ export function Layout({ children }: LayoutProps) {
                     <SheetTitle className="text-left">
                       <div className="flex items-center gap-2">
                         <Building2 className="h-5 w-5 text-emerald-600" />
-                        <span className="font-bold text-slate-900">ImóvelControl</span>
+                        <span className="font-bold text-slate-900">D</span>
                       </div>
                     </SheetTitle>
                   </SheetHeader>
@@ -311,7 +311,7 @@ export function Layout({ children }: LayoutProps) {
 
               <Link href="/dashboard" className="flex items-center gap-2 flex-shrink-0">
                 <Building2 className="h-6 w-6 text-emerald-600" />
-                <span className="font-bold text-slate-900 text-base sm:text-lg">ImóvelControl</span>
+                <span className="font-bold text-slate-900 text-base sm:text-lg">D&apos;Uvo Enterprise</span>
               </Link>
             </div>
 

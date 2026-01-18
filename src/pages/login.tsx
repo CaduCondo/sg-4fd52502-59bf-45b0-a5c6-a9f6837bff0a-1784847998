@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building2, AlertCircle, Lock } from "lucide-react";
+import { Building2, AlertCircle, Lock, Eye, EyeOff } from "lucide-react";
 import { isAuthenticated } from "@/lib/auth";
 import { initializeStorage } from "@/lib/storage";
 import { SEO } from "@/components/SEO";
@@ -17,6 +17,7 @@ export default function Login() {
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
@@ -206,16 +207,30 @@ export default function Login() {
               
               <div className="space-y-2">
                 <Label htmlFor="password" className="text-slate-700 font-medium">Senha</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Digite sua senha"
-                  required
-                  className="h-11 border-slate-300"
-                  disabled={isLocked}
-                />
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Digite sua senha"
+                    required
+                    className="h-11 border-slate-300 pr-10"
+                    disabled={isLocked}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700"
+                    disabled={isLocked}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
               </div>
               
               {error && (

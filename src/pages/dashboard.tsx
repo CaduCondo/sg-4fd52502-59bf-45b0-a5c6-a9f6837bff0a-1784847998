@@ -246,35 +246,49 @@ export default function DashboardPage() {
 
   const loadUserName = async () => {
     try {
-      const userStr = localStorage.getItem("user");
+      // Primeiro tenta pegar do localStorage
+      const userStr = localStorage.getItem("rental_auth_user") || localStorage.getItem("currentUser");
+      
       if (!userStr) {
-        setUserName("Visitante");
+        console.log("⚠️ Nenhum usuário encontrado no localStorage");
+        setUserName("Usuário");
         return;
       }
 
       const localUser = JSON.parse(userStr);
+      console.log("🔍 Usuário do localStorage:", localUser);
       
-      // Fetch full name from system_users table
-      const { data, error } = await supabase
-        .from("system_users")
-        .select("name")
-        .eq("id", localUser.id)
-        .single();
-
-      if (error) {
-        console.error("Erro ao buscar nome do usuário:", error);
-        setUserName(localUser.name || "Usuário");
+      // Se já temos o nome no localStorage, usar ele
+      if (localUser.name) {
+        const firstName = localUser.name.split(" ")[0];
+        setUserName(firstName);
+        console.log("✅ Nome carregado do localStorage:", firstName);
         return;
       }
 
-      if (data) {
-        // Extract first name only
-        const firstName = data.name.split(" ")[0];
-        setUserName(firstName);
-        console.log("✅ Nome do usuário carregado:", firstName);
+      // Se não tem nome no localStorage, buscar do banco
+      if (localUser.id) {
+        const { data, error } = await supabase
+          .from("system_users")
+          .select("name")
+          .eq("id", localUser.id)
+          .single();
+
+        if (error) {
+          console.error("❌ Erro ao buscar nome do usuário:", error);
+          setUserName(localUser.username || localUser.email?.split("@")[0] || "Usuário");
+          return;
+        }
+
+        if (data && data.name) {
+          const firstName = data.name.split(" ")[0];
+          setUserName(firstName);
+          console.log("✅ Nome carregado do banco:", firstName);
+        }
       }
     } catch (error) {
-      console.error("Erro ao carregar nome do usuário:", error);
+      console.error("❌ Erro ao carregar nome do usuário:", error);
+      setUserName("Usuário");
     }
   };
 
@@ -397,12 +411,8 @@ export default function DashboardPage() {
               <CardContent className="p-6">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                   <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-blue-100">
-                      <Building2 className="h-5 w-5" />
-                      <span className="font-medium">D'Uvo Enterprise</span>
-                    </div>
                     <h1 className="text-3xl font-bold tracking-tight">
-                      Olá, {getGreeting().toLowerCase()} {userName}! 👋
+                      {getGreeting()}, {userName}! 👋
                     </h1>
                     <p className="text-blue-100 opacity-90 capitalize">
                       {currentDate}
