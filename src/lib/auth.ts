@@ -120,10 +120,10 @@ async function refreshSupabaseSession(): Promise<boolean> {
  */
 export async function loginWithSupabaseAuth(emailOrUsername: string, password: string): Promise<UserType | null> {
   try {
-    console.log("🔐 Iniciando login seguro para:", emailOrUsername);
+    console.log("🔐 Iniciando login para:", emailOrUsername);
     
-    // PASSO 1: Validar credenciais com bcrypt e sincronizar com Supabase Auth
-    const { data, error } = await supabase.rpc("authenticate_user_with_auth", {
+    // PASSO 1: Validar credenciais no banco
+    const { data, error } = await supabase.rpc("authenticate_user_simple", {
       p_username_or_email: emailOrUsername,
       p_password: password
     });
@@ -141,14 +141,13 @@ export async function loginWithSupabaseAuth(emailOrUsername: string, password: s
     const systemUser = data[0];
     const authUserId = systemUser.auth_user_id;
 
-    console.log("✅ Credenciais validadas com bcrypt");
+    console.log("✅ Credenciais validadas");
     console.log("✅ Usuário:", systemUser.full_name);
     console.log("✅ Auth User ID:", authUserId);
 
     // PASSO 2: Fazer login no Supabase Auth para obter tokens JWT
     if (authUserId) {
       try {
-        // Tentar fazer login com o email
         const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
           email: systemUser.email,
           password: password
@@ -172,7 +171,7 @@ export async function loginWithSupabaseAuth(emailOrUsername: string, password: s
     const user = mapSystemUserToUserType(systemUser);
     syncToLocalStorage(user);
     
-    console.log("✅ Login seguro concluído!");
+    console.log("✅ Login concluído!");
     console.log("🔐 Sessão expira em 1 hora");
     
     return user;

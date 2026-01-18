@@ -388,6 +388,7 @@ export type Database = {
       system_users: {
         Row: {
           active: boolean
+          auth_user_id: string | null
           cpf: string | null
           created_at: string | null
           email: string
@@ -405,6 +406,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          auth_user_id?: string | null
           cpf?: string | null
           created_at?: string | null
           email: string
@@ -422,6 +424,7 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          auth_user_id?: string | null
           cpf?: string | null
           created_at?: string | null
           email?: string
@@ -531,27 +534,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      authenticate_user: {
-        Args: { p_password: string; p_username_or_email: string }
-        Returns: {
-          created_at: string
-          email: string
-          full_name: string
-          id: string
-          is_active: boolean
-          role: string
-          username: string
-        }[]
-      }
-      authenticate_user_with_auth: {
+      authenticate_user_simple: {
         Args: { p_password: string; p_username_or_email: string }
         Returns: {
           active: boolean
           auth_user_id: string
+          cpf: string
+          created_at: string
           email: string
           full_name: string
-          location_id: string
-          password_migrated: boolean
+          phone: string
+          photo: string
+          rg: string
           role: string
           user_id: string
           username: string
