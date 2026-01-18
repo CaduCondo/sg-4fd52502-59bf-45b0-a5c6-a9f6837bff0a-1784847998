@@ -146,12 +146,12 @@ export default function PropertiesPage() {
       setFormData(prev => ({
         ...prev,
         location: selectedLocation.name,
-        cep: selectedLocation.cep,
-        address: selectedLocation.address,
-        number: selectedLocation.number,
-        neighborhood: selectedLocation.neighborhood,
-        city: selectedLocation.city,
-        state: selectedLocation.state
+        cep: applyCepMask(selectedLocation.zip_code || ""),
+        address: selectedLocation.street || "",
+        number: selectedLocation.number || "",
+        neighborhood: selectedLocation.neighborhood || "",
+        city: selectedLocation.city || "",
+        state: selectedLocation.state || ""
       }));
     } else {
       setFormData(prev => ({ ...prev, location: value }));
