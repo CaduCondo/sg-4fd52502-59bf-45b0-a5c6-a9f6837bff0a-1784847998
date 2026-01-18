@@ -25,7 +25,9 @@ import {
   Calendar,
   Edit,
   Key,
-  Unlock
+  Unlock,
+  Pencil,
+  X
 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogContent } from "@/components/ui/dialog";
@@ -33,7 +35,8 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { configService } from "@/services/configService";
 import { systemUserService } from "@/services/systemUserService";
-import type { CompanyConfig, Location, SystemUser } from "@/types";
+import { locationService } from "@/services/locationService";
+import type { CompanyConfig, SystemUser, Location } from "@/types";
 import { applyCepMask, applyPhoneMask, applyCnpjMask, parsePercentageToFloat, formatPercentage } from "@/lib/masks";
 
 export default function Settings() {
@@ -70,8 +73,54 @@ export default function Settings() {
     isActive: true
   });
 
+  // Locations State
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [isLoadingLocations, setIsLoadingLocations] = useState(false);
+  const [searchLocation, setSearchLocation] = useState("");
+
+  const loadConfig = async () => {
+    try {
+      setLoading(true);
+      const data = await configService.getConfig();
+      if (data) setConfig(data);
+    } catch (error) {
+      console.error("Erro ao carregar configurações:", error);
+      toast({ title: "Erro", description: "Não foi possível carregar as configurações.", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadUsers = async () => {
+    try {
+      setLoading(true);
+      const data = await systemUserService.getAll();
+      setUsers(data);
+    } catch (error) {
+      console.error("Erro ao carregar usuários:", error);
+      toast({ title: "Erro ao carregar usuários", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadLocations = async () => {
+    try {
+      setIsLoadingLocations(true);
+      const data = await locationService.getAll();
+      setLocations(data);
+    } catch (error) {
+      console.error("Erro ao carregar locais:", error);
+      toast({ title: "Erro ao carregar locais", variant: "destructive" });
+    } finally {
+      setIsLoadingLocations(false);
+    }
+  };
+
   useEffect(() => {
-    loadData();
+    loadConfig();
+    loadUsers();
+    loadLocations();
   }, []);
 
   const loadData = async () => {
@@ -215,14 +264,35 @@ export default function Settings() {
   };
 
   const handleAdminFeeChange = (value: string) => {
-    const numValue = value.replace(/[^\d.,]/g, "").replace(",", ".");
-    const parsed = parseFloat(numValue);
-    if (!isNaN(parsed) && parsed >= 0 && parsed <= 100) {
-      setConfig({...config, adminFeePercentage: parsed});
-    } else if (value === "") {
-      setConfig({...config, adminFeePercentage: 0});
+    const numericValue = value.replace(/[^0-9]/g, "");
+    const decimalValue = (parseFloat(numericValue) / 1000).toFixed(3);
+    setConfig((prev) => ({
+      ...prev,
+      adminFeePercentage: parseFloat(decimalValue),
+    }));
+  };
+
+  const handleDeleteLocation = async (locationId: string) => {
+    if (!confirm("Tem certeza que deseja excluir este local?")) return;
+
+    try {
+      await locationService.delete(locationId);
+      toast({ title: "Local excluído com sucesso!" });
+      loadLocations();
+    } catch (error) {
+      console.error("Erro ao excluir local:", error);
+      toast({ title: "Erro ao excluir local", variant: "destructive" });
     }
   };
+
+  const filteredLocations = locations.filter((location) => {
+    const search = searchLocation.toLowerCase();
+    return (
+      location.name.toLowerCase().includes(search) ||
+      location.city?.toLowerCase().includes(search) ||
+      location.neighborhood?.toLowerCase().includes(search)
+    );
+  });
 
   const handleLateFeeChange = (value: string) => {
     const numValue = value.replace(/[^\d.,]/g, "").replace(",", ".");
@@ -271,6 +341,10 @@ export default function Settings() {
             <TabsTrigger value="users" className="gap-2 py-3">
               <Users className="h-4 w-4" />
               Usuários
+            </TabsTrigger>
+            <TabsTrigger value="locations" className="gap-2 py-3">
+              <MapPin className="h-4 w-4" />
+              Locais
             </TabsTrigger>
           </TabsList>
 
@@ -580,6 +654,111 @@ export default function Settings() {
                     ))}
                   </TableBody>
                 </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* LOCAIS */}
+          <TabsContent value="locations" className="space-y-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <MapPin className="h-5 w-5" />
+                    Gerenciar Locais
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Cadastre os locais/condomínios onde seus imóveis estão localizados
+                  </p>
+                </div>
+                <Link href="/locations/new">
+                  <Button className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    Novo Local
+                  </Button>
+                </Link>
+              </CardHeader>
+              <CardContent>
+                {/* Busca */}
+                <div className="mb-4">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Buscar por nome, cidade ou bairro..."
+                      value={searchLocation}
+                      onChange={(e) => setSearchLocation(e.target.value)}
+                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+                </div>
+
+                {/* Lista de Locais */}
+                {isLoadingLocations ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    Carregando locais...
+                  </div>
+                ) : filteredLocations.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    {searchLocation
+                      ? "Nenhum local encontrado com esse filtro"
+                      : "Nenhum local cadastrado ainda"}
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {filteredLocations.map((location) => (
+                      <div
+                        key={location.id}
+                        className="flex items-start justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors"
+                      >
+                        <div className="flex-1 space-y-1">
+                          <h4 className="font-semibold flex items-center gap-2">
+                            <Building2 className="h-4 w-4 text-primary" />
+                            {location.name}
+                          </h4>
+                          {(location.street || location.number) && (
+                            <p className="text-sm text-muted-foreground flex items-center gap-1">
+                              <MapPin className="h-3 w-3" />
+                              {location.street}
+                              {location.number && `, ${location.number}`}
+                              {location.complement && ` - ${location.complement}`}
+                            </p>
+                          )}
+                          {location.neighborhood && (
+                            <p className="text-sm text-muted-foreground">
+                              {location.neighborhood}
+                            </p>
+                          )}
+                          <p className="text-sm text-muted-foreground">
+                            {location.city}, {location.state}
+                            {location.zip_code && ` • ${location.zip_code}`}
+                          </p>
+                        </div>
+                        <div className="flex gap-2 ml-4">
+                          <Link href={`/locations/${location.id}`}>
+                            <Button variant="outline" size="sm" className="gap-2">
+                              <Pencil className="h-3 w-3" />
+                              Editar
+                            </Button>
+                          </Link>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-2 text-destructive hover:bg-destructive/10"
+                            onClick={() => handleDeleteLocation(location.id)}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                            Excluir
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Footer com total */}
+                <div className="mt-4 pt-4 border-t text-sm text-muted-foreground text-center">
+                  Total: {filteredLocations.length} local(is) cadastrado(s)
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
