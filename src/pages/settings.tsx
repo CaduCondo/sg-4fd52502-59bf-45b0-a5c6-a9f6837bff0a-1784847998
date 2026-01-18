@@ -36,6 +36,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { configService } from "@/services/configService";
 import { systemUserService } from "@/services/systemUserService";
 import { locationService } from "@/services/locationService";
+import { rolePermissionService, type Permission, type UserRole, type Resource } from "@/services/rolePermissionService";
 import type { CompanyConfig, SystemUser, Location } from "@/types";
 import { applyCepMask, applyPhoneMask, applyCnpjMask, parsePercentageToFloat, formatPercentage } from "@/lib/masks";
 
@@ -78,6 +79,11 @@ export default function Settings() {
   const [isLoadingLocations, setIsLoadingLocations] = useState(false);
   const [searchLocation, setSearchLocation] = useState("");
 
+  // Permissions State
+  const [permissions, setPermissions] = useState<Permission[]>([]);
+  const [isLoadingPermissions, setIsLoadingPermissions] = useState(false);
+  const [editingPermissions, setEditingPermissions] = useState<Record<string, boolean>>({});
+
   const loadConfig = async () => {
     try {
       setLoading(true);
@@ -117,10 +123,24 @@ export default function Settings() {
     }
   };
 
+  const loadPermissions = async () => {
+    try {
+      setIsLoadingPermissions(true);
+      const data = await rolePermissionService.getAllPermissions();
+      setPermissions(data);
+    } catch (error) {
+      console.error("Erro ao carregar permissões:", error);
+      toast({ title: "Erro ao carregar permissões", variant: "destructive" });
+    } finally {
+      setIsLoadingPermissions(false);
+    }
+  };
+
   useEffect(() => {
     loadConfig();
     loadUsers();
     loadLocations();
+    loadPermissions();
   }, []);
 
   const loadData = async () => {
@@ -288,11 +308,86 @@ export default function Settings() {
   const filteredLocations = locations.filter((location) => {
     const search = searchLocation.toLowerCase();
     return (
-      location.name.toLowerCase().includes(search) ||
+      location.name?.toLowerCase().includes(search) ||
       location.city?.toLowerCase().includes(search) ||
       location.neighborhood?.toLowerCase().includes(search)
     );
   });
+
+  const handlePermissionChange = async (
+    role: UserRole,
+    resource: Resource,
+    field: "can_view" | "can_create" | "can_edit" | "can_delete",
+    value: boolean
+  ) => {
+    try {
+      const key = `${role}_${resource}_${field}`;
+      setEditingPermissions((prev) => ({ ...prev, [key]: true }));
+
+      await rolePermissionService.updatePermission(role, resource, {
+        [field]: value,
+      });
+
+      // Atualizar estado local
+      setPermissions((prev) =>
+        prev.map((p) =>
+          p.role === role && p.resource === resource
+            ? { ...p, [field]: value }
+            : p
+        )
+      );
+
+      toast({
+        title: "Permissão atualizada",
+        description: `${role} → ${resource} → ${field}`,
+      });
+    } catch (error) {
+      console.error("Erro ao atualizar permissão:", error);
+      toast({
+        title: "Erro ao atualizar permissão",
+        variant: "destructive",
+      });
+    } finally {
+      const key = `${role}_${resource}_${field}`;
+      setEditingPermissions((prev) => ({ ...prev, [key]: false }));
+    }
+  };
+
+  const getPermission = (role: UserRole, resource: Resource): Permission | undefined => {
+    return permissions.find((p) => p.role === role && p.resource === resource);
+  };
+
+  const roleLabels: Record<UserRole, string> = {
+    admin: "Administrador",
+    broker: "Corretor",
+    viewer: "Visualizador",
+  };
+
+  const resourceLabels: Record<Resource, string> = {
+    dashboard: "Dashboard",
+    settings: "Configurações",
+    locations: "Locais",
+    properties: "Imóveis",
+    tenants: "Inquilinos",
+    rentals: "Locações",
+    payments: "Recebimentos",
+    financial: "Financeiro",
+    users: "Usuários",
+  };
+
+  const resources: Resource[] = [
+    "dashboard",
+    "settings",
+    "locations",
+    "properties",
+    "tenants",
+    "rentals",
+    "payments",
+    "financial",
+    "users",
+  ];
+
+  const roles: UserRole[] = ["admin", "broker", "viewer"];
 
   const handleLateFeeChange = (value: string) => {
     const numValue = value.replace(/[^\d.,]/g, "").replace(",", ".");
@@ -345,6 +440,10 @@ export default function Settings() {
             <TabsTrigger value="locations" className="gap-2 py-3">
               <MapPin className="h-4 w-4" />
               Locais
+            </TabsTrigger>
+            <TabsTrigger value="permissions" className="gap-2 py-3">
+              <Shield className="h-4 w-4" />
+              Permissões
             </TabsTrigger>
           </TabsList>
 
@@ -759,6 +858,176 @@ export default function Settings() {
                 <div className="mt-4 pt-4 border-t text-sm text-muted-foreground text-center">
                   Total: {filteredLocations.length} local(is) cadastrado(s)
                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* PERMISSÕES POR PERFIL */}
+          <TabsContent value="permissions" className="space-y-6">
+            <Card className="border-2 shadow-lg">
+              <CardHeader className="border-b bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-lg">
+                      <Shield className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-xl">Permissões por Perfil</CardTitle>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Gerencie o que cada perfil de usuário pode acessar e fazer no sistema
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="p-6">
+                {isLoadingPermissions ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="text-center space-y-3">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto" />
+                      <p className="text-sm text-muted-foreground">Carregando permissões...</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    <div className="rounded-lg border overflow-hidden">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-muted/50">
+                            <TableHead className="w-[200px] font-semibold">Recurso</TableHead>
+                            {roles.map((role) => (
+                              <TableHead key={role} className="text-center font-semibold">
+                                {roleLabels[role]}
+                              </TableHead>
+                            ))}
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {resources.map((resource) => (
+                            <TableRow key={resource} className="hover:bg-muted/30">
+                              <TableCell className="font-medium">
+                                {resourceLabels[resource]}
+                              </TableCell>
+                              {roles.map((role) => {
+                                const perm = getPermission(role, resource);
+                                return (
+                                  <TableCell key={`${role}_${resource}`} className="p-2">
+                                    <div className="flex flex-col gap-1.5">
+                                      <label className="flex items-center gap-2 text-xs cursor-pointer hover:bg-muted/50 p-1.5 rounded">
+                                        <input
+                                          type="checkbox"
+                                          checked={perm?.can_view || false}
+                                          disabled={editingPermissions[`${role}_${resource}_can_view`]}
+                                          onChange={(e) =>
+                                            handlePermissionChange(
+                                              role,
+                                              resource,
+                                              "can_view",
+                                              e.target.checked
+                                            )
+                                          }
+                                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                        />
+                                        <span>Visualizar</span>
+                                      </label>
+                                      <label className="flex items-center gap-2 text-xs cursor-pointer hover:bg-muted/50 p-1.5 rounded">
+                                        <input
+                                          type="checkbox"
+                                          checked={perm?.can_create || false}
+                                          disabled={editingPermissions[`${role}_${resource}_can_create`]}
+                                          onChange={(e) =>
+                                            handlePermissionChange(
+                                              role,
+                                              resource,
+                                              "can_create",
+                                              e.target.checked
+                                            )
+                                          }
+                                          className="rounded border-gray-300 text-green-600 focus:ring-green-500"
+                                        />
+                                        <span>Criar</span>
+                                      </label>
+                                      <label className="flex items-center gap-2 text-xs cursor-pointer hover:bg-muted/50 p-1.5 rounded">
+                                        <input
+                                          type="checkbox"
+                                          checked={perm?.can_edit || false}
+                                          disabled={editingPermissions[`${role}_${resource}_can_edit`]}
+                                          onChange={(e) =>
+                                            handlePermissionChange(
+                                              role,
+                                              resource,
+                                              "can_edit",
+                                              e.target.checked
+                                            )
+                                          }
+                                          className="rounded border-gray-300 text-yellow-600 focus:ring-yellow-500"
+                                        />
+                                        <span>Editar</span>
+                                      </label>
+                                      <label className="flex items-center gap-2 text-xs cursor-pointer hover:bg-muted/50 p-1.5 rounded">
+                                        <input
+                                          type="checkbox"
+                                          checked={perm?.can_delete || false}
+                                          disabled={editingPermissions[`${role}_${resource}_can_delete`]}
+                                          onChange={(e) =>
+                                            handlePermissionChange(
+                                              role,
+                                              resource,
+                                              "can_delete",
+                                              e.target.checked
+                                            )
+                                          }
+                                          className="rounded border-gray-300 text-red-600 focus:ring-red-500"
+                                        />
+                                        <span>Deletar</span>
+                                      </label>
+                                    </div>
+                                  </TableCell>
+                                );
+                              })}
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+
+                    <div className="rounded-lg border bg-blue-50 dark:bg-blue-950/20 p-4">
+                      <div className="flex gap-3">
+                        <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30 h-fit">
+                          <Shield className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <div className="space-y-1.5 text-sm">
+                          <p className="font-medium text-blue-900 dark:text-blue-100">
+                            ℹ️ Como funcionam as permissões
+                          </p>
+                          <ul className="space-y-1 text-blue-700 dark:text-blue-300">
+                            <li>
+                              <strong>Visualizar:</strong> Usuário pode acessar a tela e ver os dados
+                            </li>
+                            <li>
+                              <strong>Criar:</strong> Usuário pode adicionar novos registros
+                            </li>
+                            <li>
+                              <strong>Editar:</strong> Usuário pode modificar registros existentes
+                            </li>
+                            <li>
+                              <strong>Deletar:</strong> Usuário pode excluir registros
+                            </li>
+                          </ul>
+                          <p className="text-xs text-blue-600 dark:text-blue-400 pt-2">
+                            💡 As alterações são aplicadas imediatamente e afetam todos os usuários com o perfil correspondente
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2">
+                      <Badge variant="outline" className="text-xs">
+                        Total: {permissions.length} permissão(ões) configurada(s)
+                      </Badge>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

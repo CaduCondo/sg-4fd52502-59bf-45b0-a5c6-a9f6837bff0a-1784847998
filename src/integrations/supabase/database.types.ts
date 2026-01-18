@@ -323,6 +323,42 @@ export type Database = {
           },
         ]
       }
+      role_permissions: {
+        Row: {
+          can_create: boolean | null
+          can_delete: boolean | null
+          can_edit: boolean | null
+          can_view: boolean | null
+          created_at: string | null
+          id: string
+          resource: string
+          role: string
+          updated_at: string | null
+        }
+        Insert: {
+          can_create?: boolean | null
+          can_delete?: boolean | null
+          can_edit?: boolean | null
+          can_view?: boolean | null
+          created_at?: string | null
+          id?: string
+          resource: string
+          role: string
+          updated_at?: string | null
+        }
+        Update: {
+          can_create?: boolean | null
+          can_delete?: boolean | null
+          can_edit?: boolean | null
+          can_view?: boolean | null
+          created_at?: string | null
+          id?: string
+          resource?: string
+          role?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       system_users: {
         Row: {
           active: boolean
@@ -487,7 +523,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      migrate_user_to_auth: {
+        Args: { p_email: string; p_password: string; p_user_id?: string }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
