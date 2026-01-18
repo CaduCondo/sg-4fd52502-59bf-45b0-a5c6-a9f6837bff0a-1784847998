@@ -16,6 +16,7 @@ import {
   Lock,
   ChevronDown,
   Calculator,
+  Camera
 } from "lucide-react";
 import { logout, getCurrentUser } from "@/lib/auth";
 import { User as UserType } from "@/types";
@@ -26,6 +27,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
   Sheet,
   SheetContent,
@@ -337,38 +339,31 @@ export function Layout({ children }: LayoutProps) {
               {/* User Dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="flex items-center gap-2">
-                    {user?.photo ? (
-                      <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-emerald-600">
-                        <img 
-                          src={user.photo} 
-                          alt={user.name} 
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    ) : (
-                      <User className="h-4 w-4" />
-                    )}
-                    <span className="text-sm hidden sm:inline">{user?.name}</span>
-                    <ChevronDown className="h-4 w-4" />
+                  <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                    <Avatar className="h-10 w-10 border-2 border-emerald-600/20">
+                      <AvatarImage src={user?.photo} alt={user?.name} className="object-cover" />
+                      <AvatarFallback className="bg-emerald-100 text-emerald-700 font-medium">
+                        {user?.name?.substring(0, 2).toUpperCase() || "US"}
+                      </AvatarFallback>
+                    </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
                   <div className="px-2 py-1.5">
-                    <p className="text-sm font-medium">{user?.name}</p>
-                    <p className="text-xs text-slate-500">{roleDisplayName(user?.role)}</p>
+                    <p className="text-sm font-medium leading-none">{user?.name}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{roleDisplayName(user?.role)}</p>
                   </div>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setShowProfileDialog(true)}>
+                  <DropdownMenuItem onClick={() => setShowProfileDialog(true)} className="cursor-pointer">
                     <User className="mr-2 h-4 w-4" />
                     Editar Perfil
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setShowPasswordDialog(true)}>
+                  <DropdownMenuItem onClick={() => setShowPasswordDialog(true)} className="cursor-pointer">
                     <Lock className="mr-2 h-4 w-4" />
                     Trocar Senha
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout} className="text-red-600">
+                  <DropdownMenuItem onClick={handleLogout} className="text-red-600 cursor-pointer">
                     <LogOut className="mr-2 h-4 w-4" />
                     Sair
                   </DropdownMenuItem>

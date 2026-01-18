@@ -34,6 +34,7 @@ export interface SystemUser {
   state?: string;
   role: "user" | "broker" | "financial" | "admin";
   active: boolean;
+  photo?: string;
   created_at?: string;
   updated_at?: string;
 }

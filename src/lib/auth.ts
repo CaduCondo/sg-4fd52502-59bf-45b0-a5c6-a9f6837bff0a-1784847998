@@ -50,7 +50,8 @@ async function migrateUserClientSide(systemUser: any, password: string): Promise
       .from("auth_user_mapping")
       .insert({
         system_user_id: systemUser.id,
-        auth_user_id: authUserId
+        auth_user_id: authUserId,
+        email: systemUser.email
       });
 
     if (mappingError) {

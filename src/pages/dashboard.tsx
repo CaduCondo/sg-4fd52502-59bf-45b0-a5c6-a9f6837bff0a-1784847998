@@ -393,19 +393,28 @@ export default function DashboardPage() {
       <Layout>
         <div className="space-y-6">
           <ScrollReveal>
-            <Card className="bg-gradient-to-br from-blue-600 to-blue-800 text-white shadow-xl border-none">
-              <CardHeader className="pb-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-blue-100 font-medium mb-1">D'Uvo Enterprise</p>
-                    <CardTitle className="text-3xl font-bold">
+            <Card className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white border-none shadow-lg">
+              <CardContent className="p-6">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-blue-100">
+                      <Building2 className="h-5 w-5" />
+                      <span className="font-medium">D'Uvo Enterprise</span>
+                    </div>
+                    <h1 className="text-3xl font-bold tracking-tight">
                       Olá, {getGreeting().toLowerCase()} {userName}! 👋
-                    </CardTitle>
+                    </h1>
+                    <p className="text-blue-100 opacity-90 capitalize">
+                      {currentDate}
+                    </p>
                   </div>
-                  <Building2 className="h-12 w-12 text-blue-200 opacity-80" />
+                  <div className="hidden md:block">
+                    <div className="h-16 w-16 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-sm">
+                      <TrendingUp className="h-8 w-8 text-white" />
+                    </div>
+                  </div>
                 </div>
-                <p className="text-blue-100 text-sm mt-2 capitalize opacity-90">{currentDate}</p>
-              </CardHeader>
+              </CardContent>
             </Card>
           </ScrollReveal>
 

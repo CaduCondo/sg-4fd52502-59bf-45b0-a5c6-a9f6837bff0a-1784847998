@@ -240,7 +240,10 @@ export default function RentalsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Prevent double submission immediately
     if (isSubmitting) return;
+    setIsSubmitting(true);
 
     if (!formData.propertyId || !formData.tenantId || !formData.startDate || !formData.value) {
       toast({
@@ -248,6 +251,7 @@ export default function RentalsPage() {
         description: "Preencha todos os campos obrigatórios.",
         variant: "destructive",
       });
+      setIsSubmitting(false); // Release lock
       return;
     }
 
@@ -257,6 +261,7 @@ export default function RentalsPage() {
         description: "Informe o valor da vaga de garagem.",
         variant: "destructive",
       });
+      setIsSubmitting(false); // Release lock
       return;
     }
 
@@ -914,7 +919,14 @@ export default function RentalsPage() {
                   Cancelar
                 </Button>
                 <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700" disabled={isSubmitting}>
-                  {isSubmitting ? "Cadastrando..." : "Cadastrar Locação"}
+                  {isSubmitting ? (
+                    <div className="flex items-center gap-2">
+                      <div className="h-4 w-4 border-2 border-white/50 border-t-white rounded-full animate-spin" />
+                      <span>Processando...</span>
+                    </div>
+                  ) : (
+                    "Cadastrar Locação"
+                  )}
                 </Button>
               </DialogFooter>
             </form>

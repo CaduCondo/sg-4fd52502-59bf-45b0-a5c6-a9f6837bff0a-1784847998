@@ -7,8 +7,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { SystemUser } from "@/types";
 import { systemUserService } from "@/services/systemUserService";
-import { User, Mail, Building2, Phone, MapPin, Calendar, Shield, Save, KeyRound, Unlock } from "lucide-react";
+import { User, Mail, Building2, Phone, MapPin, Calendar, Shield, Save, KeyRound, Unlock, Camera } from "lucide-react";
 import { applyCpfMask, applyPhoneMask, applyCepMask, removeMask } from "@/lib/masks";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 interface EditProfileDialogProps {
   open: boolean;
@@ -23,10 +24,12 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [isUnlocking, setIsUnlocking] = useState(false);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
   useEffect(() => {
     if (open && user) {
       setSelectedUser({ ...user });
+      setPhotoPreview(user.photo || null);
     }
   }, [open, user]);
 
@@ -79,6 +82,30 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
     } finally {
       setIsUnlocking(false);
     }
+  };
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "Arquivo muito grande",
+        description: "A foto deve ter no máximo 5MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      setPhotoPreview(base64String);
+      if (selectedUser) {
+        setSelectedUser({ ...selectedUser, photo: base64String });
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -147,6 +174,32 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Foto de Perfil */}
+          <div className="flex flex-col items-center space-y-4 pb-4 border-b">
+            <Avatar className="h-24 w-24">
+              <AvatarImage src={photoPreview || undefined} alt={selectedUser.name} />
+              <AvatarFallback className="text-2xl">
+                {selectedUser.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
+              </AvatarFallback>
+            </Avatar>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => document.getElementById("photoUpload")?.click()}
+            >
+              <Camera className="h-4 w-4 mr-2" />
+              Alterar Foto
+            </Button>
+            <input
+              id="photoUpload"
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handlePhotoUpload}
+            />
+          </div>
+
           {/* Informações Pessoais */}
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
