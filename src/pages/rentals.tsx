@@ -10,6 +10,17 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Home, User, Calendar, Trash2, Archive, Upload, X, Users, DollarSign } from "lucide-react";
 import type { Rental, Property, Tenant, Payment } from "@/types";
@@ -31,6 +42,8 @@ export default function RentalsPage() {
   const [isInactiveDialogOpen, setIsInactiveDialogOpen] = useState(false);
   const [isEndDialogOpen, setIsEndDialogOpen] = useState(false);
   const [selectedRental, setSelectedRental] = useState<Rental | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [rentalToDelete, setRentalToDelete] = useState<Rental | null>(null);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const currentUser = getCurrentUser();
@@ -267,6 +280,30 @@ export default function RentalsPage() {
     }
   };
 
+  const handleDeleteRental = async (rental: Rental) => {
+    setRentalToDelete(rental);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!rentalToDelete) return;
+
+    try {
+      await rentalService.delete(rentalToDelete.id);
+      toast({ title: "Locação excluída com sucesso!" });
+      loadData();
+      setDeleteDialogOpen(false);
+      setRentalToDelete(null);
+    } catch (error) {
+      console.error("Error deleting rental:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível excluir a locação.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleEndRental = async (rental: Rental) => {
     try {
       await paymentService.deleteFutureByRentalId(rental.id);
@@ -450,7 +487,7 @@ export default function RentalsPage() {
                             size="sm"
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleDelete(rental);
+                              handleDeleteRental(rental);
                             }}
                           >
                             <Trash2 className="h-4 w-4" />
@@ -603,7 +640,7 @@ export default function RentalsPage() {
                         variant="ghost"
                         size="sm"
                         className="w-full text-red-500"
-                        onClick={() => handleDelete(rental)}
+                        onClick={() => handleDeleteRental(rental)}
                       >
                         Excluir Histórico
                       </Button>
@@ -613,6 +650,25 @@ export default function RentalsPage() {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que deseja excluir a locação do inquilino <strong>{rentalToDelete?.tenant?.name}</strong>? 
+                Esta ação não pode ser desfeita e todos os pagamentos associados serão mantidos.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90">
+                Excluir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </Layout>
     </>
   );

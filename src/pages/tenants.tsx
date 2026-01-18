@@ -17,6 +17,16 @@ import { tenantService } from "@/services";
 import { getCurrentUser } from "@/lib/auth";
 import { applyCpfMask, applyCnpjMask, applyPhoneMask, removeMask } from "@/lib/masks";
 import { isAuthenticatedAsync } from "@/lib/auth";
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function TenantsPage() {
   const router = useRouter();
@@ -28,6 +38,10 @@ export default function TenantsPage() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [tenantToDelete, setTenantToDelete] = useState<Tenant | null>(null);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -157,14 +171,25 @@ export default function TenantsPage() {
       return;
     }
     
-    if (!confirm("Tem certeza que deseja excluir este inquilino?")) return;
+    handleDeleteTenant(tenant);
+  };
+
+  const handleDeleteTenant = async (tenant: Tenant) => {
+    setTenantToDelete(tenant);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!tenantToDelete) return;
 
     try {
-      await tenantService.delete(tenant.id);
-      toast({ title: "Sucesso", description: "Inquilino excluído!" });
+      await tenantService.delete(tenantToDelete.id);
+      toast({ title: "Inquilino excluído com sucesso!" });
       loadTenants();
+      setDeleteDialogOpen(false);
+      setTenantToDelete(null);
     } catch (error) {
-      console.error("Error deleting tenant:", error);
+      console.error("Erro ao excluir inquilino:", error);
       toast({
         title: "Erro",
         description: "Não foi possível excluir o inquilino.",
@@ -467,6 +492,25 @@ export default function TenantsPage() {
             </form>
           </DialogContent>
         </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que deseja excluir o inquilino <strong>{tenantToDelete?.name}</strong>? 
+                Esta ação não pode ser desfeita.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90">
+                Excluir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </Layout>
     </>
   );
