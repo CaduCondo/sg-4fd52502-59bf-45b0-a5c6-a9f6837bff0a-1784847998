@@ -404,6 +404,7 @@ export type Database = {
           name: string
           password: string
           phone: string | null
+          photo: string | null
           rg: string | null
           role: string
           updated_at: string | null
@@ -419,6 +420,7 @@ export type Database = {
           name: string
           password: string
           phone?: string | null
+          photo?: string | null
           rg?: string | null
           role?: string
           updated_at?: string | null
@@ -434,6 +436,7 @@ export type Database = {
           name?: string
           password?: string
           phone?: string | null
+          photo?: string | null
           rg?: string | null
           role?: string
           updated_at?: string | null

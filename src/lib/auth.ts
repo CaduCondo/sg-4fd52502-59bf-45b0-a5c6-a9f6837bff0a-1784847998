@@ -5,30 +5,66 @@ import { supabase } from "@/integrations/supabase/client";
 const AUTH_KEY = "rental_auth_user";
 
 /**
- * Migra um usuário de system_users para auth.users
- * @param systemUserId - ID do usuário no sistema legado
- * @param email - Email do usuário
- * @param password - Senha do usuário (será usada no Supabase Auth)
- * @returns O ID do usuário em auth.users
+ * Tenta criar um usuário no Supabase Auth e vincular ao system_users
  */
-export async function migrateUserToSupabaseAuth(systemUserId: string, email: string, password: string): Promise<string | null> {
+async function migrateUserClientSide(systemUser: any, password: string): Promise<string | null> {
   try {
-    // Chamar função do banco que cria usuário em auth.users e mapeia com system_users
-    const { data, error } = await supabase.rpc("migrate_system_user_to_auth", {
-      p_system_user_id: systemUserId,
-      p_email: email,
-      p_password: password
+    console.log("🔄 Iniciando migração client-side para:", systemUser.email);
+    
+    // 1. Tentar criar usuário no Auth (SignUp)
+    // Nota: Se o usuário já existir no Auth mas não no mapping, vai dar erro de "User already registered", 
+    // então tentamos fazer signIn logo em seguida ou tratamos o erro.
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+      email: systemUser.email,
+      password: password,
+      options: {
+        data: {
+          name: systemUser.name,
+          role: systemUser.role
+        }
+      }
     });
 
-    if (error) {
-      console.error("❌ Erro ao migrar usuário:", error);
+    let authUserId = signUpData.user?.id;
+
+    if (signUpError) {
+      console.log("⚠️ SignUp info:", signUpError.message);
+      // Se já existe, tentamos pegar o ID fazendo login (se a senha bater) ou admin user se possível (não temos acesso admin aqui).
+      // Vamos assumir que se falhar o signup, tentamos logar para pegar o ID.
+      if (signUpError.message.includes("already registered")) {
+         const { data: signInData } = await supabase.auth.signInWithPassword({
+            email: systemUser.email,
+            password: password
+         });
+         authUserId = signInData.user?.id;
+      }
+    }
+
+    if (!authUserId) {
+      console.error("❌ Falha ao obter Auth User ID para migração.");
       return null;
     }
 
-    console.log("✅ Usuário migrado com sucesso! Auth ID:", data);
-    return data;
-  } catch (error) {
-    console.error("❌ Erro ao migrar usuário:", error);
+    // 2. Criar vínculo na tabela auth_user_mapping
+    const { error: mappingError } = await supabase
+      .from("auth_user_mapping")
+      .insert({
+        system_user_id: systemUser.id,
+        auth_user_id: authUserId
+      });
+
+    if (mappingError) {
+      // Ignorar erro se for duplicidade (pode ter sido criado concorrentemente)
+      if (!mappingError.message.includes("duplicate key")) {
+         console.error("❌ Erro ao criar mapping:", mappingError);
+         return null;
+      }
+    }
+
+    console.log("✅ Migração client-side concluída com sucesso!");
+    return authUserId;
+  } catch (err) {
+    console.error("❌ Erro inesperado na migração:", err);
     return null;
   }
 }
@@ -50,6 +86,18 @@ export async function loginWithSupabaseAuth(emailOrUsername: string, password: s
 
     if (!systemUser) {
       console.log("❌ Usuário não encontrado em system_users");
+      // Tentar login direto no Auth como fallback (caso seja um usuário criado apenas no Auth)
+      const { data: directAuth, error: directError } = await supabase.auth.signInWithPassword({
+        email: emailOrUsername,
+        password: password
+      });
+      
+      if (!directError && directAuth.user) {
+         // Usuário existe no Auth mas não no system_users? 
+         // Idealmente deveria existir em ambos. Por enquanto retornamos null para forçar padrão.
+         // Ou podemos retornar um usuário básico.
+         console.log("⚠️ Usuário encontrado apenas no Auth, sem perfil de sistema.");
+      }
       return null;
     }
 
@@ -60,14 +108,10 @@ export async function loginWithSupabaseAuth(emailOrUsername: string, password: s
       .eq("system_user_id", systemUser.id)
       .maybeSingle();
 
-    // Se não foi migrado, migrar agora
+    // Se não foi migrado, migrar agora (Client Side para evitar erro de RPC 404/Missing Table)
     if (!mapping) {
-      console.log("⚠️ Usuário não migrado. Migrando agora...");
-      const authUserId = await migrateUserToSupabaseAuth(systemUser.id, systemUser.email, password);
-      if (!authUserId) {
-        console.log("❌ Falha ao migrar usuário");
-        return null;
-      }
+      console.log("⚠️ Usuário não migrado. Iniciando migração client-side...");
+      await migrateUserClientSide(systemUser, password);
     }
 
     // Tentar fazer login no Supabase Auth
@@ -294,6 +338,11 @@ export interface User {
   // Optional fields for compatibility with SystemUser
   username?: string;
   password?: string;
+  phone?: string;
+  rg?: string;
+  cpf?: string;
+  active?: boolean;
+  createdAt?: string;
 }
 
 export type Role = "admin" | "user" | "broker" | "financial";

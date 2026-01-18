@@ -33,6 +33,7 @@ export default function RentalsPage() {
   const [isEndDialogOpen, setIsEndDialogOpen] = useState(false);
   const [selectedRental, setSelectedRental] = useState<Rental | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const currentUser = getCurrentUser();
 
   const [formData, setFormData] = useState({
@@ -239,6 +240,7 @@ export default function RentalsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
 
     if (!formData.propertyId || !formData.tenantId || !formData.startDate || !formData.value) {
       toast({
@@ -259,6 +261,7 @@ export default function RentalsPage() {
     }
 
     try {
+      setIsSubmitting(true);
       const garageValue = formData.hasGarage ? parseFloat(formData.garageValue.replace(/\./g, "").replace(",", ".")) : 0;
       const rentValue = parseFloat(formData.value.replace(/\./g, "").replace(",", "."));
 
@@ -313,6 +316,8 @@ export default function RentalsPage() {
         description: "Não foi possível cadastrar a locação.",
         variant: "destructive",
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -905,11 +910,11 @@ export default function RentalsPage() {
               </div>
 
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={handleCloseDialog}>
+                <Button type="button" variant="outline" onClick={handleCloseDialog} disabled={isSubmitting}>
                   Cancelar
                 </Button>
-                <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">
-                  Cadastrar Locação
+                <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700" disabled={isSubmitting}>
+                  {isSubmitting ? "Cadastrando..." : "Cadastrar Locação"}
                 </Button>
               </DialogFooter>
             </form>

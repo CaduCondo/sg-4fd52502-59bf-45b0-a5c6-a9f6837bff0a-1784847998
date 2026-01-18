@@ -359,6 +359,10 @@ export function Layout({ children }: LayoutProps) {
                     <p className="text-xs text-slate-500">{roleDisplayName(user?.role)}</p>
                   </div>
                   <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setShowProfileDialog(true)}>
+                    <User className="mr-2 h-4 w-4" />
+                    Editar Perfil
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setShowPasswordDialog(true)}>
                     <Lock className="mr-2 h-4 w-4" />
                     Trocar Senha
