@@ -130,6 +130,7 @@ export async function loginWithSupabaseAuth(emailOrUsername: string, password: s
 
     if (error) {
       console.error("❌ Erro ao autenticar:", error);
+      console.error("❌ Detalhes:", JSON.stringify(error, null, 2));
       return null;
     }
 
@@ -178,6 +179,7 @@ export async function loginWithSupabaseAuth(emailOrUsername: string, password: s
 
   } catch (error) {
     console.error("❌ Erro no login:", error);
+    console.error("❌ Stack trace:", error instanceof Error ? error.stack : "N/A");
     return null;
   }
 }
