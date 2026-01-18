@@ -66,7 +66,7 @@ export const configService = {
           } 
           // Se já é array, usar direto
           else if (Array.isArray(data.locations)) {
-            locations = data.locations;
+            locations = data.locations as unknown as Location[];
           }
           
           // Validar estrutura de cada location
