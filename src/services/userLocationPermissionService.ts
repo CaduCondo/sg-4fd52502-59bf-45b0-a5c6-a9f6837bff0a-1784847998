@@ -7,7 +7,31 @@ export interface UserLocationPermission {
   created_at?: string;
 }
 
+export interface LocationPermission {
+  locationId: string;
+  canView: boolean;
+}
+
 export const userLocationPermissionService = {
+  /**
+   * Buscar permissões do usuário atual com flag canView
+   */
+  async getUserPermissions(): Promise<LocationPermission[]> {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return [];
+
+      const locationIds = await this.getByUserId(user.id);
+      return locationIds.map(locationId => ({
+        locationId,
+        canView: true,
+      }));
+    } catch (error) {
+      console.error("Error getting user permissions:", error);
+      return [];
+    }
+  },
+
   /**
    * Buscar todos os locais permitidos para um usuário
    */

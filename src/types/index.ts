@@ -45,6 +45,7 @@ export interface Property {
   address: string;
   location: string;
   locationId?: string; // ID do local para permissões
+  propertyIdentifier?: string; // Identificador único do imóvel
   // Added optional fields for compatibility
   number?: string;
   complement?: string;

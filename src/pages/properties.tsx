@@ -34,7 +34,7 @@ export default function Properties() {
     location: "",
     type: "",
     monthlyRent: "",
-    status: "available" as "available" | "rented" | "unavailable",
+    status: "available" as "available" | "occupied" | "unavailable",
     description: "",
     propertyIdentifier: "",
   });
@@ -231,7 +231,7 @@ export default function Properties() {
   const getStatusBadge = (status: string) => {
     const statusConfig = {
       available: { label: "Disponível", variant: "default" as const },
-      rented: { label: "Alugado", variant: "secondary" as const },
+      occupied: { label: "Alugado", variant: "secondary" as const },
       unavailable: { label: "Indisponível", variant: "destructive" as const },
     };
     return statusConfig[status as keyof typeof statusConfig] || statusConfig.available;
@@ -411,7 +411,7 @@ export default function Properties() {
                   <Label htmlFor="status">Status</Label>
                   <Select
                     value={formData.status}
-                    onValueChange={(value: "available" | "rented" | "unavailable") =>
+                    onValueChange={(value: "available" | "occupied" | "unavailable") =>
                       setFormData({ ...formData, status: value })
                     }
                   >
@@ -420,7 +420,7 @@ export default function Properties() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="available">Disponível</SelectItem>
-                      <SelectItem value="rented">Alugado</SelectItem>
+                      <SelectItem value="occupied">Alugado</SelectItem>
                       <SelectItem value="unavailable">Indisponível</SelectItem>
                     </SelectContent>
                   </Select>
@@ -593,7 +593,7 @@ export default function Properties() {
                         <Label htmlFor="edit-status">Status</Label>
                         <Select
                           value={formData.status}
-                          onValueChange={(value: "available" | "rented" | "unavailable") =>
+                          onValueChange={(value: "available" | "occupied" | "unavailable") =>
                             setFormData({ ...formData, status: value })
                           }
                         >
@@ -602,7 +602,7 @@ export default function Properties() {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="available">Disponível</SelectItem>
-                            <SelectItem value="rented">Alugado</SelectItem>
+                            <SelectItem value="occupied">Alugado</SelectItem>
                             <SelectItem value="unavailable">Indisponível</SelectItem>
                           </SelectContent>
                         </Select>
