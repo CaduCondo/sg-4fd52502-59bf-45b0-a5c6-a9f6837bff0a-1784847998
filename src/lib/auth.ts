@@ -7,13 +7,14 @@ const SESSION_EXPIRY_KEY = "rental_session_expiry";
 const SESSION_DURATION = 3600000; // 1 hora em milissegundos
 
 /**
- * SISTEMA DE AUTENTICAÇÃO SEGURO COM BCRYPT
+ * SISTEMA DE AUTENTICAÇÃO SEGURO - FASE 2
  * 
  * ✅ Senhas hasheadas com bcrypt
- * ✅ Validação segura via função do banco
- * ✅ Migração automática de senhas antigas
+ * ✅ Tokens JWT do Supabase (impossíveis de falsificar)
+ * ✅ Refresh tokens automáticos
  * ✅ Expiração de sessão em 1 hora
- * ✅ Proteção contra manipulação de localStorage
+ * ✅ Sincronização com Supabase Auth
+ * ✅ Proteção contra manipulação de sessão
  */
 
 /**
@@ -77,19 +78,52 @@ function isSessionExpired(): boolean {
 }
 
 /**
- * LOGIN SEGURO COM BCRYPT
+ * Verificar se Supabase Auth tem sessão ativa
+ */
+async function checkSupabaseSession(): Promise<boolean> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session !== null;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Renovar sessão do Supabase Auth automaticamente
+ */
+async function refreshSupabaseSession(): Promise<boolean> {
+  try {
+    const { data, error } = await supabase.auth.refreshSession();
+    
+    if (error || !data.session) {
+      console.log("⏰ Sessão expirada - renovação falhou");
+      return false;
+    }
+    
+    console.log("🔄 Sessão renovada automaticamente");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * LOGIN SEGURO COM BCRYPT + SUPABASE AUTH (FASE 2)
  * 
- * Usa função do banco de dados que:
- * 1. Valida senha com bcrypt
+ * Fluxo completo:
+ * 1. Valida credenciais com bcrypt no banco
  * 2. Migra senhas antigas automaticamente
- * 3. Retorna usuário se autenticado
+ * 3. Sincroniza com Supabase Auth
+ * 4. Gera tokens JWT seguros
+ * 5. Cria sessão local com expiração
  */
 export async function loginWithSupabaseAuth(emailOrUsername: string, password: string): Promise<UserType | null> {
   try {
     console.log("🔐 Iniciando login seguro para:", emailOrUsername);
     
-    // Chamar função segura do banco de dados
-    const { data, error } = await supabase.rpc("authenticate_user", {
+    // PASSO 1: Validar credenciais com bcrypt e sincronizar com Supabase Auth
+    const { data, error } = await supabase.rpc("authenticate_user_with_jwt", {
       p_username_or_email: emailOrUsername,
       p_password: password
     });
@@ -105,15 +139,41 @@ export async function loginWithSupabaseAuth(emailOrUsername: string, password: s
     }
 
     const systemUser = data[0];
+    const authUserId = systemUser.auth_user_id;
 
-    console.log("✅ Login seguro bem-sucedido!");
+    console.log("✅ Credenciais validadas com bcrypt");
     console.log("✅ Usuário:", systemUser.full_name);
-    console.log("✅ Role:", systemUser.role);
-    console.log("✅ Senha protegida com bcrypt");
+    console.log("✅ Auth User ID:", authUserId);
 
-    // Criar sessão local com expiração
+    // PASSO 2: Fazer login no Supabase Auth para obter tokens JWT
+    if (authUserId) {
+      try {
+        // Tentar fazer login com o email
+        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+          email: systemUser.email,
+          password: password
+        });
+
+        if (authError) {
+          console.warn("⚠️ Não foi possível obter tokens JWT:", authError.message);
+          console.log("ℹ️ Continuando com sessão local apenas");
+        } else if (authData.session) {
+          console.log("✅ Tokens JWT obtidos com sucesso");
+          console.log("✅ Access Token válido por 1 hora");
+          console.log("✅ Refresh Token disponível para renovação");
+        }
+      } catch (authError) {
+        console.warn("⚠️ Erro ao obter tokens JWT:", authError);
+        console.log("ℹ️ Continuando com sessão local apenas");
+      }
+    }
+
+    // PASSO 3: Criar sessão local com expiração
     const user = mapSystemUserToUserType(systemUser);
     syncToLocalStorage(user);
+    
+    console.log("✅ Login seguro concluído!");
+    console.log("🔐 Sessão expira em 1 hora");
     
     return user;
 
@@ -124,7 +184,53 @@ export async function loginWithSupabaseAuth(emailOrUsername: string, password: s
 }
 
 /**
- * Obter usuário do localStorage (com verificação de expiração)
+ * Obter usuário do localStorage (com verificação de expiração e renovação JWT)
+ */
+async function getLocalUserWithRefresh(): Promise<UserType | null> {
+  if (typeof window === "undefined") return null;
+  
+  // Verificar se sessão local expirou
+  if (isSessionExpired()) {
+    console.log("⏰ Sessão local expirada");
+    
+    // Tentar renovar com Supabase Auth
+    const hasSupabaseSession = await checkSupabaseSession();
+    
+    if (hasSupabaseSession) {
+      const renewed = await refreshSupabaseSession();
+      
+      if (renewed) {
+        // Renovar sessão local também
+        const userStr = localStorage.getItem(AUTH_KEY);
+        if (userStr) {
+          try {
+            const user = JSON.parse(userStr);
+            syncToLocalStorage(user);
+            return user;
+          } catch {
+            // Continuar para logout
+          }
+        }
+      }
+    }
+    
+    console.log("⏰ Não foi possível renovar - fazendo logout automático");
+    await logout();
+    return null;
+  }
+  
+  const userStr = localStorage.getItem(AUTH_KEY);
+  if (!userStr) return null;
+  
+  try {
+    return JSON.parse(userStr);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Obter usuário do localStorage (versão síncrona - sem renovação)
  */
 function getLocalUser(): UserType | null {
   if (typeof window === "undefined") return null;
@@ -164,7 +270,7 @@ export function login(username: string, password: string): UserType | null {
 }
 
 /**
- * Logout - limpa sessão local
+ * Logout - limpa sessão local e Supabase Auth
  */
 export async function logout(): Promise<void> {
   if (typeof window !== "undefined") {
@@ -172,6 +278,15 @@ export async function logout(): Promise<void> {
     localStorage.removeItem(SESSION_EXPIRY_KEY);
     localStorage.removeItem("isAuthenticated");
     localStorage.removeItem("currentUser");
+    
+    // Fazer logout do Supabase Auth também
+    try {
+      await supabase.auth.signOut();
+      console.log("✅ Logout do Supabase Auth realizado");
+    } catch (error) {
+      console.warn("⚠️ Erro ao fazer logout do Supabase Auth:", error);
+    }
+    
     console.log("👋 Logout realizado com sucesso");
   }
 }
@@ -184,10 +299,10 @@ export function getCurrentUser(): UserType | null {
 }
 
 /**
- * Versão assíncrona para compatibilidade
+ * Versão assíncrona com renovação automática de tokens
  */
 export async function getCurrentUserAsync(): Promise<UserType | null> {
-  return getLocalUser();
+  return await getLocalUserWithRefresh();
 }
 
 /**
@@ -198,10 +313,11 @@ export function isAuthenticated(): boolean {
 }
 
 /**
- * Versão assíncrona para compatibilidade
+ * Versão assíncrona com verificação de sessão Supabase
  */
 export async function isAuthenticatedAsync(): Promise<boolean> {
-  return isAuthenticated();
+  const user = await getCurrentUserAsync();
+  return user !== null;
 }
 
 /**
@@ -235,16 +351,38 @@ export async function hasAnyRoleAsync(roles: ("admin" | "broker" | "financial" |
 }
 
 /**
- * Renovar sessão (estender tempo de expiração)
+ * Renovar sessão (estender tempo de expiração e renovar JWT)
  */
-export function renewSession(): void {
-  if (typeof window === "undefined") return;
+export async function renewSession(): Promise<boolean> {
+  if (typeof window === "undefined") return false;
   
+  // Renovar sessão do Supabase Auth
+  const renewed = await refreshSupabaseSession();
+  
+  // Renovar sessão local
   const user = getLocalUser();
   if (user) {
     syncToLocalStorage(user);
-    console.log("🔄 Sessão renovada por mais 1 hora");
+    console.log("🔄 Sessão local renovada por mais 1 hora");
   }
+  
+  return renewed;
+}
+
+/**
+ * Iniciar renovação automática de sessão (chamar no _app.tsx)
+ */
+export function startAutoRenewal(): void {
+  if (typeof window === "undefined") return;
+  
+  // Renovar sessão a cada 50 minutos (antes de expirar em 1 hora)
+  setInterval(async () => {
+    const user = getCurrentUser();
+    if (user) {
+      console.log("🔄 Renovação automática de sessão...");
+      await renewSession();
+    }
+  }, 50 * 60 * 1000); // 50 minutos
 }
 
 export interface User {

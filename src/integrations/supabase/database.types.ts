@@ -543,6 +543,20 @@ export type Database = {
           username: string
         }[]
       }
+      authenticate_user_with_auth: {
+        Args: { p_password: string; p_username_or_email: string }
+        Returns: {
+          active: boolean
+          auth_user_id: string
+          email: string
+          full_name: string
+          location_id: string
+          password_migrated: boolean
+          role: string
+          user_id: string
+          username: string
+        }[]
+      }
       create_auth_mapping_for_migration: {
         Args: { p_auth_user_id: string; p_system_user_id: string }
         Returns: undefined
@@ -555,6 +569,15 @@ export type Database = {
       }
       migrate_user_to_auth: {
         Args: { p_email: string; p_password: string; p_user_id?: string }
+        Returns: string
+      }
+      sync_user_to_auth: {
+        Args: {
+          p_email: string
+          p_full_name: string
+          p_password_hash: string
+          p_system_user_id: string
+        }
         Returns: string
       }
       verify_password: {
