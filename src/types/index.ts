@@ -154,15 +154,21 @@ export interface Payment {
 export interface Location {
   id: string;
   name: string;
-  cep: string;
-  address?: string;
-  city?: string;
-  state?: string;
-  createdAt?: string;
-  // Compatibility fields
+  street?: string;
   number?: string;
+  complement?: string;
   neighborhood?: string;
-  zipCode?: string;
+  city: string;
+  state: string;
+  zip_code?: string;
+  is_active?: boolean;
+  created_at?: string;
+  updated_at?: string;
+  
+  // Compatibility aliases (optional, helpful for frontend transition)
+  address?: string; // map to street
+  cep?: string;     // map to zip_code
+  zipCode?: string; // map to zip_code
 }
 
 export interface CompanyConfig {
@@ -178,6 +184,4 @@ export interface CompanyConfig {
   adminFeePercentage: number;
   lateFeePercentage: number;
   interestRatePercentage: number;
-  
-  locations: Location[];
 }

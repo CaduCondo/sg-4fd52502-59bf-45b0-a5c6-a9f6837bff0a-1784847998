@@ -28,7 +28,7 @@ import {
   Unlock
 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { configService } from "@/services/configService";
@@ -54,7 +54,6 @@ export default function Settings() {
     adminFeePercentage: 0,
     lateFeePercentage: 0,
     interestRatePercentage: 0,
-    locations: [],
   });
 
   // Users State
@@ -70,20 +69,6 @@ export default function Settings() {
     role: "user",
     isActive: true
   });
-
-  // Locations State
-  const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false);
-  const [locationFormData, setLocationFormData] = useState({
-    name: "",
-    cep: "",
-    address: "",
-    number: "",
-    neighborhood: "",
-    city: "",
-    state: ""
-  });
-  const [newLocation, setNewLocation] = useState({ name: "", address: "" });
-  const [isAddingLocation, setIsAddingLocation] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -229,117 +214,6 @@ export default function Settings() {
     }
   };
 
-  // --- LOCATIONS HANDLERS ---
-
-  const fetchAddressByCep = async (cep: string) => {
-    const cleanCep = cep.replace(/\D/g, "");
-    if (cleanCep.length !== 8) return;
-
-    try {
-      const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
-      const data = await response.json();
-
-      if (data.erro) {
-        toast({
-          title: "CEP não encontrado",
-          description: "Não foi possível encontrar o endereço para este CEP.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      setLocationFormData(prev => ({
-        ...prev,
-        address: data.logradouro || "",
-        neighborhood: data.bairro || "",
-        city: data.localidade || "",
-        state: data.uf || ""
-      }));
-
-      toast({
-        title: "Endereço encontrado!",
-        description: "Os campos foram preenchidos automaticamente.",
-      });
-    } catch (error) {
-      console.error("Error fetching address:", error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível buscar o endereço.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleCepChange = (value: string) => {
-    const masked = applyCepMask(value);
-    setLocationFormData(prev => ({ ...prev, cep: masked }));
-    
-    if (masked.replace(/\D/g, "").length === 8) {
-      fetchAddressByCep(masked);
-    }
-  };
-
-  const handleLocationSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!locationFormData.name) return;
-
-    try {
-      const locationData: Location = {
-        id: crypto.randomUUID(),
-        name: locationFormData.name,
-        cep: locationFormData.cep,
-        address: locationFormData.address,
-        number: locationFormData.number,
-        neighborhood: locationFormData.neighborhood,
-        city: locationFormData.city,
-        state: locationFormData.state
-      };
-
-      await configService.createLocation(locationData);
-      
-      setConfig(prev => ({
-        ...prev,
-        locations: [...prev.locations, locationData]
-      }));
-      
-      toast({
-        title: "Sucesso",
-        description: "Local adicionado com sucesso!",
-      });
-      setIsLocationDialogOpen(false);
-      setLocationFormData({ 
-        name: "", 
-        cep: "",
-        address: "",
-        number: "",
-        neighborhood: "",
-        city: "",
-        state: ""
-      });
-    } catch (error) {
-      console.error("Error adding location:", error);
-      toast({
-        title: "Erro",
-        description: "Erro ao adicionar local.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleDeleteLocation = async (locationId: string) => {
-    if (!confirm("Tem certeza que deseja excluir este local?")) return;
-    try {
-      await configService.deleteLocation(locationId);
-      setConfig(prev => ({
-        ...prev,
-        locations: prev.locations.filter(l => l.id !== locationId)
-      }));
-      toast({ title: "Sucesso", description: "Local excluído!" });
-    } catch (error) {
-      toast({ title: "Erro", description: "Erro ao excluir local.", variant: "destructive" });
-    }
-  };
-
   const handleAdminFeeChange = (value: string) => {
     const numValue = value.replace(/[^\d.,]/g, "").replace(",", ".");
     const parsed = parseFloat(numValue);
@@ -397,10 +271,6 @@ export default function Settings() {
             <TabsTrigger value="users" className="gap-2 py-3">
               <Users className="h-4 w-4" />
               Usuários
-            </TabsTrigger>
-            <TabsTrigger value="locations" className="gap-2 py-3">
-              <MapPin className="h-4 w-4" />
-              Locais
             </TabsTrigger>
           </TabsList>
 
@@ -713,55 +583,6 @@ export default function Settings() {
               </CardContent>
             </Card>
           </TabsContent>
-
-          {/* Locais Section */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <Building2 className="h-5 w-5" />
-                Locais
-              </CardTitle>
-              <Button onClick={() => setIsLocationDialogOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Adicionar Local
-              </Button>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {config?.locations.map((location) => (
-                  <div key={location.id} className="relative group">
-                    <Link href={`/locations/${location.id}`}>
-                      <Card className="hover:border-primary transition-colors cursor-pointer h-full">
-                        <CardContent className="pt-6 pb-12">
-                          <div className="flex items-center gap-2 mb-2">
-                            <MapPin className="h-5 w-5 text-primary" />
-                            <h3 className="font-semibold text-lg">{location.name}</h3>
-                          </div>
-                          <div className="text-sm text-muted-foreground space-y-1">
-                            <p>{location.address}, {location.number}</p>
-                            <p>{location.neighborhood} - {location.city}/{location.state}</p>
-                            <p>CEP: {location.cep}</p>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </Link>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        handleDeleteLocation(location.id);
-                      }}
-                      className="absolute bottom-2 right-2 h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10 z-10"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
         </Tabs>
 
         {/* DIALOG DE USUÁRIO */}
@@ -843,96 +664,6 @@ export default function Settings() {
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setIsUserDialogOpen(false)}>Cancelar</Button>
                 <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">Salvar Usuário</Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-
-        {/* DIALOG DE LOCAL */}
-        <Dialog open={isLocationDialogOpen} onOpenChange={setIsLocationDialogOpen}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Novo Local</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleLocationSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="locName">Nome do Local / Condomínio</Label>
-                  <Input 
-                    id="locName" 
-                    value={locationFormData.name} 
-                    onChange={(e) => setLocationFormData({...locationFormData, name: e.target.value})}
-                    placeholder="Ex: Edifício Central"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="locCep">CEP</Label>
-                  <Input 
-                    id="locCep" 
-                    value={locationFormData.cep} 
-                    onChange={(e) => handleCepChange(e.target.value)}
-                    placeholder="00000-000"
-                    maxLength={9}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="locNumber">Número</Label>
-                  <Input 
-                    id="locNumber" 
-                    value={locationFormData.number} 
-                    onChange={(e) => setLocationFormData({...locationFormData, number: e.target.value})}
-                    placeholder="123"
-                  />
-                </div>
-
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="locAddress">Endereço</Label>
-                  <Input 
-                    id="locAddress" 
-                    value={locationFormData.address} 
-                    onChange={(e) => setLocationFormData({...locationFormData, address: e.target.value})}
-                    placeholder="Rua, Avenida..."
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="locNeighborhood">Bairro</Label>
-                  <Input 
-                    id="locNeighborhood" 
-                    value={locationFormData.neighborhood} 
-                    onChange={(e) => setLocationFormData({...locationFormData, neighborhood: e.target.value})}
-                    placeholder="Centro"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="locCity">Cidade</Label>
-                  <Input 
-                    id="locCity" 
-                    value={locationFormData.city} 
-                    onChange={(e) => setLocationFormData({...locationFormData, city: e.target.value})}
-                    placeholder="São Paulo"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="locState">Estado</Label>
-                  <Input 
-                    id="locState" 
-                    value={locationFormData.state} 
-                    onChange={(e) => setLocationFormData({...locationFormData, state: e.target.value.toUpperCase()})}
-                    placeholder="SP"
-                    maxLength={2}
-                  />
-                </div>
-              </div>
-
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsLocationDialogOpen(false)}>Cancelar</Button>
-                <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">Adicionar Local</Button>
               </DialogFooter>
             </form>
           </DialogContent>
