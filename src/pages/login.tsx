@@ -98,7 +98,7 @@ export default function Login() {
 
       // Se falhar, tentar sistema legado (localStorage)
       console.log("⚠️ Tentando sistema legado...");
-      const { default: systemUserService } = await import("@/services/systemUserService");
+      const { systemUserService } = await import("@/services/systemUserService");
       const legacyUser = await systemUserService.validateLogin(username, password);
       
       if (legacyUser) {

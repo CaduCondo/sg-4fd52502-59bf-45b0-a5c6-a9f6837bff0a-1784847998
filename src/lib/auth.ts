@@ -6,14 +6,16 @@ const AUTH_KEY = "rental_auth_user";
 
 /**
  * Migra um usuário de system_users para auth.users
+ * @param systemUserId - ID do usuário no sistema legado
  * @param email - Email do usuário
  * @param password - Senha do usuário (será usada no Supabase Auth)
  * @returns O ID do usuário em auth.users
  */
-export async function migrateUserToSupabaseAuth(email: string, password: string): Promise<string | null> {
+export async function migrateUserToSupabaseAuth(systemUserId: string, email: string, password: string): Promise<string | null> {
   try {
     // Chamar função do banco que cria usuário em auth.users e mapeia com system_users
     const { data, error } = await supabase.rpc("migrate_system_user_to_auth", {
+      p_system_user_id: systemUserId,
       p_email: email,
       p_password: password
     });
@@ -61,7 +63,7 @@ export async function loginWithSupabaseAuth(emailOrUsername: string, password: s
     // Se não foi migrado, migrar agora
     if (!mapping) {
       console.log("⚠️ Usuário não migrado. Migrando agora...");
-      const authUserId = await migrateUserToSupabaseAuth(systemUser.email, password);
+      const authUserId = await migrateUserToSupabaseAuth(systemUser.id, systemUser.email, password);
       if (!authUserId) {
         console.log("❌ Falha ao migrar usuário");
         return null;
