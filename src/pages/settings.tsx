@@ -520,9 +520,9 @@ export default function Settings() {
                         id="adminFee" 
                         type="text"
                         value={config.adminFeePercentage}
-                        onChange={(e) => handleAdminFeeChange(e.target.value)}
+                        onChange={(e) => setConfig({...config, adminFeePercentage: parsePercentageToFloat(e.target.value)})}
                         className="pr-8"
-                        placeholder="0.00"
+                        placeholder="0,000"
                       />
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
                     </div>
@@ -560,10 +560,10 @@ export default function Settings() {
                         <Input 
                           id="lateFee" 
                           type="text"
-                          value={config.lateFeePercentage}
-                          onChange={(e) => handleLateFeeChange(e.target.value)}
+                          value={formatPercentage(config.lateFeePercentage)}
+                          onChange={(e) => setConfig({...config, lateFeePercentage: parsePercentageToFloat(e.target.value)})}
                           className="pr-8"
-                          placeholder="0.00"
+                          placeholder="0,000"
                         />
                         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
                       </div>
@@ -578,10 +578,10 @@ export default function Settings() {
                         <Input 
                           id="interestRate" 
                           type="text"
-                          value={config.interestRatePercentage}
-                          onChange={(e) => handleInterestRateChange(e.target.value)}
+                          value={formatPercentage(config.interestRatePercentage)}
+                          onChange={(e) => setConfig({...config, interestRatePercentage: parsePercentageToFloat(e.target.value)})}
                           className="pr-8"
-                          placeholder="0.000"
+                          placeholder="0,000"
                         />
                         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
                       </div>
@@ -600,8 +600,8 @@ export default function Settings() {
                           Para um boleto de R$ 1.000,00 com 10 dias de atraso:
                         </p>
                         <ul className="text-sm text-amber-700 list-disc ml-5 mt-1">
-                          <li>Multa ({config.lateFeePercentage}%): R$ {(1000 * (config.lateFeePercentage/100)).toFixed(2)}</li>
-                          <li>Juros ({config.interestRatePercentage}% ao dia × 10): R$ {(1000 * (config.interestRatePercentage/100) * 10).toFixed(2)}</li>
+                          <li>Multa ({formatPercentage(config.lateFeePercentage)}%): R$ {(1000 * (config.lateFeePercentage/100)).toFixed(2)}</li>
+                          <li>Juros ({formatPercentage(config.interestRatePercentage)}% ao dia × 10): R$ {(1000 * (config.interestRatePercentage/100) * 10).toFixed(2)}</li>
                           <li><strong>Total a Pagar: R$ {(1000 * (1 + (config.lateFeePercentage/100) + ((config.interestRatePercentage/100) * 10))).toFixed(2)}</strong></li>
                         </ul>
                       </div>

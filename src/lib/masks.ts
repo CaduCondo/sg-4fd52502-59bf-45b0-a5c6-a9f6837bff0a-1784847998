@@ -251,3 +251,50 @@ export const parseCurrencyToFloat = (value: string): number => {
   
   return isNaN(numValue) ? 0 : numValue;
 };
+
+// Apply percentage mask with 3 decimal places (ex: 2,125%)
+export const applyPercentageMask = (value: string): string => {
+  if (!value) return "";
+  
+  // Remove tudo exceto números e vírgula
+  let numbers = value.replace(/[^\d,]/g, "");
+  
+  // Remove vírgulas duplicadas
+  const parts = numbers.split(",");
+  if (parts.length > 2) {
+    numbers = parts[0] + "," + parts.slice(1).join("");
+  }
+  
+  // Limitar casas decimais a 3
+  if (parts.length === 2 && parts[1].length > 3) {
+    numbers = parts[0] + "," + parts[1].substring(0, 3);
+  }
+  
+  return numbers;
+};
+
+// Parse percentage string to float (handles Brazilian format: 2,125 -> 2.125)
+export const parsePercentageToFloat = (value: string): number => {
+  if (!value) return 0;
+  
+  // Remove tudo exceto números e vírgula
+  let cleanValue = value.replace(/[^\d,]/g, "");
+  
+  // Replace comma (decimal separator) with dot
+  cleanValue = cleanValue.replace(/,/g, ".");
+  
+  // Parse to float
+  const numValue = parseFloat(cleanValue);
+  
+  return isNaN(numValue) ? 0 : numValue;
+};
+
+// Format number to percentage with 3 decimal places (ex: 2.125 -> "2,125")
+export const formatPercentage = (value: number): string => {
+  if (value === null || value === undefined || isNaN(value)) return "0";
+  
+  return value.toLocaleString("pt-BR", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 3,
+  });
+};
