@@ -102,7 +102,8 @@ export async function loginWithSupabaseAuth(emailOrUsername: string, password: s
       rg: systemUser.rg || "",
       cpf: systemUser.cpf || "",
       active: systemUser.active ?? true,
-      createdAt: systemUser.created_at || authData.user.created_at
+      createdAt: systemUser.created_at || authData.user.created_at,
+      photo: systemUser.photo || undefined,
     };
 
     // Sincronizar com localStorage para compatibilidade
@@ -114,7 +115,8 @@ export async function loginWithSupabaseAuth(emailOrUsername: string, password: s
         name: user.name,
         username: user.username,
         email: user.email,
-        role: role
+        role: role,
+        photo: user.photo,
       }));
     }
 
@@ -168,7 +170,8 @@ async function getSupabaseUser(): Promise<UserType | null> {
         rg: profile.rg || "",
         cpf: profile.cpf || "",
         active: profile.active ?? true,
-        createdAt: profile.created_at || supabaseUser.created_at
+        createdAt: profile.created_at || supabaseUser.created_at,
+        photo: profile.photo || undefined,
       };
 
       // Sync to localStorage for compatibility

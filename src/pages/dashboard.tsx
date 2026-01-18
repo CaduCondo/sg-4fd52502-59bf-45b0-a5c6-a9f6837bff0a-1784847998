@@ -268,8 +268,10 @@ export default function DashboardPage() {
       }
 
       if (data) {
-        setUserName(data.name);
-        console.log("✅ Nome do usuário carregado:", data.name);
+        // Extract first name only
+        const firstName = data.name.split(" ")[0];
+        setUserName(firstName);
+        console.log("✅ Nome do usuário carregado:", firstName);
       }
     } catch (error) {
       console.error("Erro ao carregar nome do usuário:", error);
@@ -399,7 +401,7 @@ export default function DashboardPage() {
                       D&apos;Uvo Enterprise
                     </CardTitle>
                     <p className="text-blue-100 text-lg">
-                      Olá, {userName}! 👋
+                      {getGreeting()}, {userName}! 👋
                     </p>
                   </div>
                   <Building2 className="h-12 w-12 text-blue-200 opacity-80" />
