@@ -10,6 +10,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { userLocationPermissionService } from "@/services";
 
 export default function Dashboard() {
   const [stats, setStats] = useState({
@@ -33,6 +34,11 @@ export default function Dashboard() {
 
   const loadDashboardData = async () => {
     try {
+      if (!currentUser) {
+        setLoading(false);
+        return;
+      }
+
       // 1. Carregar todos os dados básicos
       const [properties, tenants, rentals, payments] = await Promise.all([
         propertyService.getAll(),
@@ -42,36 +48,31 @@ export default function Dashboard() {
       ]);
 
       // 2. Filtrar dados com base no perfil do usuário
-      // Se for admin, vê tudo. Se for outro perfil, vê apenas o que tem permissão ou o que está atribuído.
-      // Para simplificar, assumimos que usuários não-admin veem tudo por enquanto, a menos que haja regra específica de RLS.
-      // Como a regra de negócio pediu "dashboard zerado para perfil diferente de administrador", vamos aplicar o filtro aqui.
-      
-      const isAdmin = currentUser?.role === "admin";
+      let filteredProperties = properties;
+      let filteredRentals = rentals;
+      let filteredPayments = payments;
 
-      if (!isAdmin) {
-        // Se não for admin, zera os dados sensíveis financeiramente ou mostra apenas dados parciais
-        // Mas a solicitação foi "dashboard zerado", então vamos zerar tudo ou mostrar uma visão limitada.
-        // Vamos manter a contagem de itens que ele tem acesso, mas talvez ocultar valores totais se for a intenção.
-        // A instrução foi "dashboard zerado para perfil diferente de administrador", o que sugere que eles não devem ver os KPIs globais.
+      // Se não for admin, filtrar por permissões de localização
+      if (currentUser.role !== "admin") {
+        const { userLocationIds } = await userLocationPermissionService.getUserLocationPermissions(currentUser.id);
         
-        setStats({
-          totalProperties: 0,
-          occupiedProperties: 0,
-          totalTenants: 0,
-          activeTenants: 0,
-          monthlyRevenue: 0,
-          pendingRevenue: 0,
-          overdueRevenue: 0,
-          occupancyRate: 0,
-        });
-        setRecentActivities([]);
-        setLoading(false);
-        return;
+        // Filtrar propriedades pelas localizações permitidas
+        filteredProperties = properties.filter(p => 
+          userLocationIds.includes(p.location_id || "")
+        );
+
+        // Filtrar locações pelas propriedades permitidas
+        const allowedPropertyIds = new Set(filteredProperties.map(p => p.id));
+        filteredRentals = rentals.filter(r => allowedPropertyIds.has(r.propertyId));
+
+        // Filtrar pagamentos pelas locações permitidas
+        const allowedRentalIds = new Set(filteredRentals.map(r => r.id));
+        filteredPayments = payments.filter(p => allowedRentalIds.has(p.rentalId));
       }
 
-      // Se for admin, calcula tudo normalmente
-      const totalProperties = properties.length;
-      const occupiedProperties = properties.filter(p => p.status === "occupied").length;
+      // 3. Calcular estatísticas com dados filtrados
+      const totalProperties = filteredProperties.length;
+      const occupiedProperties = filteredProperties.filter(p => p.status === "occupied").length;
       const occupancyRate = totalProperties > 0 ? (occupiedProperties / totalProperties) * 100 : 0;
 
       const totalTenants = tenants.length;
@@ -81,7 +82,7 @@ export default function Dashboard() {
       const currentMonth = new Date().getMonth() + 1;
       const currentYear = new Date().getFullYear();
 
-      const currentMonthPayments = payments.filter(p => 
+      const currentMonthPayments = filteredPayments.filter(p => 
         p.referenceMonth === currentMonth && p.referenceYear === currentYear
       );
 
@@ -93,7 +94,7 @@ export default function Dashboard() {
         .filter(p => p.status === "pending")
         .reduce((acc, curr) => acc + (curr.expectedAmount || 0), 0);
         
-      const overdueRevenue = payments
+      const overdueRevenue = filteredPayments
         .filter(p => p.status === "overdue")
         .reduce((acc, curr) => acc + (curr.expectedAmount || 0), 0);
 
@@ -109,7 +110,7 @@ export default function Dashboard() {
       });
 
       // Atividades Recentes (últimos pagamentos)
-      const recent = payments
+      const recent = filteredPayments
         .sort((a, b) => new Date(b.paymentDate || b.createdAt).getTime() - new Date(a.paymentDate || a.createdAt).getTime())
         .slice(0, 5)
         .map(p => ({
@@ -130,7 +131,7 @@ export default function Dashboard() {
     }
   };
 
-  if (!currentUser || (currentUser.role !== "admin" && !loading)) {
+  if (!currentUser) {
     return (
       <Layout>
         <SEO title="Dashboard - Gerenciador" />
@@ -138,19 +139,10 @@ export default function Dashboard() {
           <div className="bg-muted p-6 rounded-full">
             <AlertCircle className="h-12 w-12 text-muted-foreground" />
           </div>
-          <h1 className="text-2xl font-bold">Acesso Limitado</h1>
+          <h1 className="text-2xl font-bold">Acesso Negado</h1>
           <p className="text-muted-foreground max-w-md">
-            Seu perfil de usuário não tem permissão para visualizar os indicadores globais do sistema.
-            Utilize o menu lateral para acessar suas funcionalidades permitidas.
+            Você precisa estar autenticado para acessar o Dashboard.
           </p>
-          <div className="flex gap-4 mt-4">
-             <Link href="/rentals">
-               <Button variant="outline">Ir para Locações</Button>
-             </Link>
-             <Link href="/financial">
-               <Button variant="outline">Ir para Financeiro</Button>
-             </Link>
-          </div>
         </div>
       </Layout>
     );
@@ -162,7 +154,11 @@ export default function Dashboard() {
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground">Visão geral do seu negócio</p>
+          <p className="text-muted-foreground">
+            {currentUser.role === "admin" 
+              ? "Visão geral completa do negócio" 
+              : "Visão geral das suas localizações"}
+          </p>
         </div>
 
         {/* KPIs Principais */}
