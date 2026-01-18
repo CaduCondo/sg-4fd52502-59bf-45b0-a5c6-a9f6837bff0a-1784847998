@@ -294,15 +294,6 @@ export const paymentService = {
     } as Payment;
   },
 
-  async delete(id: string): Promise<void> {
-    const { error } = await supabase
-      .from("payments")
-      .delete()
-      .eq("id", id);
-
-    if (error) throw error;
-  },
-
   async deletePendingByRentalId(rentalId: string): Promise<void> {
     const { error } = await supabase
       .from("payments")

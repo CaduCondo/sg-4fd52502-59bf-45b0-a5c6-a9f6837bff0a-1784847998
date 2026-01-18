@@ -55,7 +55,6 @@ export function Layout({ children }: LayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showProfileDialog, setShowProfileDialog] = useState(false);
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
-  const [mounted, setMounted] = useState(false);
 
   // Scroll effects
   const scrollProgress = useScrollProgress();
@@ -65,10 +64,6 @@ export function Layout({ children }: LayoutProps) {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   useEffect(() => {
     const validateAndLoadUser = async () => {
@@ -198,225 +193,200 @@ export function Layout({ children }: LayoutProps) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       {/* Scroll Progress Bar */}
-      {mounted && (
-        <motion.div
-          className="fixed top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-emerald-600 origin-left z-50"
-          style={{ scaleX: scrollProgress / 100 }}
-          initial={{ scaleX: 0 }}
-          transition={{ duration: 0.1 }}
-        />
-      )}
+      <motion.div
+        className="fixed top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-emerald-600 origin-left z-50"
+        style={{ scaleX: scrollProgress / 100 }}
+        initial={{ scaleX: 0 }}
+        transition={{ duration: 0.1 }}
+      />
 
       {/* Navbar */}
-      {mounted ? (
-        <motion.nav
-          className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm z-40"
-          initial={{ y: 0 }}
-          animate={{
-            y: scrollDirection === "down" && scrollProgress > 5 ? -100 : 0,
-          }}
-          transition={{ duration: 0.3 }}
-        >
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="h-16 flex items-center justify-between gap-4">
-              {/* LOGO - Left */}
-              <div className="flex items-center gap-4">
-                {/* Mobile Menu Button - VISIBLE ONLY ON MOBILE */}
-                <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-                  <SheetTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="md:hidden"
-                    >
-                      <Menu className="h-5 w-5" />
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent side="left" className="w-[280px] sm:w-[320px]">
-                    <SheetHeader>
-                      <SheetTitle className="text-left">
-                        <div className="flex items-center gap-2">
-                          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center shadow-md">
-                            <Building2 className="w-6 h-6 text-white" />
-                          </div>
-                          <span className="font-bold text-slate-900">D</span>
+      <motion.nav
+        className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm z-40"
+        initial={{ y: 0 }}
+        animate={{
+          y: scrollDirection === "down" && scrollProgress > 5 ? -100 : 0,
+        }}
+        transition={{ duration: 0.3 }}
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="h-16 flex items-center justify-between gap-4">
+            {/* LOGO - Left */}
+            <div className="flex items-center gap-4">
+              {/* Mobile Menu Button - VISIBLE ONLY ON MOBILE */}
+              <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+                <SheetTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="md:hidden"
+                  >
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-[280px] sm:w-[320px]">
+                  <SheetHeader>
+                    <SheetTitle className="text-left">
+                      <div className="flex items-center gap-2">
+                        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center shadow-md">
+                          <Building2 className="w-6 h-6 text-white" />
                         </div>
-                      </SheetTitle>
-                    </SheetHeader>
+                        <span className="font-bold text-slate-900">D</span>
+                      </div>
+                    </SheetTitle>
+                  </SheetHeader>
 
-                    {/* User Info Section */}
-                    <div className="mt-6 mb-6">
-                      <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
-                        {user?.photo ? (
-                          <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-emerald-600 flex-shrink-0">
-                            <img 
-                              src={user.photo} 
-                              alt={user.name} 
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                        ) : (
-                          <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                            <User className="h-6 w-6 text-emerald-600" />
-                          </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-slate-900 truncate">{user?.name}</p>
-                          <p className="text-xs text-slate-500">{roleDisplayName(user?.role)}</p>
+                  {/* User Info Section */}
+                  <div className="mt-6 mb-6">
+                    <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                      {user?.photo ? (
+                        <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-emerald-600 flex-shrink-0">
+                          <img 
+                            src={user.photo} 
+                            alt={user.name} 
+                            className="w-full h-full object-cover"
+                          />
                         </div>
+                      ) : (
+                        <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                          <User className="h-6 w-6 text-emerald-600" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-slate-900 truncate">{user?.name}</p>
+                        <p className="text-xs text-slate-500">{roleDisplayName(user?.role)}</p>
                       </div>
                     </div>
-
-                    <Separator className="my-4" />
-
-                    {/* Navigation Links */}
-                    <nav className="space-y-1">
-                      {navigationItems.map((item) => {
-                        const Icon = item.icon;
-                        const active = isActive(item.href);
-                        return (
-                          <Link key={item.href} href={item.href}>
-                            <Button
-                              variant={active ? "default" : "ghost"}
-                              className="w-full justify-start gap-3 h-11"
-                              onClick={() => setMobileMenuOpen(false)}
-                            >
-                              <Icon className="h-5 w-5" />
-                              <span className="text-sm font-medium">{item.label}</span>
-                            </Button>
-                          </Link>
-                        );
-                      })}
-                    </nav>
-
-                    <Separator className="my-4" />
-
-                    {/* Action Buttons */}
-                    <div className="space-y-2">
-                      <Button
-                        variant="outline"
-                        className="w-full justify-start gap-3 h-11"
-                        onClick={() => {
-                          setMobileMenuOpen(false);
-                          setShowPasswordDialog(true);
-                        }}
-                      >
-                        <Lock className="h-5 w-5" />
-                        <span className="text-sm font-medium">Trocar Senha</span>
-                      </Button>
-                      <Button
-                        variant="outline"
-                        className="w-full justify-start gap-3 h-11 text-red-600 hover:text-red-700 hover:bg-red-50"
-                        onClick={() => {
-                          setMobileMenuOpen(false);
-                          handleLogout();
-                        }}
-                      >
-                        <LogOut className="h-5 w-5" />
-                        <span className="text-sm font-medium">Sair</span>
-                      </Button>
-                    </div>
-                  </SheetContent>
-                </Sheet>
-
-                <Link href="/dashboard" className="flex items-center gap-2 flex-shrink-0">
-                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center shadow-md">
-                    <Building2 className="w-6 h-6 text-white" />
                   </div>
-                  <span className="font-bold text-slate-900 text-base sm:text-lg">D&apos;Uvo Enterprise</span>
-                </Link>
-              </div>
 
-              {/* MENU DESKTOP - Center - HIDDEN ON MOBILE */}
-              <div className="hidden md:flex items-center gap-1 flex-1 justify-center">
-                {navigationItems.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <Link key={item.href} href={item.href}>
-                      <Button 
-                        variant={isActive(item.href) ? "default" : "ghost"}
-                        size="sm"
-                        className="gap-1.5"
-                      >
-                        <Icon className="h-4 w-4" />
-                        <span>{item.label}</span>
-                      </Button>
-                    </Link>
-                  );
-                })}
-              </div>
+                  <Separator className="my-4" />
 
-              {/* USER PROFILE - Right - HIDDEN ON MOBILE */}
-              <div className="hidden md:flex items-center gap-2 flex-shrink-0">
-                {/* User Dropdown */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                      <Avatar className="h-10 w-10 border-2 border-emerald-600/20">
-                        <AvatarImage src={user?.photo} alt={user?.name} className="object-cover" />
-                        <AvatarFallback className="bg-emerald-100 text-emerald-700 font-medium">
-                          {user?.name?.substring(0, 2).toUpperCase() || "US"}
-                        </AvatarFallback>
-                      </Avatar>
+                  {/* Navigation Links */}
+                  <nav className="space-y-1">
+                    {navigationItems.map((item) => {
+                      const Icon = item.icon;
+                      const active = isActive(item.href);
+                      return (
+                        <Link key={item.href} href={item.href}>
+                          <Button
+                            variant={active ? "default" : "ghost"}
+                            className="w-full justify-start gap-3 h-11"
+                            onClick={() => setMobileMenuOpen(false)}
+                          >
+                            <Icon className="h-5 w-5" />
+                            <span className="text-sm font-medium">{item.label}</span>
+                          </Button>
+                        </Link>
+                      );
+                    })}
+                  </nav>
+
+                  <Separator className="my-4" />
+
+                  {/* Action Buttons */}
+                  <div className="space-y-2">
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start gap-3 h-11"
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        setShowPasswordDialog(true);
+                      }}
+                    >
+                      <Lock className="h-5 w-5" />
+                      <span className="text-sm font-medium">Trocar Senha</span>
                     </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
-                    <div className="px-2 py-1.5">
-                      <p className="text-sm font-medium leading-none">{user?.name}</p>
-                      <p className="text-xs text-muted-foreground mt-1">{roleDisplayName(user?.role)}</p>
-                    </div>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => setShowProfileDialog(true)} className="cursor-pointer">
-                      <User className="mr-2 h-4 w-4" />
-                      Editar Perfil
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setShowPasswordDialog(true)} className="cursor-pointer">
-                      <Lock className="mr-2 h-4 w-4" />
-                      Trocar Senha
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleLogout} className="text-red-600 cursor-pointer">
-                      <LogOut className="mr-2 h-4 w-4" />
-                      Sair
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </div>
-          </div>
-        </motion.nav>
-      ) : (
-        <nav className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm z-40">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="h-16 flex items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <Link href="/dashboard" className="flex items-center gap-2 flex-shrink-0">
-                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center shadow-md">
-                    <Building2 className="w-6 h-6 text-white" />
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start gap-3 h-11 text-red-600 hover:text-red-700 hover:bg-red-50"
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        handleLogout();
+                      }}
+                    >
+                      <LogOut className="h-5 w-5" />
+                      <span className="text-sm font-medium">Sair</span>
+                    </Button>
                   </div>
-                  <span className="font-bold text-slate-900 text-base sm:text-lg">D&apos;Uvo Enterprise</span>
-                </Link>
-              </div>
+                </SheetContent>
+              </Sheet>
+
+              <Link href="/dashboard" className="flex items-center gap-2 flex-shrink-0">
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center shadow-md">
+                  <Building2 className="w-6 h-6 text-white" />
+                </div>
+                <span className="font-bold text-slate-900 text-base sm:text-lg">D&apos;Uvo Enterprise</span>
+              </Link>
+            </div>
+
+            {/* MENU DESKTOP - Center - HIDDEN ON MOBILE */}
+            <div className="hidden md:flex items-center gap-1 flex-1 justify-center">
+              {navigationItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <Link key={item.href} href={item.href}>
+                    <Button 
+                      variant={isActive(item.href) ? "default" : "ghost"}
+                      size="sm"
+                      className="gap-1.5"
+                    >
+                      <Icon className="h-4 w-4" />
+                      <span>{item.label}</span>
+                    </Button>
+                  </Link>
+                );
+              })}
+            </div>
+
+            {/* USER PROFILE - Right - HIDDEN ON MOBILE */}
+            <div className="hidden md:flex items-center gap-2 flex-shrink-0">
+              {/* User Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                    <Avatar className="h-10 w-10 border-2 border-emerald-600/20">
+                      <AvatarImage src={user?.photo} alt={user?.name} className="object-cover" />
+                      <AvatarFallback className="bg-emerald-100 text-emerald-700 font-medium">
+                        {user?.name?.substring(0, 2).toUpperCase() || "US"}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <div className="px-2 py-1.5">
+                    <p className="text-sm font-medium leading-none">{user?.name}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{roleDisplayName(user?.role)}</p>
+                  </div>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setShowProfileDialog(true)} className="cursor-pointer">
+                    <User className="mr-2 h-4 w-4" />
+                    Editar Perfil
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setShowPasswordDialog(true)} className="cursor-pointer">
+                    <Lock className="mr-2 h-4 w-4" />
+                    Trocar Senha
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleLogout} className="text-red-600 cursor-pointer">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Sair
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
-        </nav>
-      )}
+        </div>
+      </motion.nav>
 
       {/* Main content */}
-      {mounted ? (
-        <motion.main
-          className="pt-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5 }}
-        >
-          {children}
-        </motion.main>
-      ) : (
-        <main className="pt-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {children}
-        </main>
-      )}
+      <motion.main
+        className="pt-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5 }}
+      >
+        {children}
+      </motion.main>
 
       {/* Edit Profile Dialog */}
       {user?.id && (

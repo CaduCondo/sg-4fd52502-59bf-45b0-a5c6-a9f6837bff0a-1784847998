@@ -238,12 +238,13 @@ export default function Dashboard() {
                   recentActivities.map((activity, i) => (
                     <div key={i} className="flex items-center justify-between border-b pb-2 last:border-0 last:pb-0">
                       <div className="flex items-center gap-3">
+                        <div className={`p-2 rounded-full ${activity.status === 'paid' ? 'bg-emerald-100' : 'bg-gray-100'}`}>
+                          <CreditCard className={`h-4 w-4 ${activity.status === 'paid' ? 'text-emerald-600' : 'text-gray-500'}`} />
+                        </div>
                         <div>
-                          <p className="text-sm font-medium text-slate-700">
-                            Olá, {user?.name || "Visitante"}!
-                          </p>
-                          <p className="text-xs text-slate-400" suppressHydrationWarning>
-                            {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
+                          <p className="text-sm font-medium">{activity.description}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(activity.date).toLocaleDateString('pt-BR')}
                           </p>
                         </div>
                       </div>
