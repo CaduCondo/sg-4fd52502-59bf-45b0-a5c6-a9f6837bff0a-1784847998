@@ -65,12 +65,19 @@ export default function RentalsPage() {
   const loadData = async () => {
     try {
       setLoading(true);
+      console.log("🔍 Loading rental data...");
+      
       const [rentalsData, propertiesData, tenantsData] = await Promise.all([
         rentalService.getAll(),
         propertyService.getAll(),
         tenantService.getAll(),
       ]);
 
+      console.log("📦 Rentals loaded:", rentalsData);
+      console.log("📦 Properties loaded:", propertiesData);
+      console.log("📦 Tenants loaded:", tenantsData);
+
+      // CRITICAL: Show ALL data without filtering by permissions
       setRentals(rentalsData);
       setProperties(propertiesData);
       setTenants(tenantsData);

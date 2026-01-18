@@ -218,31 +218,15 @@ export default function DashboardPage() {
         paymentService.getAll(),
       ]);
 
-      // Apply location filter for financial users
-      let filteredProperties = propertiesData;
-      let filteredRentals = rentalsData;
-      let filteredPayments = paymentsData;
-
-      if (currentUser?.role === "financial") {
-        const allowedLocations = ["Jd. Colombo", "Signore"];
-        
-        filteredProperties = propertiesData.filter(p => 
-          allowedLocations.some(loc => p.location?.includes(loc))
-        );
-        
-        const allowedPropertyIds = filteredProperties.map(p => p.id);
-        filteredRentals = rentalsData.filter(r => allowedPropertyIds.includes(r.propertyId));
-        
-        const allowedRentalIds = filteredRentals.map(r => r.id);
-        filteredPayments = paymentsData.filter(p => allowedRentalIds.includes(p.rentalId));
-      }
-
-      setProperties(filteredProperties);
+      // CRITICAL: REMOVED FILTERS FOR FINANCIAL USERS TO SHOW ALL DATA
+      // ALL users should see ALL data
+      
+      setProperties(propertiesData);
       setTenants(tenantsData);
-      setRentals(filteredRentals);
-      setPayments(filteredPayments);
+      setRentals(rentalsData);
+      setPayments(paymentsData);
 
-      calculateStats(filteredProperties, filteredRentals, filteredPayments, tenantsData);
+      calculateStats(propertiesData, rentalsData, paymentsData, tenantsData);
     } catch (error) {
       console.error("Erro ao carregar dados do dashboard:", error);
     }
