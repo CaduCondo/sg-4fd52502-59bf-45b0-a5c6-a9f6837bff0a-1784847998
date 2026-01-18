@@ -14,9 +14,7 @@ import {
   Menu,
   User,
   Lock,
-  ChevronDown,
   Calculator,
-  Camera
 } from "lucide-react";
 import { logout, getCurrentUser } from "@/lib/auth";
 import { User as UserType } from "@/types";
@@ -71,6 +69,8 @@ export function Layout({ children }: LayoutProps) {
   }, []);
 
   useEffect(() => {
+    if (!mounted) return;
+
     const validateAndLoadUser = async () => {
       const currentUser = getCurrentUser();
 
@@ -110,7 +110,7 @@ export function Layout({ children }: LayoutProps) {
     };
 
     validateAndLoadUser();
-  }, [toast]);
+  }, [mounted, toast]);
 
   const handleLogout = () => {
     logout();
@@ -197,7 +197,7 @@ export function Layout({ children }: LayoutProps) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      {/* Scroll Progress Bar */}
+      {/* Scroll Progress Bar - Only render after mount */}
       {mounted && (
         <motion.div
           className="fixed top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-emerald-600 origin-left z-50"
@@ -207,21 +207,14 @@ export function Layout({ children }: LayoutProps) {
         />
       )}
 
-      {/* Navbar */}
-      {mounted ? (
-        <motion.nav
-          className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm z-40"
-          initial={{ y: 0 }}
-          animate={{
-            y: scrollDirection === "down" && scrollProgress > 5 ? -100 : 0,
-          }}
-          transition={{ duration: 0.3 }}
-        >
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="h-16 flex items-center justify-between gap-4">
-              {/* LOGO - Left */}
-              <div className="flex items-center gap-4">
-                {/* Mobile Menu Button - VISIBLE ONLY ON MOBILE */}
+      {/* Navbar - Static version for SSR, animated after mount */}
+      <nav className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm z-40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="h-16 flex items-center justify-between gap-4">
+            {/* LOGO - Left */}
+            <div className="flex items-center gap-4">
+              {/* Mobile Menu Button - Only render after mount */}
+              {mounted && user && (
                 <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
                   <SheetTrigger asChild>
                     <Button
@@ -239,7 +232,7 @@ export function Layout({ children }: LayoutProps) {
                           <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center shadow-md">
                             <Building2 className="w-6 h-6 text-white" />
                           </div>
-                          <span className="font-bold text-slate-900">D</span>
+                          <span className="font-bold text-slate-900">D&apos;Uvo Enterprise</span>
                         </div>
                       </SheetTitle>
                     </SheetHeader>
@@ -318,16 +311,18 @@ export function Layout({ children }: LayoutProps) {
                     </div>
                   </SheetContent>
                 </Sheet>
+              )}
 
-                <Link href="/dashboard" className="flex items-center gap-2 flex-shrink-0">
-                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center shadow-md">
-                    <Building2 className="w-6 h-6 text-white" />
-                  </div>
-                  <span className="font-bold text-slate-900 text-base sm:text-lg">D&apos;Uvo Enterprise</span>
-                </Link>
-              </div>
+              <Link href="/dashboard" className="flex items-center gap-2 flex-shrink-0">
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center shadow-md">
+                  <Building2 className="w-6 h-6 text-white" />
+                </div>
+                <span className="font-bold text-slate-900 text-base sm:text-lg">D&apos;Uvo Enterprise</span>
+              </Link>
+            </div>
 
-              {/* MENU DESKTOP - Center - HIDDEN ON MOBILE */}
+            {/* MENU DESKTOP - Center - HIDDEN ON MOBILE - Only render after mount */}
+            {mounted && (
               <div className="hidden md:flex items-center gap-1 flex-1 justify-center">
                 {navigationItems.map((item) => {
                   const Icon = item.icon;
@@ -345,8 +340,10 @@ export function Layout({ children }: LayoutProps) {
                   );
                 })}
               </div>
+            )}
 
-              {/* USER PROFILE - Right - HIDDEN ON MOBILE */}
+            {/* USER PROFILE - Right - HIDDEN ON MOBILE - Only render after mount */}
+            {mounted && user && (
               <div className="hidden md:flex items-center gap-2 flex-shrink-0">
                 {/* User Dropdown */}
                 <DropdownMenu>
@@ -382,27 +379,12 @@ export function Layout({ children }: LayoutProps) {
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
-            </div>
+            )}
           </div>
-        </motion.nav>
-      ) : (
-        <nav className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm z-40">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="h-16 flex items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <Link href="/dashboard" className="flex items-center gap-2 flex-shrink-0">
-                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center shadow-md">
-                    <Building2 className="w-6 h-6 text-white" />
-                  </div>
-                  <span className="font-bold text-slate-900 text-base sm:text-lg">D&apos;Uvo Enterprise</span>
-                </Link>
-              </div>
-            </div>
-          </div>
-        </nav>
-      )}
+        </div>
+      </nav>
 
-      {/* Main content */}
+      {/* Main content - Animate only after mount */}
       {mounted ? (
         <motion.main
           className="pt-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"
@@ -418,8 +400,8 @@ export function Layout({ children }: LayoutProps) {
         </main>
       )}
 
-      {/* Edit Profile Dialog */}
-      {user?.id && (
+      {/* Edit Profile Dialog - Only render after mount */}
+      {mounted && user?.id && (
         <EditProfileDialog
           user={user as unknown as import("@/types").SystemUser}
           open={showProfileDialog}
@@ -431,60 +413,62 @@ export function Layout({ children }: LayoutProps) {
         />
       )}
 
-      {/* Change Password Dialog */}
-      <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Trocar Senha</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="current-password">Senha Atual</Label>
-              <Input
-                id="current-password"
-                type="password"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-              />
+      {/* Change Password Dialog - Only render after mount */}
+      {mounted && (
+        <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Trocar Senha</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="current-password">Senha Atual</Label>
+                <Input
+                  id="current-password"
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="new-password">Nova Senha</Label>
+                <Input
+                  id="new-password"
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="confirm-password">Confirmar Nova Senha</Label>
+                <Input
+                  id="confirm-password"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                />
+              </div>
+              <div className="flex space-x-2">
+                <Button onClick={handleChangePassword} className="flex-1">
+                  Alterar Senha
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setShowPasswordDialog(false);
+                    setCurrentPassword("");
+                    setNewPassword("");
+                    setConfirmPassword("");
+                  }} 
+                  className="flex-1"
+                >
+                  Cancelar
+                </Button>
+              </div>
             </div>
-            <div>
-              <Label htmlFor="new-password">Nova Senha</Label>
-              <Input
-                id="new-password"
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-              />
-            </div>
-            <div>
-              <Label htmlFor="confirm-password">Confirmar Nova Senha</Label>
-              <Input
-                id="confirm-password"
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-              />
-            </div>
-            <div className="flex space-x-2">
-              <Button onClick={handleChangePassword} className="flex-1">
-                Alterar Senha
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => {
-                  setShowPasswordDialog(false);
-                  setCurrentPassword("");
-                  setNewPassword("");
-                  setConfirmPassword("");
-                }} 
-                className="flex-1"
-              >
-                Cancelar
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
