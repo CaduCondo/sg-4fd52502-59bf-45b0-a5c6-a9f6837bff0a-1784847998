@@ -146,26 +146,66 @@ export async function loginWithSupabaseAuth(emailOrUsername: string, password: s
     console.log("✅ Usuário:", systemUser.user_name);
     console.log("✅ Auth User ID:", authUserId);
 
-    // PASSO 2: Fazer login no Supabase Auth para obter tokens JWT
-    if (authUserId) {
+    // PASSO 2: Autenticar no Supabase Auth para obter sessão válida
+    let authSuccess = false;
+
+    // Primeiro, tentar fazer login (usuário pode já existir no Auth)
+    try {
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email: systemUser.user_email,
+        password: password
+      });
+
+      if (!signInError && signInData.session) {
+        console.log("✅ Login no Supabase Auth bem-sucedido");
+        authSuccess = true;
+      }
+    } catch (signInErr) {
+      console.log("⚠️ Usuário não existe no Supabase Auth, criando...");
+    }
+
+    // Se login falhou, tentar criar o usuário
+    if (!authSuccess) {
       try {
-        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email: systemUser.user_email,
-          password: password
+          password: password,
+          options: {
+            data: {
+              name: systemUser.user_name,
+              role: systemUser.user_role,
+            }
+          }
         });
 
-        if (authError) {
-          console.warn("⚠️ Não foi possível obter tokens JWT:", authError.message);
-          console.log("ℹ️ Continuando com sessão local apenas");
-        } else if (authData.session) {
-          console.log("✅ Tokens JWT obtidos com sucesso");
-          console.log("✅ Access Token válido por 1 hora");
-          console.log("✅ Refresh Token disponível para renovação");
+        if (signUpError) {
+          console.warn("⚠️ Erro ao criar usuário no Supabase Auth:", signUpError.message);
+        } else if (signUpData.session) {
+          console.log("✅ Usuário criado no Supabase Auth com sucesso");
+          authSuccess = true;
+
+          // Atualizar auth_user_id no system_users
+          if (signUpData.user) {
+            await supabase
+              .from("system_users")
+              .update({ auth_user_id: signUpData.user.id })
+              .eq("id", systemUser.user_id);
+            console.log("✅ Auth User ID atualizado no banco");
+          }
         }
-      } catch (authError) {
-        console.warn("⚠️ Erro ao obter tokens JWT:", authError);
-        console.log("ℹ️ Continuando com sessão local apenas");
+      } catch (signUpErr) {
+        console.warn("⚠️ Erro ao criar usuário:", signUpErr);
       }
+    }
+
+    if (authSuccess) {
+      console.log("✅ Tokens JWT obtidos com sucesso");
+      console.log("✅ Access Token válido por 1 hora");
+      console.log("✅ Refresh Token disponível para renovação");
+      console.log("✅ auth.uid() agora está disponível para RLS");
+    } else {
+      console.warn("⚠️ Continuando sem sessão do Supabase Auth");
+      console.warn("⚠️ Algumas funcionalidades podem não funcionar corretamente");
     }
 
     // PASSO 3: Criar sessão local com expiração
