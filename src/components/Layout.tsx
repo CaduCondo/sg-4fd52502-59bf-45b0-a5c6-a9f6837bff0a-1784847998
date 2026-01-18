@@ -16,6 +16,7 @@ import {
   Lock,
   ChevronDown,
   Calculator,
+  MapPin,
 } from "lucide-react";
 import { logout, getCurrentUser } from "@/lib/auth";
 import { User as UserType } from "@/types";
@@ -182,6 +183,7 @@ export function Layout({ children }: LayoutProps) {
     { href: "/dashboard", icon: Home, label: "Dashboard" },
     { href: "/properties", icon: Building2, label: "Imóveis" },
     { href: "/tenants", icon: Users, label: "Inquilinos" },
+    { href: "/locations", icon: MapPin, label: "Locais" },
     { href: "/rentals", icon: Building2, label: "Locações" },
     { href: "/payments", icon: DollarSign, label: "Recebimentos" },
     { href: "/financial", icon: Calculator, label: "Financeiro" },

@@ -40,7 +40,6 @@ export function initializeStorage(): void {
       adminFeePercentage: 6,
       lateFeePercentage: 2,
       interestRatePercentage: 0.033,
-      locations: [{ id: "1", name: "Jd. Colombo", cep: "00000-000" }],
       companyName: "", cnpj: "", email: "", phone: "", address: "", city: "", state: "", zipCode: ""
     };
     localStorage.setItem(CONFIG_KEY, JSON.stringify(defaultConfig));
@@ -307,7 +306,6 @@ export const configStorage = {
       adminFeePercentage: 6, 
       lateFeePercentage: 2, 
       interestRatePercentage: 0.033,
-      locations: [],
       companyName: "", cnpj: "", email: "", phone: "", address: "", city: "", state: "", zipCode: ""
     };
     const data = localStorage.getItem(this.KEY);
@@ -315,7 +313,6 @@ export const configStorage = {
       adminFeePercentage: 6, 
       lateFeePercentage: 2, 
       interestRatePercentage: 0.033,
-      locations: [],
       companyName: "", cnpj: "", email: "", phone: "", address: "", city: "", state: "", zipCode: ""
     };
   },
@@ -328,20 +325,6 @@ export const configStorage = {
   update(config: Partial<Config>): void {
     const current = this.get();
     this.save({ ...current, ...config });
-  },
-
-  addLocation(location: string): void {
-    const config = this.get();
-    if (!config.locations.includes(location)) {
-      config.locations.push(location);
-      this.save(config);
-    }
-  },
-
-  removeLocation(location: string): void {
-    const config = this.get();
-    config.locations = config.locations.filter(l => l !== location);
-    this.save(config);
   }
 };
 
@@ -349,6 +332,5 @@ const DEFAULT_CONFIG: CompanyConfig = {
   adminFeePercentage: 10,
   lateFeePercentage: 2, // 2% padrão
   interestRatePercentage: 0.033, // 0.033% ao dia padrão
-  locations: [],
   companyName: "", cnpj: "", email: "", phone: "", address: "", city: "", state: "", zipCode: ""
 };

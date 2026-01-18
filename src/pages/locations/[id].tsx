@@ -7,50 +7,50 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { ArrowLeft, Save, MapPin } from "lucide-react";
-import { configService } from "@/services/configService";
+import { locationService } from "@/services/locationService";
 import { applyCepMask, removeMask } from "@/lib/masks";
 import type { Location } from "@/types";
 
 export default function LocationEditPage() {
   const router = useRouter();
   const { id } = router.query;
-  const [loading, setLoading] = useState(true);
+  const isNew = id === "new";
+  
+  const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
-  const [location, setLocation] = useState<Location | null>(null);
+  
   const [formData, setFormData] = useState({
     name: "",
     cep: "",
-    address: "",
+    street: "",
     number: "",
-    // complement: "", // Removido
+    complement: "",
     neighborhood: "",
     city: "",
     state: ""
   });
 
   useEffect(() => {
-    if (id && typeof id === "string") {
+    if (id && !isNew && typeof id === "string") {
       loadLocation(id);
     }
-  }, [id]);
+  }, [id, isNew]);
 
   const loadLocation = async (locationId: string) => {
     try {
       setLoading(true);
-      const config = await configService.getConfig();
-      const foundLocation = config?.locations.find((loc) => loc.id === locationId);
+      const data = await locationService.getById(locationId);
       
-      if (foundLocation) {
-        setLocation(foundLocation);
+      if (data) {
         setFormData({
-          name: foundLocation.name,
-          cep: foundLocation.cep || "",
-          address: foundLocation.address || "",
-          number: foundLocation.number || "",
-          // complement: foundLocation.complement || "", // Removido
-          neighborhood: foundLocation.neighborhood || "",
-          city: foundLocation.city || "",
-          state: foundLocation.state || ""
+          name: data.name,
+          cep: data.zip_code || "",
+          street: data.street || "",
+          number: data.number || "",
+          complement: data.complement || "",
+          neighborhood: data.neighborhood || "",
+          city: data.city,
+          state: data.state
         });
       } else {
         toast({
@@ -58,7 +58,7 @@ export default function LocationEditPage() {
           description: "Local não encontrado",
           variant: "destructive"
         });
-        router.push("/settings");
+        router.push("/locations");
       }
     } catch (error) {
       console.error("Error loading location:", error);
@@ -82,7 +82,7 @@ export default function LocationEditPage() {
         if (!data.erro) {
           setFormData((prev) => ({
             ...prev,
-            address: data.logradouro || "",
+            street: data.logradouro || "",
             neighborhood: data.bairro || "",
             city: data.localidade || "",
             state: data.uf || ""
@@ -97,12 +97,19 @@ export default function LocationEditPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!location) return;
-
     if (!formData.name.trim()) {
       toast({
         title: "Erro",
         description: "Nome do local é obrigatório",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!formData.city.trim() || !formData.state.trim()) {
+      toast({
+        title: "Erro",
+        description: "Cidade e Estado são obrigatórios",
         variant: "destructive"
       });
       return;
@@ -113,34 +120,30 @@ export default function LocationEditPage() {
       
       const locationData = {
         name: formData.name.trim(),
-        cep: removeMask(formData.cep),
-        address: formData.address.trim(),
+        zip_code: removeMask(formData.cep),
+        street: formData.street.trim(),
         number: formData.number.trim(),
-        // complement: formData.complement.trim(), // Removido pois não existe no tipo Location
+        complement: formData.complement.trim(),
         neighborhood: formData.neighborhood.trim(),
         city: formData.city.trim(),
-        state: formData.state.trim()
+        state: formData.state.trim().toUpperCase()
       };
 
-      // Corrigindo a chamada para updateLocation que espera o objeto completo Location
-      const updatedLocation: Location = {
-        ...location,
-        ...locationData
-      };
+      if (isNew) {
+        await locationService.create(locationData);
+        toast({ title: "Sucesso", description: "Local criado com sucesso!" });
+      } else {
+        await locationService.update(id as string, locationData);
+        toast({ title: "Sucesso", description: "Local atualizado com sucesso!" });
+      }
 
-      await configService.updateLocation(updatedLocation);
-
-      toast({
-        title: "Sucesso",
-        description: "Local atualizado com sucesso!"
-      });
-      router.push("/settings");
+      router.push("/locations");
       
     } catch (error) {
-      console.error("Error updating location:", error);
+      console.error("Error saving location:", error);
       toast({
         title: "Erro",
-        description: "Erro ao atualizar local",
+        description: "Erro ao salvar local",
         variant: "destructive"
       });
     } finally {
@@ -152,7 +155,7 @@ export default function LocationEditPage() {
     return (
       <Layout>
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
         </div>
       </Layout>
     );
@@ -166,14 +169,14 @@ export default function LocationEditPage() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => router.push("/settings")}
+            onClick={() => router.push("/locations")}
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold">Editar Local</h1>
+            <h1 className="text-3xl font-bold">{isNew ? "Novo Local" : "Editar Local"}</h1>
             <p className="text-muted-foreground">
-              Atualize as informações do local cadastrado
+              {isNew ? "Cadastre uma nova região de atuação" : "Atualize as informações do local"}
             </p>
           </div>
         </div>
@@ -182,7 +185,7 @@ export default function LocationEditPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <MapPin className="h-5 w-5" />
+              <MapPin className="h-5 w-5 text-emerald-600" />
               Dados do Local
             </CardTitle>
           </CardHeader>
@@ -190,12 +193,12 @@ export default function LocationEditPage() {
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Nome do Local */}
               <div className="space-y-2">
-                <Label htmlFor="name">Nome do Local *</Label>
+                <Label htmlFor="name">Nome do Local / Condomínio *</Label>
                 <Input
                   id="name"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Ex: Edifício Central, Condomínio Parque das Flores"
+                  placeholder="Ex: Edifício Central, Jd. das Flores"
                   required
                 />
               </div>
@@ -216,11 +219,11 @@ export default function LocationEditPage() {
               {/* Endereço e Número */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="md:col-span-2 space-y-2">
-                  <Label htmlFor="address">Endereço</Label>
+                  <Label htmlFor="street">Endereço</Label>
                   <Input
-                    id="address"
-                    value={formData.address}
-                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                    id="street"
+                    value={formData.street}
+                    onChange={(e) => setFormData({ ...formData, street: e.target.value })}
                     placeholder="Rua, Avenida, etc."
                   />
                 </div>
@@ -235,37 +238,49 @@ export default function LocationEditPage() {
                 </div>
               </div>
 
-              {/* Complemento - Removido temporariamente pois não existe no tipo */}
-              {/* Bairro */}
-              <div className="space-y-2">
-                <Label htmlFor="neighborhood">Bairro</Label>
-                <Input
-                  id="neighborhood"
-                  value={formData.neighborhood}
-                  onChange={(e) => setFormData({ ...formData, neighborhood: e.target.value })}
-                  placeholder="Nome do bairro"
-                />
+              {/* Complemento e Bairro */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="complement">Complemento</Label>
+                  <Input
+                    id="complement"
+                    value={formData.complement}
+                    onChange={(e) => setFormData({ ...formData, complement: e.target.value })}
+                    placeholder="Bloco A, Apto 101"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="neighborhood">Bairro</Label>
+                  <Input
+                    id="neighborhood"
+                    value={formData.neighborhood}
+                    onChange={(e) => setFormData({ ...formData, neighborhood: e.target.value })}
+                    placeholder="Nome do bairro"
+                  />
+                </div>
               </div>
 
               {/* Cidade e Estado */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="city">Cidade</Label>
+                  <Label htmlFor="city">Cidade *</Label>
                   <Input
                     id="city"
                     value={formData.city}
                     onChange={(e) => setFormData({ ...formData, city: e.target.value })}
                     placeholder="Nome da cidade"
+                    required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="state">Estado</Label>
+                  <Label htmlFor="state">Estado *</Label>
                   <Input
                     id="state"
                     value={formData.state}
                     onChange={(e) => setFormData({ ...formData, state: e.target.value.toUpperCase() })}
-                    placeholder="SP"
+                    placeholder="UF"
                     maxLength={2}
+                    required
                   />
                 </div>
               </div>
@@ -275,14 +290,14 @@ export default function LocationEditPage() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => router.push("/settings")}
+                  onClick={() => router.push("/locations")}
                   disabled={saving}
                 >
                   Cancelar
                 </Button>
-                <Button type="submit" disabled={saving}>
+                <Button type="submit" disabled={saving} className="bg-emerald-600 hover:bg-emerald-700">
                   <Save className="h-4 w-4 mr-2" />
-                  {saving ? "Salvando..." : "Salvar Alterações"}
+                  {saving ? "Salvando..." : (isNew ? "Criar Local" : "Salvar Alterações")}
                 </Button>
               </div>
             </form>
