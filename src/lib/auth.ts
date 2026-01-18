@@ -29,7 +29,7 @@ function mapSystemUserToUserType(systemUser: any): UserType {
   else if (dbRole === "financeiro" || dbRole === "financial") role = "financial";
 
   return {
-    id: systemUser.id,
+    id: systemUser.id || systemUser.user_id,
     name: systemUser.full_name || systemUser.name || systemUser.email?.split("@")[0] || "Usuário",
     username: systemUser.username || systemUser.email?.split("@")[0] || "",
     email: systemUser.email || "",
@@ -123,7 +123,7 @@ export async function loginWithSupabaseAuth(emailOrUsername: string, password: s
     console.log("🔐 Iniciando login seguro para:", emailOrUsername);
     
     // PASSO 1: Validar credenciais com bcrypt e sincronizar com Supabase Auth
-    const { data, error } = await supabase.rpc("authenticate_user_with_jwt", {
+    const { data, error } = await supabase.rpc("authenticate_user_with_auth", {
       p_username_or_email: emailOrUsername,
       p_password: password
     });
