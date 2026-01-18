@@ -385,18 +385,26 @@ export default function DashboardPage() {
   return (
     <>
       <SEO
-        title="Dashboard - Gerenciador de Locações"
+        title="Dashboard - D'Uvo Enterprise"
         description="Painel de controle do sistema de gerenciamento de locações"
       />
       <Layout>
         <div className="space-y-6">
           <ScrollReveal>
-            <Card className="bg-gradient-to-br from-blue-500 to-blue-700 text-white">
-              <CardHeader>
-                <CardTitle className="text-2xl">
-                  Olá, {userName}! 👋
-                </CardTitle>
-                <p className="text-blue-100">{currentDate}</p>
+            <Card className="bg-gradient-to-br from-blue-600 to-blue-800 text-white shadow-xl">
+              <CardHeader className="pb-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-3xl font-bold mb-1">
+                      D&apos;Uvo Enterprise
+                    </CardTitle>
+                    <p className="text-blue-100 text-lg">
+                      Olá, {userName}! 👋
+                    </p>
+                  </div>
+                  <Building2 className="h-12 w-12 text-blue-200 opacity-80" />
+                </div>
+                <p className="text-blue-100 text-sm mt-2">{currentDate}</p>
               </CardHeader>
             </Card>
           </ScrollReveal>

@@ -4,13 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building2, AlertCircle, Lock, Eye, EyeOff } from "lucide-react";
+import { Building2, AlertCircle, Lock } from "lucide-react";
 import { isAuthenticated } from "@/lib/auth";
 import { initializeStorage } from "@/lib/storage";
 import { SEO } from "@/components/SEO";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { systemUserService } from "@/services/systemUserService";
-import { supabase } from "@/integrations/supabase/client";
 
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
@@ -22,7 +20,6 @@ export default function Login() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
   
   // Forgot Password State
   const [showForgotPassword, setShowForgotPassword] = useState(false);
@@ -171,26 +168,30 @@ export default function Login() {
   return (
     <>
       <SEO 
-        title="Login - ImóvelControl"
-        description="Sistema de gerenciamento de locações de imóveis"
+        title="Login - D'Uvo Enterprise Property Control"
+        description="Sistema profissional de gerenciamento de locações de imóveis"
       />
       
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-slate-50 to-blue-100 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md shadow-2xl border-slate-200">
-          <CardHeader className="space-y-4 text-center">
-            <div className="mx-auto bg-blue-600 w-16 h-16 rounded-full flex items-center justify-center">
-              <Building2 className="h-8 w-8 text-white" />
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md shadow-2xl border-slate-700 bg-white/95 backdrop-blur">
+          <CardHeader className="space-y-4 text-center pb-8">
+            <div className="mx-auto bg-gradient-to-br from-blue-600 to-blue-800 w-20 h-20 rounded-2xl flex items-center justify-center shadow-xl">
+              <Building2 className="h-10 w-10 text-white" />
             </div>
-            <CardTitle className="text-3xl font-bold text-slate-900">ImóvelControl</CardTitle>
-            <CardDescription className="text-slate-600">
-              Sistema de Gerenciamento de Locações
-            </CardDescription>
+            <div>
+              <CardTitle className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
+                D&apos;Uvo Enterprise
+              </CardTitle>
+              <CardDescription className="text-base mt-2 text-slate-600 font-medium">
+                Property Control System
+              </CardDescription>
+            </div>
           </CardHeader>
           
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="username">Usuário ou Email</Label>
+                <Label htmlFor="username" className="text-slate-700 font-medium">Usuário ou Email</Label>
                 <Input
                   id="username"
                   type="text"
@@ -198,13 +199,13 @@ export default function Login() {
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder="Digite seu usuário ou email"
                   required
-                  className="h-11"
+                  className="h-11 border-slate-300"
                   disabled={isLocked}
                 />
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="password">Senha</Label>
+                <Label htmlFor="password" className="text-slate-700 font-medium">Senha</Label>
                 <Input
                   id="password"
                   type="password"
@@ -212,7 +213,7 @@ export default function Login() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Digite sua senha"
                   required
-                  className="h-11"
+                  className="h-11 border-slate-300"
                   disabled={isLocked}
                 />
               </div>
@@ -226,7 +227,7 @@ export default function Login() {
               
               <Button 
                 type="submit" 
-                className="w-full h-11 text-base bg-blue-600 hover:bg-blue-700 transition-all"
+                className="w-full h-11 text-base bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg"
                 disabled={loading || isLocked}
               >
                 {loading ? "Entrando..." : isLocked ? "Conta Bloqueada" : "Entrar"}
