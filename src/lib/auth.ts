@@ -124,7 +124,7 @@ export async function loginWithSupabaseAuth(emailOrUsername: string, password: s
     
     // PASSO 1: Validar credenciais no banco COM BCRYPT
     const { data, error } = await supabase.rpc("authenticate_user_secure", {
-      p_username_or_email: emailOrUsername,
+      p_login: emailOrUsername,
       p_password: password
     });
 
