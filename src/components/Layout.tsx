@@ -184,6 +184,8 @@ export function Layout({ children }: LayoutProps) {
     { href: "/tenants", icon: Users, label: "Inquilinos" },
     { href: "/rentals", icon: Building2, label: "Locações" },
     { href: "/payments", icon: DollarSign, label: "Recebimentos" },
+    { href: "/financial", icon: Calculator, label: "Financeiro" },
+    { href: "/settings", icon: Settings, label: "Configurações" },
   ].filter(item => shouldShowMenu(item.href));
 
   return (

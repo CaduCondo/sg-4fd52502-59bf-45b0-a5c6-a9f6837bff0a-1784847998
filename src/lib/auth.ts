@@ -46,7 +46,7 @@ export async function loginWithSupabaseAuth(emailOrUsername: string, password: s
       .from("system_users")
       .select("*")
       .or(`email.eq.${emailOrUsername},username.eq.${emailOrUsername}`)
-      .single();
+      .maybeSingle();
 
     if (!systemUser) {
       console.log("❌ Usuário não encontrado em system_users");
@@ -56,9 +56,9 @@ export async function loginWithSupabaseAuth(emailOrUsername: string, password: s
     // Verificar se usuário já foi migrado para auth.users
     const { data: mapping } = await supabase
       .from("auth_user_mapping")
-      .select("auth_user_id")
+      .select("*")
       .eq("system_user_id", systemUser.id)
-      .single();
+      .maybeSingle();
 
     // Se não foi migrado, migrar agora
     if (!mapping) {
@@ -132,12 +132,21 @@ async function getSupabaseUser(): Promise<UserType | null> {
     
     if (!supabaseUser) return null;
 
-    // Get user profile from system_users table (not user_profiles)
+    // Get mapping from auth_user_mapping
+    const { data: mapping } = await supabase
+      .from("auth_user_mapping")
+      .select("*")
+      .eq("auth_user_id", supabaseUser.id)
+      .maybeSingle();
+
+    if (!mapping) return null;
+
+    // Get user profile from system_users table
     const { data: profile } = await supabase
       .from("system_users")
       .select("*")
-      .eq("id", supabaseUser.id)
-      .single();
+      .eq("id", mapping.system_user_id)
+      .maybeSingle();
 
     if (profile) {
       // Map Portuguese roles to English internal roles
