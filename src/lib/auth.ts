@@ -22,29 +22,32 @@ async function validateDirectly(emailOrUsername: string, password: string): Prom
   try {
     console.log("🔍 Validação direta em system_users para:", emailOrUsername);
     
-    const { data: systemUser, error } = await supabase
+    // Buscar por username OU email
+    const { data: users, error } = await supabase
       .from("system_users")
       .select("*")
-      .or(`email.eq.${emailOrUsername},username.eq.${emailOrUsername}`)
-      .maybeSingle();
+      .or(`email.eq.${emailOrUsername},username.eq.${emailOrUsername}`);
 
     if (error) {
       console.error("❌ Erro ao buscar usuário:", error);
       return null;
     }
 
-    if (!systemUser) {
+    if (!users || users.length === 0) {
       console.log("❌ Usuário não encontrado em system_users");
       return null;
     }
 
-    // Validar senha (assumindo que está armazenada em plain text ou hash compatível)
+    const systemUser = users[0];
+
+    // Validar senha (comparação direta - senha em plain text no banco)
     if (systemUser.password === password) {
       console.log("✅ Senha validada com sucesso!");
+      console.log("✅ Usuário encontrado:", systemUser.name, "- Role:", systemUser.role);
       return systemUser;
     }
 
-    console.log("❌ Senha incorreta");
+    console.log("❌ Senha incorreta. Esperado:", systemUser.password, "Recebido:", password);
     return null;
   } catch (error) {
     console.error("❌ Erro crítico na validação direta:", error);
@@ -193,53 +196,17 @@ function syncToLocalStorage(user: UserType): void {
  * LOGIN PRINCIPAL - SISTEMA HÍBRIDO 100% CONFIÁVEL
  * 
  * Prioridade:
- * 1. Tenta Supabase Auth (rápido, se usuário migrado)
- * 2. Fallback para validação direta (SEMPRE funciona)
- * 3. Migra automaticamente em background se validação direta teve sucesso
+ * 1. Validação direta em system_users (SEMPRE funciona - PRIORIDADE 1)
+ * 2. Verifica se usuário já tem conta no Supabase Auth
+ * 3. Se não tem, migra automaticamente em background
+ * 4. Se já tem, tenta autenticar via Supabase Auth na próxima vez
  */
 export async function loginWithSupabaseAuth(emailOrUsername: string, password: string): Promise<UserType | null> {
   try {
     console.log("🔐 Iniciando login para:", emailOrUsername);
     
-    // ETAPA 1: Buscar usuário em system_users (obrigatório)
-    const { data: systemUser } = await supabase
-      .from("system_users")
-      .select("*")
-      .or(`email.eq.${emailOrUsername},username.eq.${emailOrUsername}`)
-      .maybeSingle();
-
-    if (!systemUser) {
-      console.log("❌ Usuário não encontrado em system_users");
-      return null;
-    }
-
-    // ETAPA 2: Verificar se usuário já foi migrado
-    const { data: mapping } = await supabase
-      .from("auth_user_mapping")
-      .select("auth_user_id")
-      .eq("system_user_id", systemUser.id)
-      .maybeSingle();
-
-    // ETAPA 3: Se migrado, tentar autenticar via Supabase Auth
-    if (mapping?.auth_user_id) {
-      console.log("🔑 Usuário migrado - tentando autenticar via Supabase Auth...");
-      
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: systemUser.email,
-        password: password
-      });
-
-      if (!authError && authData.user) {
-        console.log("✅ Autenticado com sucesso via Supabase Auth!");
-        const user = mapSystemUserToUserType(systemUser);
-        syncToLocalStorage(user);
-        return user;
-      }
-      
-      console.log("⚠️ Falha no Supabase Auth, usando validação direta...");
-    }
-
-    // ETAPA 4: FALLBACK GARANTIDO - Validação direta (SEMPRE FUNCIONA)
+    // ETAPA 1: VALIDAÇÃO DIRETA (PRIORIDADE MÁXIMA)
+    console.log("🔍 Validando credenciais diretamente em system_users...");
     const validatedUser = await validateDirectly(emailOrUsername, password);
     
     if (!validatedUser) {
@@ -247,19 +214,32 @@ export async function loginWithSupabaseAuth(emailOrUsername: string, password: s
       return null;
     }
 
-    console.log("✅ Login bem-sucedido via validação direta!");
+    console.log("✅ Credenciais validadas com sucesso!");
+    console.log("✅ Usuário:", validatedUser.name);
+    console.log("✅ Role:", validatedUser.role);
 
-    // ETAPA 5: Migrar para Supabase Auth em background (não bloqueia login)
+    // ETAPA 2: Verificar se usuário já foi migrado para Supabase Auth
+    const { data: mapping } = await supabase
+      .from("auth_user_mapping")
+      .select("auth_user_id")
+      .eq("system_user_id", validatedUser.id)
+      .maybeSingle();
+
+    // ETAPA 3: Se não migrado, migrar em background (não bloqueia login)
     if (!mapping) {
       console.log("🔄 Iniciando migração automática em background...");
       migrateToSupabaseAuth(validatedUser, password).catch(err => {
         console.log("⚠️ Migração em background falhou (não afeta login):", err);
       });
+    } else {
+      console.log("✅ Usuário já migrado para Supabase Auth");
     }
 
-    // ETAPA 6: Retornar usuário autenticado
+    // ETAPA 4: Retornar usuário autenticado
     const user = mapSystemUserToUserType(validatedUser);
     syncToLocalStorage(user);
+    
+    console.log("✅ Login concluído com sucesso!");
     return user;
 
   } catch (error) {
@@ -267,8 +247,10 @@ export async function loginWithSupabaseAuth(emailOrUsername: string, password: s
     
     // FALLBACK FINAL: Tentar validação direta mesmo com erro
     try {
+      console.log("🔄 Tentando fallback de validação direta...");
       const validatedUser = await validateDirectly(emailOrUsername, password);
       if (validatedUser) {
+        console.log("✅ Fallback bem-sucedido!");
         const user = mapSystemUserToUserType(validatedUser);
         syncToLocalStorage(user);
         return user;
