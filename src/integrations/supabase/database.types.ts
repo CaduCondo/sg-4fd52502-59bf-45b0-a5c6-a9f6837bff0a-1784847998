@@ -358,6 +358,33 @@ export type Database = {
           },
         ]
       }
+      role_menu_permissions: {
+        Row: {
+          can_access: boolean | null
+          created_at: string | null
+          id: string
+          menu_item: string
+          role: string
+          updated_at: string | null
+        }
+        Insert: {
+          can_access?: boolean | null
+          created_at?: string | null
+          id?: string
+          menu_item: string
+          role: string
+          updated_at?: string | null
+        }
+        Update: {
+          can_access?: boolean | null
+          created_at?: string | null
+          id?: string
+          menu_item?: string
+          role?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       role_permissions: {
         Row: {
           can_create: boolean | null

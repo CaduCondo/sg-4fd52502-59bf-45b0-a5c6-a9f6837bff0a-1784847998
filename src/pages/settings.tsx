@@ -15,28 +15,26 @@ import {
   Plus, 
   Trash2, 
   Percent, 
-  FileText,
   AlertCircle,
   Coins,
   User,
   Shield,
-  Mail,
-  Phone,
-  Calendar,
   Edit,
   Key,
   Unlock,
   Pencil,
-  X
+  CheckCircle2,
+  XCircle
 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogHeader, DialogTitle, DialogFooter, DialogContent } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { configService } from "@/services/configService";
 import { systemUserService } from "@/services/systemUserService";
 import { locationService } from "@/services/locationService";
 import { userLocationPermissionService } from "@/services/userLocationPermissionService";
+import { roleMenuPermissionService, type UserRole as MenuRole, type MenuItem } from "@/services/roleMenuPermissionService";
 import { rolePermissionService, type Permission, type UserRole, type Resource } from "@/services/rolePermissionService";
 import type { CompanyConfig, SystemUser, Location } from "@/types";
 import { applyCepMask, applyPhoneMask, applyCnpjMask, parsePercentageToFloat, formatPercentage } from "@/lib/masks";
@@ -71,7 +69,7 @@ export default function Settings() {
     phone: "",
     username: "",
     password: "",
-    role: "user",
+    role: "broker",
     isActive: true
   });
 
@@ -89,6 +87,10 @@ export default function Settings() {
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [isLoadingPermissions, setIsLoadingPermissions] = useState(false);
   const [editingPermissions, setEditingPermissions] = useState<Record<string, boolean>>({});
+
+  // Menu Permissions State
+  const [menuPermissions, setMenuPermissions] = useState<any[]>([]);
+  const [isLoadingMenuPermissions, setIsLoadingMenuPermissions] = useState(false);
 
   const loadConfig = async () => {
     try {
@@ -129,16 +131,16 @@ export default function Settings() {
     }
   };
 
-  const loadPermissions = async () => {
+  const loadMenuPermissions = async () => {
     try {
-      setIsLoadingPermissions(true);
-      const data = await rolePermissionService.getAllPermissions();
-      setPermissions(data);
+      setIsLoadingMenuPermissions(true);
+      const data = await roleMenuPermissionService.getAll();
+      setMenuPermissions(data);
     } catch (error) {
-      console.error("Erro ao carregar permissões:", error);
+      console.error("Erro ao carregar permissões de menu:", error);
       toast({ title: "Erro ao carregar permissões", variant: "destructive" });
     } finally {
-      setIsLoadingPermissions(false);
+      setIsLoadingMenuPermissions(false);
     }
   };
 
@@ -146,7 +148,7 @@ export default function Settings() {
     loadConfig();
     loadUsers();
     loadLocations();
-    loadPermissions();
+    loadMenuPermissions();
   }, []);
 
   const loadData = async () => {
@@ -250,7 +252,7 @@ export default function Settings() {
         phone: "",
         username: "",
         password: "",
-        role: "user",
+        role: "broker",
         isActive: true
       });
     }
@@ -287,15 +289,6 @@ export default function Settings() {
     } catch (error) {
       toast({ title: "Erro", description: "Erro ao desbloquear usuário.", variant: "destructive" });
     }
-  };
-
-  const handleAdminFeeChange = (value: string) => {
-    const numericValue = value.replace(/[^0-9]/g, "");
-    const decimalValue = (parseFloat(numericValue) / 1000).toFixed(3);
-    setConfig((prev) => ({
-      ...prev,
-      adminFeePercentage: parseFloat(decimalValue),
-    }));
   };
 
   const handleDeleteLocation = async (locationId: string) => {
@@ -349,6 +342,25 @@ export default function Settings() {
     }
   };
 
+  const handleToggleMenuPermission = async (role: MenuRole, menuItem: MenuItem, currentValue: boolean) => {
+    try {
+      await roleMenuPermissionService.update(role, menuItem, !currentValue);
+      await loadMenuPermissions();
+      toast({ 
+        title: "Permissão atualizada",
+        description: `${roleLabels[role]} → ${menuLabels[menuItem]}`
+      });
+    } catch (error) {
+      console.error("Erro ao atualizar permissão:", error);
+      toast({ title: "Erro ao atualizar permissão", variant: "destructive" });
+    }
+  };
+
+  const getMenuPermission = (role: MenuRole, menuItem: MenuItem): boolean => {
+    const perm = menuPermissions.find(p => p.role === role && p.menu_item === menuItem);
+    return perm?.can_access || false;
+  };
+
   const filteredLocations = locations.filter((location) => {
     const search = searchLocation.toLowerCase();
     return (
@@ -358,113 +370,37 @@ export default function Settings() {
     );
   });
 
-  const handlePermissionChange = async (
-    role: UserRole,
-    resource: Resource,
-    field: "can_view" | "can_create" | "can_edit" | "can_delete",
-    value: boolean
-  ) => {
-    try {
-      const key = `${role}_${resource}_${field}`;
-      setEditingPermissions((prev) => ({ ...prev, [key]: true }));
-
-      await rolePermissionService.updatePermission(role, resource, {
-        [field]: value,
-      });
-
-      // Atualizar estado local
-      setPermissions((prev) =>
-        prev.map((p) =>
-          p.role === role && p.resource === resource
-            ? { ...p, [field]: value }
-            : p
-        )
-      );
-
-      toast({
-        title: "Permissão atualizada",
-        description: `${role} → ${resource} → ${field}`,
-      });
-    } catch (error) {
-      console.error("Erro ao atualizar permissão:", error);
-      toast({
-        title: "Erro ao atualizar permissão",
-        variant: "destructive",
-      });
-    } finally {
-      const key = `${role}_${resource}_${field}`;
-      setEditingPermissions((prev) => ({ ...prev, [key]: false }));
-    }
-  };
-
-  const getPermission = (role: UserRole, resource: Resource): Permission | undefined => {
-    return permissions.find((p) => p.role === role && p.resource === resource);
-  };
-
-  const roleLabels: Record<UserRole, string> = {
+  const roleLabels: Record<MenuRole, string> = {
     admin: "Administrador",
     broker: "Corretor",
-    viewer: "Visualizador",
+    financial: "Financeiro",
   };
 
-  const resourceLabels: Record<Resource, string> = {
+  const menuLabels: Record<MenuItem, string> = {
     dashboard: "Dashboard",
-    settings: "Configurações",
-    locations: "Locais",
     properties: "Imóveis",
     tenants: "Inquilinos",
     rentals: "Locações",
     payments: "Recebimentos",
     financial: "Financeiro",
-    users: "Usuários",
+    settings: "Configurações",
   };
 
-  const resources: Resource[] = [
-    "dashboard",
-    "settings",
-    "locations",
-    "properties",
-    "tenants",
-    "rentals",
-    "payments",
-    "financial",
-    "users",
-  ];
-
-  const roles: UserRole[] = ["admin", "broker", "viewer"];
-
-  const handleLateFeeChange = (value: string) => {
-    const numValue = value.replace(/[^\d.,]/g, "").replace(",", ".");
-    const parsed = parseFloat(numValue);
-    if (!isNaN(parsed) && parsed >= 0 && parsed <= 100) {
-      setConfig({...config, lateFeePercentage: parsed});
-    } else if (value === "") {
-      setConfig({...config, lateFeePercentage: 0});
-    }
-  };
-
-  const handleInterestRateChange = (value: string) => {
-    const numValue = value.replace(/[^\d.,]/g, "").replace(",", ".");
-    const parsed = parseFloat(numValue);
-    if (!isNaN(parsed) && parsed >= 0 && parsed <= 100) {
-      setConfig({...config, interestRatePercentage: parsed});
-    } else if (value === "") {
-      setConfig({...config, interestRatePercentage: 0});
-    }
-  };
+  const menuItems: MenuItem[] = ["dashboard", "properties", "tenants", "rentals", "payments", "financial", "settings"];
+  const roles: MenuRole[] = ["admin", "broker", "financial"];
 
   return (
     <Layout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Configurações</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Configurações</h1>
           <p className="text-muted-foreground mt-2">
             Gerencie os dados da empresa, usuários e parâmetros do sistema
           </p>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5 h-auto">
+          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-6 h-auto">
             <TabsTrigger value="company" className="gap-2 py-3">
               <Building2 className="h-4 w-4" />
               Dados da Empresa
@@ -481,9 +417,9 @@ export default function Settings() {
               <Users className="h-4 w-4" />
               Usuários
             </TabsTrigger>
-            <TabsTrigger value="user-locations" className="gap-2 py-3">
+            <TabsTrigger value="permissions" className="gap-2 py-3">
               <Shield className="h-4 w-4" />
-              Permissões de Locais
+              Permissões
             </TabsTrigger>
             <TabsTrigger value="locations" className="gap-2 py-3">
               <MapPin className="h-4 w-4" />
@@ -678,15 +614,15 @@ export default function Settings() {
                     </div>
                   </div>
 
-                  <div className="bg-amber-50 p-4 rounded-md border border-amber-200 mt-4">
+                  <div className="bg-amber-50 dark:bg-amber-950/20 p-4 rounded-md border border-amber-200 dark:border-amber-800 mt-4">
                     <div className="flex items-start gap-3">
-                      <Coins className="h-5 w-5 text-amber-600 mt-0.5" />
+                      <Coins className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5" />
                       <div>
-                        <p className="font-medium text-amber-800">Exemplo de Cálculo</p>
-                        <p className="text-sm text-amber-700 mt-1">
+                        <p className="font-medium text-amber-800 dark:text-amber-300">Exemplo de Cálculo</p>
+                        <p className="text-sm text-amber-700 dark:text-amber-400 mt-1">
                           Para um boleto de R$ 1.000,00 com 10 dias de atraso:
                         </p>
-                        <ul className="text-sm text-amber-700 list-disc ml-5 mt-1">
+                        <ul className="text-sm text-amber-700 dark:text-amber-400 list-disc ml-5 mt-1">
                           <li>Multa ({formatPercentage(config.lateFeePercentage)}%): R$ {(1000 * (config.lateFeePercentage/100)).toFixed(2)}</li>
                           <li>Juros ({formatPercentage(config.interestRatePercentage)}% ao dia × 10): R$ {(1000 * (config.interestRatePercentage/100) * 10).toFixed(2)}</li>
                           <li><strong>Total a Pagar: R$ {(1000 * (1 + (config.lateFeePercentage/100) + ((config.interestRatePercentage/100) * 10))).toFixed(2)}</strong></li>
@@ -745,7 +681,7 @@ export default function Settings() {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={user.active ? "success" : "destructive"} className={user.active ? "bg-green-100 text-green-800" : ""}>
+                          <Badge variant={user.active ? "success" : "destructive"} className={user.active ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" : ""}>
                             {user.active ? "Ativo" : "Inativo"}
                           </Badge>
                         </TableCell>
@@ -801,13 +737,72 @@ export default function Settings() {
             </Card>
           </TabsContent>
 
-          {/* PERMISSÕES DE LOCAIS */}
-          <TabsContent value="user-locations" className="space-y-4">
+          {/* PERMISSÕES */}
+          <TabsContent value="permissions" className="space-y-6">
+            {/* Seção 1: Permissões de Menu por Perfil */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Shield className="h-5 w-5" />
-                  Controle de Acesso por Local
+                  Permissões de Menu por Perfil
+                </CardTitle>
+                <CardDescription>
+                  Controle quais menus cada perfil de usuário pode acessar
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[200px]">Menu</TableHead>
+                        {roles.map((role) => (
+                          <TableHead key={role} className="text-center">
+                            {roleLabels[role]}
+                          </TableHead>
+                        ))}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {menuItems.map((menuItem) => (
+                        <TableRow key={menuItem}>
+                          <TableCell className="font-medium">
+                            {menuLabels[menuItem]}
+                          </TableCell>
+                          {roles.map((role) => {
+                            const hasAccess = getMenuPermission(role, menuItem);
+                            return (
+                              <TableCell key={role} className="text-center">
+                                <button
+                                  onClick={() => handleToggleMenuPermission(role, menuItem, hasAccess)}
+                                  className="inline-flex items-center justify-center"
+                                >
+                                  {hasAccess ? (
+                                    <CheckCircle2 className="h-6 w-6 text-green-600 dark:text-green-400" />
+                                  ) : (
+                                    <XCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
+                                  )}
+                                </button>
+                              </TableCell>
+                            );
+                          })}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                <p className="text-sm text-muted-foreground mt-4">
+                  💡 <strong>Dica:</strong> Clique nos ícones para habilitar/desabilitar o acesso de cada perfil aos menus do sistema.
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Seção 2: Permissões de Local por Usuário Financeiro */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MapPin className="h-5 w-5" />
+                  Permissões de Local (Usuários Financeiros)
                 </CardTitle>
                 <CardDescription>
                   Defina quais locais cada usuário financeiro pode visualizar na página Financeiro
@@ -880,7 +875,7 @@ export default function Settings() {
                       placeholder="Buscar por nome, cidade ou bairro..."
                       value={searchLocation}
                       onChange={(e) => setSearchLocation(e.target.value)}
-                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
                     />
                   </div>
                 </div>
