@@ -179,26 +179,36 @@ export const authService = {
     return supabase.auth.onAuthStateChange(callback);
   },
 
-  // Get user profile name from user_profiles table
+  // Get user profile name from system_users table
   async getUserProfileName(): Promise<string> {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return "Administrador";
 
       // 1. Try to find system_user_id from mapping
-      const { data: mapping } = await supabase
+      const { data: mapping, error: mappingError } = await supabase
         .from("auth_user_mapping")
         .select("system_user_id")
         .eq("auth_user_id", user.id)
-        .single();
+        .maybeSingle();
+
+      if (mappingError) {
+        console.error("Error fetching mapping:", mappingError);
+        return user.email?.split("@")[0] || "Administrador";
+      }
 
       if (mapping) {
         // 2. Get name from system_users
-        const { data: profile } = await supabase
+        const { data: profile, error: profileError } = await supabase
           .from("system_users")
           .select("name")
           .eq("id", mapping.system_user_id)
-          .single();
+          .maybeSingle();
+
+        if (profileError) {
+          console.error("Error fetching profile:", profileError);
+          return user.email?.split("@")[0] || "Administrador";
+        }
           
         if (profile?.name) return profile.name;
       }
