@@ -394,6 +394,7 @@ export type Database = {
           id: string
           name: string
           password: string
+          password_hash: string | null
           phone: string | null
           photo: string | null
           rg: string | null
@@ -410,6 +411,7 @@ export type Database = {
           id?: string
           name: string
           password: string
+          password_hash?: string | null
           phone?: string | null
           photo?: string | null
           rg?: string | null
@@ -426,6 +428,7 @@ export type Database = {
           id?: string
           name?: string
           password?: string
+          password_hash?: string | null
           phone?: string | null
           photo?: string | null
           rg?: string | null
@@ -528,11 +531,24 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      authenticate_user: {
+        Args: { p_password: string; p_username_or_email: string }
+        Returns: {
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+          is_active: boolean
+          role: string
+          username: string
+        }[]
+      }
       create_auth_mapping_for_migration: {
         Args: { p_auth_user_id: string; p_system_user_id: string }
         Returns: undefined
       }
       get_system_user_id: { Args: never; Returns: string }
+      hash_password: { Args: { plain_password: string }; Returns: string }
       migrate_system_user_to_auth: {
         Args: { p_email: string; p_password: string; p_system_user_id: string }
         Returns: string
@@ -540,6 +556,10 @@ export type Database = {
       migrate_user_to_auth: {
         Args: { p_email: string; p_password: string; p_user_id?: string }
         Returns: string
+      }
+      verify_password: {
+        Args: { password_hash: string; plain_password: string }
+        Returns: boolean
       }
     }
     Enums: {
