@@ -1,406 +1,458 @@
 import { useState, useEffect } from "react";
 import { Layout } from "@/components/Layout";
-import { SEO } from "@/components/SEO";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Download, Search, DollarSign, TrendingUp, TrendingDown, Calendar } from "lucide-react";
-import { paymentService } from "@/services";
-import { locationService } from "@/services/locationService";
-import { propertyService } from "@/services/propertyService";
-import type { Payment } from "@/types";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { 
+  BarChart3, 
+  DollarSign, 
+  HeartHandshake, 
+  Target, 
+  FileText, 
+  Save,
+  QrCode
+} from "lucide-react";
+import { Payment, Property, Rental, Tenant } from "@/types";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { paymentService } from "@/services/paymentService";
+import { propertyService } from "@/services/propertyService";
+import { rentalService } from "@/services/rentalService";
+import { tenantService } from "@/services/tenantService";
+import { userLocationPermissionService } from "@/services/userLocationPermissionService";
+import { userStorage } from "@/lib/storage";
+import { ScrollReveal } from "@/components/animations/ScrollReveal";
 
-interface PropertyWithLocation {
-  id: string;
-  location: string;
-  location_id: string;
-  property_identifier: string;
-  monthly_rent: number;
-}
-
-export default function FinancialPage() {
+export default function Financial() {
   const [payments, setPayments] = useState<Payment[]>([]);
-  const [filteredPayments, setFilteredPayments] = useState<Payment[]>([]);
-  const [locations, setLocations] = useState<any[]>([]);
-  const [properties, setProperties] = useState<PropertyWithLocation[]>([]);
-  const [selectedLocation, setSelectedLocation] = useState<string>("all");
-  const [selectedMonth, setSelectedMonth] = useState<string>("all");
-  const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
-  const [selectedStatus, setSelectedStatus] = useState<string>("all");
-  const [searchTerm, setSearchTerm] = useState("");
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [rentals, setRentals] = useState<Rental[]>([]);
+  const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
+  const [allowedLocationIds, setAllowedLocationIds] = useState<string[]>([]);
 
-  const [totalReceived, setTotalReceived] = useState(0);
-  const [totalPending, setTotalPending] = useState(0);
-  const [totalOverdue, setTotalOverdue] = useState(0);
+  // Date State
+  const now = new Date();
+  const [selectedMonth, setSelectedMonth] = useState(now.getMonth().toString());
+  const [selectedYear, setSelectedYear] = useState(now.getFullYear().toString());
+
+  // PIX Code editing state
+  const [editingPixCode, setEditingPixCode] = useState<{ [key: string]: string }>({});
+  const [savingPixCode, setSavingPixCode] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
   }, []);
 
-  useEffect(() => {
-    filterPayments();
-    calculateTotals();
-  }, [payments, selectedLocation, selectedMonth, selectedYear, selectedStatus, searchTerm]);
-
   const loadData = async () => {
+    setLoading(true);
     try {
-      const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
+      // Carregar dados do usuário logado
+      const currentUser = userStorage.getCurrentUser();
       
-      // Buscar locais
-      const locationsData = await locationService.getAll();
-      setLocations(locationsData);
-
-      // Buscar locais permitidos para usuário financeiro
+      // Se for usuário financeiro, carregar permissões de locais
       let allowedLocations: string[] = [];
       if (currentUser && currentUser.role === "financial") {
-        const { userLocationPermissionService } = await import("@/services/userLocationPermissionService");
-        const permissions = await userLocationPermissionService.getByUserId(currentUser.id);
-        allowedLocations = permissions; // permissions is already string[]
+        allowedLocations = await userLocationPermissionService.getByUserId(currentUser.id);
+        setAllowedLocationIds(allowedLocations);
       }
 
-      // Buscar propriedades
-      const propertiesData = await propertyService.getAll();
-      
+      const [paymentsData, propertiesData, rentalsData, tenantsData] = await Promise.all([
+        paymentService.getAll(),
+        propertyService.getAll(),
+        rentalService.getAll(),
+        tenantService.getAll(),
+      ]);
+
       // Filtrar propriedades por locais permitidos (se for financeiro)
       let filteredProperties = propertiesData;
       if (currentUser && currentUser.role === "financial" && allowedLocations.length > 0) {
         filteredProperties = propertiesData.filter(prop => 
-          allowedLocations.includes(prop.location_id || "")
+          allowedLocations.includes(prop.locationId || "")
         );
       }
-      
-      setProperties(filteredProperties as PropertyWithLocation[]);
 
-      // Buscar pagamentos
-      const paymentsData = await paymentService.getAll();
-      
-      // Filtrar pagamentos por propriedades permitidas
-      const filteredPayments = paymentsData.filter(payment => {
-        const propertyId = payment.rental?.propertyId;
-        return filteredProperties.some(prop => prop.id === propertyId);
-      });
-      
+      // Filtrar rentals baseado nas propriedades filtradas
+      const filteredPropertyIds = filteredProperties.map(p => p.id);
+      const filteredRentals = rentalsData.filter(r => 
+        filteredPropertyIds.includes(r.propertyId)
+      );
+
+      // Filtrar pagamentos baseado nos rentals filtrados
+      const filteredRentalIds = filteredRentals.map(r => r.id);
+      const filteredPayments = paymentsData.filter(p => 
+        filteredRentalIds.includes(p.rentalId)
+      );
+
       setPayments(filteredPayments);
+      setProperties(filteredProperties);
+      setRentals(filteredRentals);
+      setTenants(tenantsData);
     } catch (error) {
-      console.error("Erro ao carregar dados:", error);
+      console.error("Error loading financial data:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  const filterPayments = () => {
-    const filtered = payments.filter((payment) => {
-      const paymentDate = new Date(payment.dueDate);
-      const paymentMonth = (paymentDate.getMonth() + 1).toString();
-      const paymentYear = paymentDate.getFullYear().toString();
+  const handleSavePixCode = async (rentalId: string) => {
+    const newPixCode = editingPixCode[rentalId];
+    if (!newPixCode) return;
 
-      const matchesSearch =
-        payment.rental?.tenant?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        payment.rental?.property?.location.toLowerCase().includes(searchTerm.toLowerCase());
+    setSavingPixCode(rentalId);
+    try {
+      const rental = rentals.find(r => r.id === rentalId);
+      if (!rental) return;
 
-      const matchesStatus =
-        selectedStatus === "all" ||
-        (selectedStatus === "paid" && payment.status === "paid") ||
-        (selectedStatus === "pending" && payment.status === "pending") ||
-        (selectedStatus === "overdue" && payment.status === "overdue");
+      const updatedRental = { ...rental, pixCode: newPixCode };
+      await rentalService.update(updatedRental);
 
-      const matchesMonth = selectedMonth === "all" || paymentMonth === selectedMonth;
-      const matchesYear = selectedYear === "all" || paymentYear === selectedYear;
-      const matchesLocation =
-        !selectedLocation || 
-        selectedLocation === "all" || 
-        payment.rental?.property?.location_id === selectedLocation;
-
-      return matchesSearch && matchesStatus && matchesMonth && matchesYear && matchesLocation;
-    });
-
-    setFilteredPayments(filtered);
+      // Update local state
+      setRentals(rentals.map(r => r.id === rentalId ? updatedRental : r));
+      
+      // Clear editing state
+      const newEditingState = { ...editingPixCode };
+      delete newEditingState[rentalId];
+      setEditingPixCode(newEditingState);
+    } catch (error) {
+      console.error("Error saving PIX code:", error);
+      alert("Erro ao salvar código PIX");
+    } finally {
+      setSavingPixCode(null);
+    }
   };
 
-  const calculateTotals = () => {
-    const received = filteredPayments
-      .filter((p) => p.status === "paid")
-      .reduce((sum, p) => sum + (p.paidAmount || 0), 0);
+  const months = [
+    { value: "0", label: "Janeiro" },
+    { value: "1", label: "Fevereiro" },
+    { value: "2", label: "Março" },
+    { value: "3", label: "Abril" },
+    { value: "4", label: "Maio" },
+    { value: "5", label: "Junho" },
+    { value: "6", label: "Julho" },
+    { value: "7", label: "Agosto" },
+    { value: "8", label: "Setembro" },
+    { value: "9", label: "Outubro" },
+    { value: "10", label: "Novembro" },
+    { value: "11", label: "Dezembro" },
+  ];
 
-    const pending = filteredPayments
-      .filter((p) => p.status === "pending")
-      .reduce((sum, p) => sum + (p.expectedAmount || 0), 0);
+  const years = ["2024", "2025", "2026", "2027"];
 
-    const overdue = filteredPayments
-      .filter((p) => p.status === "overdue")
-      .reduce((sum, p) => sum + (p.expectedAmount || 0), 0);
+  // Filter logic
+  const filteredPayments = payments.filter((payment) => {
+    const dueDate = new Date(payment.dueDate);
+    return (
+      dueDate.getMonth() === parseInt(selectedMonth) &&
+      dueDate.getFullYear() === parseInt(selectedYear)
+    );
+  });
 
-    setTotalReceived(received);
-    setTotalPending(pending);
-    setTotalOverdue(overdue);
+  // KPI Calculations
+  const totalExpected = filteredPayments.reduce((sum, p) => sum + p.expectedAmount, 0);
+  
+  const totalReceived = filteredPayments
+    .filter((p) => p.status === "paid" || p.status === "partial")
+    .reduce((sum, p) => sum + (p.paidAmount || 0), 0);
+
+  const adminFeeRate = 0.05; // 5%
+  const adminFee = totalReceived * adminFeeRate;
+  
+  const netRevenue = totalReceived - adminFee;
+
+  const getStatusBadge = (status: string) => {
+    const badges = {
+      paid: <Badge className="bg-green-100 text-green-700 hover:bg-green-200 border-green-200">Pago</Badge>,
+      pending: <Badge className="bg-yellow-100 text-yellow-700 hover:bg-yellow-200 border-yellow-200">Pendente</Badge>,
+      overdue: <Badge className="bg-red-100 text-red-700 hover:bg-red-200 border-red-200">Atrasado</Badge>,
+      partial: <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200 border-blue-200">Parcial</Badge>,
+    };
+    return badges[status as keyof typeof badges] || <Badge variant="outline">{status}</Badge>;
   };
 
-  const exportToCSV = () => {
-    const headers = ["Data", "Inquilino", "Local", "Valor", "Status"];
-    const rows = filteredPayments.map((payment) => [
-      format(new Date(payment.dueDate), "dd/MM/yyyy"),
-      payment.rental?.tenant?.name || "-",
-      payment.rental?.property?.location || "-",
-      (payment.status === "paid" ? payment.paidAmount : payment.expectedAmount).toFixed(2),
-      payment.status === "paid" ? "Pago" : payment.status === "pending" ? "Pendente" : "Atrasado",
-    ]);
+  const getPaymentDetails = (payment: Payment) => {
+    const rental = rentals.find((r) => r.id === payment.rentalId);
+    const property = properties.find((p) => p.id === rental?.propertyId);
+    const tenant = tenants.find((t) => t.id === rental?.tenantId);
 
-    const csvContent = [headers, ...rows].map((row) => row.join(",")).join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `relatorio_financeiro_${format(new Date(), "dd-MM-yyyy")}.csv`;
-    link.click();
+    return {
+      local: property?.location || "N/A",
+      complemento: property?.complement || "N/A",
+      tenantName: tenant?.name || "N/A",
+      rental: rental,
+      pixCode: rental?.pixCode || "",
+    };
   };
 
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("pt-BR", {
+    return value.toLocaleString("pt-BR", {
       style: "currency",
       currency: "BRL",
-    }).format(value);
+    });
   };
-
-  const getStatusBadge = (status: string) => {
-    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-      paid: "default",
-      pending: "secondary",
-      overdue: "destructive",
-    };
-
-    const labels: Record<string, string> = {
-      paid: "Pago",
-      pending: "Pendente",
-      overdue: "Atrasado",
-    };
-
-    return (
-      <Badge variant={variants[status] || "outline"}>
-        {labels[status] || status}
-      </Badge>
-    );
-  };
-
-  const years = Array.from({ length: 5 }, (_, i) => (new Date().getFullYear() - i).toString());
-  const months = [
-    { value: "1", label: "Janeiro" },
-    { value: "2", label: "Fevereiro" },
-    { value: "3", label: "Março" },
-    { value: "4", label: "Abril" },
-    { value: "5", label: "Maio" },
-    { value: "6", label: "Junho" },
-    { value: "7", label: "Julho" },
-    { value: "8", label: "Agosto" },
-    { value: "9", label: "Setembro" },
-    { value: "10", label: "Outubro" },
-    { value: "11", label: "Novembro" },
-    { value: "12", label: "Dezembro" },
-  ];
-
-  if (loading) {
-    return (
-      <Layout>
-        <div className="flex items-center justify-center min-h-screen">
-          <p>Carregando...</p>
-        </div>
-      </Layout>
-    );
-  }
 
   return (
     <Layout>
-      <SEO title="Relatório Financeiro - Gerenciador de Locações" />
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Relatório Financeiro</h1>
-            <p className="text-muted-foreground">
-              Visualize e exporte relatórios financeiros detalhados
-            </p>
+        {/* Header Title */}
+        <ScrollReveal>
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-medium text-slate-500">
+              {months[parseInt(selectedMonth)].label} de {selectedYear}
+            </h1>
           </div>
+        </ScrollReveal>
+
+        {/* Filters Card */}
+        <ScrollReveal delay={0.1}>
+          <Card className="bg-white border-slate-200 shadow-sm">
+            <CardContent className="p-4 flex gap-4">
+              <div className="w-[200px]">
+                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                  <SelectTrigger className="bg-slate-50 border-slate-200">
+                    <SelectValue placeholder="Mês" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {months.map((month) => (
+                      <SelectItem key={month.value} value={month.value}>
+                        {month.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="w-[120px]">
+                <Select value={selectedYear} onValueChange={setSelectedYear}>
+                  <SelectTrigger className="bg-slate-50 border-slate-200">
+                    <SelectValue placeholder="Ano" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {years.map((year) => (
+                      <SelectItem key={year} value={year}>
+                        {year}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
+        </ScrollReveal>
+
+        {/* KPI Cards Grid */}
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          {/* Card 1: Valor Bruto Esperado */}
+          <ScrollReveal delay={0.2}>
+            <Card className="border-blue-100 bg-blue-50/30 shadow-sm h-full">
+              <CardContent className="p-6 space-y-4">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-blue-100 rounded-lg">
+                    <BarChart3 className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <span className="text-sm font-medium text-slate-600">Valor Bruto Esperado</span>
+                </div>
+                <div>
+                  <div className="text-3xl font-bold text-slate-900">
+                    {formatCurrency(totalExpected)}
+                  </div>
+                  <p className="text-xs text-blue-500 mt-1">Soma de todos os recebimentos</p>
+                </div>
+              </CardContent>
+            </Card>
+          </ScrollReveal>
+
+          {/* Card 2: Valor Bruto Recebido */}
+          <ScrollReveal delay={0.3}>
+            <Card className="border-green-100 bg-green-50/30 shadow-sm h-full">
+              <CardContent className="p-6 space-y-4">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-green-100 rounded-lg">
+                    <DollarSign className="h-5 w-5 text-green-600" />
+                  </div>
+                  <span className="text-sm font-medium text-slate-600">Valor Bruto Recebido</span>
+                </div>
+                <div>
+                  <div className="text-3xl font-bold text-slate-900">
+                    {formatCurrency(totalReceived)}
+                  </div>
+                  <p className="text-xs text-green-600 mt-1">Todos os pagamentos recebidos</p>
+                </div>
+              </CardContent>
+            </Card>
+          </ScrollReveal>
+
+          {/* Card 3: Taxa de Administração */}
+          <ScrollReveal delay={0.4}>
+            <Card className="border-purple-100 bg-purple-50/30 shadow-sm h-full">
+              <CardContent className="p-6 space-y-4">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-purple-100 rounded-lg">
+                    <HeartHandshake className="h-5 w-5 text-purple-600" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium text-slate-600">Taxa de</span>
+                    <span className="text-sm font-medium text-slate-600">Administração</span>
+                  </div>
+                </div>
+                <div>
+                  <div className="text-3xl font-bold text-purple-900">
+                    {formatCurrency(adminFee)}
+                  </div>
+                  <p className="text-xs text-purple-600 mt-1">5% da receita</p>
+                </div>
+              </CardContent>
+            </Card>
+          </ScrollReveal>
+
+          {/* Card 4: Receita Líquida */}
+          <ScrollReveal delay={0.5}>
+            <Card className="border-indigo-100 bg-indigo-50/30 shadow-sm h-full">
+              <CardContent className="p-6 space-y-4">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-indigo-100 rounded-lg">
+                    <Target className="h-5 w-5 text-indigo-600" />
+                  </div>
+                  <span className="text-sm font-medium text-slate-600">Receita Líquida</span>
+                </div>
+                <div>
+                  <div className="text-3xl font-bold text-indigo-900">
+                    {formatCurrency(netRevenue)}
+                  </div>
+                  <p className="text-xs text-indigo-600 mt-1">Receita após taxa administrativa</p>
+                </div>
+              </CardContent>
+            </Card>
+          </ScrollReveal>
         </div>
 
-        {/* Cards de Resumo */}
-        <div className="grid gap-4 md:grid-cols-3">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Recebido</CardTitle>
-              <TrendingUp className="h-4 w-4 text-green-600" />
+        {/* Detailed Table */}
+        <ScrollReveal delay={0.6}>
+          <Card className="border-slate-200 shadow-sm overflow-hidden">
+            <CardHeader className="border-b border-slate-100 bg-white pb-4">
+              <div className="flex items-center gap-2">
+                <FileText className="h-5 w-5 text-slate-400" />
+                <CardTitle className="text-base font-medium text-slate-700">
+                  Detalhamento de Locações - {months[parseInt(selectedMonth)].label} {selectedYear}
+                </CardTitle>
+              </div>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">
-                {formatCurrency(totalReceived)}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pendente</CardTitle>
-              <Calendar className="h-4 w-4 text-yellow-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-yellow-600">
-                {formatCurrency(totalPending)}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Atrasado</CardTitle>
-              <TrendingDown className="h-4 w-4 text-red-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-red-600">
-                {formatCurrency(totalOverdue)}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Filtros */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Filtros</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-6">
-              <div className="relative">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-8"
-                />
-              </div>
-
-              <Select value={selectedLocation} onValueChange={setSelectedLocation}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Local" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os Locais</SelectItem>
-                  {locations.map((location) => (
-                    <SelectItem key={location.id} value={location.id}>
-                      {location.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Mês" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os Meses</SelectItem>
-                  {months.map((month) => (
-                    <SelectItem key={month.value} value={month.value}>
-                      {month.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select value={selectedYear} onValueChange={setSelectedYear}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Ano" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os Anos</SelectItem>
-                  {years.map((year) => (
-                    <SelectItem key={year} value={year}>
-                      {year}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os Status</SelectItem>
-                  <SelectItem value="paid">Pago</SelectItem>
-                  <SelectItem value="pending">Pendente</SelectItem>
-                  <SelectItem value="overdue">Atrasado</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Button onClick={exportToCSV} variant="outline">
-                <Download className="h-4 w-4 mr-2" />
-                Exportar CSV
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Tabela de Pagamentos */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Pagamentos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Data</TableHead>
-                  <TableHead>Inquilino</TableHead>
-                  <TableHead>Local</TableHead>
-                  <TableHead>Imóvel</TableHead>
-                  <TableHead>Valor</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredPayments.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground">
-                      Nenhum pagamento encontrado
-                    </TableCell>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-slate-50/50 hover:bg-slate-50/50">
+                    <TableHead className="w-[150px] text-xs font-semibold text-slate-500 uppercase tracking-wider">Local</TableHead>
+                    <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Complemento</TableHead>
+                    <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Ano</TableHead>
+                    <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Mês</TableHead>
+                    <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</TableHead>
+                    <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Código PIX</TableHead>
+                    <TableHead className="w-[50px]"></TableHead>
+                    <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Data Vencimento</TableHead>
+                    <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Data Recebida</TableHead>
+                    <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Valor Esperado</TableHead>
+                    <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Valor Pago</TableHead>
                   </TableRow>
-                ) : (
-                  filteredPayments.map((payment) => (
-                    <TableRow key={payment.id}>
-                      <TableCell>
-                        {format(new Date(payment.dueDate), "dd/MM/yyyy", { locale: ptBR })}
+                </TableHeader>
+                <TableBody>
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={11} className="h-24 text-center text-slate-500">
+                        Carregando...
                       </TableCell>
-                      <TableCell>{payment.rental?.tenant?.name || "-"}</TableCell>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium">{payment.rental?.property?.location}</p>
-                          {payment.rental?.property?.locationData && (
-                            <p className="text-sm text-muted-foreground">
-                              {payment.rental.property.locationData.street}, {payment.rental.property.locationData.number}
-                              {payment.rental.property.locationData.neighborhood && 
-                                ` - ${payment.rental.property.locationData.neighborhood}`}
-                            </p>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-slate-600">
-                        {payment.rental?.property?.property_identifier || "-"}
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        {formatCurrency(payment.status === "paid" ? payment.paidAmount : payment.expectedAmount)}
-                      </TableCell>
-                      <TableCell>{getStatusBadge(payment.status)}</TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                  ) : filteredPayments.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={11} className="h-24 text-center text-slate-500">
+                        Nenhum registro encontrado para este período.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredPayments.map((payment) => {
+                      const details = getPaymentDetails(payment);
+                      const monthName = months[parseInt(selectedMonth)].label;
+                      
+                      return (
+                        <TableRow key={payment.id} className="hover:bg-slate-50 transition-colors">
+                          <TableCell className="font-medium text-slate-900">
+                            {details.local}
+                          </TableCell>
+                          <TableCell className="text-slate-600">
+                            {details.complemento}
+                          </TableCell>
+                          <TableCell className="text-slate-600">
+                            {selectedYear}
+                          </TableCell>
+                          <TableCell className="text-slate-600">
+                            {monthName}
+                          </TableCell>
+                          <TableCell>
+                            {getStatusBadge(payment.status)}
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              value={editingPixCode[details.rental?.id || ""] ?? details.pixCode}
+                              onChange={(e) => {
+                                if (details.rental?.id) {
+                                  setEditingPixCode({
+                                    ...editingPixCode,
+                                    [details.rental.id]: e.target.value
+                                  });
+                                }
+                              }}
+                              placeholder="Código PIX"
+                              className="h-8 text-xs"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8 text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                              onClick={() => details.rental?.id && handleSavePixCode(details.rental.id)}
+                              disabled={savingPixCode === details.rental?.id}
+                            >
+                              <Save className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                          <TableCell className="text-slate-600">
+                            {format(new Date(payment.dueDate), "dd/MM/yyyy")}
+                          </TableCell>
+                          <TableCell className="text-slate-600">
+                            {payment.paymentDate 
+                              ? format(new Date(payment.paymentDate), "dd/MM/yyyy")
+                              : "-"}
+                          </TableCell>
+                          <TableCell className="text-right font-medium text-slate-900">
+                            {formatCurrency(payment.expectedAmount)}
+                          </TableCell>
+                          <TableCell className="text-right font-bold text-green-600">
+                            {formatCurrency(payment.paidAmount || 0)}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </ScrollReveal>
       </div>
     </Layout>
   );

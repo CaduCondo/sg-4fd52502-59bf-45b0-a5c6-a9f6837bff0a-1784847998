@@ -41,26 +41,33 @@ export interface SystemUser {
 
 export interface Property {
   id: string;
+  name: string;
+  address: string;
   location: string;
-  location_id: string;
-  property_identifier: string;
-  type: "residential" | "commercial";
-  monthly_rent: number;
+  locationId?: string; // ID do local para permissões
+  // Added optional fields for compatibility
+  number?: string;
+  complement?: string;
+  cep?: string;
+  rentValue?: number; // Alias for monthlyRent in some contexts
+  
+  type: string;
+  size: number;
+  rooms: number;
+  bathrooms: number;
+  parkingSpots: number;
+  monthlyRent: number;
+  description: string;
   status: "available" | "occupied" | "unavailable";
-  description?: string;
-  created_at?: string;
-  updated_at?: string;
-  locationData?: {
-    id: string;
-    name: string;
-    street: string;
-    number: string;
-    complement?: string;
-    neighborhood: string;
-    city: string;
-    state: string;
-    zip_code: string;
-  };
+  images: string[];
+  features: string[];
+  neighborhood?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  iptu?: number;
+  condoFee?: number;
+  createdAt?: string;
 }
 
 export interface Tenant {
@@ -68,21 +75,21 @@ export interface Tenant {
   name: string;
   email: string;
   phone: string;
-  cpf?: string;
-  document?: string;
+  cpf: string;
+  rg?: string;
+  // Added optional fields for compatibility
+  document?: string; // Often used as alias for CPF
   documentType?: string;
+  
+  status: "active" | "inactive" | "rented";
   birthDate?: string;
-  zipCode?: string;
-  address?: string;
-  number?: string;
-  complement?: string;
-  neighborhood?: string;
-  city?: string;
-  state?: string;
   profession?: string;
   income?: number;
   notes?: string;
-  status: "active" | "inactive" | "rented";
+  address?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
   createdAt?: string;
 }
 
@@ -91,28 +98,33 @@ export interface Rental {
   propertyId: string;
   tenantId: string;
   startDate: string;
-  endDate: string;
+  endDate?: string;
   rentAmount: number;
-  depositAmount: number;
+  depositAmount?: number;
+  status: "pending" | "active" | "completed" | "paid" | "overdue";
   paymentDay: number;
   contractUrl?: string;
   autoRenew: boolean;
-  adminFee: number;
-  status: "active" | "inactive" | "pending";
-  isActive: boolean;
-  monthlyRent: number;
+  notes?: string;
+  adminFee?: number;
+  property?: Property;
+  tenant?: Tenant;
+  dueDate?: string;
+  receivedDate?: string;
+  paidAmount?: number;
+  referenceMonth?: number;
+  referenceYear?: number;
+  // Compatibility
+  monthlyRent?: number;
   value?: number;
+  isActive?: boolean;
   hasGarage?: boolean;
   garageValue?: number;
   attachments?: string[];
-  contractAttachments?: string[];
-  createdAt: string;
-  deposit?: string;
-  pixCode?: string;
-  
-  // Relations
-  property?: Property;
-  tenant?: Tenant;
+  contractAttachments?: string[]; // Added to fix error in rentalService
+  deposit?: number;
+  pixCode?: string; // PIX code for this rental
+  createdAt?: string;
 }
 
 export interface Payment {
@@ -131,16 +143,14 @@ export interface Payment {
   penaltyAmount?: number;
   interestAmount?: number;
   discountAmount?: number;
+  // Compatibility fields
   paymentCode?: string;
   lateFee?: number;
   interest?: number;
   paymentLocation?: string;
   attachments?: string[];
   partialPayments?: any[];
-  createdAt: string;
-
-  // Relations
-  rental?: Rental;
+  createdAt?: string;
 }
 
 export interface Location {

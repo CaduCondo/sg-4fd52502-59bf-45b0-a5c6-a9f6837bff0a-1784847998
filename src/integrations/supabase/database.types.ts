@@ -228,50 +228,60 @@ export type Database = {
       }
       properties: {
         Row: {
+          address: string
+          cep: string | null
+          city: string | null
+          complement: string | null
           created_at: string | null
           description: string | null
           id: string
           location: string
-          location_id: string | null
           monthly_rent: number
-          property_identifier: string | null
+          neighborhood: string | null
+          number: string
+          state: string | null
           status: string
           type: string
           updated_at: string | null
+          zip_code: string | null
         }
         Insert: {
+          address: string
+          cep?: string | null
+          city?: string | null
+          complement?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
           location: string
-          location_id?: string | null
           monthly_rent: number
-          property_identifier?: string | null
+          neighborhood?: string | null
+          number: string
+          state?: string | null
           status: string
           type: string
           updated_at?: string | null
+          zip_code?: string | null
         }
         Update: {
+          address?: string
+          cep?: string | null
+          city?: string | null
+          complement?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
           location?: string
-          location_id?: string | null
           monthly_rent?: number
-          property_identifier?: string | null
+          neighborhood?: string | null
+          number?: string
+          state?: string | null
           status?: string
           type?: string
           updated_at?: string | null
+          zip_code?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "properties_location_id_fkey"
-            columns: ["location_id"]
-            isOneToOne: false
-            referencedRelation: "locations"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       rentals: {
         Row: {

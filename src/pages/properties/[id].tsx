@@ -1,73 +1,90 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
+import Head from "next/head";
 import { Layout } from "@/components/Layout";
-import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Edit, Save, X, Building2, MapPin } from "lucide-react";
-import { propertyService, type PropertyWithLocation } from "@/services/propertyService";
-import { locationService } from "@/services/locationService";
-import type { Location } from "@/types";
-import { toast } from "@/hooks/use-toast";
-import { formatCurrency } from "@/lib/masks";
+import { useToast } from "@/hooks/use-toast";
+import { Building2, ArrowLeft, Edit, X } from "lucide-react";
+import { Property, Location } from "@/types";
+import { propertyService } from "@/services";
+import { configService } from "@/services/configService";
+import { applyCepMask, applyRealMask, formatCurrency } from "@/lib/masks";
 
-export default function PropertyDetailPage() {
+export default function PropertyDetailsPage() {
   const router = useRouter();
-  const { id, edit } = router.query;
-  const [property, setProperty] = useState<PropertyWithLocation | null>(null);
-  const [locations, setLocations] = useState<Location[]>([]);
-  const [isEditing, setIsEditing] = useState(false);
+  const { id } = router.query;
+  const { toast } = useToast();
+  const [property, setProperty] = useState<Property | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [locations, setLocations] = useState<Location[]>([]);
 
-  const [editForm, setEditForm] = useState({
-    location_id: "",
-    property_identifier: "",
-    type: "residential" as "residential" | "commercial",
-    monthly_rent: "",
-    status: "available" as "available" | "occupied" | "unavailable",
+  const [formData, setFormData] = useState({
+    location: "",
+    cep: "",
+    address: "",
+    number: "",
+    complement: "",
+    neighborhood: "",
+    city: "",
+    state: "",
+    rentValue: "",
     description: "",
   });
 
   useEffect(() => {
     if (id) {
-      loadProperty();
+      loadProperty(id as string);
       loadLocations();
     }
-    if (edit === "true") {
-      setIsEditing(true);
-    }
-  }, [id, edit]);
+  }, [id]);
 
-  const loadProperty = async () => {
+  const loadLocations = async () => {
+    try {
+      const config = await configService.get();
+      setLocations(config.locations || []);
+    } catch (error) {
+      console.error("Error loading locations:", error);
+    }
+  };
+
+  const loadProperty = async (propertyId: string) => {
     try {
       setLoading(true);
-      const data = await propertyService.getById(id as string);
-      if (data) {
-        setProperty(data);
-        setEditForm({
-          location_id: data.location_id || "",
-          property_identifier: data.property_identifier || "Apartamento",
-          type: data.type,
-          monthly_rent: data.monthly_rent.toString(),
-          status: data.status,
-          description: data.description || "",
+      const propertyData = await propertyService.getById(propertyId);
+      if (propertyData) {
+        setProperty(propertyData);
+        setFormData({
+          location: propertyData.location,
+          cep: propertyData.cep || "",
+          address: propertyData.address || "",
+          number: propertyData.number || "",
+          complement: propertyData.complement,
+          neighborhood: propertyData.neighborhood || "",
+          city: propertyData.city || "",
+          state: propertyData.state || "",
+          rentValue: applyRealMask((propertyData.rentValue * 100).toString()),
+          description: propertyData.description || "",
         });
+      } else {
+        toast({
+          title: "Erro",
+          description: "Imóvel não encontrado.",
+          variant: "destructive",
+        });
+        router.push("/properties");
       }
     } catch (error) {
-      console.error("Erro ao carregar imóvel:", error);
+      console.error("Error loading property:", error);
       toast({
         title: "Erro",
-        description: "Não foi possível carregar os dados do imóvel.",
+        description: "Não foi possível carregar o imóvel.",
         variant: "destructive",
       });
     } finally {
@@ -75,47 +92,130 @@ export default function PropertyDetailPage() {
     }
   };
 
-  const loadLocations = async () => {
-    try {
-      const data = await locationService.getAll();
-      setLocations(data);
-    } catch (error) {
-      console.error("Erro ao carregar locais:", error);
+  const handleEdit = () => {
+    setIsEditMode(true);
+  };
+
+  const handleCancel = () => {
+    if (property) {
+      setFormData({
+        location: property.location,
+        cep: property.cep || "",
+        address: property.address || "",
+        number: property.number || "",
+        complement: property.complement,
+        neighborhood: property.neighborhood || "",
+        city: property.city || "",
+        state: property.state || "",
+        rentValue: applyRealMask((property.rentValue * 100).toString()),
+        description: property.description || "",
+      });
+    }
+    setIsEditMode(false);
+  };
+
+  const handleLocationChange = (value: string) => {
+    const selectedLocation = locations.find(l => l.name === value);
+    if (selectedLocation) {
+      setFormData(prev => ({
+        ...prev,
+        location: selectedLocation.name,
+        cep: selectedLocation.cep,
+        address: selectedLocation.address,
+        number: selectedLocation.number,
+        neighborhood: selectedLocation.neighborhood,
+        city: selectedLocation.city,
+        state: selectedLocation.state
+      }));
+    } else {
+      setFormData(prev => ({ ...prev, location: value }));
     }
   };
 
+  const convertMaskedValueToNumber = (maskedValue: string): number => {
+    if (!maskedValue) return 0;
+    const cleanValue = maskedValue.replace(/[^\d,]/g, '');
+    const numericValue = cleanValue.replace(',', '.');
+    return parseFloat(numericValue) || 0;
+  };
+
   const handleSave = async () => {
+    if (!property) return;
+
+    if (!formData.location || !formData.complement || !formData.rentValue) {
+      toast({
+        title: "Campos obrigatórios",
+        description: "Preencha todos os campos obrigatórios: Local, Complemento e Valor do Aluguel.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
-      const selectedLocation = locations.find(l => l.id === editForm.location_id);
-      
-      if (!selectedLocation) {
+      const newRentValue = convertMaskedValueToNumber(formData.rentValue);
+      const oldRentValue = property.rentValue;
+      const rentValueChanged = newRentValue !== oldRentValue;
+      const isOccupied = property.status === "occupied";
+
+      const updatedProperty = {
+        ...property,
+        location: formData.location,
+        cep: formData.cep || undefined,
+        address: formData.address || undefined,
+        number: formData.number || undefined,
+        complement: formData.complement,
+        neighborhood: formData.neighborhood || undefined,
+        city: formData.city || undefined,
+        state: formData.state || undefined,
+        monthlyRent: newRentValue,
+        rentValue: newRentValue,
+        description: formData.description || undefined,
+      };
+
+      await propertyService.update(property.id, {
+        location: formData.location,
+        cep: formData.cep || undefined,
+        address: formData.address || undefined,
+        number: formData.number || undefined,
+        complement: formData.complement,
+        neighborhood: formData.neighborhood || undefined,
+        city: formData.city || undefined,
+        state: formData.state || undefined,
+        monthlyRent: newRentValue,
+        rentValue: newRentValue,
+        description: formData.description || undefined,
+      });
+
+      // If rent value changed and property is occupied, update future payments
+      if (rentValueChanged && isOccupied) {
+        const { paymentService } = await import("@/services");
+        const updatedCount = await paymentService.updateFuturePaymentsByPropertyId(
+          property.id,
+          newRentValue
+        );
+
+        if (updatedCount > 0) {
+          toast({
+            title: "Sucesso",
+            description: `Imóvel atualizado com sucesso! ${updatedCount} recebimento(s) futuro(s) atualizado(s) com o novo valor.`,
+          });
+        } else {
+          toast({
+            title: "Sucesso",
+            description: "Imóvel atualizado com sucesso!",
+          });
+        }
+      } else {
         toast({
-          title: "Erro",
-          description: "Por favor, selecione um local válido.",
-          variant: "destructive",
+          title: "Sucesso",
+          description: "Imóvel atualizado com sucesso!",
         });
-        return;
       }
 
-      await propertyService.update(id as string, {
-        location: selectedLocation.name,
-        location_id: editForm.location_id,
-        property_identifier: editForm.property_identifier,
-        type: editForm.type,
-        monthly_rent: parseFloat(editForm.monthly_rent),
-        status: editForm.status,
-        description: editForm.description,
-      });
-
-      toast({
-        title: "Sucesso",
-        description: "Imóvel atualizado com sucesso!",
-      });
-
-      setIsEditing(false);
-      loadProperty();
+      setProperty(updatedProperty as Property);
+      setIsEditMode(false);
     } catch (error) {
-      console.error("Erro ao atualizar imóvel:", error);
+      console.error("Error updating property:", error);
       toast({
         title: "Erro",
         description: "Não foi possível atualizar o imóvel.",
@@ -124,28 +224,33 @@ export default function PropertyDetailPage() {
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    const statusMap = {
-      available: { label: "Disponível", variant: "default" as const },
-      occupied: { label: "Ocupado", variant: "secondary" as const },
-      unavailable: { label: "Indisponível", variant: "destructive" as const },
-    };
-    return statusMap[status as keyof typeof statusMap] || statusMap.available;
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "available":
+        return "bg-green-500";
+      case "occupied":
+        return "bg-blue-500";
+      default:
+        return "bg-gray-500";
+    }
   };
 
-  const getTypeBadge = (type: string) => {
-    const typeMap = {
-      residential: { label: "Residencial", variant: "outline" as const },
-      commercial: { label: "Comercial", variant: "outline" as const },
-    };
-    return typeMap[type as keyof typeof typeMap] || typeMap.residential;
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case "available":
+        return "Disponível";
+      case "occupied":
+        return "Alugado";
+      default:
+        return status;
+    }
   };
 
   if (loading) {
     return (
       <Layout>
-        <div className="flex items-center justify-center h-64">
-          <p>Carregando...</p>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <p className="text-muted-foreground">Carregando...</p>
         </div>
       </Layout>
     );
@@ -154,252 +259,242 @@ export default function PropertyDetailPage() {
   if (!property) {
     return (
       <Layout>
-        <div className="flex flex-col items-center justify-center h-64 gap-4">
-          <Building2 className="h-16 w-16 text-muted-foreground" />
+        <div className="flex items-center justify-center min-h-[400px]">
           <p className="text-muted-foreground">Imóvel não encontrado</p>
-          <Button onClick={() => router.push("/properties")}>
-            Voltar para Imóveis
-          </Button>
         </div>
       </Layout>
     );
   }
 
-  const locationData = property.locationData;
-  const fullAddress = locationData
-    ? `${locationData.street}, ${locationData.number}${
-        locationData.complement ? ` - ${locationData.complement}` : ""
-      }, ${locationData.neighborhood}, ${locationData.city}/${locationData.state} - CEP: ${locationData.zip_code}`
-    : "Endereço não disponível";
-
   return (
-    <Layout>
-      <SEO
-        title={`${property.property_identifier} - ${locationData?.name || property.location}`}
-        description={`Detalhes do imóvel ${property.property_identifier}`}
-      />
-
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+    <>
+      <Head>
+        <title>Detalhes do Imóvel - Gerenciador de Locações</title>
+      </Head>
+      <Layout>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
             <Button
               variant="ghost"
-              size="icon"
               onClick={() => router.push("/properties")}
+              className="gap-2"
             >
               <ArrowLeft className="h-4 w-4" />
+              Voltar
             </Button>
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight">
-                {property.property_identifier}
-              </h1>
-              <p className="text-muted-foreground">
-                {locationData?.name || property.location}
-              </p>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            {isEditing ? (
-              <>
-                <Button variant="outline" onClick={() => setIsEditing(false)}>
-                  <X className="mr-2 h-4 w-4" />
-                  Cancelar
-                </Button>
-                <Button onClick={handleSave}>
-                  <Save className="mr-2 h-4 w-4" />
-                  Salvar
-                </Button>
-              </>
-            ) : (
-              <Button onClick={() => setIsEditing(true)}>
-                <Edit className="mr-2 h-4 w-4" />
-                Editar
-              </Button>
-            )}
-          </div>
-        </div>
-
-        <div className="grid gap-6 md:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Building2 className="h-5 w-5" />
-                Informações do Imóvel
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {isEditing ? (
+            <div className="flex gap-2">
+              {isEditMode ? (
                 <>
-                  <div className="space-y-2">
-                    <Label htmlFor="location_id">Local</Label>
-                    <Select
-                      value={editForm.location_id}
-                      onValueChange={(value) =>
-                        setEditForm({ ...editForm, location_id: value })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o local" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {locations.map((location) => (
-                          <SelectItem key={location.id} value={location.id}>
-                            {location.name} - {location.street}, {location.number}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="property_identifier">Identificação</Label>
-                    <Input
-                      id="property_identifier"
-                      value={editForm.property_identifier}
-                      onChange={(e) =>
-                        setEditForm({ ...editForm, property_identifier: e.target.value })
-                      }
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="type">Tipo</Label>
-                    <Select
-                      value={editForm.type}
-                      onValueChange={(value: "residential" | "commercial") =>
-                        setEditForm({ ...editForm, type: value })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="residential">Residencial</SelectItem>
-                        <SelectItem value="commercial">Comercial</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="status">Status</Label>
-                    <Select
-                      value={editForm.status}
-                      onValueChange={(value: "available" | "occupied" | "unavailable") =>
-                        setEditForm({ ...editForm, status: value })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="available">Disponível</SelectItem>
-                        <SelectItem value="occupied">Ocupado</SelectItem>
-                        <SelectItem value="unavailable">Indisponível</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="monthly_rent">Aluguel Mensal</Label>
-                    <Input
-                      id="monthly_rent"
-                      type="number"
-                      step="0.01"
-                      value={editForm.monthly_rent}
-                      onChange={(e) =>
-                        setEditForm({ ...editForm, monthly_rent: e.target.value })
-                      }
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="description">Descrição</Label>
-                    <Input
-                      id="description"
-                      value={editForm.description}
-                      onChange={(e) =>
-                        setEditForm({ ...editForm, description: e.target.value })
-                      }
-                    />
-                  </div>
+                  <Button variant="outline" onClick={handleCancel}>
+                    <X className="h-4 w-4 mr-2" />
+                    Cancelar
+                  </Button>
+                  <Button onClick={handleSave} className="bg-emerald-600 hover:bg-emerald-700">
+                    Salvar
+                  </Button>
                 </>
               ) : (
-                <>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Identificação</p>
-                    <p className="font-medium">{property.property_identifier}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Tipo</p>
-                    <Badge variant={getTypeBadge(property.type).variant}>
-                      {getTypeBadge(property.type).label}
-                    </Badge>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Status</p>
-                    <Badge variant={getStatusBadge(property.status).variant}>
-                      {getStatusBadge(property.status).label}
-                    </Badge>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Aluguel Mensal</p>
-                    <p className="text-2xl font-bold">
-                      {formatCurrency(property.monthly_rent)}
-                    </p>
-                  </div>
-                  {property.description && (
-                    <div>
-                      <p className="text-sm text-muted-foreground">Descrição</p>
-                      <p className="font-medium">{property.description}</p>
-                    </div>
-                  )}
-                </>
+                <Button onClick={handleEdit} className="bg-emerald-600 hover:bg-emerald-700">
+                  <Edit className="h-4 w-4 mr-2" />
+                  Editar
+                </Button>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MapPin className="h-5 w-5" />
-                Localização
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <p className="text-sm text-muted-foreground">Local</p>
-                <p className="font-medium text-lg">
-                  {locationData?.name || property.location}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Endereço Completo</p>
-                <p className="font-medium">{fullAddress}</p>
-              </div>
-              {locationData && (
-                <>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Bairro</p>
-                      <p className="font-medium">{locationData.neighborhood}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Cidade/Estado</p>
-                      <p className="font-medium">
-                        {locationData.city}/{locationData.state}
-                      </p>
-                    </div>
-                  </div>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Building2 className="h-5 w-5 text-emerald-600" />
                   <div>
-                    <p className="text-sm text-muted-foreground">CEP</p>
-                    <p className="font-medium">{locationData.zip_code}</p>
+                    <CardTitle className="text-lg">{property.location}</CardTitle>
+                    <p className="text-xs text-muted-foreground">{property.complement}</p>
                   </div>
-                </>
-              )}
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <p className="text-lg font-bold text-emerald-600">
+                      {formatCurrency(property.rentValue)}
+                    </p>
+                  </div>
+                  <Badge className={getStatusColor(property.status)}>
+                    {getStatusLabel(property.status)}
+                  </Badge>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Local</Label>
+                    {isEditMode ? (
+                      <Select value={formData.location} onValueChange={handleLocationChange}>
+                        <SelectTrigger className="h-8 text-sm">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {locations.map((location) => (
+                            <SelectItem key={location.id} value={location.name}>
+                              {location.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <p className="text-sm font-medium">{property.location}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Complemento</Label>
+                    {isEditMode ? (
+                      <Input
+                        placeholder="Ex: Casa 2, Apto 101"
+                        value={formData.complement}
+                        onChange={(e) => setFormData({ ...formData, complement: e.target.value })}
+                        className="h-8 text-sm"
+                      />
+                    ) : (
+                      <p className="text-sm font-medium">{property.complement}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Valor do Aluguel</Label>
+                    {isEditMode ? (
+                      <Input
+                        placeholder="R$ 0,00"
+                        value={formData.rentValue}
+                        onChange={(e) => setFormData({ ...formData, rentValue: applyRealMask(e.target.value) })}
+                        className="h-8 text-sm"
+                      />
+                    ) : (
+                      <p className="text-sm font-bold text-emerald-600">
+                        {formatCurrency(property.rentValue)}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">CEP</Label>
+                    {isEditMode ? (
+                      <Input
+                        placeholder="00000-000"
+                        value={formData.cep}
+                        onChange={(e) => setFormData({ ...formData, cep: applyCepMask(e.target.value) })}
+                        maxLength={9}
+                        disabled={!!locations.find(l => l.name === formData.location)}
+                        className="h-8 text-sm"
+                      />
+                    ) : (
+                      <p className="text-sm font-medium">{property.cep || "—"}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1 md:col-span-2">
+                    <Label className="text-xs text-muted-foreground">Endereço</Label>
+                    {isEditMode ? (
+                      <Input
+                        placeholder="Rua, Avenida, etc."
+                        value={formData.address}
+                        onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                        disabled={!!locations.find(l => l.name === formData.location)}
+                        className="h-8 text-sm"
+                      />
+                    ) : (
+                      <p className="text-sm font-medium">{property.address || "—"}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Número</Label>
+                    {isEditMode ? (
+                      <Input
+                        placeholder="123"
+                        value={formData.number}
+                        onChange={(e) => setFormData({ ...formData, number: e.target.value })}
+                        disabled={!!locations.find(l => l.name === formData.location)}
+                        className="h-8 text-sm"
+                      />
+                    ) : (
+                      <p className="text-sm font-medium">{property.number || "—"}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Bairro</Label>
+                    {isEditMode ? (
+                      <Input
+                        placeholder="Bairro"
+                        value={formData.neighborhood}
+                        onChange={(e) => setFormData({ ...formData, neighborhood: e.target.value })}
+                        disabled={!!locations.find(l => l.name === formData.location)}
+                        className="h-8 text-sm"
+                      />
+                    ) : (
+                      <p className="text-sm font-medium">{property.neighborhood || "—"}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Cidade</Label>
+                    {isEditMode ? (
+                      <Input
+                        placeholder="São Paulo"
+                        value={formData.city}
+                        onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                        disabled={!!locations.find(l => l.name === formData.location)}
+                        className="h-8 text-sm"
+                      />
+                    ) : (
+                      <p className="text-sm font-medium">{property.city || "—"}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Estado</Label>
+                    {isEditMode ? (
+                      <Input
+                        placeholder="SP"
+                        value={formData.state}
+                        onChange={(e) => setFormData({ ...formData, state: e.target.value.toUpperCase() })}
+                        maxLength={2}
+                        disabled={!!locations.find(l => l.name === formData.location)}
+                        className="h-8 text-sm"
+                      />
+                    ) : (
+                      <p className="text-sm font-medium">{property.state || "—"}</p>
+                    )}
+                  </div>
+                </div>
+
+                {(isEditMode || property.description) && (
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Descrição</Label>
+                    {isEditMode ? (
+                      <Textarea
+                        placeholder="Informações adicionais sobre o imóvel..."
+                        value={formData.description}
+                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                        rows={2}
+                        className="text-sm resize-none"
+                      />
+                    ) : (
+                      <p className="text-sm whitespace-pre-wrap">{property.description}</p>
+                    )}
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
         </div>
-      </div>
-    </Layout>
+      </Layout>
+    </>
   );
 }

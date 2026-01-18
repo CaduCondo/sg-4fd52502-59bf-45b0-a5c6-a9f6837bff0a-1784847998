@@ -129,19 +129,16 @@ export function PaymentReceipt({ isOpen, onClose, payment, rental, property, ten
   const lateCharges = (payment.lateFee || 0) + (payment.interest || 0);
   const totalValue = payment.paidAmount || 0;
 
-  // Safe access to location data with proper typing
-  const locationData = (property as any).locationData;
-  const fullAddress = locationData
-    ? [
-        locationData.street,
-        locationData.number,
-        locationData.complement,
-        locationData.neighborhood,
-        locationData.city,
-        locationData.state,
-        locationData.zip_code
-      ].filter(Boolean).join(", ")
-    : property.location || "Endereço não disponível";
+  const fullAddress = [
+    property.location,
+    property.address,
+    property.number,
+    property.complement,
+    property.neighborhood,
+    property.city,
+    property.state,
+    property.zipCode
+  ].filter(Boolean).join(", ");
 
   const currentDate = new Date();
   const currentDateStr = currentDate.toLocaleDateString("pt-BR", {

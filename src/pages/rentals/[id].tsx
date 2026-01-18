@@ -325,18 +325,7 @@ export default function RentalDetails() {
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="text-lg">{property.location}</CardTitle>
-                  {rental.property?.locationData ? (
-                    <p className="text-sm mt-1">
-                      {rental.property.locationData.street}, {rental.property.locationData.number}
-                      {rental.property.locationData.complement && ` - ${rental.property.locationData.complement}`}
-                      <br />
-                      {rental.property.locationData.neighborhood} - {rental.property.locationData.city}/{rental.property.locationData.state}
-                      <br />
-                      CEP: {rental.property.locationData.zip_code}
-                    </p>
-                  ) : (
-                    <p className="text-sm mt-1">{rental.property?.location}</p>
-                  )}
+                  <p className="text-xs text-muted-foreground">{property.complement}</p>
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="text-right">
