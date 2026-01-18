@@ -24,7 +24,7 @@ export const roleMenuPermissionService = {
       .order("menu_item", { ascending: true });
 
     if (error) throw error;
-    return data || [];
+    return (data as unknown as RoleMenuPermission[]) || [];
   },
 
   /**
@@ -38,7 +38,7 @@ export const roleMenuPermissionService = {
       .order("menu_item", { ascending: true });
 
     if (error) throw error;
-    return data || [];
+    return (data as unknown as RoleMenuPermission[]) || [];
   },
 
   /**

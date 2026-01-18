@@ -35,7 +35,6 @@ import { systemUserService } from "@/services/systemUserService";
 import { locationService } from "@/services/locationService";
 import { userLocationPermissionService } from "@/services/userLocationPermissionService";
 import { roleMenuPermissionService, type UserRole as MenuRole, type MenuItem } from "@/services/roleMenuPermissionService";
-import { rolePermissionService, type Permission, type UserRole, type Resource } from "@/services/rolePermissionService";
 import type { CompanyConfig, SystemUser, Location } from "@/types";
 import { applyCepMask, applyPhoneMask, applyCnpjMask, parsePercentageToFloat, formatPercentage } from "@/lib/masks";
 
@@ -82,11 +81,6 @@ export default function Settings() {
   const [selectedUserForLocations, setSelectedUserForLocations] = useState<SystemUser | null>(null);
   const [userLocationPermissions, setUserLocationPermissions] = useState<string[]>([]);
   const [isLocationPermissionsDialogOpen, setIsLocationPermissionsDialogOpen] = useState(false);
-
-  // Permissions State
-  const [permissions, setPermissions] = useState<Permission[]>([]);
-  const [isLoadingPermissions, setIsLoadingPermissions] = useState(false);
-  const [editingPermissions, setEditingPermissions] = useState<Record<string, boolean>>({});
 
   // Menu Permissions State
   const [menuPermissions, setMenuPermissions] = useState<any[]>([]);

@@ -385,42 +385,6 @@ export type Database = {
         }
         Relationships: []
       }
-      role_permissions: {
-        Row: {
-          can_create: boolean | null
-          can_delete: boolean | null
-          can_edit: boolean | null
-          can_view: boolean | null
-          created_at: string | null
-          id: string
-          resource: string
-          role: string
-          updated_at: string | null
-        }
-        Insert: {
-          can_create?: boolean | null
-          can_delete?: boolean | null
-          can_edit?: boolean | null
-          can_view?: boolean | null
-          created_at?: string | null
-          id?: string
-          resource: string
-          role: string
-          updated_at?: string | null
-        }
-        Update: {
-          can_create?: boolean | null
-          can_delete?: boolean | null
-          can_edit?: boolean | null
-          can_view?: boolean | null
-          created_at?: string | null
-          id?: string
-          resource?: string
-          role?: string
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
       system_users: {
         Row: {
           active: boolean
