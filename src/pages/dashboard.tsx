@@ -394,7 +394,7 @@ export default function DashboardPage() {
             <Card className="bg-gradient-to-br from-blue-500 to-blue-700 text-white">
               <CardHeader>
                 <CardTitle className="text-2xl">
-                  Bom dia, {userName}! 👋
+                  Olá, {userName}! 👋
                 </CardTitle>
                 <p className="text-blue-100">{currentDate}</p>
               </CardHeader>
