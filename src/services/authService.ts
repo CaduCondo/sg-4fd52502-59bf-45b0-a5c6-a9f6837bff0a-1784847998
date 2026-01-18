@@ -185,17 +185,26 @@ export const authService = {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return "Administrador";
 
-      const { data, error } = await supabase
-        .from("user_profiles")
-        .select("name")
-        .eq("id", user.id)
+      // 1. Try to find system_user_id from mapping
+      const { data: mapping } = await supabase
+        .from("auth_user_mapping")
+        .select("system_user_id")
+        .eq("auth_user_id", user.id)
         .single();
 
-      if (error || !data) {
-        return user.email?.split("@")[0] || "Administrador";
+      if (mapping) {
+        // 2. Get name from system_users
+        const { data: profile } = await supabase
+          .from("system_users")
+          .select("name")
+          .eq("id", mapping.system_user_id)
+          .single();
+          
+        if (profile?.name) return profile.name;
       }
 
-      return data.name || "Administrador";
+      // Fallback to email username
+      return user.email?.split("@")[0] || "Administrador";
     } catch (error) {
       console.error("Error fetching user profile:", error);
       return "Administrador";
