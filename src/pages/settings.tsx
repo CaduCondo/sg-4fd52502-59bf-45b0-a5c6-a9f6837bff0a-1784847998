@@ -36,6 +36,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { configService } from "@/services/configService";
 import { systemUserService } from "@/services/systemUserService";
 import { locationService } from "@/services/locationService";
+import { userLocationPermissionService } from "@/services/userLocationPermissionService";
 import { rolePermissionService, type Permission, type UserRole, type Resource } from "@/services/rolePermissionService";
 import type { CompanyConfig, SystemUser, Location } from "@/types";
 import { applyCepMask, applyPhoneMask, applyCnpjMask, parsePercentageToFloat, formatPercentage } from "@/lib/masks";
@@ -78,6 +79,11 @@ export default function Settings() {
   const [locations, setLocations] = useState<Location[]>([]);
   const [isLoadingLocations, setIsLoadingLocations] = useState(false);
   const [searchLocation, setSearchLocation] = useState("");
+
+  // User Location Permissions State
+  const [selectedUserForLocations, setSelectedUserForLocations] = useState<SystemUser | null>(null);
+  const [userLocationPermissions, setUserLocationPermissions] = useState<string[]>([]);
+  const [isLocationPermissionsDialogOpen, setIsLocationPermissionsDialogOpen] = useState(false);
 
   // Permissions State
   const [permissions, setPermissions] = useState<Permission[]>([]);
@@ -305,6 +311,44 @@ export default function Settings() {
     }
   };
 
+  const openLocationPermissionsDialog = async (user: SystemUser) => {
+    setSelectedUserForLocations(user);
+    try {
+      const permissions = await userLocationPermissionService.getByUserId(user.id);
+      setUserLocationPermissions(permissions);
+      setIsLocationPermissionsDialogOpen(true);
+    } catch (error) {
+      console.error("Erro ao carregar permissões:", error);
+      toast({ title: "Erro ao carregar permissões", variant: "destructive" });
+    }
+  };
+
+  const handleToggleLocationPermission = (locationId: string) => {
+    setUserLocationPermissions((prev) => {
+      if (prev.includes(locationId)) {
+        return prev.filter((id) => id !== locationId);
+      } else {
+        return [...prev, locationId];
+      }
+    });
+  };
+
+  const handleSaveLocationPermissions = async () => {
+    if (!selectedUserForLocations) return;
+
+    try {
+      await userLocationPermissionService.setPermissions(
+        selectedUserForLocations.id,
+        userLocationPermissions
+      );
+      toast({ title: "Permissões salvas com sucesso!" });
+      setIsLocationPermissionsDialogOpen(false);
+    } catch (error) {
+      console.error("Erro ao salvar permissões:", error);
+      toast({ title: "Erro ao salvar permissões", variant: "destructive" });
+    }
+  };
+
   const filteredLocations = locations.filter((location) => {
     const search = searchLocation.toLowerCase();
     return (
@@ -436,6 +480,10 @@ export default function Settings() {
             <TabsTrigger value="users" className="gap-2 py-3">
               <Users className="h-4 w-4" />
               Usuários
+            </TabsTrigger>
+            <TabsTrigger value="user-locations" className="gap-2 py-3">
+              <Shield className="h-4 w-4" />
+              Permissões de Locais
             </TabsTrigger>
             <TabsTrigger value="locations" className="gap-2 py-3">
               <MapPin className="h-4 w-4" />
@@ -753,6 +801,56 @@ export default function Settings() {
             </Card>
           </TabsContent>
 
+          {/* PERMISSÕES DE LOCAIS */}
+          <TabsContent value="user-locations" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Shield className="h-5 w-5" />
+                  Controle de Acesso por Local
+                </CardTitle>
+                <CardDescription>
+                  Defina quais locais cada usuário financeiro pode visualizar na página Financeiro
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {users.filter(u => u.role === "financial").length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    Nenhum usuário com perfil Financeiro cadastrado
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {users
+                      .filter((u) => u.role === "financial")
+                      .map((user) => (
+                        <div
+                          key={user.id}
+                          className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors"
+                        >
+                          <div className="flex-1">
+                            <h4 className="font-semibold flex items-center gap-2">
+                              <User className="h-4 w-4 text-primary" />
+                              {user.name}
+                            </h4>
+                            <p className="text-sm text-muted-foreground">{user.email}</p>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-2"
+                            onClick={() => openLocationPermissionsDialog(user)}
+                          >
+                            <MapPin className="h-3 w-3" />
+                            Gerenciar Locais
+                          </Button>
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           {/* LOCAIS */}
           <TabsContent value="locations" className="space-y-4">
             <Card>
@@ -939,6 +1037,75 @@ export default function Settings() {
                 <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">Salvar Usuário</Button>
               </DialogFooter>
             </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* DIALOG DE PERMISSÕES DE LOCAIS */}
+        <Dialog open={isLocationPermissionsDialogOpen} onOpenChange={setIsLocationPermissionsDialogOpen}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                Gerenciar Locais - {selectedUserForLocations?.name}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Selecione os locais que este usuário pode visualizar na página Financeiro
+              </p>
+              
+              {isLoadingLocations ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  Carregando locais...
+                </div>
+              ) : locations.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  Nenhum local cadastrado
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-[400px] overflow-y-auto border rounded-lg p-4">
+                  {locations.map((location) => (
+                    <div
+                      key={location.id}
+                      className="flex items-center gap-3 p-3 border rounded hover:bg-accent/50 transition-colors"
+                    >
+                      <input
+                        type="checkbox"
+                        id={`location-${location.id}`}
+                        checked={userLocationPermissions.includes(location.id)}
+                        onChange={() => handleToggleLocationPermission(location.id)}
+                        className="h-4 w-4 rounded border-gray-300"
+                      />
+                      <label
+                        htmlFor={`location-${location.id}`}
+                        className="flex-1 cursor-pointer"
+                      >
+                        <div className="font-medium">{location.name}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {location.city}, {location.state}
+                        </div>
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsLocationPermissionsDialogOpen(false)}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                className="bg-emerald-600 hover:bg-emerald-700"
+                onClick={handleSaveLocationPermissions}
+              >
+                <Save className="h-4 w-4 mr-2" />
+                Salvar Permissões
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
