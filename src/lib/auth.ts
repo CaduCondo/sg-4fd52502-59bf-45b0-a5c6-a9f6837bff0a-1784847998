@@ -198,6 +198,15 @@ export async function loginWithSupabaseAuth(emailOrUsername: string, password: s
       console.log("✅ Tokens JWT obtidos com sucesso");
       console.log("✅ Access Token válido por 1 hora");
       console.log("✅ Refresh Token disponível para renovação");
+      
+      // Verificar se a sessão foi realmente salva no localStorage
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        console.log("✅ Sessão confirmada no localStorage");
+        console.log("✅ User ID:", session.user.id);
+      } else {
+        console.error("❌ ERRO: Sessão não foi salva no localStorage!");
+      }
     } else {
       console.warn("⚠️ Continuando sem sessão do Supabase Auth");
       console.warn("⚠️ Algumas funcionalidades podem não funcionar corretamente");
