@@ -29,7 +29,7 @@ function mapSystemUserToUserType(systemUser: any): UserType {
 
   return {
     id: systemUser.id,
-    name: systemUser.name || systemUser.email?.split("@")[0] || "Usuário",
+    name: systemUser.full_name || systemUser.name || systemUser.email?.split("@")[0] || "Usuário",
     username: systemUser.username || systemUser.email?.split("@")[0] || "",
     email: systemUser.email || "",
     password: "",
@@ -107,7 +107,7 @@ export async function loginWithSupabaseAuth(emailOrUsername: string, password: s
     const systemUser = data[0];
 
     console.log("✅ Login seguro bem-sucedido!");
-    console.log("✅ Usuário:", systemUser.name);
+    console.log("✅ Usuário:", systemUser.full_name);
     console.log("✅ Role:", systemUser.role);
     console.log("✅ Senha protegida com bcrypt");
 
