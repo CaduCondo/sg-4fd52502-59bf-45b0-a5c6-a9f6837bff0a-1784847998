@@ -122,8 +122,8 @@ export async function loginWithSupabaseAuth(emailOrUsername: string, password: s
   try {
     console.log("🔐 Iniciando login para:", emailOrUsername);
     
-    // PASSO 1: Validar credenciais no banco
-    const { data, error } = await supabase.rpc("authenticate_user_simple", {
+    // PASSO 1: Validar credenciais no banco COM BCRYPT
+    const { data, error } = await supabase.rpc("authenticate_user_secure", {
       p_username_or_email: emailOrUsername,
       p_password: password
     });
@@ -142,7 +142,7 @@ export async function loginWithSupabaseAuth(emailOrUsername: string, password: s
     const systemUser = data[0];
     const authUserId = systemUser.auth_id;
 
-    console.log("✅ Credenciais validadas");
+    console.log("✅ Credenciais validadas com bcrypt no banco");
     console.log("✅ Usuário:", systemUser.user_name);
     console.log("✅ Auth User ID:", authUserId);
 
@@ -150,51 +150,47 @@ export async function loginWithSupabaseAuth(emailOrUsername: string, password: s
     let authSuccess = false;
 
     // Primeiro, tentar fazer login (usuário pode já existir no Auth)
-    try {
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-        email: systemUser.user_email,
-        password: password
-      });
+    console.log("🔑 Tentando autenticar no Supabase Auth...");
+    
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+      email: systemUser.user_email,
+      password: password
+    });
 
-      if (!signInError && signInData.session) {
-        console.log("✅ Login no Supabase Auth bem-sucedido");
-        authSuccess = true;
-      }
-    } catch (signInErr) {
+    if (!signInError && signInData.session) {
+      console.log("✅ Login no Supabase Auth bem-sucedido");
+      console.log("✅ Sessão ativa - auth.uid() disponível");
+      authSuccess = true;
+    } else {
       console.log("⚠️ Usuário não existe no Supabase Auth, criando...");
-    }
-
-    // Se login falhou, tentar criar o usuário
-    if (!authSuccess) {
-      try {
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-          email: systemUser.user_email,
-          password: password,
-          options: {
-            data: {
-              name: systemUser.user_name,
-              role: systemUser.user_role,
-            }
-          }
-        });
-
-        if (signUpError) {
-          console.warn("⚠️ Erro ao criar usuário no Supabase Auth:", signUpError.message);
-        } else if (signUpData.session) {
-          console.log("✅ Usuário criado no Supabase Auth com sucesso");
-          authSuccess = true;
-
-          // Atualizar auth_user_id no system_users
-          if (signUpData.user) {
-            await supabase
-              .from("system_users")
-              .update({ auth_user_id: signUpData.user.id })
-              .eq("id", systemUser.user_id);
-            console.log("✅ Auth User ID atualizado no banco");
+      
+      // Se login falhou, tentar criar o usuário
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email: systemUser.user_email,
+        password: password,
+        options: {
+          data: {
+            name: systemUser.user_name,
+            role: systemUser.user_role,
           }
         }
-      } catch (signUpErr) {
-        console.warn("⚠️ Erro ao criar usuário:", signUpErr);
+      });
+
+      if (signUpError) {
+        console.warn("⚠️ Erro ao criar usuário no Supabase Auth:", signUpError.message);
+      } else if (signUpData.session) {
+        console.log("✅ Usuário criado no Supabase Auth com sucesso");
+        console.log("✅ Sessão ativa - auth.uid() disponível");
+        authSuccess = true;
+
+        // Atualizar auth_user_id no system_users
+        if (signUpData.user) {
+          await supabase
+            .from("system_users")
+            .update({ auth_user_id: signUpData.user.id })
+            .eq("id", systemUser.user_id);
+          console.log("✅ Auth User ID atualizado no banco");
+        }
       }
     }
 
@@ -202,7 +198,6 @@ export async function loginWithSupabaseAuth(emailOrUsername: string, password: s
       console.log("✅ Tokens JWT obtidos com sucesso");
       console.log("✅ Access Token válido por 1 hora");
       console.log("✅ Refresh Token disponível para renovação");
-      console.log("✅ auth.uid() agora está disponível para RLS");
     } else {
       console.warn("⚠️ Continuando sem sessão do Supabase Auth");
       console.warn("⚠️ Algumas funcionalidades podem não funcionar corretamente");
@@ -212,7 +207,7 @@ export async function loginWithSupabaseAuth(emailOrUsername: string, password: s
     const user = mapSystemUserToUserType(systemUser);
     syncToLocalStorage(user);
     
-    console.log("✅ Login concluído!");
+    console.log("✅ Login concluído com segurança bcrypt!");
     console.log("🔐 Sessão expira em 1 hora");
     
     return user;

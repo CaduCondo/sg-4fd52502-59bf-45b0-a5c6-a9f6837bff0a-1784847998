@@ -534,6 +534,23 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      authenticate_user_secure: {
+        Args: { p_login: string; p_password: string }
+        Returns: {
+          auth_id: string
+          user_active: boolean
+          user_cpf: string
+          user_created_at: string
+          user_email: string
+          user_id: number
+          user_name: string
+          user_phone: string
+          user_photo: string
+          user_rg: string
+          user_role: string
+          user_username: string
+        }[]
+      }
       authenticate_user_simple: {
         Args: { p_password: string; p_username_or_email: string }
         Returns: {
