@@ -160,6 +160,24 @@ export function Layout({ children }: LayoutProps) {
     return roleMap[role || "user"] || "Usuário";
   };
 
+  // Função para verificar se o menu deve ser exibido baseado no perfil do usuário
+  const shouldShowMenu = (menuPath: string) => {
+    if (!user?.role) return true;
+
+    // Corretor: Oculta apenas Configurações
+    if (user.role === "broker") {
+      return menuPath !== "/settings";
+    }
+
+    // Financeiro: Mostra apenas Dashboard e Financeiro
+    if (user.role === "financial") {
+      return menuPath === "/dashboard" || menuPath === "/financial";
+    }
+
+    // Admin e User: Veem todos os menus
+    return true;
+  };
+
   const navigationItems = [
     { href: "/dashboard", icon: Home, label: "Dashboard" },
     { href: "/properties", icon: Building2, label: "Imóveis" },
@@ -168,7 +186,7 @@ export function Layout({ children }: LayoutProps) {
     { href: "/payments", icon: DollarSign, label: "Recebimentos" },
     { href: "/financial", icon: Calculator, label: "Financeiro" },
     { href: "/settings", icon: Settings, label: "Configurações" },
-  ];
+  ].filter(item => shouldShowMenu(item.href));
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
@@ -291,7 +309,7 @@ export function Layout({ children }: LayoutProps) {
 
               <Link href="/dashboard" className="flex items-center gap-2 flex-shrink-0">
                 <Building2 className="h-6 w-6 text-emerald-600" />
-                <span className="font-bold text-slate-900 hidden xs:inline">ImóvelControl</span>
+                <span className="font-bold text-slate-900 text-base sm:text-lg">ImóvelControl</span>
               </Link>
             </div>
 

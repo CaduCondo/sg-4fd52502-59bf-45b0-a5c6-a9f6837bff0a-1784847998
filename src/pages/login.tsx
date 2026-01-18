@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building2, AlertCircle, Lock } from "lucide-react";
+import { Building2, AlertCircle, Lock, Eye, EyeOff } from "lucide-react";
 import { isAuthenticated } from "@/lib/auth";
 import { initializeStorage } from "@/lib/storage";
 import { SEO } from "@/components/SEO";
@@ -22,6 +22,7 @@ export default function Login() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   
   // Forgot Password State
   const [showForgotPassword, setShowForgotPassword] = useState(false);
