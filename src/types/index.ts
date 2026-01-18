@@ -44,6 +44,7 @@ export interface Property {
   name: string;
   address: string;
   location: string;
+  locationId?: string; // ID do local para permissões
   // Added optional fields for compatibility
   number?: string;
   complement?: string;

@@ -64,7 +64,7 @@ export default function Financial() {
     setLoading(true);
     try {
       // Carregar dados do usuário logado
-      const currentUser = userStorage.getUser();
+      const currentUser = userStorage.getCurrentUser();
       
       // Se for usuário financeiro, carregar permissões de locais
       let allowedLocations: string[] = [];

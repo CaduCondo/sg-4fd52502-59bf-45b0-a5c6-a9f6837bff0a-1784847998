@@ -289,6 +289,12 @@ export const userStorage = {
       userStorage.save(user);
     }
   },
+
+  getCurrentUser: (): User | null => {
+    if (typeof window === "undefined") return null;
+    const userStr = localStorage.getItem("imovcontrol_user");
+    return userStr ? JSON.parse(userStr) : null;
+  },
   
   delete: (id: string): void => {
     if (typeof window === "undefined") return;
