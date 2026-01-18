@@ -54,7 +54,7 @@ export default function Dashboard() {
 
       // Se não for admin, filtrar por permissões de localização
       if (currentUser.role !== "admin") {
-        const { userLocationIds } = await userLocationPermissionService.getUserLocationPermissions(currentUser.id);
+        const userLocationIds = await userLocationPermissionService.getByUserId(currentUser.id);
         
         // Filtrar propriedades pelas localizações permitidas
         filteredProperties = properties.filter(p => 
