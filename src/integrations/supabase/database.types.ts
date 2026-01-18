@@ -1,4 +1,4 @@
- 
+/* eslint-disable @typescript-eslint/no-empty-object-type */
 export type Json =
   | string
   | number
@@ -27,7 +27,6 @@ export type Database = {
           id: string
           interest_rate_percentage: number | null
           late_fee_percentage: number | null
-          locations: Json | null
           phone: string | null
           state: string | null
           updated_at: string | null
@@ -44,7 +43,6 @@ export type Database = {
           id?: string
           interest_rate_percentage?: number | null
           late_fee_percentage?: number | null
-          locations?: Json | null
           phone?: string | null
           state?: string | null
           updated_at?: string | null
@@ -61,9 +59,53 @@ export type Database = {
           id?: string
           interest_rate_percentage?: number | null
           late_fee_percentage?: number | null
-          locations?: Json | null
           phone?: string | null
           state?: string | null
+          updated_at?: string | null
+          zip_code?: string | null
+        }
+        Relationships: []
+      }
+      locations: {
+        Row: {
+          city: string
+          complement: string | null
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          neighborhood: string | null
+          number: string | null
+          state: string
+          street: string | null
+          updated_at: string | null
+          zip_code: string | null
+        }
+        Insert: {
+          city: string
+          complement?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          neighborhood?: string | null
+          number?: string | null
+          state: string
+          street?: string | null
+          updated_at?: string | null
+          zip_code?: string | null
+        }
+        Update: {
+          city?: string
+          complement?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          neighborhood?: string | null
+          number?: string | null
+          state?: string
+          street?: string | null
           updated_at?: string | null
           zip_code?: string | null
         }
@@ -367,6 +409,54 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      user_location_permissions: {
+        Row: {
+          can_delete: boolean | null
+          can_edit: boolean | null
+          can_view: boolean | null
+          created_at: string | null
+          id: string
+          location_id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          can_delete?: boolean | null
+          can_edit?: boolean | null
+          can_view?: boolean | null
+          created_at?: string | null
+          id?: string
+          location_id: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          can_delete?: boolean | null
+          can_edit?: boolean | null
+          can_view?: boolean | null
+          created_at?: string | null
+          id?: string
+          location_id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_location_permissions_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_location_permissions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "system_users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_profiles: {
         Row: {
