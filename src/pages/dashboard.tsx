@@ -1,32 +1,31 @@
 import { useEffect, useState } from "react";
 import { Layout } from "@/components/Layout";
-import { SEO } from "@/components/SEO";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Activity, CreditCard, Users, Home, TrendingUp, AlertCircle, Calendar } from "lucide-react";
-import { paymentService, rentalService, propertyService, tenantService } from "@/services";
-import { formatCurrency } from "@/lib/masks";
-import { ScrollReveal } from "@/components/animations/ScrollReveal";
-import { getCurrentUser } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { userLocationPermissionService } from "@/services";
+import { ScrollReveal } from "@/components/animations/ScrollReveal";
+import { propertyService } from "@/services/propertyService";
+import { rentalService } from "@/services/rentalService";
+import { paymentService } from "@/services/paymentService";
+import { tenantService } from "@/services/tenantService";
+import { userLocationPermissionService } from "@/services/userLocationPermissionService";
+import { getCurrentUser } from "@/lib/auth";
+import type { PropertyWithLocation, Rental, Payment, Tenant } from "@/types";
 
 export default function Dashboard() {
-  const [stats, setStats] = useState({
-    totalProperties: 0,
-    occupiedProperties: 0,
-    totalTenants: 0,
-    activeTenants: 0,
-    monthlyRevenue: 0,
-    pendingRevenue: 0,
-    overdueRevenue: 0,
-    occupancyRate: 0,
-  });
-  
-  const [recentActivities, setRecentActivities] = useState<any[]>([]);
+  const [properties, setProperties] = useState<PropertyWithLocation[]>([]);
+  const [rentals, setRentals] = useState<Rental[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
-  const currentUser = getCurrentUser();
+
+  // Estatísticas calculadas
+  const [stats, setStats] = useState({
+    monthlyRevenue: 0,
+    occupiedProperties: 0,
+    totalProperties: 0,
+    overdueAmount: 0,
+    activeTenants: 0,
+  });
 
   useEffect(() => {
     loadDashboardData();
@@ -34,96 +33,49 @@ export default function Dashboard() {
 
   const loadDashboardData = async () => {
     try {
+      setLoading(true);
+      const currentUser = getCurrentUser();
+
       if (!currentUser) {
         setLoading(false);
         return;
       }
 
-      // 1. Carregar todos os dados básicos
-      const [properties, tenants, rentals, payments] = await Promise.all([
-        propertyService.getAll(),
-        tenantService.getAll(),
-        rentalService.getAll(),
-        paymentService.getAll()
-      ]);
-
-      // 2. Filtrar dados com base no perfil do usuário
-      let filteredProperties = properties;
-      let filteredRentals = rentals;
-      let filteredPayments = payments;
+      // Carregar dados base
+      let allProperties = await propertyService.getAll();
+      let allRentals = await rentalService.getAll();
+      let allPayments = await paymentService.getAll();
+      const allTenants = await tenantService.getAll();
 
       // Se não for admin, filtrar por permissões de localização
       if (currentUser.role !== "admin") {
         const userLocationIds = await userLocationPermissionService.getByUserId(currentUser.id);
         
-        // Filtrar propriedades pelas localizações permitidas
-        filteredProperties = properties.filter(p => 
+        // Filtrar propriedades por location_id
+        allProperties = allProperties.filter(p => 
           userLocationIds.includes(p.location_id || "")
         );
 
-        // Filtrar locações pelas propriedades permitidas
-        const allowedPropertyIds = new Set(filteredProperties.map(p => p.id));
-        filteredRentals = rentals.filter(r => allowedPropertyIds.has(r.propertyId));
+        // Filtrar locações por propriedades permitidas
+        const allowedPropertyIds = allProperties.map(p => p.id);
+        allRentals = allRentals.filter(r => 
+          allowedPropertyIds.includes(r.property_id)
+        );
 
-        // Filtrar pagamentos pelas locações permitidas
-        const allowedRentalIds = new Set(filteredRentals.map(r => r.id));
-        filteredPayments = payments.filter(p => allowedRentalIds.has(p.rentalId));
+        // Filtrar pagamentos por locações permitidas
+        const allowedRentalIds = allRentals.map(r => r.id);
+        allPayments = allPayments.filter(p => 
+          allowedRentalIds.includes(p.rental_id)
+        );
       }
 
-      // 3. Calcular estatísticas com dados filtrados
-      const totalProperties = filteredProperties.length;
-      const occupiedProperties = filteredProperties.filter(p => p.status === "occupied").length;
-      const occupancyRate = totalProperties > 0 ? (occupiedProperties / totalProperties) * 100 : 0;
+      setProperties(allProperties);
+      setRentals(allRentals);
+      setPayments(allPayments);
+      setTenants(allTenants);
 
-      const totalTenants = tenants.length;
-      const activeTenants = tenants.filter(t => t.status === "active" || t.status === "rented").length;
-
-      // Cálculos Financeiros (Mês Atual)
-      const currentMonth = new Date().getMonth() + 1;
-      const currentYear = new Date().getFullYear();
-
-      const currentMonthPayments = filteredPayments.filter(p => 
-        p.referenceMonth === currentMonth && p.referenceYear === currentYear
-      );
-
-      const monthlyRevenue = currentMonthPayments
-        .filter(p => p.status === "paid")
-        .reduce((acc, curr) => acc + (curr.paidAmount || 0), 0);
-
-      const pendingRevenue = currentMonthPayments
-        .filter(p => p.status === "pending")
-        .reduce((acc, curr) => acc + (curr.expectedAmount || 0), 0);
-        
-      const overdueRevenue = filteredPayments
-        .filter(p => p.status === "overdue")
-        .reduce((acc, curr) => acc + (curr.expectedAmount || 0), 0);
-
-      setStats({
-        totalProperties,
-        occupiedProperties,
-        totalTenants,
-        activeTenants,
-        monthlyRevenue,
-        pendingRevenue,
-        overdueRevenue,
-        occupancyRate,
-      });
-
-      // Atividades Recentes (últimos pagamentos)
-      const recent = filteredPayments
-        .sort((a, b) => new Date(b.paymentDate || b.createdAt).getTime() - new Date(a.paymentDate || a.createdAt).getTime())
-        .slice(0, 5)
-        .map(p => ({
-          id: p.id,
-          type: 'payment',
-          description: `Pagamento de ${p.rental?.tenant?.name || 'Inquilino'}`,
-          amount: p.paidAmount || p.expectedAmount,
-          date: p.paymentDate || p.createdAt,
-          status: p.status
-        }));
-
-      setRecentActivities(recent);
-
+      // Calcular estatísticas
+      calculateStats(allProperties, allRentals, allPayments, allTenants);
     } catch (error) {
       console.error("Erro ao carregar dashboard:", error);
     } finally {
@@ -131,182 +83,236 @@ export default function Dashboard() {
     }
   };
 
-  if (!currentUser) {
+  const calculateStats = (
+    props: PropertyWithLocation[],
+    rents: Rental[],
+    pays: Payment[],
+    tens: Tenant[]
+  ) => {
+    const activeRentals = rents.filter(r => r.status === "active");
+    const occupiedCount = activeRentals.length;
+
+    // Receita mensal (soma de todos os pagamentos do mês atual)
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    const monthlyPayments = pays.filter(p => {
+      const paymentDate = new Date(p.due_date);
+      return (
+        paymentDate.getMonth() === currentMonth &&
+        paymentDate.getFullYear() === currentYear &&
+        (p.status === "paid" || p.status === "pending")
+      );
+    });
+
+    const monthlyRevenue = monthlyPayments.reduce((sum, p) => {
+      const amount = p.status === "paid" ? p.paid_amount : p.expected_amount;
+      return sum + (amount || 0);
+    }, 0);
+
+    // Inadimplência (pagamentos atrasados)
+    const overduePayments = pays.filter(p => {
+      if (p.status !== "pending") return false;
+      const dueDate = new Date(p.due_date);
+      return dueDate < now;
+    });
+
+    const overdueAmount = overduePayments.reduce((sum, p) => {
+      return sum + (p.expected_amount || 0);
+    }, 0);
+
+    // Inquilinos ativos
+    const activeTenantIds = new Set(activeRentals.map(r => r.tenant_id));
+    const activeTenants = tens.filter(t => activeTenantIds.has(t.id));
+
+    setStats({
+      monthlyRevenue,
+      occupiedProperties: occupiedCount,
+      totalProperties: props.length,
+      overdueAmount,
+      activeTenants: activeTenants.length,
+    });
+  };
+
+  const getRecentActivities = () => {
+    return payments
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 5)
+      .map(payment => {
+        const rental = rentals.find(r => r.id === payment.rental_id);
+        const tenant = rental ? tenants.find(t => t.id === rental.tenant_id) : null;
+        const property = rental ? properties.find(p => p.id === rental.property_id) : null;
+
+        return {
+          id: payment.id,
+          description: `Pagamento - ${tenant?.name || "Inquilino"} - ${property?.locationData?.name || "Imóvel"}`,
+          date: payment.createdAt,
+          amount: payment.status === "paid" ? payment.paid_amount : payment.expected_amount,
+          status: payment.status,
+        };
+      });
+  };
+
+  if (loading) {
     return (
       <Layout>
-        <SEO title="Dashboard - Gerenciador" />
-        <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4 text-center">
-          <div className="bg-muted p-6 rounded-full">
-            <AlertCircle className="h-12 w-12 text-muted-foreground" />
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-slate-600">Carregando dashboard...</p>
           </div>
-          <h1 className="text-2xl font-bold">Acesso Negado</h1>
-          <p className="text-muted-foreground max-w-md">
-            Você precisa estar autenticado para acessar o Dashboard.
-          </p>
         </div>
       </Layout>
     );
   }
 
+  const recentActivities = getRecentActivities();
+
   return (
     <Layout>
-      <SEO title="Dashboard - Gerenciador" />
       <div className="space-y-6">
+        {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground">
-            {currentUser.role === "admin" 
-              ? "Visão geral completa do negócio" 
-              : "Visão geral das suas localizações"}
-          </p>
+          <h1 className="text-3xl font-bold text-slate-900">Dashboard</h1>
+          <p className="text-slate-600 mt-1">Visão geral do sistema de locações</p>
         </div>
 
-        {/* KPIs Principais */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <ScrollReveal delay={0.1}>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Receita Mensal</CardTitle>
-                <DollarSign className="h-4 w-4 text-emerald-600" />
+            <Card className="border-l-4 border-l-blue-500">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-slate-600">
+                  Receita Mensal
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{formatCurrency(stats.monthlyRevenue)}</div>
-                <p className="text-xs text-muted-foreground">
-                  + {formatCurrency(stats.pendingRevenue)} pendente
+                <div className="text-2xl font-bold text-slate-900">
+                  R$ {stats.monthlyRevenue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                </div>
+                <p className="text-xs text-slate-500 mt-1">
+                  Pagamentos do mês atual
                 </p>
               </CardContent>
             </Card>
           </ScrollReveal>
 
           <ScrollReveal delay={0.2}>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Imóveis Ocupados</CardTitle>
-                <Home className="h-4 w-4 text-blue-600" />
+            <Card className="border-l-4 border-l-green-500">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-slate-600">
+                  Imóveis Ocupados
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stats.occupiedProperties} / {stats.totalProperties}</div>
-                <p className="text-xs text-muted-foreground">
-                  {stats.occupancyRate.toFixed(1)}% de ocupação
+                <div className="text-2xl font-bold text-slate-900">
+                  {stats.occupiedProperties} / {stats.totalProperties}
+                </div>
+                <p className="text-xs text-slate-500 mt-1">
+                  {stats.totalProperties > 0
+                    ? `${Math.round((stats.occupiedProperties / stats.totalProperties) * 100)}% de ocupação`
+                    : "Sem imóveis cadastrados"}
                 </p>
               </CardContent>
             </Card>
           </ScrollReveal>
 
           <ScrollReveal delay={0.3}>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Inadimplência</CardTitle>
-                <AlertCircle className="h-4 w-4 text-red-600" />
+            <Card className="border-l-4 border-l-orange-500">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-slate-600">
+                  Inadimplência
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-red-600">{formatCurrency(stats.overdueRevenue)}</div>
-                <p className="text-xs text-muted-foreground">
-                  Total em atraso acumulado
+                <div className="text-2xl font-bold text-slate-900">
+                  R$ {stats.overdueAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                </div>
+                <p className="text-xs text-slate-500 mt-1">
+                  Valores em atraso
                 </p>
               </CardContent>
             </Card>
           </ScrollReveal>
 
           <ScrollReveal delay={0.4}>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Inquilinos Ativos</CardTitle>
-                <Users className="h-4 w-4 text-violet-600" />
+            <Card className="border-l-4 border-l-purple-500">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-slate-600">
+                  Inquilinos Ativos
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stats.activeTenants}</div>
-                <p className="text-xs text-muted-foreground">
-                  Total de contratos vigentes
+                <div className="text-2xl font-bold text-slate-900">
+                  {stats.activeTenants}
+                </div>
+                <p className="text-xs text-slate-500 mt-1">
+                  Com contratos ativos
                 </p>
               </CardContent>
             </Card>
           </ScrollReveal>
         </div>
 
-        {/* Atividades Recentes */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-          <Card className="col-span-4">
+        {/* Recent Activities */}
+        <ScrollReveal delay={0.5}>
+          <Card>
             <CardHeader>
-              <CardTitle>Pagamentos Recentes</CardTitle>
+              <CardTitle>Atividades Recentes</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {recentActivities.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-4">Nenhuma atividade recente</p>
-                ) : (
-                  recentActivities.map((activity, i) => (
-                    <div key={i} className="flex items-center justify-between border-b pb-2 last:border-0 last:pb-0">
-                      <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 rounded-full bg-emerald-100 flex items-center justify-center">
-                          <CreditCard className="h-5 w-5 text-emerald-600" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-slate-700">
-                            {activity.description}
-                          </p>
-                          <p className="text-xs text-slate-400">
-                            {new Date(activity.date).toLocaleDateString()}
-                          </p>
-                        </div>
+              {recentActivities.length > 0 ? (
+                <div className="space-y-4">
+                  {recentActivities.map((activity, i) => (
+                    <div
+                      key={activity.id}
+                      className="flex items-center justify-between py-3 border-b last:border-b-0"
+                    >
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-slate-900">
+                          {activity.description}
+                        </p>
+                        <p className="text-xs text-slate-500 mt-1">
+                          {new Date(activity.date).toLocaleDateString("pt-BR", {
+                            day: "2-digit",
+                            month: "short",
+                            year: "numeric",
+                          })}
+                        </p>
                       </div>
-                      <div className="text-right">
-                        <p className="text-sm font-bold">{formatCurrency(activity.amount)}</p>
-                        <Badge variant={activity.status === 'paid' ? 'default' : 'secondary'} className="text-[10px] px-1 py-0 h-5">
-                          {activity.status === 'paid' ? 'Pago' : 'Pendente'}
+                      <div className="text-right flex items-center gap-3">
+                        <span className="text-sm font-semibold text-slate-900">
+                          R$ {(activity.amount || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                        </span>
+                        <Badge
+                          variant={
+                            activity.status === "paid"
+                              ? "default"
+                              : activity.status === "pending"
+                              ? "secondary"
+                              : "destructive"
+                          }
+                        >
+                          {activity.status === "paid"
+                            ? "Pago"
+                            : activity.status === "pending"
+                            ? "Pendente"
+                            : "Atrasado"}
                         </Badge>
                       </div>
                     </div>
-                  ))
-                )}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-center text-slate-500 py-8">
+                  Nenhuma atividade recente
+                </p>
+              )}
             </CardContent>
           </Card>
-
-          <Card className="col-span-3">
-            <CardHeader>
-              <CardTitle>Ações Rápidas</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-2">
-              <Link href="/rentals">
-                <Button variant="outline" className="w-full justify-start">
-                  <Home className="mr-2 h-4 w-4" /> Nova Locação
-                </Button>
-              </Link>
-              <Link href="/tenants">
-                <Button variant="outline" className="w-full justify-start">
-                  <Users className="mr-2 h-4 w-4" /> Novo Inquilino
-                </Button>
-              </Link>
-              <Link href="/financial">
-                <Button variant="outline" className="w-full justify-start">
-                  <TrendingUp className="mr-2 h-4 w-4" /> Relatório Financeiro
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
-        </div>
+        </ScrollReveal>
       </div>
     </Layout>
-  );
-}
-
-function DollarSign(props: any) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <line x1="12" x2="12" y1="2" y2="22" />
-      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-    </svg>
   );
 }
