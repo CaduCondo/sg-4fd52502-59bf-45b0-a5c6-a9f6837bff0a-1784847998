@@ -528,6 +528,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_auth_mapping_for_migration: {
+        Args: { p_auth_user_id: string; p_system_user_id: string }
+        Returns: undefined
+      }
       get_system_user_id: { Args: never; Returns: string }
       migrate_system_user_to_auth: {
         Args: { p_email: string; p_password: string; p_system_user_id: string }
