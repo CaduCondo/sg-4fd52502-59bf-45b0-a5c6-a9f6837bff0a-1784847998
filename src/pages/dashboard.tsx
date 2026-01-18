@@ -206,7 +206,7 @@ export default function DashboardPage() {
   const loadDashboardData = async () => {
     try {
       // Check user role for filtering
-      const userStr = localStorage.getItem("user");
+      const userStr = localStorage.getItem("rental_auth_user");
       const currentUser = userStr ? JSON.parse(userStr) : null;
       
       const [propertiesData, tenantsData, rentalsData, paymentsData] = await Promise.all([
