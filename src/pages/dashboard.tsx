@@ -433,21 +433,24 @@ export default function Dashboard() {
       <SEO title="Dashboard - Gerenciador de Locações" />
       <Layout>
         <div className="space-y-6">
-          {/* Welcome Section - Blue Card Restored */}
-          <ScrollReveal>
-            <Card className="bg-gradient-to-r from-blue-600 to-blue-500 text-white border-none shadow-lg">
-              <CardContent className="p-8">
-                <div className="space-y-2">
-                  <h2 className="text-3xl font-bold">
-                    {getGreeting()}, {user?.name?.split(' ')[0] || "Usuário"}!
-                  </h2>
-                  <p className="text-blue-100 text-lg">
-                    Bem-vindo ao painel de controle do D'Uvo Enterprise.
+          {/* Welcome Card - Blue */}
+          <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white border-0">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-3">
+                <div className="bg-white/20 p-3 rounded-lg">
+                  <Home className="h-8 w-8" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold">
+                    {getGreeting()}, {user?.name || "Usuário"}!
+                  </h1>
+                  <p className="text-blue-50 mt-1">
+                    Bem-vindo ao seu painel de controle
                   </p>
                 </div>
-              </CardContent>
-            </Card>
-          </ScrollReveal>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Header */}
           <div>

@@ -312,19 +312,37 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
 
               {/* Role */}
               <div className="space-y-2">
-                <Label htmlFor="role">Perfil</Label>
+                <Label htmlFor="edit-role">Perfil</Label>
                 <Select
                   value={selectedUser.role}
                   onValueChange={(value) => handleChange("role", value)}
                   disabled={user?.role !== "admin"}
                 >
-                  <SelectTrigger id="role">
-                    <SelectValue placeholder="Selecione o perfil" />
+                  <SelectTrigger id="edit-role">
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="admin">Administrador</SelectItem>
                     <SelectItem value="broker">Corretor</SelectItem>
                     <SelectItem value="financial">Financeiro</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Status */}
+              <div className="space-y-2">
+                <Label htmlFor="edit-status">Status</Label>
+                <Select
+                  value={selectedUser.active ? "active" : "inactive"}
+                  onValueChange={(value) => handleChange("active", value === "active" ? "true" : "false")}
+                  disabled={user?.role !== "admin"}
+                >
+                  <SelectTrigger id="edit-status">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Ativo</SelectItem>
+                    <SelectItem value="inactive">Inativo</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
