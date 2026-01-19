@@ -32,15 +32,15 @@ export default function Dashboard() {
         // Use simpler queries with explicit type casting to avoid deep instantiation issues
         const { count: properties } = await supabase
           .from("properties")
-          .select("*", { count: "exact", head: true });
+          .select("id", { count: "exact", head: true });
 
         const { count: tenants } = await supabase
           .from("tenants")
-          .select("*", { count: "exact", head: true });
+          .select("id", { count: "exact", head: true });
 
         const { count: activeRentals } = await supabase
           .from("rentals")
-          .select("*", { count: "exact", head: true })
+          .select("id", { count: "exact", head: true })
           .eq("status", "active");
 
         // Fetch payments data
