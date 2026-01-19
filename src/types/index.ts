@@ -60,34 +60,45 @@ export interface UserLocationPermission {
 
 export interface Property {
   id: string;
-  name: string;
-  address: string;
-  location: string;
-  locationId?: string; // ID do local para permissões
-  propertyIdentifier?: string; // Identificador único do imóvel
-  // Added optional fields for compatibility
+  // Location info
+  locationId: string;
+  location?: string;
+  address?: string;
   number?: string;
   complement?: string;
-  cep?: string;
-  rentValue?: number; // Alias for monthlyRent in some contexts
-  
-  type: string;
-  size: number;
-  rooms: number;
-  bathrooms: number;
-  parkingSpots: number;
-  monthlyRent: number;
-  description: string;
-  status: "available" | "occupied" | "unavailable";
-  images: string[];
-  features: string[];
   neighborhood?: string;
   city?: string;
   state?: string;
   zipCode?: string;
+  cep?: string;
+
+  // Details
+  description?: string;
+  type?: string;
+  rooms?: number;
+  bathrooms?: number;
+  area?: number;
+  size?: number; // Alias for area
+  parkingSpots?: number;
+  hasGarage?: boolean;
+  
+  // Financial
+  value?: number;
+  rentValue?: number;
+  monthlyRent?: number;
+  garageValue?: number;
   iptu?: number;
   condoFee?: number;
+
+  // Status & Metadata
+  status: "available" | "occupied" | "unavailable";
+  images?: string[];
+  features?: string[];
+  propertyIdentifier?: string;
+  name?: string;
+  ownerId?: string;
   createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Tenant {
@@ -97,10 +108,8 @@ export interface Tenant {
   phone: string;
   cpf: string;
   rg?: string;
-  // Added optional fields for compatibility
-  document?: string; // Often used as alias for CPF
+  document?: string; // Alias for cpf/cnpj
   documentType?: string;
-  
   status: "active" | "inactive" | "rented";
   birthDate?: string;
   profession?: string;
@@ -119,31 +128,39 @@ export interface Rental {
   tenantId: string;
   startDate: string;
   endDate?: string;
+  
+  // Financials
   rentAmount: number;
+  monthlyRent?: number; // Alias
+  value?: number; // Alias for total value
   depositAmount?: number;
-  status: "pending" | "active" | "completed" | "paid" | "overdue";
-  paymentDay: number;
-  contractUrl?: string;
-  autoRenew: boolean;
-  notes?: string;
+  deposit?: number; // Alias
+  garageValue?: number;
   adminFee?: number;
+
+  // Status & Config
+  status: "pending" | "active" | "completed" | "paid" | "overdue";
+  isActive?: boolean;
+  paymentDay: number;
+  autoRenew: boolean;
+  hasGarage?: boolean;
+  
+  // Relations & Meta
   property?: Property;
   tenant?: Tenant;
+  contractUrl?: string;
+  notes?: string;
+  attachments?: string[];
+  contractAttachments?: string[];
+  pixCode?: string;
+  
+  // Helper fields for display/logic
   dueDate?: string;
   receivedDate?: string;
   paidAmount?: number;
   referenceMonth?: number;
   referenceYear?: number;
-  // Compatibility
-  monthlyRent?: number;
-  value?: number;
-  isActive?: boolean;
-  hasGarage?: boolean;
-  garageValue?: number;
-  attachments?: string[];
-  contractAttachments?: string[]; // Added to fix error in rentalService
-  deposit?: number;
-  pixCode?: string; // PIX code for this rental
+  
   createdAt?: string;
 }
 
@@ -156,19 +173,21 @@ export interface Payment {
   paymentDate?: string;
   status: "pending" | "paid" | "overdue" | "partial";
   paymentMethod?: string;
+  paymentLocation?: string;
+  paymentCode?: string;
   notes?: string;
   referenceMonth: number;
   referenceYear: number;
   receiptUrl?: string;
+  attachments?: string[];
+  
+  // Fees & Discounts
   penaltyAmount?: number;
   interestAmount?: number;
   discountAmount?: number;
-  // Compatibility fields
-  paymentCode?: string;
-  lateFee?: number;
-  interest?: number;
-  paymentLocation?: string;
-  attachments?: string[];
+  lateFee?: number; // Alias
+  interest?: number; // Alias
+  
   partialPayments?: any[];
   createdAt?: string;
 }
@@ -187,8 +206,8 @@ export interface Location {
   created_at?: string;
   updated_at?: string;
   
-  // Compatibility aliases (optional, helpful for frontend transition)
-  address?: string; // map to street
-  cep?: string;     // map to zip_code
-  zipCode?: string; // map to zip_code
+  // Aliases
+  address?: string;
+  cep?: string;
+  zipCode?: string;
 }
