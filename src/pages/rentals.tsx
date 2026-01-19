@@ -313,7 +313,7 @@ export default function RentalsPage() {
       if (tenantToUpdate) {
         await tenantService.update({
           ...tenantToUpdate,
-          status: "rented" // Using the correct type value which maps to 'locatario' in UI
+          status: "rented"
         });
       }
 

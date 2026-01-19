@@ -53,15 +53,13 @@ export async function login(credentials: LoginCredentials): Promise<LoginResult>
     
     let { data: users, error: queryError } = await table
       .select("*")
-      .eq("email", credentials.email)
-      .eq("status", "active");
+      .eq("email", credentials.email);
 
     // If not found by email, try username
     if (!users || users.length === 0) {
        const result = await table
         .select("*")
-        .eq("username", credentials.email)
-        .eq("status", "active");
+        .eq("username", credentials.email);
         
        users = result.data;
        queryError = result.error;

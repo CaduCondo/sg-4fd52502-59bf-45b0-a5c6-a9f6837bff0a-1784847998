@@ -146,6 +146,49 @@ export function forceCleanLocalStorage(): void {
 }
 
 /**
+ * Initialize localStorage guard
+ * Sets up periodic checks and error handlers
+ * 
+ * DISABLED: Automatic cleanup was interfering with login sessions
+ */
+export function initializeLocalStorageGuard(): void {
+  if (typeof window === "undefined") return;
+
+  console.log("📦 LocalStorage Guard: Modo desabilitado (não limpa sessões automaticamente)");
+
+  // Keep error monitoring but don't auto-cleanup
+  window.addEventListener("error", (event) => {
+    if (
+      event.message &&
+      (event.message.includes("localStorage") ||
+        event.message.includes("sessionStorage") ||
+        event.message.includes("QuotaExceededError"))
+    ) {
+      console.warn("⚠️ Erro de storage detectado:", event.message);
+      event.preventDefault();
+    }
+  });
+
+  // Periodic validation (check only, don't clean)
+  const intervalId = setInterval(() => {
+    try {
+      const testKey = "__storage_test__";
+      localStorage.setItem(testKey, "test");
+      localStorage.removeItem(testKey);
+    } catch (error) {
+      console.warn("⚠️ Erro ao validar localStorage:", error);
+    }
+  }, 60000); // Check every minute
+
+  // Cleanup interval on page unload
+  if (typeof window !== "undefined") {
+    window.addEventListener("beforeunload", () => {
+      clearInterval(intervalId);
+    });
+  }
+}
+
+/**
  * Hook para usar em páginas protegidas
  * Redireciona automaticamente para login se inválido
  */

@@ -33,11 +33,15 @@ export const rentalService = {
     
     if (error) throw error;
 
-    // Update tenant status to locatario
+    // Update tenant status to rented
     const { error: tenantError } = await supabase
       .from("tenants")
-      .update({ status: "locatario" })
+      .update({ status: "rented" })
       .eq("id", rental.tenantId);
+
+    if (tenantError) {
+      console.error("Error updating tenant status:", tenantError);
+    }
 
     return this.mapFromDB(data);
   },
