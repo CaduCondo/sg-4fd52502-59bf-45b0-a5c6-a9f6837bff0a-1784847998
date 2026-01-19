@@ -221,12 +221,32 @@ export default function Properties() {
   };
 
   const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      available: { label: "Disponível", variant: "default" as const },
-      occupied: { label: "Alugado", variant: "secondary" as const },
-      unavailable: { label: "Indisponível", variant: "destructive" as const },
-    };
-    return statusConfig[status as keyof typeof statusConfig] || statusConfig.available;
+    switch (status) {
+      case "occupied":
+        return (
+          <Badge className="bg-blue-100 text-blue-800 border-blue-200">
+            Ocupado
+          </Badge>
+        );
+      case "available":
+        return (
+          <Badge className="bg-green-100 text-green-800 border-green-200">
+            Vago
+          </Badge>
+        );
+      case "unavailable":
+        return (
+          <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">
+            Indisponível
+          </Badge>
+        );
+      default:
+        return (
+          <Badge className="bg-gray-100 text-gray-800 border-gray-200">
+            {status}
+          </Badge>
+        );
+    }
   };
 
   return (
@@ -287,7 +307,7 @@ export default function Properties() {
                                 {property.location}
                               </p>
                             </div>
-                            <Badge variant={statusBadge.variant}>{statusBadge.label}</Badge>
+                            {statusBadge}
                           </div>
 
                           <div className="flex items-center gap-2 text-2xl font-bold text-green-600">
@@ -434,9 +454,7 @@ export default function Properties() {
                         </h3>
                         <p className="text-lg text-muted-foreground">{selectedProperty.location}</p>
                       </div>
-                      <Badge variant={getStatusBadge(selectedProperty.status).variant}>
-                        {getStatusBadge(selectedProperty.status).label}
-                      </Badge>
+                      {getStatusBadge(selectedProperty.status)}
                     </div>
 
                     <div className="flex items-center gap-2 text-3xl font-bold text-green-600">

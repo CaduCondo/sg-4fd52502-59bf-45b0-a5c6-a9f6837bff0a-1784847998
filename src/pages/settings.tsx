@@ -981,21 +981,28 @@ export default function Settings() {
                     onChange={(e) => setUserFormData({...userFormData, phone: applyPhoneMask(e.target.value)})}
                   />
                 </div>
+                {/* Campo de Perfil (Role) - Apenas admin pode alterar */}
                 <div className="space-y-2">
-                  <Label htmlFor="userRole">Perfil de Acesso</Label>
-                  <Select 
-                    value={userFormData.role} 
-                    onValueChange={(value) => setUserFormData({...userFormData, role: value})}
+                  <Label htmlFor="role">Perfil</Label>
+                  <Select
+                    value={userFormData.role}
+                    onValueChange={(value) => setUserFormData({ ...userFormData, role: value as SystemUser["role"] })}
+                    disabled={editingUser?.role !== "admin"}
                   >
-                    <SelectTrigger>
-                      <SelectValue />
+                    <SelectTrigger id="role">
+                      <SelectValue placeholder="Selecione o perfil" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="admin">Administrador</SelectItem>
-                      <SelectItem value="broker">Corretor</SelectItem>
-                      <SelectItem value="financial">Financeiro</SelectItem>
+                      <SelectItem value="corretor">Corretor</SelectItem>
+                      <SelectItem value="financeiro">Financeiro</SelectItem>
                     </SelectContent>
                   </Select>
+                  {editingUser?.role !== "admin" && (
+                    <p className="text-xs text-muted-foreground">
+                      Apenas administradores podem alterar o perfil
+                    </p>
+                  )}
                 </div>
                 {!editingUser && (
                   <>

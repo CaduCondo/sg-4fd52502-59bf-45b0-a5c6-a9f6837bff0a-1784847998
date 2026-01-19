@@ -4,11 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building2, AlertCircle, Lock, Eye, EyeOff } from "lucide-react";
+import { Building2, AlertCircle, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
 import { isAuthenticated } from "@/lib/auth";
 import { initializeStorage } from "@/lib/storage";
 import { SEO } from "@/components/SEO";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
+import { login } from "@/lib/auth";
+import Head from "next/head";
 
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
@@ -75,17 +78,16 @@ export default function Login() {
 
     try {
       // Sistema de autenticação híbrido 100% confiável
-      const { loginWithSupabaseAuth } = await import("@/lib/auth");
-      const user = await loginWithSupabaseAuth(username, password);
+      const result = await login({ email: username, password });
       
-      if (user) {
+      if (result.success && result.user) {
         // Login bem-sucedido
         localStorage.removeItem("loginAttempts");
         localStorage.removeItem("lockoutTime");
         
         console.log("✅ Login bem-sucedido!");
-        console.log("✅ Usuário:", user.name);
-        console.log("✅ Role:", user.role);
+        console.log("✅ Usuário:", result.user.name);
+        console.log("✅ Role:", result.user.role);
         
         // Aguardar sincronização
         await new Promise(resolve => setTimeout(resolve, 300));

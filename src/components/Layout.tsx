@@ -16,7 +16,10 @@ import {
   Lock,
   ChevronDown,
   Calculator,
-  Camera
+  Camera,
+  LayoutDashboard,
+  FileText,
+  TrendingUp
 } from "lucide-react";
 import { logout, getCurrentUser } from "@/lib/auth";
 import { User as UserType } from "@/types";
@@ -180,15 +183,52 @@ export function Layout({ children }: LayoutProps) {
     return true;
   };
 
-  const navigationItems = [
-    { href: "/dashboard", icon: Home, label: "Dashboard" },
-    { href: "/properties", icon: Building2, label: "Imóveis" },
-    { href: "/tenants", icon: Users, label: "Inquilinos" },
-    { href: "/rentals", icon: Building2, label: "Locações" },
-    { href: "/payments", icon: DollarSign, label: "Recebimentos" },
-    { href: "/financial", icon: Calculator, label: "Financeiro" },
-    { href: "/settings", icon: Settings, label: "Configurações" },
-  ].filter(item => shouldShowMenu(item.href));
+  const menuItems = [
+    { 
+      href: "/dashboard", 
+      icon: LayoutDashboard, 
+      label: "Dashboard",
+      roles: ["admin", "corretor", "financeiro"]
+    },
+    { 
+      href: "/properties", 
+      icon: Building2, 
+      label: "Imóveis",
+      roles: ["admin", "corretor"]
+    },
+    { 
+      href: "/tenants", 
+      icon: Users, 
+      label: "Inquilinos",
+      roles: ["admin", "corretor"]
+    },
+    { 
+      href: "/rentals", 
+      icon: FileText, 
+      label: "Locações",
+      roles: ["admin", "corretor"]
+    },
+    { 
+      href: "/payments", 
+      icon: DollarSign, 
+      label: "Pagamentos",
+      roles: ["admin", "corretor", "financeiro"]
+    },
+    { 
+      href: "/financial", 
+      icon: TrendingUp, 
+      label: "Financeiro",
+      roles: ["admin", "financeiro"]
+    },
+    { 
+      href: "/settings", 
+      icon: Settings, 
+      label: "Configurações",
+      roles: ["admin", "corretor"]
+    },
+  ];
+
+  const navigationItems = menuItems.filter(item => shouldShowMenu(item.href));
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">

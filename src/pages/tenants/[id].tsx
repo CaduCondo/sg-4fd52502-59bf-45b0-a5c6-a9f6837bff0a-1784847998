@@ -167,6 +167,36 @@ export default function TenantDetailsPage() {
     }
   };
 
+  const getStatusBadge = (status: string) => {
+    switch (status.toLowerCase()) {
+      case "rented":
+        return (
+          <Badge className="bg-blue-100 text-blue-800 border-blue-200">
+            Locatário
+          </Badge>
+        );
+      case "active":
+        return (
+          <Badge className="bg-green-100 text-green-800 border-green-200">
+            Ativo
+          </Badge>
+        );
+      case "inactive":
+      case "unavailable":
+        return (
+          <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">
+            Indisponível
+          </Badge>
+        );
+      default:
+        return (
+          <Badge className="bg-gray-100 text-gray-800 border-gray-200">
+            {status}
+          </Badge>
+        );
+    }
+  };
+
   const handleDocumentChange = (value: string) => {
     const masked = formData.documentType === "cpf" ? applyCpfMask(value) : applyCnpjMask(value);
     setFormData({ ...formData, document: masked });
@@ -235,9 +265,7 @@ export default function TenantDetailsPage() {
                   <Users className="h-5 w-5 text-emerald-600" />
                   <CardTitle className="text-lg">{tenant.name}</CardTitle>
                 </div>
-                <Badge className={getStatusColor(tenant.status)}>
-                  {getStatusLabel(tenant.status)}
-                </Badge>
+                {getStatusBadge(tenant.status)}
               </div>
             </CardHeader>
             <CardContent>

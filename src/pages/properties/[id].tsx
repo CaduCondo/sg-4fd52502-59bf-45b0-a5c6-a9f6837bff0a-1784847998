@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Building2, ArrowLeft, Save } from "lucide-react";
 import { Property, Location } from "@/types";
@@ -39,6 +40,35 @@ export default function PropertyDetailPage() {
     description: "",
     status: "available" as "available" | "occupied" | "unavailable",
   });
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "occupied":
+        return (
+          <Badge className="bg-blue-100 text-blue-800 border-blue-200">
+            Ocupado
+          </Badge>
+        );
+      case "available":
+        return (
+          <Badge className="bg-green-100 text-green-800 border-green-200">
+            Vago
+          </Badge>
+        );
+      case "unavailable":
+        return (
+          <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">
+            Indisponível
+          </Badge>
+        );
+      default:
+        return (
+          <Badge className="bg-gray-100 text-gray-800 border-gray-200">
+            {status}
+          </Badge>
+        );
+    }
+  };
 
   useEffect(() => {
     if (id && typeof id === "string") {

@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Home, User, Calendar, Trash2, XCircle, Archive, Upload, X, Users, DollarSign } from "lucide-react";
+import { Plus, Home, User, Calendar, Trash2, XCircle, Archive, Upload, X, Users, DollarSign, Building2 } from "lucide-react";
 import type { Rental, Property, Tenant, Payment } from "@/types";
 import { rentalService, propertyService, tenantService, paymentService } from "@/services";
 import { formatCurrency, applyRealMask, removeMask } from "@/lib/masks";
@@ -308,10 +308,13 @@ export default function RentalsPage() {
         });
       }
 
-      // Update tenant status to rented
-      const tenant = tenants.find((t) => t.id === formData.tenantId);
-      if (tenant) {
-        await tenantService.update({ ...tenant, status: "rented" });
+      // Update tenant status to 'locatario'
+      const tenantToUpdate = tenants.find(t => t.id === createdRental.tenantId);
+      if (tenantToUpdate) {
+        await tenantService.update({
+          ...tenantToUpdate,
+          status: "rented" // Using the correct type value which maps to 'locatario' in UI
+        });
       }
 
       toast({
