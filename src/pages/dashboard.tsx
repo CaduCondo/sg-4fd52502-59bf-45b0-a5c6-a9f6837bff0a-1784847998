@@ -21,30 +21,30 @@ export default function Dashboard() {
 
   useEffect(() => {
     const hour = new Date().getHours();
-    if (hour < 12) setGreeting("bom dia");
-    else if (hour < 18) setGreeting("boa tarde");
-    else setGreeting("boa noite");
+    if (hour < 12) setGreeting("Olá, bom dia");
+    else if (hour < 18) setGreeting("Olá, boa tarde");
+    else setGreeting("Olá, boa noite");
   }, []);
 
   useEffect(() => {
     const loadStats = async () => {
       try {
-        // Cast to any to avoid "Type instantiation is excessively deep" error
-        const { data: propertiesData } = await (supabase as any)
+        // Fetch data and count manually to avoid TypeScript deep instantiation error
+        const { data: propertiesData } = await supabase
           .from("properties")
           .select("id");
 
-        const { data: tenantsData } = await (supabase as any)
+        const { data: tenantsData } = await supabase
           .from("tenants")
           .select("id");
 
-        const { data: activeRentalsData } = await (supabase as any)
+        const { data: activeRentalsData } = await supabase
           .from("rentals")
           .select("id")
           .eq("status", "active");
 
         // Fetch payments data
-        const { data: payments } = await (supabase as any)
+        const { data: payments } = await supabase
           .from("payments")
           .select("expected_amount, paid_amount, status");
 
@@ -52,11 +52,11 @@ export default function Dashboard() {
         
         // Calculate revenue - assuming values are stored as raw numbers now (not cents)
         const monthlyRevenue = paymentsData
-          .filter((p: any) => p.status === "paid")
-          .reduce((sum: number, p: any) => sum + (Number(p.paid_amount) || Number(p.expected_amount) || 0), 0);
+          .filter((p) => p.status === "paid")
+          .reduce((sum, p) => sum + (Number(p.paid_amount) || Number(p.expected_amount) || 0), 0);
           
-        const pendingPayments = paymentsData.filter((p: any) => p.status === "pending").length;
-        const overduePayments = paymentsData.filter((p: any) => p.status === "overdue").length;
+        const pendingPayments = paymentsData.filter((p) => p.status === "pending").length;
+        const overduePayments = paymentsData.filter((p) => p.status === "overdue").length;
 
         setStats({
           properties: propertiesData?.length || 0,
@@ -90,7 +90,7 @@ export default function Dashboard() {
               </div>
               <div className="space-y-1">
                 <h2 className="text-3xl font-bold tracking-tight">
-                  Olá, {greeting} {getUserName()}!
+                  {greeting} {getUserName()}!
                 </h2>
                 <p className="text-blue-100 text-lg opacity-90">
                   Bem-vindo ao seu painel de gerenciamento de recebimento das locações dos imóveis do grupo D'Uva Enterprise Corporation!
