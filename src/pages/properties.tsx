@@ -361,28 +361,39 @@ export default function Properties() {
                   />
                 </div>
 
-                {/* Rooms */}
-                <div className="space-y-2">
-                  <Label htmlFor="rooms">Quartos</Label>
-                  <Input
-                    id="rooms"
-                    type="number"
-                    value={formData.rooms}
-                    onChange={(e) => setFormData({ ...formData, rooms: e.target.value })}
-                    placeholder="0"
-                  />
-                </div>
+                {/* Quartos e Banheiros */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="rooms">Quartos</Label>
+                    <Input
+                      id="rooms"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={formData.rooms}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, "");
+                        setFormData({ ...formData, rooms: value });
+                      }}
+                      placeholder="Ex: 3"
+                    />
+                  </div>
 
-                {/* Bathrooms */}
-                <div className="space-y-2">
-                  <Label htmlFor="bathrooms">Banheiros</Label>
-                  <Input
-                    id="bathrooms"
-                    type="number"
-                    value={formData.bathrooms}
-                    onChange={(e) => setFormData({ ...formData, bathrooms: e.target.value })}
-                    placeholder="0"
-                  />
+                  <div className="space-y-2">
+                    <Label htmlFor="bathrooms">Banheiros</Label>
+                    <Input
+                      id="bathrooms"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={formData.bathrooms}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, "");
+                        setFormData({ ...formData, bathrooms: value });
+                      }}
+                      placeholder="Ex: 2"
+                    />
+                  </div>
                 </div>
 
                 {/* Status */}

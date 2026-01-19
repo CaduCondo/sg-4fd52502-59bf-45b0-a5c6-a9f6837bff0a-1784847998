@@ -236,13 +236,10 @@ export type Database = {
           garage_value: number | null
           has_garage: boolean | null
           id: string
-          location: string
-          location_id: string | null
-          monthly_rent: number
+          location_id: string
           property_identifier: string | null
           rooms: number | null
           status: string
-          type: string
           updated_at: string | null
           value: number | null
         }
@@ -255,13 +252,10 @@ export type Database = {
           garage_value?: number | null
           has_garage?: boolean | null
           id?: string
-          location: string
-          location_id?: string | null
-          monthly_rent: number
+          location_id: string
           property_identifier?: string | null
           rooms?: number | null
           status: string
-          type: string
           updated_at?: string | null
           value?: number | null
         }
@@ -274,13 +268,10 @@ export type Database = {
           garage_value?: number | null
           has_garage?: boolean | null
           id?: string
-          location?: string
-          location_id?: string | null
-          monthly_rent?: number
+          location_id?: string
           property_identifier?: string | null
           rooms?: number | null
           status?: string
-          type?: string
           updated_at?: string | null
           value?: number | null
         }
