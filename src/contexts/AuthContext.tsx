@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 import { SystemUser } from "@/types";
 import { userStorage } from "@/lib/storage";
 import { useRouter } from "next/router";
+import { supabase } from "@/lib/supabase";
 
 interface AuthContextType {
   user: SystemUser | null;

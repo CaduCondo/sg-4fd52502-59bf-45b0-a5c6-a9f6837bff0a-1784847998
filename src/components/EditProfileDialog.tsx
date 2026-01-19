@@ -312,13 +312,13 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
 
               {/* Role */}
               <div className="space-y-2">
-                <Label htmlFor="edit-role">Perfil</Label>
+                <Label htmlFor="role">Perfil</Label>
                 <Select
-                  value={selectedUser.role}
-                  onValueChange={(value) => handleChange("role", value)}
+                  value={formData.role}
+                  onValueChange={(value) => handleChange("role", value as SystemUser["role"])}
                   disabled={user?.role !== "admin"}
                 >
-                  <SelectTrigger id="edit-role">
+                  <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -331,13 +331,13 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
 
               {/* Status */}
               <div className="space-y-2">
-                <Label htmlFor="edit-status">Status</Label>
+                <Label htmlFor="status">Status</Label>
                 <Select
-                  value={selectedUser.active ? "active" : "inactive"}
-                  onValueChange={(value) => handleChange("active", value === "active" ? "true" : "false")}
+                  value={formData.status}
+                  onValueChange={(value) => handleChange("status", value as SystemUser["status"])}
                   disabled={user?.role !== "admin"}
                 >
-                  <SelectTrigger id="edit-status">
+                  <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

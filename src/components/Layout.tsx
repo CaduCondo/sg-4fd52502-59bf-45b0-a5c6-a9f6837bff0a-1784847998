@@ -170,11 +170,27 @@ export function Layout({ children }: LayoutProps) {
   const shouldShowMenu = (menuPath: string) => {
     if (!user?.role) return false;
 
-    // ADMIN vê TUDO - sem exceções
+    // Admin sees everything
     if (user.role === "admin") return true;
 
-    // Para outros perfis, verificar permissões
-    const menuItem = menuPath.replace("/", "");
+    // Map menu paths to menu items in database
+    const menuItemMap: Record<string, string> = {
+      "/dashboard": "dashboard",
+      "/properties": "properties",
+      "/tenants": "tenants",
+      "/rentals": "rentals",
+      "/payments": "payments",
+      "/financial": "financial",
+      "/settings": "settings",
+    };
+
+    const menuItem = menuItemMap[menuPath];
+    if (!menuItem) return false;
+
+    // For Financial menu, also allow broker role
+    if (menuPath === "/financial" && user.role === "broker") return true;
+
+    // Check permissions from database
     const permission = permissions.find(
       (p) => p.role === user.role && p.menu_item === menuItem
     );

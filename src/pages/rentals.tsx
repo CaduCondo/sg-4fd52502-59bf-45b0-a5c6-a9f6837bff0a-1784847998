@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Home, Plus, User, Building2, ChevronDown, ChevronUp } from "lucide-react";
-import { getAll as getAllRentals } from "@/services/rentalService";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Home, Plus, User, Building2, CheckCircle, XCircle, ChevronDown, ChevronUp } from "lucide-react";
+import { getAll as getAllRentals, create as createRental, remove as deleteRental, update as updateRental } from "@/services/rentalService";
 import { getAll as getAllProperties } from "@/services/propertyService";
 import { getAll as getAllTenants } from "@/services/tenantService";
 import { getAll as getAllLocations } from "@/services/locationService";
@@ -131,22 +132,23 @@ export default function Rentals() {
                     {availableProperties.map((property) => {
                       const location = locations.find((loc) => loc.id === property.locationId);
                       return (
-                        <div
-                          key={property.id}
-                          className="p-3 border rounded-lg hover:bg-muted/50 transition-colors"
-                        >
-                          <div className="font-medium text-blue-600">
-                            {location?.name || "Local não encontrado"}
-                          </div>
-                          {property.complement && (
-                            <div className="text-sm text-muted-foreground">
-                              {property.complement}
+                        <Card className="hover:shadow-md transition-shadow" key={property.id}>
+                          <CardContent className="p-4 flex items-center justify-between">
+                            <div className="flex items-center gap-2 overflow-hidden">
+                              <span className="font-semibold text-blue-600 truncate">
+                                {location?.name || "Local não encontrado"}
+                              </span>
+                              {property.complement && (
+                                <span className="text-sm text-muted-foreground truncate border-l pl-2">
+                                  {property.complement}
+                                </span>
+                              )}
                             </div>
-                          )}
-                          <div className="text-sm font-semibold text-emerald-600 mt-1">
-                            {formatCurrency(property.value)}
-                          </div>
-                        </div>
+                            <span className="font-semibold text-emerald-600 whitespace-nowrap ml-2">
+                              {formatCurrency(property.value)}
+                            </span>
+                          </CardContent>
+                        </Card>
                       );
                     })}
                   </div>
@@ -170,18 +172,21 @@ export default function Rentals() {
                 ) : (
                   <div className="space-y-3">
                     {availableTenants.map((tenant) => (
-                      <div
-                        key={tenant.id}
-                        className="p-3 border rounded-lg hover:bg-muted/50 transition-colors"
-                      >
-                        <div className="font-medium">{tenant.name}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {tenant.email || "Sem e-mail"}
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          {tenant.phone || "Sem telefone"}
-                        </div>
-                      </div>
+                      <Card className="hover:shadow-md transition-shadow" key={tenant.id}>
+                        <CardContent className="p-4 flex items-center justify-between">
+                          <div className="flex items-center gap-3 overflow-hidden">
+                            <Avatar className="h-8 w-8">
+                              <AvatarFallback className="text-xs">
+                                {tenant.name.substring(0, 2).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="font-semibold truncate">{tenant.name}</span>
+                          </div>
+                          <span className="text-sm text-muted-foreground whitespace-nowrap ml-2">
+                            {tenant.phone}
+                          </span>
+                        </CardContent>
+                      </Card>
                     ))}
                   </div>
                 )}
@@ -189,51 +194,58 @@ export default function Rentals() {
             </Card>
           </div>
 
-          {/* Locações Ativas */}
+          {/* Active Rentals Section */}
           {activeRentals.length > 0 && (
-            <div className="space-y-4">
-              <h2 className="text-2xl font-semibold">Locações Ativas</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {activeRentals.map((rental) => {
-                  const property = getPropertyByRental(rental);
-                  const location = property ? locations.find((loc) => loc.id === property.locationId) : null;
-                  const tenant = tenants.find((t) => t.id === rental.tenantId);
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                  Locações Ativas
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {activeRentals.map((rental) => {
+                    const property = getPropertyByRental(rental);
+                    const location = property ? locations.find((loc) => loc.id === property.locationId) : null;
+                    const tenant = tenants.find((t) => t.id === rental.tenantId);
 
-                  return (
-                    <Card key={rental.id} className="hover:shadow-lg transition-shadow cursor-pointer">
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-lg text-blue-600">
-                          {location?.name || "Local não encontrado"}
-                        </CardTitle>
-                        {property?.complement && (
-                          <p className="text-sm text-muted-foreground">
-                            {property.complement}
-                          </p>
-                        )}
-                      </CardHeader>
-                      <CardContent className="space-y-2">
-                        <div>
-                          <p className="text-sm font-medium">Inquilino:</p>
-                          <p className="text-sm text-muted-foreground">{tenant?.name || "-"}</p>
-                        </div>
-                        <div className="flex justify-between items-center pt-2 border-t">
-                          <div>
-                            <p className="text-xs text-muted-foreground">Valor</p>
-                            <p className="font-semibold text-emerald-600">
-                              {formatCurrency(rental.value)}
+                    return (
+                      <Card key={rental.id} className="hover:shadow-lg transition-shadow cursor-pointer">
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-lg text-blue-600">
+                            {location?.name || "Local não encontrado"}
+                          </CardTitle>
+                          {property?.complement && (
+                            <p className="text-sm text-muted-foreground">
+                              {property.complement}
                             </p>
+                          )}
+                        </CardHeader>
+                        <CardContent className="space-y-2">
+                          <div>
+                            <p className="text-sm font-medium">Inquilino:</p>
+                            <p className="text-sm text-muted-foreground">{tenant?.name || "-"}</p>
                           </div>
-                          <Badge variant="default">Ativa</Badge>
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          Início: {formatDate(rental.startDate)}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-            </div>
+                          <div className="flex justify-between items-center pt-2 border-t">
+                            <div>
+                              <p className="text-xs text-muted-foreground">Valor</p>
+                              <p className="font-semibold text-emerald-600">
+                                {formatCurrency(rental.value)}
+                              </p>
+                            </div>
+                            <Badge variant="default">Ativa</Badge>
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            Início: {formatDate(rental.startDate)}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
           )}
 
           {/* Locações Inativas (Colapsável) */}

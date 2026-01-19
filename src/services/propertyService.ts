@@ -30,23 +30,17 @@ export async function getPropertyById(id: string): Promise<Property> {
 export const getById = getPropertyById;
 
 export async function createProperty(property: Omit<Property, "id" | "createdAt" | "updatedAt">): Promise<Property> {
-  // Ensure values are numbers
-  const rooms = Number(property.rooms) || 0;
-  const bathrooms = Number(property.bathrooms) || 0;
-  // Ensure value is stored as cents (integer)
-  const value = Math.round(Number(property.value) * 100);
-
   const { data, error } = await supabase
     .from("properties")
-    .insert([{
+    .insert({
       location_id: property.locationId,
       complement: property.complement,
-      rooms: rooms,
-      bathrooms: bathrooms,
-      value: value,
+      rooms: Number(property.rooms),
+      bathrooms: Number(property.bathrooms),
+      value: Math.round(Number(property.value) * 100),
       description: property.description,
       status: property.status,
-    }])
+    })
     .select()
     .single();
 
@@ -57,14 +51,13 @@ export async function createProperty(property: Omit<Property, "id" | "createdAt"
 // Alias for compatibility
 export const create = createProperty;
 
-export async function updateProperty(id: string, property: Partial<Property>): Promise<Property> {
+export async function updateProperty(id: string, property: Partial<Omit<Property, "id" | "createdAt" | "updatedAt">>): Promise<Property> {
   const updateData: any = {};
-  
+
   if (property.locationId !== undefined) updateData.location_id = property.locationId;
   if (property.complement !== undefined) updateData.complement = property.complement;
-  if (property.rooms !== undefined) updateData.rooms = Number(property.rooms) || 0;
-  if (property.bathrooms !== undefined) updateData.bathrooms = Number(property.bathrooms) || 0;
-  // Ensure value is stored as cents (integer)
+  if (property.rooms !== undefined) updateData.rooms = Number(property.rooms);
+  if (property.bathrooms !== undefined) updateData.bathrooms = Number(property.bathrooms);
   if (property.value !== undefined) updateData.value = Math.round(Number(property.value) * 100);
   if (property.description !== undefined) updateData.description = property.description;
   if (property.status !== undefined) updateData.status = property.status;

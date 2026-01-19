@@ -168,15 +168,25 @@ export default function Properties() {
     setLoading(true);
 
     try {
-      // Prepare payload with correct types
-      const payload: any = {
-        locationId: formData.locationId || null, // Handle empty string as null
-        complement: formData.complement,
+      // Validate locationId is selected
+      if (!formData.locationId) {
+        toast({
+          title: "Local é obrigatório",
+          description: "Por favor, selecione um local para o imóvel.",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+
+      const payload = {
+        locationId: formData.locationId, // UUID string
+        complement: formData.complement || "",
         rooms: parseInt(formData.rooms) || 0,
         bathrooms: parseInt(formData.bathrooms) || 0,
-        value: parseFloat(formData.value.replace(/\./g, "").replace(",", ".")) || 0,
-        description: formData.description,
-        status: formData.status,
+        value: parseFloat(formData.value) || 0,
+        description: formData.description || "",
+        status: formData.status as Property["status"],
       };
 
       if (isEditing && selectedProperty) {
@@ -187,14 +197,16 @@ export default function Properties() {
         toast({ title: "Imóvel criado com sucesso!" });
       }
 
+      await loadProperties();
       setIsDialogOpen(false);
-      loadProperties();
-    } catch (error) {
-      console.error("Erro ao salvar imóvel:", error);
-      toast({ 
-        title: "Erro ao salvar imóvel", 
-        description: "Verifique os dados e tente novamente. Certifique-se de selecionar um local.",
-        variant: "destructive" 
+      setIsViewDialogOpen(false);
+      setFormData(INITIAL_FORM_STATE);
+    } catch (error: any) {
+      console.error("Error saving property:", error);
+      toast({
+        title: "Erro ao salvar imóvel",
+        description: error.message || "Tente novamente mais tarde.",
+        variant: "destructive",
       });
     } finally {
       setLoading(false);

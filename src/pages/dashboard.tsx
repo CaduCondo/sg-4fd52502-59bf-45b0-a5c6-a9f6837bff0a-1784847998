@@ -180,10 +180,15 @@ export default function Dashboard() {
   };
 
   const getGreeting = () => {
+    if (!mounted) return "Olá";
     const hour = new Date().getHours();
     if (hour < 12) return "Bom dia";
     if (hour < 18) return "Boa tarde";
     return "Boa noite";
+  };
+
+  const getUserName = () => {
+    return user?.name || user?.email?.split("@")[0] || "Usuário";
   };
 
   useEffect(() => {
@@ -434,18 +439,18 @@ export default function Dashboard() {
       <Layout>
         <div className="space-y-6">
           {/* Welcome Card - Blue */}
-          <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white border-0">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3">
-                <div className="bg-white/20 p-3 rounded-lg">
+          <Card className="bg-gradient-to-r from-blue-600 to-blue-800 text-white">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-4">
+                <div className="bg-white/20 p-4 rounded-full">
                   <Home className="h-8 w-8" />
                 </div>
                 <div>
-                  <h1 className="text-2xl font-bold">
-                    {getGreeting()}, {user?.name || "Usuário"}!
-                  </h1>
-                  <p className="text-blue-50 mt-1">
-                    Bem-vindo ao seu painel de controle
+                  <h2 className="text-2xl font-bold">
+                    {getGreeting()}, {getUserName()}!
+                  </h2>
+                  <p className="text-blue-100 mt-1">
+                    Bem-vindo ao seu painel de gerenciamento de recebimento das locações dos imóveis do grupo D&apos;Uva Enterprise Corporation!
                   </p>
                 </div>
               </div>
