@@ -64,7 +64,7 @@ export default function Rentals() {
     // Filter available properties and active tenants - sort properties alphabetically
     const availProps = properties
       .filter((p) => p.status === "available")
-      .sort((a, b) => a.location.localeCompare(b.location));
+      .sort((a, b) => a.location ? a.location.localeCompare(b.location) : 0);
     const availTenants = tenants.filter((t) => t.status === "active");
     setAvailableProperties(availProps);
     setAvailableTenants(availTenants);
@@ -516,43 +516,64 @@ export default function Rentals() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
                 {/* Available Properties */}
                 <div className="space-y-4">
-                  <ScrollReveal delay={0.1}>
-                    <h2 className="text-xl font-bold">Imóveis Vagos</h2>
-                  </ScrollReveal>
-                  <ScrollReveal delay={0.15}>
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Imóveis Vagos</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-2">
-                          {availableProperties.length === 0 ? (
-                            <p className="text-sm text-muted-foreground">
-                              Nenhum imóvel disponível
-                            </p>
-                          ) : (
-                            availableProperties.map((property) => (
-                              <div
-                                key={property.id}
-                                className="flex items-center justify-between p-3 bg-muted rounded-lg hover:bg-muted/80 transition-colors"
-                              >
-                                <div className="flex-1">
-                                  <p className="font-medium">{property.location}</p>
-                                  {property.complement && (
-                                    <p className="text-sm text-muted-foreground">
-                                      {property.complement}
-                                    </p>
-                                  )}
-                                </div>
-                                <div className="text-right">
-                                  <p className="font-semibold text-emerald-600">
-                                    {formatCurrency(property.value || 0)}
-                                  </p>
-                                </div>
+                  <h3 className="text-lg font-semibold">Imóveis Vagos ({availableProperties.length})</h3>
+                  {availableProperties.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Nenhum imóvel disponível</p>
+                  ) : (
+                    availableProperties.slice(0, 5).map((property) => {
+                      const location = locations.find((loc) => loc.id === property.locationId);
+                      return (
+                        <Card
+                          key={property.id}
+                          className="cursor-pointer hover:shadow-md transition-shadow"
+                        >
+                          <CardContent className="p-4">
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between">
+                                <h4 className="font-semibold text-blue-600">
+                                  {location?.name || "Local não identificado"}
+                                </h4>
+                                <Badge className="bg-green-100 text-green-800 border-green-200">
+                                  Disponível
+                                </Badge>
                               </div>
-                            ))
-                          )}
-                        </div>
+                              
+                              {property.complement && (
+                                <p className="text-sm text-muted-foreground">
+                                  {property.complement}
+                                </p>
+                              )}
+                              
+                              <div className="flex items-center justify-between pt-2 border-t">
+                                <span className="text-lg font-bold text-emerald-600">
+                                  {formatCurrency(property.value || 0)}
+                                </span>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })
+                  )}
+                  <ScrollReveal>
+                    <Card className="border-2 border-dashed border-primary/30 hover:border-primary/50 transition-colors cursor-pointer bg-primary/5">
+                      <CardContent className="p-6 text-center">
+                        <Building2 className="h-12 w-12 mx-auto mb-3 text-primary/60" />
+                        <p className="text-sm text-muted-foreground mb-3">
+                          {availableProperties.length > 5
+                            ? `Mais ${availableProperties.length - 5} imóveis disponíveis`
+                            : "Veja todos os imóveis disponíveis"}
+                        </p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            router.push("/properties?filter=available");
+                          }}
+                        >
+                          Ver Todos os Imóveis
+                        </Button>
                       </CardContent>
                     </Card>
                   </ScrollReveal>
@@ -594,100 +615,66 @@ export default function Rentals() {
                 </div>
               </div>
 
-              {/* Vacant Properties */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {availableProperties.map((property) => (
-                  <Card key={property.id} className="hover:shadow-lg transition-shadow">
-                    <CardHeader className="pb-3">
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <CardTitle className="text-lg font-semibold text-blue-600">
-                            {property.location}
-                          </CardTitle>
-                          {property.complement && (
-                            <p className="text-sm text-muted-foreground mt-1">
-                              {property.complement}
-                            </p>
-                          )}
-                        </div>
-                        <Badge variant="secondary" className="ml-2">
-                          Vago
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-muted-foreground">Valor:</span>
-                          <span className="text-lg font-bold text-green-600">
-                            {property.value?.toLocaleString("pt-BR", {
-                              style: "currency",
-                              currency: "BRL"
-                            })}
-                          </span>
-                        </div>
-                        <Button
-                          onClick={() => {
-                            // Pre-select property in the dialog
-                            setFormData(prev => ({ ...prev, propertyId: property.id }));
-                            setIsDialogOpen(true);
-                          }}
-                          className="w-full mt-2"
-                        >
-                          <Plus className="h-4 w-4 mr-2" />
-                          Criar Locação
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-
               {/* Active Rentals */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {activeRentals.map((rental) => {
                   const property = properties.find((p) => p.id === rental.propertyId);
                   const tenant = tenants.find((t) => t.id === rental.tenantId);
+                  const location = property ? locations.find((loc) => loc.id === property.locationId) : null;
 
                   return (
-                    <Card key={rental.id} className="hover:shadow-md transition-shadow">
+                    <Card
+                      key={rental.id}
+                      className="cursor-pointer hover:shadow-lg transition-shadow"
+                      onClick={() => router.push(`/rentals/${rental.id}`)}
+                    >
                       <CardHeader className="pb-3">
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-start justify-between">
                           <div className="flex-1">
-                            <CardTitle className="text-lg text-blue-600">
-                              {property?.location || "Imóvel não encontrado"}
+                            <CardTitle className="text-lg text-blue-600 mb-1">
+                              {location?.name || "Local não identificado"}
                             </CardTitle>
                             {property?.complement && (
-                              <p className="text-sm text-muted-foreground mt-1">
+                              <p className="text-sm text-muted-foreground">
                                 {property.complement}
                               </p>
                             )}
                           </div>
-                          <Badge variant="default">
-                            Ativa
+                          <Badge className="bg-green-100 text-green-800 border-green-200">
+                            Ativo
                           </Badge>
                         </div>
                       </CardHeader>
-                      <CardContent>
+                      <CardContent className="space-y-3">
                         <div className="space-y-2">
                           <div className="flex items-center gap-2 text-sm">
-                            <Users className="h-4 w-4 text-muted-foreground" />
-                            <span>{tenant?.name || "Inquilino não encontrado"}</span>
+                            <User className="h-4 w-4 text-muted-foreground" />
+                            <span className="font-medium">{tenant?.name || "Inquilino não identificado"}</span>
                           </div>
-                          <div className="flex items-center gap-2 text-sm">
-                            <Calendar className="h-4 w-4 text-muted-foreground" />
+                          
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Calendar className="h-4 w-4" />
                             <span>
-                              Início: {rental.startDate ? new Date(rental.startDate).toLocaleDateString("pt-BR") : "N/A"}
+                              Início: {new Date(rental.startDate).toLocaleDateString("pt-BR")}
                             </span>
                           </div>
-                          <div className="flex items-center justify-between mt-3 pt-3 border-t">
-                            <span className="text-sm text-muted-foreground">Valor:</span>
-                            <span className="text-lg font-bold text-green-600">
-                              {rental.value?.toLocaleString("pt-BR", {
-                                style: "currency",
-                                currency: "BRL"
-                              })}
-                            </span>
+                          
+                          {rental.endDate && (
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <Calendar className="h-4 w-4" />
+                              <span>
+                                Término: {new Date(rental.endDate).toLocaleDateString("pt-BR")}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="pt-3 border-t flex items-center justify-between">
+                          <div>
+                            <p className="text-xs text-muted-foreground">Aluguel Mensal</p>
+                            <p className="text-lg font-bold text-emerald-600">
+                              {formatCurrency(rental.monthlyRent || 0)}
+                            </p>
                           </div>
                         </div>
                       </CardContent>

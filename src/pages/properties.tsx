@@ -41,11 +41,15 @@ export default function Properties() {
   const { toast } = useToast();
   const [properties, setProperties] = useState<Property[]>([]);
   const [locations, setLocations] = useState<LocationType[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
-  const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState<PropertyFormState>(INITIAL_FORM_STATE);
+  const [searchText, setSearchText] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"available" | "occupied" | "unavailable" | "all">("all");
+  const [locationFilter, setLocationFilter] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<"value" | "rooms" | "bathrooms" | "status" | "none">("none");
 
   // Get selected location for displaying address info
   const selectedLocation = locations.find(loc => loc.id === formData.locationId);

@@ -214,6 +214,27 @@ export default function Settings() {
     loadPermissions();
   }, []);
 
+  // Build menuPermissions object from permissions array
+  useEffect(() => {
+    const permissionsMap: Record<string, string[]> = {};
+    permissions.forEach((perm) => {
+      if (perm.can_access) {
+        if (!permissionsMap[perm.role]) {
+          permissionsMap[perm.role] = [];
+        }
+        permissionsMap[perm.role].push(perm.menu_item);
+      }
+    });
+    setMenuPermissions(permissionsMap);
+  }, [permissions]);
+
+  useEffect(() => {
+    loadCurrentUser();
+    loadConfig();
+    loadUsers();
+    loadLocations();
+  }, []);
+
   // Missing Handlers Implementation
   const handleConfigSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -582,8 +603,10 @@ export default function Settings() {
   };
 
   const getMenuPermission = (role: string, menuItem: string): boolean => {
-    const rolePerms = menuPermissions[role] || [];
-    return rolePerms.includes(menuItem);
+    const perm = permissions.find(
+      (p) => p.role === role && p.menu_item === menuItem
+    );
+    return perm ? perm.can_access : false;
   };
 
   const filteredLocations = locations.filter((location) => {
