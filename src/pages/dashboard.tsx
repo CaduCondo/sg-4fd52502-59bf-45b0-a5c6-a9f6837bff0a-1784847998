@@ -21,7 +21,7 @@ import { ScrollReveal } from "@/components/animations/ScrollReveal";
 import { userLocationPermissionService } from "@/services/userLocationPermissionService";
 import { getCurrentUser } from "@/lib/auth";
 
-export default function DashboardPage() {
+export default function Dashboard() {
   const router = useRouter();
   const { toast } = useToast();
   const [properties, setProperties] = useState<Property[]>([]);

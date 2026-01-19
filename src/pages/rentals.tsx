@@ -557,105 +557,106 @@ export default function RentalsPage() {
                 </div>
               </div>
 
-              {/* Active Rentals */}
-              <div className="space-y-4">
-                <ScrollReveal delay={0.3}>
-                  <h2 className="text-2xl font-bold">Locações Ativas</h2>
-                </ScrollReveal>
-
-                {activeRentals.length === 0 ? (
-                  <ScrollReveal delay={0.35}>
-                    <Card>
-                      <CardContent className="py-12 text-center">
-                        <Home className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                        <h3 className="text-lg font-semibold mb-2">Nenhuma locação ativa</h3>
-                        <p className="text-muted-foreground mb-4">
-                          Cadastre uma nova locação para começar.
-                        </p>
-                        <Button onClick={handleOpenDialog} className="bg-emerald-600 hover:bg-emerald-700">
-                          <Plus className="mr-2 h-4 w-4" />
-                          Nova Locação
+              {/* Vacant Properties */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {availableProperties.map((property) => (
+                  <Card key={property.id} className="hover:shadow-lg transition-shadow">
+                    <CardHeader className="pb-3">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <CardTitle className="text-lg font-semibold text-blue-600">
+                            {property.location}
+                          </CardTitle>
+                          {property.complement && (
+                            <p className="text-sm text-muted-foreground mt-1">
+                              {property.complement}
+                            </p>
+                          )}
+                        </div>
+                        <Badge variant="secondary" className="ml-2">
+                          Vago
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-muted-foreground">Valor:</span>
+                          <span className="text-lg font-bold text-green-600">
+                            {property.rentValue?.toLocaleString("pt-BR", {
+                              style: "currency",
+                              currency: "BRL"
+                            })}
+                          </span>
+                        </div>
+                        <Button
+                          onClick={() => {
+                            // Pre-select property in the dialog
+                            setFormData(prev => ({ ...prev, propertyId: property.id }));
+                            setIsDialogOpen(true);
+                          }}
+                          className="w-full mt-2"
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Criar Locação
                         </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              {/* Active Rentals */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {activeRentals.map((rental) => {
+                  const property = properties.find((p) => p.id === rental.propertyId);
+                  const tenant = tenants.find((t) => t.id === rental.tenantId);
+
+                  return (
+                    <Card key={rental.id} className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => router.push(`/rentals/${rental.id}`)}>
+                      <CardHeader className="pb-3">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <CardTitle className="text-lg font-semibold text-blue-600">
+                              {property?.location || "Imóvel não encontrado"}
+                            </CardTitle>
+                            {property?.complement && (
+                              <p className="text-sm text-muted-foreground mt-1">
+                                {property.complement}
+                              </p>
+                            )}
+                          </div>
+                          <Badge variant="default">
+                            Ativa
+                          </Badge>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 text-sm">
+                            <Users className="h-4 w-4 text-muted-foreground" />
+                            <span>{tenant?.name || "Inquilino não encontrado"}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm">
+                            <Calendar className="h-4 w-4 text-muted-foreground" />
+                            <span>
+                              Início: {rental.startDate ? new Date(rental.startDate).toLocaleDateString("pt-BR") : "N/A"}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between mt-3 pt-3 border-t">
+                            <span className="text-sm text-muted-foreground">Valor:</span>
+                            <span className="text-lg font-bold text-green-600">
+                              {rental.value?.toLocaleString("pt-BR", {
+                                style: "currency",
+                                currency: "BRL"
+                              })}
+                            </span>
+                          </div>
+                        </div>
                       </CardContent>
                     </Card>
-                  </ScrollReveal>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {activeRentals.map((rental, index) => {
-                      const property = getPropertyInfo(rental.propertyId);
-                      const tenant = getTenantInfo(rental.tenantId);
-
-                      return (
-                        <FloatingCard key={rental.id} delay={index * 0.1}>
-                          <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => router.push(`/rentals/${rental.id}`)}>
-                            <CardHeader className="pb-3">
-                              <CardTitle className="flex items-center justify-between">
-                                <div className="flex flex-col gap-1">
-                                  <span className="flex items-center gap-2">
-                                    <Home className="h-5 w-5 text-emerald-600" />
-                                    {property?.location || "N/A"}
-                                  </span>
-                                  {property?.complement && (
-                                    <span className="text-sm font-normal text-muted-foreground">
-                                      {property.complement}
-                                    </span>
-                                  )}
-                                </div>
-                                <Badge className="bg-blue-500">Ativa</Badge>
-                              </CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-2">
-                              <div className="flex items-start gap-2">
-                                <Users className="h-4 w-4 text-muted-foreground mt-0.5" />
-                                <div className="flex-1">
-                                  <p className="text-sm font-medium">{tenant?.name || "N/A"}</p>
-                                  {tenant?.document && (
-                                    <p className="text-xs text-muted-foreground">{tenant.document}</p>
-                                  )}
-                                </div>
-                              </div>
-                              <div className="flex items-center justify-between pt-2 border-t">
-                                <div className="flex items-center gap-2">
-                                  <DollarSign className="h-4 w-4 text-emerald-600" />
-                                  <span className="text-lg font-bold text-emerald-600">
-                                    {formatCurrency(rental.value)}
-                                  </span>
-                                </div>
-                                <p className="text-xs text-muted-foreground">
-                                  Vencimento dia {rental.paymentDay}
-                                </p>
-                              </div>
-                            </CardContent>
-                            <CardFooter className="pt-3 border-t flex gap-2">
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                className="flex-1"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedRental(rental);
-                                  setIsEndDialogOpen(true);
-                                }}
-                              >
-                                Encerrar
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDelete(rental);
-                                }}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </CardFooter>
-                          </Card>
-                        </FloatingCard>
-                      );
-                    })}
-                  </div>
-                )}
+                  );
+                })}
               </div>
 
               {/* Inactive Rentals Button */}

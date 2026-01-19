@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { Layout } from "@/components/Layout";
 import { SEO } from "@/components/SEO";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -286,54 +286,43 @@ export default function Properties() {
             </Card>
           ) : (
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {properties.map((property, index) => {
+              {properties.map((property) => {
+                // Find location name if needed, or use property.location directly
+                // Based on previous code, property.location seems to be the name/street
                 const locationData = getLocationData(property.locationId || "");
                 const statusBadge = getStatusBadge(property.status);
 
                 return (
-                  <ScrollReveal key={property.id} delay={index * 0.1}>
+                  <ScrollReveal key={property.id} delay={0.1}>
                     <Card
                       className="cursor-pointer hover:shadow-lg transition-shadow"
                       onClick={() => handleCardClick(property)}
                     >
-                      <CardContent className="pt-6">
-                        <div className="space-y-4">
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                              <h3 className="font-semibold text-lg">
-                                {locationData?.name || "Local não definido"}
-                              </h3>
-                              <p className="text-sm text-muted-foreground">
-                                {property.location}
+                      <CardHeader>
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <CardTitle className="text-lg font-semibold text-blue-600">
+                              {property.location}
+                            </CardTitle>
+                            {property.complement && (
+                              <p className="text-sm text-muted-foreground mt-1">
+                                {property.complement}
                               </p>
-                            </div>
-                            {statusBadge}
+                            )}
                           </div>
-
-                          <div className="flex items-center gap-2 text-2xl font-bold text-green-600">
-                            <DollarSign className="h-6 w-6" />
-                            {formatCurrency(property.monthlyRent)}
+                          {statusBadge}
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-muted-foreground">Valor:</span>
+                            <span className="text-lg font-bold text-green-600">
+                              {formatCurrency(property.monthlyRent)}
+                            </span>
                           </div>
-
-                          {locationData && (
-                            <div className="space-y-2 text-sm text-muted-foreground">
-                              <div className="flex items-start gap-2">
-                                <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                                <div>
-                                  <p>{locationData.street}, {locationData.number}</p>
-                                  <p>{locationData.neighborhood}</p>
-                                  <p>{locationData.city}/{locationData.state}</p>
-                                  {locationData.zipCode && <p>CEP: {locationData.zipCode}</p>}
-                                </div>
-                              </div>
-                            </div>
-                          )}
-
-                          {property.description && (
-                            <p className="text-sm text-muted-foreground line-clamp-2">
-                              {property.description}
-                            </p>
-                          )}
+                          
+                          {/* Removed address/description as requested */}
                         </div>
                       </CardContent>
                     </Card>

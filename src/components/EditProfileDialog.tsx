@@ -278,24 +278,28 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
                 />
               </div>
 
+              {/* Role */}
               <div className="space-y-2">
-                <Label htmlFor="role" className="flex items-center gap-2">
-                  <Building2 className="h-4 w-4" />
-                  Função
-                </Label>
-                <Select
-                  value={selectedUser.role}
+                <Label htmlFor="role">Perfil</Label>
+                <Select 
+                  value={selectedUser.role} 
                   onValueChange={(value) => handleChange("role", value)}
+                  disabled={selectedUser.role !== "admin"} // ✅ Only admin can change role
                 >
-                  <SelectTrigger>
-                    <SelectValue />
+                  <SelectTrigger id="role">
+                    <SelectValue placeholder="Selecione o perfil" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="admin">Administrador</SelectItem>
-                    <SelectItem value="manager">Gerente</SelectItem>
-                    <SelectItem value="broker">Corretor</SelectItem>
+                    <SelectItem value="corretor">Corretor</SelectItem>
+                    <SelectItem value="financeiro">Financeiro</SelectItem>
                   </SelectContent>
                 </Select>
+                {selectedUser.role !== "admin" && (
+                  <p className="text-xs text-muted-foreground">
+                    Apenas administradores podem alterar o perfil
+                  </p>
+                )}
               </div>
             </div>
           </div>

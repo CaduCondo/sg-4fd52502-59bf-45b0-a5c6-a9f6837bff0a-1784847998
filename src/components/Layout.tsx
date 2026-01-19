@@ -159,48 +159,48 @@ export function Layout({ children }: LayoutProps) {
   };
 
   const menuItems = [
-    { 
-      href: "/dashboard", 
-      icon: LayoutDashboard, 
+    {
       label: "Dashboard",
+      icon: Home,
+      href: "/dashboard",
       roles: ["admin", "corretor", "financeiro"]
     },
-    { 
-      href: "/properties", 
-      icon: Building2, 
+    {
       label: "Imóveis",
+      icon: Building2,
+      href: "/properties",
       roles: ["admin", "corretor"]
     },
-    { 
-      href: "/tenants", 
-      icon: Users, 
+    {
       label: "Inquilinos",
+      icon: Users,
+      href: "/tenants",
       roles: ["admin", "corretor"]
     },
-    { 
-      href: "/rentals", 
-      icon: FileText, 
+    {
       label: "Locações",
+      icon: FileText,
+      href: "/rentals",
       roles: ["admin", "corretor"]
     },
-    { 
-      href: "/payments", 
-      icon: DollarSign, 
+    {
       label: "Pagamentos",
-      roles: ["admin", "corretor", "financeiro"]
-    },
-    { 
-      href: "/financial", 
-      icon: TrendingUp, 
-      label: "Financeiro",
+      icon: DollarSign,
+      href: "/payments",
       roles: ["admin", "financeiro"]
     },
-    { 
-      href: "/settings", 
-      icon: Settings, 
-      label: "Configurações",
-      roles: ["admin", "corretor"]
+    {
+      label: "Financeiro",
+      icon: TrendingUp,
+      href: "/financial",
+      roles: ["admin", "financeiro"]
     },
+    {
+      label: "Configurações",
+      icon: Settings,
+      href: "/settings",
+      roles: ["admin", "corretor", "financeiro"]
+    }
   ];
 
   const navigationItems = menuItems.filter(item => shouldShowMenu(item.href));
