@@ -313,10 +313,10 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
               {/* Role */}
               <div className="space-y-2">
                 <Label htmlFor="role">Perfil</Label>
-                <Select 
-                  value={selectedUser.role} 
+                <Select
+                  value={selectedUser.role}
                   onValueChange={(value) => handleChange("role", value)}
-                  disabled={selectedUser.role !== "admin"} // ✅ Apenas para demonstração, ideal seria checar currentUser
+                  disabled={user?.role !== "admin"}
                 >
                   <SelectTrigger id="role">
                     <SelectValue placeholder="Selecione o perfil" />

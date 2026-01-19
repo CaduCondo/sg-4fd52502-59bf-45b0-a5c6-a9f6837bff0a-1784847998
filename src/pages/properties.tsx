@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Layout } from "@/components/Layout";
 import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -53,6 +53,9 @@ export default function Properties() {
 
   // Get selected location for displaying address info
   const selectedLocation = locations.find(loc => loc.id === formData.locationId);
+
+  // Fix: Renaming function to match usage or referencing the existing one
+  const handleNewProperty = handleOpenCreateDialog;
 
   const loadProperties = async () => {
     setLoading(true);
@@ -200,7 +203,7 @@ export default function Properties() {
                 Imóveis
               </h1>
               <p className="text-muted-foreground mt-1">
-                Gerencie o cadastro de imóveis disponíveis para locação
+                {properties.length} imóveis cadastrados
               </p>
             </div>
             <Button onClick={handleOpenCreateDialog}>
@@ -209,80 +212,226 @@ export default function Properties() {
             </Button>
           </div>
 
+          {/* Filters Section */}
+          <Card className="mb-6">
+            <CardContent className="p-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {/* Search Input */}
+                <div className="md:col-span-2">
+                  <Input
+                    type="text"
+                    placeholder="Buscar por local, complemento ou observação..."
+                    value={searchText}
+                    onChange={(e) => setSearchText(e.target.value)}
+                    className="w-full"
+                  />
+                </div>
+
+                {/* Status Filter */}
+                <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val as any)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todos os status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os status</SelectItem>
+                    <SelectItem value="available">Disponível</SelectItem>
+                    <SelectItem value="occupied">Ocupado</SelectItem>
+                    <SelectItem value="unavailable">Indisponível</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {/* Location Filter */}
+                <Select value={locationFilter} onValueChange={setLocationFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todos os locais" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os locais</SelectItem>
+                    {locations.map((loc) => (
+                      <SelectItem key={loc.id} value={loc.id}>
+                        {loc.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Sort By */}
+              <div className="mt-4">
+                <Select value={sortBy} onValueChange={(val) => setSortBy(val as any)}>
+                  <SelectTrigger className="w-full md:w-64">
+                    <SelectValue placeholder="Ordenar por" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="alphabetic">Alfabético (Local)</SelectItem>
+                    <SelectItem value="status">Status</SelectItem>
+                    <SelectItem value="value-asc">Valor Menor</SelectItem>
+                    <SelectItem value="value-desc">Valor Maior</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
+
           {loading && properties.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-muted-foreground">Carregando imóveis...</p>
             </div>
           ) : properties.length === 0 ? (
             <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <Building2 className="h-16 w-16 text-muted-foreground mb-4" />
-                <p className="text-lg font-medium mb-2">Nenhum imóvel cadastrado</p>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Comece cadastrando seu primeiro imóvel
+              <CardContent className="text-center py-12">
+                <Building2 className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                <h3 className="text-lg font-semibold mb-2">Nenhum imóvel cadastrado</h3>
+                <p className="text-muted-foreground mb-4">
+                  Comece adicionando seu primeiro imóvel
                 </p>
-                <Button onClick={handleOpenCreateDialog}>
+                <Button onClick={handleNewProperty}>
                   <Plus className="mr-2 h-4 w-4" />
-                  Cadastrar Imóvel
+                  Adicionar Imóvel
                 </Button>
               </CardContent>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {properties.map((property) => {
-                const location = getLocationData(property.locationId);
+            <>
+              {/* Apply filters and sorting */}
+              {(() => {
+                // 1. Filter by search text
+                let filtered = properties.filter((property) => {
+                  if (!searchText) return true;
+                  const location = locations.find((l) => l.id === property.locationId);
+                  const searchLower = searchText.toLowerCase();
+                  return (
+                    location?.name.toLowerCase().includes(searchLower) ||
+                    property.complement?.toLowerCase().includes(searchLower) ||
+                    property.description?.toLowerCase().includes(searchLower)
+                  );
+                });
+
+                // 2. Filter by status
+                if (statusFilter !== "all") {
+                  filtered = filtered.filter((p) => p.status === statusFilter);
+                }
+
+                // 3. Filter by location
+                if (locationFilter !== "all") {
+                  filtered = filtered.filter((p) => p.locationId === locationFilter);
+                }
+
+                // 4. Sort
+                filtered.sort((a, b) => {
+                  const locA = locations.find((l) => l.id === a.locationId);
+                  const locB = locations.find((l) => l.id === b.locationId);
+
+                  switch (sortBy) {
+                    case "alphabetic":
+                      return (locA?.name || "").localeCompare(locB?.name || "");
+                    case "status":
+                      return a.status.localeCompare(b.status);
+                    case "value-asc":
+                      return a.value - b.value;
+                    case "value-desc":
+                      return b.value - a.value;
+                    default:
+                      return 0;
+                  }
+                });
+
                 return (
-                  <Card
-                    key={property.id}
-                    className="cursor-pointer hover:shadow-lg transition-shadow relative"
-                    onClick={() => handleOpenEditDialog(property)}
-                  >
-                    <CardHeader className="pb-3">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <CardTitle className="text-lg text-blue-600">
-                            {location?.name || "Local não identificado"}
-                          </CardTitle>
-                          {property.complement && (
-                            <p className="text-sm text-muted-foreground mt-1">
-                              {property.complement}
-                            </p>
-                          )}
-                        </div>
-                        {getStatusBadge(property.status || "available")}
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <span>🛏️ {property.rooms || 0} quartos</span>
-                        <span>🚿 {property.bathrooms || 0} banheiros</span>
-                      </div>
-                      
-                      {property.description && (
-                        <p className="text-sm text-muted-foreground line-clamp-2">
-                          {property.description}
-                        </p>
-                      )}
-                      
-                      <div className="flex items-center justify-between pt-2 border-t">
-                        <div className="text-lg font-bold text-emerald-600">
-                          {property.value ? formatCurrency(property.value) : "R$ 0,00"}
-                        </div>
-                        
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                          onClick={(e) => handleDeleteProperty(property.id, e)}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {filtered.map((property) => {
+                      const location = getLocationData(property.locationId);
+                      return (
+                        <Card
+                          key={property.id}
+                          className="cursor-pointer hover:shadow-lg transition-shadow relative"
+                          onClick={() => handleOpenEditDialog(property)}
                         >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
+                          <CardHeader className="pb-3">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <CardTitle className="text-lg text-blue-600">
+                                  {location?.name || "Local não identificado"}
+                                </CardTitle>
+                                {property.complement && (
+                                  <p className="text-sm text-muted-foreground mt-1">
+                                    {property.complement}
+                                  </p>
+                                )}
+                              </div>
+                              {getStatusBadge(property.status || "available")}
+                            </div>
+                          </CardHeader>
+                          <CardContent className="space-y-3">
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                              <span>🛏️ {property.rooms || 0} quartos</span>
+                              <span>🚿 {property.bathrooms || 0} banheiros</span>
+                            </div>
+                            
+                            {property.description && (
+                              <p className="text-sm text-muted-foreground line-clamp-2">
+                                {property.description}
+                              </p>
+                            )}
+                            
+                            <div className="flex items-center justify-between pt-2 border-t">
+                              <div className="text-lg font-bold text-emerald-600">
+                                {property.value ? formatCurrency(property.value / 100) : "R$ 0,00"}
+                              </div>
+                              
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                                onClick={(e) => handleDeleteProperty(property.id, e)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
                 );
-              })}
-            </div>
+              })()}
+
+              {/* No results message */}
+              {(() => {
+                let filtered = properties.filter((property) => {
+                  if (!searchText) return true;
+                  const location = locations.find((l) => l.id === property.locationId);
+                  const searchLower = searchText.toLowerCase();
+                  return (
+                    location?.name.toLowerCase().includes(searchLower) ||
+                    property.complement?.toLowerCase().includes(searchLower) ||
+                    property.description?.toLowerCase().includes(searchLower)
+                  );
+                });
+
+                if (statusFilter !== "all") {
+                  filtered = filtered.filter((p) => p.status === statusFilter);
+                }
+
+                if (locationFilter !== "all") {
+                  filtered = filtered.filter((p) => p.locationId === locationFilter);
+                }
+
+                if (filtered.length === 0) {
+                  return (
+                    <Card className="mt-6">
+                      <CardContent className="text-center py-12">
+                        <Building2 className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                        <h3 className="text-lg font-semibold mb-2">Nenhum resultado encontrado</h3>
+                        <p className="text-muted-foreground">
+                          Tente ajustar os filtros de busca
+                        </p>
+                      </CardContent>
+                    </Card>
+                  );
+                }
+                return null;
+              })()}
+            </>
           )}
         </div>
 

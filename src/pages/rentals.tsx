@@ -11,8 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Home, User, Calendar, Trash2, XCircle, Archive, Upload, X, Users, DollarSign, Building2, Edit } from "lucide-react";
-import type { Rental, Property, Tenant, Payment } from "@/types";
+import { Plus, Home, User, Calendar, Trash2, Archive, Upload, Users, DollarSign, Building2, Edit, Key, CheckCircle, XCircle, ChevronDown, ChevronUp, X } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import type { Rental, Property, Tenant, Payment, Location } from "@/types";
 import { rentalService, propertyService, tenantService, paymentService } from "@/services";
 import { formatCurrency, applyRealMask, removeMask } from "@/lib/masks";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
@@ -23,26 +24,34 @@ import { getAll as getAllRentals, create as createRental, remove as deleteRental
 import { getAll as getAllProperties, update as updateProperty } from "@/services/propertyService";
 import { getAll as getAllTenants, update as updateTenant } from "@/services/tenantService";
 import { getAll as getAllPayments, create as createPayment, deletePendingByRentalId, deleteFutureByRentalId } from "@/services/paymentService";
+import { getAll as getAllLocations } from "@/services/locationService";
 import { hasPermission } from "@/lib/permissions";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function Rentals() {
+  const { user } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
+
   const [rentals, setRentals] = useState<Rental[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [availableProperties, setAvailableProperties] = useState<Property[]>([]);
   const [availableTenants, setAvailableTenants] = useState<Tenant[]>([]);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isInactiveDialogOpen, setIsInactiveDialogOpen] = useState(false);
-  const [isEndDialogOpen, setIsEndDialogOpen] = useState(false);
-  const [selectedRental, setSelectedRental] = useState<Rental | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [showInactive, setShowInactive] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const currentUser = getCurrentUser();
-  const { user } = useAuth();
+  
+  // Helper for currentUser if needed, though we have 'user' from useAuth
+  const currentUser = user;
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return "";
+    const [year, month, day] = dateString.split("-");
+    return `${day}/${month}/${year}`;
+  };
 
   const [formData, setFormData] = useState({
     propertyId: "",
@@ -72,7 +81,7 @@ export default function Rentals() {
 
   const loadRentals = async () => {
     try {
-      setIsLoading(true);
+      setLoading(true);
       const [rentalsData, propertiesData, tenantsData] = await Promise.all([
         getAllRentals(),
         getAllProperties(),
@@ -89,7 +98,7 @@ export default function Rentals() {
         variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
@@ -98,20 +107,23 @@ export default function Rentals() {
       setLoading(true);
       console.log("🔍 Loading rental data...");
       
-      const [rentalsData, propertiesData, tenantsData] = await Promise.all([
+      const [rentalsData, propertiesData, tenantsData, locationsData] = await Promise.all([
         rentalService.getAll(),
         propertyService.getAll(),
         tenantService.getAll(),
+        getAllLocations(),
       ]);
 
       console.log("📦 Rentals loaded:", rentalsData);
       console.log("📦 Properties loaded:", propertiesData);
       console.log("📦 Tenants loaded:", tenantsData);
+      console.log("📦 Locations loaded:", locationsData);
 
       // CRITICAL: Show ALL data without filtering by permissions
       setRentals(rentalsData);
       setProperties(propertiesData);
       setTenants(tenantsData);
+      setLocations(locationsData);
     } catch (error) {
       console.error("Error loading data:", error);
       toast({
@@ -486,600 +498,256 @@ export default function Rentals() {
         description="Gerencie as locações de imóveis"
       />
       <Layout>
-        <div className="space-y-8">
-          <ScrollReveal>
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <div>
-                <h1 className="text-3xl font-bold tracking-tight">Locações</h1>
-                <p className="text-muted-foreground mt-2">
-                  Gerencie todas as locações ativas e inativas
-                </p>
-              </div>
-              <div className="flex justify-end mb-6">
-                {hasPermission(user?.role, "canCreateRental") && (
-                  <Button onClick={() => router.push("/rentals/new")}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Nova Locação
-                  </Button>
-                )}
-              </div>
+        {/* Header with New Rental Button */}
+        <ScrollReveal>
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h1 className="text-3xl font-bold flex items-center gap-2">
+                <Key className="h-8 w-8" />
+                Locações
+              </h1>
+              <p className="text-muted-foreground mt-1">
+                Gerencie contratos de locação
+              </p>
             </div>
+            <Button
+              onClick={() => setIsDialogOpen(true)}
+              size="lg"
+              disabled={availableProperties.length === 0 || availableTenants.length === 0}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Nova Locação
+            </Button>
+          </div>
+        </ScrollReveal>
+
+        {/* Two Column Layout: Available Properties and Tenants */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          {/* Available Properties */}
+          <ScrollReveal delay={0.1}>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Building2 className="h-5 w-5" />
+                  Imóveis Disponíveis ({availableProperties.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3 max-h-96 overflow-y-auto">
+                  {availableProperties.slice(0, 5).map((property) => {
+                    const location = locations.find((l) => l.id === property.locationId);
+                    return (
+                      <Card key={property.id} className="border-2">
+                        <CardContent className="p-4">
+                          <div className="space-y-2">
+                            <div className="font-semibold text-blue-600">
+                              {location?.name || "Local não encontrado"}
+                            </div>
+                            {property.complement && (
+                              <div className="text-sm text-muted-foreground">
+                                {property.complement}
+                              </div>
+                            )}
+                            <div className="text-lg font-bold text-green-600">
+                              {formatCurrency(property.value / 100)}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                  {availableProperties.length === 0 && (
+                    <p className="text-center text-muted-foreground py-8">
+                      Nenhum imóvel disponível no momento
+                    </p>
+                  )}
+                  {availableProperties.length > 5 && (
+                    <p className="text-sm text-muted-foreground text-center pt-2">
+                      + {availableProperties.length - 5} imóveis disponíveis
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
           </ScrollReveal>
 
-          {loading ? (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground">Carregando locações...</p>
-            </div>
-          ) : (
-            <>
-              {/* Available Properties and Active Tenants Cards */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                {/* Available Properties */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Imóveis Vagos ({availableProperties.length})</h3>
-                  {availableProperties.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">Nenhum imóvel disponível</p>
+          {/* Available Tenants */}
+          <ScrollReveal delay={0.2}>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Inquilinos Disponíveis ({availableTenants.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3 max-h-96 overflow-y-auto">
+                  {availableTenants.slice(0, 5).map((tenant) => (
+                    <Card key={tenant.id} className="border-2">
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-3">
+                          <Avatar>
+                            <AvatarFallback>
+                              {tenant.name.substring(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1">
+                            <div className="font-semibold">{tenant.name}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {tenant.phone}
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                  {availableTenants.length === 0 && (
+                    <p className="text-center text-muted-foreground py-8">
+                      Nenhum inquilino disponível no momento
+                    </p>
+                  )}
+                  {availableTenants.length > 5 && (
+                    <p className="text-sm text-muted-foreground text-center pt-2">
+                      + {availableTenants.length - 5} inquilinos disponíveis
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </ScrollReveal>
+        </div>
+
+        {/* Active Rentals */}
+        <ScrollReveal delay={0.3}>
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CheckCircle className="h-5 w-5 text-green-600" />
+                Locações Ativas ({activeRentals.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {activeRentals.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">
+                  Nenhuma locação ativa no momento
+                </p>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {activeRentals.map((rental) => {
+                    const property = properties.find((p) => p.id === rental.propertyId);
+                    const tenant = tenants.find((t) => t.id === rental.tenantId);
+                    const location = property ? locations.find((loc) => loc.id === property.locationId) : null;
+
+                    return (
+                      <Card
+                        key={rental.id}
+                        className="cursor-pointer hover:shadow-lg transition-shadow"
+                        onClick={() => router.push(`/rentals/${rental.id}`)}
+                      >
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-lg text-blue-600">
+                            {location?.name || "Local não encontrado"}
+                          </CardTitle>
+                          {property?.complement && (
+                            <p className="text-sm text-muted-foreground">
+                              {property.complement}
+                            </p>
+                          )}
+                        </CardHeader>
+                        <CardContent className="space-y-2">
+                          <div className="flex items-center gap-2 text-sm">
+                            <User className="h-4 w-4 text-muted-foreground" />
+                            <span className="font-medium">{tenant?.name}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm">
+                            <Calendar className="h-4 w-4 text-muted-foreground" />
+                            <span>Início: {formatDate(rental.startDate)}</span>
+                          </div>
+                          <div className="text-lg font-bold text-green-600 mt-3">
+                            {formatCurrency(rental.value)}
+                          </div>
+                          <Badge variant="default" className="mt-2">
+                            Ativa
+                          </Badge>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </ScrollReveal>
+
+        {/* Inactive Rentals - Collapsible */}
+        {inactiveRentals.length > 0 && (
+          <ScrollReveal delay={0.4}>
+            <Card>
+              <CardHeader
+                className="cursor-pointer hover:bg-muted/50 transition-colors"
+                onClick={() => setShowInactive(!showInactive)}
+              >
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <XCircle className="h-5 w-5 text-muted-foreground" />
+                    Locações Inativas ({inactiveRentals.length})
+                  </div>
+                  {showInactive ? (
+                    <ChevronUp className="h-5 w-5" />
                   ) : (
-                    availableProperties.slice(0, 5).map((property) => {
-                      const location = locations.find((loc) => loc.id === property.locationId);
+                    <ChevronDown className="h-5 w-5" />
+                  )}
+                </CardTitle>
+              </CardHeader>
+              {showInactive && (
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {inactiveRentals.map((rental) => {
+                      const property = properties.find((p) => p.id === rental.propertyId);
+                      const tenant = tenants.find((t) => t.id === rental.tenantId);
+                      const location = property ? locations.find((loc) => loc.id === property.locationId) : null;
+
                       return (
                         <Card
-                          key={property.id}
-                          className="cursor-pointer hover:shadow-md transition-shadow"
+                          key={rental.id}
+                          className="cursor-pointer hover:shadow-lg transition-shadow opacity-75"
+                          onClick={() => router.push(`/rentals/${rental.id}`)}
                         >
-                          <CardContent className="p-4">
-                            <div className="space-y-2">
-                              <div className="flex items-center justify-between">
-                                <h4 className="font-semibold text-blue-600">
-                                  {location?.name || "Local não identificado"}
-                                </h4>
-                                <Badge className="bg-green-100 text-green-800 border-green-200">
-                                  Disponível
-                                </Badge>
-                              </div>
-                              
-                              {property.complement && (
-                                <p className="text-sm text-muted-foreground">
-                                  {property.complement}
-                                </p>
-                              )}
-                              
-                              <div className="flex items-center justify-between pt-2 border-t">
-                                <span className="text-lg font-bold text-emerald-600">
-                                  {formatCurrency(property.value || 0)}
-                                </span>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      );
-                    })
-                  )}
-                  <ScrollReveal>
-                    <Card className="border-2 border-dashed border-primary/30 hover:border-primary/50 transition-colors cursor-pointer bg-primary/5">
-                      <CardContent className="p-6 text-center">
-                        <Building2 className="h-12 w-12 mx-auto mb-3 text-primary/60" />
-                        <p className="text-sm text-muted-foreground mb-3">
-                          {availableProperties.length > 5
-                            ? `Mais ${availableProperties.length - 5} imóveis disponíveis`
-                            : "Veja todos os imóveis disponíveis"}
-                        </p>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            router.push("/properties?filter=available");
-                          }}
-                        >
-                          Ver Todos os Imóveis
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  </ScrollReveal>
-                </div>
-
-                {/* Active Tenants */}
-                <div className="space-y-4">
-                  <ScrollReveal delay={0.2}>
-                    <h2 className="text-xl font-bold">Inquilinos Disponíveis</h2>
-                  </ScrollReveal>
-                  <ScrollReveal delay={0.25}>
-                    <Card>
-                      <CardContent className="pt-6">
-                        {availableTenants.length === 0 ? (
-                          <p className="text-muted-foreground text-center py-4">
-                            Nenhum inquilino disponível
-                          </p>
-                        ) : (
-                          <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                            {availableTenants.map((tenant) => (
-                              <div
-                                key={tenant.id}
-                                className="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors"
-                              >
-                                <div className="flex items-center gap-3">
-                                  <User className="h-4 w-4 text-emerald-600" />
-                                  <div>
-                                    <p className="font-medium text-sm">{tenant.name}</p>
-                                    <p className="text-xs text-muted-foreground">{tenant.document}</p>
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </ScrollReveal>
-                </div>
-              </div>
-
-              {/* Active Rentals */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {activeRentals.map((rental) => {
-                  const property = properties.find((p) => p.id === rental.propertyId);
-                  const tenant = tenants.find((t) => t.id === rental.tenantId);
-                  const location = property ? locations.find((loc) => loc.id === property.locationId) : null;
-
-                  return (
-                    <Card
-                      key={rental.id}
-                      className="cursor-pointer hover:shadow-lg transition-shadow"
-                      onClick={() => router.push(`/rentals/${rental.id}`)}
-                    >
-                      <CardHeader className="pb-3">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <CardTitle className="text-lg text-blue-600 mb-1">
-                              {location?.name || "Local não identificado"}
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-lg text-blue-600">
+                              {location?.name || "Local não encontrado"}
                             </CardTitle>
                             {property?.complement && (
                               <p className="text-sm text-muted-foreground">
                                 {property.complement}
                               </p>
                             )}
-                          </div>
-                          <Badge className="bg-green-100 text-green-800 border-green-200">
-                            Ativo
-                          </Badge>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2 text-sm">
-                            <User className="h-4 w-4 text-muted-foreground" />
-                            <span className="font-medium">{tenant?.name || "Inquilino não identificado"}</span>
-                          </div>
-                          
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Calendar className="h-4 w-4" />
-                            <span>
-                              Início: {new Date(rental.startDate).toLocaleDateString("pt-BR")}
-                            </span>
-                          </div>
-                          
-                          {rental.endDate && (
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <Calendar className="h-4 w-4" />
-                              <span>
-                                Término: {new Date(rental.endDate).toLocaleDateString("pt-BR")}
-                              </span>
+                          </CardHeader>
+                          <CardContent className="space-y-2">
+                            <div className="flex items-center gap-2 text-sm">
+                              <User className="h-4 w-4 text-muted-foreground" />
+                              <span className="font-medium">{tenant?.name}</span>
                             </div>
-                          )}
-                        </div>
-
-                        <div className="pt-3 border-t flex items-center justify-between">
-                          <div>
-                            <p className="text-xs text-muted-foreground">Aluguel Mensal</p>
-                            <p className="text-lg font-bold text-emerald-600">
-                              {formatCurrency(rental.monthlyRent || 0)}
-                            </p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-
-              {/* Inactive Rentals Button */}
-              {inactiveRentals.length > 0 && (
-                <ScrollReveal delay={0.4}>
-                  <div className="flex justify-center pt-4">
-                    <Button
-                      variant="outline"
-                      onClick={() => setIsInactiveDialogOpen(true)}
-                      className="w-full sm:w-auto"
-                    >
-                      <Archive className="mr-2 h-4 w-4" />
-                      Ver Locações Inativas ({inactiveRentals.length})
-                    </Button>
+                            <div className="flex items-center gap-2 text-sm">
+                              <Calendar className="h-4 w-4 text-muted-foreground" />
+                              <span>Fim: {rental.endDate ? formatDate(rental.endDate) : "N/A"}</span>
+                            </div>
+                            <div className="text-lg font-bold text-muted-foreground mt-3">
+                              {formatCurrency(rental.value)}
+                            </div>
+                            <Badge variant="secondary" className="mt-2">
+                              Inativa
+                            </Badge>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
                   </div>
-                </ScrollReveal>
+                </CardContent>
               )}
-            </>
-          )}
-        </div>
-
-        {/* New Rental Dialog */}
-        <Dialog open={isDialogOpen}>
-          <DialogContent 
-            className="max-w-3xl max-h-[90vh] overflow-y-auto"
-            onPointerDownOutside={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-            }}
-            onEscapeKeyDown={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-            }}
-            onInteractOutside={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-            }}
-          >
-            <DialogHeader>
-              <DialogTitle>Nova Locação</DialogTitle>
-              <DialogDescription>
-                Preencha os dados para cadastrar uma nova locação
-              </DialogDescription>
-            </DialogHeader>
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="propertyId">
-                    Imóveis Vagos <span className="text-red-500">*</span>
-                  </Label>
-                  <Select
-                    value={formData.propertyId}
-                    onValueChange={(value) => {
-                      const property = properties.find((p) => p.id === value);
-                      setFormData({
-                        ...formData,
-                        propertyId: value,
-                        value: property?.value ? applyRealMask((property.value * 100).toString()) : "",
-                      });
-                    }}
-                  >
-                    <SelectTrigger id="propertyId">
-                      <SelectValue placeholder="Selecione o imóvel" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableProperties.map((property) => (
-                        <SelectItem key={property.id} value={property.id}>
-                          {property.location} - {property.complement} - {formatCurrency(property.value || 0)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="tenantId">
-                    Inquilinos Disponíveis <span className="text-red-500">*</span>
-                  </Label>
-                  <Select
-                    value={formData.tenantId}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, tenantId: value })
-                    }
-                  >
-                    <SelectTrigger id="tenantId">
-                      <SelectValue placeholder="Selecione o inquilino" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableTenants.map((tenant) => (
-                        <SelectItem key={tenant.id} value={tenant.id}>
-                          {tenant.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="startDate">
-                    Data Início Contrato <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="startDate"
-                    type="date"
-                    value={formData.startDate}
-                    onChange={(e) =>
-                      setFormData({ ...formData, startDate: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="endDate">Data Término Contrato</Label>
-                  <Input
-                    id="endDate"
-                    type="date"
-                    value={formData.endDate}
-                    onChange={(e) =>
-                      setFormData({ ...formData, endDate: e.target.value })
-                    }
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="value">
-                    Valor do Aluguel <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="value"
-                    placeholder="R$ 0,00"
-                    value={formData.value}
-                    onChange={(e) =>
-                      setFormData({ ...formData, value: applyRealMask(e.target.value) })
-                    }
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="paymentDay">
-                    Dia de Vencimento <span className="text-red-500">*</span>
-                  </Label>
-                  <Select
-                    value={formData.paymentDay}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, paymentDay: value })
-                    }
-                  >
-                    <SelectTrigger id="paymentDay">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Array.from({ length: 28 }, (_, i) => i + 1).map((day) => (
-                        <SelectItem key={day} value={day.toString()}>
-                          Dia {day}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {/* Garage Section */}
-              <div className="space-y-4 border-t pt-4">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="hasGarage"
-                    checked={formData.hasGarage}
-                    onCheckedChange={(checked) =>
-                      setFormData({ ...formData, hasGarage: checked as boolean, garageValue: "" })
-                    }
-                  />
-                  <Label htmlFor="hasGarage" className="text-base font-medium cursor-pointer">
-                    Vaga Garagem?
-                  </Label>
-                </div>
-
-                {formData.hasGarage && (
-                  <div className="space-y-2 pl-6">
-                    <Label htmlFor="garageValue">
-                      Valor da Vaga <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      id="garageValue"
-                      placeholder="R$ 0,00"
-                      value={formData.garageValue}
-                      onChange={(e) =>
-                        setFormData({ ...formData, garageValue: applyRealMask(e.target.value) })
-                      }
-                    />
-                  </div>
-                )}
-              </div>
-
-              {/* Total Value Card */}
-              {formData.value && (
-                <Card className="bg-emerald-50 border-emerald-200">
-                  <CardContent className="pt-6">
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-muted-foreground">Valor do Aluguel:</span>
-                        <span className="font-medium">R$ {formData.value}</span>
-                      </div>
-                      {formData.hasGarage && formData.garageValue && (
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-muted-foreground">Valor da Vaga:</span>
-                          <span className="font-medium">R$ {formData.garageValue}</span>
-                        </div>
-                      )}
-                      <div className="flex justify-between items-center pt-2 border-t border-emerald-200">
-                        <span className="text-lg font-semibold">Valor Total:</span>
-                        <span className="text-2xl font-bold text-emerald-600">
-                          {formatCurrency(getTotalValue())}
-                        </span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Attachments Section */}
-              <div className="space-y-4 border-t pt-4">
-                <div className="flex items-center justify-between">
-                  <Label className="text-base font-medium">Anexos</Label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => document.getElementById("fileUpload")?.click()}
-                  >
-                    <Upload className="mr-2 h-4 w-4" />
-                    Anexar Arquivo
-                  </Button>
-                  <input
-                    id="fileUpload"
-                    type="file"
-                    accept="image/*,.pdf,.doc,.docx"
-                    className="hidden"
-                    onChange={handleFileUpload}
-                  />
-                </div>
-
-                {formData.attachments.length > 0 && (
-                  <div className="space-y-2">
-                    {formData.attachments.map((attachment, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center justify-between p-3 bg-muted rounded-lg"
-                      >
-                        <span className="text-sm truncate flex-1">
-                          Arquivo {index + 1}
-                        </span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeAttachment(index)}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={handleCloseDialog} disabled={isSubmitting}>
-                  Cancelar
-                </Button>
-                <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700" disabled={isSubmitting}>
-                  {isSubmitting ? (
-                    <div className="flex items-center gap-2">
-                      <div className="h-4 w-4 border-2 border-white/50 border-t-white rounded-full animate-spin" />
-                      <span>Processando...</span>
-                    </div>
-                  ) : (
-                    "Cadastrar Locação"
-                  )}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-
-        {/* Inactive Rentals Dialog */}
-        <Dialog open={isInactiveDialogOpen} onOpenChange={setIsInactiveDialogOpen}>
-          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Locações Inativas</DialogTitle>
-              <DialogDescription>
-                Lista de todas as locações encerradas
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="space-y-4">
-              {inactiveRentals.map((rental, index) => {
-                const property = getPropertyInfo(rental.propertyId);
-                const tenant = getTenantInfo(rental.tenantId);
-
-                return (
-                  <FloatingCard key={rental.id} delay={index * 0.1}>
-                    <Card className="hover:shadow-lg transition-shadow cursor-pointer opacity-75" onClick={() => router.push(`/rentals/${rental.id}`)}>
-                      <CardHeader className="pb-3">
-                        <CardTitle className="flex items-center justify-between">
-                          <div className="flex flex-col gap-1">
-                            <span className="flex items-center gap-2">
-                              <Home className="h-5 w-5 text-gray-500" />
-                              {property?.location || "N/A"}
-                            </span>
-                            {property?.complement && (
-                              <span className="text-sm font-normal text-muted-foreground">
-                                {property.complement}
-                              </span>
-                            )}
-                          </div>
-                          <Badge variant="secondary">Encerrada</Badge>
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-2">
-                        <div className="flex items-start gap-2">
-                          <Users className="h-4 w-4 text-muted-foreground mt-0.5" />
-                          <div className="flex-1">
-                            <p className="text-sm font-medium">{tenant?.name || "N/A"}</p>
-                            {tenant?.document && (
-                              <p className="text-xs text-muted-foreground">{tenant.document}</p>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4 text-muted-foreground" />
-                          <p className="text-xs text-muted-foreground">
-                            Encerrada em {new Date(rental.endDate!).toLocaleDateString("pt-BR")}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2 pt-2 border-t">
-                          <DollarSign className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm font-medium text-muted-foreground">
-                            {formatCurrency(rental.value)}
-                          </span>
-                        </div>
-                      </CardContent>
-                      <CardFooter className="pt-3 border-t">
-                        {hasPermission(user?.role, "canDeleteRental") && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="w-full"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDelete(rental);
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Excluir
-                          </Button>
-                        )}
-                      </CardFooter>
-                    </Card>
-                  </FloatingCard>
-                );
-              })}
-            </div>
-
-            <DialogFooter>
-              <Button onClick={() => setIsInactiveDialogOpen(false)}>Fechar</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* End Rental Confirmation Dialog */}
-        <Dialog open={isEndDialogOpen} onOpenChange={setIsEndDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Encerrar Locação</DialogTitle>
-              <DialogDescription>
-                Tem certeza que deseja encerrar esta locação? O imóvel ficará disponível novamente.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsEndDialogOpen(false)}>
-                Cancelar
-              </Button>
-              <Button 
-                variant="destructive" 
-                onClick={() => {
-                  if (selectedRental) {
-                    handleEndRental(selectedRental);
-                    setIsEndDialogOpen(false);
-                  }
-                }}
-              >
-                Confirmar Encerramento
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            </Card>
+          </ScrollReveal>
+        )}
       </Layout>
     </>
   );

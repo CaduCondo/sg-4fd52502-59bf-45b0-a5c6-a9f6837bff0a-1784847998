@@ -1,4 +1,5 @@
 import { Property } from "@/types";
+import { Database } from "@/integrations/supabase/types";
 import { 
   getAll as fetchAll, 
   getSingle, 
@@ -43,3 +44,18 @@ export async function deleteProperty(id: string): Promise<void> {
 
 // Alias
 export const remove = deleteProperty;
+
+function mapPropertyFromDB(data: Database["public"]["Tables"]["properties"]["Row"]): Property {
+  return {
+    id: data.id,
+    locationId: data.location_id,
+    complement: data.complement || "",
+    rooms: data.rooms || "",
+    bathrooms: data.bathrooms || "",
+    value: data.value / 100, // Convert from cents to currency
+    description: data.description || "",
+    status: data.status as Property["status"],
+    createdAt: data.created_at,
+    updatedAt: data.updated_at,
+  };
+}

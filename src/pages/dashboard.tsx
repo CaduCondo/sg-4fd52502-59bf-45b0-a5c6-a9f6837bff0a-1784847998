@@ -433,6 +433,23 @@ export default function Dashboard() {
       <SEO title="Dashboard - Gerenciador de Locações" />
       <Layout>
         <div className="space-y-6">
+          {/* Welcome Section */}
+          <ScrollReveal>
+            <Card className="bg-gradient-to-r from-blue-600 to-blue-700 text-white border-0">
+              <CardContent className="p-8">
+                <div>
+                  <h1 className="text-3xl font-bold flex items-center gap-2 mb-2">
+                    <Home className="h-8 w-8" />
+                    {getGreeting()}, {user?.name?.split(" ")[0] || "Usuário"}!
+                  </h1>
+                  <p className="text-blue-100 text-lg">
+                    Bem-vindo ao painel de controle
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </ScrollReveal>
+
           {/* Header */}
           <div>
             <h1 className="text-3xl font-bold flex items-center gap-2">

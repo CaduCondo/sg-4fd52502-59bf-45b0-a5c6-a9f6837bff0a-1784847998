@@ -49,6 +49,7 @@ import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/contexts/AuthContext";
 import { hasPermission } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
+import { getAllRoleMenuPermissions } from "@/services/roleMenuPermissionService";
 
 interface LayoutProps {
   children: ReactNode;
@@ -61,6 +62,7 @@ export function Layout({ children }: LayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showProfileDialog, setShowProfileDialog] = useState(false);
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  const [permissions, setPermissions] = useState<any[]>([]);
 
   // Scroll effects
   const scrollProgress = useScrollProgress();
@@ -88,6 +90,19 @@ export function Layout({ children }: LayoutProps) {
 
     loadUser();
   }, []);
+
+  useEffect(() => {
+    loadPermissions();
+  }, [user]);
+
+  const loadPermissions = async () => {
+    try {
+      const perms = await getAllRoleMenuPermissions();
+      setPermissions(perms);
+    } catch (error) {
+      console.error("Error loading permissions:", error);
+    }
+  };
 
   const handleLogout = () => {
     logout();
@@ -153,20 +168,28 @@ export function Layout({ children }: LayoutProps) {
 
   // Função para verificar se o menu deve ser exibido baseado no perfil do usuário
   const shouldShowMenu = (menuPath: string) => {
-    if (!user?.role) return true;
+    if (!user?.role) return false;
 
-    // Corretor: Oculta apenas Configurações
-    if (user.role === "broker") {
-      return menuPath !== "/settings";
-    }
+    // Map menu paths to menu_item values in database
+    const menuItemMap: Record<string, string> = {
+      "/dashboard": "dashboard",
+      "/properties": "properties", 
+      "/tenants": "tenants",
+      "/rentals": "rentals",
+      "/payments": "payments",
+      "/financial": "financial",
+      "/settings": "settings",
+    };
 
-    // Financeiro: Mostra apenas Dashboard e Financeiro
-    if (user.role === "financial") {
-      return menuPath === "/dashboard" || menuPath === "/financial";
-    }
+    const menuItem = menuItemMap[menuPath];
+    if (!menuItem) return false;
 
-    // Admin e User: Veem todos os menus
-    return true;
+    // Check permission from database
+    const permission = permissions.find(
+      (p) => p.role === user.role && p.menu_item === menuItem
+    );
+
+    return permission ? permission.can_access : false;
   };
 
   const menuItems = [
