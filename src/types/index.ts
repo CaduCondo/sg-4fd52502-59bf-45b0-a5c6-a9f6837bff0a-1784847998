@@ -63,14 +63,7 @@ export interface Property {
   // Location info
   locationId: string;
   location?: string; // Derived name
-  address?: string; // DB field
-  number?: string; // DB field
   complement?: string; // DB field
-  neighborhood?: string; // DB field
-  city?: string; // DB field
-  state?: string; // DB field
-  zipCode?: string; // Mapped from zip_code
-  cep?: string; // Alias
 
   // Details
   description?: string; // DB field
@@ -78,25 +71,16 @@ export interface Property {
   rooms?: number; // DB field
   bathrooms?: number; // DB field
   area?: number; // DB field
-  size?: number; // Alias for area
-  parkingSpots?: number;
   hasGarage?: boolean; // Mapped from has_garage
   
   // Financial
   value?: number;
-  rentValue?: number;
   monthlyRent?: number; // Mapped from monthly_rent
   garageValue?: number; // Mapped from garage_value
-  iptu?: number;
-  condoFee?: number;
 
   // Status & Metadata
   status: "available" | "occupied" | "unavailable";
-  images?: string[];
-  features?: string[];
   propertyIdentifier?: string; // Mapped from property_identifier
-  name?: string;
-  ownerId?: string;
   createdAt?: string;
   updatedAt?: string;
   
@@ -106,7 +90,6 @@ export interface Property {
   has_garage?: boolean;
   garage_value?: number;
   property_identifier?: string;
-  zip_code?: string;
 }
 
 export interface Tenant {
