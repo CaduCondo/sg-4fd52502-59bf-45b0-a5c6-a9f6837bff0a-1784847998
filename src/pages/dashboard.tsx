@@ -29,18 +29,18 @@ export default function Dashboard() {
   useEffect(() => {
     const loadStats = async () => {
       try {
-        // Use simpler queries with explicit type casting to avoid deep instantiation issues
-        const { count: properties } = await supabase
+        // Fetch data and count manually to avoid TypeScript deep instantiation error
+        const { data: propertiesData } = await supabase
           .from("properties")
-          .select("id", { count: "exact", head: true });
+          .select("id");
 
-        const { count: tenants } = await supabase
+        const { data: tenantsData } = await supabase
           .from("tenants")
-          .select("id", { count: "exact", head: true });
+          .select("id");
 
-        const { count: activeRentals } = await supabase
+        const { data: activeRentalsData } = await supabase
           .from("rentals")
-          .select("id", { count: "exact", head: true })
+          .select("id")
           .eq("status", "active");
 
         // Fetch payments data
@@ -59,9 +59,9 @@ export default function Dashboard() {
         const overduePayments = paymentsData.filter((p) => p.status === "overdue").length;
 
         setStats({
-          properties: properties || 0,
-          tenants: tenants || 0,
-          activeRentals: activeRentals || 0,
+          properties: propertiesData?.length || 0,
+          tenants: tenantsData?.length || 0,
+          activeRentals: activeRentalsData?.length || 0,
           monthlyRevenue,
           pendingPayments,
           overduePayments,
