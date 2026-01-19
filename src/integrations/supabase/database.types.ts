@@ -228,40 +228,61 @@ export type Database = {
       }
       properties: {
         Row: {
+          area: number | null
+          bathrooms: number | null
+          complement: string | null
           created_at: string | null
           description: string | null
+          garage_value: number | null
+          has_garage: boolean | null
           id: string
           location: string
           location_id: string | null
           monthly_rent: number
           property_identifier: string | null
+          rooms: number | null
           status: string
           type: string
           updated_at: string | null
+          value: number | null
         }
         Insert: {
+          area?: number | null
+          bathrooms?: number | null
+          complement?: string | null
           created_at?: string | null
           description?: string | null
+          garage_value?: number | null
+          has_garage?: boolean | null
           id?: string
           location: string
           location_id?: string | null
           monthly_rent: number
           property_identifier?: string | null
+          rooms?: number | null
           status: string
           type: string
           updated_at?: string | null
+          value?: number | null
         }
         Update: {
+          area?: number | null
+          bathrooms?: number | null
+          complement?: string | null
           created_at?: string | null
           description?: string | null
+          garage_value?: number | null
+          has_garage?: boolean | null
           id?: string
           location?: string
           location_id?: string | null
           monthly_rent?: number
           property_identifier?: string | null
+          rooms?: number | null
           status?: string
           type?: string
           updated_at?: string | null
+          value?: number | null
         }
         Relationships: [
           {

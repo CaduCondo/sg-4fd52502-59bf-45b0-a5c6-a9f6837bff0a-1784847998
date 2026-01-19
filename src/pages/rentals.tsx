@@ -521,32 +521,38 @@ export default function Rentals() {
                   </ScrollReveal>
                   <ScrollReveal delay={0.15}>
                     <Card>
-                      <CardContent className="pt-6">
-                        {availableProperties.length === 0 ? (
-                          <p className="text-muted-foreground text-center py-4">
-                            Nenhum imóvel vago disponível
-                          </p>
-                        ) : (
-                          <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                            {availableProperties.map((property) => (
+                      <CardHeader>
+                        <CardTitle>Imóveis Vagos</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-2">
+                          {availableProperties.length === 0 ? (
+                            <p className="text-sm text-muted-foreground">
+                              Nenhum imóvel disponível
+                            </p>
+                          ) : (
+                            availableProperties.map((property) => (
                               <div
                                 key={property.id}
-                                className="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors"
+                                className="flex items-center justify-between p-3 bg-muted rounded-lg hover:bg-muted/80 transition-colors"
                               >
-                                <div className="flex items-center gap-3">
-                                  <Home className="h-4 w-4 text-emerald-600" />
-                                  <div>
-                                    <p className="font-medium text-sm">{property.location}</p>
-                                    <p className="text-xs text-muted-foreground">{property.complement}</p>
-                                  </div>
+                                <div className="flex-1">
+                                  <p className="font-medium">{property.location}</p>
+                                  {property.complement && (
+                                    <p className="text-sm text-muted-foreground">
+                                      {property.complement}
+                                    </p>
+                                  )}
                                 </div>
-                                <p className="text-sm font-semibold text-emerald-600">
-                                  {formatCurrency(property.rentValue)}
-                                </p>
+                                <div className="text-right">
+                                  <p className="font-semibold text-emerald-600">
+                                    {formatCurrency(property.rentValue)}
+                                  </p>
+                                </div>
                               </div>
-                            ))}
-                          </div>
-                        )}
+                            ))
+                          )}
+                        </div>
                       </CardContent>
                     </Card>
                   </ScrollReveal>
@@ -644,16 +650,16 @@ export default function Rentals() {
                   const tenant = tenants.find((t) => t.id === rental.tenantId);
 
                   return (
-                    <Card key={rental.id} className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => router.push(`/rentals/${rental.id}`)}>
+                    <Card key={rental.id} className="hover:shadow-md transition-shadow">
                       <CardHeader className="pb-3">
-                        <div className="flex justify-between items-start">
+                        <div className="flex items-center justify-between">
                           <div className="flex-1">
-                            <CardTitle className="text-lg font-semibold text-blue-600">
-                              {property?.location || "Imóvel não encontrado"}
+                            <CardTitle className="text-lg">
+                              {rental.property?.location || "Imóvel não encontrado"}
                             </CardTitle>
-                            {property?.complement && (
+                            {rental.property?.description && (
                               <p className="text-sm text-muted-foreground mt-1">
-                                {property.complement}
+                                {rental.property.description}
                               </p>
                             )}
                           </div>

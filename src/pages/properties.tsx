@@ -285,18 +285,22 @@ export default function Properties() {
                     className="cursor-pointer hover:shadow-lg transition-shadow relative"
                     onClick={() => handleCardClick(property)}
                   >
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between mb-2">
-                        <h3 className="text-lg font-bold">
-                          {location?.address || property.location || "Local não definido"}
-                        </h3>
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <CardTitle className="text-lg text-blue-600">
+                            {getLocationData(property.locationId)?.name || property.location}
+                          </CardTitle>
+                          {property.description && (
+                            <p className="text-sm text-muted-foreground mt-1">
+                              {getLocationData(property.locationId)?.complement}
+                            </p>
+                          )}
+                        </div>
                         {getStatusBadge(property.status || "available")}
                       </div>
-                      
-                      <p className="text-sm text-muted-foreground mb-2">
-                        {property.complement || "Sem complemento"}
-                      </p>
-                      
+                    </CardHeader>
+                    <CardContent className="p-4">
                       <p className="text-sm mb-3 line-clamp-2">
                         {property.description || "Sem descrição"}
                       </p>
@@ -332,21 +336,28 @@ export default function Properties() {
             <form onSubmit={handleCreateProperty} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="locationId">
+                  <Label htmlFor="location">
                     Local <span className="text-red-500">*</span>
                   </Label>
                   <Select
                     value={newProperty.locationId}
-                    onValueChange={(value) => setNewProperty({ ...newProperty, locationId: value })}
+                    onValueChange={(value) => {
+                      const selectedLocation = locations.find(loc => loc.id === value);
+                      setNewProperty({ 
+                        ...newProperty, 
+                        locationId: value,
+                        location: selectedLocation?.name || ""
+                      });
+                    }}
                     required
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id="location">
                       <SelectValue placeholder="Selecione o local" />
                     </SelectTrigger>
                     <SelectContent>
-                      {locations.map((location: LocationType) => (
+                      {locations.map((location) => (
                         <SelectItem key={location.id} value={location.id}>
-                          {location.address} - {location.number}
+                          {location.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -360,17 +371,6 @@ export default function Properties() {
                     value={newProperty.complement}
                     onChange={(e) => setNewProperty({ ...newProperty, complement: e.target.value })}
                     placeholder="Ex: Apto 101, Casa 2"
-                  />
-                </div>
-
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="description">Descrição</Label>
-                  <Textarea
-                    id="description"
-                    value={newProperty.description}
-                    onChange={(e) => setNewProperty({ ...newProperty, description: e.target.value })}
-                    placeholder="Descreva o imóvel..."
-                    rows={3}
                   />
                 </div>
 
@@ -509,21 +509,6 @@ export default function Properties() {
                     )}
                   </div>
 
-                  <div className="space-y-2 md:col-span-2">
-                    <Label>Descrição</Label>
-                    {isEditing ? (
-                      <Textarea
-                        value={editForm.description}
-                        onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-                        rows={3}
-                      />
-                    ) : (
-                      <p className="text-sm p-2 bg-muted rounded">
-                        {selectedProperty.description || "Sem descrição"}
-                      </p>
-                    )}
-                  </div>
-
                   <div className="space-y-2">
                     <Label>Valor</Label>
                     {isEditing ? (
@@ -626,6 +611,21 @@ export default function Properties() {
                       </p>
                     )}
                   </div>
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <Label>Descrição</Label>
+                  {isEditing ? (
+                    <Textarea
+                      value={editForm.description}
+                      onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                      rows={3}
+                    />
+                  ) : (
+                    <p className="text-sm p-2 bg-muted rounded">
+                      {selectedProperty.description || "Sem descrição"}
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex justify-end gap-2 pt-4">

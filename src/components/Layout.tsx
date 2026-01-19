@@ -46,6 +46,9 @@ import { getUserById } from "@/services/systemUserService";
 import { useToast } from "@/hooks/use-toast";
 import { EditProfileDialog } from "./EditProfileDialog";
 import { Separator } from "@/components/ui/separator";
+import { useAuth } from "@/contexts/AuthContext";
+import { hasPermission } from "@/lib/permissions";
+import { cn } from "@/lib/utils";
 
 interface LayoutProps {
   children: ReactNode;
@@ -167,51 +170,55 @@ export function Layout({ children }: LayoutProps) {
   };
 
   const menuItems = [
-    {
-      label: "Dashboard",
-      icon: Home,
-      href: "/dashboard",
-      roles: ["admin", "corretor", "financeiro"]
+    { 
+      name: "Dashboard", 
+      path: "/dashboard", 
+      icon: <Home className="h-4 w-4" />,
+      permission: "canViewDashboard" 
     },
-    {
-      label: "Imóveis",
-      icon: Building2,
-      href: "/properties",
-      roles: ["admin", "corretor"]
+    { 
+      name: "Imóveis", 
+      path: "/properties", 
+      icon: <Building2 className="h-4 w-4" />,
+      permission: "canViewProperties" 
     },
-    {
-      label: "Inquilinos",
-      icon: Users,
-      href: "/tenants",
-      roles: ["admin", "corretor"]
+    { 
+      name: "Inquilinos", 
+      path: "/tenants", 
+      icon: <Users className="h-4 w-4" />,
+      permission: "canViewTenants" 
     },
-    {
-      label: "Locações",
-      icon: FileText,
-      href: "/rentals",
-      roles: ["admin", "corretor"]
+    { 
+      name: "Locações", 
+      path: "/rentals", 
+      icon: <FileText className="h-4 w-4" />,
+      permission: "canViewRentals" 
     },
-    {
-      label: "Pagamentos",
-      icon: DollarSign,
-      href: "/payments",
-      roles: ["admin", "financeiro"]
+    { 
+      name: "Recebimentos", 
+      path: "/payments", 
+      icon: <DollarSign className="h-4 w-4" />,
+      permission: "canViewPayments" 
     },
-    {
-      label: "Financeiro",
-      icon: TrendingUp,
-      href: "/financial",
-      roles: ["admin", "financeiro"]
+    { 
+      name: "Financeiro", 
+      path: "/financial", 
+      icon: <TrendingUp className="h-4 w-4" />,
+      permission: "canViewFinancial" 
     },
-    {
-      label: "Configurações",
-      icon: Settings,
-      href: "/settings",
-      roles: ["admin", "corretor", "financeiro"]
-    }
+    { 
+      name: "Configurações", 
+      path: "/settings", 
+      icon: <Settings className="h-4 w-4" />,
+      permission: "canViewSettings" 
+    },
   ];
 
-  const navigationItems = menuItems.filter(item => shouldShowMenu(item.href));
+  const filteredMenuItems = menuItems.filter((item) => 
+    hasPermission(user?.role, item.permission as any)
+  );
+
+  const navigationItems = filteredMenuItems.filter(item => shouldShowMenu(item.path));
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
@@ -286,18 +293,21 @@ export function Layout({ children }: LayoutProps) {
                   <nav className="space-y-1">
                     {navigationItems.map((item) => {
                       const Icon = item.icon;
-                      const active = isActive(item.href);
+                      const active = isActive(item.path);
                       return (
-                        <Link key={item.href} href={item.href}>
-                          <Button
-                            variant={active ? "default" : "ghost"}
-                            className="w-full justify-start gap-3 h-11"
-                            onClick={() => setMobileMenuOpen(false)}
-                          >
-                            <Icon className="h-5 w-5" />
-                            <span className="text-sm font-medium">{item.label}</span>
-                          </Button>
-                        </Link>
+                        <a
+                          key={item.name}
+                          href={item.path}
+                          className={cn(
+                            "-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 hover:bg-slate-50",
+                            active ? "text-emerald-600" : "text-slate-900"
+                          )}
+                        >
+                          <div className="flex items-center gap-2">
+                            {item.icon}
+                            {item.name}
+                          </div>
+                        </a>
                       );
                     })}
                   </nav>
@@ -341,17 +351,21 @@ export function Layout({ children }: LayoutProps) {
             {/* MENU DESKTOP - Center - HIDDEN ON MOBILE */}
             <div className="hidden md:flex items-center gap-1 flex-1 justify-center">
               {navigationItems.map((item) => {
-                const Icon = item.icon;
+                const isActive = router.pathname === item.path;
+                
                 return (
-                  <Link key={item.href} href={item.href}>
-                    <Button 
-                      variant={isActive(item.href) ? "default" : "ghost"}
-                      size="sm"
-                      className="gap-1.5"
-                    >
-                      <Icon className="h-4 w-4" />
-                      <span>{item.label}</span>
-                    </Button>
+                  <Link
+                    key={item.name}
+                    href={item.path}
+                    className={cn(
+                      "group flex items-center gap-x-3 rounded-md p-2 text-sm font-semibold leading-6",
+                      isActive
+                        ? "bg-slate-50 text-emerald-600 dark:bg-slate-800 dark:text-emerald-400"
+                        : "text-slate-700 hover:bg-slate-50 hover:text-emerald-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-emerald-400"
+                    )}
+                  >
+                    {item.icon}
+                    {item.name}
                   </Link>
                 );
               })}

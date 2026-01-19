@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import { 
   Table, 
   TableBody, 
@@ -89,6 +90,7 @@ import {
   getRoleMenuPermissions, 
   updateRoleMenuPermission 
 } from "@/services/roleMenuPermissionService";
+import * as locationService from "@/services/locationService";
 
 // Helpers
 import {
@@ -123,7 +125,8 @@ export default function Settings() {
   
   // Current logged user state
   const [currentUser, setCurrentUser] = useState<SystemUser | null>(null);
-  
+  const [locationName, setLocationName] = useState("");
+
   // Config State
   const [config, setConfig] = useState<CompanyConfig>({
     id: "",
@@ -165,9 +168,18 @@ export default function Settings() {
   const [isLoadingLocations, setIsLoadingLocations] = useState(false);
   const [searchLocation, setSearchLocation] = useState("");
   const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false);
+  const [showLocationForm, setShowLocationForm] = useState(false);
   const [editingLocation, setEditingLocation] = useState<Location | null>(null);
-  const [locationName, setLocationName] = useState("");
-  const [newLocationName, setNewLocationName] = useState(""); // Add missing state
+  const [locationForm, setLocationForm] = useState({
+    name: "",
+    street: "",
+    number: "",
+    complement: "",
+    neighborhood: "",
+    city: "",
+    state: "",
+    zip_code: "",
+  });
 
   // User Location Permissions State
   const [selectedUserForLocations, setSelectedUserForLocations] = useState<SystemUser | null>(null);
@@ -176,7 +188,120 @@ export default function Settings() {
 
   // Menu Permissions State
   const [menuPermissions, setMenuPermissions] = useState<Record<string, string[]>>({});
+  const [permissions, setPermissions] = useState<Array<{ // Fix: Ensure this state exists if used, or consolidate
+    id?: string;
+    role: string;
+    menu_item: string;
+    can_access: boolean;
+  }>>([]);
   const [isLoadingMenuPermissions, setIsLoadingMenuPermissions] = useState(false);
+
+  // Missing Handlers Implementation
+  const handleConfigSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await updateConfig({
+        ...config,
+        admin_fee_percentage: parsePercentageToFloat(adminFee),
+        late_fee_percentage: parsePercentageToFloat(lateFee),
+        interest_rate_percentage: parsePercentageToFloat(interestRate),
+      });
+      toast({ title: "Configurações salvas com sucesso!" });
+    } catch (error) {
+      console.error("Erro ao salvar config:", error);
+      toast({ title: "Erro ao salvar configurações", variant: "destructive" });
+    }
+  };
+
+  const openUserDialog = (user?: SystemUser) => {
+    if (user) {
+      setEditingUser(user);
+      setUserFormData({
+        name: user.name,
+        email: user.email,
+        phone: user.phone || "",
+        username: "",
+        password: "",
+        role: user.role,
+        isActive: user.active
+      });
+    } else {
+      setEditingUser(null);
+      setUserFormData({
+        name: "",
+        email: "",
+        phone: "",
+        username: "",
+        password: "",
+        role: "broker",
+        isActive: true
+      });
+    }
+    setIsUserDialogOpen(true);
+  };
+
+  const handleUserSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      if (editingUser) {
+        await updateUser(editingUser.id, {
+          name: userFormData.name,
+          email: userFormData.email,
+          phone: userFormData.phone,
+          role: userFormData.role,
+        });
+        toast({ title: "Usuário atualizado com sucesso!" });
+      } else {
+        await createUser({
+          name: userFormData.name,
+          email: userFormData.email,
+          phone: userFormData.phone,
+          role: userFormData.role,
+          password: userFormData.password,
+        });
+        toast({ title: "Usuário criado com sucesso!" });
+      }
+      setIsUserDialogOpen(false);
+      loadUsers();
+    } catch (error) {
+      console.error("Erro ao salvar usuário:", error);
+      toast({ title: "Erro ao salvar usuário", variant: "destructive" });
+    }
+  };
+
+  const handleUnlockUser = async (user: SystemUser) => {
+    try {
+      await unlockUser(user.id, !user.active);
+      toast({ title: `Usuário ${user.active ? "bloqueado" : "desbloqueado"} com sucesso!` });
+      loadUsers();
+    } catch (error) {
+      console.error("Erro ao alterar status:", error);
+      toast({ title: "Erro ao alterar status do usuário", variant: "destructive" });
+    }
+  };
+
+  const handleResetPassword = async (userId: string) => {
+    if (!confirm("Deseja resetar a senha deste usuário para 'mudar123'?")) return;
+    try {
+      await resetPassword(userId, "mudar123");
+      toast({ title: "Senha resetada com sucesso!" });
+    } catch (error) {
+      console.error("Erro ao resetar senha:", error);
+      toast({ title: "Erro ao resetar senha", variant: "destructive" });
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    if (!confirm("Tem certeza que deseja excluir este usuário?")) return;
+    try {
+      await deleteUser(userId);
+      toast({ title: "Usuário excluído com sucesso!" });
+      loadUsers();
+    } catch (error) {
+      console.error("Erro ao excluir usuário:", error);
+      toast({ title: "Erro ao excluir usuário", variant: "destructive" });
+    }
+  };
 
   const loadCurrentUser = async () => {
     try {
@@ -230,204 +355,98 @@ export default function Settings() {
   };
 
   const loadLocations = async () => {
-    try {
-      const data = await getAllLocations();
-      setLocations(data);
-    } catch (error) {
-      console.error("Erro ao carregar locais:", error);
-    }
+    const data = await locationService.getAll();
+    setLocations(data);
   };
 
-  const loadMenuPermissions = async () => {
-    // Carregar permissões para cada role
-    const roles = ["admin", "broker", "financial"];
-    const allPermissions: Record<string, string[]> = {};
-    
-    for (const role of roles) {
-      try {
-        const perms = await getRoleMenuPermissions(role);
-        allPermissions[role] = perms.map(p => p.menu_id);
-      } catch (error) {
-        console.error(`Erro ao carregar permissões para ${role}:`, error);
-      }
-    }
-    
-    setMenuPermissions(allPermissions);
-  };
+  const handleCepLookup = async (cep: string) => {
+    const cleanCep = cep.replace(/\D/g, "");
+    if (cleanCep.length !== 8) return;
 
-  useEffect(() => {
-    loadCurrentUser();
-    loadConfig();
-    loadUsers();
-    loadLocations();
-    loadMenuPermissions();
-  }, []);
-
-  const loadData = async () => {
     try {
-      setLoading(true);
-      await Promise.all([
-        loadConfig(),
-        loadUsers()
-      ]);
-    } finally {
-      setLoading(false);
-    }
-  };
+      const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
+      const data = await response.json();
 
-  // --- CONFIG HANDLERS ---
+      if (!data.erro) {
+        setLocationForm(prev => ({
+          ...prev,
+          street: data.logradouro || "",
+          neighborhood: data.bairro || "",
+          city: data.localidade || "",
+          state: data.uf || "",
+        }));
 
-  const handleConfigSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await updateConfig({
-        company_name: config.company_name,
-        cnpj: config.cnpj,
-        email: config.email,
-        phone: config.phone,
-        address: config.address,
-        city: config.city,
-        state: config.state,
-        zip_code: config.zip_code,
-        admin_fee_percentage: parsePercentageToFloat(adminFee),
-        late_fee_percentage: parsePercentageToFloat(lateFee),
-        interest_rate_percentage: parsePercentageToFloat(interestRate)
-      });
-      toast({
-        title: "Sucesso",
-        description: "Configurações salvas com sucesso!",
-      });
-    } catch (error) {
-      console.error("Error saving config:", error);
-      toast({
-        title: "Erro",
-        description: "Erro ao salvar configurações.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // --- USERS HANDLERS ---
-
-  const handleUserSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      if (editingUser) {
-        await updateUser(editingUser.id, {
-          name: userFormData.name,
-          email: userFormData.email,
-          phone: userFormData.phone,
-          role: userFormData.role as any,
-          active: userFormData.isActive
+        toast({
+          title: "CEP encontrado",
+          description: "Endereço preenchido automaticamente.",
         });
-        toast({ title: "Sucesso", description: "Usuário atualizado!" });
       } else {
-        await createUser({
-          name: userFormData.name,
-          email: userFormData.email,
-          phone: userFormData.phone,
-          // username e password seriam tratados no backend em um sistema real de auth
-          role: userFormData.role as any,
-          active: true,
+        toast({
+          title: "CEP não encontrado",
+          description: "Verifique o CEP informado.",
+          variant: "destructive",
         });
-        toast({ title: "Sucesso", description: "Usuário criado!" });
       }
-      
-      setIsUserDialogOpen(false);
-      loadUsers();
     } catch (error) {
-      console.error("Error saving user:", error);
+      console.error("Error fetching CEP:", error);
       toast({
         title: "Erro",
-        description: "Erro ao salvar usuário.",
+        description: "Não foi possível buscar o CEP.",
         variant: "destructive",
       });
     }
   };
 
-  const openUserDialog = (user?: SystemUser) => {
-    if (user) {
-      setEditingUser(user);
-      setUserFormData({
-        name: user.name,
-        email: user.email,
-        phone: user.phone || "",
-        username: "", // Não temos username no tipo SystemUser atual
-        password: "",
-        role: user.role,
-        isActive: user.active
-      });
-    } else {
-      setEditingUser(null);
-      setUserFormData({
-        name: "",
-        email: "",
-        phone: "",
-        username: "",
-        password: "",
-        role: "broker",
-        isActive: true
-      });
-    }
-    setIsUserDialogOpen(true);
-  };
-
-  const handleDeleteUser = async (userId: string) => {
-    if (!confirm("Tem certeza que deseja excluir este usuário?")) return;
-    try {
-      await deleteUser(userId);
-      toast({ title: "Sucesso", description: "Usuário excluído!" });
-      loadUsers();
-    } catch (error) {
-      toast({ title: "Erro", description: "Erro ao excluir usuário.", variant: "destructive" });
-    }
-  };
-
-  const handleResetPassword = async (userId: string) => {
-    if (!confirm("Tem certeza que deseja resetar a senha deste usuário?")) return;
-    try {
-      // Simulação - em produção chamaria endpoint de auth
-      toast({ title: "Sucesso", description: "Senha resetada!" });
-    } catch (error) {
-      toast({ title: "Erro", description: "Erro ao resetar senha.", variant: "destructive" });
-    }
-  };
-
-  const handleUnlockUser = async (user: SystemUser) => {
-    if (!confirm(`Tem certeza que deseja ${user.active ? 'bloquear' : 'desbloquear'} este usuário?`)) return;
-    try {
-      await updateUser(user.id, { active: !user.active });
-      toast({ title: "Sucesso", description: `Usuário ${!user.active ? 'desbloqueado' : 'bloqueado'}!` });
-      loadUsers();
-    } catch (error) {
-      toast({ title: "Erro", description: "Erro ao alterar status do usuário.", variant: "destructive" });
-    }
-  };
-
-  // --- LOCATION HANDLERS ---
-
-  const handleSaveLocation = async (e: React.FormEvent) => {
+  const handleLocationSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
     try {
+      const locationData = {
+        name: locationForm.name,
+        street: locationForm.street,
+        number: locationForm.number,
+        complement: locationForm.complement,
+        neighborhood: locationForm.neighborhood,
+        city: locationForm.city,
+        state: locationForm.state,
+        zip_code: locationForm.zip_code,
+        is_active: true,
+      };
+
       if (editingLocation) {
-        await updateLocation(editingLocation.id, { name: locationName });
-        toast({ title: "Sucesso", description: "Local atualizado com sucesso!" });
-      } else {
-        await createLocation({ 
-          name: newLocationName,
-          city: "Cidade Padrão",
-          state: "UF"
+        await locationService.update(editingLocation.id, locationData);
+        toast({
+          title: "Sucesso",
+          description: "Local atualizado com sucesso.",
         });
-        toast({ title: "Sucesso", description: "Local criado com sucesso!" });
+      } else {
+        await locationService.create(locationData);
+        toast({
+          title: "Sucesso",
+          description: "Local cadastrado com sucesso.",
+        });
       }
-      
-      setLocationName("");
+
+      setShowLocationForm(false);
       setEditingLocation(null);
-      setIsLocationDialogOpen(false);
+      setLocationForm({
+        name: "",
+        street: "",
+        number: "",
+        complement: "",
+        neighborhood: "",
+        city: "",
+        state: "",
+        zip_code: "",
+      });
       loadLocations();
     } catch (error) {
-      console.error("Erro ao salvar local:", error);
-      toast({ title: "Erro", description: "Erro ao salvar local.", variant: "destructive" });
+      console.error("Error saving location:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível salvar o local.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -513,25 +532,32 @@ export default function Settings() {
     }
   };
 
-  const handleToggleMenuPermission = async (role: string, menuId: string) => {
-    const currentPermissions = menuPermissions[role] || [];
-    const hasPermission = currentPermissions.includes(menuId);
-    
+  const togglePermission = async (role: string, menuItem: string) => {
     try {
-      await updateRoleMenuPermission(role, menuId, !hasPermission);
-      
-      // Atualizar estado local
-      const newPermissions = hasPermission
-        ? currentPermissions.filter(id => id !== menuId)
-        : [...currentPermissions, menuId];
-      
-      setMenuPermissions({
-        ...menuPermissions,
-        [role]: newPermissions
+      const existing = permissions.find(
+        (p) => p.role === role && p.menu_item === menuItem
+      );
+
+      const newAccess = existing ? !existing.can_access : true;
+
+      await updateRoleMenuPermission({
+        role,
+        menu_item: menuItem,
+        can_access: newAccess
+      });
+
+      await loadPermissions();
+      toast({
+        title: "Sucesso",
+        description: "Permissão atualizada com sucesso.",
       });
     } catch (error) {
-      console.error("Erro ao atualizar permissão de menu:", error);
-      toast({ title: "Erro", description: "Erro ao atualizar permissão.", variant: "destructive" });
+      console.error("Error toggling permission:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar a permissão.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -567,6 +593,21 @@ export default function Settings() {
 
   const menuItems: MenuItem[] = ["dashboard", "properties", "tenants", "rentals", "payments", "financial", "settings"];
   const roles: MenuRole[] = ["admin", "broker", "financial"];
+
+  const handleEditLocation = (location: Location) => {
+    setEditingLocation(location);
+    setLocationForm({
+      name: location.name,
+      street: location.street || "",
+      number: location.number || "",
+      complement: location.complement || "",
+      neighborhood: location.neighborhood || "",
+      city: location.city,
+      state: location.state,
+      zip_code: location.zip_code || "",
+    });
+    setShowLocationForm(true);
+  };
 
   return (
     <Layout>
@@ -951,7 +992,7 @@ export default function Settings() {
                             return (
                               <TableCell key={role} className="text-center">
                                 <button
-                                  onClick={() => handleToggleMenuPermission(role, menuItem)}
+                                  onClick={() => togglePermission(role, menuItem)}
                                   className="inline-flex items-center justify-center"
                                 >
                                   {hasAccess ? (
@@ -1221,21 +1262,161 @@ export default function Settings() {
             <DialogHeader>
               <DialogTitle>{editingLocation ? "Editar Local" : "Novo Local"}</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleSaveLocation} className="space-y-4">
+            <form onSubmit={handleLocationSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="locationName">Nome do Local</Label>
+                <Label htmlFor="locationName">Nome do Local <span className="text-red-500">*</span></Label>
                 <Input
                   id="locationName"
-                  value={locationName}
-                  onChange={(e) => setLocationName(e.target.value)}
-                  placeholder="Ex: Condomínio Jardins"
+                  value={locationForm.name}
+                  onChange={(e) => setLocationForm({ ...locationForm, name: e.target.value })}
+                  placeholder="Ex: Casa 1, Apartamento A, Loja Centro"
                   required
                 />
               </div>
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsLocationDialogOpen(false)}>Cancelar</Button>
-                <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">Salvar</Button>
-              </DialogFooter>
+
+              <div className="space-y-2">
+                <Label htmlFor="locationZipCode">CEP <span className="text-red-500">*</span></Label>
+                <Input
+                  id="locationZipCode"
+                  value={locationForm.zip_code}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, "").slice(0, 8);
+                    const formatted = value.replace(/(\d{5})(\d)/, "$1-$2");
+                    setLocationForm({ ...locationForm, zip_code: formatted });
+                    if (value.length === 8) {
+                      handleCepLookup(value);
+                    }
+                  }}
+                  placeholder="00000-000"
+                  maxLength={9}
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="space-y-2 md:col-span-3">
+                  <Label htmlFor="locationStreet">Endereço <span className="text-red-500">*</span></Label>
+                  <Input
+                    id="locationStreet"
+                    value={locationForm.street}
+                    onChange={(e) => setLocationForm({ ...locationForm, street: e.target.value })}
+                    placeholder="Rua, Avenida, etc."
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="locationNumber">Número <span className="text-red-500">*</span></Label>
+                  <Input
+                    id="locationNumber"
+                    value={locationForm.number}
+                    onChange={(e) => setLocationForm({ ...locationForm, number: e.target.value })}
+                    placeholder="123"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="locationComplement">Complemento</Label>
+                <Input
+                  id="locationComplement"
+                  value={locationForm.complement}
+                  onChange={(e) => setLocationForm({ ...locationForm, complement: e.target.value })}
+                  placeholder="Bloco, Andar, Sala, etc."
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="locationNeighborhood">Bairro <span className="text-red-500">*</span></Label>
+                  <Input
+                    id="locationNeighborhood"
+                    value={locationForm.neighborhood}
+                    onChange={(e) => setLocationForm({ ...locationForm, neighborhood: e.target.value })}
+                    placeholder="Centro, Jardins, etc."
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="locationCity">Cidade <span className="text-red-500">*</span></Label>
+                  <Input
+                    id="locationCity"
+                    value={locationForm.city}
+                    onChange={(e) => setLocationForm({ ...locationForm, city: e.target.value })}
+                    placeholder="São Paulo"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="locationState">Estado <span className="text-red-500">*</span></Label>
+                <Select
+                  value={locationForm.state}
+                  onValueChange={(value) => setLocationForm({ ...locationForm, state: value })}
+                >
+                  <SelectTrigger id="locationState">
+                    <SelectValue placeholder="Selecione o estado" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="AC">Acre</SelectItem>
+                    <SelectItem value="AL">Alagoas</SelectItem>
+                    <SelectItem value="AP">Amapá</SelectItem>
+                    <SelectItem value="AM">Amazonas</SelectItem>
+                    <SelectItem value="BA">Bahia</SelectItem>
+                    <SelectItem value="CE">Ceará</SelectItem>
+                    <SelectItem value="DF">Distrito Federal</SelectItem>
+                    <SelectItem value="ES">Espírito Santo</SelectItem>
+                    <SelectItem value="GO">Goiás</SelectItem>
+                    <SelectItem value="MA">Maranhão</SelectItem>
+                    <SelectItem value="MT">Mato Grosso</SelectItem>
+                    <SelectItem value="MS">Mato Grosso do Sul</SelectItem>
+                    <SelectItem value="MG">Minas Gerais</SelectItem>
+                    <SelectItem value="PA">Pará</SelectItem>
+                    <SelectItem value="PB">Paraíba</SelectItem>
+                    <SelectItem value="PR">Paraná</SelectItem>
+                    <SelectItem value="PE">Pernambuco</SelectItem>
+                    <SelectItem value="PI">Piauí</SelectItem>
+                    <SelectItem value="RJ">Rio de Janeiro</SelectItem>
+                    <SelectItem value="RN">Rio Grande do Norte</SelectItem>
+                    <SelectItem value="RS">Rio Grande do Sul</SelectItem>
+                    <SelectItem value="RO">Rondônia</SelectItem>
+                    <SelectItem value="RR">Roraima</SelectItem>
+                    <SelectItem value="SC">Santa Catarina</SelectItem>
+                    <SelectItem value="SP">São Paulo</SelectItem>
+                    <SelectItem value="SE">Sergipe</SelectItem>
+                    <SelectItem value="TO">Tocantins</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setShowLocationForm(false);
+                    setEditingLocation(null);
+                    setLocationForm({
+                      name: "",
+                      street: "",
+                      number: "",
+                      complement: "",
+                      neighborhood: "",
+                      city: "",
+                      state: "",
+                      zip_code: "",
+                    });
+                  }}
+                >
+                  Cancelar
+                </Button>
+                <Button type="submit">
+                  {editingLocation ? "Atualizar" : "Cadastrar"} Local
+                </Button>
+              </div>
             </form>
           </DialogContent>
         </Dialog>

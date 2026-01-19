@@ -179,6 +179,13 @@ export default function Dashboard() {
     URL.revokeObjectURL(url);
   };
 
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Bom dia";
+    if (hour < 18) return "Boa tarde";
+    return "Boa noite";
+  };
+
   useEffect(() => {
     // Basic permission check
     const checkAccess = () => {
@@ -423,33 +430,17 @@ export default function Dashboard() {
 
   return (
     <>
-      <SEO
-        title="Dashboard - D'Uvo Enterprise"
-        description="Painel de controle do sistema de gerenciamento de locações"
-      />
+      <SEO title="Dashboard - Gerenciador de Locações" />
       <Layout>
         <div className="space-y-6">
-          <ScrollReveal>
-            <Card className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white border-none shadow-lg">
-              <CardContent className="p-6">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                  <div className="space-y-2">
-                    <h1 className="text-3xl font-bold tracking-tight">
-                      {mounted ? `Olá, ${greeting.toLowerCase()} ${userName} 👋` : "Olá! 👋"}
-                    </h1>
-                    <p className="text-blue-100 opacity-90 capitalize">
-                      {currentDate}
-                    </p>
-                  </div>
-                  <div className="hidden md:block">
-                    <div className="h-16 w-16 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-sm">
-                      <TrendingUp className="h-8 w-8 text-white" />
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </ScrollReveal>
+          <div>
+            <h1 className="text-3xl font-bold">
+              {getGreeting()}, {user?.name || "Usuário"}!
+            </h1>
+            <p className="text-muted-foreground">
+              Aqui está um resumo das suas locações
+            </p>
+          </div>
 
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
             <h2 className="text-2xl font-bold">Visão Geral</h2>
