@@ -128,8 +128,10 @@ export default function PaymentDetails() {
                     <p className="text-sm font-medium text-muted-foreground flex items-center gap-1">
                       <Home className="h-4 w-4" /> Imóvel
                     </p>
-                    <p>{property.name}</p>
-                    <p className="text-xs text-muted-foreground">{property.address}</p>
+                    <p>{property.location || "Local não informado"}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {property.complement || ""}
+                    </p>
                   </div>
                 )}
                 {tenant && (
@@ -152,11 +154,11 @@ export default function PaymentDetails() {
             <div className="border rounded-lg p-4 bg-white">
               <PaymentReceipt
                 tenantName={tenant?.name || "Inquilino"}
-                propertyAddress={property?.address || "Endereço do imóvel"}
+                propertyAddress={`${property?.location || ""} ${property?.complement || ""}`}
                 amount={payment.paidAmount}
                 referenceMonth={`${payment.referenceMonth}/${payment.referenceYear}`}
                 paymentDate={payment.paymentDate || new Date().toISOString()}
-                ownerName={property?.location || "Imobiliária"} // Fallback
+                ownerName={"Imobiliária"} // Fallback
               />
             </div>
           </div>

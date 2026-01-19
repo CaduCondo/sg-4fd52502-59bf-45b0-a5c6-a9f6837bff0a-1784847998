@@ -546,7 +546,7 @@ export default function Rentals() {
                                 </div>
                                 <div className="text-right">
                                   <p className="font-semibold text-emerald-600">
-                                    {formatCurrency(property.rentValue)}
+                                    {formatCurrency(property.value || 0)}
                                   </p>
                                 </div>
                               </div>
@@ -620,7 +620,7 @@ export default function Rentals() {
                         <div className="flex items-center justify-between">
                           <span className="text-sm text-muted-foreground">Valor:</span>
                           <span className="text-lg font-bold text-green-600">
-                            {property.rentValue?.toLocaleString("pt-BR", {
+                            {property.value?.toLocaleString("pt-BR", {
                               style: "currency",
                               currency: "BRL"
                             })}
@@ -752,7 +752,7 @@ export default function Rentals() {
                       setFormData({
                         ...formData,
                         propertyId: value,
-                        value: property?.rentValue ? applyRealMask((property.rentValue * 100).toString()) : "",
+                        value: property?.value ? applyRealMask((property.value * 100).toString()) : "",
                       });
                     }}
                   >
@@ -762,7 +762,7 @@ export default function Rentals() {
                     <SelectContent>
                       {availableProperties.map((property) => (
                         <SelectItem key={property.id} value={property.id}>
-                          {property.location} - {property.complement} - {formatCurrency(property.rentValue)}
+                          {property.location} - {property.complement} - {formatCurrency(property.value || 0)}
                         </SelectItem>
                       ))}
                     </SelectContent>

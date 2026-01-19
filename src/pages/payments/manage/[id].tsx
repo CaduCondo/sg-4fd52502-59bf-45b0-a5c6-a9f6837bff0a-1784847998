@@ -806,7 +806,7 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
           isOpen={showReceipt} 
           onClose={() => setShowReceipt(false)}
           tenantName={rental.tenant?.name || "Inquilino"}
-          propertyAddress={rental.property?.address || "Endereço do imóvel"}
+          propertyAddress={`${rental.property?.location || ""} ${rental.property?.complement || ""}`}
           amount={payment.paidAmount || payment.expectedAmount}
           referenceMonth={`${payment.referenceMonth}/${payment.referenceYear}`}
           paymentDate={payment.paymentDate || new Date().toISOString()}
