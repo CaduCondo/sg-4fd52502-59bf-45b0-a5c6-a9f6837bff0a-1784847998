@@ -186,51 +186,12 @@ export default function Dashboard() {
     setSelectedMonth(now.getMonth() + 1);
     setSelectedYear(now.getFullYear());
     setMounted(true);
-
-    // Basic permission check
-    const checkAccess = () => {
-      const userStr = localStorage.getItem("rental_auth_user");
-      if (userStr) {
-        const user = JSON.parse(userStr);
-        if (!hasPermission(user.role, "canViewDashboard")) {
-           toast({
-             title: "Acesso Negado",
-             description: "Você não tem permissão para visualizar o dashboard.",
-             variant: "destructive"
-           });
-           // Optional: redirect or show blocking state
-        }
-      }
-    };
-    checkAccess();
   }, []);
 
   useEffect(() => {
     if (mounted) {
-      // Set current date
-      const now = new Date();
-      const options: Intl.DateTimeFormatOptions = {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      };
-      setCurrentDate(
-        now.toLocaleDateString("pt-BR", options).replace(/^\w/, (c) => c.toUpperCase())
-      );
-
-      // Set greeting based on time
-      const hour = now.getHours();
-      if (hour < 12) {
-        setGreeting("Bom dia");
-      } else if (hour < 18) {
-        setGreeting("Boa tarde");
-      } else {
-        setGreeting("Boa noite");
-      }
-
+      setGreeting(getGreeting());
       loadDashboardData();
-      loadUserName();
     }
   }, [mounted]);
 
@@ -454,12 +415,12 @@ export default function Dashboard() {
       <SEO title="Dashboard - Gerenciador de Locações" />
       <Layout>
         <div className="space-y-6">
-          <div>
+          <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-lg p-6 text-white shadow-lg">
             <h1 className="text-3xl font-bold">
-              {getGreeting()}, {user?.name || "Usuário"}!
+              {greeting}, {user?.name?.split(" ")[0] || "Usuário"}!
             </h1>
-            <p className="text-muted-foreground">
-              Aqui está um resumo das suas locações
+            <p className="text-blue-100 mt-2">
+              Bem-vindo ao painel de controle do D'Uvo Enterprise.
             </p>
           </div>
 
