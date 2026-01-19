@@ -314,7 +314,7 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
               <div className="space-y-2">
                 <Label htmlFor="role">Perfil</Label>
                 <Select
-                  value={formData.role}
+                  value={selectedUser.role}
                   onValueChange={(value) => handleChange("role", value as SystemUser["role"])}
                   disabled={user?.role !== "admin"}
                 >
@@ -333,7 +333,7 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
               <div className="space-y-2">
                 <Label htmlFor="status">Status</Label>
                 <Select
-                  value={formData.status}
+                  value={selectedUser.status}
                   onValueChange={(value) => handleChange("status", value as SystemUser["status"])}
                   disabled={user?.role !== "admin"}
                 >
