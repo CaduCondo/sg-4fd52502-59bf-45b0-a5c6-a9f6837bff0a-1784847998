@@ -45,10 +45,11 @@ export default function Properties() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [formData, setFormData] = useState<PropertyFormState>(INITIAL_FORM_STATE);
   const [searchText, setSearchText] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"available" | "occupied" | "unavailable" | "all">("all");
-  const [locationFilter, setLocationFilter] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<"all" | Property["status"]>("all");
+  const [locationFilter, setLocationFilter] = useState("all");
   const [sortBy, setSortBy] = useState<"alphabetic" | "status" | "value-asc" | "value-desc" | "none">("none");
 
   // Get selected location for displaying address info
@@ -132,6 +133,22 @@ export default function Properties() {
     setIsDialogOpen(true);
   };
 
+  const handleViewProperty = (property: Property) => {
+    setSelectedProperty(property);
+    
+    setFormData({
+      locationId: property.locationId || "",
+      complement: property.complement || "",
+      value: property.value ? applyRealMask(property.value.toString()) : "",
+      rooms: property.rooms?.toString() || "",
+      bathrooms: property.bathrooms?.toString() || "",
+      description: property.description || "",
+      status: property.status || "available",
+    });
+    
+    setIsViewDialogOpen(true);
+  };
+
   const handleDeleteProperty = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!confirm("Tem certeza que deseja excluir este imóvel?")) return;
@@ -151,12 +168,13 @@ export default function Properties() {
     setLoading(true);
 
     try {
-      const payload = {
-        locationId: formData.locationId,
+      // Prepare payload with correct types
+      const payload: any = {
+        locationId: formData.locationId || null, // Handle empty string as null
         complement: formData.complement,
-        value: parseFloat(removeMask(formData.value)) || 0,
         rooms: parseInt(formData.rooms) || 0,
         bathrooms: parseInt(formData.bathrooms) || 0,
+        value: parseFloat(formData.value.replace(/\./g, "").replace(",", ".")) || 0,
         description: formData.description,
         status: formData.status,
       };
@@ -175,7 +193,7 @@ export default function Properties() {
       console.error("Erro ao salvar imóvel:", error);
       toast({ 
         title: "Erro ao salvar imóvel", 
-        description: "Verifique os dados e tente novamente.",
+        description: "Verifique os dados e tente novamente. Certifique-se de selecionar um local.",
         variant: "destructive" 
       });
     } finally {
@@ -215,61 +233,69 @@ export default function Properties() {
 
           {/* Filters Section */}
           <Card className="mb-6">
-            <CardContent className="p-4">
+            <CardContent className="pt-6">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                {/* Search Input */}
-                <div className="md:col-span-2">
+                
+                {/* Search Filter */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Buscar</label>
                   <Input
-                    type="text"
-                    placeholder="Buscar por local, complemento ou observação..."
+                    placeholder="Local, complemento, observação..."
                     value={searchText}
                     onChange={(e) => setSearchText(e.target.value)}
-                    className="w-full"
                   />
                 </div>
 
                 {/* Status Filter */}
-                <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val as any)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Todos os status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos os status</SelectItem>
-                    <SelectItem value="available">Disponível</SelectItem>
-                    <SelectItem value="occupied">Ocupado</SelectItem>
-                    <SelectItem value="unavailable">Indisponível</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Status</label>
+                  <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as typeof statusFilter)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todos os status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos</SelectItem>
+                      <SelectItem value="available">Disponível</SelectItem>
+                      <SelectItem value="occupied">Ocupado</SelectItem>
+                      <SelectItem value="unavailable">Indisponível</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
                 {/* Location Filter */}
-                <Select value={locationFilter} onValueChange={setLocationFilter}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Todos os locais" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos os locais</SelectItem>
-                    {locations.map((loc) => (
-                      <SelectItem key={loc.id} value={loc.id}>
-                        {loc.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Local</label>
+                  <Select value={locationFilter} onValueChange={setLocationFilter}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todos os locais" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos os locais</SelectItem>
+                      {locations.map((loc) => (
+                        <SelectItem key={loc.id} value={loc.id}>
+                          {loc.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              {/* Sort By */}
-              <div className="mt-4">
-                <Select value={sortBy} onValueChange={(val) => setSortBy(val as any)}>
-                  <SelectTrigger className="w-full md:w-64">
-                    <SelectValue placeholder="Ordenar por" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="alphabetic">Alfabético (Local)</SelectItem>
-                    <SelectItem value="status">Status</SelectItem>
-                    <SelectItem value="value-asc">Valor Menor</SelectItem>
-                    <SelectItem value="value-desc">Valor Maior</SelectItem>
-                  </SelectContent>
-                </Select>
+                {/* Sort By */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Ordenar por</label>
+                  <Select value={sortBy} onValueChange={(value) => setSortBy(value as typeof sortBy)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Ordenar por" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="alphabetic">Alfabético (Local)</SelectItem>
+                      <SelectItem value="status">Status</SelectItem>
+                      <SelectItem value="value-asc">Valor Menor</SelectItem>
+                      <SelectItem value="value-desc">Valor Maior</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
               </div>
             </CardContent>
           </Card>
@@ -340,12 +366,12 @@ export default function Properties() {
                 return (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {filtered.map((property) => {
-                      const location = getLocationData(property.locationId);
+                      const location = locations.find((l) => l.id === property.locationId);
                       return (
-                        <Card
-                          key={property.id}
-                          className="cursor-pointer hover:shadow-lg transition-shadow relative"
-                          onClick={() => handleOpenEditDialog(property)}
+                        <Card 
+                          key={property.id} 
+                          className="hover:shadow-lg transition-shadow cursor-pointer"
+                          onClick={() => handleViewProperty(property)}
                         >
                           <CardHeader className="pb-3">
                             <div className="flex items-start justify-between">
@@ -435,6 +461,96 @@ export default function Properties() {
             </>
           )}
         </div>
+
+        {/* View Dialog */}
+        <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Visualizar Imóvel</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-6">
+              {/* View Only Fields */}
+              <div className="space-y-2">
+                <Label>Local</Label>
+                <div className="p-2 bg-muted rounded-md">
+                   {locations.find(l => l.id === formData.locationId)?.name || "Local não identificado"}
+                </div>
+              </div>
+
+              {/* Address Details if location selected */}
+              {selectedLocation && (
+                <div className="bg-muted/50 p-4 rounded-lg border space-y-2">
+                  <div className="flex items-start gap-2">
+                    <MapPin className="h-5 w-5 text-muted-foreground mt-0.5" />
+                    <div className="flex-1">
+                      <p className="font-medium text-sm">Endereço</p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {selectedLocation.street}, {selectedLocation.number}
+                        {selectedLocation.complement && ` - ${selectedLocation.complement}`}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {selectedLocation.neighborhood} - {selectedLocation.city}/{selectedLocation.state}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <div className="space-y-2">
+                    <Label>Complemento</Label>
+                    <div className="p-2 bg-muted rounded-md min-h-[40px]">
+                      {formData.complement || "-"}
+                    </div>
+                 </div>
+                 <div className="space-y-2">
+                    <Label>Valor</Label>
+                    <div className="p-2 bg-muted rounded-md">
+                      {formData.value || "R$ 0,00"}
+                    </div>
+                 </div>
+                 <div className="space-y-2">
+                    <Label>Quartos</Label>
+                    <div className="p-2 bg-muted rounded-md">
+                      {formData.rooms || "0"}
+                    </div>
+                 </div>
+                 <div className="space-y-2">
+                    <Label>Banheiros</Label>
+                    <div className="p-2 bg-muted rounded-md">
+                      {formData.bathrooms || "0"}
+                    </div>
+                 </div>
+              </div>
+              
+              <div className="space-y-2">
+                 <Label>Status</Label>
+                 <div className="pt-1">
+                   {getStatusBadge(formData.status)}
+                 </div>
+              </div>
+
+              <div className="space-y-2">
+                 <Label>Observações</Label>
+                 <div className="p-2 bg-muted rounded-md min-h-[80px] whitespace-pre-wrap">
+                   {formData.description || "Nenhuma observação."}
+                 </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4 border-t">
+                <Button variant="outline" onClick={() => setIsViewDialogOpen(false)}>
+                  Fechar
+                </Button>
+                <Button onClick={() => {
+                   setIsViewDialogOpen(false);
+                   if (selectedProperty) handleOpenEditDialog(selectedProperty);
+                }}>
+                  Editar
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Create/Edit Dialog */}
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
