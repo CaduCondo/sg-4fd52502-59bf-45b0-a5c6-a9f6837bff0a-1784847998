@@ -38,7 +38,7 @@ export default function Dashboard() {
           .from("tenants")
           .select("id");
 
-        const { data: activeRentalsData } = await supabase
+        const { data: activeRentalsData } = await (supabase as any)
           .from("rentals")
           .select("id")
           .eq("status", "active");
