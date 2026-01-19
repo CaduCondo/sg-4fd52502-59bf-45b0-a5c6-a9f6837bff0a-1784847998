@@ -57,10 +57,11 @@ export default function Dashboard() {
     overduePayments: 0,
   });
 
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
+  const [selectedYear, setSelectedYear] = useState<number | null>(null);
 
   const exportDashboardData = () => {
+    if (!selectedMonth || !selectedYear) return;
     const monthName = monthNames[selectedMonth - 1];
     const exportData = {
       periodo: `${monthName} de ${selectedYear}`,
@@ -180,6 +181,12 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
+    // Initialize dates on client side to prevent hydration mismatch
+    const now = new Date();
+    setSelectedMonth(now.getMonth() + 1);
+    setSelectedYear(now.getFullYear());
+    setMounted(true);
+
     // Basic permission check
     const checkAccess = () => {
       const userStr = localStorage.getItem("rental_auth_user");
@@ -199,48 +206,67 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    setMounted(true);
-    // Set current date
-    const now = new Date();
-    const options: Intl.DateTimeFormatOptions = {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    };
-    setCurrentDate(
-      now.toLocaleDateString("pt-BR", options).replace(/^\w/, (c) => c.toUpperCase())
-    );
+    if (mounted) {
+      // Set current date
+      const now = new Date();
+      const options: Intl.DateTimeFormatOptions = {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      };
+      setCurrentDate(
+        now.toLocaleDateString("pt-BR", options).replace(/^\w/, (c) => c.toUpperCase())
+      );
 
-    // Set greeting based on time
-    const hour = now.getHours();
-    if (hour < 12) {
-      setGreeting("Bom dia");
-    } else if (hour < 18) {
-      setGreeting("Boa tarde");
-    } else {
-      setGreeting("Boa noite");
+      // Set greeting based on time
+      const hour = now.getHours();
+      if (hour < 12) {
+        setGreeting("Bom dia");
+      } else if (hour < 18) {
+        setGreeting("Boa tarde");
+      } else {
+        setGreeting("Boa noite");
+      }
+
+      loadDashboardData();
+      loadUserName();
     }
-
-    loadDashboardData();
-    loadUserName();
-  }, []);
+  }, [mounted]);
 
   useEffect(() => {
-    if (properties.length > 0 || tenants.length > 0 || rentals.length > 0 || payments.length > 0) {
+    if (mounted && selectedMonth && selectedYear && (properties.length > 0 || tenants.length > 0 || rentals.length > 0 || payments.length > 0)) {
       loadDashboardData();
     }
-  }, [selectedMonth, selectedYear]);
+  }, [selectedMonth, selectedYear, mounted]);
 
   const loadDashboardData = async () => {
+    if (!selectedMonth || !selectedYear) return;
+
     try {
       setIsLoading(true);
 
       // Fetch rentals using direct Supabase query with is_active
-      const { data: rentalsData } = await supabase
+      const { data: rentalsDataRaw } = await supabase
         .from("rentals")
         .select("*")
         .eq("is_active", true);
+
+      // Map raw supabase data to Rental type
+      const mappedRentals: any[] = (rentalsDataRaw || []).map((r: any) => ({
+        ...r,
+        propertyId: r.property_id,
+        tenantId: r.tenant_id,
+        startDate: r.start_date,
+        endDate: r.end_date,
+        rentAmount: r.rent_amount || r.value,
+        isActive: r.is_active,
+        depositAmount: r.deposit,
+        paymentDay: r.payment_day,
+        autoRenew: r.auto_renew,
+        hasGarage: r.has_garage,
+        garageValue: r.garage_value
+      }));
 
       const [
         propertiesData, 
@@ -256,9 +282,9 @@ export default function Dashboard() {
 
       setProperties(propertiesData);
       setTenants(tenantsData);
-      setRentals(rentalsData || []);
+      setRentals(mappedRentals);
       setPayments(paymentsData);
-      calculateStats(propertiesData, rentalsData || [], paymentsData, tenantsData);
+      calculateStats(propertiesData, mappedRentals, paymentsData, tenantsData);
     } catch (error) {
       console.error("Erro ao carregar dados do dashboard:", error);
     }
@@ -337,6 +363,8 @@ export default function Dashboard() {
     pays: Payment[],
     tens: Tenant[]
   ) => {
+    if (!selectedMonth || !selectedYear) return;
+    
     // Filter active rentals in period
     const activeRentalsInPeriod = rents.filter((rental) => {
       if (!rental.isActive) return false;
@@ -417,6 +445,10 @@ export default function Dashboard() {
 
   const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i);
 
+  if (!mounted || !selectedMonth || !selectedYear) {
+    return <Layout><div className="flex items-center justify-center h-screen">Carregando...</div></Layout>;
+  }
+
   return (
     <>
       <SEO title="Dashboard - Gerenciador de Locações" />
@@ -435,7 +467,7 @@ export default function Dashboard() {
             <h2 className="text-2xl font-bold">Visão Geral</h2>
             <div className="flex gap-3">
               <Select
-                value={selectedMonth.toString()}
+                value={selectedMonth?.toString() || ""}
                 onValueChange={(value) => setSelectedMonth(parseInt(value))}
               >
                 <SelectTrigger className="w-[140px]">
@@ -451,7 +483,7 @@ export default function Dashboard() {
               </Select>
 
               <Select
-                value={selectedYear.toString()}
+                value={selectedYear?.toString() || ""}
                 onValueChange={(value) => setSelectedYear(parseInt(value))}
               >
                 <SelectTrigger className="w-[100px]">
