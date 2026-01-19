@@ -302,7 +302,7 @@ export default function Settings() {
   const handleResetPassword = async (userId: string) => {
     if (!confirm("Deseja resetar a senha deste usuário para 'mudar123'?")) return;
     try {
-      await resetPassword(userId, "mudar123");
+      await resetPassword(userId);
       toast({ title: "Senha resetada com sucesso!" });
     } catch (error) {
       console.error("Erro ao resetar senha:", error);
