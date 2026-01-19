@@ -1,24 +1,75 @@
-import { Property } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
-import { Database } from "@/integrations/supabase/types";
+import { Property } from "@/types";
+import { Tables } from "@/integrations/supabase/types";
 
-export async function getAllProperties(): Promise<Property[]> {
+type PropertyRow = Tables<"properties"> & {
+  locations?: Tables<"locations"> | null;
+};
+
+function mapPropertyFromDB(row: PropertyRow): Property {
+  return {
+    id: row.id,
+    // Location info - mapped from join
+    locationId: row.location_id,
+    location: row.locations?.name, // Mapped name from joined table
+    
+    complement: row.complement || undefined,
+    value: row.value || 0,
+    status: (row.status as "available" | "occupied" | "unavailable") || "available",
+    
+    // Additional fields
+    rooms: row.rooms || 0,
+    bathrooms: row.bathrooms || 0,
+    area: row.area || 0,
+    hasGarage: row.has_garage || false,
+    garageValue: row.garage_value || 0,
+    description: row.description || undefined,
+    propertyIdentifier: row.property_identifier || undefined,
+    
+    createdAt: row.created_at || undefined,
+    updatedAt: row.updated_at || undefined,
+  };
+}
+
+export async function createProperty(property: Partial<Property>) {
   const { data, error } = await supabase
     .from("properties")
-    .select("*")
+    .insert({
+      location_id: property.locationId,
+      complement: property.complement || null,
+      value: property.value,
+      status: property.status || "available",
+      rooms: property.rooms,
+      bathrooms: property.bathrooms,
+      description: property.description,
+    })
+    .select("*, locations(*)")
+    .single();
+
+  if (error) throw error;
+  return mapPropertyFromDB(data);
+}
+
+// Alias for create
+export const create = createProperty;
+
+export async function getAll() {
+  const { data, error } = await supabase
+    .from("properties")
+    .select("*, locations(*)")
     .order("created_at", { ascending: false });
 
   if (error) throw error;
-  return (data || []).map(mapPropertyFromDB);
+  return data.map(mapPropertyFromDB);
 }
 
-// Alias for compatibility
-export const getAll = getAllProperties;
+// Alias for list
+export const list = getAll;
 
-export async function getPropertyById(id: string): Promise<Property> {
+export async function getById(id: string) {
   const { data, error } = await supabase
     .from("properties")
-    .select("*")
+    .select("*, locations(*)")
     .eq("id", id)
     .single();
 
@@ -26,64 +77,33 @@ export async function getPropertyById(id: string): Promise<Property> {
   return mapPropertyFromDB(data);
 }
 
-// Alias for compatibility
-export const getById = getPropertyById;
-
-export async function createProperty(property: Omit<Property, "id" | "createdAt" | "updatedAt">): Promise<Property> {
-  // Ensure values are numbers
-  const rooms = Number(property.rooms) || 0;
-  const bathrooms = Number(property.bathrooms) || 0;
-  // Ensure value is stored as cents (integer)
-  const value = Math.round(Number(property.value) * 100);
-
-  const { data, error } = await supabase
-    .from("properties")
-    .insert([{
-      location_id: property.locationId,
-      complement: property.complement,
-      rooms: rooms,
-      bathrooms: bathrooms,
-      value: value,
-      description: property.description,
-      status: property.status,
-    }])
-    .select()
-    .single();
-
-  if (error) throw error;
-  return mapPropertyFromDB(data);
-}
-
-// Alias for compatibility
-export const create = createProperty;
-
-export async function updateProperty(id: string, property: Partial<Property>): Promise<Property> {
+export async function update(id: string, property: Partial<Property>) {
   const updateData: any = {};
   
+  // Only update fields that are present
   if (property.locationId !== undefined) updateData.location_id = property.locationId;
   if (property.complement !== undefined) updateData.complement = property.complement;
-  if (property.rooms !== undefined) updateData.rooms = Number(property.rooms) || 0;
-  if (property.bathrooms !== undefined) updateData.bathrooms = Number(property.bathrooms) || 0;
-  // Ensure value is stored as cents (integer)
-  if (property.value !== undefined) updateData.value = Math.round(Number(property.value) * 100);
-  if (property.description !== undefined) updateData.description = property.description;
+  if (property.value !== undefined) updateData.value = property.value;
   if (property.status !== undefined) updateData.status = property.status;
+  if (property.rooms !== undefined) updateData.rooms = property.rooms;
+  if (property.bathrooms !== undefined) updateData.bathrooms = property.bathrooms;
+  if (property.description !== undefined) updateData.description = property.description;
 
   const { data, error } = await supabase
     .from("properties")
     .update(updateData)
     .eq("id", id)
-    .select()
+    .select("*, locations(*)")
     .single();
 
   if (error) throw error;
   return mapPropertyFromDB(data);
 }
 
-// Alias for compatibility
-export const update = updateProperty;
+// Alias for update
+export const updateProperty = update;
 
-export async function deleteProperty(id: string): Promise<void> {
+export async function remove(id: string) {
   const { error } = await supabase
     .from("properties")
     .delete()
@@ -92,21 +112,5 @@ export async function deleteProperty(id: string): Promise<void> {
   if (error) throw error;
 }
 
-// Alias for compatibility
-export const remove = deleteProperty;
-
-function mapPropertyFromDB(data: Database["public"]["Tables"]["properties"]["Row"]): Property {
-  return {
-    id: data.id,
-    locationId: data.location_id,
-    complement: data.complement || "",
-    rooms: Number(data.rooms) || 0,
-    bathrooms: Number(data.bathrooms) || 0,
-    // Convert from cents to currency units (float)
-    value: data.value ? data.value / 100 : 0,
-    description: data.description || "",
-    status: data.status as Property["status"],
-    createdAt: data.created_at,
-    updatedAt: data.updated_at,
-  };
-}
+// Alias for remove
+export const deleteProperty = remove;

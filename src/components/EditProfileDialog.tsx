@@ -174,24 +174,31 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
     }
   };
 
-  const handleChange = (field: keyof ExtendedSystemUser, value: string) => {
+  const handleChange = (field: keyof ExtendedSystemUser | "active", value: string | boolean) => {
     if (!selectedUser) return;
 
     if (field === "document") {
-      const masked = applyCpfMask(value);
+      const masked = applyCpfMask(value as string);
       setSelectedUser({ ...selectedUser, [field]: masked });
     } else if (field === "phone") {
-      const masked = applyPhoneMask(value);
+      const masked = applyPhoneMask(value as string);
       setSelectedUser({ ...selectedUser, [field]: masked });
     } else if (field === "cep") {
-      const masked = applyCepMask(value);
+      const masked = applyCepMask(value as string);
       setSelectedUser({ ...selectedUser, [field]: masked });
     } else if (field === 'role') {
       const roleValue = value as "admin" | "broker" | "financial";
       setSelectedUser({ ...selectedUser, role: roleValue });
+    } else if (field === 'active') {
+       // value comes as string from onValueChange in the Select above, but we passed .toString()
+       // actually let's simplify the call above to pass the boolean directly if possible, or handle conversion here
+       // The Select onValueChange gives a string.
+       // Let's assume we change the call in Select to: onChange={(val) => handleChange('active', val === 'active')}
+       // Wait, I updated the Select to pass string. Let's fix the handleChange signature to accept logic.
+       setSelectedUser({ ...selectedUser, active: value === "true" || value === true });
     } else {
       // Dynamic assignment
-      setSelectedUser({ ...selectedUser, [field]: value });
+      setSelectedUser({ ...selectedUser, [field as keyof ExtendedSystemUser]: value });
     }
   };
 
@@ -315,16 +322,34 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
                 <Label htmlFor="role">Perfil</Label>
                 <Select
                   value={selectedUser.role}
-                  onValueChange={(value) => handleChange("role", value)}
+                  onValueChange={(value) => handleChange("role", value as SystemUser["role"])}
                   disabled={user?.role !== "admin"}
                 >
-                  <SelectTrigger id="role">
-                    <SelectValue placeholder="Selecione o perfil" />
+                  <SelectTrigger>
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="admin">Administrador</SelectItem>
                     <SelectItem value="broker">Corretor</SelectItem>
                     <SelectItem value="financial">Financeiro</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Status */}
+              <div className="space-y-2">
+                <Label htmlFor="status">Status</Label>
+                <Select
+                  value={selectedUser.active ? "active" : "inactive"}
+                  onValueChange={(value) => handleChange("active", value === "active")}
+                  disabled={user?.role !== "admin"}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Ativo</SelectItem>
+                    <SelectItem value="inactive">Inativo</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

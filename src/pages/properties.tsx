@@ -1,557 +1,459 @@
 import { useState, useEffect } from "react";
+import { useRouter } from "next/router";
 import { Layout } from "@/components/Layout";
 import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Building2, Plus, Trash2, MapPin } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { getAll as getAllProperties, create as createProperty, remove as deleteProperty, update as updateProperty } from "@/services/propertyService";
-import { getAll as getAllLocations } from "@/services/locationService";
-import type { Property, Location as LocationType } from "@/types";
-import { applyRealMask, removeMask, formatCurrency } from "@/lib/masks";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Plus, Search, Eye, Edit2, Trash2, Grid3x3, List, AlertCircle } from "lucide-react";
+import { propertyService, locationService } from "@/services";
+import type { Property, Location } from "@/types";
+import { ScrollReveal } from "@/components/animations/ScrollReveal";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
-// Simplified form state - only property-specific fields
-interface PropertyFormState {
-  locationId: string;
-  complement: string;
-  value: string;
-  rooms: string;
-  bathrooms: string;
-  description: string;
-  status: "available" | "occupied" | "unavailable";
-}
-
-const INITIAL_FORM_STATE: PropertyFormState = {
-  locationId: "",
-  complement: "",
-  value: "",
-  rooms: "",
-  bathrooms: "",
-  description: "",
-  status: "available",
-};
-
-export default function Properties() {
-  const { toast } = useToast();
+export default function PropertiesPage() {
+  const router = useRouter();
   const [properties, setProperties] = useState<Property[]>([]);
-  const [locations, setLocations] = useState<LocationType[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [filteredProperties, setFilteredProperties] = useState<Property[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [locationFilter, setLocationFilter] = useState<string>("all");
+  const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
+
+  // Dialogs state
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
-  const [formData, setFormData] = useState<PropertyFormState>(INITIAL_FORM_STATE);
-  const [searchText, setSearchText] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"available" | "occupied" | "unavailable" | "all">("all");
-  const [locationFilter, setLocationFilter] = useState<string | null>(null);
-  const [sortBy, setSortBy] = useState<"alphabetic" | "status" | "value-asc" | "value-desc" | "none">("none");
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [propertyToDelete, setPropertyToDelete] = useState<string | null>(null);
+  const [editingProperty, setEditingProperty] = useState<Property | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Get selected location for displaying address info
-  const selectedLocation = locations.find(loc => loc.id === formData.locationId);
+  const [formData, setFormData] = useState({
+    location_id: "",
+    property_identifier: "Apartamento", // Valor padrão conforme migração
+    monthly_rent: "",
+    status: "available",
+    description: "",
+  });
 
-  const loadProperties = async () => {
-    setLoading(true);
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  useEffect(() => {
+    filterProperties();
+  }, [properties, searchTerm, statusFilter, locationFilter]);
+
+  const loadData = async () => {
     try {
-      const data = await getAllProperties();
-      const mapped = data.map((prop: any) => ({
-        ...prop,
-        locationId: prop.location_id,
-        propertyIdentifier: prop.property_identifier,
-        monthlyRent: prop.monthly_rent,
-        hasGarage: prop.has_garage,
-        garageValue: prop.garage_value,
-        rooms: prop.rooms || 0,
-        bathrooms: prop.bathrooms || 0,
-        area: prop.area || 0,
-      }));
-      setProperties(mapped);
+      const [propertiesData, locationsData] = await Promise.all([
+        propertyService.getAll(),
+        locationService.getAll(),
+      ]);
+      setProperties(propertiesData);
+      setLocations(locationsData);
     } catch (error) {
-      console.error("Erro ao carregar imóveis:", error);
-      toast({ 
-        title: "Erro ao carregar imóveis",
-        variant: "destructive" 
-      });
+      console.error("Erro ao carregar dados:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  const loadLocations = async () => {
-    try {
-      const data = await getAllLocations();
-      setLocations(data);
-    } catch (error) {
-      console.error("Erro ao carregar locais:", error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível carregar os locais.",
-        variant: "destructive",
-      });
-    }
-  };
+  const filterProperties = () => {
+    const filtered = properties.filter((property) => {
+      const matchesSearch =
+        property.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        property.description?.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesStatus = statusFilter === "all" || property.status === statusFilter;
+      const matchesLocation = locationFilter === "all" || property.location_id === locationFilter;
 
-  useEffect(() => {
-    loadProperties();
-    loadLocations();
-  }, []);
-
-  const getLocationData = (locationId: string): LocationType | undefined => {
-    return locations.find((loc: LocationType) => loc.id === locationId);
-  };
-
-  const handleOpenCreateDialog = () => {
-    setFormData(INITIAL_FORM_STATE);
-    setIsEditing(false);
-    setSelectedProperty(null);
-    setIsDialogOpen(true);
-  };
-
-  // Fix: Renaming function to match usage or referencing the existing one
-  const handleNewProperty = handleOpenCreateDialog;
-
-  const handleOpenEditDialog = (property: Property) => {
-    setSelectedProperty(property);
-    setIsEditing(true);
-    
-    setFormData({
-      locationId: property.locationId || "",
-      complement: property.complement || "",
-      // FIX: Value is already in cents, do NOT multiply by 100 again
-      value: property.value ? applyRealMask(property.value.toString()) : "",
-      rooms: property.rooms?.toString() || "",
-      bathrooms: property.bathrooms?.toString() || "",
-      description: property.description || "",
-      status: property.status || "available",
+      return matchesSearch && matchesStatus && matchesLocation;
     });
-    
-    setIsDialogOpen(true);
-  };
-
-  const handleDeleteProperty = async (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!confirm("Tem certeza que deseja excluir este imóvel?")) return;
-
-    try {
-      await deleteProperty(id);
-      toast({ title: "Sucesso", description: "Imóvel excluído com sucesso!" });
-      loadProperties();
-    } catch (error) {
-      console.error("Error deleting property:", error);
-      toast({ title: "Erro", description: "Não foi possível excluir o imóvel.", variant: "destructive" });
-    }
+    setFilteredProperties(filtered);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-
     try {
-      const payload = {
-        locationId: formData.locationId,
-        complement: formData.complement,
-        value: parseFloat(removeMask(formData.value)) || 0,
-        rooms: parseInt(formData.rooms) || 0,
-        bathrooms: parseInt(formData.bathrooms) || 0,
+      const selectedLocation = locations.find(loc => loc.id === formData.location_id);
+      
+      const propertyData = {
+        location: selectedLocation?.name || "",
+        location_id: formData.location_id,
+        property_identifier: formData.property_identifier || "Apartamento",
+        type: "residential" as const, // Default fixed type
+        monthly_rent: parseFloat(formData.monthly_rent),
+        status: formData.status as "available" | "occupied" | "unavailable",
         description: formData.description,
-        status: formData.status,
       };
 
-      if (isEditing && selectedProperty) {
-        await updateProperty(selectedProperty.id, payload);
-        toast({ title: "Imóvel atualizado com sucesso!" });
+      if (editingProperty) {
+        await propertyService.update(editingProperty.id, propertyData);
       } else {
-        await createProperty(payload);
-        toast({ title: "Imóvel criado com sucesso!" });
+        await propertyService.create(propertyData);
       }
 
+      await loadData();
       setIsDialogOpen(false);
-      loadProperties();
+      resetForm();
     } catch (error) {
       console.error("Erro ao salvar imóvel:", error);
-      toast({ 
-        title: "Erro ao salvar imóvel", 
-        description: "Verifique os dados e tente novamente.",
-        variant: "destructive" 
-      });
-    } finally {
-      setLoading(false);
     }
+  };
+
+  const handleEdit = (property: Property) => {
+    setEditingProperty(property);
+    setFormData({
+      location_id: property.location_id,
+      property_identifier: property.property_identifier || "Apartamento",
+      monthly_rent: property.monthly_rent.toString(),
+      status: property.status,
+      description: property.description || "",
+    });
+    setIsDialogOpen(true);
+  };
+
+  const confirmDelete = (id: string) => {
+    setPropertyToDelete(id);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (!propertyToDelete) return;
+
+    try {
+      await propertyService.remove(propertyToDelete);
+      await loadData();
+      setIsDeleteDialogOpen(false);
+      setPropertyToDelete(null);
+    } catch (error) {
+      console.error("Erro ao excluir imóvel:", error);
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      location_id: "",
+      property_identifier: "Apartamento",
+      monthly_rent: "",
+      status: "available",
+      description: "",
+    });
+    setEditingProperty(null);
   };
 
   const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "available": return <Badge className="bg-green-100 text-green-800 border-green-200">Disponível</Badge>;
-      case "occupied": return <Badge className="bg-blue-100 text-blue-800 border-blue-200">Ocupado</Badge>;
-      case "unavailable": return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">Indisponível</Badge>;
-      default: return <Badge className="bg-gray-100 text-gray-800 border-gray-200">Desconhecido</Badge>;
-    }
+    const variants: Record<string, "default" | "secondary" | "destructive"> = {
+      available: "default",
+      occupied: "secondary",
+      unavailable: "destructive",
+    };
+    const labels: Record<string, string> = {
+      available: "Disponível",
+      occupied: "Ocupado",
+      unavailable: "Indisponível",
+    };
+    return <Badge variant={variants[status]}>{labels[status]}</Badge>;
   };
 
-  return (
-    <>
-      <SEO title="Imóveis - Gerenciador de Locações" />
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(value);
+  };
+
+  if (loading) {
+    return (
       <Layout>
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold flex items-center gap-2">
-                <Building2 className="h-8 w-8" />
-                Imóveis
-              </h1>
-              <p className="text-muted-foreground mt-1">
-                {properties.length} imóveis cadastrados
-              </p>
-            </div>
-            <Button onClick={handleOpenCreateDialog}>
-              <Plus className="mr-2 h-4 w-4" />
-              Novo Imóvel
-            </Button>
+        <div className="flex items-center justify-center min-h-screen">
+          <p>Carregando...</p>
+        </div>
+      </Layout>
+    );
+  }
+
+  return (
+    <Layout>
+      <SEO title="Imóveis - Gerenciador de Locações" />
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Imóveis</h1>
+            <p className="text-muted-foreground">
+              Gerencie os imóveis disponíveis para locação
+            </p>
           </div>
-
-          {/* Filters Section */}
-          <Card className="mb-6">
-            <CardContent className="p-4">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                {/* Search Input */}
-                <div className="md:col-span-2">
-                  <Input
-                    type="text"
-                    placeholder="Buscar por local, complemento ou observação..."
-                    value={searchText}
-                    onChange={(e) => setSearchText(e.target.value)}
-                    className="w-full"
-                  />
-                </div>
-
-                {/* Status Filter */}
-                <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val as any)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Todos os status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos os status</SelectItem>
-                    <SelectItem value="available">Disponível</SelectItem>
-                    <SelectItem value="occupied">Ocupado</SelectItem>
-                    <SelectItem value="unavailable">Indisponível</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                {/* Location Filter */}
-                <Select value={locationFilter} onValueChange={setLocationFilter}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Todos os locais" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos os locais</SelectItem>
-                    {locations.map((loc) => (
-                      <SelectItem key={loc.id} value={loc.id}>
-                        {loc.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Sort By */}
-              <div className="mt-4">
-                <Select value={sortBy} onValueChange={(val) => setSortBy(val as any)}>
-                  <SelectTrigger className="w-full md:w-64">
-                    <SelectValue placeholder="Ordenar por" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="alphabetic">Alfabético (Local)</SelectItem>
-                    <SelectItem value="status">Status</SelectItem>
-                    <SelectItem value="value-asc">Valor Menor</SelectItem>
-                    <SelectItem value="value-desc">Valor Maior</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
-
-          {loading && properties.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground">Carregando imóveis...</p>
-            </div>
-          ) : properties.length === 0 ? (
-            <Card>
-              <CardContent className="text-center py-12">
-                <Building2 className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                <h3 className="text-lg font-semibold mb-2">Nenhum imóvel cadastrado</h3>
-                <p className="text-muted-foreground mb-4">
-                  Comece adicionando seu primeiro imóvel
-                </p>
-                <Button onClick={handleNewProperty}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Adicionar Imóvel
-                </Button>
-              </CardContent>
-            </Card>
-          ) : (
-            <>
-              {/* Apply filters and sorting */}
-              {(() => {
-                // 1. Filter by search text
-                let filtered = properties.filter((property) => {
-                  if (!searchText) return true;
-                  const location = locations.find((l) => l.id === property.locationId);
-                  const searchLower = searchText.toLowerCase();
-                  return (
-                    location?.name.toLowerCase().includes(searchLower) ||
-                    property.complement?.toLowerCase().includes(searchLower) ||
-                    property.description?.toLowerCase().includes(searchLower)
-                  );
-                });
-
-                // 2. Filter by status
-                if (statusFilter !== "all") {
-                  filtered = filtered.filter((p) => p.status === statusFilter);
-                }
-
-                // 3. Filter by location
-                if (locationFilter !== "all") {
-                  filtered = filtered.filter((p) => p.locationId === locationFilter);
-                }
-
-                // 4. Sort
-                filtered.sort((a, b) => {
-                  const locA = locations.find((l) => l.id === a.locationId);
-                  const locB = locations.find((l) => l.id === b.locationId);
-
-                  switch (sortBy) {
-                    case "alphabetic":
-                      return (locA?.name || "").localeCompare(locB?.name || "");
-                    case "status":
-                      return a.status.localeCompare(b.status);
-                    case "value-asc":
-                      return a.value - b.value;
-                    case "value-desc":
-                      return b.value - a.value;
-                    default:
-                      return 0;
-                  }
-                });
-
-                return (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {filtered.map((property) => {
-                      const location = getLocationData(property.locationId);
-                      return (
-                        <Card
-                          key={property.id}
-                          className="cursor-pointer hover:shadow-lg transition-shadow relative"
-                          onClick={() => handleOpenEditDialog(property)}
-                        >
-                          <CardHeader className="pb-3">
-                            <div className="flex items-start justify-between">
-                              <div className="flex-1">
-                                <CardTitle className="text-lg text-blue-600">
-                                  {location?.name || "Local não identificado"}
-                                </CardTitle>
-                                {property.complement && (
-                                  <p className="text-sm text-muted-foreground mt-1">
-                                    {property.complement}
-                                  </p>
-                                )}
-                              </div>
-                              {getStatusBadge(property.status || "available")}
-                            </div>
-                          </CardHeader>
-                          <CardContent className="space-y-3">
-                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                              <span>🛏️ {property.rooms || 0} quartos</span>
-                              <span>🚿 {property.bathrooms || 0} banheiros</span>
-                            </div>
-                            
-                            {property.description && (
-                              <p className="text-sm text-muted-foreground line-clamp-2">
-                                {property.description}
-                              </p>
-                            )}
-                            
-                            <div className="flex items-center justify-between pt-2 border-t">
-                              <div className="text-lg font-bold text-emerald-600">
-                                {property.value ? formatCurrency(property.value / 100) : "R$ 0,00"}
-                              </div>
-                              
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                                onClick={(e) => handleDeleteProperty(property.id, e)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
-                  </div>
-                );
-              })()}
-
-              {/* No results message */}
-              {(() => {
-                let filtered = properties.filter((property) => {
-                  if (!searchText) return true;
-                  const location = locations.find((l) => l.id === property.locationId);
-                  const searchLower = searchText.toLowerCase();
-                  return (
-                    location?.name.toLowerCase().includes(searchLower) ||
-                    property.complement?.toLowerCase().includes(searchLower) ||
-                    property.description?.toLowerCase().includes(searchLower)
-                  );
-                });
-
-                if (statusFilter !== "all") {
-                  filtered = filtered.filter((p) => p.status === statusFilter);
-                }
-
-                if (locationFilter !== "all") {
-                  filtered = filtered.filter((p) => p.locationId === locationFilter);
-                }
-
-                if (filtered.length === 0) {
-                  return (
-                    <Card className="mt-6">
-                      <CardContent className="text-center py-12">
-                        <Building2 className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                        <h3 className="text-lg font-semibold mb-2">Nenhum resultado encontrado</h3>
-                        <p className="text-muted-foreground">
-                          Tente ajustar os filtros de busca
-                        </p>
-                      </CardContent>
-                    </Card>
-                  );
-                }
-                return null;
-              })()}
-            </>
-          )}
+          <Button
+            onClick={() => {
+              resetForm();
+              setIsDialogOpen(true);
+            }}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Novo Imóvel
+          </Button>
         </div>
 
-        {/* Create/Edit Dialog */}
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>{isEditing ? "Editar Imóvel" : "Cadastrar Novo Imóvel"}</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Location Selection */}
-              <div className="space-y-2">
-                <Label htmlFor="location">Local *</Label>
-                <Select
-                  value={formData.locationId}
-                  onValueChange={(value) => setFormData({ ...formData, locationId: value })}
-                  required
-                >
-                  <SelectTrigger id="location">
-                    <SelectValue placeholder="Selecione o local" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {locations.map((location) => (
-                      <SelectItem key={location.id} value={location.id}>
-                        {location.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+        {/* Filtros e Visualização */}
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <div className="flex gap-2 flex-1 max-w-2xl">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Buscar por local ou descrição..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-8"
+                    />
+                  </div>
+                  <Select value={locationFilter} onValueChange={setLocationFilter}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Local" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos os Locais</SelectItem>
+                      {[...locations]
+                        .sort((a, b) => a.name.localeCompare(b.name))
+                        .map((location) => (
+                          <SelectItem key={location.id} value={location.id}>
+                            {location.name}
+                          </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-[140px]">
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos</SelectItem>
+                      <SelectItem value="available">Disponível</SelectItem>
+                      <SelectItem value="occupied">Ocupado</SelectItem>
+                      <SelectItem value="unavailable">Indisponível</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex gap-2 border rounded-md p-1">
+                  <Button
+                    variant={viewMode === "grid" ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => setViewMode("grid")}
+                  >
+                    <Grid3x3 className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant={viewMode === "table" ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => setViewMode("table")}
+                  >
+                    <List className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
+            </div>
+          </CardContent>
+        </Card>
 
-              {/* Display location address (read-only) */}
-              {selectedLocation && (
-                <div className="bg-muted/50 p-4 rounded-lg border space-y-2">
-                  <div className="flex items-start gap-2">
-                    <MapPin className="h-5 w-5 text-muted-foreground mt-0.5" />
-                    <div className="flex-1">
-                      <p className="font-medium text-sm">Endereço do Local</p>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {selectedLocation.street}, {selectedLocation.number}
-                        {selectedLocation.complement && ` - ${selectedLocation.complement}`}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {selectedLocation.neighborhood} - {selectedLocation.city}/{selectedLocation.state}
-                      </p>
-                      {selectedLocation.zip_code && (
-                        <p className="text-sm text-muted-foreground">
-                          CEP: {selectedLocation.zip_code}
+        {/* Visualização em Grade */}
+        {viewMode === "grid" && (
+          <ScrollReveal>
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {filteredProperties.map((property) => (
+                <Card key={property.id} className="hover:shadow-lg transition-shadow">
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <CardTitle className="text-lg font-semibold text-slate-800">
+                          {property.location}
+                        </CardTitle>
+                        {property.complement && (
+                          <p className="text-sm text-slate-600 mt-1">
+                            {property.complement}
+                          </p>
+                        )}
+                      </div>
+                      <Badge variant={property.status === "available" ? "default" : property.status === "occupied" ? "secondary" : "destructive"}>
+                        {property.status === "available" ? "Disponível" : property.status === "occupied" ? "Ocupado" : "Indisponível"}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {/* Descrição */}
+                      {property.description ? (
+                        <p className="text-sm text-muted-foreground line-clamp-2 h-10">
+                          {property.description}
+                        </p>
+                      ) : (
+                         <p className="text-sm text-muted-foreground h-10 italic">
+                          Sem descrição adicional
                         </p>
                       )}
+                      
+                      {/* Valor */}
+                      <div className="pt-2 border-t">
+                        <p className="text-xs text-muted-foreground uppercase tracking-wider">Aluguel Mensal</p>
+                        <p className="text-2xl font-bold text-primary">
+                          {formatCurrency(property.monthly_rent)}
+                        </p>
+                      </div>
+
+                      {/* Ações */}
+                      <div className="flex gap-2 pt-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => router.push(`/properties/${property.id}`)}
+                        >
+                          <Eye className="mr-2 h-4 w-4" />
+                          Detalhes
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                          onClick={() => handleEdit(property)}
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                          onClick={() => confirmDelete(property.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </ScrollReveal>
+        )}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Complement */}
+        {/* Visualização em Tabela */}
+        {viewMode === "table" && (
+          <ScrollReveal>
+            <div className="rounded-md border bg-white">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Local</TableHead>
+                    <TableHead>Complemento</TableHead>
+                    <TableHead>Aluguel</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredProperties.map((property) => (
+                    <TableRow key={property.id}>
+                      <TableCell className="font-medium">
+                        {property.location}
+                      </TableCell>
+                      <TableCell>
+                        {property.complement || "-"}
+                      </TableCell>
+                      <TableCell>{formatCurrency(property.monthly_rent || 0)}</TableCell>
+                      <TableCell>{getStatusBadge(property.status)}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => router.push(`/properties/${property.id}`)}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEdit(property)}
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            onClick={() => confirmDelete(property.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </ScrollReveal>
+        )}
+
+        {/* Dialog de Cadastro/Edição */}
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>
+                {editingProperty ? "Editar Imóvel" : "Novo Imóvel"}
+              </DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="complement">Complemento</Label>
+                  <Label htmlFor="location_id">Local *</Label>
+                  <select
+                    id="location_id"
+                    value={formData.location_id}
+                    onChange={(e) => setFormData({...formData, location_id: e.target.value})}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    required
+                  >
+                    <option value="">Selecione um local</option>
+                    {[...locations]
+                      .sort((a, b) => a.name.localeCompare(b.name))
+                      .map((location) => (
+                        <option key={location.id} value={location.id}>
+                          {location.name}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="monthly_rent">Aluguel Mensal (R$) *</Label>
                   <Input
-                    id="complement"
-                    value={formData.complement}
-                    onChange={(e) => setFormData({ ...formData, complement: e.target.value })}
-                    placeholder="Ex: Apto 101, Sala 5"
+                    id="monthly_rent"
+                    type="number"
+                    step="0.01"
+                    value={formData.monthly_rent}
+                    onChange={(e) =>
+                      setFormData({ ...formData, monthly_rent: e.target.value })
+                    }
+                    placeholder="0.00"
+                    required
                   />
                 </div>
 
-                {/* Value */}
                 <div className="space-y-2">
-                  <Label htmlFor="value">Valor</Label>
-                  <Input
-                    id="value"
-                    value={formData.value}
-                    onChange={(e) => setFormData({ ...formData, value: applyRealMask(e.target.value) })}
-                    placeholder="R$ 0,00"
-                  />
-                </div>
-
-                {/* Quartos e Banheiros */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="rooms">Quartos</Label>
-                    <Input
-                      id="rooms"
-                      type="text"
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      value={formData.rooms}
-                      onChange={(e) => {
-                        const value = e.target.value.replace(/\D/g, "");
-                        setFormData({ ...formData, rooms: value });
-                      }}
-                      placeholder="Ex: 3"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="bathrooms">Banheiros</Label>
-                    <Input
-                      id="bathrooms"
-                      type="text"
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      value={formData.bathrooms}
-                      onChange={(e) => {
-                        const value = e.target.value.replace(/\D/g, "");
-                        setFormData({ ...formData, bathrooms: value });
-                      }}
-                      placeholder="Ex: 2"
-                    />
-                  </div>
-                </div>
-
-                {/* Status */}
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="status">Status</Label>
+                  <Label htmlFor="status">Status *</Label>
                   <Select
                     value={formData.status}
-                    onValueChange={(value: any) => setFormData({ ...formData, status: value })}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, status: value })
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -563,34 +465,60 @@ export default function Properties() {
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
 
-              {/* Description (Footer) */}
-              <div className="border-t pt-4">
                 <div className="space-y-2">
-                  <Label htmlFor="description">Observações</Label>
-                  <Textarea
+                  <Label htmlFor="description">Descrição</Label>
+                  <Input
                     id="description"
                     value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    rows={4}
-                    placeholder="Adicione observações sobre o imóvel..."
+                    onChange={(e) =>
+                      setFormData({ ...formData, description: e.target.value })
+                    }
+                    placeholder="Informações adicionais..."
                   />
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-4">
-                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setIsDialogOpen(false);
+                    resetForm();
+                  }}
+                >
                   Cancelar
                 </Button>
-                <Button type="submit" disabled={loading}>
-                  {isEditing ? "Salvar Alterações" : "Cadastrar Imóvel"}
+                <Button type="submit">
+                  {editingProperty ? "Atualizar" : "Cadastrar"}
                 </Button>
-              </div>
+              </DialogFooter>
             </form>
           </DialogContent>
         </Dialog>
-      </Layout>
-    </>
+
+        {/* Dialog de Confirmação de Exclusão */}
+        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2 text-red-600">
+                <AlertCircle className="h-5 w-5" />
+                Confirmar Exclusão
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que deseja excluir este imóvel? Esta ação não pode ser desfeita e removerá todos os dados associados.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setPropertyToDelete(null)}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
+                Sim, Excluir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    </Layout>
   );
 }

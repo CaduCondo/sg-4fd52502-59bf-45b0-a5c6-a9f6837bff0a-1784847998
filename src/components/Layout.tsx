@@ -169,14 +169,14 @@ export function Layout({ children }: LayoutProps) {
   // Função para verificar se o menu deve ser exibido baseado no perfil do usuário
   const shouldShowMenu = (menuPath: string) => {
     if (!user?.role) return false;
-    
-    // ADMIN TEM ACESSO TOTAL SEMPRE
+
+    // Admin sees everything
     if (user.role === "admin") return true;
 
-    // Map menu paths to menu_item values in database
+    // Map menu paths to menu items in database
     const menuItemMap: Record<string, string> = {
       "/dashboard": "dashboard",
-      "/properties": "properties", 
+      "/properties": "properties",
       "/tenants": "tenants",
       "/rentals": "rentals",
       "/payments": "payments",
@@ -185,9 +185,12 @@ export function Layout({ children }: LayoutProps) {
     };
 
     const menuItem = menuItemMap[menuPath];
-    if (!menuItem) return true; // Se não tem mapeamento, libera (ex: home)
+    if (!menuItem) return false;
 
-    // Check permission from database
+    // For Financial menu, also allow broker role
+    if (menuPath === "/financial" && user.role === "broker") return true;
+
+    // Check permissions from database
     const permission = permissions.find(
       (p) => p.role === user.role && p.menu_item === menuItem
     );
