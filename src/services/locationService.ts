@@ -1,4 +1,5 @@
 import { Location } from "@/types";
+import { supabase } from "@/integrations/supabase/client";
 import { 
   getAll as fetchAll, 
   createSingle, 
@@ -14,7 +15,27 @@ export async function getAllLocations(): Promise<Location[]> {
 }
 
 // Alias for compatibility
-export const getAll = getAllLocations;
+export const getAll = async (): Promise<Location[]> => {
+  const { data, error } = await supabase
+    .from("locations")
+    .select("*")
+    .order("name");
+
+  if (error) throw error;
+  return data;
+};
+
+export const getById = async (id: string): Promise<Location | null> => {
+  const { data, error } = await supabase
+    .from("locations")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (error) throw error;
+  return data;
+};
+
 export const getLocations = getAllLocations;
 
 export async function getLocationById(id: string): Promise<Location> {
