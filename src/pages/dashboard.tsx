@@ -14,7 +14,7 @@ import { getAll as getAllRentals } from "@/services/rentalService";
 import { getAll as getAllPayments } from "@/services/paymentService";
 import { getConfig } from "@/services/configService";
 import { getAll as getAllLocations } from "@/services/locationService";
-import { getAll as getSystemUsers } from "@/services/systemUserService";
+import { getSystemUsers } from "@/services/systemUserService";
 import { getAll as getUserLocationPermissions } from "@/services/userLocationPermissionService";
 import { useAuth } from "@/contexts/AuthContext";
 

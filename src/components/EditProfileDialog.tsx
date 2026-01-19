@@ -77,7 +77,7 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
 
     setIsUnlocking(true);
     try {
-      await unlockUser(selectedUser.id);
+      await unlockUser(selectedUser.id, !selectedUser.active);
       
       toast({
         title: "Usuário desbloqueado!",
@@ -141,7 +141,19 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
         role: selectedUser.role,
       };
 
-      await updateUser(selectedUser.id, payload);
+      if (user?.id) {
+        await updateUser(user.id, payload);
+        
+        // Atualizar contexto/sessão se necessário
+        // updateSession(updates);
+        
+        toast({
+          title: "Sucesso",
+          description: "Perfil atualizado com sucesso.",
+        });
+        
+        onOpenChange(false);
+      }
 
       toast({
         title: "Perfil atualizado!",

@@ -266,7 +266,7 @@ export default function Settings() {
           name: userFormData.name,
           email: userFormData.email,
           phone: userFormData.phone,
-          role: userFormData.role,
+          role: userFormData.role as "admin" | "broker" | "financial",
         });
         toast({ title: "Usuário atualizado com sucesso!" });
       } else {
@@ -274,8 +274,9 @@ export default function Settings() {
           name: userFormData.name,
           email: userFormData.email,
           phone: userFormData.phone,
-          role: userFormData.role,
+          role: userFormData.role as "admin" | "broker" | "financial",
           password: userFormData.password,
+          active: true,
         });
         toast({ title: "Usuário criado com sucesso!" });
       }
