@@ -49,13 +49,10 @@ export default function Properties() {
   const [searchText, setSearchText] = useState("");
   const [statusFilter, setStatusFilter] = useState<"available" | "occupied" | "unavailable" | "all">("all");
   const [locationFilter, setLocationFilter] = useState<string | null>(null);
-  const [sortBy, setSortBy] = useState<"value" | "rooms" | "bathrooms" | "status" | "none">("none");
+  const [sortBy, setSortBy] = useState<"alphabetic" | "status" | "value-asc" | "value-desc" | "none">("none");
 
   // Get selected location for displaying address info
   const selectedLocation = locations.find(loc => loc.id === formData.locationId);
-
-  // Fix: Renaming function to match usage or referencing the existing one
-  const handleNewProperty = handleOpenCreateDialog;
 
   const loadProperties = async () => {
     setLoading(true);
@@ -114,6 +111,9 @@ export default function Properties() {
     setIsDialogOpen(true);
   };
 
+  // Fix: Renaming function to match usage or referencing the existing one
+  const handleNewProperty = handleOpenCreateDialog;
+
   const handleOpenEditDialog = (property: Property) => {
     setSelectedProperty(property);
     setIsEditing(true);
@@ -121,7 +121,8 @@ export default function Properties() {
     setFormData({
       locationId: property.locationId || "",
       complement: property.complement || "",
-      value: property.value ? applyRealMask((property.value * 100).toString()) : "",
+      // FIX: Value is already in cents, do NOT multiply by 100 again
+      value: property.value ? applyRealMask(property.value.toString()) : "",
       rooms: property.rooms?.toString() || "",
       bathrooms: property.bathrooms?.toString() || "",
       description: property.description || "",

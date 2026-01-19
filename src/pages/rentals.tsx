@@ -499,255 +499,191 @@ export default function Rentals() {
       />
       <Layout>
         {/* Header with New Rental Button */}
-        <ScrollReveal>
-          <div className="flex justify-between items-center mb-6">
-            <div>
-              <h1 className="text-3xl font-bold flex items-center gap-2">
-                <Key className="h-8 w-8" />
-                Locações
-              </h1>
-              <p className="text-muted-foreground mt-1">
-                Gerencie contratos de locação
-              </p>
-            </div>
-            <Button
-              onClick={() => setIsDialogOpen(true)}
-              size="lg"
-              disabled={availableProperties.length === 0 || availableTenants.length === 0}
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Nova Locação
-            </Button>
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+          <div>
+            <h1 className="text-3xl font-bold flex items-center gap-2">
+              <Key className="h-8 w-8" />
+              Locações
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Gerencie contratos e aluguéis
+            </p>
           </div>
-        </ScrollReveal>
-
-        {/* Two Column Layout: Available Properties and Tenants */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          {/* Available Properties */}
-          <ScrollReveal delay={0.1}>
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Building2 className="h-5 w-5" />
-                  Imóveis Disponíveis ({availableProperties.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3 max-h-96 overflow-y-auto">
-                  {availableProperties.slice(0, 5).map((property) => {
-                    const location = locations.find((l) => l.id === property.locationId);
-                    return (
-                      <Card key={property.id} className="border-2">
-                        <CardContent className="p-4">
-                          <div className="space-y-2">
-                            <div className="font-semibold text-blue-600">
-                              {location?.name || "Local não encontrado"}
-                            </div>
-                            {property.complement && (
-                              <div className="text-sm text-muted-foreground">
-                                {property.complement}
-                              </div>
-                            )}
-                            <div className="text-lg font-bold text-green-600">
-                              {formatCurrency(property.value / 100)}
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                  {availableProperties.length === 0 && (
-                    <p className="text-center text-muted-foreground py-8">
-                      Nenhum imóvel disponível no momento
-                    </p>
-                  )}
-                  {availableProperties.length > 5 && (
-                    <p className="text-sm text-muted-foreground text-center pt-2">
-                      + {availableProperties.length - 5} imóveis disponíveis
-                    </p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </ScrollReveal>
-
-          {/* Available Tenants */}
-          <ScrollReveal delay={0.2}>
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="h-5 w-5" />
-                  Inquilinos Disponíveis ({availableTenants.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3 max-h-96 overflow-y-auto">
-                  {availableTenants.slice(0, 5).map((tenant) => (
-                    <Card key={tenant.id} className="border-2">
-                      <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                          <Avatar>
-                            <AvatarFallback>
-                              {tenant.name.substring(0, 2).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1">
-                            <div className="font-semibold">{tenant.name}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {tenant.phone}
-                            </div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                  {availableTenants.length === 0 && (
-                    <p className="text-center text-muted-foreground py-8">
-                      Nenhum inquilino disponível no momento
-                    </p>
-                  )}
-                  {availableTenants.length > 5 && (
-                    <p className="text-sm text-muted-foreground text-center pt-2">
-                      + {availableTenants.length - 5} inquilinos disponíveis
-                    </p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </ScrollReveal>
+          
+          <Button 
+            onClick={() => setIsDialogOpen(true)}
+            disabled={availableProperties.length === 0 || availableTenants.length === 0}
+            className="w-full md:w-auto"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Nova Locação
+          </Button>
         </div>
 
-        {/* Active Rentals */}
-        <ScrollReveal delay={0.3}>
-          <Card className="mb-6">
+        {/* 2 Columns: Vacant Properties & Available Tenants */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Column 1: Vacant Properties */}
+          <Card className="h-full">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CheckCircle className="h-5 w-5 text-green-600" />
-                Locações Ativas ({activeRentals.length})
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Home className="h-5 w-5 text-emerald-600" />
+                Imóveis Vagos ({availableProperties.length})
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              {activeRentals.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">
-                  Nenhuma locação ativa no momento
-                </p>
+            <CardContent className="space-y-3 max-h-[400px] overflow-y-auto">
+              {availableProperties.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">Nenhum imóvel vago.</p>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {activeRentals.map((rental) => {
-                    const property = properties.find((p) => p.id === rental.propertyId);
-                    const tenant = tenants.find((t) => t.id === rental.tenantId);
-                    const location = property ? locations.find((loc) => loc.id === property.locationId) : null;
-
-                    return (
-                      <Card
-                        key={rental.id}
-                        className="cursor-pointer hover:shadow-lg transition-shadow"
-                        onClick={() => router.push(`/rentals/${rental.id}`)}
-                      >
-                        <CardHeader className="pb-3">
-                          <CardTitle className="text-lg text-blue-600">
-                            {location?.name || "Local não encontrado"}
-                          </CardTitle>
-                          {property?.complement && (
-                            <p className="text-sm text-muted-foreground">
-                              {property.complement}
-                            </p>
-                          )}
-                        </CardHeader>
-                        <CardContent className="space-y-2">
-                          <div className="flex items-center gap-2 text-sm">
-                            <User className="h-4 w-4 text-muted-foreground" />
-                            <span className="font-medium">{tenant?.name}</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-sm">
-                            <Calendar className="h-4 w-4 text-muted-foreground" />
-                            <span>Início: {formatDate(rental.startDate)}</span>
-                          </div>
-                          <div className="text-lg font-bold text-green-600 mt-3">
-                            {formatCurrency(rental.value)}
-                          </div>
-                          <Badge variant="default" className="mt-2">
-                            Ativa
-                          </Badge>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </div>
+                availableProperties.map(prop => {
+                   const locName = locations.find(l => l.id === prop.locationId)?.name || "Local não encontrado";
+                   return (
+                    <div key={prop.id} className="p-3 border rounded-lg bg-slate-50 flex justify-between items-center">
+                      <div>
+                        <div className="font-bold text-blue-600">{locName}</div>
+                        <div className="text-sm text-muted-foreground">{prop.complement}</div>
+                      </div>
+                      <div className="font-bold text-emerald-600">
+                        {formatCurrency(prop.value ? prop.value / 100 : 0)}
+                      </div>
+                    </div>
+                   );
+                })
               )}
             </CardContent>
           </Card>
-        </ScrollReveal>
 
-        {/* Inactive Rentals - Collapsible */}
-        {inactiveRentals.length > 0 && (
-          <ScrollReveal delay={0.4}>
-            <Card>
-              <CardHeader
-                className="cursor-pointer hover:bg-muted/50 transition-colors"
-                onClick={() => setShowInactive(!showInactive)}
-              >
-                <CardTitle className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <XCircle className="h-5 w-5 text-muted-foreground" />
-                    Locações Inativas ({inactiveRentals.length})
+          {/* Column 2: Available Tenants */}
+          <Card className="h-full">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <User className="h-5 w-5 text-blue-600" />
+                Inquilinos Disponíveis ({availableTenants.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 max-h-[400px] overflow-y-auto">
+               {availableTenants.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">Nenhum inquilino disponível.</p>
+              ) : (
+                availableTenants.map(tenant => (
+                  <div key={tenant.id} className="p-3 border rounded-lg bg-slate-50 flex justify-between items-center">
+                    <div>
+                      <div className="font-bold text-slate-800">{tenant.name}</div>
+                      <div className="text-xs text-muted-foreground">{tenant.cpf}</div>
+                    </div>
+                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                      Disponível
+                    </Badge>
                   </div>
-                  {showInactive ? (
-                    <ChevronUp className="h-5 w-5" />
-                  ) : (
-                    <ChevronDown className="h-5 w-5" />
-                  )}
-                </CardTitle>
-              </CardHeader>
-              {showInactive && (
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {inactiveRentals.map((rental) => {
-                      const property = properties.find((p) => p.id === rental.propertyId);
-                      const tenant = tenants.find((t) => t.id === rental.tenantId);
-                      const location = property ? locations.find((loc) => loc.id === property.locationId) : null;
-
-                      return (
-                        <Card
-                          key={rental.id}
-                          className="cursor-pointer hover:shadow-lg transition-shadow opacity-75"
-                          onClick={() => router.push(`/rentals/${rental.id}`)}
-                        >
-                          <CardHeader className="pb-3">
-                            <CardTitle className="text-lg text-blue-600">
-                              {location?.name || "Local não encontrado"}
-                            </CardTitle>
-                            {property?.complement && (
-                              <p className="text-sm text-muted-foreground">
-                                {property.complement}
-                              </p>
-                            )}
-                          </CardHeader>
-                          <CardContent className="space-y-2">
-                            <div className="flex items-center gap-2 text-sm">
-                              <User className="h-4 w-4 text-muted-foreground" />
-                              <span className="font-medium">{tenant?.name}</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-sm">
-                              <Calendar className="h-4 w-4 text-muted-foreground" />
-                              <span>Fim: {rental.endDate ? formatDate(rental.endDate) : "N/A"}</span>
-                            </div>
-                            <div className="text-lg font-bold text-muted-foreground mt-3">
-                              {formatCurrency(rental.value)}
-                            </div>
-                            <Badge variant="secondary" className="mt-2">
-                              Inativa
-                            </Badge>
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
-                  </div>
-                </CardContent>
+                ))
               )}
-            </Card>
-          </ScrollReveal>
-        )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Active Rentals Section */}
+        <div className="space-y-4 mb-8">
+          <h2 className="text-xl font-bold flex items-center gap-2 text-slate-800 border-b pb-2">
+             <CheckCircle className="h-5 w-5 text-green-600" />
+             Locações Ativas ({activeRentals.length})
+          </h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {activeRentals.map((rental) => {
+              const property = properties.find((p) => p.id === rental.propertyId);
+              const tenant = tenants.find((t) => t.id === rental.tenantId);
+              const location = property ? locations.find((loc) => loc.id === property.locationId) : null;
+              
+              return (
+                <Card key={rental.id} className="hover:shadow-md transition-shadow border-l-4 border-l-green-500">
+                  <CardHeader className="pb-2">
+                    <div className="font-bold text-lg text-blue-600 truncate">
+                      {location?.name || "Local não encontrado"}
+                    </div>
+                    <div className="text-sm text-muted-foreground truncate">
+                      {property?.complement || "Sem complemento"}
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex justify-between items-center mb-3">
+                      <div className="flex items-center gap-2">
+                        <Avatar className="h-8 w-8">
+                          <AvatarFallback className="bg-slate-100 text-slate-600">
+                            {tenant?.name?.substring(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="text-sm font-medium">{tenant?.name}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex justify-between items-end border-t pt-3">
+                       <div className="text-xs text-muted-foreground">
+                         Início: {formatDate(rental.startDate)}
+                       </div>
+                       <div className="text-lg font-bold text-emerald-600">
+                         {formatCurrency(rental.value)}
+                       </div>
+                    </div>
+                    
+                    <div className="flex justify-end gap-2 mt-4">
+                        <Button size="sm" variant="outline" onClick={() => {
+                          // TODO: Edit rental
+                        }}>
+                          <Edit className="h-3 w-3 mr-1" /> Editar
+                        </Button>
+                        <Button size="sm" variant="destructive" onClick={() => {
+                          // TODO: End rental
+                        }}>
+                          <XCircle className="h-3 w-3 mr-1" /> Encerrar
+                        </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Inactive Rentals Section (Collapsible) */}
+        <div className="space-y-4">
+          <Button 
+            variant="ghost" 
+            className="w-full justify-between border bg-slate-50 hover:bg-slate-100"
+            onClick={() => setShowInactive(!showInactive)}
+          >
+            <div className="flex items-center gap-2 font-semibold text-slate-600">
+              <Archive className="h-5 w-5" />
+              Locações Inativas / Histórico ({inactiveRentals.length})
+            </div>
+            {showInactive ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </Button>
+
+          {showInactive && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {inactiveRentals.map((rental) => {
+                 const property = properties.find((p) => p.id === rental.propertyId);
+                 const tenant = tenants.find((t) => t.id === rental.tenantId);
+                 const location = property ? locations.find((loc) => loc.id === property.locationId) : null;
+
+                 return (
+                  <Card key={rental.id} className="opacity-75 bg-slate-50">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-base text-slate-600">
+                         {location?.name || "Local não encontrado"}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-slate-500 mb-2">{tenant?.name}</p>
+                      <div className="text-sm text-slate-400">
+                        Fim: {rental.endDate ? formatDate(rental.endDate) : "N/A"}
+                      </div>
+                      <Badge variant="secondary" className="mt-2">Encerrado</Badge>
+                    </CardContent>
+                  </Card>
+                 );
+              })}
+            </div>
+          )}
+        </div>
       </Layout>
     </>
   );

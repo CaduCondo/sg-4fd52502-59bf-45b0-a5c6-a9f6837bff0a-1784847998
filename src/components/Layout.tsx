@@ -49,7 +49,7 @@ import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/contexts/AuthContext";
 import { hasPermission } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
-import { getAllRoleMenuPermissions } from "@/services/roleMenuPermissionService";
+import { getRoleMenuPermissions } from "@/services/roleMenuPermissionService";
 
 interface LayoutProps {
   children: ReactNode;
@@ -97,7 +97,7 @@ export function Layout({ children }: LayoutProps) {
 
   const loadPermissions = async () => {
     try {
-      const perms = await getAllRoleMenuPermissions();
+      const perms = await getRoleMenuPermissions();
       setPermissions(perms);
     } catch (error) {
       console.error("Error loading permissions:", error);
@@ -169,6 +169,9 @@ export function Layout({ children }: LayoutProps) {
   // Função para verificar se o menu deve ser exibido baseado no perfil do usuário
   const shouldShowMenu = (menuPath: string) => {
     if (!user?.role) return false;
+    
+    // ADMIN TEM ACESSO TOTAL SEMPRE
+    if (user.role === "admin") return true;
 
     // Map menu paths to menu_item values in database
     const menuItemMap: Record<string, string> = {
@@ -182,7 +185,7 @@ export function Layout({ children }: LayoutProps) {
     };
 
     const menuItem = menuItemMap[menuPath];
-    if (!menuItem) return false;
+    if (!menuItem) return true; // Se não tem mapeamento, libera (ex: home)
 
     // Check permission from database
     const permission = permissions.find(
