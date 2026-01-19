@@ -6,15 +6,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Home, Users, DollarSign, AlertCircle, Calendar, TrendingUp, Building2, Download, CheckCircle } from "lucide-react";
+
 // Services Imports - Using Aliases for compatibility
 import { getAll as getAllProperties } from "@/services/propertyService";
 import { getAll as getAllTenants } from "@/services/tenantService";
+import { getAll as getAllRentals } from "@/services/rentalService";
 import { getAll as getAllPayments } from "@/services/paymentService";
 import { getConfig } from "@/services/configService";
 import { getAll as getAllLocations } from "@/services/locationService";
 import { getSystemUsers } from "@/services/systemUserService";
 import { getAll as getUserLocationPermissions } from "@/services/userLocationPermissionService";
 import { useAuth } from "@/contexts/AuthContext";
+
 // Permissions & Utils
 import { hasPermission } from "@/lib/permissions";
 import { formatCurrency } from "@/lib/masks";
@@ -56,13 +59,13 @@ export default function Dashboard() {
     pendingPayments: 0,
     overduePayments: 0,
   });
-
-  const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
-  const [selectedYear, setSelectedYear] = useState<number | null>(null);
+  
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
   const exportDashboardData = () => {
-    if (!selectedMonth || !selectedYear) return;
     const monthName = monthNames[selectedMonth - 1];
+    
     const exportData = {
       periodo: `${monthName} de ${selectedYear}`,
       resumo: {
@@ -98,6 +101,7 @@ export default function Dashboard() {
         const rental = rentals.find(r => r.id === p.rentalId);
         const property = properties.find(pr => pr.id === rental?.propertyId);
         const tenant = tenants.find(t => t.id === rental?.tenantId);
+        
         return {
           imovel: property?.location || "N/A",
           inquilino: tenant?.name || "N/A",
@@ -126,7 +130,9 @@ export default function Dashboard() {
 
   const exportAsCSV = (data: any) => {
     const monthName = monthNames[selectedMonth - 1];
+    
     let csvContent = `Dashboard - ${monthName} de ${selectedYear}\n\n`;
+    
     csvContent += "RESUMO GERAL\n";
     csvContent += "Métrica,Valor\n";
     csvContent += `Total de Imóveis,${data.resumo.totalImoveis}\n`;
@@ -135,27 +141,27 @@ export default function Dashboard() {
     csvContent += `Total de Inquilinos,${data.resumo.totalInquilinos}\n`;
     csvContent += `Recebimentos Pendentes,${data.resumo.recebimentosPendentes}\n`;
     csvContent += `Recebimentos Realizados,${data.resumo.recebimentosRealizados}\n\n`;
-
+    
     csvContent += "FINANCEIRO\n";
     csvContent += "Métrica,Valor\n";
     csvContent += `Receita Mensal,${data.financeiro.receitaMensal}\n`;
     csvContent += `Taxa de Administração,${data.financeiro.taxaAdministracao}\n`;
     csvContent += `Receita Líquida,${data.financeiro.receitaLiquida}\n\n`;
-
+    
     csvContent += "IMÓVEIS\n";
     csvContent += "Local,Endereço,Bairro,Cidade,Valor Aluguel,Tipo,Status\n";
     data.imoveis.forEach((imovel: any) => {
       csvContent += `"${imovel.local}","${imovel.endereco}","${imovel.bairro}","${imovel.cidade}",${imovel.valorAluguel},"${imovel.tipo}","${imovel.status}"\n`;
     });
     csvContent += "\n";
-
+    
     csvContent += "INQUILINOS\n";
     csvContent += "Nome,CPF,Email,Telefone,Status\n";
     data.inquilinos.forEach((inquilino: any) => {
       csvContent += `"${inquilino.nome}","${inquilino.cpf}","${inquilino.email}","${inquilino.telefone}","${inquilino.status}"\n`;
     });
     csvContent += "\n";
-
+    
     csvContent += "PAGAMENTOS\n";
     csvContent += "Imóvel,Inquilino,Valor Esperado,Valor Pago,Data Vencimento,Data Pagamento,Status\n";
     data.pagamentos.forEach((pagamento: any) => {
@@ -181,12 +187,6 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    // Initialize dates on client side to prevent hydration mismatch
-    const now = new Date();
-    setSelectedMonth(now.getMonth() + 1);
-    setSelectedYear(now.getFullYear());
-    setMounted(true);
-
     // Basic permission check
     const checkAccess = () => {
       const userStr = localStorage.getItem("rental_auth_user");
@@ -206,85 +206,64 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    if (mounted) {
-      // Set current date
-      const now = new Date();
-      const options: Intl.DateTimeFormatOptions = {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      };
-      setCurrentDate(
-        now.toLocaleDateString("pt-BR", options).replace(/^\w/, (c) => c.toUpperCase())
-      );
+    setMounted(true);
+    
+    // Set current date
+    const now = new Date();
+    const options: Intl.DateTimeFormatOptions = {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    };
+    setCurrentDate(
+      now.toLocaleDateString("pt-BR", options).replace(/^\w/, (c) => c.toUpperCase())
+    );
 
-      // Set greeting based on time
-      const hour = now.getHours();
-      if (hour < 12) {
-        setGreeting("Bom dia");
-      } else if (hour < 18) {
-        setGreeting("Boa tarde");
-      } else {
-        setGreeting("Boa noite");
-      }
-
-      loadDashboardData();
-      loadUserName();
+    // Set greeting based on time
+    const hour = now.getHours();
+    if (hour < 12) {
+      setGreeting("Bom dia");
+    } else if (hour < 18) {
+      setGreeting("Boa tarde");
+    } else {
+      setGreeting("Boa noite");
     }
-  }, [mounted]);
+
+    loadDashboardData();
+    loadUserName();
+  }, []);
 
   useEffect(() => {
-    if (mounted && selectedMonth && selectedYear && (properties.length > 0 || tenants.length > 0 || rentals.length > 0 || payments.length > 0)) {
+    if (properties.length > 0 || tenants.length > 0 || rentals.length > 0 || payments.length > 0) {
       loadDashboardData();
     }
-  }, [selectedMonth, selectedYear, mounted]);
+  }, [selectedMonth, selectedYear]);
 
   const loadDashboardData = async () => {
-    if (!selectedMonth || !selectedYear) return;
-
     try {
       setIsLoading(true);
-
-      // Fetch rentals using direct Supabase query with is_active
-      const { data: rentalsDataRaw } = await supabase
-        .from("rentals")
-        .select("*")
-        .eq("is_active", true);
-
-      // Map raw supabase data to Rental type
-      const mappedRentals: any[] = (rentalsDataRaw || []).map((r: any) => ({
-        ...r,
-        propertyId: r.property_id,
-        tenantId: r.tenant_id,
-        startDate: r.start_date,
-        endDate: r.end_date,
-        rentAmount: r.rent_amount || r.value,
-        isActive: r.is_active,
-        depositAmount: r.deposit,
-        paymentDay: r.payment_day,
-        autoRenew: r.auto_renew,
-        hasGarage: r.has_garage,
-        garageValue: r.garage_value
-      }));
-
+      
       const [
         propertiesData, 
         tenantsData, 
+        rentalsData, 
         paymentsData,
         configData
       ] = await Promise.all([
         getAllProperties(),
         getAllTenants(),
+        getAllRentals(),
         getAllPayments(),
         getConfig()
       ]);
 
       setProperties(propertiesData);
       setTenants(tenantsData);
-      setRentals(mappedRentals);
+      setRentals(rentalsData);
       setPayments(paymentsData);
-      calculateStats(propertiesData, mappedRentals, paymentsData, tenantsData);
+
+      calculateStats(propertiesData, rentalsData, paymentsData, tenantsData);
     } catch (error) {
       console.error("Erro ao carregar dados do dashboard:", error);
     }
@@ -305,6 +284,7 @@ export default function Dashboard() {
     try {
       // Primeiro tenta pegar do localStorage
       const userStr = localStorage.getItem("rental_auth_user") || localStorage.getItem("currentUser");
+      
       if (!userStr) {
         console.log("⚠️ Nenhum usuário encontrado no localStorage");
         setUserName("Usuário");
@@ -313,7 +293,7 @@ export default function Dashboard() {
 
       const localUser = JSON.parse(userStr);
       console.log("🔍 Usuário do localStorage:", localUser);
-
+      
       // Se já temos o nome no localStorage, usar ele
       if (localUser.name) {
         const firstName = localUser.name.split(" ")[0];
@@ -363,13 +343,13 @@ export default function Dashboard() {
     pays: Payment[],
     tens: Tenant[]
   ) => {
-    if (!selectedMonth || !selectedYear) return;
-    
     // Filter active rentals in period
     const activeRentalsInPeriod = rents.filter((rental) => {
       if (!rental.isActive) return false;
+      
       const startDate = new Date(rental.startDate);
       const endDate = rental.endDate ? new Date(rental.endDate) : null;
+      
       const monthStart = new Date(selectedYear, selectedMonth - 1, 1);
       const monthEnd = new Date(selectedYear, selectedMonth, 0);
 
@@ -391,24 +371,26 @@ export default function Dashboard() {
     );
 
     const revenue = paid.reduce((sum, p) => sum + (p.paidAmount || 0), 0);
-
+    
     // Calculate admin fee
     let fee = 0;
     for (const payment of paid) {
       const rental = rents.find(r => r.id === payment.rentalId);
       const property = rental ? props.find(p => p.id === rental.propertyId) : undefined;
+      
       if (property && property.location.toLowerCase() !== "outros") {
         const paymentFee = (payment.paidAmount || 0) * (adminFeePercentage / 100);
         fee += paymentFee;
       }
     }
-
+    
     const net = revenue - fee;
     const expected = periodPayments.reduce((sum, p) => sum + (p.expectedAmount || 0), 0);
 
     // Calculate due soon (today)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    
     const dueSoon = pays.filter(p => {
       if (p.status === "paid") return false;
       const dueDate = new Date(p.dueDate);
@@ -421,6 +403,7 @@ export default function Dashboard() {
 
     setFilteredPayments(periodPayments);
     setDueSoonPayments(dueSoon);
+
     setStats({
       totalProperties: props.length,
       availableProperties: props.filter((p) => p.status === "available").length,
@@ -445,21 +428,35 @@ export default function Dashboard() {
 
   const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i);
 
-  if (!mounted || !selectedMonth || !selectedYear) {
-    return <Layout><div className="flex items-center justify-center h-screen">Carregando...</div></Layout>;
-  }
-
   return (
     <>
       <SEO title="Dashboard - Gerenciador de Locações" />
       <Layout>
         <div className="space-y-6">
+          {/* Welcome Section - Blue Card Restored */}
+          <ScrollReveal>
+            <Card className="bg-gradient-to-r from-blue-600 to-blue-500 text-white border-none shadow-lg">
+              <CardContent className="p-8">
+                <div className="space-y-2">
+                  <h2 className="text-3xl font-bold">
+                    {getGreeting()}, {user?.name?.split(' ')[0] || "Usuário"}!
+                  </h2>
+                  <p className="text-blue-100 text-lg">
+                    Bem-vindo ao painel de controle do D'Uvo Enterprise.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </ScrollReveal>
+
+          {/* Header */}
           <div>
-            <h1 className="text-3xl font-bold">
-              {getGreeting()}, {user?.name || "Usuário"}!
+            <h1 className="text-3xl font-bold flex items-center gap-2">
+              <Home className="h-8 w-8" />
+              {getGreeting()}
             </h1>
-            <p className="text-muted-foreground">
-              Aqui está um resumo das suas locações
+            <p className="text-muted-foreground mt-1">
+              Visão geral do seu sistema de locações
             </p>
           </div>
 
@@ -467,7 +464,7 @@ export default function Dashboard() {
             <h2 className="text-2xl font-bold">Visão Geral</h2>
             <div className="flex gap-3">
               <Select
-                value={selectedMonth?.toString() || ""}
+                value={selectedMonth.toString()}
                 onValueChange={(value) => setSelectedMonth(parseInt(value))}
               >
                 <SelectTrigger className="w-[140px]">
@@ -483,7 +480,7 @@ export default function Dashboard() {
               </Select>
 
               <Select
-                value={selectedYear?.toString() || ""}
+                value={selectedYear.toString()}
                 onValueChange={(value) => setSelectedYear(parseInt(value))}
               >
                 <SelectTrigger className="w-[100px]">
@@ -748,6 +745,7 @@ export default function Dashboard() {
                           />
                         </div>
                       </div>
+
                       <div className="space-y-2">
                         <div className="flex justify-between items-center">
                           <span className="text-sm">Valor Recebido</span>
@@ -764,6 +762,7 @@ export default function Dashboard() {
                           />
                         </div>
                       </div>
+
                       <div className="text-center pt-2 border-t">
                         <p className="text-2xl font-bold text-green-600">
                           {((stats.monthlyRevenue / stats.expectedValue) * 100 || 0).toFixed(1)}%
@@ -796,6 +795,7 @@ export default function Dashboard() {
                           {stats.paidPayments}
                         </span>
                       </div>
+
                       <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
                         <div className="flex items-center gap-2">
                           <AlertCircle className="h-5 w-5 text-yellow-600" />
@@ -805,6 +805,7 @@ export default function Dashboard() {
                           {stats.pendingPayments}
                         </span>
                       </div>
+
                       <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
                         <div className="flex items-center gap-2">
                           <AlertCircle className="h-5 w-5 text-red-600" />
@@ -814,6 +815,7 @@ export default function Dashboard() {
                           {dueSoonPayments.length}
                         </span>
                       </div>
+
                       <div className="pt-3 border-t">
                         <div className="text-center">
                           <p className="text-2xl font-bold text-slate-900">
@@ -848,6 +850,7 @@ export default function Dashboard() {
                           <span className="text-xs font-medium text-emerald-700">100%</span>
                         </div>
                       </div>
+
                       <div className="space-y-2">
                         <div className="flex justify-between items-center">
                           <span className="text-sm">Taxa de Administração ({adminFeePercentage}%)</span>
@@ -866,6 +869,7 @@ export default function Dashboard() {
                           </div>
                         </div>
                       </div>
+
                       <div className="space-y-2">
                         <div className="flex justify-between items-center">
                           <span className="text-sm font-medium">Receita Líquida</span>
@@ -917,6 +921,7 @@ export default function Dashboard() {
                         />
                       </div>
                     </div>
+
                     <div className="text-center p-4 bg-amber-50 rounded-lg">
                       <Home className="h-8 w-8 text-amber-600 mx-auto mb-2" />
                       <p className="text-3xl font-bold text-amber-600">
@@ -932,6 +937,7 @@ export default function Dashboard() {
                         />
                       </div>
                     </div>
+
                     <div className="text-center p-4 bg-blue-50 rounded-lg">
                       <Building2 className="h-8 w-8 text-blue-600 mx-auto mb-2" />
                       <p className="text-3xl font-bold text-blue-600">{stats.totalProperties}</p>

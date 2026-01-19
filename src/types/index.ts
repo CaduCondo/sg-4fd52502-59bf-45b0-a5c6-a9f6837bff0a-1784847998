@@ -22,7 +22,6 @@ export interface SystemUser {
   phone?: string;
   role: "admin" | "broker" | "financial";
   active: boolean;
-  locationId?: string;
   last_login?: string;
   created_at: string;
   updated_at: string;
