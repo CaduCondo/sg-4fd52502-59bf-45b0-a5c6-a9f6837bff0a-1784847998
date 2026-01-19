@@ -176,7 +176,19 @@ export async function getWithFilter<T>(
   let query = supabase.from(table as any).select("*");
 
   const operator = filter.operator ?? "eq";
-  query = query[operator](filter.column, filter.value);
+  
+  // Type-safe operator selection
+  switch (operator) {
+    case "eq": query = query.eq(filter.column, filter.value); break;
+    case "neq": query = query.neq(filter.column, filter.value); break;
+    case "gt": query = query.gt(filter.column, filter.value); break;
+    case "lt": query = query.lt(filter.column, filter.value); break;
+    case "gte": query = query.gte(filter.column, filter.value); break;
+    case "lte": query = query.lte(filter.column, filter.value); break;
+    case "like": query = query.like(filter.column, filter.value); break;
+    case "ilike": query = query.ilike(filter.column, filter.value); break;
+    default: query = query.eq(filter.column, filter.value);
+  }
 
   if (orderBy) {
     query = query.order(orderBy.column, { ascending: orderBy.ascending ?? true });

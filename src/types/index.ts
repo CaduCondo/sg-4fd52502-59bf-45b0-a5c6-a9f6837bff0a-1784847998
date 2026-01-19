@@ -17,26 +17,44 @@ export interface User {
 export interface SystemUser {
   id: string;
   name: string;
-  username: string;
   email: string;
-  password?: string;
   phone?: string;
-  rg?: string;
-  cpf?: string;
-  document?: string;
-  birthDate?: string;
-  cep?: string;
-  street?: string;
-  number?: string;
-  complement?: string;
-  neighborhood?: string;
-  city?: string;
-  state?: string;
-  role: "user" | "broker" | "financial" | "admin";
+  role: "admin" | "broker" | "financial";
   active: boolean;
-  photo?: string;
+  last_login?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CompanyConfig {
+  id: string;
+  company_name: string;
+  cnpj: string;
+  email: string;
+  phone: string;
+  address: string;
+  city: string;
+  state: string;
+  zip_code: string;
+  admin_fee_percentage: number;
+  late_fee_percentage: number;
+  interest_rate_percentage: number;
   created_at?: string;
   updated_at?: string;
+}
+
+export interface RoleMenuPermission {
+  id: string;
+  role: string;
+  menu_id: string;
+  created_at?: string;
+}
+
+export interface UserLocationPermission {
+  id: string;
+  user_id: string;
+  location_id: string;
+  created_at?: string;
 }
 
 export interface Property {
@@ -172,19 +190,4 @@ export interface Location {
   address?: string; // map to street
   cep?: string;     // map to zip_code
   zipCode?: string; // map to zip_code
-}
-
-export interface CompanyConfig {
-  companyName: string;
-  cnpj: string;
-  email: string;
-  phone: string;
-  address: string;
-  city: string;
-  state: string;
-  zipCode: string;
-  
-  adminFeePercentage: number;
-  lateFeePercentage: number;
-  interestRatePercentage: number;
 }
