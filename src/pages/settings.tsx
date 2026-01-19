@@ -43,6 +43,9 @@ export default function Settings() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("company");
   
+  // Current logged user state
+  const [currentUser, setCurrentUser] = useState<SystemUser | null>(null);
+  
   // Config State
   const [config, setConfig] = useState<CompanyConfig>({
     companyName: "",
@@ -85,6 +88,20 @@ export default function Settings() {
   // Menu Permissions State
   const [menuPermissions, setMenuPermissions] = useState<any[]>([]);
   const [isLoadingMenuPermissions, setIsLoadingMenuPermissions] = useState(false);
+
+  const loadCurrentUser = async () => {
+    try {
+      const sessionData = localStorage.getItem("session");
+      if (sessionData) {
+        const session = JSON.parse(sessionData);
+        if (session.user) {
+          setCurrentUser(session.user);
+        }
+      }
+    } catch (error) {
+      console.error("Erro ao carregar usuário logado:", error);
+    }
+  };
 
   const loadConfig = async () => {
     try {
@@ -139,6 +156,7 @@ export default function Settings() {
   };
 
   useEffect(() => {
+    loadCurrentUser();
     loadConfig();
     loadUsers();
     loadLocations();
@@ -987,20 +1005,20 @@ export default function Settings() {
                   <Select
                     value={userFormData.role}
                     onValueChange={(value) => setUserFormData({ ...userFormData, role: value as SystemUser["role"] })}
-                    disabled={editingUser?.role !== "admin"}
+                    disabled={currentUser?.role !== "admin"}
                   >
                     <SelectTrigger id="role">
                       <SelectValue placeholder="Selecione o perfil" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="admin">Administrador</SelectItem>
-                      <SelectItem value="corretor">Corretor</SelectItem>
-                      <SelectItem value="financeiro">Financeiro</SelectItem>
+                      <SelectItem value="broker">Corretor</SelectItem>
+                      <SelectItem value="financial">Financeiro</SelectItem>
                     </SelectContent>
                   </Select>
-                  {editingUser?.role !== "admin" && (
+                  {currentUser?.role !== "admin" && (
                     <p className="text-xs text-muted-foreground">
-                      Apenas administradores podem alterar o perfil
+                      ⚠️ Apenas administradores podem alterar o perfil
                     </p>
                   )}
                 </div>
