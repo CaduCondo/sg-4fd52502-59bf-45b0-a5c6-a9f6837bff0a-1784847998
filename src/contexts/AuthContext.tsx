@@ -7,16 +7,13 @@ import { supabase } from "@/integrations/supabase/client";
 interface AuthContextType {
   user: SystemUser | null;
   loading: boolean;
-  login: (user: SystemUser) => void;
-  logout: () => void;
 }
 
-const AuthContext = createContext<AuthContextType>({
-  user: null,
-  loading: true,
-  login: () => {},
-  logout: () => {},
-});
+const AuthContext = createContext<AuthContextType>({ user: null, loading: true });
+
+export function useAuth() {
+  return useContext(AuthContext);
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<SystemUser | null>(null);
@@ -24,84 +21,90 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    // Check local storage for user AND validate with Supabase
-    const initAuth = async () => {
-      const storedUser = userStorage.get();
-      
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session?.user) {
-        // If we have a session, ensure the stored user matches or fetch fresh profile
-        if (!storedUser || storedUser.email !== session.user.email) {
-           // Fetch system user profile
-           const { data: profile } = await supabase
-             .from('system_users')
-             .select('*')
-             .eq('email', session.user.email)
-             .single();
-             
-           if (profile) {
-             const userObj = { ...profile, active: profile.active ?? true } as SystemUser;
-             userStorage.save(userObj);
-             setUser(userObj);
-           } else {
-             // Fallback if no profile found (shouldn't happen for valid users)
-             if (storedUser) setUser(storedUser);
-           }
+    const loadUser = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session?.user) {
+          const { data: systemUser, error } = await supabase
+            .from("system_users")
+            .select("*")
+            .eq("email", session.user.email)
+            .single();
+
+          if (systemUser && !error) {
+            const userData: SystemUser = {
+              id: systemUser.id,
+              name: systemUser.name,
+              email: systemUser.email,
+              role: systemUser.role as "admin" | "broker" | "financial",
+              active: systemUser.active,
+              created_at: systemUser.created_at,
+              updated_at: systemUser.updated_at,
+            };
+            
+            setUser(userData);
+            userStorage.save(userData);
+          } else {
+            userStorage.clear();
+            setUser(null);
+          }
         } else {
-          setUser(storedUser);
+          const cachedUser = userStorage.get();
+          if (cachedUser) {
+            setUser(cachedUser);
+          } else {
+            setUser(null);
+          }
         }
-      } else {
-        // No session? Clear storage
+      } catch (error) {
+        console.error("Error loading user:", error);
         userStorage.clear();
         setUser(null);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
-    initAuth();
-    
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_OUT') {
-        userStorage.clear();
+    loadUser();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session?.user) {
+        const { data: systemUser, error } = await supabase
+          .from("system_users")
+          .select("*")
+          .eq("email", session.user.email)
+          .single();
+
+        if (systemUser && !error) {
+          const userData: SystemUser = {
+            id: systemUser.id,
+            name: systemUser.name,
+            email: systemUser.email,
+            role: systemUser.role as "admin" | "broker" | "financial",
+            active: systemUser.active,
+            created_at: systemUser.created_at,
+            updated_at: systemUser.updated_at,
+          };
+          
+          setUser(userData);
+          userStorage.save(userData);
+        }
+      } else {
         setUser(null);
-        router.push("/login");
-      } else if (event === 'SIGNED_IN' && session?.user) {
-         const { data: profile } = await supabase
-             .from('system_users')
-             .select('*')
-             .eq('email', session.user.email)
-             .single();
-         if (profile) {
-             const userObj = { ...profile, active: profile.active ?? true } as SystemUser;
-             userStorage.save(userObj);
-             setUser(userObj);
-             router.push("/dashboard");
-         }
+        userStorage.clear();
+        if (router.pathname !== "/login") {
+          router.push("/login");
+        }
       }
     });
 
     return () => subscription.unsubscribe();
-  }, []);
-
-  const login = (userData: SystemUser) => {
-    userStorage.save(userData);
-    setUser(userData);
-    router.push("/dashboard");
-  };
-
-  const logout = () => {
-    userStorage.clear();
-    setUser(null);
-    router.push("/login");
-  };
+  }, [router]);
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading }}>
       {children}
     </AuthContext.Provider>
   );
 }
-
-export const useAuth = () => useContext(AuthContext);
