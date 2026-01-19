@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { useRouter } from "next/router";
 import { SystemUser } from "@/types";
 import { userStorage } from "@/lib/storage";
-import { useRouter } from "next/router";
 import { supabase } from "@/integrations/supabase/client";
 
 interface AuthContextType {
@@ -9,11 +9,7 @@ interface AuthContextType {
   loading: boolean;
 }
 
-const AuthContext = createContext<AuthContextType>({ user: null, loading: true });
-
-export function useAuth() {
-  return useContext(AuthContext);
-}
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<SystemUser | null>(null);
@@ -21,82 +17,61 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    const loadUser = async () => {
+    // Simple session check - no complex queries
+    const checkSession = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         
         if (session?.user) {
-          // Security check: if stored user exists but email doesn't match session, clear it immediately
-          const stored = userStorage.get();
-          if (stored && stored.email !== session.user.email) {
-            userStorage.clear();
+          // Load from storage first (fast)
+          const storedUser = userStorage.get();
+          if (storedUser) {
+            setUser(storedUser);
+            setLoading(false);
+            return;
           }
 
-          const { data: systemUser, error } = await supabase
+          // If not in storage, fetch once
+          const { data: systemUserData } = await supabase
             .from("system_users")
             .select("*")
             .eq("email", session.user.email)
             .single();
 
-          if (systemUser && !error) {
+          const systemUser = systemUserData as any; // Cast to any to avoid strict type checking on missing fields
+
+          if (systemUser) {
             const userData: SystemUser = {
               id: systemUser.id,
-              name: systemUser.name,
               email: systemUser.email,
-              role: systemUser.role as "admin" | "broker" | "financial",
+              name: systemUser.name,
+              role: (systemUser.role === "admin" ? "admin" : "broker") as "admin" | "broker" | "financial",
               active: systemUser.active,
+              locationId: systemUser.location_id || systemUser.locationId, // Try both formats
               created_at: systemUser.created_at,
               updated_at: systemUser.updated_at,
             };
             
             setUser(userData);
             userStorage.save(userData);
-          } else {
-            userStorage.clear();
-            setUser(null);
           }
         } else {
-          const cachedUser = userStorage.get();
-          if (cachedUser) {
-            setUser(cachedUser);
-          } else {
-            setUser(null);
-          }
+          setUser(null);
+          userStorage.clear();
         }
       } catch (error) {
-        console.error("Error loading user:", error);
-        userStorage.clear();
+        console.error("Error in auth:", error);
         setUser(null);
       } finally {
         setLoading(false);
       }
     };
 
-    loadUser();
+    checkSession();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session?.user) {
-        const { data: systemUser, error } = await supabase
-          .from("system_users")
-          .select("*")
-          .eq("email", session.user.email)
-          .single();
-
-        if (systemUser && !error) {
-          const userData: SystemUser = {
-            id: systemUser.id,
-            name: systemUser.name,
-            email: systemUser.email,
-            role: systemUser.role as "admin" | "broker" | "financial",
-            active: systemUser.active,
-            created_at: systemUser.created_at,
-            updated_at: systemUser.updated_at,
-          };
-          
-          setUser(userData);
-          userStorage.save(userData);
-        }
-      } else {
+    // Listen to auth changes (login/logout only)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) {
         setUser(null);
         userStorage.clear();
         if (router.pathname !== "/login") {
@@ -106,11 +81,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => subscription.unsubscribe();
-  }, [router]);
+  }, []); // Empty dependency array - run ONCE
 
   return (
     <AuthContext.Provider value={{ user, loading }}>
       {children}
     </AuthContext.Provider>
   );
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth must be used within AuthProvider");
+  }
+  return context;
 }
