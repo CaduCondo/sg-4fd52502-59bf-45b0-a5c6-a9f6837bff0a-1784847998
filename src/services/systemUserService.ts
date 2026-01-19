@@ -45,8 +45,8 @@ export async function deleteUser(id: string): Promise<void> {
   return deleteSingle(TABLE, id);
 }
 
-export async function unlockUser(id: string): Promise<SystemUser> {
-  return updateSingle<SystemUser>(TABLE, id, { active: true });
+export async function unlockUser(id: string, active: boolean): Promise<SystemUser> {
+  return updateSingle<SystemUser>(TABLE, id, { active });
 }
 
 export async function resetPassword(id: string): Promise<void> {

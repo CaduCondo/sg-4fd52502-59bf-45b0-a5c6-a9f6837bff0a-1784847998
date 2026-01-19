@@ -188,13 +188,31 @@ export default function Settings() {
 
   // Menu Permissions State
   const [menuPermissions, setMenuPermissions] = useState<Record<string, string[]>>({});
-  const [permissions, setPermissions] = useState<Array<{ // Fix: Ensure this state exists if used, or consolidate
+  const [permissions, setPermissions] = useState<Array<{
     id?: string;
     role: string;
     menu_item: string;
     can_access: boolean;
   }>>([]);
   const [isLoadingMenuPermissions, setIsLoadingMenuPermissions] = useState(false);
+
+  // Load Permissions Function
+  const loadPermissions = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("role_menu_permissions")
+        .select("*");
+      
+      if (error) throw error;
+      setPermissions(data || []);
+    } catch (error) {
+      console.error("Error loading permissions:", error);
+    }
+  };
+
+  useEffect(() => {
+    loadPermissions();
+  }, []);
 
   // Missing Handlers Implementation
   const handleConfigSubmit = async (e: React.FormEvent) => {
@@ -414,13 +432,13 @@ export default function Settings() {
       };
 
       if (editingLocation) {
-        await locationService.update(editingLocation.id, locationData);
+        await locationService.updateLocation(editingLocation.id, locationData);
         toast({
           title: "Sucesso",
           description: "Local atualizado com sucesso.",
         });
       } else {
-        await locationService.create(locationData);
+        await locationService.createLocation(locationData);
         toast({
           title: "Sucesso",
           description: "Local cadastrado com sucesso.",

@@ -342,11 +342,10 @@ export default function Properties() {
                   <Select
                     value={newProperty.locationId}
                     onValueChange={(value) => {
-                      const selectedLocation = locations.find(loc => loc.id === value);
+                      // Only update locationId, name is derived from locations list
                       setNewProperty({ 
                         ...newProperty, 
-                        locationId: value,
-                        location: selectedLocation?.name || ""
+                        locationId: value
                       });
                     }}
                     required
