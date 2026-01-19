@@ -1,178 +1,311 @@
-import { useAuth } from "@/contexts/AuthContext";
-import { Layout } from "@/components/Layout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building2, Users, DollarSign, FileText, TrendingUp, Clock } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { Layout } from "@/components/Layout";
+import { SEO } from "@/components/SEO";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Activity, CreditCard, Users, Home, TrendingUp, AlertCircle, Calendar } from "lucide-react";
+import { paymentService, rentalService, propertyService, tenantService } from "@/services";
+import { formatCurrency } from "@/lib/masks";
+import { ScrollReveal } from "@/components/animations/ScrollReveal";
+import { getCurrentUser } from "@/lib/auth";
+import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { userLocationPermissionService } from "@/services";
 
 export default function Dashboard() {
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const [greeting, setGreeting] = useState("Olá");
   const [stats, setStats] = useState({
-    properties: 0,
-    tenants: 0,
-    activeRentals: 0,
+    totalProperties: 0,
+    occupiedProperties: 0,
+    totalTenants: 0,
+    activeTenants: 0,
     monthlyRevenue: 0,
-    pendingPayments: 0,
-    overduePayments: 0,
+    pendingRevenue: 0,
+    overdueRevenue: 0,
+    occupancyRate: 0,
   });
 
+  const [recentActivities, setRecentActivities] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const currentUser = getCurrentUser();
+
   useEffect(() => {
-    const hour = new Date().getHours();
-    if (hour < 12) setGreeting("Olá, bom dia");
-    else if (hour < 18) setGreeting("Olá, boa tarde");
-    else setGreeting("Olá, boa noite");
+    loadDashboardData();
   }, []);
 
-  useEffect(() => {
-    const loadStats = async () => {
-      try {
-        // Fetch data and count manually to avoid TypeScript deep instantiation error
-        const { data: propertiesData } = await supabase
-          .from("properties")
-          .select("id");
-
-        const { data: tenantsData } = await supabase
-          .from("tenants")
-          .select("id");
-
-        const { data: activeRentalsData } = await (supabase as any)
-          .from("rentals")
-          .select("id")
-          .eq("status", "active");
-
-        // Fetch payments data
-        const { data: payments } = await supabase
-          .from("payments")
-          .select("expected_amount, paid_amount, status");
-
-        const paymentsData = payments || [];
-        
-        // Calculate revenue - assuming values are stored as raw numbers now (not cents)
-        const monthlyRevenue = paymentsData
-          .filter((p) => p.status === "paid")
-          .reduce((sum, p) => sum + (Number(p.paid_amount) || Number(p.expected_amount) || 0), 0);
-          
-        const pendingPayments = paymentsData.filter((p) => p.status === "pending").length;
-        const overduePayments = paymentsData.filter((p) => p.status === "overdue").length;
-
-        setStats({
-          properties: propertiesData?.length || 0,
-          tenants: tenantsData?.length || 0,
-          activeRentals: activeRentalsData?.length || 0,
-          monthlyRevenue,
-          pendingPayments,
-          overduePayments,
-        });
-      } catch (error) {
-        console.error("Error loading stats:", error);
+  const loadDashboardData = async () => {
+    try {
+      if (!currentUser) {
+        setLoading(false);
+        return;
       }
-    };
 
-    loadStats();
-  }, []);
+      // 1. Carregar todos os dados básicos
+      const [properties, tenants, rentals, payments] = await Promise.all([
+        propertyService.getAll(),
+        tenantService.getAll(),
+        rentalService.getAll(),
+        paymentService.getAll()
+      ]);
 
-  const getUserName = () => {
-    return user?.name || user?.email?.split("@")[0] || "Usuário";
+      // 2. Filtrar dados com base no perfil do usuário
+      let filteredProperties = properties;
+      let filteredRentals = rentals;
+      let filteredPayments = payments;
+
+      // Se não for admin, filtrar por permissões de localização
+      if (currentUser.role !== "admin") {
+        const userLocationIds = await userLocationPermissionService.getByUserId(currentUser.id);
+
+        // Filtrar propriedades pelas localizações permitidas
+        filteredProperties = properties.filter(p => 
+          userLocationIds.includes(p.location_id || "")
+        );
+
+        // Filtrar locações pelas propriedades permitidas
+        const allowedPropertyIds = new Set(filteredProperties.map(p => p.id));
+        filteredRentals = rentals.filter(r => allowedPropertyIds.has(r.propertyId));
+
+        // Filtrar pagamentos pelas locações permitidas
+        const allowedRentalIds = new Set(filteredRentals.map(r => r.id));
+        filteredPayments = payments.filter(p => allowedRentalIds.has(p.rentalId));
+      }
+
+      // 3. Calcular estatísticas com dados filtrados
+      const totalProperties = filteredProperties.length;
+      const occupiedProperties = filteredProperties.filter(p => p.status === "occupied").length;
+      const occupancyRate = totalProperties > 0 ? (occupiedProperties / totalProperties) * 100 : 0;
+
+      const totalTenants = tenants.length;
+      const activeTenants = tenants.filter(t => t.status === "active" || t.status === "rented").length;
+
+      // Cálculos Financeiros (Mês Atual)
+      const currentMonth = new Date().getMonth() + 1;
+      const currentYear = new Date().getFullYear();
+
+      const currentMonthPayments = filteredPayments.filter(p => 
+        p.referenceMonth === currentMonth && p.referenceYear === currentYear
+      );
+
+      const monthlyRevenue = currentMonthPayments
+        .filter(p => p.status === "paid")
+        .reduce((acc, curr) => acc + (curr.paidAmount || 0), 0);
+
+      const pendingRevenue = currentMonthPayments
+        .filter(p => p.status === "pending")
+        .reduce((acc, curr) => acc + (curr.expectedAmount || 0), 0);
+
+      const overdueRevenue = filteredPayments
+        .filter(p => p.status === "overdue")
+        .reduce((acc, curr) => acc + (curr.expectedAmount || 0), 0);
+
+      setStats({
+        totalProperties,
+        occupiedProperties,
+        totalTenants,
+        activeTenants,
+        monthlyRevenue,
+        pendingRevenue,
+        overdueRevenue,
+        occupancyRate,
+      });
+
+      // Atividades Recentes (últimos pagamentos)
+      const recent = filteredPayments
+        .sort((a, b) => new Date(b.paymentDate || b.createdAt).getTime() - new Date(a.paymentDate || a.createdAt).getTime())
+        .slice(0, 5)
+        .map(p => ({
+          id: p.id,
+          type: 'payment',
+          description: `Pagamento de ${p.rental?.tenant?.name || 'Inquilino'}`,
+          amount: p.paidAmount || p.expectedAmount,
+          date: p.paymentDate || p.createdAt,
+          status: p.status
+        }));
+
+      setRecentActivities(recent);
+    } catch (error) {
+      console.error("Erro ao carregar dashboard:", error);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  if (!currentUser) {
+    return (
+      <Layout>
+        <SEO title="Dashboard - Gerenciador" />
+        <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4 text-center">
+          <div className="bg-muted p-6 rounded-full">
+            <AlertCircle className="h-12 w-12 text-muted-foreground" />
+          </div>
+          <h1 className="text-2xl font-bold">Acesso Negado</h1>
+          <p className="text-muted-foreground max-w-md">
+            Você precisa estar autenticado para acessar o Dashboard.
+          </p>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
+      <SEO title="Dashboard - Gerenciador" />
       <div className="space-y-6">
-        {/* Welcome Card - Blue */}
-        <Card className="bg-gradient-to-r from-blue-600 to-blue-800 text-white border-0 shadow-lg">
-          <CardContent className="pt-6 pb-6">
-            <div className="flex items-center gap-6">
-              <div className="rounded-full bg-white/20 p-4 hidden sm:block">
-                <Building2 className="h-10 w-10" />
-              </div>
-              <div className="space-y-1">
-                <h2 className="text-3xl font-bold tracking-tight">
-                  {greeting} {getUserName()}!
-                </h2>
-                <p className="text-blue-100 text-lg opacity-90">
-                  Bem-vindo ao seu painel de gerenciamento de recebimento das locações dos imóveis do grupo D'Uva Enterprise Corporation!
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-muted-foreground">
+            {currentUser.role === "admin" 
+              ? "Visão geral completa do negócio" 
+              : "Visão geral das suas localizações"}
+          </p>
+        </div>
+
+        {/* KPIs Principais */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <ScrollReveal delay={0.1}>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Receita Mensal</CardTitle>
+                <DollarSign className="h-4 w-4 text-emerald-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{formatCurrency(stats.monthlyRevenue)}</div>
+                <p className="text-xs text-muted-foreground">
+                  + {formatCurrency(stats.pendingRevenue)} pendente
                 </p>
+              </CardContent>
+            </Card>
+          </ScrollReveal>
+
+          <ScrollReveal delay={0.2}>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Imóveis Ocupados</CardTitle>
+                <Home className="h-4 w-4 text-blue-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.occupiedProperties} / {stats.totalProperties}</div>
+                <p className="text-xs text-muted-foreground">
+                  {stats.occupancyRate.toFixed(1)}% de ocupação
+                </p>
+              </CardContent>
+            </Card>
+          </ScrollReveal>
+
+          <ScrollReveal delay={0.3}>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Inadimplência</CardTitle>
+                <AlertCircle className="h-4 w-4 text-red-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-red-600">{formatCurrency(stats.overdueRevenue)}</div>
+                <p className="text-xs text-muted-foreground">
+                  Total em atraso acumulado
+                </p>
+              </CardContent>
+            </Card>
+          </ScrollReveal>
+
+          <ScrollReveal delay={0.4}>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Inquilinos Ativos</CardTitle>
+                <Users className="h-4 w-4 text-violet-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.activeTenants}</div>
+                <p className="text-xs text-muted-foreground">
+                  Total de contratos vigentes
+                </p>
+              </CardContent>
+            </Card>
+          </ScrollReveal>
+        </div>
+
+        {/* Atividades Recentes */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+          <Card className="col-span-4">
+            <CardHeader>
+              <CardTitle>Pagamentos Recentes</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {recentActivities.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">Nenhuma atividade recente</p>
+                ) : (
+                  recentActivities.map((activity, i) => (
+                    <div key={i} className="flex items-center justify-between border-b pb-2 last:border-0 last:pb-0">
+                      <div className="flex items-center gap-3">
+                        <div className="h-9 w-9 rounded-full bg-emerald-100 flex items-center justify-center">
+                          <CreditCard className="h-5 w-5 text-emerald-600" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-slate-700">
+                            {activity.description}
+                          </p>
+                          <p className="text-xs text-slate-400">
+                            {new Date(activity.date).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-bold">{formatCurrency(activity.amount)}</p>
+                        <Badge variant={activity.status === 'paid' ? 'default' : 'secondary'} className="text-[10px] px-1 py-0 h-5">
+                          {activity.status === 'paid' ? 'Pago' : 'Pendente'}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          <Card className="hover:shadow-md transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total de Imóveis</CardTitle>
-              <Building2 className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.properties}</div>
-              <p className="text-xs text-muted-foreground">Imóveis cadastrados</p>
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-md transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Inquilinos</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
+          <Card className="col-span-3">
+            <CardHeader>
+              <CardTitle>Ações Rápidas</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.tenants}</div>
-              <p className="text-xs text-muted-foreground">Inquilinos cadastrados</p>
-            </CardContent>
-          </Card>
-
-          <Card className="hover:shadow-md transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Locações Ativas</CardTitle>
-              <FileText className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.activeRentals}</div>
-              <p className="text-xs text-muted-foreground">Contratos ativos</p>
-            </CardContent>
-          </Card>
-
-          <Card className="hover:shadow-md transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Receita Mensal</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">
-                {new Intl.NumberFormat("pt-BR", {
-                  style: "currency",
-                  currency: "BRL",
-                }).format(stats.monthlyRevenue)}
-              </div>
-              <p className="text-xs text-muted-foreground">Recebimentos confirmados</p>
-            </CardContent>
-          </Card>
-
-          <Card className="hover:shadow-md transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pagamentos Pendentes</CardTitle>
-              <Clock className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.pendingPayments}</div>
-              <p className="text-xs text-muted-foreground">Aguardando pagamento</p>
-            </CardContent>
-          </Card>
-
-          <Card className="hover:shadow-md transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pagamentos Atrasados</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-red-600">{stats.overduePayments}</div>
-              <p className="text-xs text-muted-foreground">Requerem atenção</p>
+            <CardContent className="grid gap-2">
+              <Link href="/rentals">
+                <Button variant="outline" className="w-full justify-start">
+                  <Home className="mr-2 h-4 w-4" /> Nova Locação
+                </Button>
+              </Link>
+              <Link href="/tenants">
+                <Button variant="outline" className="w-full justify-start">
+                  <Users className="mr-2 h-4 w-4" /> Novo Inquilino
+                </Button>
+              </Link>
+              <Link href="/financial">
+                <Button variant="outline" className="w-full justify-start">
+                  <TrendingUp className="mr-2 h-4 w-4" /> Relatório Financeiro
+                </Button>
+              </Link>
             </CardContent>
           </Card>
         </div>
       </div>
     </Layout>
+  );
+}
+
+function DollarSign(props: any) {
+  return (
+    <svg
+      {...props}
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <line x1="12" x2="12" y1="2" y2="22" />
+      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+    </svg>
   );
 }
