@@ -249,17 +249,19 @@ export default function Properties() {
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-3">
-                      {location && (
-                        <div className="flex items-start gap-2 text-sm text-muted-foreground">
-                          <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                          <span>
-                            {location.street}, {location.number} - {location.neighborhood}, {location.city}/{location.state}
-                          </span>
-                        </div>
+                      {property.complement && (
+                        <p className="text-sm text-muted-foreground">
+                          {property.complement}
+                        </p>
                       )}
                       
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        <span>🛏️ {property.rooms || 0} quartos</span>
+                        <span>🚿 {property.bathrooms || 0} banheiros</span>
+                      </div>
+                      
                       {property.description && (
-                        <p className="text-sm line-clamp-2">
+                        <p className="text-sm text-muted-foreground line-clamp-2">
                           {property.description}
                         </p>
                       )}

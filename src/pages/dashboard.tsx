@@ -433,12 +433,14 @@ export default function Dashboard() {
       <SEO title="Dashboard - Gerenciador de Locações" />
       <Layout>
         <div className="space-y-6">
+          {/* Header */}
           <div>
-            <h1 className="text-3xl font-bold">
-              {getGreeting()}, {user?.name || "Usuário"}!
+            <h1 className="text-3xl font-bold flex items-center gap-2">
+              <Home className="h-8 w-8" />
+              {getGreeting()}
             </h1>
-            <p className="text-muted-foreground">
-              Aqui está um resumo das suas locações
+            <p className="text-muted-foreground mt-1">
+              Visão geral do seu sistema de locações
             </p>
           </div>
 

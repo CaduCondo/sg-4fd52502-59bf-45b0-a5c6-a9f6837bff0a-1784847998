@@ -654,12 +654,12 @@ export default function Rentals() {
                       <CardHeader className="pb-3">
                         <div className="flex items-center justify-between">
                           <div className="flex-1">
-                            <CardTitle className="text-lg">
-                              {rental.property?.location || "Imóvel não encontrado"}
+                            <CardTitle className="text-lg text-blue-600">
+                              {property?.location || "Imóvel não encontrado"}
                             </CardTitle>
-                            {rental.property?.description && (
+                            {property?.complement && (
                               <p className="text-sm text-muted-foreground mt-1">
-                                {rental.property.description}
+                                {property.complement}
                               </p>
                             )}
                           </div>
