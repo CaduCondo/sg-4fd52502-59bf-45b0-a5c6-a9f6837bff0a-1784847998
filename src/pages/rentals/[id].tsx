@@ -29,7 +29,7 @@ import { update as updateTenant } from "@/services/tenantService";
 export default function RentalDetails() {
   const router = useRouter();
   const { id } = router.query;
-  const { user } = useAuth(); // Get user from context
+  const { user } = useAuth(); // Ensure this is present
   const { toast } = useToast();
   const [rental, setRental] = useState<Rental | null>(null);
   const [property, setProperty] = useState<Property | null>(null);
@@ -232,11 +232,11 @@ export default function RentalDetails() {
       await deleteRental(rental.id);
 
       if (property) {
-        await updateProperty(property.id, { ...property, status: "available" });
+        await updateProperty(property.id, { status: "available" });
       }
 
       if (tenant) {
-        await updateTenant({ ...tenant, status: "active" });
+        await updateTenant(tenant.id, { status: "active" });
       }
 
       toast({ 

@@ -31,6 +31,7 @@ interface ManagePaymentContentProps {
 export default function ManagePaymentContent({ paymentId, onClose, embedded = false }: ManagePaymentContentProps) {
   const router = useRouter();
   const { toast } = useToast();
+  const { user } = useAuth(); // Ensure this is present
   const [payment, setPayment] = useState<Payment | null>(null);
   const [rental, setRental] = useState<Rental | null>(null);
   const [property, setProperty] = useState<Property | null>(null);
@@ -59,8 +60,6 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
   const [waiveLateFees, setWaiveLateFees] = useState(false);
   const [isViewMode, setIsViewMode] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-
-  const { user } = useAuth();
 
   useEffect(() => {
     const id = embedded ? paymentId : (router.query.id as string);
@@ -277,7 +276,7 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
         attachments: formData.attachments,
       };
 
-      const savedPayment = await paymentService.update(updatedPayment);
+      const savedPayment = await updatePayment(payment.id, updatedPayment);
       
       // Update local state with saved payment to ensure receipt has latest data
       setPayment(savedPayment);
