@@ -1,6 +1,7 @@
 import { UserLocationPermission } from "@/types";
 import { 
-  getWithFilter, 
+  getWithFilter,
+  getAll as fetchAll,
   createSingle, 
   deleteSingle 
 } from "@/lib/supabaseHelpers";
@@ -8,7 +9,14 @@ import {
 const TABLE = "user_location_permissions";
 
 export async function getUserLocationPermissions(userId: string): Promise<UserLocationPermission[]> {
-  return getWithFilter<UserLocationPermission>(TABLE, { column: "user_id", value: userId });
+  return getWithFilter<UserLocationPermission>(TABLE, { column: 'user_id', value: userId });
+}
+
+// Alias for compatibility
+export const getAll = getUserLocationPermissions;
+
+export async function getAllPermissions(): Promise<UserLocationPermission[]> {
+    return fetchAll<UserLocationPermission>(TABLE);
 }
 
 export async function updateUserLocationPermission(userId: string, locationId: string, enabled: boolean): Promise<void> {

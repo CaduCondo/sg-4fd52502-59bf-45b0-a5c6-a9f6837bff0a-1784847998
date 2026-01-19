@@ -153,11 +153,11 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
       const daysLate = Math.ceil((paymentDate.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
 
       // Late fee from config (default 2%)
-      const lateFeePercentage = config.lateFeePercentage || 2;
+      const lateFeePercentage = config.late_fee_percentage || 2;
       lateFee = baseAmount * (lateFeePercentage / 100);
 
       // Interest from config (default 0.033% per day)
-      const interestRatePercentage = config.interestRatePercentage || 0.033;
+      const interestRatePercentage = config.interest_rate_percentage || 0.033;
       interest = baseAmount * (interestRatePercentage / 100) * daysLate;
     }
 
@@ -451,7 +451,7 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
             {calculatedValues.lateFee > 0 && (
               <div className="flex justify-between">
                 <span className={`text-sm ${waiveLateFees ? "line-through text-muted-foreground" : "text-muted-foreground"}`}>
-                  Multa ({formatPercentage(config?.lateFeePercentage || 2)}%):
+                  Multa ({formatPercentage(config?.late_fee_percentage || 2)}%):
                 </span>
                 <span className={`text-sm font-medium ${waiveLateFees ? "line-through text-muted-foreground" : "text-red-600"}`}>
                   {formatCurrency(calculatedValues.lateFee)}
@@ -462,7 +462,7 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
             {calculatedValues.interest > 0 && (
               <div className="flex justify-between">
                 <span className={`text-sm ${waiveLateFees ? "line-through text-muted-foreground" : "text-muted-foreground"}`}>
-                  Juros ({formatPercentage(config?.interestRatePercentage || 0.033)}% ao dia):
+                  Juros ({formatPercentage(config?.interest_rate_percentage || 0.033)}% ao dia):
                 </span>
                 <span className={`text-sm font-medium ${waiveLateFees ? "line-through text-muted-foreground" : "text-red-600"}`}>
                   {formatCurrency(calculatedValues.interest)}

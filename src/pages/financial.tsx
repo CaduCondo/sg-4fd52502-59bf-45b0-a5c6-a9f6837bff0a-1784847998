@@ -35,9 +35,11 @@ import { paymentService } from "@/services/paymentService";
 import { propertyService } from "@/services/propertyService";
 import { rentalService } from "@/services/rentalService";
 import { tenantService } from "@/services/tenantService";
-import { userLocationPermissionService } from "@/services/userLocationPermissionService";
+import { getAll as getUserLocationPermissions } from "@/services/userLocationPermissionService";
 import { userStorage } from "@/lib/storage";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
+import { useRouter } from "next/navigation";
+import { useToast } from "@/components/ui/use-toast";
 
 export default function Financial() {
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -46,6 +48,8 @@ export default function Financial() {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
   const [allowedLocationIds, setAllowedLocationIds] = useState<string[]>([]);
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Date State
   const now = new Date();
@@ -57,7 +61,13 @@ export default function Financial() {
   const [savingPixCode, setSavingPixCode] = useState<string | null>(null);
 
   useEffect(() => {
-    loadData();
+    const loadUser = () => {
+      const storedUser = userStorage.get();
+      if (storedUser) {
+        setUser(storedUser);
+      }
+    };
+    loadUser();
   }, []);
 
   const loadData = async () => {
@@ -69,7 +79,7 @@ export default function Financial() {
       // Se for usuário financeiro, carregar permissões de locais
       let allowedLocations: string[] = [];
       if (currentUser && currentUser.role === "financial") {
-        allowedLocations = await userLocationPermissionService.getByUserId(currentUser.id);
+        allowedLocations = await getUserLocationPermissions(currentUser.id);
         setAllowedLocationIds(allowedLocations);
       }
 

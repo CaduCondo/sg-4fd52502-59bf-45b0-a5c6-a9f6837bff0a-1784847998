@@ -6,20 +6,25 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Home, Users, DollarSign, AlertCircle, Calendar, TrendingUp, Building2, Download, CheckCircle } from "lucide-react";
+
+// Services Imports - Using Aliases for compatibility
 import { propertyService } from "@/services/propertyService";
 import { tenantService } from "@/services/tenantService";
 import { rentalService } from "@/services/rentalService";
 import { paymentService } from "@/services/paymentService";
-import { configService } from "@/services/configService";
-import { systemUserService } from "@/services/systemUserService";
+import { getConfig } from "@/services/configService";
+import { getAll as getAllLocations } from "@/services/locationService";
+import { getAll as getSystemUsers } from "@/services/systemUserService";
+import { getAll as getUserLocationPermissions } from "@/services/userLocationPermissionService";
+
+// Permissions & Utils
+import { hasPermission } from "@/lib/permissions";
 import { formatCurrency } from "@/lib/masks";
 import type { Property, Tenant, Rental, Payment } from "@/types";
 import { FloatingCard } from "@/components/animations/FloatingCard";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
-import { userLocationPermissionService } from "@/services/userLocationPermissionService";
-import { getCurrentUser } from "@/lib/auth";
 
 export default function Dashboard() {
   const router = useRouter();
@@ -171,6 +176,25 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
+    // Basic permission check
+    const checkAccess = () => {
+      const userStr = localStorage.getItem("rental_auth_user");
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        if (!hasPermission(user.role, "canViewDashboard")) {
+           toast({
+             title: "Acesso Negado",
+             description: "Você não tem permissão para visualizar o dashboard.",
+             variant: "destructive"
+           });
+           // Optional: redirect or show blocking state
+        }
+      }
+    };
+    checkAccess();
+  }, []);
+
+  useEffect(() => {
     setMounted(true);
     
     // Set current date
@@ -234,9 +258,9 @@ export default function Dashboard() {
 
   const loadConfig = async () => {
     try {
-      const config = await configService.get();
+      const config = await getConfig();
       if (config) {
-        setAdminFeePercentage(config.adminFeePercentage);
+        setAdminFeePercentage(config.admin_fee_percentage);
       }
     } catch (error) {
       console.error("Error loading config:", error);

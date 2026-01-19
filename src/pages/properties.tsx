@@ -10,10 +10,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
 import { propertyService } from "@/services/propertyService";
-import { locationService } from "@/services/locationService";
-import { userLocationPermissionService } from "@/services/userLocationPermissionService";
+import { getAll as getAllLocations } from "@/services/locationService";
+import { getAll as getUserLocationPermissions } from "@/services/userLocationPermissionService";
+import { useToast } from "@/hooks/use-toast";
 import { Plus, MapPin, DollarSign, Home, Eye, Edit, Trash2, X, Save } from "lucide-react";
 import type { Property, Location } from "@/types";
 import { formatCurrency, parseCurrency } from "@/lib/masks";
@@ -44,17 +44,11 @@ export default function Properties() {
   const loadData = async () => {
     try {
       setLoading(true);
-      console.log("🔍 Loading data...");
-      
       const [propertiesData, locationsData] = await Promise.all([
         propertyService.getAll(),
-        locationService.getAll(),
+        getAllLocations()
       ]);
-
-      console.log("📦 Properties loaded:", propertiesData);
-      console.log("📍 Locations loaded:", locationsData);
-
-      // Não filtrar por permissões por enquanto - mostrar todos os imóveis
+      
       setProperties(propertiesData);
       setLocations(locationsData);
     } catch (error) {

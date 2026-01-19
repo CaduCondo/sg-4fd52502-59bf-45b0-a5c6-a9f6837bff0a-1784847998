@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { ArrowLeft, Save, MapPin } from "lucide-react";
-import { locationService } from "@/services/locationService";
+import { getLocationById, updateLocation, deleteLocation } from "@/services/locationService";
 import { applyCepMask, removeMask } from "@/lib/masks";
 import type { Location } from "@/types";
 
@@ -32,33 +32,22 @@ export default function LocationEditPage() {
 
   useEffect(() => {
     if (id && !isNew && typeof id === "string") {
-      loadLocation(id);
+      loadLocation();
     }
   }, [id, isNew]);
 
-  const loadLocation = async (locationId: string) => {
+  const loadLocation = async () => {
     try {
-      setLoading(true);
-      const data = await locationService.getById(locationId);
-      
-      if (data) {
+      if (id) {
+        const data = await getLocationById(id as string);
+        setLocation(data);
         setFormData({
           name: data.name,
-          cep: data.zip_code || "",
-          street: data.street || "",
-          number: data.number || "",
-          complement: data.complement || "",
-          neighborhood: data.neighborhood || "",
           city: data.city,
-          state: data.state
+          state: data.state,
+          address: data.address || "",
+          zipCode: data.zipCode || ""
         });
-      } else {
-        toast({
-          title: "Erro",
-          description: "Local não encontrado",
-          variant: "destructive"
-        });
-        router.push("/locations");
       }
     } catch (error) {
       console.error("Error loading location:", error);
@@ -133,7 +122,10 @@ export default function LocationEditPage() {
         await locationService.create(locationData);
         toast({ title: "Sucesso", description: "Local criado com sucesso!" });
       } else {
-        await locationService.update(id as string, locationData);
+        await updateLocation(id as string, {
+          ...formData,
+          // map legacy fields if needed
+        });
         toast({ title: "Sucesso", description: "Local atualizado com sucesso!" });
       }
 

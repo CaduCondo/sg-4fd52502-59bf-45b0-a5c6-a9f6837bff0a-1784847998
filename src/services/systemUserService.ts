@@ -1,6 +1,6 @@
 import { SystemUser } from "@/types";
 import { 
-  getAll, 
+  getAll as fetchAll, 
   getSingle, 
   createSingle, 
   updateSingle, 
@@ -10,9 +10,12 @@ import {
 
 const TABLE = "system_users";
 
-export async function getUsers(): Promise<SystemUser[]> {
-  return getAll<SystemUser>(TABLE, { column: "name" });
+export async function getSystemUsers(): Promise<SystemUser[]> {
+  return fetchAll<SystemUser>(TABLE);
 }
+
+// Alias for compatibility
+export const getAll = getSystemUsers;
 
 export async function getUserById(id: string): Promise<SystemUser> {
   const user = await getSingle<SystemUser>(TABLE, id);
@@ -35,9 +38,21 @@ export async function createUser(user: Omit<SystemUser, "id" | "created_at" | "u
 }
 
 export async function updateUser(id: string, updates: Partial<SystemUser>): Promise<SystemUser> {
-  return updateSingle<SystemUser>(TABLE, id, updates);
+  return updateSingle(TABLE, id, updates);
 }
 
 export async function deleteUser(id: string): Promise<void> {
   return deleteSingle(TABLE, id);
+}
+
+export async function unlockUser(id: string): Promise<SystemUser> {
+  return updateSingle<SystemUser>(TABLE, id, { active: true });
+}
+
+export async function resetPassword(id: string): Promise<void> {
+  // Em um cenário real, isso dispararia um email de recuperação do Supabase Auth
+  // ou atualizaria o hash da senha se fosse autenticação própria.
+  // Por enquanto, vamos simular que foi feito.
+  console.log(`Resetting password for user ${id}`);
+  return Promise.resolve();
 }

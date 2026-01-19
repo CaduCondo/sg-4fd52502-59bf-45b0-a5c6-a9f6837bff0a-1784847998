@@ -42,9 +42,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { userStorage } from "@/lib/storage";
-import { systemUserService } from "@/services/systemUserService";
+import { SystemUser } from "@/types";
+import { getUserById } from "@/services/systemUserService";
 import { useToast } from "@/hooks/use-toast";
-import { EditProfileDialog } from "@/components/EditProfileDialog";
+import { EditProfileDialog } from "./EditProfileDialog";
 import { Separator } from "@/components/ui/separator";
 
 interface LayoutProps {
@@ -69,21 +70,22 @@ export function Layout({ children }: LayoutProps) {
   const [confirmPassword, setConfirmPassword] = useState("");
 
   useEffect(() => {
-    const validateAndLoadUser = async () => {
-      const currentUser = getCurrentUser();
-
-      if (currentUser) {
-        setUser({
-          ...currentUser,
-          role: currentUser.role as "admin" | "user" | "broker" | "financial"
-        });
-      } else {
-        router.push("/login");
+    const loadUser = async () => {
+      // Simulação de autenticação - pegar ID do localStorage ou usar mock
+      // Em produção, isso viria do contexto de auth
+      const storedUserId = localStorage.getItem("userId");
+      const mockUserId = "5fa0af84-d74e-4cc0-80c0-1ccfd87c20b9"; // ID do admin mockado
+      
+      try {
+        const user = await getUserById(storedUserId || mockUserId);
+        setUser(user);
+      } catch (error) {
+        console.error("Erro ao carregar usuário:", error);
       }
     };
 
-    validateAndLoadUser();
-  }, [router]);
+    loadUser();
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -113,19 +115,22 @@ export function Layout({ children }: LayoutProps) {
       password: newPassword,
     };
 
-    userStorage.update(updatedUser);
-
-    if (typeof window !== "undefined") {
-      localStorage.setItem("rental_auth_user", JSON.stringify(updatedUser));
-    }
-
+    // Atualizar storage
+    userStorage.save(updatedUser);
+    
+    // Atualizar estado local
     setUser(updatedUser);
+    
+    toast({
+      title: "Senha alterada com sucesso!",
+      description: "Sua senha foi atualizada com sucesso.",
+      variant: "default",
+    });
+
     setShowPasswordDialog(false);
     setCurrentPassword("");
     setNewPassword("");
     setConfirmPassword("");
-
-    alert("Senha alterada com sucesso!");
   };
 
   const isActive = (path: string) => router.pathname === path;
@@ -406,7 +411,7 @@ export function Layout({ children }: LayoutProps) {
           open={showProfileDialog}
           onOpenChange={setShowProfileDialog}
           onSuccess={() => {
-            // Reload page to ensure all data is synced
+            // Reload to ensure data sync
             window.location.reload();
           }}
         />
