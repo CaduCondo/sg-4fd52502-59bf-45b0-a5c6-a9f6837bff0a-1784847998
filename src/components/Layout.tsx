@@ -73,42 +73,17 @@ export function Layout({ children }: LayoutProps) {
       const currentUser = getCurrentUser();
 
       if (currentUser) {
-        console.log("🔍 Layout: Validando usuário do localStorage:", currentUser.id);
-        console.log("🔍 Layout: Role do usuário (localStorage):", currentUser.role);
-
-        // Validar se o usuário realmente existe no banco
-        const userExists = await systemUserService.getById(currentUser.id);
-
-        if (!userExists) {
-          console.error("🔄 DETECTADO: Usuário do localStorage não existe no banco!");
-          console.log("🧹 Limpando dados corrompidos e redirecionando...");
-
-          // LIMPEZA FORÇADA TOTAL
-          localStorage.removeItem("isAuthenticated");
-          localStorage.removeItem("currentUser");
-          localStorage.clear(); // Limpa TUDO por garantia
-
-          toast({
-            title: "Sessão Inválida",
-            description: "Seus dados de sessão expiraram. Por favor, faça login novamente.",
-            variant: "destructive",
-          });
-
-          setTimeout(() => {
-            window.location.href = "/login";
-          }, 2000);
-
-          return;
-        }
-
-        console.log("✅ Layout: Usuário validado com sucesso");
-        console.log("🔍 Layout: Role no banco:", userExists.role);
-        setUser(currentUser);
+        setUser({
+          ...currentUser,
+          role: currentUser.role as "admin" | "user" | "broker" | "financial"
+        });
+      } else {
+        router.push("/login");
       }
     };
 
     validateAndLoadUser();
-  }, [toast]);
+  }, [router]);
 
   const handleLogout = () => {
     logout();

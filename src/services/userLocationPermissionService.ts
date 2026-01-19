@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { getCurrentUser } from "@/services/authService";
 
 export interface UserLocationPermission {
   id: string;
@@ -18,7 +19,7 @@ export const userLocationPermissionService = {
    */
   async getUserPermissions(): Promise<LocationPermission[]> {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = getCurrentUser();
       if (!user) return [];
 
       const locationIds = await this.getByUserId(user.id);

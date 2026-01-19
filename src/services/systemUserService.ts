@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { getCurrentUser } from "@/services/authService";
 import type { SystemUser } from "@/types";
 
 export const systemUserService = {
@@ -229,13 +230,13 @@ export const systemUserService = {
       }
 
       // 2. Fallback para Supabase Auth (se vier a ser usado)
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user?.email) return "Visitante";
+      const localUser = getCurrentUser();
+      if (!localUser?.email) return "Visitante";
 
       const { data } = await supabase
         .from("system_users")
         .select("name")
-        .eq("email", user.email)
+        .eq("email", localUser.email)
         .maybeSingle();
 
       if (data) {
@@ -243,7 +244,7 @@ export const systemUserService = {
          return firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
       }
 
-      return user.email.split("@")[0];
+      return localUser.email.split("@")[0];
     } catch (error) {
       console.error("Error fetching current user name:", error);
       return "Usuário";

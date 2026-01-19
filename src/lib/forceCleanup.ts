@@ -1,61 +1,82 @@
 /**
- * FORÇA LIMPEZA IMEDIATA DO LOCALSTORAGE
- * 
- * Este script executa ANTES de qualquer outro código no app.
- * Remove o ID fantasma e qualquer dado corrompido do localStorage.
+ * Force cleanup utility
+ * Clears ALL authentication and session data
  */
-
-// ID fantasma que precisa ser removido
-const PHANTOM_ID = "333e45ec-63fc-4e4d-a9b6-81a6b2ebe19a";
 
 /**
- * Executa limpeza síncrona do localStorage
- * DEVE ser chamado ANTES de qualquer renderização
+ * Force logout and cleanup
  */
-export function forceCleanupNow(): void {
-  if (typeof window === "undefined") return;
-
+export async function forceLogout(): Promise<void> {
   try {
-    console.log("🧹 FORÇA LIMPEZA: Iniciando limpeza automática do localStorage...");
+    console.log("🧹 Iniciando limpeza forçada...");
 
-    // Buscar currentUser
-    const currentUserStr = localStorage.getItem("currentUser");
-    
-    if (currentUserStr) {
-      try {
-        const currentUser = JSON.parse(currentUserStr);
-        
-        // Se for o ID fantasma, LIMPAR TUDO IMEDIATAMENTE
-        if (currentUser?.id === PHANTOM_ID) {
-          console.log("🚨 FORÇA LIMPEZA: ID FANTASMA DETECTADO! Limpando TUDO...");
-          localStorage.clear();
-          console.log("✅ FORÇA LIMPEZA: localStorage completamente limpo!");
-          
-          // Redirecionar para login
-          if (window.location.pathname !== "/login") {
-            console.log("🔄 FORÇA LIMPEZA: Redirecionando para login...");
-            window.location.href = "/login";
-          }
-          return;
-        }
+    // 1. Clear localStorage
+    localStorage.clear();
 
-        console.log("✅ FORÇA LIMPEZA: ID válido encontrado, nenhuma ação necessária");
-      } catch (error) {
-        console.error("❌ FORÇA LIMPEZA: Erro ao parsear currentUser, limpando...");
-        localStorage.clear();
-        if (window.location.pathname !== "/login") {
-          window.location.href = "/login";
-        }
-      }
-    } else {
-      console.log("ℹ️ FORÇA LIMPEZA: Nenhum usuário no localStorage");
-    }
+    // 2. Clear sessionStorage
+    sessionStorage.clear();
+
+    console.log("✅ Limpeza concluída");
   } catch (error) {
-    console.error("❌ FORÇA LIMPEZA: Erro durante limpeza:", error);
+    console.error("❌ Erro durante limpeza:", error);
   }
 }
 
-// Executar imediatamente quando o módulo for importado
-if (typeof window !== "undefined") {
-  forceCleanupNow();
+/**
+ * Alias for forceLogout to maintain compatibility
+ */
+export const forceCleanupNow = forceLogout;
+
+/**
+ * Clear all auth-related data
+ */
+export function clearAuthData(): void {
+  const authKeys = [
+    "auth_session",
+    "auth_user",
+    "supabase.auth.token",
+    "sb-auth-token",
+  ];
+
+  authKeys.forEach(key => {
+    localStorage.removeItem(key);
+    sessionStorage.removeItem(key);
+  });
+
+  console.log("✅ Dados de autenticação limpos");
+}
+
+/**
+ * Check and fix corrupted auth state
+ */
+export function checkAndFixAuthState(): boolean {
+  try {
+    const sessionStr = localStorage.getItem("auth_session");
+    
+    if (!sessionStr) {
+      return false; // No session
+    }
+
+    const session = JSON.parse(sessionStr);
+    
+    // Validate session structure
+    if (!session.user || !session.expiresAt) {
+      console.warn("⚠️ Sessão corrompida, limpando...");
+      clearAuthData();
+      return false;
+    }
+
+    // Check if expired
+    if (Date.now() > session.expiresAt) {
+      console.warn("⚠️ Sessão expirada, limpando...");
+      clearAuthData();
+      return false;
+    }
+
+    return true; // Session is valid
+  } catch (error) {
+    console.error("❌ Erro ao verificar sessão:", error);
+    clearAuthData();
+    return false;
+  }
 }

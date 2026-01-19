@@ -1,223 +1,182 @@
 import { supabase } from "@/integrations/supabase/client";
-import type { User, Session } from "@supabase/supabase-js";
+import type { Tables } from "@/integrations/supabase/types";
 
-export interface AuthUser {
-  id: string;
+type SystemUser = Tables<"system_users">;
+
+/**
+ * Local authentication service - uses ONLY system_users table
+ * NO Supabase Auth integration
+ */
+
+interface UserSession {
+  user: {
+    id: string;
+    email: string;
+    name: string;
+    username: string;
+    role: SystemUser["role"];
+  };
+  expiresAt: number;
+}
+
+interface LoginCredentials {
   email: string;
-  user_metadata?: any;
-  created_at?: string;
+  password: string;
 }
 
-export interface AuthError {
-  message: string;
-  code?: string;
+interface LoginResult {
+  success: boolean;
+  user?: UserSession["user"];
+  error?: string;
 }
 
-// Dynamic URL Helper
-const getURL = () => {
-  let url = process?.env?.NEXT_PUBLIC_VERCEL_URL ?? 
-           process?.env?.NEXT_PUBLIC_SITE_URL ?? 
-           'http://localhost:3000'
-  
-  // Handle undefined or null url
-  if (!url) {
-    url = 'http://localhost:3000';
+/**
+ * Simple password validation (direct comparison)
+ * For production, implement proper bcrypt comparison
+ */
+function validatePassword(inputPassword: string, storedPassword: string): boolean {
+  // Direct comparison for now
+  // TODO: Implement bcrypt.compare() for production
+  return inputPassword === storedPassword;
+}
+
+/**
+ * Login using system_users table only
+ */
+export async function login(credentials: LoginCredentials): Promise<LoginResult> {
+  try {
+    console.log("🔐 Iniciando login com system_users...");
+
+    // 1. Search for user by email OR username
+    // Using explicit any casting to completely bypass the deep type instantiation issue
+    const table: any = supabase.from("system_users");
+    
+    let { data: users, error: queryError } = await table
+      .select("*")
+      .eq("email", credentials.email)
+      .eq("status", "active");
+
+    // If not found by email, try username
+    if (!users || users.length === 0) {
+       const result = await table
+        .select("*")
+        .eq("username", credentials.email)
+        .eq("status", "active");
+        
+       users = result.data;
+       queryError = result.error;
+    }
+    
+    // Explicit casting to expected type
+    const foundUsers = users as SystemUser[];
+
+    if (queryError) {
+      console.error("❌ Erro ao buscar usuário:", queryError);
+      return { success: false, error: "Erro ao buscar usuário" };
+    }
+
+    if (!foundUsers || foundUsers.length === 0) {
+      console.warn("⚠️ Usuário não encontrado ou inativo");
+      return { success: false, error: "Usuário não encontrado ou inativo" };
+    }
+
+    const user = foundUsers[0];
+    console.log("✅ Usuário encontrado:", user.username);
+
+    // 2. Validate password
+    const isPasswordValid = validatePassword(credentials.password, user.password);
+
+    if (!isPasswordValid) {
+      console.warn("⚠️ Senha incorreta");
+      return { success: false, error: "Senha incorreta" };
+    }
+
+    console.log("✅ Senha validada com sucesso");
+
+    // 3. Create local session
+    const session: UserSession = {
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        username: user.username,
+        role: user.role,
+      },
+      expiresAt: Date.now() + (24 * 60 * 60 * 1000), // 24 hours
+    };
+
+    // 4. Save session to localStorage
+    localStorage.setItem("auth_session", JSON.stringify(session));
+    localStorage.setItem("auth_user", JSON.stringify(session.user));
+
+    console.log("✅ Sessão criada com sucesso");
+    return { success: true, user: session.user };
+
+  } catch (error) {
+    console.error("❌ Erro durante login:", error);
+    return { success: false, error: "Erro ao processar login" };
   }
-  
-  // Ensure url has protocol
-  url = url.startsWith('http') ? url : `https://${url}`
-  
-  // Ensure url ends with slash
-  url = url.endsWith('/') ? url : `${url}/`
-  
-  return url
 }
 
-export const authService = {
-  // Get current user
-  async getCurrentUser(): Promise<AuthUser | null> {
-    const { data: { user } } = await supabase.auth.getUser();
-    return user ? {
-      id: user.id,
-      email: user.email || "",
-      user_metadata: user.user_metadata,
-      created_at: user.created_at
-    } : null;
-  },
+/**
+ * Logout - clear local session
+ */
+export function logout(): void {
+  localStorage.removeItem("auth_session");
+  localStorage.removeItem("auth_user");
+  console.log("✅ Logout realizado");
+}
 
-  // Get current session
-  async getCurrentSession(): Promise<Session | null> {
-    const { data: { session } } = await supabase.auth.getSession();
-    return session;
-  },
+/**
+ * Check if user is authenticated
+ */
+export function isAuthenticated(): boolean {
+  try {
+    const sessionStr = localStorage.getItem("auth_session");
+    if (!sessionStr) return false;
 
-  // Sign up with email and password
-  async signUp(email: string, password: string): Promise<{ user: AuthUser | null; error: AuthError | null }> {
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: `${getURL()}auth/confirm-email`
-        }
-      });
-
-      if (error) {
-        return { user: null, error: { message: error.message, code: error.status?.toString() } };
-      }
-
-      const authUser = data.user ? {
-        id: data.user.id,
-        email: data.user.email || "",
-        user_metadata: data.user.user_metadata,
-        created_at: data.user.created_at
-      } : null;
-
-      return { user: authUser, error: null };
-    } catch (error) {
-      return { 
-        user: null, 
-        error: { message: "An unexpected error occurred during sign up" } 
-      };
+    const session: UserSession = JSON.parse(sessionStr);
+    
+    // Check if session expired
+    if (Date.now() > session.expiresAt) {
+      logout();
+      return false;
     }
-  },
 
-  // Sign in with email and password
-  async signIn(email: string, password: string): Promise<{ user: AuthUser | null; error: AuthError | null }> {
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) {
-        return { user: null, error: { message: error.message, code: error.status?.toString() } };
-      }
-
-      const authUser = data.user ? {
-        id: data.user.id,
-        email: data.user.email || "",
-        user_metadata: data.user.user_metadata,
-        created_at: data.user.created_at
-      } : null;
-
-      return { user: authUser, error: null };
-    } catch (error) {
-      return { 
-        user: null, 
-        error: { message: "An unexpected error occurred during sign in" } 
-      };
-    }
-  },
-
-  // Sign out
-  async signOut(): Promise<{ error: AuthError | null }> {
-    try {
-      const { error } = await supabase.auth.signOut();
-      
-      if (error) {
-        return { error: { message: error.message } };
-      }
-
-      return { error: null };
-    } catch (error) {
-      return { 
-        error: { message: "An unexpected error occurred during sign out" } 
-      };
-    }
-  },
-
-  // Reset password
-  async resetPassword(email: string): Promise<{ error: AuthError | null }> {
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${getURL()}auth/reset-password`,
-      });
-
-      if (error) {
-        return { error: { message: error.message } };
-      }
-
-      return { error: null };
-    } catch (error) {
-      return { 
-        error: { message: "An unexpected error occurred during password reset" } 
-      };
-    }
-  },
-
-  // Confirm email (REQUIRED)
-  async confirmEmail(token: string, type: 'signup' | 'recovery' | 'email_change' = 'signup'): Promise<{ user: AuthUser | null; error: AuthError | null }> {
-    try {
-      const { data, error } = await supabase.auth.verifyOtp({
-        token_hash: token,
-        type: type
-      });
-
-      if (error) {
-        return { user: null, error: { message: error.message, code: error.status?.toString() } };
-      }
-
-      const authUser = data.user ? {
-        id: data.user.id,
-        email: data.user.email || "",
-        user_metadata: data.user.user_metadata,
-        created_at: data.user.created_at
-      } : null;
-
-      return { user: authUser, error: null };
-    } catch (error) {
-      return { 
-        user: null, 
-        error: { message: "An unexpected error occurred during email confirmation" } 
-      };
-    }
-  },
-
-  // Listen to auth state changes
-  onAuthStateChange(callback: (event: string, session: Session | null) => void) {
-    return supabase.auth.onAuthStateChange(callback);
-  },
-
-  // Get user profile name from system_users table
-  async getUserProfileName(): Promise<string> {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return "Administrador";
-
-      // 1. Try to find system_user_id from mapping
-      const { data: mapping, error: mappingError } = await supabase
-        .from("auth_user_mapping")
-        .select("system_user_id")
-        .eq("auth_user_id", user.id)
-        .maybeSingle();
-
-      if (mappingError) {
-        console.error("Error fetching mapping:", mappingError);
-        return user.email?.split("@")[0] || "Administrador";
-      }
-
-      if (mapping) {
-        // 2. Get name from system_users
-        const { data: profile, error: profileError } = await supabase
-          .from("system_users")
-          .select("name")
-          .eq("id", mapping.system_user_id)
-          .maybeSingle();
-
-        if (profileError) {
-          console.error("Error fetching profile:", profileError);
-          return user.email?.split("@")[0] || "Administrador";
-        }
-          
-        if (profile?.name) return profile.name;
-      }
-
-      // Fallback to email username
-      return user.email?.split("@")[0] || "Administrador";
-    } catch (error) {
-      console.error("Error fetching user profile:", error);
-      return "Administrador";
-    }
+    return true;
+  } catch {
+    return false;
   }
-};
+}
+
+/**
+ * Get current user from session
+ */
+export function getCurrentUser(): UserSession["user"] | null {
+  try {
+    const userStr = localStorage.getItem("auth_user");
+    if (!userStr) return null;
+
+    return JSON.parse(userStr);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Renew session expiration
+ */
+export function renewSession(): boolean {
+  try {
+    const sessionStr = localStorage.getItem("auth_session");
+    if (!sessionStr) return false;
+
+    const session: UserSession = JSON.parse(sessionStr);
+    session.expiresAt = Date.now() + (24 * 60 * 60 * 1000);
+    
+    localStorage.setItem("auth_session", JSON.stringify(session));
+    return true;
+  } catch {
+    return false;
+  }
+}
