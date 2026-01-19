@@ -8,14 +8,15 @@ import { Button } from "@/components/ui/button";
 import { Home, Users, DollarSign, AlertCircle, Calendar, TrendingUp, Building2, Download, CheckCircle } from "lucide-react";
 
 // Services Imports - Using Aliases for compatibility
-import { propertyService } from "@/services/propertyService";
-import { tenantService } from "@/services/tenantService";
-import { rentalService } from "@/services/rentalService";
-import { paymentService } from "@/services/paymentService";
+import { getAll as getAllProperties } from "@/services/propertyService";
+import { getAll as getAllTenants } from "@/services/tenantService";
+import { getAll as getAllRentals } from "@/services/rentalService";
+import { getAll as getAllPayments } from "@/services/paymentService";
 import { getConfig } from "@/services/configService";
 import { getAll as getAllLocations } from "@/services/locationService";
 import { getAll as getSystemUsers } from "@/services/systemUserService";
 import { getAll as getUserLocationPermissions } from "@/services/userLocationPermissionService";
+import { useAuth } from "@/contexts/AuthContext";
 
 // Permissions & Utils
 import { hasPermission } from "@/lib/permissions";
@@ -29,10 +30,13 @@ import { ScrollReveal } from "@/components/animations/ScrollReveal";
 export default function Dashboard() {
   const router = useRouter();
   const { toast } = useToast();
-  const [properties, setProperties] = useState<Property[]>([]);
-  const [tenants, setTenants] = useState<Tenant[]>([]);
-  const [rentals, setRentals] = useState<Rental[]>([]);
-  const [payments, setPayments] = useState<Payment[]>([]);
+  const { user, loading } = useAuth();
+  const [isLoading, setIsLoading] = useState(true);
+  const [properties, setProperties] = useState<any[]>([]);
+  const [tenants, setTenants] = useState<any[]>([]);
+  const [rentals, setRentals] = useState<any[]>([]);
+  const [payments, setPayments] = useState<any[]>([]);
+  const [config, setConfig] = useState<any>(null);
   const [adminFeePercentage, setAdminFeePercentage] = useState(6);
   const [userName, setUserName] = useState("Usuário");
   const [currentDate, setCurrentDate] = useState("");
@@ -231,20 +235,22 @@ export default function Dashboard() {
 
   const loadDashboardData = async () => {
     try {
-      // Check user role for filtering
-      const userStr = localStorage.getItem("rental_auth_user");
-      const currentUser = userStr ? JSON.parse(userStr) : null;
+      setIsLoading(true);
       
-      const [propertiesData, tenantsData, rentalsData, paymentsData] = await Promise.all([
-        propertyService.getAll(),
-        tenantService.getAll(),
-        rentalService.getAll(),
-        paymentService.getAll(),
+      const [
+        propertiesData, 
+        tenantsData, 
+        rentalsData, 
+        paymentsData,
+        configData
+      ] = await Promise.all([
+        getAllProperties(),
+        getAllTenants(),
+        getAllRentals(),
+        getAllPayments(),
+        getConfig()
       ]);
 
-      // CRITICAL: REMOVED FILTERS FOR FINANCIAL USERS TO SHOW ALL DATA
-      // ALL users should see ALL data
-      
       setProperties(propertiesData);
       setTenants(tenantsData);
       setRentals(rentalsData);

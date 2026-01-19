@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { Layout } from "@/components/Layout";
 import { SEO } from "@/components/SEO";
@@ -8,18 +8,28 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { rentalService, propertyService, tenantService, paymentService } from "@/services";
+import { propertyService, tenantService, paymentService } from "@/services";
 import type { Rental, Property, Tenant } from "@/types";
-import { ArrowLeft, Edit, Save, X, Trash2, Camera, Paperclip, Download, Eye } from "lucide-react";
+import { ArrowLeft, Edit, Save, X, Trash2, Camera, Paperclip, Download, Eye, XCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { applyRealMask, formatCurrency } from "@/lib/masks";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AttachmentViewer } from "@/components/AttachmentViewer";
+import { 
+  getById as getRentalById, 
+  update as updateRental, 
+  remove as deleteRental 
+} from "@/services/rentalService";
+import { hasPermission } from "@/lib/permissions";
+import { useAuth } from "@/contexts/AuthContext";
+import { update as updateProperty } from "@/services/propertyService";
+import { update as updateTenant } from "@/services/tenantService";
 
 export default function RentalDetails() {
   const router = useRouter();
   const { id } = router.query;
+  const { user } = useAuth(); // Get user from context
   const { toast } = useToast();
   const [rental, setRental] = useState<Rental | null>(null);
   const [property, setProperty] = useState<Property | null>(null);
@@ -46,7 +56,7 @@ export default function RentalDetails() {
   const loadRental = async () => {
     try {
       setLoading(true);
-      const rentalData = await rentalService.getById(id as string);
+      const rentalData = await getRentalById(id as string);
       
       if (!rentalData) {
         toast({ 
@@ -162,7 +172,7 @@ export default function RentalDetails() {
         attachments: editAttachments,
       };
 
-      await rentalService.update(updatedRental);
+      await updateRental(rental.id, updatedRental);
       
       // Update future payments if value changed
       await paymentService.updateFuturePaymentsOnRentalValueChange(rental.id, totalValue);
@@ -189,38 +199,28 @@ export default function RentalDetails() {
     }
   };
 
-  const handleEndContract = async () => {
-    if (!rental) return;
+  const handleEndRental = async () => {
+    if (!rental || !property || !tenant) return;
+    
+    if (!confirm("Tem certeza que deseja encerrar esta locação?")) return;
 
     try {
-      const updatedRental: Rental = {
-        ...rental,
-        isActive: false,
-        endDate: new Date().toISOString().split("T")[0],
-      };
+      await updateRental(rental.id, { isActive: false });
+      await updateProperty(property.id, { status: "available" });
+      await updateTenant(tenant.id, { status: "active" });
 
-      await rentalService.update(updatedRental);
-
-      if (property) {
-        await propertyService.update(property.id, { ...property, status: "available" });
-      }
-
-      if (tenant) {
-        await tenantService.update({ ...tenant, status: "active" });
-      }
-
-      toast({ 
-        title: "Sucesso!", 
-        description: "Contrato encerrado com sucesso" 
+      toast({
+        title: "Sucesso",
+        description: "Locação encerrada com sucesso.",
       });
-      
+
       router.push("/rentals");
     } catch (error) {
-      console.error("Error ending contract:", error);
-      toast({ 
-        title: "Erro", 
-        description: "Não foi possível encerrar o contrato", 
-        variant: "destructive" 
+      console.error("Error ending rental:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível encerrar a locação.",
+        variant: "destructive",
       });
     }
   };
@@ -229,14 +229,14 @@ export default function RentalDetails() {
     if (!rental) return;
 
     try {
-      await rentalService.delete(rental.id);
+      await deleteRental(rental.id);
 
       if (property) {
-        await propertyService.update(property.id, { ...property, status: "available" });
+        await updateProperty(property.id, { ...property, status: "available" });
       }
 
       if (tenant) {
-        await tenantService.update({ ...tenant, status: "active" });
+        await updateTenant({ ...tenant, status: "active" });
       }
 
       toast({ 
@@ -318,34 +318,18 @@ export default function RentalDetails() {
               Voltar
             </Button>
             <div className="flex gap-2">
-              {!isEditing && rental.isActive && (
-                <>
-                  <Button onClick={handleEdit} variant="outline" size="sm">
-                    <Edit className="h-4 w-4 mr-2" />
-                    Editar
-                  </Button>
-                  <Button onClick={() => setIsEndDialogOpen(true)} variant="destructive" size="sm">
-                    Encerrar
-                  </Button>
-                </>
-              )}
-              {!rental.isActive && (
-                <Button onClick={() => setIsDeleteDialogOpen(true)} variant="destructive" size="sm">
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Excluir
+              {hasPermission(user?.role, "canEditRental") && (
+                <Button onClick={() => setIsEditing(true)}>
+                  <Edit className="mr-2 h-4 w-4" />
+                  Editar
                 </Button>
               )}
-              {isEditing && (
-                <>
-                  <Button onClick={handleSave} className="bg-emerald-600 hover:bg-emerald-700" size="sm">
-                    <Save className="h-4 w-4 mr-2" />
-                    Salvar
-                  </Button>
-                  <Button onClick={handleCancelEdit} variant="outline" size="sm">
-                    <X className="h-4 w-4 mr-2" />
-                    Cancelar
-                  </Button>
-                </>
+              
+              {hasPermission(user?.role, "canDeleteRental") && (
+                <Button variant="destructive" onClick={handleEndRental}>
+                  <XCircle className="mr-2 h-4 w-4" />
+                  Encerrar Contrato
+                </Button>
               )}
             </div>
           </div>
@@ -615,7 +599,7 @@ export default function RentalDetails() {
               <Button variant="outline" onClick={() => setIsEndDialogOpen(false)} size="sm">
                 Cancelar
               </Button>
-              <Button variant="destructive" onClick={handleEndContract} size="sm">
+              <Button variant="destructive" onClick={handleEndRental} size="sm">
                 Encerrar
               </Button>
             </DialogFooter>

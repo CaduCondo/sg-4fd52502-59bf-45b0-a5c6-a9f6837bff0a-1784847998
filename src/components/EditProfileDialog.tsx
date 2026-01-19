@@ -174,8 +174,11 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
     } else if (field === "cep") {
       const masked = applyCepMask(value);
       setSelectedUser({ ...selectedUser, [field]: masked });
+    } else if (field === 'role') {
+      const roleValue = value as "admin" | "broker" | "financial";
+      setSelectedUser({ ...selectedUser, role: roleValue });
     } else {
-      // @ts-expect-error - Permite atribuir string a campos que podem ser string no Extended
+      // Dynamic assignment
       setSelectedUser({ ...selectedUser, [field]: value });
     }
   };

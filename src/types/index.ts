@@ -18,6 +18,7 @@ export interface SystemUser {
   id: string;
   name: string;
   email: string;
+  photo?: string;
   phone?: string;
   role: "admin" | "broker" | "financial";
   active: boolean;

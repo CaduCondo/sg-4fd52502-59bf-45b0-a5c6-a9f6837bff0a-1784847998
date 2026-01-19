@@ -26,20 +26,24 @@ import {
   Target, 
   FileText, 
   Save,
-  QrCode
+  QrCode,
+  TrendingUp
 } from "lucide-react";
-import { Payment, Property, Rental, Tenant } from "@/types";
+import { Payment, Property, Rental, Tenant, User } from "@/types";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { paymentService } from "@/services/paymentService";
-import { propertyService } from "@/services/propertyService";
-import { rentalService } from "@/services/rentalService";
-import { tenantService } from "@/services/tenantService";
-import { getAll as getUserLocationPermissions } from "@/services/userLocationPermissionService";
+import { getAll as getAllPayments } from "@/services/paymentService";
+import { getAll as getAllProperties } from "@/services/propertyService";
+import { getAll as getAllTenants } from "@/services/tenantService";
+import { getAll as getAllRentals, update as updateRental } from "@/services/rentalService";
+import { getUserLocationPermissions } from "@/services/userLocationPermissionService";
 import { userStorage } from "@/lib/storage";
+import { hasPermission } from "@/lib/permissions";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
 import { useRouter } from "next/navigation";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { getConfig } from "@/services/configService";
 
 export default function Financial() {
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -48,8 +52,8 @@ export default function Financial() {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
   const [allowedLocationIds, setAllowedLocationIds] = useState<string[]>([]);
-  const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [config, setConfig] = useState<any>(null);
 
   // Date State
   const now = new Date();
@@ -60,59 +64,64 @@ export default function Financial() {
   const [editingPixCode, setEditingPixCode] = useState<{ [key: string]: string }>({});
   const [savingPixCode, setSavingPixCode] = useState<string | null>(null);
 
+  const router = useRouter();
+  const { user } = useAuth();
+
   useEffect(() => {
-    const loadUser = () => {
-      const storedUser = userStorage.get();
-      if (storedUser) {
-        setUser(storedUser);
-      }
-    };
-    loadUser();
-  }, []);
+    if (user) {
+      loadData();
+    }
+  }, [user]);
 
   const loadData = async () => {
-    setLoading(true);
     try {
-      // Carregar dados do usuário logado
-      const currentUser = userStorage.getCurrentUser();
+      setIsLoading(true);
       
-      // Se for usuário financeiro, carregar permissões de locais
-      let allowedLocations: string[] = [];
-      if (currentUser && currentUser.role === "financial") {
-        allowedLocations = await getUserLocationPermissions(currentUser.id);
-        setAllowedLocationIds(allowedLocations);
-      }
-
-      const [paymentsData, propertiesData, rentalsData, tenantsData] = await Promise.all([
-        paymentService.getAll(),
-        propertyService.getAll(),
-        rentalService.getAll(),
-        tenantService.getAll(),
+      const [
+        paymentsData, 
+        propertiesData, 
+        tenantsData,
+        rentalsData,
+        configData
+      ] = await Promise.all([
+        getAllPayments(),
+        getAllProperties(),
+        getAllTenants(),
+        getAllRentals(),
+        getConfig()
       ]);
 
-      // Filtrar propriedades por locais permitidos (se for financeiro)
-      let filteredProperties = propertiesData;
-      if (currentUser && currentUser.role === "financial" && allowedLocations.length > 0) {
-        filteredProperties = propertiesData.filter(prop => 
-          allowedLocations.includes(prop.locationId || "")
+      // setConfig(configData); // config state might be missing, check if needed
+      setConfig(configData);
+
+      // Filter based on permissions if user is broker
+      if (user && user.role === "broker") {
+        const permissions = await getUserLocationPermissions(user.id);
+        const allowedLocationIds = permissions.map(p => p.location_id);
+        
+        // Filter properties by location permission
+        const allowedProperties = propertiesData.filter(p => 
+          p.locationId && allowedLocationIds.includes(p.locationId)
         );
+        const allowedPropertyIds = allowedProperties.map(p => p.id);
+        
+        // Filter everything else based on allowed properties
+        setProperties(allowedProperties);
+        setRentals(rentalsData.filter(r => allowedPropertyIds.includes(r.propertyId)));
+        
+        // Payments linked to allowed rentals
+        const allowedRentalIds = rentalsData
+          .filter(r => allowedPropertyIds.includes(r.propertyId))
+          .map(r => r.id);
+          
+        setPayments(paymentsData.filter(p => allowedRentalIds.includes(p.rentalId)));
+      } else {
+        // Admin/Financial sees everything
+        setPayments(paymentsData);
+        setProperties(propertiesData);
+        setRentals(rentalsData);
       }
-
-      // Filtrar rentals baseado nas propriedades filtradas
-      const filteredPropertyIds = filteredProperties.map(p => p.id);
-      const filteredRentals = rentalsData.filter(r => 
-        filteredPropertyIds.includes(r.propertyId)
-      );
-
-      // Filtrar pagamentos baseado nos rentals filtrados
-      const filteredRentalIds = filteredRentals.map(r => r.id);
-      const filteredPayments = paymentsData.filter(p => 
-        filteredRentalIds.includes(p.rentalId)
-      );
-
-      setPayments(filteredPayments);
-      setProperties(filteredProperties);
-      setRentals(filteredRentals);
+      
       setTenants(tenantsData);
     } catch (error) {
       console.error("Error loading financial data:", error);
@@ -131,7 +140,7 @@ export default function Financial() {
       if (!rental) return;
 
       const updatedRental = { ...rental, pixCode: newPixCode };
-      await rentalService.update(updatedRental);
+      await updateRental(rentalId, updatedRental);
 
       // Update local state
       setRentals(rentals.map(r => r.id === rentalId ? updatedRental : r));

@@ -1,5 +1,6 @@
 import { 
   User, 
+  SystemUser, 
   Property, 
   Tenant, 
   Rental, 
@@ -70,13 +71,13 @@ export const configStorage = {
 };
 
 export const userStorage = {
-  get(): User | null {
+  get(): SystemUser | null {
     if (typeof window === "undefined") return null;
-    const data = localStorage.getItem(STORAGE_KEYS.AUTH_USER);
-    return data ? JSON.parse(data) : null;
+    const item = localStorage.getItem(STORAGE_KEYS.AUTH_USER);
+    return item ? JSON.parse(item) : null;
   },
   
-  save(user: User): void {
+  save(user: SystemUser): void {
     if (typeof window === "undefined") return;
     localStorage.setItem(STORAGE_KEYS.AUTH_USER, JSON.stringify(user));
   },

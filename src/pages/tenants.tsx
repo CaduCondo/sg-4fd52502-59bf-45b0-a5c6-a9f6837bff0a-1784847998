@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Search, Mail, Phone, FileText, User } from "lucide-react";
-import { tenantService } from "@/services/tenantService";
+import { getAll as getAllTenants, create as createTenant } from "@/services/tenantService";
 import { toast } from "@/hooks/use-toast";
 import type { Tenant } from "@/types";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
@@ -51,16 +51,11 @@ export default function TenantsPage() {
     filterTenants();
   }, [searchTerm, tenants]);
 
-  async function loadTenants() {
+  const loadTenants = async () => {
     try {
       setIsLoading(true);
-      console.log("🔍 Loading tenants...");
-      const data = await tenantService.getAll();
-      console.log("📦 Tenants loaded:", data);
-      
-      // CRITICAL: Show ALL tenants without filtering
+      const data = await getAllTenants();
       setTenants(data);
-      setFilteredTenants(data);
     } catch (error) {
       console.error("❌ Error loading tenants:", error);
       toast({
@@ -71,7 +66,7 @@ export default function TenantsPage() {
     } finally {
       setIsLoading(false);
     }
-  }
+  };
 
   function filterTenants() {
     if (!searchTerm.trim()) {
@@ -117,7 +112,7 @@ export default function TenantsPage() {
 
     try {
       console.log("📤 Creating tenant:", formData);
-      await tenantService.create(formData as Omit<Tenant, "id" | "createdAt">);
+      await createTenant(formData as Omit<Tenant, "id" | "createdAt">);
       
       toast({
         title: "Inquilino cadastrado",

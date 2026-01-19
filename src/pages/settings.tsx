@@ -68,16 +68,18 @@ import {
   updateConfig 
 } from "@/services/configService";
 import { 
-  getUsers, 
+  getSystemUsers, 
   createUser, 
   updateUser, 
-  deleteUser 
+  deleteUser,
+  resetPassword,
+  unlockUser
 } from "@/services/systemUserService";
 import { 
-  getLocations, 
+  getAllLocations, 
   createLocation, 
-  updateLocation, 
-  deleteLocation 
+  deleteLocation, 
+  updateLocation 
 } from "@/services/locationService";
 import { 
   getUserLocationPermissions, 
@@ -165,6 +167,7 @@ export default function Settings() {
   const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false);
   const [editingLocation, setEditingLocation] = useState<Location | null>(null);
   const [locationName, setLocationName] = useState("");
+  const [newLocationName, setNewLocationName] = useState(""); // Add missing state
 
   // User Location Permissions State
   const [selectedUserForLocations, setSelectedUserForLocations] = useState<SystemUser | null>(null);
@@ -212,7 +215,7 @@ export default function Settings() {
   const loadUsers = async () => {
     setLoadingUsers(true);
     try {
-      const data = await getUsers();
+      const data = await getSystemUsers();
       setUsers(data);
     } catch (error) {
       console.error("Erro ao carregar usuários:", error);
@@ -228,7 +231,7 @@ export default function Settings() {
 
   const loadLocations = async () => {
     try {
-      const data = await getLocations();
+      const data = await getAllLocations();
       setLocations(data);
     } catch (error) {
       console.error("Erro ao carregar locais:", error);
@@ -410,7 +413,11 @@ export default function Settings() {
         await updateLocation(editingLocation.id, { name: locationName });
         toast({ title: "Sucesso", description: "Local atualizado com sucesso!" });
       } else {
-        await createLocation({ name: locationName });
+        await createLocation({ 
+          name: newLocationName,
+          city: "Cidade Padrão",
+          state: "UF"
+        });
         toast({ title: "Sucesso", description: "Local criado com sucesso!" });
       }
       

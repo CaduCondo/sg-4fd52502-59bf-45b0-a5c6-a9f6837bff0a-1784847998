@@ -12,8 +12,8 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Building2, ArrowLeft, Save } from "lucide-react";
 import { Property, Location } from "@/types";
-import { propertyService } from "@/services";
-import { locationService } from "@/services/locationService";
+import { getById as getPropertyById } from "@/services/propertyService";
+import { getLocationById, getAll as getAllLocations } from "@/services/locationService";
 import { applyCepMask, applyRealMask } from "@/lib/masks";
 
 export default function PropertyDetailPage() {
@@ -79,7 +79,7 @@ export default function PropertyDetailPage() {
 
   const loadLocations = async () => {
     try {
-      const locationsData = await locationService.getAll();
+      const locationsData = await getAllLocations();
       setLocations(locationsData);
     } catch (error) {
       console.error("Error loading locations:", error);
@@ -89,7 +89,7 @@ export default function PropertyDetailPage() {
   const loadProperty = async (propertyId: string) => {
     try {
       setLoading(true);
-      const data = await propertyService.getById(propertyId);
+      const data = await getPropertyById(propertyId);
       
       if (data) {
         setProperty(data);

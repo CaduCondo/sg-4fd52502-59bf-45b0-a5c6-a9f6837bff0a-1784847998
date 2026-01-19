@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Home, User, Calendar, Trash2, XCircle, Archive, Upload, X, Users, DollarSign, Building2 } from "lucide-react";
+import { Plus, Home, User, Calendar, Trash2, XCircle, Archive, Upload, X, Users, DollarSign, Building2, Edit } from "lucide-react";
 import type { Rental, Property, Tenant, Payment } from "@/types";
 import { rentalService, propertyService, tenantService, paymentService } from "@/services";
 import { formatCurrency, applyRealMask, removeMask } from "@/lib/masks";
@@ -19,8 +19,14 @@ import { ScrollReveal } from "@/components/animations/ScrollReveal";
 import { FloatingCard } from "@/components/animations/FloatingCard";
 import { getCurrentUser } from "@/lib/auth";
 import { isAuthenticatedAsync } from "@/lib/auth";
+import { getAll as getAllRentals, create as createRental, remove as deleteRental, update as updateRental } from "@/services/rentalService";
+import { getAll as getAllProperties, update as updateProperty } from "@/services/propertyService";
+import { getAll as getAllTenants, update as updateTenant } from "@/services/tenantService";
+import { getAll as getAllPayments, create as createPayment, deletePendingByRentalId, deleteFutureByRentalId } from "@/services/paymentService";
+import { hasPermission } from "@/lib/permissions";
+import { useAuth } from "@/contexts/AuthContext";
 
-export default function RentalsPage() {
+export default function Rentals() {
   const router = useRouter();
   const { toast } = useToast();
   const [rentals, setRentals] = useState<Rental[]>([]);
@@ -34,7 +40,9 @@ export default function RentalsPage() {
   const [selectedRental, setSelectedRental] = useState<Rental | null>(null);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const currentUser = getCurrentUser();
+  const { user } = useAuth();
 
   const [formData, setFormData] = useState({
     propertyId: "",
@@ -61,6 +69,29 @@ export default function RentalsPage() {
     setAvailableProperties(availProps);
     setAvailableTenants(availTenants);
   }, [properties, tenants]);
+
+  const loadRentals = async () => {
+    try {
+      setIsLoading(true);
+      const [rentalsData, propertiesData, tenantsData] = await Promise.all([
+        getAllRentals(),
+        getAllProperties(),
+        getAllTenants()
+      ]);
+      setRentals(rentalsData);
+      setProperties(propertiesData);
+      setTenants(tenantsData);
+    } catch (error) {
+      console.error("Error loading data:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar os dados.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -302,17 +333,15 @@ export default function RentalsPage() {
       // Update property status to occupied
       const property = properties.find((p) => p.id === formData.propertyId);
       if (property) {
-        await propertyService.update(property.id, {
-          ...property,
+        await updateProperty(property.id, {
           status: "occupied",
         });
       }
 
-      // Update tenant status to 'locatario'
+      // Update tenant status to 'rented'
       const tenantToUpdate = tenants.find(t => t.id === createdRental.tenantId);
       if (tenantToUpdate) {
-        await tenantService.update({
-          ...tenantToUpdate,
+        await updateTenant(tenantToUpdate.id, {
           status: "rented"
         });
       }
@@ -357,13 +386,12 @@ export default function RentalsPage() {
       await paymentService.deletePendingByRentalId(rental.id);
 
       // Delete rental
-      await rentalService.delete(rental.id);
+      await deleteRental(rental.id);
 
       // Update property status to available
       const property = properties.find((p) => p.id === rental.propertyId);
       if (property) {
-        await propertyService.update(property.id, {
-          ...property,
+        await updateProperty(property.id, {
           status: "available",
         });
       }
@@ -371,7 +399,7 @@ export default function RentalsPage() {
       // Update tenant status to active
       const tenant = tenants.find((t) => t.id === rental.tenantId);
       if (tenant) {
-        await tenantService.update({ ...tenant, status: "active" });
+        await updateTenant(tenant.id, { status: "active" });
       }
 
       toast({
@@ -398,13 +426,12 @@ export default function RentalsPage() {
       await paymentService.deleteFutureByRentalId(rental.id);
 
       // Update rental to inactive
-      await rentalService.update({ ...rental, isActive: false });
+      await updateRental(rental.id, { isActive: false });
 
       // Update property status to available
       const property = properties.find((p) => p.id === rental.propertyId);
       if (property) {
-        await propertyService.update(property.id, {
-          ...property,
+        await updateProperty(property.id, {
           status: "available",
         });
       }
@@ -412,7 +439,7 @@ export default function RentalsPage() {
       // Update tenant status to active
       const tenant = tenants.find((t) => t.id === rental.tenantId);
       if (tenant) {
-        await tenantService.update({ ...tenant, status: "active" });
+        await updateTenant(tenant.id, { status: "active" });
       }
 
       toast({
@@ -468,10 +495,14 @@ export default function RentalsPage() {
                   Gerencie todas as locações ativas e inativas
                 </p>
               </div>
-              <Button onClick={handleOpenDialog} className="bg-emerald-600 hover:bg-emerald-700">
-                <Plus className="mr-2 h-4 w-4" />
-                Nova Locação
-              </Button>
+              <div className="flex justify-end mb-6">
+                {hasPermission(user?.role, "canCreateRental") && (
+                  <Button onClick={() => router.push("/rentals/new")}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Nova Locação
+                  </Button>
+                )}
+              </div>
             </div>
           </ScrollReveal>
 
@@ -1002,18 +1033,20 @@ export default function RentalsPage() {
                         </div>
                       </CardContent>
                       <CardFooter className="pt-3 border-t">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="w-full"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete(rental);
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Excluir
-                        </Button>
+                        {hasPermission(user?.role, "canDeleteRental") && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="w-full"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(rental);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Excluir
+                          </Button>
+                        )}
                       </CardFooter>
                     </Card>
                   </FloatingCard>

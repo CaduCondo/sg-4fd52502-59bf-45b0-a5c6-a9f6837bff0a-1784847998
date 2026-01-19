@@ -10,12 +10,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, DollarSign, Calendar, Home, User, X, Upload, Camera, Paperclip, Eye, Download } from "lucide-react";
+import { ArrowLeft, DollarSign, Calendar, Home, User, X, Upload, Camera, Paperclip, Eye, Download, Edit, Trash2 } from "lucide-react";
 import type { Payment, Rental, Property, Tenant, CompanyConfig } from "@/types";
 import { paymentService, rentalService, propertyService, tenantService, configService } from "@/services";
 import { applyRealMask, removeMask, formatCurrency, parseCurrencyToFloat, formatPercentage } from "@/lib/masks";
 import { PaymentReceipt } from "@/components/PaymentReceipt";
 import { AttachmentViewer } from "@/components/AttachmentViewer";
+import { getById as getPaymentById, update as updatePayment, remove as deletePayment } from "@/services/paymentService";
+import { getById as getRentalById } from "@/services/rentalService";
+import { getConfig } from "@/services/configService";
+import { hasPermission } from "@/lib/permissions";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface ManagePaymentContentProps {
   paymentId: string;
@@ -55,6 +60,8 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
   const [isViewMode, setIsViewMode] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
 
+  const { user } = useAuth();
+
   useEffect(() => {
     const id = embedded ? paymentId : (router.query.id as string);
     if (id) {
@@ -89,8 +96,15 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
   const loadData = async (id: string) => {
     try {
       setLoading(true);
-      const paymentData = await paymentService.getById(id);
-      const configData = await configService.get();
+      const paymentData = await getPaymentById(id as string);
+      setPayment(paymentData);
+
+      const [rentalData, configData] = await Promise.all([
+        getRentalById(paymentData.rentalId),
+        getConfig()
+      ]);
+
+      setRental(rentalData);
       setConfig(configData);
 
       if (paymentData) {
@@ -321,6 +335,30 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
       });
     }
   };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleDelete = async () => {
+    if (!confirm("Tem certeza que deseja excluir este recebimento?")) return;
+
+    try {
+      await deletePayment(paymentId as string);
+      toast({
+        title: "Sucesso",
+        description: "Recebimento excluído com sucesso."
+      });
+      router.push("/payments");
+    } catch (error) {
+      console.error("Error deleting payment:", error);
+      toast({
+        title: "Erro",
+        description: "Erro ao excluir recebimento.",
+        variant: "destructive"
+      });
+    }
+  };
   
   if (loading) {
     return embedded ? (
@@ -345,6 +383,20 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
       <Layout>
         <div className="text-center py-12">
           <p className="text-muted-foreground">Recebimento não encontrado.</p>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!hasPermission(user?.role, "canEditPayment")) {
+    return embedded ? (
+      <div className="p-8 text-center">
+        <p className="text-muted-foreground">Você não tem permissão para editar recebimentos.</p>
+      </div>
+    ) : (
+      <Layout>
+        <div className="text-center py-12">
+          <p className="text-muted-foreground">Você não tem permissão para editar recebimentos.</p>
         </div>
       </Layout>
     );
@@ -387,6 +439,28 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
             </>
           )}
         </div>
+      </div>
+
+      {/* Header Actions */}
+      <div className="flex justify-end gap-2 mb-6 no-print">
+        {hasPermission(user?.role, "canEditPayment") && (
+          <Button 
+            variant="outline" 
+            onClick={() => setIsEditing(!isEditing)}
+          >
+            <Edit className="w-4 h-4 mr-2" />
+            {isEditing ? "Cancelar Edição" : "Editar"}
+          </Button>
+        )}
+        {hasPermission(user?.role, "canDeletePayment") && (
+          <Button 
+            variant="destructive" 
+            onClick={handleDelete}
+          >
+            <Trash2 className="w-4 h-4 mr-2" />
+            Excluir
+          </Button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -728,14 +802,16 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
       </Card>
       
       {/* Receipt Modal */}
-      {payment && rental && property && tenant && (
-        <PaymentReceipt
-          isOpen={showReceipt}
-          onClose={handleReceiptClose}
-          payment={payment}
-          rental={rental}
-          property={property}
-          tenant={tenant}
+      {payment.status === 'paid' && (
+        <PaymentReceipt 
+          isOpen={showReceipt} 
+          onClose={() => setShowReceipt(false)}
+          tenantName={rental.tenant?.name || "Inquilino"}
+          propertyAddress={rental.property?.address || "Endereço do imóvel"}
+          amount={payment.paidAmount || payment.expectedAmount}
+          referenceMonth={`${payment.referenceMonth}/${payment.referenceYear}`}
+          paymentDate={payment.paymentDate || new Date().toISOString()}
+          ownerName={config?.company_name || "Imobiliária"}
         />
       )}
     </div>

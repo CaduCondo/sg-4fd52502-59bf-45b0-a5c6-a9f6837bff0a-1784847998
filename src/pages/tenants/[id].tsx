@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
-import Head from "next/head";
 import { Layout } from "@/components/Layout";
+import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,18 +9,21 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Users, ArrowLeft, Edit, X } from "lucide-react";
+import { Users, ArrowLeft, Edit, X, Trash2 } from "lucide-react";
 import { Tenant } from "@/types";
-import { tenantService } from "@/services";
+import { getById as getTenantById, update as updateTenant, remove as deleteTenant } from "@/services/tenantService";
 import { applyCpfMask, applyCnpjMask, applyPhoneMask, removeMask } from "@/lib/masks";
+import { hasPermission } from "@/lib/permissions";
+import { useAuth } from "@/contexts/AuthContext";
 
-export default function TenantDetailsPage() {
+export default function TenantDetails() {
   const router = useRouter();
   const { id } = router.query;
   const { toast } = useToast();
+  const { user } = useAuth();
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isEditMode, setIsEditMode] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -44,7 +47,7 @@ export default function TenantDetailsPage() {
   const loadTenant = async (tenantId: string) => {
     try {
       setLoading(true);
-      const tenantData = await tenantService.getById(id as string);
+      const tenantData = await getTenantById(id as string);
       if (tenantData) {
         setTenant(tenantData);
         setFormData({
@@ -73,7 +76,7 @@ export default function TenantDetailsPage() {
   };
 
   const handleEdit = () => {
-    setIsEditMode(true);
+    setIsEditing(true);
   };
 
   const handleCancel = () => {
@@ -91,55 +94,51 @@ export default function TenantDetailsPage() {
         notes: tenant.notes || "",
       });
     }
-    setIsEditMode(false);
+    setIsEditing(false);
   };
 
   const handleSave = async () => {
-    if (!tenant) return;
-
-    if (!formData.name) {
-      toast({
-        title: "Campo obrigatório",
-        description: "O nome completo é obrigatório.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (formData.email) {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(formData.email)) {
-        toast({
-          title: "E-mail inválido",
-          description: "Por favor, insira um e-mail válido.",
-          variant: "destructive",
-        });
-        return;
-      }
-    }
-
     try {
-      const updatedTenant: Tenant = {
-        ...tenant,
-        name: formData.name,
-        email: formData.email || undefined,
-        phone: formData.phone ? removeMask(formData.phone) : undefined,
-        documentType: formData.documentType,
-        document: formData.document ? removeMask(formData.document) : undefined,
-      };
+      // Convert income string to number
+      const incomeValue = formData.income 
+        ? parseFloat(formData.income.toString().replace(/\./g, "").replace(",", ".")) 
+        : 0;
 
-      await tenantService.update(updatedTenant);
+      await updateTenant(id as string, {
+        ...formData,
+        income: incomeValue
+      });
       toast({
         title: "Sucesso",
-        description: "Inquilino atualizado com sucesso!",
+        description: "Inquilino atualizado com sucesso.",
       });
-      setTenant(updatedTenant);
-      setIsEditMode(false);
+      setIsEditing(false);
+      loadTenant(id as string);
     } catch (error) {
       console.error("Error updating tenant:", error);
       toast({
         title: "Erro",
         description: "Não foi possível atualizar o inquilino.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirm("Tem certeza que deseja excluir este inquilino?")) return;
+    
+    try {
+      await deleteTenant(id as string);
+      toast({
+        title: "Sucesso",
+        description: "Inquilino excluído com sucesso.",
+      });
+      router.push("/tenants");
+    } catch (error) {
+      console.error("Error deleting tenant:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível excluir o inquilino.",
         variant: "destructive",
       });
     }
@@ -224,9 +223,7 @@ export default function TenantDetailsPage() {
 
   return (
     <>
-      <Head>
-        <title>Detalhes do Inquilino - Gerenciador de Locações</title>
-      </Head>
+      <SEO title="Detalhes do Inquilino - Gerenciador de Locações" />
       <Layout>
         <div className="space-y-4">
           <div className="flex items-center justify-between">
@@ -239,7 +236,7 @@ export default function TenantDetailsPage() {
               Voltar
             </Button>
             <div className="flex gap-2">
-              {isEditMode ? (
+              {isEditing ? (
                 <>
                   <Button variant="outline" onClick={handleCancel}>
                     <X className="h-4 w-4 mr-2" />
@@ -250,10 +247,20 @@ export default function TenantDetailsPage() {
                   </Button>
                 </>
               ) : (
-                <Button onClick={handleEdit} className="bg-emerald-600 hover:bg-emerald-700">
-                  <Edit className="h-4 w-4 mr-2" />
-                  Editar
-                </Button>
+                <>
+                  {hasPermission(user?.role, "canEditTenant") && (
+                    <Button onClick={() => setIsEditing(true)}>
+                      <Edit className="mr-2 h-4 w-4" />
+                      Editar
+                    </Button>
+                  )}
+                  {hasPermission(user?.role, "canDeleteTenant") && (
+                    <Button variant="destructive" onClick={handleDelete}>
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Excluir
+                    </Button>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -272,7 +279,7 @@ export default function TenantDetailsPage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div className="space-y-1">
                   <Label className="text-xs text-muted-foreground">Nome Completo</Label>
-                  {isEditMode ? (
+                  {isEditing ? (
                     <Input
                       placeholder="João da Silva"
                       value={formData.name}
@@ -286,7 +293,7 @@ export default function TenantDetailsPage() {
 
                 <div className="space-y-1">
                   <Label className="text-xs text-muted-foreground">Tipo de Documento</Label>
-                  {isEditMode ? (
+                  {isEditing ? (
                     <Select
                       value={formData.documentType}
                       onValueChange={(value: "cpf" | "cnpj") => {
@@ -310,7 +317,7 @@ export default function TenantDetailsPage() {
                   <Label className="text-xs text-muted-foreground">
                     {formData.documentType === "cpf" ? "CPF" : "CNPJ"}
                   </Label>
-                  {isEditMode ? (
+                  {isEditing ? (
                     <Input
                       placeholder={formData.documentType === "cpf" ? "000.000.000-00" : "00.000.000/0000-00"}
                       value={formData.document}
@@ -325,7 +332,7 @@ export default function TenantDetailsPage() {
 
                 <div className="space-y-1">
                   <Label className="text-xs text-muted-foreground">E-mail</Label>
-                  {isEditMode ? (
+                  {isEditing ? (
                     <Input
                       type="email"
                       placeholder="joao@email.com"
@@ -340,7 +347,7 @@ export default function TenantDetailsPage() {
 
                 <div className="space-y-1">
                   <Label className="text-xs text-muted-foreground">Telefone</Label>
-                  {isEditMode ? (
+                  {isEditing ? (
                     <Input
                       placeholder="(00) 00000-0000"
                       value={applyPhoneMask(formData.phone)}
