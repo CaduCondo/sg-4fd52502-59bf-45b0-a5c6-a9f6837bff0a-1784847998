@@ -290,6 +290,7 @@ export default function Settings() {
 
   const handleUnlockUser = async (user: SystemUser) => {
     try {
+      // unlockUser expects (userId: string, active: boolean)
       await unlockUser(user.id, !user.active);
       toast({ title: `Usuário ${user.active ? "bloqueado" : "desbloqueado"} com sucesso!` });
       loadUsers();
