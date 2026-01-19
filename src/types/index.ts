@@ -62,31 +62,31 @@ export interface Property {
   id: string;
   // Location info
   locationId: string;
-  location?: string;
-  address?: string;
-  number?: string;
-  complement?: string;
-  neighborhood?: string;
-  city?: string;
-  state?: string;
-  zipCode?: string;
-  cep?: string;
+  location?: string; // Derived name
+  address?: string; // DB field
+  number?: string; // DB field
+  complement?: string; // DB field
+  neighborhood?: string; // DB field
+  city?: string; // DB field
+  state?: string; // DB field
+  zipCode?: string; // Mapped from zip_code
+  cep?: string; // Alias
 
   // Details
-  description?: string;
-  type?: string;
-  rooms?: number;
-  bathrooms?: number;
-  area?: number;
+  description?: string; // DB field
+  type?: string; // DB field
+  rooms?: number; // DB field
+  bathrooms?: number; // DB field
+  area?: number; // DB field
   size?: number; // Alias for area
   parkingSpots?: number;
-  hasGarage?: boolean;
+  hasGarage?: boolean; // Mapped from has_garage
   
   // Financial
   value?: number;
   rentValue?: number;
-  monthlyRent?: number;
-  garageValue?: number;
+  monthlyRent?: number; // Mapped from monthly_rent
+  garageValue?: number; // Mapped from garage_value
   iptu?: number;
   condoFee?: number;
 
@@ -94,11 +94,19 @@ export interface Property {
   status: "available" | "occupied" | "unavailable";
   images?: string[];
   features?: string[];
-  propertyIdentifier?: string;
+  propertyIdentifier?: string; // Mapped from property_identifier
   name?: string;
   ownerId?: string;
   createdAt?: string;
   updatedAt?: string;
+  
+  // Database snake_case fallbacks (optional, for raw data)
+  location_id?: string;
+  monthly_rent?: number;
+  has_garage?: boolean;
+  garage_value?: number;
+  property_identifier?: string;
+  zip_code?: string;
 }
 
 export interface Tenant {

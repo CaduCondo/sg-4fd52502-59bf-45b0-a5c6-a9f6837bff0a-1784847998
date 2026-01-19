@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Layout } from "@/components/Layout";
 import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -16,223 +16,225 @@ import { getAll as getAllLocations } from "@/services/locationService";
 import type { Property, Location as LocationType } from "@/types";
 import { applyRealMask, applyCepMask, removeMask, formatCurrency } from "@/lib/masks";
 
+// Define form state interface that handles string values for inputs
+interface PropertyFormState {
+  locationId: string;
+  type: string;
+  propertyIdentifier: string;
+  description: string;
+  monthlyRent: string;
+  status: "available" | "occupied" | "unavailable";
+  complement: string;
+  address: string;
+  number: string;
+  neighborhood: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  area: string;
+  rooms: string;
+  bathrooms: string;
+  hasGarage: boolean;
+  garageValue: string;
+  value: string;
+}
+
+const INITIAL_FORM_STATE: PropertyFormState = {
+  locationId: "",
+  type: "",
+  propertyIdentifier: "",
+  description: "",
+  monthlyRent: "",
+  status: "available",
+  complement: "",
+  address: "",
+  number: "",
+  neighborhood: "",
+  city: "",
+  state: "",
+  zipCode: "",
+  area: "",
+  rooms: "",
+  bathrooms: "",
+  hasGarage: false,
+  garageValue: "",
+  value: "",
+};
+
 export default function Properties() {
   const { toast } = useToast();
   const [properties, setProperties] = useState<Property[]>([]);
   const [locations, setLocations] = useState<LocationType[]>([]);
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
-  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const [newProperty, setNewProperty] = useState({
-    locationId: "",
-    complement: "",
-    description: "",
-    value: "",
-    rooms: "",
-    bathrooms: "",
-    area: "",
-    hasGarage: false,
-    status: "available" as "available" | "occupied" | "unavailable",
-  });
+  // Unified form state
+  const [formData, setFormData] = useState<PropertyFormState>(INITIAL_FORM_STATE);
 
-  const [editForm, setEditForm] = useState({
-    locationId: "",
-    complement: "",
-    description: "",
-    value: "",
-    rooms: "",
-    bathrooms: "",
-    area: "",
-    hasGarage: false,
-    status: "available" as "available" | "occupied" | "unavailable",
-  });
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
+  const loadProperties = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const [propertiesData, locationsData] = await Promise.all([
-        getAllProperties(),
-        getAllLocations()
-      ]);
-      setProperties(propertiesData);
-      setLocations(locationsData);
+      const data = await getAllProperties();
+      // Map DB snake_case to frontend camelCase
+      const mapped = data.map((prop: any) => ({
+        ...prop,
+        locationId: prop.location_id,
+        propertyIdentifier: prop.property_identifier,
+        monthlyRent: prop.monthly_rent,
+        zipCode: prop.zip_code,
+        hasGarage: prop.has_garage,
+        garageValue: prop.garage_value,
+        rooms: prop.rooms || 0,
+        bathrooms: prop.bathrooms || 0,
+        area: prop.area || 0,
+      }));
+      setProperties(mapped);
     } catch (error) {
-      console.error("Error loading data:", error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível carregar os imóveis.",
-        variant: "destructive",
+      console.error("Erro ao carregar imóveis:", error);
+      toast({ 
+        title: "Erro ao carregar imóveis",
+        variant: "destructive" 
       });
     } finally {
       setLoading(false);
     }
   };
 
+  const loadLocations = async () => {
+    try {
+      const data = await getAllLocations();
+      setLocations(data);
+    } catch (error) {
+      console.error("Erro ao carregar locais:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar os locais.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  useEffect(() => {
+    loadProperties();
+    loadLocations();
+  }, []);
+
   const getLocationData = (locationId: string): LocationType | undefined => {
     return locations.find((loc: LocationType) => loc.id === locationId);
   };
 
-  const handleCreateProperty = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleOpenCreateDialog = () => {
+    setFormData(INITIAL_FORM_STATE);
+    setIsEditing(false);
+    setSelectedProperty(null);
+    setIsDialogOpen(true);
+  };
 
-    try {
-      const propertyData = {
-        ...newProperty,
-        location: getLocationData(newProperty.locationId)?.address || "",
-        value: parseFloat(removeMask(newProperty.value)),
-        rooms: parseInt(newProperty.rooms) || 0,
-        bathrooms: parseInt(newProperty.bathrooms) || 0,
-        area: parseFloat(newProperty.area) || 0,
-        status: newProperty.status as "available" | "occupied" | "unavailable"
-      };
-      
-      await createProperty(propertyData);
-
-      toast({
-        title: "Sucesso",
-        description: "Imóvel cadastrado com sucesso!",
-      });
-
-      setIsCreateDialogOpen(false);
-      setNewProperty({
-        locationId: "",
-        complement: "",
-        description: "",
-        value: "",
-        rooms: "",
-        bathrooms: "",
-        area: "",
-        hasGarage: false,
-        status: "available",
-      });
-      loadData();
-    } catch (error) {
-      console.error("Error creating property:", error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível cadastrar o imóvel.",
-        variant: "destructive",
-      });
-    }
+  const handleOpenEditDialog = (property: Property) => {
+    setSelectedProperty(property);
+    setIsEditing(true);
+    
+    // Populate form with existing data
+    setFormData({
+      locationId: property.locationId || "",
+      type: property.type || "",
+      propertyIdentifier: property.propertyIdentifier || "",
+      description: property.description || "",
+      monthlyRent: property.monthlyRent ? applyRealMask((property.monthlyRent * 100).toString()) : "",
+      status: property.status || "available",
+      complement: property.complement || "",
+      address: property.address || "",
+      number: property.number || "",
+      neighborhood: property.neighborhood || "",
+      city: property.city || "",
+      state: property.state || "",
+      zipCode: property.zipCode || "",
+      area: property.area?.toString() || "",
+      rooms: property.rooms?.toString() || "",
+      bathrooms: property.bathrooms?.toString() || "",
+      hasGarage: property.hasGarage || false,
+      garageValue: property.garageValue ? applyRealMask((property.garageValue * 100).toString()) : "",
+      value: property.value ? applyRealMask((property.value * 100).toString()) : "",
+    });
+    
+    setIsDialogOpen(true);
   };
 
   const handleDeleteProperty = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    
     if (!confirm("Tem certeza que deseja excluir este imóvel?")) return;
 
     try {
       await deleteProperty(id);
-      
-      toast({
-        title: "Sucesso",
-        description: "Imóvel excluído com sucesso!",
-      });
-      
-      loadData();
+      toast({ title: "Sucesso", description: "Imóvel excluído com sucesso!" });
+      loadProperties();
     } catch (error) {
       console.error("Error deleting property:", error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível excluir o imóvel.",
-        variant: "destructive",
-      });
+      toast({ title: "Erro", description: "Não foi possível excluir o imóvel.", variant: "destructive" });
     }
   };
 
-  const handleCardClick = (property: Property) => {
-    setSelectedProperty(property);
-    setEditForm({
-      locationId: property.locationId || "",
-      complement: property.complement || "",
-      description: property.description || "",
-      value: applyRealMask(((property.value || 0) * 100).toString()),
-      rooms: property.rooms?.toString() || "",
-      bathrooms: property.bathrooms?.toString() || "",
-      area: property.area?.toString() || "",
-      hasGarage: property.hasGarage || false,
-      status: property.status || "available",
-    });
-    setIsEditing(false);
-    setIsViewDialogOpen(true);
-  };
-
-  const handleEditClick = () => {
-    setIsEditing(true);
-  };
-
-  const handleCancelEdit = () => {
-    if (selectedProperty) {
-      setEditForm({
-        locationId: selectedProperty.locationId || "",
-        complement: selectedProperty.complement || "",
-        description: selectedProperty.description || "",
-        value: applyRealMask(((selectedProperty.value || 0) * 100).toString()),
-        rooms: selectedProperty.rooms?.toString() || "",
-        bathrooms: selectedProperty.bathrooms?.toString() || "",
-        area: selectedProperty.area?.toString() || "",
-        hasGarage: selectedProperty.hasGarage || false,
-        status: selectedProperty.status || "available",
-      });
-    }
-    setIsEditing(false);
-  };
-
-  const handleSaveEdit = async () => {
-    if (!selectedProperty) return;
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
 
     try {
-      const updatedData = {
-        ...selectedProperty,
-        locationId: editForm.locationId,
-        location: getLocationData(editForm.locationId)?.address || "",
-        complement: editForm.complement,
-        description: editForm.description,
-        value: parseFloat(removeMask(editForm.value)),
-        rooms: parseInt(editForm.rooms) || 0,
-        bathrooms: parseInt(editForm.bathrooms) || 0,
-        area: parseFloat(editForm.area) || 0,
-        hasGarage: editForm.hasGarage,
-        status: editForm.status,
+      // Prepare data for DB (convert types and map to snake_case if needed by service)
+      // The service seems to handle partial mapping, but we should be explicit with what the DB expects
+      // based on the schema error we saw earlier.
+      
+      const payload = {
+        location_id: formData.locationId,
+        type: formData.type,
+        property_identifier: formData.propertyIdentifier,
+        description: formData.description,
+        monthly_rent: parseFloat(removeMask(formData.monthlyRent)) || 0,
+        status: formData.status,
+        complement: formData.complement,
+        address: formData.address,
+        number: formData.number,
+        neighborhood: formData.neighborhood,
+        city: formData.city,
+        state: formData.state,
+        zip_code: formData.zipCode,
+        area: parseFloat(formData.area) || 0,
+        rooms: parseInt(formData.rooms) || 0,
+        bathrooms: parseInt(formData.bathrooms) || 0,
+        has_garage: formData.hasGarage,
+        garage_value: parseFloat(removeMask(formData.garageValue)) || 0,
+        value: parseFloat(removeMask(formData.value)) || 0,
       };
 
-      await updateProperty(selectedProperty.id, updatedData);
+      if (isEditing && selectedProperty) {
+        await updateProperty(selectedProperty.id, payload);
+        toast({ title: "Imóvel atualizado com sucesso!" });
+      } else {
+        await createProperty(payload);
+        toast({ title: "Imóvel criado com sucesso!" });
+      }
 
-      toast({
-        title: "Sucesso",
-        description: "Imóvel atualizado com sucesso!",
-      });
-
-      setIsEditing(false);
-      setIsViewDialogOpen(false);
-      loadData();
+      setIsDialogOpen(false);
+      loadProperties();
     } catch (error) {
-      console.error("Error updating property:", error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível atualizar o imóvel.",
-        variant: "destructive",
+      console.error("Erro ao salvar imóvel:", error);
+      toast({ 
+        title: "Erro ao salvar imóvel", 
+        description: "Verifique os dados e tente novamente.",
+        variant: "destructive" 
       });
+    } finally {
+      setLoading(false);
     }
   };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "available":
-        return <Badge className="bg-green-100 text-green-800 border-green-200">Disponível</Badge>;
-      case "occupied":
-        return <Badge className="bg-blue-100 text-blue-800 border-blue-200">Ocupado</Badge>;
-      case "unavailable":
-        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">Indisponível</Badge>;
-      default:
-        return <Badge className="bg-gray-100 text-gray-800 border-gray-200">Desconhecido</Badge>;
+      case "available": return <Badge className="bg-green-100 text-green-800 border-green-200">Disponível</Badge>;
+      case "occupied": return <Badge className="bg-blue-100 text-blue-800 border-blue-200">Ocupado</Badge>;
+      case "unavailable": return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">Indisponível</Badge>;
+      default: return <Badge className="bg-gray-100 text-gray-800 border-gray-200">Desconhecido</Badge>;
     }
   };
 
@@ -251,13 +253,13 @@ export default function Properties() {
                 Gerencie o cadastro de imóveis disponíveis para locação
               </p>
             </div>
-            <Button onClick={() => setIsCreateDialogOpen(true)}>
+            <Button onClick={handleOpenCreateDialog}>
               <Plus className="mr-2 h-4 w-4" />
               Novo Imóvel
             </Button>
           </div>
 
-          {loading ? (
+          {loading && properties.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-muted-foreground">Carregando imóveis...</p>
             </div>
@@ -269,7 +271,7 @@ export default function Properties() {
                 <p className="text-sm text-muted-foreground mb-4">
                   Comece cadastrando seu primeiro imóvel
                 </p>
-                <Button onClick={() => setIsCreateDialogOpen(true)}>
+                <Button onClick={handleOpenCreateDialog}>
                   <Plus className="mr-2 h-4 w-4" />
                   Cadastrar Imóvel
                 </Button>
@@ -277,76 +279,78 @@ export default function Properties() {
             </Card>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {properties.map((property) => {
-                const location = getLocationData(property.locationId || "");
-                return (
-                  <Card
-                    key={property.id}
-                    className="cursor-pointer hover:shadow-lg transition-shadow relative"
-                    onClick={() => handleCardClick(property)}
-                  >
-                    <CardHeader className="pb-3">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <CardTitle className="text-lg text-blue-600">
-                            {getLocationData(property.locationId)?.name || property.location}
-                          </CardTitle>
-                          {property.description && (
-                            <p className="text-sm text-muted-foreground mt-1">
-                              {getLocationData(property.locationId)?.complement}
-                            </p>
-                          )}
-                        </div>
-                        {getStatusBadge(property.status || "available")}
+              {properties.map((property) => (
+                <Card
+                  key={property.id}
+                  className="cursor-pointer hover:shadow-lg transition-shadow relative"
+                  onClick={() => handleOpenEditDialog(property)}
+                >
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <CardTitle className="text-lg text-blue-600">
+                          {getLocationData(property.locationId)?.name || property.location || "Local não identificado"}
+                        </CardTitle>
+                        {property.complement && (
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {property.complement}
+                          </p>
+                        )}
                       </div>
-                    </CardHeader>
-                    <CardContent className="p-4">
-                      <p className="text-sm mb-3 line-clamp-2">
-                        {property.description || "Sem descrição"}
-                      </p>
+                      {getStatusBadge(property.status || "available")}
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-4">
+                    <p className="text-sm mb-3 line-clamp-2">
+                      {property.description || "Sem descrição"}
+                    </p>
+                    
+                    <div className="flex items-center justify-between mt-4">
+                      <div className="text-lg font-bold text-emerald-600">
+                        {property.value ? formatCurrency(property.value) : "R$ 0,00"}
+                      </div>
                       
-                      <div className="flex items-center justify-between mt-4">
-                        <div className="text-lg font-bold text-emerald-600">
-                          {property.value ? formatCurrency(property.value) : "R$ 0,00"}
-                        </div>
-                        
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                          onClick={(e) => handleDeleteProperty(property.id, e)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                        onClick={(e) => handleDeleteProperty(property.id, e)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           )}
         </div>
 
-        {/* Create Property Dialog */}
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        {/* Create/Edit Dialog */}
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Cadastrar Novo Imóvel</DialogTitle>
+              <DialogTitle>{isEditing ? "Editar Imóvel" : "Cadastrar Novo Imóvel"}</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleCreateProperty} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {/* Location Selection */}
                 <div className="space-y-2">
-                  <Label htmlFor="location">
-                    Local <span className="text-red-500">*</span>
-                  </Label>
+                  <Label htmlFor="location">Local *</Label>
                   <Select
-                    value={newProperty.locationId}
+                    value={formData.locationId}
                     onValueChange={(value) => {
-                      // Only update locationId, name is derived from locations list
-                      setNewProperty({ 
-                        ...newProperty, 
-                        locationId: value
-                      });
+                      const loc = getLocationData(value);
+                      setFormData(prev => ({
+                         ...prev, 
+                         locationId: value,
+                         // Auto-fill address fields from location if available
+                         address: loc?.street || prev.address,
+                         neighborhood: loc?.neighborhood || prev.neighborhood,
+                         city: loc?.city || prev.city,
+                         state: loc?.state || prev.state,
+                         zipCode: loc?.zip_code || prev.zipCode
+                      }));
                     }}
                     required
                   >
@@ -364,35 +368,28 @@ export default function Properties() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="complement">Complemento</Label>
-                  <Input
-                    id="complement"
-                    value={newProperty.complement}
-                    onChange={(e) => setNewProperty({ ...newProperty, complement: e.target.value })}
-                    placeholder="Ex: Apto 101, Casa 2"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="value">
-                    Valor <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="value"
-                    value={newProperty.value}
-                    onChange={(e) => setNewProperty({ ...newProperty, value: applyRealMask(e.target.value) })}
-                    placeholder="R$ 0,00"
-                    required
-                  />
+                  <Label htmlFor="type">Tipo</Label>
+                  <Select
+                    value={formData.type}
+                    onValueChange={(value) => setFormData({ ...formData, type: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="apartment">Apartamento</SelectItem>
+                      <SelectItem value="house">Casa</SelectItem>
+                      <SelectItem value="commercial">Comercial</SelectItem>
+                      <SelectItem value="land">Terreno</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="status">Status</Label>
                   <Select
-                    value={newProperty.status}
-                    onValueChange={(value: "available" | "occupied" | "unavailable") =>
-                      setNewProperty({ ...newProperty, status: value })
-                    }
+                    value={formData.status}
+                    onValueChange={(value: any) => setFormData({ ...formData, status: value })}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -406,12 +403,89 @@ export default function Properties() {
                 </div>
 
                 <div className="space-y-2">
+                  <Label htmlFor="zipCode">CEP</Label>
+                  <Input
+                    id="zipCode"
+                    value={formData.zipCode}
+                    onChange={(e) => setFormData({ ...formData, zipCode: applyCepMask(e.target.value) })}
+                    placeholder="00000-000"
+                  />
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="address">Endereço</Label>
+                  <Input
+                    id="address"
+                    value={formData.address}
+                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="number">Número</Label>
+                  <Input
+                    id="number"
+                    value={formData.number}
+                    onChange={(e) => setFormData({ ...formData, number: e.target.value })}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="complement">Complemento</Label>
+                  <Input
+                    id="complement"
+                    value={formData.complement}
+                    onChange={(e) => setFormData({ ...formData, complement: e.target.value })}
+                    placeholder="Ex: Apto 101"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="neighborhood">Bairro</Label>
+                  <Input
+                    id="neighborhood"
+                    value={formData.neighborhood}
+                    onChange={(e) => setFormData({ ...formData, neighborhood: e.target.value })}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="city">Cidade</Label>
+                  <Input
+                    id="city"
+                    value={formData.city}
+                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                  />
+                </div>
+                
+                 <div className="space-y-2">
+                  <Label htmlFor="state">Estado</Label>
+                  <Input
+                    id="state"
+                    value={formData.state}
+                    onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                    maxLength={2}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="area">Área (m²)</Label>
+                  <Input
+                    id="area"
+                    type="number"
+                    value={formData.area}
+                    onChange={(e) => setFormData({ ...formData, area: e.target.value })}
+                    placeholder="0"
+                  />
+                </div>
+
+                <div className="space-y-2">
                   <Label htmlFor="rooms">Quartos</Label>
                   <Input
                     id="rooms"
                     type="number"
-                    value={newProperty.rooms}
-                    onChange={(e) => setNewProperty({ ...newProperty, rooms: e.target.value })}
+                    value={formData.rooms}
+                    onChange={(e) => setFormData({ ...formData, rooms: e.target.value })}
                     placeholder="0"
                   />
                 </div>
@@ -421,238 +495,81 @@ export default function Properties() {
                   <Input
                     id="bathrooms"
                     type="number"
-                    value={newProperty.bathrooms}
-                    onChange={(e) => setNewProperty({ ...newProperty, bathrooms: e.target.value })}
+                    value={formData.bathrooms}
+                    onChange={(e) => setFormData({ ...formData, bathrooms: e.target.value })}
                     placeholder="0"
                   />
                 </div>
+              </div>
 
+              <div className="border-t pt-4 mt-4">
+                <h3 className="text-lg font-medium mb-4">Valores</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="value">Valor Total (Venda/Locação)</Label>
+                    <Input
+                      id="value"
+                      value={formData.value}
+                      onChange={(e) => setFormData({ ...formData, value: applyRealMask(e.target.value) })}
+                      placeholder="R$ 0,00"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="monthlyRent">Valor Aluguel (Mensal)</Label>
+                    <Input
+                      id="monthlyRent"
+                      value={formData.monthlyRent}
+                      onChange={(e) => setFormData({ ...formData, monthlyRent: applyRealMask(e.target.value) })}
+                      placeholder="R$ 0,00"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="garageValue">Valor Garagem</Label>
+                    <Input
+                      id="garageValue"
+                      value={formData.garageValue}
+                      onChange={(e) => setFormData({ ...formData, garageValue: applyRealMask(e.target.value) })}
+                      placeholder="R$ 0,00"
+                      disabled={!formData.hasGarage}
+                    />
+                  </div>
+                   <div className="flex items-center space-x-2 h-10 mt-6">
+                    <input
+                      type="checkbox"
+                      id="hasGarage"
+                      checked={formData.hasGarage}
+                      onChange={(e) => setFormData({ ...formData, hasGarage: e.target.checked })}
+                      className="h-4 w-4"
+                    />
+                    <Label htmlFor="hasGarage">Possui Garagem</Label>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t pt-4 mt-4">
                 <div className="space-y-2">
-                  <Label htmlFor="area">Área (m²)</Label>
-                  <Input
-                    id="area"
-                    type="number"
-                    value={newProperty.area}
-                    onChange={(e) => setNewProperty({ ...newProperty, area: e.target.value })}
-                    placeholder="0"
+                  <Label htmlFor="description">Descrição / Observações</Label>
+                  <Textarea
+                    id="description"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    rows={4}
+                    placeholder="Descreva detalhes do imóvel..."
                   />
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="hasGarage"
-                    checked={newProperty.hasGarage}
-                    onChange={(e) => setNewProperty({ ...newProperty, hasGarage: e.target.checked })}
-                    className="h-4 w-4"
-                  />
-                  <Label htmlFor="hasGarage">Possui Garagem</Label>
                 </div>
               </div>
 
               <div className="flex justify-end gap-2 pt-4">
-                <Button type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                   Cancelar
                 </Button>
-                <Button type="submit">Cadastrar</Button>
+                <Button type="submit">
+                  {isEditing ? "Salvar Alterações" : "Cadastrar Imóvel"}
+                </Button>
               </div>
             </form>
-          </DialogContent>
-        </Dialog>
-
-        {/* View/Edit Property Dialog */}
-        <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>
-                {isEditing ? "Editar Imóvel" : "Detalhes do Imóvel"}
-              </DialogTitle>
-            </DialogHeader>
-
-            {selectedProperty && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Local</Label>
-                    {isEditing ? (
-                      <Select value={editForm.locationId} onValueChange={(value) => setEditForm({ ...editForm, locationId: value })}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {locations.map((location: LocationType) => (
-                            <SelectItem key={location.id} value={location.id}>
-                              {location.address} - {location.number}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <p className="text-sm font-medium p-2 bg-muted rounded">
-                        {getLocationData(selectedProperty.locationId || "")?.address || selectedProperty.location || "Não definido"}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Complemento</Label>
-                    {isEditing ? (
-                      <Input
-                        value={editForm.complement}
-                        onChange={(e) => setEditForm({ ...editForm, complement: e.target.value })}
-                      />
-                    ) : (
-                      <p className="text-sm font-medium p-2 bg-muted rounded">
-                        {selectedProperty.complement || "Não definido"}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Valor</Label>
-                    {isEditing ? (
-                      <Input
-                        value={editForm.value}
-                        onChange={(e) => setEditForm({ ...editForm, value: applyRealMask(e.target.value) })}
-                      />
-                    ) : (
-                      <p className="text-sm font-medium p-2 bg-muted rounded">
-                        {selectedProperty.value ? formatCurrency(selectedProperty.value) : "R$ 0,00"}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Status</Label>
-                    {isEditing ? (
-                      <Select
-                        value={editForm.status}
-                        onValueChange={(value: "available" | "occupied" | "unavailable") =>
-                          setEditForm({ ...editForm, status: value })
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="available">Disponível</SelectItem>
-                          <SelectItem value="occupied">Ocupado</SelectItem>
-                          <SelectItem value="unavailable">Indisponível</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <div className="p-2">
-                        {getStatusBadge(selectedProperty.status || "available")}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Quartos</Label>
-                    {isEditing ? (
-                      <Input
-                        type="number"
-                        value={editForm.rooms}
-                        onChange={(e) => setEditForm({ ...editForm, rooms: e.target.value })}
-                      />
-                    ) : (
-                      <p className="text-sm font-medium p-2 bg-muted rounded">
-                        {selectedProperty.rooms || 0}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Banheiros</Label>
-                    {isEditing ? (
-                      <Input
-                        type="number"
-                        value={editForm.bathrooms}
-                        onChange={(e) => setEditForm({ ...editForm, bathrooms: e.target.value })}
-                      />
-                    ) : (
-                      <p className="text-sm font-medium p-2 bg-muted rounded">
-                        {selectedProperty.bathrooms || 0}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Área (m²)</Label>
-                    {isEditing ? (
-                      <Input
-                        type="number"
-                        value={editForm.area}
-                        onChange={(e) => setEditForm({ ...editForm, area: e.target.value })}
-                      />
-                    ) : (
-                      <p className="text-sm font-medium p-2 bg-muted rounded">
-                        {selectedProperty.area || 0} m²
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    {isEditing ? (
-                      <>
-                        <input
-                          type="checkbox"
-                          id="editHasGarage"
-                          checked={editForm.hasGarage}
-                          onChange={(e) => setEditForm({ ...editForm, hasGarage: e.target.checked })}
-                          className="h-4 w-4"
-                        />
-                        <Label htmlFor="editHasGarage">Possui Garagem</Label>
-                      </>
-                    ) : (
-                      <p className="text-sm font-medium p-2">
-                        {selectedProperty.hasGarage ? "✓ Possui Garagem" : "✗ Sem Garagem"}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="space-y-2 md:col-span-2">
-                  <Label>Descrição</Label>
-                  {isEditing ? (
-                    <Textarea
-                      value={editForm.description}
-                      onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-                      rows={3}
-                    />
-                  ) : (
-                    <p className="text-sm p-2 bg-muted rounded">
-                      {selectedProperty.description || "Sem descrição"}
-                    </p>
-                  )}
-                </div>
-
-                <div className="flex justify-end gap-2 pt-4">
-                  {isEditing ? (
-                    <>
-                      <Button type="button" variant="outline" onClick={handleCancelEdit}>
-                        <X className="mr-2 h-4 w-4" />
-                        Cancelar
-                      </Button>
-                      <Button type="button" onClick={handleSaveEdit}>
-                        <Save className="mr-2 h-4 w-4" />
-                        Salvar
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <Button type="button" variant="outline" onClick={() => setIsViewDialogOpen(false)}>
-                        Fechar
-                      </Button>
-                      <Button type="button" onClick={handleEditClick}>
-                        <Edit2 className="mr-2 h-4 w-4" />
-                        Editar
-                      </Button>
-                    </>
-                  )}
-                </div>
-              </div>
-            )}
           </DialogContent>
         </Dialog>
       </Layout>
