@@ -179,14 +179,6 @@ export default function Dashboard() {
     URL.revokeObjectURL(url);
   };
 
-  const getGreeting = () => {
-    if (!mounted) return "Olá";
-    const hour = new Date().getHours();
-    if (hour < 12) return "Bom dia";
-    if (hour < 18) return "Boa tarde";
-    return "Boa noite";
-  };
-
   const getUserName = () => {
     return user?.name || user?.email?.split("@")[0] || "Usuário";
   };
@@ -225,18 +217,15 @@ export default function Dashboard() {
       now.toLocaleDateString("pt-BR", options).replace(/^\w/, (c) => c.toUpperCase())
     );
 
-    // Set greeting based on time
-    const hour = now.getHours();
-    if (hour < 12) {
-      setGreeting("Bom dia");
-    } else if (hour < 18) {
-      setGreeting("Boa tarde");
-    } else {
-      setGreeting("Boa noite");
-    }
-
     loadDashboardData();
     loadUserName();
+  }, []);
+
+  useEffect(() => {
+    const hour = new Date().getHours();
+    if (hour >= 6 && hour < 12) setGreeting("Bom dia");
+    else if (hour >= 12 && hour < 18) setGreeting("Boa tarde");
+    else setGreeting("Boa noite");
   }, []);
 
   useEffect(() => {
@@ -441,16 +430,13 @@ export default function Dashboard() {
           {/* Welcome Card - Blue */}
           <Card className="bg-gradient-to-r from-blue-600 to-blue-800 text-white">
             <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="bg-white/20 p-4 rounded-full">
-                  <Home className="h-8 w-8" />
-                </div>
+              <div className="flex items-start justify-between">
                 <div>
-                  <h2 className="text-2xl font-bold">
-                    {getGreeting()}, {getUserName()}!
+                  <h2 className="text-2xl font-bold mb-2">
+                    {greeting}, {getUserName()}!
                   </h2>
-                  <p className="text-blue-100 mt-1">
-                    Bem-vindo ao seu painel de gerenciamento de recebimento das locações dos imóveis do grupo D&apos;Uva Enterprise Corporation!
+                  <p className="text-blue-100">
+                    Bem-vindo ao seu painel de gerenciamento de recebimento das locações dos imóveis do grupo D'Uva Enterprise Corporation!
                   </p>
                 </div>
               </div>
@@ -461,7 +447,7 @@ export default function Dashboard() {
           <div>
             <h1 className="text-3xl font-bold flex items-center gap-2">
               <Home className="h-8 w-8" />
-              {getGreeting()}
+              {greeting}
             </h1>
             <p className="text-muted-foreground mt-1">
               Visão geral do seu sistema de locações

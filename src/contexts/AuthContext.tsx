@@ -24,12 +24,65 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    // Check local storage for user
-    const storedUser = userStorage.get();
-    if (storedUser) {
-      setUser(storedUser);
-    }
-    setLoading(false);
+    // Check local storage for user AND validate with Supabase
+    const initAuth = async () => {
+      const storedUser = userStorage.get();
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session?.user) {
+        // If we have a session, ensure the stored user matches or fetch fresh profile
+        if (!storedUser || storedUser.email !== session.user.email) {
+           // Fetch system user profile
+           const { data: profile } = await supabase
+             .from('system_users')
+             .select('*')
+             .eq('email', session.user.email)
+             .single();
+             
+           if (profile) {
+             const userObj = { ...profile, active: profile.active ?? true } as SystemUser;
+             userStorage.save(userObj);
+             setUser(userObj);
+           } else {
+             // Fallback if no profile found (shouldn't happen for valid users)
+             if (storedUser) setUser(storedUser);
+           }
+        } else {
+          setUser(storedUser);
+        }
+      } else {
+        // No session? Clear storage
+        userStorage.clear();
+        setUser(null);
+      }
+      setLoading(false);
+    };
+
+    initAuth();
+    
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_OUT') {
+        userStorage.clear();
+        setUser(null);
+        router.push("/login");
+      } else if (event === 'SIGNED_IN' && session?.user) {
+         const { data: profile } = await supabase
+             .from('system_users')
+             .select('*')
+             .eq('email', session.user.email)
+             .single();
+         if (profile) {
+             const userObj = { ...profile, active: profile.active ?? true } as SystemUser;
+             userStorage.save(userObj);
+             setUser(userObj);
+             router.push("/dashboard");
+         }
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const login = (userData: SystemUser) => {
