@@ -29,40 +29,39 @@ export default function Dashboard() {
   useEffect(() => {
     const loadStats = async () => {
       try {
-        // Run queries individually to avoid type complexity in Promise.all
-        const propertiesRes = await supabase
+        // Use simpler queries with explicit type casting to avoid deep instantiation issues
+        const { count: properties } = await supabase
           .from("properties")
-          .select("id", { count: "exact", head: true });
+          .select("*", { count: "exact", head: true });
 
-        const tenantsRes = await supabase
+        const { count: tenants } = await supabase
           .from("tenants")
-          .select("id", { count: "exact", head: true });
+          .select("*", { count: "exact", head: true });
 
-        const activeRentalsRes = await supabase
+        const { count: activeRentals } = await supabase
           .from("rentals")
-          .select("id", { count: "exact", head: true })
+          .select("*", { count: "exact", head: true })
           .eq("status", "active");
 
-        const paymentsRes = await supabase
+        // Fetch payments data
+        const { data: payments } = await supabase
           .from("payments")
           .select("expected_amount, paid_amount, status");
 
-        const properties = propertiesRes.count || 0;
-        const tenants = tenantsRes.count || 0;
-        const activeRentals = activeRentalsRes.count || 0;
-
-        const paymentsData = paymentsRes.data || [];
+        const paymentsData = payments || [];
+        
+        // Calculate revenue - assuming values are stored as raw numbers now (not cents)
         const monthlyRevenue = paymentsData
           .filter((p) => p.status === "paid")
-          .reduce((sum, p) => sum + (p.paid_amount || p.expected_amount || 0), 0);
+          .reduce((sum, p) => sum + (Number(p.paid_amount) || Number(p.expected_amount) || 0), 0);
           
         const pendingPayments = paymentsData.filter((p) => p.status === "pending").length;
         const overduePayments = paymentsData.filter((p) => p.status === "overdue").length;
 
         setStats({
-          properties,
-          tenants,
-          activeRentals,
+          properties: properties || 0,
+          tenants: tenants || 0,
+          activeRentals: activeRentals || 0,
           monthlyRevenue,
           pendingPayments,
           overduePayments,
@@ -145,7 +144,7 @@ export default function Dashboard() {
                 {new Intl.NumberFormat("pt-BR", {
                   style: "currency",
                   currency: "BRL",
-                }).format(stats.monthlyRevenue / 100)}
+                }).format(stats.monthlyRevenue)}
               </div>
               <p className="text-xs text-muted-foreground">Recebimentos confirmados</p>
             </CardContent>

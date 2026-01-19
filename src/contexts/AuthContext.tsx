@@ -26,6 +26,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { data: { session } } = await supabase.auth.getSession();
         
         if (session?.user) {
+          // Security check: if stored user exists but email doesn't match session, clear it immediately
+          const stored = userStorage.get();
+          if (stored && stored.email !== session.user.email) {
+            userStorage.clear();
+          }
+
           const { data: systemUser, error } = await supabase
             .from("system_users")
             .select("*")
