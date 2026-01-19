@@ -249,12 +249,6 @@ export default function Properties() {
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-3">
-                      {property.complement && (
-                        <p className="text-sm text-muted-foreground">
-                          {property.complement}
-                        </p>
-                      )}
-                      
                       <div className="flex items-center gap-4 text-sm text-muted-foreground">
                         <span>🛏️ {property.rooms || 0} quartos</span>
                         <span>🚿 {property.bathrooms || 0} banheiros</span>
