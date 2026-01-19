@@ -152,7 +152,7 @@ export default function Properties() {
 
     try {
       const payload = {
-        location_id: formData.locationId,
+        locationId: formData.locationId,
         complement: formData.complement,
         value: parseFloat(removeMask(formData.value)) || 0,
         rooms: parseInt(formData.rooms) || 0,
