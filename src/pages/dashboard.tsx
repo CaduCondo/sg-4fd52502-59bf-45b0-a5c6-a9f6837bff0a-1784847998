@@ -29,31 +29,33 @@ export default function Dashboard() {
   useEffect(() => {
     const loadStats = async () => {
       try {
-        const { count: propertiesCount } = await supabase
+        // Run queries individually to avoid type complexity in Promise.all
+        const propertiesRes = await supabase
           .from("properties")
-          .select("*", { count: "exact", head: true });
+          .select("id", { count: "exact", head: true });
 
-        const { count: tenantsCount } = await supabase
+        const tenantsRes = await supabase
           .from("tenants")
-          .select("*", { count: "exact", head: true });
+          .select("id", { count: "exact", head: true });
 
-        const { count: activeRentalsCount } = await supabase
+        const activeRentalsRes = await supabase
           .from("rentals")
-          .select("*", { count: "exact", head: true })
+          .select("id", { count: "exact", head: true })
           .eq("status", "active");
 
-        const { data: payments } = await supabase
+        const paymentsRes = await supabase
           .from("payments")
           .select("expected_amount, paid_amount, status");
 
-        const properties = propertiesCount || 0;
-        const tenants = tenantsCount || 0;
-        const activeRentals = activeRentalsCount || 0;
+        const properties = propertiesRes.count || 0;
+        const tenants = tenantsRes.count || 0;
+        const activeRentals = activeRentalsRes.count || 0;
 
-        const paymentsData = payments || [];
+        const paymentsData = paymentsRes.data || [];
         const monthlyRevenue = paymentsData
           .filter((p) => p.status === "paid")
           .reduce((sum, p) => sum + (p.paid_amount || p.expected_amount || 0), 0);
+          
         const pendingPayments = paymentsData.filter((p) => p.status === "pending").length;
         const overduePayments = paymentsData.filter((p) => p.status === "overdue").length;
 
@@ -67,53 +69,40 @@ export default function Dashboard() {
         });
       } catch (error) {
         console.error("Error loading stats:", error);
-        toast({
-          title: "Erro ao carregar estatísticas",
-          description: "Não foi possível carregar os dados do dashboard.",
-          variant: "destructive",
-        });
       }
     };
 
     loadStats();
-  }, [toast]);
+  }, []);
 
   const getUserName = () => {
-    if (user?.name) {
-      const firstName = user.name.split(" ")[0];
-      return firstName;
-    }
-    return user?.email?.split("@")[0] || "Usuário";
+    return user?.name || user?.email?.split("@")[0] || "Usuário";
   };
 
   return (
     <Layout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground">Visão geral do seu sistema de locações</p>
-        </div>
-
-        <Card className="bg-gradient-to-r from-blue-600 to-blue-800 text-white">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="rounded-full bg-white/20 p-3">
-                <Building2 className="h-8 w-8" />
+        {/* Welcome Card - Blue */}
+        <Card className="bg-gradient-to-r from-blue-600 to-blue-800 text-white border-0 shadow-lg">
+          <CardContent className="pt-6 pb-6">
+            <div className="flex items-center gap-6">
+              <div className="rounded-full bg-white/20 p-4 hidden sm:block">
+                <Building2 className="h-10 w-10" />
               </div>
-              <div>
-                <h2 className="text-2xl font-bold">
+              <div className="space-y-1">
+                <h2 className="text-3xl font-bold tracking-tight">
                   {greeting} {getUserName()}!
                 </h2>
-                <p className="text-blue-100">
-                  Bem-vindo ao seu painel de gerenciamento de recebimento das locações dos imóveis do grupo D&apos;Uva Enterprise Corporation!
+                <p className="text-blue-100 text-lg opacity-90">
+                  Bem-vindo ao seu painel de gerenciamento de recebimento das locações dos imóveis do grupo D'Uva Enterprise Corporation!
                 </p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <Card>
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <Card className="hover:shadow-md transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total de Imóveis</CardTitle>
               <Building2 className="h-4 w-4 text-muted-foreground" />
@@ -124,7 +113,7 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="hover:shadow-md transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Inquilinos</CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
@@ -135,7 +124,7 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="hover:shadow-md transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Locações Ativas</CardTitle>
               <FileText className="h-4 w-4 text-muted-foreground" />
@@ -146,13 +135,13 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="hover:shadow-md transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Receita Mensal</CardTitle>
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
+              <div className="text-2xl font-bold text-green-600">
                 {new Intl.NumberFormat("pt-BR", {
                   style: "currency",
                   currency: "BRL",
@@ -162,7 +151,7 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="hover:shadow-md transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Pagamentos Pendentes</CardTitle>
               <Clock className="h-4 w-4 text-muted-foreground" />
@@ -173,7 +162,7 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="hover:shadow-md transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Pagamentos Atrasados</CardTitle>
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
