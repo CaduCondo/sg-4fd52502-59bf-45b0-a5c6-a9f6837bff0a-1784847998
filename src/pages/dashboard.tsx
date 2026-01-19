@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { userLocationPermissionService } from "@/services";
+import { supabase } from "@/lib/supabase";
 
 export default function Dashboard() {
   const [stats, setStats] = useState({
@@ -43,7 +44,14 @@ export default function Dashboard() {
       const [properties, tenants, rentals, payments] = await Promise.all([
         propertyService.getAll(),
         tenantService.getAll(),
-        rentalService.getAll(),
+        // Fix: Use direct query or filter correct field for active rentals
+        (async () => {
+             const { data } = await (supabase as any)
+                .from("rentals")
+                .select("*")
+                .eq("is_active", true);
+             return data || [];
+        })(),
         paymentService.getAll()
       ]);
 
@@ -54,11 +62,12 @@ export default function Dashboard() {
 
       // Se não for admin, filtrar por permissões de localização
       if (currentUser.role !== "admin") {
-        const userLocationIds = await userLocationPermissionService.getByUserId(currentUser.id);
+        const userLocationIds = await userLocationPermissionService.getUserLocationPermissions(currentUser.id);
+        const allowedLocationIds = userLocationIds.map(p => p.location_id);
 
         // Filtrar propriedades pelas localizações permitidas
         filteredProperties = properties.filter(p => 
-          userLocationIds.includes(p.location_id || "")
+          allowedLocationIds.includes(p.location_id || "")
         );
 
         // Filtrar locações pelas propriedades permitidas
@@ -111,9 +120,9 @@ export default function Dashboard() {
 
       // Atividades Recentes (últimos pagamentos)
       const recent = filteredPayments
-        .sort((a, b) => new Date(b.paymentDate || b.createdAt).getTime() - new Date(a.paymentDate || a.createdAt).getTime())
+        .sort((a, b) => new Date(b.paymentDate || b.createdAt || "").getTime() - new Date(a.paymentDate || a.createdAt || "").getTime())
         .slice(0, 5)
-        .map(p => ({
+        .map((p: any) => ({
           id: p.id,
           type: 'payment',
           description: `Pagamento de ${p.rental?.tenant?.name || 'Inquilino'}`,

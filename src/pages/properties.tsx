@@ -127,7 +127,7 @@ export default function PropertiesPage() {
     if (!propertyToDelete) return;
 
     try {
-      await propertyService.delete(propertyToDelete);
+      await propertyService.remove(propertyToDelete);
       await loadData();
       setIsDeleteDialogOpen(false);
       setPropertyToDelete(null);
@@ -275,9 +275,9 @@ export default function PropertiesPage() {
                         <CardTitle className="text-lg font-semibold text-slate-800">
                           {property.location}
                         </CardTitle>
-                        {property.locationData?.complement && (
+                        {property.complement && (
                           <p className="text-sm text-slate-600 mt-1">
-                            {property.locationData.complement}
+                            {property.complement}
                           </p>
                         )}
                       </div>
@@ -364,9 +364,9 @@ export default function PropertiesPage() {
                         {property.location}
                       </TableCell>
                       <TableCell>
-                        {property.locationData?.complement || "-"}
+                        {property.complement || "-"}
                       </TableCell>
-                      <TableCell>{formatCurrency(property.monthly_rent)}</TableCell>
+                      <TableCell>{formatCurrency(property.monthly_rent || 0)}</TableCell>
                       <TableCell>{getStatusBadge(property.status)}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
