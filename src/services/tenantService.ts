@@ -31,15 +31,8 @@ function toDatabase(data: Partial<Tenant>): any {
     dbData.document = data.document;
   }
   
-  // Handle cpf (legacy field, might still be used)
-  if (data.cpf !== undefined) {
-    dbData.cpf = data.cpf;
-  }
-  
-  // Handle cnpj
-  if (data.cnpj !== undefined) {
-    dbData.cnpj = data.cnpj;
-  }
+  // REMOVED: cpf and cnpj columns don't exist in database
+  // All values go to 'document' field based on 'document_type'
   
   return dbData;
 }
@@ -51,6 +44,9 @@ function fromDatabase(data: any): Tenant {
     documentType: data.document_type || data.documentType,
     createdAt: data.created_at || data.createdAt,
     updatedAt: data.updated_at || data.updatedAt,
+    // Map document field to cpf or cnpj for frontend compatibility
+    cpf: data.document_type === "cpf" ? data.document : data.cpf,
+    cnpj: data.document_type === "cnpj" ? data.document : data.cnpj,
   };
 }
 

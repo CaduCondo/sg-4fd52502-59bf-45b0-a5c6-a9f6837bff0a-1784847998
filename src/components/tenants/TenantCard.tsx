@@ -18,8 +18,8 @@ export function TenantCard({ tenant, onClick, onDelete }: TenantCardProps) {
   }[tenant.status] || { label: "Ativo", className: "bg-green-500/10 text-green-700 dark:bg-green-500/20 dark:text-green-400" };
 
   const formatDocument = (tenant: Tenant) => {
-    if (tenant.document_type === "cpf" && tenant.cpf) {
-      return `CPF: ${tenant.cpf}`;
+    if (tenant.document_type === "cpf" && (tenant.cpf || tenant.document)) {
+      return `CPF: ${tenant.cpf || tenant.document}`;
     }
     if (tenant.document_type === "cnpj" && (tenant.cnpj || tenant.document)) {
       return `CNPJ: ${tenant.cnpj || tenant.document}`;
