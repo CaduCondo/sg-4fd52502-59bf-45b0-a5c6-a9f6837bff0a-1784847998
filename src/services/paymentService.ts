@@ -190,9 +190,11 @@ export async function updateFuturePaymentsOnPaymentDayChange(
 }
 
 export async function createPaymentsForRental(rental: any): Promise<void> {
-  const startDate = new Date(rental.startDate);
-  const endDate = rental.endDate ? new Date(rental.endDate) : new Date(startDate.getFullYear() + 1, startDate.getMonth(), startDate.getDate());
-  const paymentDay = rental.paymentDay;
+  const startDate = new Date(rental.startDate || rental.start_date);
+  const endDate = rental.endDate || rental.end_date 
+    ? new Date(rental.endDate || rental.end_date) 
+    : new Date(startDate.getFullYear() + 1, startDate.getMonth(), startDate.getDate());
+  const paymentDay = rental.paymentDay || rental.payment_day;
   
   // Calculate months diff
   const monthsDiff = (endDate.getFullYear() - startDate.getFullYear()) * 12 + (endDate.getMonth() - startDate.getMonth());
@@ -215,25 +217,18 @@ export async function createPaymentsForRental(rental: any): Promise<void> {
     }
 
     payments.push({
-      rentalId: rental.id,
-      dueDate: dueDate.toISOString().split('T')[0],
-      expectedAmount: rental.value,
+      rental_id: rental.id,
+      due_date: dueDate.toISOString().split('T')[0],
+      expected_amount: rental.value || rental.monthly_rent,
       status: 'pending',
-      referenceMonth: referenceDate.getMonth() + 1,
-      referenceYear: referenceDate.getFullYear(),
+      reference_month: (referenceDate.getMonth() + 1).toString(),
+      reference_year: referenceDate.getFullYear().toString(),
     });
   }
 
-  // Create all payments in parallel (or use a bulk insert if implemented, loop for now)
-  // Ideally, supabase supports bulk insert. Let's use loop with Promise.all for now or bulk if createSingle supports array (it usually doesn't in this helpers pattern)
-  // Actually, let's look at supabaseHelpers. createSingle is for one.
-  // We should probably use supabase.from(TABLE).insert(dbData) for bulk.
-  
-  const dbPayments = payments.map(p => mapPaymentToDB(p));
-  
   const { error } = await supabase
     .from(TABLE)
-    .insert(dbPayments);
+    .insert(payments);
 
   if (error) {
     console.error("Erro ao criar pagamentos:", error);
