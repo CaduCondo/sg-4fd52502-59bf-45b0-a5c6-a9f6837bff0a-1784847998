@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { tenantService } from "@/services";
 import { locationService } from "@/services";
 import { Tenant, Location } from "@/types";
@@ -45,7 +45,7 @@ export function useTenants() {
     loadData();
   }, [loadData]);
 
-  const filteredAndSortedTenants = useCallback(() => {
+  const filteredAndSortedTenants = useMemo(() => {
     let filtered = tenants;
 
     if (searchTerm) {
@@ -67,7 +67,7 @@ export function useTenants() {
 
     if (selectedLocations.length > 0) {
       filtered = filtered.filter((tenant) =>
-        selectedLocations.includes(tenant.location_id)
+        selectedLocations.includes(tenant.location_id || "")
       );
     }
 
@@ -153,7 +153,7 @@ export function useTenants() {
   };
 
   return {
-    tenants: filteredAndSortedTenants(),
+    tenants: filteredAndSortedTenants,
     locations,
     isLoading,
     searchTerm,
