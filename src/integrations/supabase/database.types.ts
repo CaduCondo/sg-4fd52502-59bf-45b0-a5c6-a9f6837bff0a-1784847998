@@ -291,7 +291,7 @@ export type Database = {
           contract_attachments: Json | null
           created_at: string | null
           deposit: string | null
-          end_date: string
+          end_date: string | null
           garage_value: number | null
           has_garage: boolean | null
           id: string
@@ -310,7 +310,7 @@ export type Database = {
           contract_attachments?: Json | null
           created_at?: string | null
           deposit?: string | null
-          end_date: string
+          end_date?: string | null
           garage_value?: number | null
           has_garage?: boolean | null
           id?: string
@@ -329,7 +329,7 @@ export type Database = {
           contract_attachments?: Json | null
           created_at?: string | null
           deposit?: string | null
-          end_date?: string
+          end_date?: string | null
           garage_value?: number | null
           has_garage?: boolean | null
           id?: string

@@ -39,7 +39,6 @@ export function RentalFormDialog({
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [paymentDay, setPaymentDay] = useState("");
-  const [monthlyRent, setMonthlyRent] = useState("");
   const [hasGarage, setHasGarage] = useState(false);
   const [garageValue, setGarageValue] = useState("");
   const [attachments, setAttachments] = useState<string[]>([]);
@@ -63,7 +62,6 @@ export function RentalFormDialog({
     setStartDate("");
     setEndDate("");
     setPaymentDay("");
-    setMonthlyRent("");
     setHasGarage(false);
     setGarageValue("");
     setAttachments([]);
@@ -118,7 +116,7 @@ export function RentalFormDialog({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!selectedPropertyId || !selectedTenantId || !startDate || !paymentDay || !monthlyRent) {
+    if (!selectedPropertyId || !selectedTenantId || !startDate || !paymentDay) {
       toast({
         title: "Erro",
         description: "Por favor, preencha todos os campos obrigatórios.",
@@ -130,11 +128,14 @@ export function RentalFormDialog({
     try {
       setLoading(true);
 
-      const monthlyRentValue = parseFloat(monthlyRent.replace(/\./g, "").replace(",", "."));
-      const garageValueNum = hasGarage ? parseFloat(garageValue.replace(/\./g, "").replace(",", ".") || "0") : 0;
-      const totalValue = monthlyRentValue + garageValueNum;
-
       const selectedProperty = availableProperties.find((p) => p.id === selectedPropertyId);
+      if (!selectedProperty) {
+        throw new Error("Imóvel não encontrado");
+      }
+
+      const propertyValue = selectedProperty.value || 0;
+      const garageValueNum = hasGarage ? parseFloat(garageValue.replace(/\./g, "").replace(",", ".") || "0") : 0;
+      const totalValue = propertyValue + garageValueNum;
 
       const newRental = {
         propertyId: selectedPropertyId,
@@ -142,13 +143,13 @@ export function RentalFormDialog({
         startDate,
         endDate: endDate || null,
         paymentDay: parseInt(paymentDay),
-        monthlyRent: monthlyRentValue,
+        monthlyRent: propertyValue,
         value: totalValue,
         hasGarage,
         garageValue: hasGarage ? garageValueNum : undefined,
         isActive: true,
         attachments,
-        locationId: selectedProperty?.locationId || "",
+        locationId: selectedProperty.locationId,
       };
 
       const createdRental = await createRental(newRental);
@@ -184,10 +185,11 @@ export function RentalFormDialog({
   };
 
   const selectedProperty = availableProperties.find((p) => p.id === selectedPropertyId);
+  
   const calculatedTotal = () => {
-    const rent = parseFloat(monthlyRent.replace(/\./g, "").replace(",", ".") || "0");
+    const propertyValue = selectedProperty?.value || 0;
     const garage = hasGarage ? parseFloat(garageValue.replace(/\./g, "").replace(",", ".") || "0") : 0;
-    return rent + garage;
+    return propertyValue + garage;
   };
 
   return (
@@ -200,7 +202,7 @@ export function RentalFormDialog({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="property">Imóvel *</Label>
+              <Label htmlFor="property">Imóveis Disponíveis *</Label>
               <Select value={selectedPropertyId} onValueChange={setSelectedPropertyId}>
                 <SelectTrigger id="property">
                   <SelectValue placeholder="Selecione o imóvel" />
@@ -208,21 +210,23 @@ export function RentalFormDialog({
                 <SelectContent>
                   {availableProperties.map((property) => (
                     <SelectItem key={property.id} value={property.id}>
-                      {getLocationName(property.locationId)}
-                      {property.complement && ` - ${property.complement}`}
+                      <div className="flex flex-col">
+                        <span className="font-medium">
+                          {getLocationName(property.locationId)}
+                          {property.complement && ` - ${property.complement}`}
+                        </span>
+                        <span className="text-sm text-muted-foreground">
+                          {formatCurrency(property.value || 0)}
+                        </span>
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              {selectedProperty && (
-                <p className="text-sm text-muted-foreground">
-                  Valor: {formatCurrency(selectedProperty.value)}
-                </p>
-              )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="tenant">Inquilino *</Label>
+              <Label htmlFor="tenant">Inquilinos Disponíveis *</Label>
               <Select value={selectedTenantId} onValueChange={setSelectedTenantId}>
                 <SelectTrigger id="tenant">
                   <SelectValue placeholder="Selecione o inquilino" />
@@ -237,6 +241,19 @@ export function RentalFormDialog({
               </Select>
             </div>
           </div>
+
+          {selectedProperty && (
+            <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
+              <div className="flex justify-between items-center">
+                <span className="font-semibold text-blue-900 dark:text-blue-100">
+                  Valor do Aluguel:
+                </span>
+                <span className="text-xl font-bold text-blue-600 dark:text-blue-400">
+                  {formatCurrency(selectedProperty.value || 0)}
+                </span>
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
@@ -277,45 +294,61 @@ export function RentalFormDialog({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="monthlyRent">Valor Aluguel *</Label>
-              <Input
-                id="monthlyRent"
-                value={monthlyRent}
-                onChange={(e) => setMonthlyRent(applyRealMask(e.target.value))}
-                placeholder="R$ 0,00"
-                required
+          <div className="space-y-2">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="hasGarage"
+                checked={hasGarage}
+                onCheckedChange={(checked) => {
+                  setHasGarage(checked as boolean);
+                  if (!checked) {
+                    setGarageValue("");
+                  }
+                }}
               />
+              <Label htmlFor="hasGarage" className="cursor-pointer">
+                Vaga Garagem ?
+              </Label>
             </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center space-x-2 mb-2">
-                <Checkbox
-                  id="hasGarage"
-                  checked={hasGarage}
-                  onCheckedChange={(checked) => setHasGarage(checked as boolean)}
-                />
-                <Label htmlFor="hasGarage">Vaga Garagem</Label>
-              </div>
-              {hasGarage && (
-                <Input
-                  id="garageValue"
-                  value={garageValue}
-                  onChange={(e) => setGarageValue(applyRealMask(e.target.value))}
-                  placeholder="R$ 0,00"
-                />
-              )}
-            </div>
+            {hasGarage && (
+              <Input
+                id="garageValue"
+                value={garageValue}
+                onChange={(e) => setGarageValue(applyRealMask(e.target.value))}
+                placeholder="R$ 0,00"
+              />
+            )}
           </div>
 
-          {(monthlyRent || garageValue) && (
-            <div className="p-4 bg-muted rounded-lg">
-              <div className="flex justify-between items-center">
-                <span className="font-semibold">Valor Total:</span>
-                <span className="text-xl font-bold text-emerald-600">
-                  {formatCurrency(calculatedTotal())}
-                </span>
+          {selectedProperty && (hasGarage ? garageValue : true) && (
+            <div className="p-4 bg-emerald-50 dark:bg-emerald-950 rounded-lg border border-emerald-200 dark:border-emerald-800">
+              <div className="space-y-2">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-emerald-900 dark:text-emerald-100">
+                    Valor do Aluguel:
+                  </span>
+                  <span className="font-semibold text-emerald-700 dark:text-emerald-300">
+                    {formatCurrency(selectedProperty.value || 0)}
+                  </span>
+                </div>
+                {hasGarage && garageValue && (
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-emerald-900 dark:text-emerald-100">
+                      Vaga Garagem:
+                    </span>
+                    <span className="font-semibold text-emerald-700 dark:text-emerald-300">
+                      + {garageValue}
+                    </span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center pt-2 border-t border-emerald-200 dark:border-emerald-800">
+                  <span className="font-bold text-emerald-900 dark:text-emerald-100">
+                    Valor Total:
+                  </span>
+                  <span className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
+                    {formatCurrency(calculatedTotal())}
+                  </span>
+                </div>
               </div>
             </div>
           )}
