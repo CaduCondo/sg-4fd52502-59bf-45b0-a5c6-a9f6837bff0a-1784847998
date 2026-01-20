@@ -171,7 +171,9 @@ export default function PropertiesPage() {
   };
 
   const handleEnableEdit = () => {
+    console.log("=== ENABLE EDIT CLICKED ===");
     setIsEditMode(true);
+    console.log("isEditMode set to:", true);
   };
 
   const confirmDelete = (e: React.MouseEvent, id: string) => {
@@ -453,8 +455,14 @@ export default function PropertiesPage() {
         )}
 
         <Dialog open={isDialogOpen} onOpenChange={(open) => {
+          console.log("=== DIALOG onOpenChange ===");
+          console.log("New open state:", open);
+          console.log("Current isEditMode:", isEditMode);
+          console.log("Stack trace:", new Error().stack);
+          
           setIsDialogOpen(open);
           if (!open) {
+            console.log("Dialog closing - resetting form");
             resetForm();
           }
         }}>
@@ -469,7 +477,7 @@ export default function PropertiesPage() {
                 <div className="space-y-2">
                   <Label htmlFor="location_id">Local *</Label>
                   <Select
-                    key={`location-select-${formData.location_id}-${isDialogOpen}`}
+                    key={isDialogOpen ? 'open' : 'closed'}
                     value={formData.location_id}
                     onValueChange={(value) => {
                       console.log("Select onValueChange called with:", value);
@@ -589,7 +597,10 @@ export default function PropertiesPage() {
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        console.log("Close button clicked");
                         setIsDialogOpen(false);
                         resetForm();
                       }}
@@ -599,7 +610,12 @@ export default function PropertiesPage() {
                     </Button>
                     <Button
                       type="button"
-                      onClick={handleEnableEdit}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        console.log("Edit button clicked");
+                        handleEnableEdit();
+                      }}
                     >
                       Editar
                     </Button>
@@ -609,7 +625,10 @@ export default function PropertiesPage() {
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        console.log("Cancel button clicked");
                         if (isEditMode) {
                           setIsEditMode(false);
                         } else {
