@@ -145,10 +145,10 @@ export default function PropertiesPage() {
   const handleCardClick = (property: Property) => {
     setEditingProperty(property);
     
-    const locationId = property.location_id || "";
+    const locationId = property.locationId || "";
     
     console.log("=== DEBUG handleCardClick ===");
-    console.log("Property location_id:", property.location_id);
+    console.log("Property locationId:", property.locationId);
     console.log("Property location name:", property.location);
     console.log("Setting formData.location_id to:", locationId);
     
