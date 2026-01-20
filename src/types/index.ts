@@ -103,6 +103,7 @@ export interface Tenant {
   document: string;
   cpf?: string;
   rg?: string;
+  document_type?: "cpf" | "cnpj"; // Database field match
   status: "active" | "inactive" | "rented";
   createdAt?: string;
   updatedAt?: string;
