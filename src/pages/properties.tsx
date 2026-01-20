@@ -450,9 +450,9 @@ export default function PropertiesPage() {
                           variant="destructive"
                           size="sm"
                           onClick={(e) => confirmDelete(e, property.id)}
+                          className="flex items-center justify-center"
                         >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Excluir
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>

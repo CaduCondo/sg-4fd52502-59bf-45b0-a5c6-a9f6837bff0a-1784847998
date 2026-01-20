@@ -489,14 +489,14 @@ export default function TenantsPage() {
                           </div>
                         )}
                       </div>
-                      <div className="flex items-center justify-end pt-3 mt-2 border-t">
+                      <div className="flex items-center justify-between pt-3 mt-2">
                         <Button
                           variant="destructive"
                           size="sm"
+                          className="flex items-center justify-center"
                           onClick={(e) => confirmDelete(e, tenant.id)}
                         >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Excluir
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </CardContent>
