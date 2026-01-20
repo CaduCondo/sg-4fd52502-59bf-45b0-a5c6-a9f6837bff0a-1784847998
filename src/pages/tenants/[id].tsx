@@ -3,57 +3,66 @@ import { useRouter } from "next/router";
 import { Layout } from "@/components/Layout";
 import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
-import { Users, ArrowLeft, Edit, X, Trash2 } from "lucide-react";
-import { Tenant } from "@/types";
-import { getById as getTenantById, update as updateTenant, remove as deleteTenant } from "@/services/tenantService";
-import { applyCpfMask, applyPhoneMask, removeMask } from "@/lib/masks";
+import { ArrowLeft, Edit, Trash2, Users, X, Save, FileText, Mail, Phone } from "lucide-react";
+import { getById, update, remove } from "@/services/tenantService";
+import { toast } from "@/hooks/use-toast";
+import type { Tenant } from "@/types";
+import { applyPhoneMask, applyCpfMask, applyCnpjMask, applyRgMask } from "@/lib/masks";
 
-export default function TenantDetails() {
+export default function TenantDetailsPage() {
   const router = useRouter();
   const { id } = router.query;
-  const { toast } = useToast();
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
-
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    cpf: "",
-  });
+  const [formData, setFormData] = useState<Partial<Tenant>>({});
 
   useEffect(() => {
     if (id) {
-      loadTenant(id as string);
+      loadTenant();
     }
   }, [id]);
 
-  const loadTenant = async (tenantId: string) => {
+  const loadTenant = async () => {
     try {
       setLoading(true);
-      const tenantData = await getTenantById(tenantId);
-      if (tenantData) {
-        setTenant(tenantData);
-        setFormData({
-          name: tenantData.name,
-          email: tenantData.email || "",
-          phone: tenantData.phone || "",
-          cpf: tenantData.cpf || "",
-        });
-      }
+      const data = await getById(id as string);
+      setTenant(data);
+      // Initialize form data
+      setFormData({
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        documentType: data.documentType || "cpf",
+        document: data.document || data.cpf || "", // Fallback to cpf if document is empty
+        cpf: data.cpf,
+        rg: data.rg,
+        status: data.status,
+      });
     } catch (error) {
       console.error("Error loading tenant:", error);
       toast({
         title: "Erro",
-        description: "Não foi possível carregar o inquilino.",
+        description: "Não foi possível carregar os dados do inquilino.",
         variant: "destructive",
       });
+      router.push("/tenants");
     } finally {
       setLoading(false);
     }
@@ -64,26 +73,96 @@ export default function TenantDetails() {
   };
 
   const handleCancel = () => {
+    setIsEditing(false);
     if (tenant) {
       setFormData({
         name: tenant.name,
-        email: tenant.email || "",
-        phone: tenant.phone || "",
-        cpf: tenant.cpf || "",
+        email: tenant.email,
+        phone: tenant.phone,
+        documentType: tenant.documentType || "cpf",
+        document: tenant.document || tenant.cpf || "",
+        cpf: tenant.cpf,
+        rg: tenant.rg,
+        status: tenant.status,
       });
     }
-    setIsEditing(false);
+  };
+
+  const handleInputChange = (field: keyof Tenant, value: string) => {
+    let maskedValue = value;
+
+    if (field === "phone") {
+      maskedValue = applyPhoneMask(value);
+    } else if (field === "document") {
+      if (formData.documentType === "cpf") {
+        maskedValue = applyCpfMask(value);
+      } else {
+        maskedValue = applyCnpjMask(value);
+      }
+    } else if (field === "rg") {
+      maskedValue = applyRgMask(value);
+    }
+
+    setFormData((prev) => ({ ...prev, [field]: maskedValue }));
+  };
+
+  const handleDocumentTypeChange = (type: "cpf" | "cnpj") => {
+    setFormData((prev) => ({
+      ...prev,
+      documentType: type,
+      document: "", // Clear document when type changes
+      rg: type === "cpf" ? prev.rg : "", // Keep RG if switching to CPF (or clear if switching to CNPJ)
+    }));
   };
 
   const handleSave = async () => {
+    if (!tenant) return;
+
+    if (!formData.name?.trim()) {
+      toast({
+        title: "Erro",
+        description: "O nome é obrigatório.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!formData.document?.trim()) {
+      toast({
+         title: "Erro",
+         description: "O documento é obrigatório.",
+         variant: "destructive",
+      });
+      return;
+    }
+
     try {
-      await updateTenant(id as string, formData);
+      const updateData: any = {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        document_type: formData.documentType,
+        document: formData.document,
+        status: formData.status,
+      };
+
+      if (formData.documentType === "cpf") {
+         updateData.cpf = formData.document;
+         updateData.rg = formData.rg;
+      } else {
+         updateData.cpf = null; // Clear CPF field if it's CNPJ
+         updateData.rg = null;  // Clear RG field if it's CNPJ
+      }
+
+      await update(tenant.id, updateData);
+      
       toast({
         title: "Sucesso",
-        description: "Inquilino atualizado com sucesso.",
+        description: "Dados atualizados com sucesso!",
       });
+      
       setIsEditing(false);
-      loadTenant(id as string);
+      loadTenant();
     } catch (error) {
       console.error("Error updating tenant:", error);
       toast({
@@ -96,12 +175,12 @@ export default function TenantDetails() {
 
   const handleDelete = async () => {
     if (!confirm("Tem certeza que deseja excluir este inquilino?")) return;
-    
+
     try {
-      await deleteTenant(id as string);
+      await remove(tenant!.id);
       toast({
         title: "Sucesso",
-        description: "Inquilino excluído com sucesso.",
+        description: "Inquilino excluído com sucesso!",
       });
       router.push("/tenants");
     } catch (error) {
@@ -143,35 +222,23 @@ export default function TenantDetails() {
   if (loading) {
     return (
       <Layout>
-        <div className="flex items-center justify-center min-h-[400px]">
-          <p className="text-muted-foreground">Carregando...</p>
+        <div className="flex items-center justify-center h-screen">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
         </div>
       </Layout>
     );
   }
 
-  if (!tenant) {
-    return (
-      <Layout>
-        <div className="flex items-center justify-center min-h-[400px]">
-          <p className="text-muted-foreground">Inquilino não encontrado</p>
-        </div>
-      </Layout>
-    );
-  }
+  if (!tenant) return null;
 
   return (
     <>
-      <SEO title="Detalhes do Inquilino - Gerenciador de Locações" />
+      <SEO title={`Inquilino: ${tenant.name}`} />
       <Layout>
         <div className="space-y-6">
           <div className="flex items-center justify-between">
-            <Button
-              variant="ghost"
-              onClick={() => router.push("/tenants")}
-              className="gap-2"
-            >
-              <ArrowLeft className="h-4 w-4" />
+            <Button variant="ghost" onClick={() => router.push("/tenants")}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
               Voltar
             </Button>
             <div className="flex gap-2">
@@ -182,6 +249,7 @@ export default function TenantDetails() {
                     Cancelar
                   </Button>
                   <Button onClick={handleSave} className="bg-emerald-600 hover:bg-emerald-700">
+                    <Save className="h-4 w-4 mr-2" />
                     Salvar
                   </Button>
                 </>
@@ -204,71 +272,117 @@ export default function TenantDetails() {
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <Users className="h-5 w-5 text-emerald-600" />
-                  <CardTitle className="text-lg">{tenant.name}</CardTitle>
+                  <div className="p-2 bg-primary/10 rounded-full">
+                    <Users className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-xl">{formData.name}</CardTitle>
+                    <div className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
+                       <FileText className="h-3 w-3" />
+                       {formData.document || "Documento não informado"}
+                    </div>
+                  </div>
                 </div>
-                {getStatusBadge(tenant.status || "active")}
+                {getStatusBadge(formData.status || "active")}
               </div>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
                 <div className="space-y-2">
-                  <Label className="text-xs text-muted-foreground">Nome Completo</Label>
-                  {isEditing ? (
-                    <Input
-                      placeholder="João da Silva"
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="h-9"
-                    />
-                  ) : (
-                    <p className="text-sm font-medium">{tenant.name}</p>
-                  )}
+                  <Label>Nome Completo</Label>
+                  <Input
+                    value={formData.name || ""}
+                    onChange={(e) => handleInputChange("name", e.target.value)}
+                    disabled={!isEditing}
+                    className="bg-background"
+                  />
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-xs text-muted-foreground">E-mail</Label>
-                  {isEditing ? (
+                  <Label>Email</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
-                      type="email"
-                      placeholder="joao@email.com"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className="h-9"
+                      value={formData.email || ""}
+                      onChange={(e) => handleInputChange("email", e.target.value)}
+                      disabled={!isEditing}
+                      className="pl-9 bg-background"
                     />
-                  ) : (
-                    <p className="text-sm font-medium">{tenant.email || "—"}</p>
-                  )}
+                  </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-xs text-muted-foreground">CPF</Label>
-                  {isEditing ? (
-                    <Input
-                      placeholder="000.000.000-00"
-                      value={applyCpfMask(formData.cpf)}
-                      onChange={(e) => setFormData({ ...formData, cpf: removeMask(e.target.value) })}
-                      maxLength={14}
-                      className="h-9"
-                    />
-                  ) : (
-                    <p className="text-sm font-medium">{tenant.cpf ? applyCpfMask(tenant.cpf) : "—"}</p>
-                  )}
+                  <Label>Tipo de Documento</Label>
+                  <Select
+                    value={formData.documentType}
+                    onValueChange={(value: "cpf" | "cnpj") => handleDocumentTypeChange(value)}
+                    disabled={!isEditing}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cpf">CPF</SelectItem>
+                      <SelectItem value="cnpj">CNPJ</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-xs text-muted-foreground">Telefone</Label>
-                  {isEditing ? (
+                  <Label>{formData.documentType === "cpf" ? "CPF" : "CNPJ"}</Label>
+                  <div className="relative">
+                    <FileText className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
-                      placeholder="(00) 00000-0000"
-                      value={applyPhoneMask(formData.phone)}
-                      onChange={(e) => setFormData({ ...formData, phone: removeMask(e.target.value) })}
-                      maxLength={15}
-                      className="h-9"
+                      value={formData.document || ""}
+                      onChange={(e) => handleInputChange("document", e.target.value)}
+                      disabled={!isEditing}
+                      className="pl-9 bg-background"
+                      placeholder={formData.documentType === "cpf" ? "000.000.000-00" : "00.000.000/0000-00"}
                     />
-                  ) : (
-                    <p className="text-sm font-medium">{tenant.phone ? applyPhoneMask(tenant.phone) : "—"}</p>
-                  )}
+                  </div>
+                </div>
+
+                {formData.documentType === "cpf" && (
+                  <div className="space-y-2">
+                    <Label>RG</Label>
+                    <Input
+                      value={formData.rg || ""}
+                      onChange={(e) => handleInputChange("rg", e.target.value)}
+                      disabled={!isEditing}
+                      className="bg-background"
+                      placeholder="00.000.000-0"
+                    />
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label>Telefone</Label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      value={formData.phone || ""}
+                      onChange={(e) => handleInputChange("phone", e.target.value)}
+                      disabled={!isEditing}
+                      className="pl-9 bg-background"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <Select
+                    value={formData.status}
+                    onValueChange={(value: any) => setFormData(prev => ({ ...prev, status: value }))}
+                    disabled={!isEditing}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Ativo</SelectItem>
+                      <SelectItem value="inactive">Inativo</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </CardContent>

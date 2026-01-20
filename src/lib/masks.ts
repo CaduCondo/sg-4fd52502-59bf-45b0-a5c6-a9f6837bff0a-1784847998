@@ -113,6 +113,15 @@ export const applyCpfMask = (value: string): string => {
     .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
 };
 
+// RG formatting
+export const applyRgMask = (value: string): string => {
+  return value
+    .replace(/\D/g, "")
+    .replace(/(\d{2})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d{1})$/, "$1-$2");
+};
+
 // Phone formatting
 export const applyPhoneMask = (value: string): string => {
   return value
