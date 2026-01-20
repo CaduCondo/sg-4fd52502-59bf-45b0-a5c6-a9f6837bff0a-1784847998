@@ -489,11 +489,18 @@ export default function TenantsPage() {
                           </div>
                         )}
                       </div>
-                      <div className="flex items-center justify-between pt-3 mt-2">
+                      
+                      <div className="flex items-center gap-3">
+                        {tenant.phone && (
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Phone className="h-4 w-4" />
+                            <span>{tenant.phone}</span>
+                          </div>
+                        )}
                         <Button
                           variant="destructive"
                           size="sm"
-                          className="flex items-center justify-center"
+                          className="flex items-center justify-center h-10 w-10 p-0 ml-auto"
                           onClick={(e) => confirmDelete(e, tenant.id)}
                         >
                           <Trash2 className="h-4 w-4" />
