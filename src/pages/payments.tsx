@@ -224,32 +224,15 @@ export default function Payments() {
 
   // Filter payments: show all payments within contract period by default
   const getFilteredPayments = () => {
-    const filtered = payments.filter(payment => {
-      const rental = getRentalInfo(payment.rentalId);
-      if (!rental) return false;
-      
-      // Apply month/year filters if selected
-      if (selectedMonth !== "all" || selectedYear !== "all") {
-        if (selectedMonth !== "all" && payment.referenceMonth !== parseInt(selectedMonth)) return false;
-        if (selectedYear !== "all" && payment.referenceYear !== parseInt(selectedYear)) return false;
-        return true;
-      }
-
-      // If no filters, show all payments within contract period (month-based comparison)
-      // This ensures we show the full contract schedule including current month
-      const paymentMonthIndex = payment.referenceYear * 12 + (payment.referenceMonth - 1);
-      
-      const startDate = new Date(rental.startDate);
-      const startMonthIndex = startDate.getFullYear() * 12 + startDate.getMonth();
-      
-      let endMonthIndex = Infinity;
-      if (rental.endDate) {
-        const endDate = new Date(rental.endDate);
-        endMonthIndex = endDate.getFullYear() * 12 + endDate.getMonth();
-      }
-      
-      return paymentMonthIndex >= startMonthIndex && paymentMonthIndex <= endMonthIndex;
-    });
+    let filtered = payments;
+    
+    // Apply month/year filters ONLY if explicitly selected
+    if (selectedMonth !== "all") {
+      filtered = filtered.filter(p => p.referenceMonth === parseInt(selectedMonth));
+    }
+    if (selectedYear !== "all") {
+      filtered = filtered.filter(p => p.referenceYear === parseInt(selectedYear));
+    }
     
     // Sort by due date (oldest first)
     return filtered.sort((a, b) => {
