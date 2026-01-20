@@ -42,41 +42,54 @@ function mapRentalFromDB(data: any): Rental {
 function mapRentalToDB(data: Partial<Rental>): any {
   const dbData: any = {};
   
+  // Aceitar tanto camelCase quanto snake_case
   if (data.propertyId) dbData.property_id = data.propertyId;
+  if ((data as any).property_id) dbData.property_id = (data as any).property_id;
+  
   if (data.tenantId) dbData.tenant_id = data.tenantId;
+  if ((data as any).tenant_id) dbData.tenant_id = (data as any).tenant_id;
+  
   if (data.startDate) dbData.start_date = data.startDate;
+  if ((data as any).start_date) dbData.start_date = (data as any).start_date;
+  
   if (data.endDate !== undefined) dbData.end_date = data.endDate;
+  if ((data as any).end_date !== undefined) dbData.end_date = (data as any).end_date;
+  
   // Mapear rentAmount para monthly_rent (nome da coluna no banco)
   if (data.rentAmount !== undefined) dbData.monthly_rent = data.rentAmount;
   else if (data.monthlyRent !== undefined) dbData.monthly_rent = data.monthlyRent;
+  else if ((data as any).monthly_rent !== undefined) dbData.monthly_rent = (data as any).monthly_rent;
   
   // Tratar deposit (banco é text)
   if (data.depositAmount !== undefined) dbData.deposit = String(data.depositAmount);
   else if (data.deposit !== undefined) dbData.deposit = data.deposit;
   
   if (data.paymentDay !== undefined) dbData.payment_day = data.paymentDay;
-  // contract_url não existe no schema fornecido, mas pode ser útil manter se for adicionado depois. 
-  // O erro original era sobre endDate, mas vamos limpar o que não existe.
-  // contract_url removido pois não aparece no schema.
-  
-  // auto_renew não existe no schema fornecido.
-  
-  // admin_fee não existe no schema fornecido.
+  if ((data as any).payment_day !== undefined) dbData.payment_day = (data as any).payment_day;
   
   if (data.value !== undefined) dbData.value = data.value;
-  if (data.isActive !== undefined) dbData.is_active = data.isActive;
-  if (data.hasGarage !== undefined) dbData.has_garage = data.hasGarage;
-  if (data.garageValue !== undefined) dbData.garage_value = data.garageValue;
   
-  // Mapear attachments para ambos os campos JSONB por segurança, ou preferir contract_attachments
+  if (data.isActive !== undefined) dbData.is_active = data.isActive;
+  if ((data as any).is_active !== undefined) dbData.is_active = (data as any).is_active;
+  
+  if (data.hasGarage !== undefined) dbData.has_garage = data.hasGarage;
+  if ((data as any).has_garage !== undefined) dbData.has_garage = (data as any).has_garage;
+  
+  if (data.garageValue !== undefined) dbData.garage_value = data.garageValue;
+  if ((data as any).garage_value !== undefined) dbData.garage_value = (data as any).garage_value;
+  
+  // Mapear attachments para ambos os campos JSONB por segurança
   if (data.attachments) {
     dbData.contract_attachments = data.attachments; 
     dbData.attachments = data.attachments;
   }
+  if ((data as any).contract_attachments) {
+    dbData.contract_attachments = (data as any).contract_attachments;
+    dbData.attachments = (data as any).contract_attachments;
+  }
   
   if (data.pixCode) dbData.pix_code = data.pixCode;
-  
-  // location_id removido pois não existe na tabela rentals
+  if ((data as any).pix_code) dbData.pix_code = (data as any).pix_code;
 
   return dbData;
 }
