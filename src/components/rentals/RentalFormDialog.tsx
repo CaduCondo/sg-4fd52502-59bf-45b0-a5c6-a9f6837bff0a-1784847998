@@ -341,7 +341,7 @@ export function RentalFormDialog({
             )}
           </div>
 
-          {selectedProperty && (hasGarage ? garageValue : true) && (
+          {selectedProperty && (
             <div className="p-4 bg-emerald-50 dark:bg-emerald-950 rounded-lg border border-emerald-200 dark:border-emerald-800">
               <div className="space-y-2">
                 <div className="flex justify-between items-center text-sm">
@@ -352,13 +352,13 @@ export function RentalFormDialog({
                     {formatCurrency(selectedProperty.value || 0)}
                   </span>
                 </div>
-                {hasGarage && garageValue && (
+                {hasGarage && (
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-emerald-900 dark:text-emerald-100">
                       Vaga Garagem:
                     </span>
                     <span className="font-semibold text-emerald-700 dark:text-emerald-300">
-                      + {garageValue}
+                      {garageValue ? `+ ${garageValue}` : "+ R$ 0,00"}
                     </span>
                   </div>
                 )}
