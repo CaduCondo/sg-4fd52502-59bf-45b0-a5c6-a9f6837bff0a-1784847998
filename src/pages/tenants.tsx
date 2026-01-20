@@ -28,7 +28,17 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Mail, Phone, FileText, User, X } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Plus, Search, Mail, Phone, FileText, User, Trash2, AlertCircle } from "lucide-react";
 import { getAll as getAllTenants, create as createTenant, remove as deleteTenant } from "@/services/tenantService";
 import { toast } from "@/hooks/use-toast";
 import type { Tenant } from "@/types";
@@ -42,6 +52,8 @@ export default function TenantsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [tenantToDelete, setTenantToDelete] = useState<string | null>(null);
   const [formData, setFormData] = useState<Partial<Tenant>>({
     name: "",
     email: "",
@@ -50,7 +62,6 @@ export default function TenantsPage() {
     document: "",
     cpf: "",
     rg: "",
-    status: "active",
   });
 
   useEffect(() => {
@@ -120,7 +131,7 @@ export default function TenantsPage() {
       documentType: type,
       document: "",
       cpf: type === "cpf" ? "" : prev.cpf,
-      rg: type === "cpf" ? prev.rg : "",
+      rg: type === "cpf" ? "" : "",
     }));
   }
 
@@ -180,7 +191,6 @@ export default function TenantsPage() {
         document: "",
         cpf: "",
         rg: "",
-        status: "active",
       });
       loadTenants();
     } catch (error) {
@@ -200,40 +210,48 @@ export default function TenantsPage() {
   const getStatusBadge = (status: string) => {
     const normalizedStatus = status?.toLowerCase() || "active";
     
-    if (normalizedStatus === "active" || normalizedStatus === "ativo" || normalizedStatus === "rented") {
-      return (
-        <Badge className="bg-green-100 text-green-800 border-green-200">
-          Ativo
-        </Badge>
-      );
-    }
+    const variants: Record<string, "default" | "secondary" | "destructive"> = {
+      active: "default",
+      ativo: "default",
+      rented: "default",
+      inactive: "secondary",
+      inativo: "secondary",
+      unavailable: "destructive",
+    };
     
-    if (normalizedStatus === "inactive" || normalizedStatus === "inativo" || normalizedStatus === "unavailable") {
-      return (
-        <Badge className="bg-red-100 text-red-800 border-red-200">
-          Inativo
-        </Badge>
-      );
-    }
+    const labels: Record<string, string> = {
+      active: "Ativo",
+      ativo: "Ativo",
+      rented: "Ativo",
+      inactive: "Inativo",
+      inativo: "Inativo",
+      unavailable: "Indisponível",
+    };
     
     return (
-      <Badge className="bg-gray-100 text-gray-800 border-gray-200">
-        {status}
+      <Badge variant={variants[normalizedStatus] || "default"}>
+        {labels[normalizedStatus] || status}
       </Badge>
     );
   };
 
-  async function handleDelete(e: React.MouseEvent, tenantId: string) {
+  const confirmDelete = (e: React.MouseEvent, tenantId: string) => {
     e.stopPropagation();
-    
-    if (!confirm("Tem certeza que deseja excluir este inquilino?")) return;
+    setTenantToDelete(tenantId);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (!tenantToDelete) return;
     
     try {
-      await deleteTenant(tenantId);
+      await deleteTenant(tenantToDelete);
       toast({
         title: "Inquilino excluído",
         description: "Inquilino excluído com sucesso!",
       });
+      setIsDeleteDialogOpen(false);
+      setTenantToDelete(null);
       loadTenants();
     } catch (error) {
       console.error("❌ Error deleting tenant:", error);
@@ -243,7 +261,7 @@ export default function TenantsPage() {
         variant: "destructive",
       });
     }
-  }
+  };
 
   return (
     <>
@@ -318,29 +336,18 @@ export default function TenantsPage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredTenants.map((tenant, index) => (
-                <ScrollReveal
-                  key={tenant.id}
-                  delay={index * 0.1}
-                >
+                <ScrollReveal key={tenant.id} delay={index * 0.1}>
                   <Card
-                    className="cursor-pointer hover:shadow-lg transition-shadow duration-300 relative"
+                    className="cursor-pointer hover:shadow-lg transition-shadow duration-300"
                     onClick={() => handleCardClick(tenant.id)}
                   >
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="absolute top-2 right-2 h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50 z-10"
-                      onClick={(e) => handleDelete(e, tenant.id)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                    <CardHeader>
-                      <div className="flex items-start justify-between pr-8">
+                    <CardHeader className="pb-2">
+                      <div className="flex items-start justify-between gap-2">
                         <div className="flex-1">
-                          <CardTitle className="text-primary text-lg font-semibold">
+                          <CardTitle className="text-xl font-bold text-blue-600">
                             {tenant.name}
                           </CardTitle>
-                          <CardDescription className="flex items-center gap-1">
+                          <CardDescription className="flex items-center gap-1 mt-1">
                             <FileText className="h-3 w-3" />
                             {tenant.document || tenant.cpf || "Documento não informado"}
                           </CardDescription>
@@ -348,20 +355,30 @@ export default function TenantsPage() {
                         {getStatusBadge(tenant.status || "ativo")}
                       </div>
                     </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2 text-sm">
+                    <CardContent className="pt-3">
+                      <div className="space-y-1.5">
                         {tenant.email && (
-                          <div className="flex items-center gap-2 text-muted-foreground">
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <Mail className="h-4 w-4" />
                             <span className="truncate">{tenant.email}</span>
                           </div>
                         )}
                         {tenant.phone && (
-                          <div className="flex items-center gap-2 text-muted-foreground">
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <Phone className="h-4 w-4" />
                             <span>{tenant.phone}</span>
                           </div>
                         )}
+                      </div>
+                      <div className="flex items-center justify-end pt-3 mt-2 border-t">
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={(e) => confirmDelete(e, tenant.id)}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Excluir
+                        </Button>
                       </div>
                     </CardContent>
                   </Card>
@@ -496,6 +513,26 @@ export default function TenantsPage() {
             </form>
           </DialogContent>
         </Dialog>
+
+        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2 text-red-600">
+                <AlertCircle className="h-5 w-5" />
+                Confirmar Exclusão
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que deseja excluir este inquilino? Esta ação não pode ser desfeita e removerá todos os dados associados.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setTenantToDelete(null)}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
+                Sim, Excluir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </Layout>
     </>
   );
