@@ -78,7 +78,12 @@ export default function PropertiesPage() {
         property.complement?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         property.description?.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = statusFilter === "all" || property.status === statusFilter;
-      const matchesLocation = selectedLocations.length === 0 || selectedLocations.includes(property.location_id);
+      
+      // Fix: Handle both location_id and locationId, with proper null checks
+      const propertyLocationId = property.location_id || property.locationId;
+      const matchesLocation = 
+        selectedLocations.length === 0 || 
+        (propertyLocationId && selectedLocations.includes(propertyLocationId));
 
       return matchesSearch && matchesStatus && matchesLocation;
     });
