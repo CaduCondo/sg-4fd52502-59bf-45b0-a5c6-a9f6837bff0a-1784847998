@@ -1,12 +1,13 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tenant, Location } from "@/types";
 import { applyCpfMask, applyCnpjMask, applyPhoneMask, applyRgMask } from "@/lib/masks";
+import { Pencil } from "lucide-react";
 
 interface TenantFormDialogProps {
   open: boolean;
@@ -25,6 +26,10 @@ export function TenantFormDialog({
   locations,
   isViewMode = false,
 }: TenantFormDialogProps) {
+  // Se isViewMode for true, começamos não editáveis (disabled=true).
+  // Se isViewMode for false (criação), começamos editáveis (disabled=false).
+  const [isEditing, setIsEditing] = useState(!isViewMode);
+
   const [formData, setFormData] = React.useState<Partial<Tenant>>({
     name: "",
     email: "",
@@ -40,11 +45,17 @@ export function TenantFormDialog({
 
   const [documentType, setDocumentType] = React.useState<"cpf" | "cnpj">("cpf");
 
-  React.useEffect(() => {
+  useEffect(() => {
+    // Sempre que abrir ou mudar o tenant, reseta o modo de edição baseado no isViewMode
+    setIsEditing(!isViewMode);
+    
     if (tenant) {
       setFormData({
         ...tenant,
         documentType: tenant.document_type || tenant.documentType || "cpf",
+        // Garantir que cpf/cnpj estejam preenchidos se document existir
+        cpf: tenant.cpf || (tenant.document_type === "cpf" ? tenant.document : ""),
+        cnpj: tenant.cnpj || (tenant.document_type === "cnpj" ? tenant.document : ""),
       });
       setDocumentType(tenant.document_type || tenant.documentType || "cpf");
     } else {
@@ -62,7 +73,7 @@ export function TenantFormDialog({
       });
       setDocumentType("cpf");
     }
-  }, [tenant, open]);
+  }, [tenant, open, isViewMode]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -131,12 +142,20 @@ export function TenantFormDialog({
     }
   };
 
+  const toggleEdit = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsEditing(true);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {isViewMode ? "Visualizar Inquilino" : tenant?.id ? "Editar Inquilino" : "Novo Inquilino"}
+            {tenant?.id 
+              ? (isEditing ? "Editar Inquilino" : "Detalhes do Inquilino")
+              : "Novo Inquilino"
+            }
           </DialogTitle>
         </DialogHeader>
 
@@ -147,7 +166,7 @@ export function TenantFormDialog({
               id="name"
               value={formData.name || ""}
               onChange={(e) => handleInputChange("name", e.target.value)}
-              disabled={isViewMode}
+              disabled={!isEditing}
               required
             />
           </div>
@@ -156,8 +175,8 @@ export function TenantFormDialog({
             <Label>Tipo de Documento *</Label>
             <Tabs value={documentType} onValueChange={(value) => handleDocumentTypeChange(value as "cpf" | "cnpj")}>
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="cpf" disabled={isViewMode}>CPF</TabsTrigger>
-                <TabsTrigger value="cnpj" disabled={isViewMode}>CNPJ</TabsTrigger>
+                <TabsTrigger value="cpf" disabled={!isEditing}>CPF</TabsTrigger>
+                <TabsTrigger value="cnpj" disabled={!isEditing}>CNPJ</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
@@ -171,7 +190,7 @@ export function TenantFormDialog({
                   value={formData.cpf || ""}
                   onChange={handleCpfChange}
                   placeholder="000.000.000-00"
-                  disabled={isViewMode}
+                  disabled={!isEditing}
                   required
                 />
               </div>
@@ -183,7 +202,7 @@ export function TenantFormDialog({
                   value={formData.rg || ""}
                   onChange={handleRgChange}
                   placeholder="00.000.000-0"
-                  disabled={isViewMode}
+                  disabled={!isEditing}
                 />
               </div>
             </>
@@ -195,7 +214,7 @@ export function TenantFormDialog({
                 value={formData.cnpj || ""}
                 onChange={handleCnpjChange}
                 placeholder="00.000.000/0000-00"
-                disabled={isViewMode}
+                disabled={!isEditing}
                 required
               />
             </div>
@@ -208,7 +227,7 @@ export function TenantFormDialog({
               type="email"
               value={formData.email || ""}
               onChange={(e) => handleInputChange("email", e.target.value)}
-              disabled={isViewMode}
+              disabled={!isEditing}
               required
             />
           </div>
@@ -220,7 +239,7 @@ export function TenantFormDialog({
               value={formData.phone || ""}
               onChange={handlePhoneChange}
               placeholder="(00) 00000-0000"
-              disabled={isViewMode}
+              disabled={!isEditing}
               required
             />
           </div>
@@ -230,7 +249,7 @@ export function TenantFormDialog({
             <Select
               value={formData.location_id || ""}
               onValueChange={(value) => handleInputChange("location_id", value)}
-              disabled={isViewMode}
+              disabled={!isEditing}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Selecione uma localização" />
@@ -250,7 +269,7 @@ export function TenantFormDialog({
             <Select
               value={formData.status || "active"}
               onValueChange={(value) => handleInputChange("status", value)}
-              disabled={isViewMode}
+              disabled={!isEditing}
             >
               <SelectTrigger>
                 <SelectValue />
@@ -263,13 +282,27 @@ export function TenantFormDialog({
             </Select>
           </div>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              {isViewMode ? "Fechar" : "Cancelar"}
+          <DialogFooter className="gap-2 sm:gap-0">
+            {/* Se estiver no modo visualização (isEditing false) e veio de viewMode (tenant existe) */}
+            {!isEditing && tenant?.id && (
+              <Button type="button" onClick={toggleEdit} className="w-full sm:w-auto">
+                <Pencil className="w-4 h-4 mr-2" />
+                Editar
+              </Button>
+            )}
+
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => onOpenChange(false)}
+              className="w-full sm:w-auto"
+            >
+              {isEditing ? "Cancelar" : "Fechar"}
             </Button>
-            {!isViewMode && (
-              <Button type="submit">
-                {tenant?.id ? "Atualizar" : "Criar"}
+
+            {isEditing && (
+              <Button type="submit" className="w-full sm:w-auto">
+                {tenant?.id ? "Salvar Alterações" : "Criar Inquilino"}
               </Button>
             )}
           </DialogFooter>
