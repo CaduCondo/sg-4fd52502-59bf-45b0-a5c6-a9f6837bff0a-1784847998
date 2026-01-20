@@ -313,7 +313,7 @@ export default function PropertiesPage() {
                   className="hover:shadow-lg transition-shadow cursor-pointer"
                   onClick={() => handleCardClick(property)}
                 >
-                  <CardHeader className="pb-3">
+                  <CardHeader className="pb-2">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1">
                         <CardTitle className="text-xl font-bold text-blue-600">
@@ -328,17 +328,10 @@ export default function PropertiesPage() {
                       {getStatusBadge(property.status)}
                     </div>
                   </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      <div className="pt-1 pb-2 border-b">
-                        <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Aluguel Mensal</p>
-                        <p className="text-2xl font-bold text-primary">
-                          {formatCurrency(property.value || property.monthly_rent || 0)}
-                        </p>
-                      </div>
-
+                  <CardContent className="pt-3">
+                    <div className="space-y-1.5">
                       {(property.rooms || property.bedrooms || property.bathrooms) && (
-                        <div className="flex gap-3 text-sm text-muted-foreground py-2">
+                        <div className="flex gap-3 text-sm text-muted-foreground">
                           {(property.rooms || property.bedrooms) && (
                             <div className="flex items-center gap-1">
                               <Bed className="h-4 w-4" />
@@ -355,12 +348,18 @@ export default function PropertiesPage() {
                       )}
 
                       {property.description && (
-                        <p className="text-sm text-muted-foreground line-clamp-2 py-2">
+                        <p className="text-sm text-muted-foreground line-clamp-2">
                           {property.description}
                         </p>
                       )}
 
-                      <div className="flex justify-end pt-2">
+                      <div className="flex items-center justify-between pt-3 mt-2 border-t">
+                        <div>
+                          <p className="text-xs text-muted-foreground uppercase tracking-wider">Aluguel</p>
+                          <p className="text-xl font-bold text-primary">
+                            {formatCurrency(property.value || property.monthly_rent || 0)}
+                          </p>
+                        </div>
                         <Button
                           variant="destructive"
                           size="sm"
