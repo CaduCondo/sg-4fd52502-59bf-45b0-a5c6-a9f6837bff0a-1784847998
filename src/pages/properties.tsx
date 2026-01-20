@@ -37,6 +37,7 @@ export default function PropertiesPage() {
   const [formData, setFormData] = useState({
     location_id: "",
     property_identifier: "Apartamento",
+    complement: "",
     monthly_rent: "",
     status: "available",
     description: "",
@@ -70,7 +71,8 @@ export default function PropertiesPage() {
   const filterProperties = () => {
     const filtered = properties.filter((property) => {
       const matchesSearch =
-        property.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        property.location?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        property.complement?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         property.description?.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = statusFilter === "all" || property.status === statusFilter;
       const matchesLocation = locationFilter === "all" || property.location_id === locationFilter;
@@ -110,13 +112,14 @@ export default function PropertiesPage() {
       }
 
       const propertyData = {
-        locationId: formData.location_id,  // ✅ camelCase para o service
+        locationId: formData.location_id,
         location: selectedLocation.name,
         propertyIdentifier: formData.property_identifier || "Apartamento",
-        value: parseCurrencyToFloat(formData.monthly_rent),  // ✅ value ao invés de monthly_rent
+        complement: formData.complement || undefined,
+        value: parseCurrencyToFloat(formData.monthly_rent),
         status: formData.status as "available" | "occupied" | "unavailable",
         description: formData.description,
-        rooms: formData.bedrooms ? parseInt(formData.bedrooms) : undefined,  // ✅ rooms ao invés de bedrooms
+        rooms: formData.bedrooms ? parseInt(formData.bedrooms) : undefined,
         bathrooms: formData.bathrooms ? parseInt(formData.bathrooms) : undefined,
       };
 
@@ -142,12 +145,13 @@ export default function PropertiesPage() {
   const handleCardClick = (property: Property) => {
     setEditingProperty(property);
     setFormData({
-      location_id: property.location_id,
+      location_id: property.location_id || "",
       property_identifier: property.property_identifier || "Apartamento",
-      monthly_rent: formatCurrency(property.monthly_rent || 0).replace("R$", "").trim(),
+      complement: property.complement || "",
+      monthly_rent: formatCurrency(property.value || property.monthly_rent || 0).replace("R$", "").trim(),
       status: property.status,
       description: property.description || "",
-      bedrooms: property.bedrooms?.toString() || "",
+      bedrooms: property.rooms?.toString() || property.bedrooms?.toString() || "",
       bathrooms: property.bathrooms?.toString() || "",
     });
     setIsEditMode(false);
@@ -181,6 +185,7 @@ export default function PropertiesPage() {
     setFormData({
       location_id: "",
       property_identifier: "Apartamento",
+      complement: "",
       monthly_rent: "",
       status: "available",
       description: "",
@@ -245,7 +250,7 @@ export default function PropertiesPage() {
                   <div className="relative flex-1">
                     <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
-                      placeholder="Buscar por local ou descrição..."
+                      placeholder="Buscar por local, complemento ou descrição..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       className="pl-8"
@@ -301,17 +306,17 @@ export default function PropertiesPage() {
 
         {viewMode === "grid" && (
           <ScrollReveal>
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {filteredProperties.map((property) => (
                 <Card 
                   key={property.id} 
                   className="hover:shadow-lg transition-shadow cursor-pointer"
                   onClick={() => handleCardClick(property)}
                 >
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between gap-2">
                       <div className="flex-1">
-                        <CardTitle className="text-lg font-semibold text-blue-600">
+                        <CardTitle className="text-xl font-bold text-blue-600">
                           {property.location}
                         </CardTitle>
                         {property.complement && (
@@ -324,13 +329,20 @@ export default function PropertiesPage() {
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-4">
-                      {(property.bedrooms || property.bathrooms) && (
-                        <div className="flex gap-4 text-sm text-muted-foreground">
-                          {property.bedrooms && (
+                    <div className="space-y-2">
+                      <div className="pt-1 pb-2 border-b">
+                        <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Aluguel Mensal</p>
+                        <p className="text-2xl font-bold text-primary">
+                          {formatCurrency(property.value || property.monthly_rent || 0)}
+                        </p>
+                      </div>
+
+                      {(property.rooms || property.bedrooms || property.bathrooms) && (
+                        <div className="flex gap-3 text-sm text-muted-foreground py-2">
+                          {(property.rooms || property.bedrooms) && (
                             <div className="flex items-center gap-1">
                               <Bed className="h-4 w-4" />
-                              <span>{property.bedrooms} Quartos</span>
+                              <span>{property.rooms || property.bedrooms} Quartos</span>
                             </div>
                           )}
                           {property.bathrooms && (
@@ -342,22 +354,11 @@ export default function PropertiesPage() {
                         </div>
                       )}
 
-                      {property.description ? (
-                        <p className="text-sm text-muted-foreground line-clamp-2 min-h-[40px]">
+                      {property.description && (
+                        <p className="text-sm text-muted-foreground line-clamp-2 py-2">
                           {property.description}
                         </p>
-                      ) : (
-                        <p className="text-sm text-muted-foreground min-h-[40px] italic">
-                          Sem descrição adicional
-                        </p>
                       )}
-                      
-                      <div className="pt-2 border-t">
-                        <p className="text-xs text-muted-foreground uppercase tracking-wider">Aluguel Mensal</p>
-                        <p className="text-2xl font-bold text-primary">
-                          {formatCurrency(property.monthly_rent || 0)}
-                        </p>
-                      </div>
 
                       <div className="flex justify-end pt-2">
                         <Button
@@ -406,10 +407,10 @@ export default function PropertiesPage() {
                         {property.complement || "-"}
                       </TableCell>
                       <TableCell>
-                        {property.bedrooms ? (
+                        {(property.rooms || property.bedrooms) ? (
                           <div className="flex items-center gap-1">
                             <Bed className="h-4 w-4" />
-                            <span>{property.bedrooms}</span>
+                            <span>{property.rooms || property.bedrooms}</span>
                           </div>
                         ) : "-"}
                       </TableCell>
@@ -421,7 +422,7 @@ export default function PropertiesPage() {
                           </div>
                         ) : "-"}
                       </TableCell>
-                      <TableCell>{formatCurrency(property.monthly_rent || 0)}</TableCell>
+                      <TableCell>{formatCurrency(property.value || property.monthly_rent || 0)}</TableCell>
                       <TableCell>{getStatusBadge(property.status)}</TableCell>
                       <TableCell className="text-right">
                         <Button
@@ -475,6 +476,18 @@ export default function PropertiesPage() {
                         ))}
                     </SelectContent>
                   </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="complement">Complemento</Label>
+                  <Input
+                    id="complement"
+                    type="text"
+                    value={formData.complement}
+                    onChange={(e) => setFormData({ ...formData, complement: e.target.value })}
+                    placeholder="Ex: Apto 201, Bloco B, Casa 3..."
+                    disabled={editingProperty && !isEditMode}
+                  />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
