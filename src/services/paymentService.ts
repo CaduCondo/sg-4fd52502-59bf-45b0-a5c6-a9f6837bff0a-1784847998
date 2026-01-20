@@ -188,3 +188,55 @@ export async function updateFuturePaymentsOnPaymentDayChange(
 ): Promise<void> {
   console.log("Atualização de dia de pagamento em massa ainda não implementada no novo padrão");
 }
+
+export async function createPaymentsForRental(rental: any): Promise<void> {
+  const startDate = new Date(rental.startDate);
+  const endDate = rental.endDate ? new Date(rental.endDate) : new Date(startDate.getFullYear() + 1, startDate.getMonth(), startDate.getDate());
+  const paymentDay = rental.paymentDay;
+  
+  // Calculate months diff
+  const monthsDiff = (endDate.getFullYear() - startDate.getFullYear()) * 12 + (endDate.getMonth() - startDate.getMonth());
+  // Add 1 to include the last month or ensure at least 12 months if indefinite
+  const totalMonths = monthsDiff > 0 ? monthsDiff : 12;
+
+  const payments = [];
+
+  for (let i = 0; i < totalMonths; i++) {
+    // Calculate reference date (first day of the month)
+    const referenceDate = new Date(startDate.getFullYear(), startDate.getMonth() + i, 1);
+    
+    // Calculate due date (payment day of that month)
+    const dueDate = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), paymentDay);
+    
+    // If payment day is invalid (e.g. 31st in Feb), it rolls over. Fix it to last day of month if needed
+    if (dueDate.getMonth() !== referenceDate.getMonth()) {
+      // Set to last day of previous month (which is the intended month)
+      dueDate.setDate(0); 
+    }
+
+    payments.push({
+      rentalId: rental.id,
+      dueDate: dueDate.toISOString().split('T')[0],
+      expectedAmount: rental.value,
+      status: 'pending',
+      referenceMonth: referenceDate.getMonth() + 1,
+      referenceYear: referenceDate.getFullYear(),
+    });
+  }
+
+  // Create all payments in parallel (or use a bulk insert if implemented, loop for now)
+  // Ideally, supabase supports bulk insert. Let's use loop with Promise.all for now or bulk if createSingle supports array (it usually doesn't in this helpers pattern)
+  // Actually, let's look at supabaseHelpers. createSingle is for one.
+  // We should probably use supabase.from(TABLE).insert(dbData) for bulk.
+  
+  const dbPayments = payments.map(p => mapPaymentToDB(p));
+  
+  const { error } = await supabase
+    .from(TABLE)
+    .insert(dbPayments);
+
+  if (error) {
+    console.error("Erro ao criar pagamentos:", error);
+    throw error;
+  }
+}
