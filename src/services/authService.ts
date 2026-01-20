@@ -15,6 +15,7 @@ interface UserSession {
     name: string;
     username: string;
     role: SystemUser["role"];
+    locationId?: string | null;
   };
   expiresAt: number;
 }
@@ -35,8 +36,6 @@ interface LoginResult {
  * For production, implement proper bcrypt comparison
  */
 function validatePassword(inputPassword: string, storedPassword: string): boolean {
-  // Direct comparison for now
-  // TODO: Implement bcrypt.compare() for production
   return inputPassword === storedPassword;
 }
 
@@ -45,53 +44,53 @@ function validatePassword(inputPassword: string, storedPassword: string): boolea
  */
 export async function login(credentials: LoginCredentials): Promise<LoginResult> {
   try {
-    console.log("🔐 Iniciando login com system_users...");
+    console.log("🔐 Starting login for:", credentials.email);
 
-    // 1. Search for user by email OR username
-    // Using explicit any casting to completely bypass the deep type instantiation issue
+    // 1. Search for user by username OR email
     const table: any = supabase.from("system_users");
     
     let { data: users, error: queryError } = await table
       .select("*")
-      .eq("email", credentials.email);
+      .eq("username", credentials.email)
+      .eq("active", true);
 
-    // If not found by email, try username
+    // If not found by username, try email
     if (!users || users.length === 0) {
        const result = await table
         .select("*")
-        .eq("username", credentials.email);
+        .eq("email", credentials.email)
+        .eq("active", true);
         
        users = result.data;
        queryError = result.error;
     }
     
-    // Explicit casting to expected type
     const foundUsers = users as SystemUser[];
 
     if (queryError) {
-      console.error("❌ Erro ao buscar usuário:", queryError);
+      console.error("❌ Error fetching user:", queryError);
       return { success: false, error: "Erro ao buscar usuário" };
     }
 
     if (!foundUsers || foundUsers.length === 0) {
-      console.warn("⚠️ Usuário não encontrado ou inativo");
+      console.warn("⚠️ User not found or inactive");
       return { success: false, error: "Usuário não encontrado ou inativo" };
     }
 
     const user = foundUsers[0];
-    console.log("✅ Usuário encontrado:", user.username);
+    console.log("✅ User found:", user.username, "| Name:", user.name);
 
     // 2. Validate password
     const isPasswordValid = validatePassword(credentials.password, user.password);
 
     if (!isPasswordValid) {
-      console.warn("⚠️ Senha incorreta");
+      console.warn("⚠️ Invalid password");
       return { success: false, error: "Senha incorreta" };
     }
 
-    console.log("✅ Senha validada com sucesso");
+    console.log("✅ Password validated successfully");
 
-    // 3. Create local session
+    // 3. Create local session with ALL user data
     const session: UserSession = {
       user: {
         id: user.id,
@@ -99,19 +98,31 @@ export async function login(credentials: LoginCredentials): Promise<LoginResult>
         name: user.name,
         username: user.username,
         role: user.role,
+        locationId: user.location_id,
       },
       expiresAt: Date.now() + (24 * 60 * 60 * 1000), // 24 hours
     };
 
-    // 4. Save session to localStorage
+    // 4. CLEAR ALL OLD SESSIONS FIRST
+    console.log("🧹 Clearing all old sessions...");
+    localStorage.removeItem("auth_session");
+    localStorage.removeItem("auth_user");
+    localStorage.removeItem("rental_auth_user");
+    localStorage.removeItem("currentUser");
+
+    // 5. Save NEW session
     localStorage.setItem("auth_session", JSON.stringify(session));
     localStorage.setItem("auth_user", JSON.stringify(session.user));
 
-    console.log("✅ Sessão criada com sucesso");
+    console.log("✅ Session created successfully for:", session.user.name);
+    console.log("✅ Username:", session.user.username);
+    console.log("✅ Role:", session.user.role);
+    console.log("✅ Location ID:", session.user.locationId);
+
     return { success: true, user: session.user };
 
   } catch (error) {
-    console.error("❌ Erro durante login:", error);
+    console.error("❌ Error during login:", error);
     return { success: false, error: "Erro ao processar login" };
   }
 }
@@ -122,7 +133,9 @@ export async function login(credentials: LoginCredentials): Promise<LoginResult>
 export function logout(): void {
   localStorage.removeItem("auth_session");
   localStorage.removeItem("auth_user");
-  console.log("✅ Logout realizado");
+  localStorage.removeItem("rental_auth_user");
+  localStorage.removeItem("currentUser");
+  console.log("✅ Logout completed");
 }
 
 /**

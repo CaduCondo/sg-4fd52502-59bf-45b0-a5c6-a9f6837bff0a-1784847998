@@ -1,12 +1,12 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { useRouter } from "next/router";
 import { SystemUser } from "@/types";
-import { userStorage } from "@/lib/storage";
-import { supabase } from "@/integrations/supabase/client";
+import { getCurrentUser, isAuthenticated } from "@/services/authService";
 
 interface AuthContextType {
   user: SystemUser | null;
   loading: boolean;
+  refreshUser: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -16,75 +16,63 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
+  const refreshUser = () => {
+    const currentUser = getCurrentUser();
+    if (currentUser) {
+      setUser(currentUser as SystemUser);
+    } else {
+      setUser(null);
+    }
+  };
+
   useEffect(() => {
-    // Simple session check - no complex queries
-    const checkSession = async () => {
+    // Check authentication on mount
+    const checkAuth = () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (session?.user) {
-          // Load from storage first (fast)
-          const storedUser = userStorage.get();
-          if (storedUser) {
-            setUser(storedUser);
-            setLoading(false);
-            return;
-          }
-
-          // If not in storage, fetch once
-          const { data: systemUserData } = await supabase
-            .from("system_users")
-            .select("*")
-            .eq("email", session.user.email)
-            .single();
-
-          const systemUser = systemUserData as any; // Cast to any to avoid strict type checking on missing fields
-
-          if (systemUser) {
-            const userData: SystemUser = {
-              id: systemUser.id,
-              email: systemUser.email,
-              name: systemUser.name,
-              role: (systemUser.role === "admin" ? "admin" : "broker") as "admin" | "broker" | "financial",
-              active: systemUser.active,
-              locationId: systemUser.location_id || systemUser.locationId, // Try both formats
-              created_at: systemUser.created_at,
-              updated_at: systemUser.updated_at,
-            };
-            
-            setUser(userData);
-            userStorage.save(userData);
+        // Use authService as single source of truth
+        if (isAuthenticated()) {
+          const currentUser = getCurrentUser();
+          if (currentUser) {
+            setUser(currentUser as SystemUser);
+          } else {
+            setUser(null);
+            if (router.pathname !== "/login") {
+              router.push("/login");
+            }
           }
         } else {
           setUser(null);
-          userStorage.clear();
+          if (router.pathname !== "/login") {
+            router.push("/login");
+          }
         }
       } catch (error) {
-        console.error("Error in auth:", error);
+        console.error("Error checking auth:", error);
         setUser(null);
       } finally {
         setLoading(false);
       }
     };
 
-    checkSession();
+    checkAuth();
 
-    // Listen to auth changes (login/logout only)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session) {
+    // Poll for auth changes every 5 seconds
+    const interval = setInterval(() => {
+      if (isAuthenticated()) {
+        refreshUser();
+      } else {
         setUser(null);
-        userStorage.clear();
         if (router.pathname !== "/login") {
           router.push("/login");
         }
       }
-    });
+    }, 5000);
 
-    return () => subscription.unsubscribe();
-  }, []); // Empty dependency array - run ONCE
+    return () => clearInterval(interval);
+  }, [router]);
 
   return (
-    <AuthContext.Provider value={{ user, loading }}>
+    <AuthContext.Provider value={{ user, loading, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

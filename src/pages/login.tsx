@@ -77,31 +77,39 @@ export default function Login() {
     setLoading(true);
 
     try {
-      // Sistema de autenticação híbrido 100% confiável
+      // Clear any existing sessions BEFORE login
+      console.log("🧹 Cleaning all existing sessions before login...");
+      localStorage.removeItem("auth_session");
+      localStorage.removeItem("auth_user");
+      localStorage.removeItem("rental_auth_user");
+      localStorage.removeItem("currentUser");
+
+      // Attempt login
       const result = await login({ email: username, password });
       
       if (result.success && result.user) {
-        // Login bem-sucedido
+        // Login successful
         localStorage.removeItem("loginAttempts");
         localStorage.removeItem("lockoutTime");
         
-        console.log("✅ Login bem-sucedido!");
-        console.log("✅ Usuário:", result.user.name);
+        console.log("✅ Login successful!");
+        console.log("✅ Logged in as:", result.user.username);
+        console.log("✅ Name:", result.user.name);
         console.log("✅ Role:", result.user.role);
         
-        // Aguardar sincronização
+        // Wait for synchronization
         await new Promise(resolve => setTimeout(resolve, 300));
         
-        // Redirecionar para dashboard
+        // Redirect to dashboard
         window.location.href = "/dashboard";
         return;
       }
 
-      // Login falhou - credenciais inválidas
+      // Login failed - invalid credentials
       handleLoginAttempt();
       
     } catch (error) {
-      console.error("❌ Erro durante login:", error);
+      console.error("❌ Error during login:", error);
       setError("Erro ao processar login. Tente novamente.");
     } finally {
       setLoading(false);
