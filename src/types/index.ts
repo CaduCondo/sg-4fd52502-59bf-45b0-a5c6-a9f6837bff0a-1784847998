@@ -104,15 +104,8 @@ export interface Tenant {
   document?: string; // Alias for cpf/cnpj
   documentType?: string;
   status: "active" | "inactive" | "rented";
-  birthDate?: string;
-  profession?: string;
-  income?: number;
-  notes?: string;
-  address?: string;
-  city?: string;
-  state?: string;
-  zipCode?: string;
   createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Rental {
