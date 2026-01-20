@@ -152,7 +152,7 @@ export function useDashboardData(selectedMonth: number | null, selectedYear: num
       return dueDate.getTime() === today.getTime();
     });
 
-    const activeTenants = tens.filter(t => t.status === "active" || t.status === "tenant");
+    const activeTenants = tens.filter(t => t.status === "active" || t.status === "rented");
 
     setFilteredPayments(periodPayments);
     setDueSoonPayments(dueSoon);
