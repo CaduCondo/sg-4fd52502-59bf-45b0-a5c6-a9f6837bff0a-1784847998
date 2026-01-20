@@ -31,11 +31,6 @@ export default function TenantDetails() {
     phone: "",
     documentType: "cpf" as "cpf" | "cnpj",
     document: "",
-    birthDate: "",
-    profession: "",
-    income: "",
-    address: "",
-    notes: "",
   });
 
   useEffect(() => {
@@ -56,11 +51,6 @@ export default function TenantDetails() {
           phone: tenantData.phone,
           document: tenantData.document || "",
           documentType: (tenantData.documentType === "cnpj" ? "cnpj" : "cpf") as "cpf" | "cnpj",
-          birthDate: tenantData.birthDate || "",
-          profession: tenantData.profession || "",
-          income: tenantData.income?.toString() || "",
-          address: tenantData.address || "",
-          notes: tenantData.notes || "",
         });
       }
     } catch (error) {
@@ -87,11 +77,6 @@ export default function TenantDetails() {
         phone: tenant.phone || "",
         documentType: (tenant.documentType === "cnpj" ? "cnpj" : "cpf") as "cpf" | "cnpj",
         document: tenant.document || "",
-        birthDate: tenant.birthDate || "",
-        profession: tenant.profession || "",
-        income: tenant.income?.toString() || "",
-        address: tenant.address || "",
-        notes: tenant.notes || "",
       });
     }
     setIsEditing(false);
@@ -99,15 +84,7 @@ export default function TenantDetails() {
 
   const handleSave = async () => {
     try {
-      // Convert income string to number
-      const incomeValue = formData.income 
-        ? parseFloat(formData.income.toString().replace(/\./g, "").replace(",", ".")) 
-        : 0;
-
-      await updateTenant(id as string, {
-        ...formData,
-        income: incomeValue
-      });
+      await updateTenant(id as string, formData);
       toast({
         title: "Sucesso",
         description: "Inquilino atualizado com sucesso.",
