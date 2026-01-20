@@ -196,10 +196,19 @@ export async function createPaymentsForRental(rental: any): Promise<void> {
     : new Date(startDate.getFullYear() + 1, startDate.getMonth(), startDate.getDate());
   const paymentDay = rental.paymentDay || rental.payment_day;
   
-  // Calculate months diff
-  const monthsDiff = (endDate.getFullYear() - startDate.getFullYear()) * 12 + (endDate.getMonth() - startDate.getMonth());
-  // Add 1 to include the last month or ensure at least 12 months if indefinite
-  const totalMonths = monthsDiff > 0 ? monthsDiff : 12;
+  // Calculate months diff correctly
+  const yearsDiff = endDate.getFullYear() - startDate.getFullYear();
+  const monthsDiff = endDate.getMonth() - startDate.getMonth();
+  const totalMonths = (yearsDiff * 12) + monthsDiff + 1; // +1 to include both start and end month
+
+  console.log("Creating payments for rental:", {
+    rentalId: rental.id,
+    startDate: startDate.toISOString().split('T')[0],
+    endDate: endDate.toISOString().split('T')[0],
+    paymentDay,
+    totalMonths,
+    value: rental.value || rental.monthly_rent
+  });
 
   const payments = [];
 
@@ -208,12 +217,11 @@ export async function createPaymentsForRental(rental: any): Promise<void> {
     const referenceDate = new Date(startDate.getFullYear(), startDate.getMonth() + i, 1);
     
     // Calculate due date (payment day of that month)
-    const dueDate = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), paymentDay);
+    let dueDate = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), paymentDay);
     
-    // If payment day is invalid (e.g. 31st in Feb), it rolls over. Fix it to last day of month if needed
+    // If payment day is invalid (e.g. 31st in Feb), set to last day of month
     if (dueDate.getMonth() !== referenceDate.getMonth()) {
-      // Set to last day of previous month (which is the intended month)
-      dueDate.setDate(0); 
+      dueDate = new Date(referenceDate.getFullYear(), referenceDate.getMonth() + 1, 0);
     }
 
     payments.push({
@@ -226,6 +234,8 @@ export async function createPaymentsForRental(rental: any): Promise<void> {
     });
   }
 
+  console.log(`Creating ${payments.length} payments:`, payments);
+
   const { error } = await supabase
     .from(TABLE)
     .insert(payments);
@@ -234,4 +244,6 @@ export async function createPaymentsForRental(rental: any): Promise<void> {
     console.error("Erro ao criar pagamentos:", error);
     throw error;
   }
+
+  console.log(`Successfully created ${payments.length} payments for rental ${rental.id}`);
 }

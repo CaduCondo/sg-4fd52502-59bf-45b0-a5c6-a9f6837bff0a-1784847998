@@ -25,42 +25,55 @@ import { hasPermission } from "@/lib/permissions";
 import { useAuth } from "@/contexts/AuthContext";
 import { update as updateProperty } from "@/services/propertyService";
 import { update as updateTenant } from "@/services/tenantService";
+import { getAll as getAllProperties } from "@/services/propertyService";
+import { getAll as getAllTenants } from "@/services/tenantService";
+import { getAll as getAllLocations } from "@/services/locationService";
+import type { Location } from "@/types";
 
 export default function RentalDetails() {
   const router = useRouter();
   const { id } = router.query;
-  const { user } = useAuth(); // Ensure this is present
+  const { user } = useAuth();
   const { toast } = useToast();
+  
   const [rental, setRental] = useState<Rental | null>(null);
   const [property, setProperty] = useState<Property | null>(null);
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isEndDialogOpen, setIsEndDialogOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
 
+  const [editPropertyId, setEditPropertyId] = useState("");
+  const [editTenantId, setEditTenantId] = useState("");
   const [editStartDate, setEditStartDate] = useState("");
   const [editEndDate, setEditEndDate] = useState("");
   const [editPaymentDay, setEditPaymentDay] = useState("");
-  const [editMonthlyRent, setEditMonthlyRent] = useState("");
   const [editHasGarage, setEditHasGarage] = useState(false);
   const [editGarageValue, setEditGarageValue] = useState("");
   const [editAttachments, setEditAttachments] = useState<string[]>([]);
 
   useEffect(() => {
     if (id && id !== "new") {
-      loadRental();
+      loadData();
     } else if (id === "new") {
       setLoading(false);
-      // Redirect to rentals page - new rentals should be created from the modal there
       router.push("/rentals");
     }
   }, [id, router]);
 
-  const loadRental = async () => {
+  const loadData = async () => {
     try {
       setLoading(true);
-      const rentalData = await getRentalById(id as string);
+      const [rentalData, propertiesData, tenantsData, locationsData] = await Promise.all([
+        getRentalById(id as string),
+        getAllProperties(),
+        getAllTenants(),
+        getAllLocations(),
+      ]);
       
       if (!rentalData) {
         toast({ 
@@ -80,11 +93,15 @@ export default function RentalDetails() {
       setRental(rentalData);
       setProperty(propertyData || null);
       setTenant(tenantData || null);
+      setProperties(propertiesData);
+      setTenants(tenantsData);
+      setLocations(locationsData);
 
+      setEditPropertyId(rentalData.propertyId);
+      setEditTenantId(rentalData.tenantId);
       setEditStartDate(rentalData.startDate);
       setEditEndDate(rentalData.endDate || "");
       setEditPaymentDay(rentalData.paymentDay.toString());
-      setEditMonthlyRent(applyRealMask((rentalData.monthlyRent * 100).toString()));
       setEditHasGarage(rentalData.hasGarage || false);
       setEditGarageValue(rentalData.garageValue ? applyRealMask((rentalData.garageValue * 100).toString()) : "");
       setEditAttachments(rentalData.attachments || []);
@@ -99,6 +116,11 @@ export default function RentalDetails() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const getLocationName = (locationId: string) => {
+    const location = locations.find((loc) => loc.id === locationId);
+    return location?.name || "Local não encontrado";
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -153,23 +175,30 @@ export default function RentalDetails() {
 
   const handleCancelEdit = () => {
     setIsEditing(false);
-    loadRental();
+    loadData();
   };
 
   const handleSave = async () => {
     if (!rental) return;
 
     try {
-      const monthlyRent = parseFloat(editMonthlyRent.replace(/\./g, "").replace(",", "."));
+      const selectedProperty = properties.find((p) => p.id === editPropertyId);
+      if (!selectedProperty) {
+        throw new Error("Imóvel não encontrado");
+      }
+
+      const propertyValue = selectedProperty.value || 0;
       const garageValue = editHasGarage ? parseFloat(editGarageValue.replace(/\./g, "").replace(",", ".") || "0") : 0;
-      const totalValue = monthlyRent + garageValue;
+      const totalValue = propertyValue + garageValue;
 
       const updatedRental: Rental = {
         ...rental,
+        propertyId: editPropertyId,
+        tenantId: editTenantId,
         startDate: editStartDate,
         endDate: editEndDate || null,
         paymentDay: parseInt(editPaymentDay),
-        monthlyRent,
+        monthlyRent: propertyValue,
         value: totalValue,
         hasGarage: editHasGarage,
         garageValue: editHasGarage ? garageValue : undefined,
@@ -191,8 +220,10 @@ export default function RentalDetails() {
       
       toast({ 
         title: "Sucesso!", 
-        description: "Locação e recebimentos atualizados com sucesso" 
+        description: "Locação atualizada com sucesso" 
       });
+      
+      loadData();
     } catch (error) {
       console.error("Error updating rental:", error);
       toast({ 
@@ -205,8 +236,6 @@ export default function RentalDetails() {
 
   const handleEndRental = async () => {
     if (!rental || !property || !tenant) return;
-    
-    if (!confirm("Tem certeza que deseja encerrar esta locação?")) return;
 
     try {
       await updateRental(rental.id, { isActive: false });
@@ -218,6 +247,7 @@ export default function RentalDetails() {
         description: "Locação encerrada com sucesso.",
       });
 
+      setIsEndDialogOpen(false);
       router.push("/rentals");
     } catch (error) {
       console.error("Error ending rental:", error);
@@ -229,64 +259,11 @@ export default function RentalDetails() {
     }
   };
 
-  const handleDelete = async () => {
-    if (!rental) return;
-
-    try {
-      await deleteRental(rental.id);
-
-      if (property) {
-        await updateProperty(property.id, { status: "available" });
-      }
-
-      if (tenant) {
-        await updateTenant(tenant.id, { status: "active" });
-      }
-
-      toast({ 
-        title: "Sucesso!", 
-        description: "Locação excluída com sucesso" 
-      });
-      
-      router.push("/rentals");
-    } catch (error) {
-      console.error("Error deleting rental:", error);
-      toast({ 
-        title: "Erro", 
-        description: "Não foi possível excluir a locação", 
-        variant: "destructive" 
-      });
-    }
-  };
-
-  const getStatusBadge = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "rented":
-        return (
-          <Badge className="bg-blue-100 text-blue-800 border-blue-200">
-            Locatário
-          </Badge>
-        );
-      case "active":
-        return (
-          <Badge className="bg-green-100 text-green-800 border-green-200">
-            Ativo
-          </Badge>
-        );
-      case "inactive":
-      case "unavailable":
-        return (
-          <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">
-            Indisponível
-          </Badge>
-        );
-      default:
-        return (
-          <Badge className="bg-gray-100 text-gray-800 border-gray-200">
-            {status}
-          </Badge>
-        );
-    }
+  const calculatedTotal = () => {
+    const selectedProperty = properties.find((p) => p.id === editPropertyId);
+    const propertyValue = selectedProperty?.value || 0;
+    const garage = editHasGarage ? parseFloat(editGarageValue.replace(/\./g, "").replace(",", ".") || "0") : 0;
+    return propertyValue + garage;
   };
 
   if (loading) {
@@ -300,7 +277,6 @@ export default function RentalDetails() {
   }
 
   if (!rental || !property || !tenant) {
-    // If id is 'new', we're redirecting, so show loading
     if (id === "new") {
       return (
         <Layout>
@@ -320,167 +296,198 @@ export default function RentalDetails() {
     );
   }
 
-  const totalValue = rental.monthlyRent + (rental.garageValue || 0);
-
   return (
     <>
       <SEO title={`Locação - ${property.location}`} />
       <Layout>
-        <div className="space-y-4">
+        <div className="space-y-6">
           <div className="flex items-center justify-between">
             <Button variant="ghost" size="sm" onClick={() => router.push("/rentals")}>
               <ArrowLeft className="h-4 w-4 mr-2" />
               Voltar
             </Button>
             <div className="flex gap-2">
-              {hasPermission(user?.role, "canEditRental") && (
-                <Button onClick={() => setIsEditing(true)}>
-                  <Edit className="mr-2 h-4 w-4" />
-                  Editar
-                </Button>
-              )}
-              
-              {hasPermission(user?.role, "canDeleteRental") && (
-                <Button variant="destructive" onClick={handleEndRental}>
-                  <XCircle className="mr-2 h-4 w-4" />
-                  Encerrar Contrato
-                </Button>
+              {!isEditing ? (
+                <>
+                  <Button onClick={handleEdit} variant="outline">
+                    <Edit className="mr-2 h-4 w-4" />
+                    Editar
+                  </Button>
+                  <Button variant="destructive" onClick={() => setIsEndDialogOpen(true)}>
+                    <XCircle className="mr-2 h-4 w-4" />
+                    Encerrar Contrato
+                  </Button>
+                  <Button variant="outline" onClick={() => router.push("/rentals")}>
+                    Cancelar
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button onClick={handleSave}>
+                    <Save className="mr-2 h-4 w-4" />
+                    Salvar
+                  </Button>
+                  <Button variant="outline" onClick={handleCancelEdit}>
+                    <X className="mr-2 h-4 w-4" />
+                    Cancelar
+                  </Button>
+                </>
               )}
             </div>
           </div>
 
           <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-lg">{property.location}</CardTitle>
-                  <p className="text-xs text-muted-foreground">{property.complement}</p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="text-right">
-                    <p className="text-lg font-bold text-emerald-600">{formatCurrency(totalValue)}</p>
-                    <p className="text-xs text-muted-foreground">Vencimento dia {rental.paymentDay}</p>
-                  </div>
-                  <Badge variant={rental.isActive ? "default" : "secondary"}>
-                    {rental.isActive ? "Ativa" : "Encerrada"}
-                  </Badge>
-                </div>
-              </div>
+            <CardHeader>
+              <CardTitle>Detalhes da Locação</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Inquilino</Label>
-                    <p className="text-sm font-medium">{tenant.name}</p>
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="property">Imóvel *</Label>
+                    <Select value={editPropertyId} onValueChange={setEditPropertyId} disabled={!isEditing}>
+                      <SelectTrigger id="property">
+                        <SelectValue placeholder="Selecione o imóvel" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {properties.map((prop) => (
+                          <SelectItem key={prop.id} value={prop.id}>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">
+                                {getLocationName(prop.locationId)}
+                                {prop.complement && ` - ${prop.complement}`}
+                              </span>
+                              <span className="text-muted-foreground">•</span>
+                              <span className="text-sm font-semibold text-emerald-600">
+                                {formatCurrency(prop.value || 0)}
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Documento</Label>
-                    <p className="text-sm font-medium">{tenant.document || "—"}</p>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="tenant">Inquilino *</Label>
+                    <Select value={editTenantId} onValueChange={setEditTenantId} disabled={!isEditing}>
+                      <SelectTrigger id="tenant">
+                        <SelectValue placeholder="Selecione o inquilino" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {tenants.map((t) => (
+                          <SelectItem key={t.id} value={t.id}>
+                            {t.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Data Início</Label>
-                    {isEditing ? (
-                      <Input
-                        type="date"
-                        value={editStartDate}
-                        onChange={(e) => setEditStartDate(e.target.value)}
-                        className="h-8 text-sm"
-                      />
-                    ) : (
-                      <p className="text-sm font-medium">
-                        {new Date(rental.startDate + "T00:00:00").toLocaleDateString("pt-BR")}
-                      </p>
-                    )}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="startDate">Data Início *</Label>
+                    <Input
+                      id="startDate"
+                      type="date"
+                      value={editStartDate}
+                      onChange={(e) => setEditStartDate(e.target.value)}
+                      disabled={!isEditing}
+                    />
                   </div>
 
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Data Término</Label>
-                    {isEditing ? (
-                      <Input
-                        type="date"
-                        value={editEndDate}
-                        onChange={(e) => setEditEndDate(e.target.value)}
-                        className="h-8 text-sm"
-                      />
-                    ) : (
-                      <p className="text-sm font-medium">
-                        {rental.endDate ? new Date(rental.endDate + "T00:00:00").toLocaleDateString("pt-BR") : "—"}
-                      </p>
-                    )}
+                  <div className="space-y-2">
+                    <Label htmlFor="endDate">Data Término</Label>
+                    <Input
+                      id="endDate"
+                      type="date"
+                      value={editEndDate}
+                      onChange={(e) => setEditEndDate(e.target.value)}
+                      disabled={!isEditing}
+                    />
                   </div>
 
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Dia Pagamento</Label>
-                    {isEditing ? (
-                      <Select value={editPaymentDay} onValueChange={setEditPaymentDay}>
-                        <SelectTrigger className="h-8 text-sm">
-                          <SelectValue placeholder="Selecione o dia" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
-                            <SelectItem key={day} value={day.toString()}>
-                              Dia {day.toString().padStart(2, "0")}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <p className="text-sm font-medium">Dia {rental.paymentDay}</p>
-                    )}
+                  <div className="space-y-2">
+                    <Label htmlFor="paymentDay">Dia Pagamento *</Label>
+                    <Select value={editPaymentDay} onValueChange={setEditPaymentDay} disabled={!isEditing}>
+                      <SelectTrigger id="paymentDay">
+                        <SelectValue placeholder="Selecione o dia" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                          <SelectItem key={day} value={day.toString()}>
+                            Dia {day.toString().padStart(2, "0")}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Valor Aluguel</Label>
-                    {isEditing ? (
-                      <Input
-                        value={editMonthlyRent}
-                        onChange={(e) => setEditMonthlyRent(applyRealMask(e.target.value))}
-                        className="h-8 text-sm"
-                      />
-                    ) : (
-                      <p className="text-sm font-medium">{formatCurrency(rental.monthlyRent)}</p>
-                    )}
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="hasGarage"
+                      checked={editHasGarage}
+                      onCheckedChange={(checked) => {
+                        setEditHasGarage(checked as boolean);
+                        if (!checked) {
+                          setEditGarageValue("");
+                        }
+                      }}
+                      disabled={!isEditing}
+                    />
+                    <Label htmlFor="hasGarage" className="cursor-pointer">
+                      Vaga Garagem ?
+                    </Label>
                   </div>
+                  {editHasGarage && (
+                    <Input
+                      id="garageValue"
+                      value={editGarageValue}
+                      onChange={(e) => setEditGarageValue(applyRealMask(e.target.value))}
+                      placeholder="R$ 0,00"
+                      disabled={!isEditing}
+                    />
+                  )}
+                </div>
 
-                  <div className="space-y-1">
-                    <div className="flex items-center space-x-2 mb-1">
-                      <Checkbox
-                        id="hasGarage"
-                        checked={editHasGarage}
-                        onCheckedChange={(checked) => setEditHasGarage(checked as boolean)}
-                        disabled={!isEditing}
-                      />
-                      <Label htmlFor="hasGarage" className="text-xs text-muted-foreground">
-                        Vaga Garagem
-                      </Label>
+                <div className="p-4 bg-emerald-50 dark:bg-emerald-950 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-emerald-900 dark:text-emerald-100">
+                        Valor do Aluguel:
+                      </span>
+                      <span className="font-semibold text-emerald-700 dark:text-emerald-300">
+                        {formatCurrency(properties.find((p) => p.id === editPropertyId)?.value || 0)}
+                      </span>
                     </div>
                     {editHasGarage && (
-                      <>
-                        {isEditing ? (
-                          <Input
-                            placeholder="Valor da vaga"
-                            value={editGarageValue}
-                            onChange={(e) => setEditGarageValue(applyRealMask(e.target.value))}
-                            className="h-8 text-sm"
-                          />
-                        ) : (
-                          <p className="text-sm font-medium">{formatCurrency(rental.garageValue || 0)}</p>
-                        )}
-                      </>
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-emerald-900 dark:text-emerald-100">
+                          Vaga Garagem:
+                        </span>
+                        <span className="font-semibold text-emerald-700 dark:text-emerald-300">
+                          {editGarageValue ? `+ ${editGarageValue}` : "+ R$ 0,00"}
+                        </span>
+                      </div>
                     )}
+                    <div className="flex justify-between items-center pt-2 border-t border-emerald-200 dark:border-emerald-800">
+                      <span className="font-bold text-emerald-900 dark:text-emerald-100">
+                        Valor Total:
+                      </span>
+                      <span className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
+                        {formatCurrency(calculatedTotal())}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
-                {isEditing && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-xs text-muted-foreground font-medium">Anexos</Label>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label>Anexos</Label>
+                    {isEditing && (
                       <div className="flex gap-2">
                         <Button
                           type="button"
@@ -516,18 +523,18 @@ export default function RentalDetails() {
                           onChange={handleFileUpload}
                         />
                       </div>
-                    </div>
+                    )}
+                  </div>
 
-                    {editAttachments.length > 0 && (
-                      <div className="space-y-2">
-                        {editAttachments.map((attachment, index) => (
-                          <div
-                            key={index}
-                            className="flex items-center justify-between p-3 bg-muted rounded-lg"
-                          >
-                            <span className="text-sm truncate flex-1">
-                              Arquivo {index + 1}
-                            </span>
+                  {editAttachments.length > 0 && (
+                    <div className="space-y-2">
+                      {editAttachments.map((attachment, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center justify-between p-3 bg-muted rounded-lg"
+                        >
+                          <span className="text-sm truncate flex-1">Arquivo {index + 1}</span>
+                          {isEditing ? (
                             <Button
                               type="button"
                               variant="ghost"
@@ -536,25 +543,7 @@ export default function RentalDetails() {
                             >
                               <X className="h-4 w-4" />
                             </Button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {!isEditing && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {rental.attachments && rental.attachments.length > 0 ? (
-                      <div className="space-y-2">
-                        {rental.attachments.map((attachment, index) => (
-                          <div
-                            key={index}
-                            className="flex items-center justify-between p-3 bg-muted rounded-lg"
-                          >
-                            <span className="text-sm truncate flex-1">
-                              Arquivo {index + 1}
-                            </span>
+                          ) : (
                             <div className="flex gap-2">
                               <Button
                                 type="button"
@@ -589,14 +578,12 @@ export default function RentalDetails() {
                                 Visualizar
                               </Button>
                             </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">Nenhum anexo disponível.</p>
-                    )}
-                  </div>
-                )}
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -611,30 +598,11 @@ export default function RentalDetails() {
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsEndDialogOpen(false)} size="sm">
+              <Button variant="outline" onClick={() => setIsEndDialogOpen(false)}>
                 Cancelar
               </Button>
-              <Button variant="destructive" onClick={handleEndRental} size="sm">
+              <Button variant="destructive" onClick={handleEndRental}>
                 Encerrar
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Excluir Locação</DialogTitle>
-              <DialogDescription>
-                Tem certeza que deseja excluir esta locação? Esta ação não pode ser desfeita.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)} size="sm">
-                Cancelar
-              </Button>
-              <Button variant="destructive" onClick={handleDelete} size="sm">
-                Excluir
               </Button>
             </DialogFooter>
           </DialogContent>

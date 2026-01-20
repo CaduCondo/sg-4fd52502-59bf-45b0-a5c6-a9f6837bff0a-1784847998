@@ -253,48 +253,57 @@ export default function Rentals() {
                     return (
                       <Card 
                         key={rental.id} 
-                        className="hover:shadow-lg transition-shadow cursor-pointer relative"
+                        className="hover:shadow-lg transition-shadow cursor-pointer relative p-4"
                         onClick={() => handleViewRental(rental.id)}
                       >
-                        <CardHeader className="pb-3">
-                          <CardTitle className="text-lg text-blue-600">
-                            {location?.name || "Local não encontrado"}
-                          </CardTitle>
+                        <div className="space-y-3">
+                          {/* Header: Location name + Badge */}
+                          <div className="flex items-start justify-between gap-2">
+                            <h3 className="text-lg font-semibold text-blue-600">
+                              {location?.name || "Local não encontrado"}
+                            </h3>
+                            <Badge variant="default" className="shrink-0">Ativa</Badge>
+                          </div>
+
+                          {/* Complement */}
                           {property?.complement && (
                             <p className="text-sm text-muted-foreground">
                               {property.complement}
                             </p>
                           )}
-                        </CardHeader>
-                        <CardContent className="space-y-2">
+
+                          {/* Tenant */}
                           <div>
-                            <p className="text-sm font-medium">Inquilino:</p>
+                            <p className="text-sm font-semibold">Inquilino:</p>
                             <p className="text-sm text-muted-foreground">{tenant?.name || "-"}</p>
                           </div>
-                          <div className="flex justify-between items-center pt-2 border-t">
-                            <div>
-                              <p className="text-xs text-muted-foreground">Valor</p>
-                              <p className="font-semibold text-emerald-600">
-                                {formatCurrency(rental.value)}
-                              </p>
-                            </div>
-                            <Badge variant="default">Ativa</Badge>
+
+                          {/* Value */}
+                          <div>
+                            <p className="text-sm text-muted-foreground">Valor</p>
+                            <p className="text-2xl font-bold text-emerald-600">
+                              {formatCurrency(rental.value)}
+                            </p>
                           </div>
-                          <div className="text-xs text-muted-foreground">
+
+                          {/* Start date */}
+                          <p className="text-sm text-muted-foreground">
                             Início: {formatDate(rental.startDate)}
-                          </div>
-                        </CardContent>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          className="absolute bottom-4 right-4"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setRentalToDelete(rental);
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                          </p>
+
+                          {/* Delete button */}
+                          <Button
+                            variant="destructive"
+                            size="icon"
+                            className="absolute bottom-4 right-4"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setRentalToDelete(rental);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </Card>
                     );
                   })}
