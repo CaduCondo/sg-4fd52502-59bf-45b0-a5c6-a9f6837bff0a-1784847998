@@ -70,6 +70,7 @@ export interface Property {
   description?: string; // DB field
   type?: string; // DB field
   rooms?: number; // DB field
+  bedrooms?: number; // Alias for rooms
   bathrooms?: number; // DB field
   area?: number; // DB field
   hasGarage?: boolean; // Mapped from has_garage
