@@ -110,18 +110,18 @@ export default function PropertiesPage() {
       }
 
       const propertyData = {
+        locationId: formData.location_id,  // ✅ camelCase para o service
         location: selectedLocation.name,
-        location_id: formData.location_id,
-        property_identifier: formData.property_identifier || "Apartamento",
-        type: "residential" as const,
-        monthly_rent: parseCurrencyToFloat(formData.monthly_rent),
+        propertyIdentifier: formData.property_identifier || "Apartamento",
+        value: parseCurrencyToFloat(formData.monthly_rent),  // ✅ value ao invés de monthly_rent
         status: formData.status as "available" | "occupied" | "unavailable",
         description: formData.description,
-        bedrooms: formData.bedrooms ? parseInt(formData.bedrooms) : undefined,
+        rooms: formData.bedrooms ? parseInt(formData.bedrooms) : undefined,  // ✅ rooms ao invés de bedrooms
         bathrooms: formData.bathrooms ? parseInt(formData.bathrooms) : undefined,
       };
 
       console.log("Dados a serem salvos:", propertyData);
+      console.log("locationId:", propertyData.locationId);
 
       if (editingProperty) {
         await propertyService.update(editingProperty.id, propertyData);
