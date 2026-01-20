@@ -11,6 +11,7 @@ import { getAll as getAllRentals, create as createRental, remove as deleteRental
 import { getAll as getAllProperties } from "@/services/propertyService";
 import { getAll as getAllTenants } from "@/services/tenantService";
 import { getAll as getAllLocations } from "@/services/locationService";
+import { RentalFormDialog } from "@/components/rentals/RentalFormDialog";
 import type { Rental, Property, Tenant, Location } from "@/types";
 import { formatCurrency } from "@/lib/masks";
 
@@ -22,6 +23,7 @@ export default function Rentals() {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [showInactive, setShowInactive] = useState(false);
+  const [isRentalDialogOpen, setIsRentalDialogOpen] = useState(false);
 
   const loadData = async () => {
     try {
@@ -104,7 +106,7 @@ export default function Rentals() {
               </p>
             </div>
             <Button
-              onClick={() => (window.location.href = "/rentals/new")}
+              onClick={() => setIsRentalDialogOpen(true)}
               disabled={!canCreateRental}
             >
               <Plus className="mr-2 h-4 w-4" />
@@ -316,7 +318,7 @@ export default function Rentals() {
                 <p className="text-muted-foreground mb-4">
                   Comece criando sua primeira locação
                 </p>
-                <Button onClick={() => (window.location.href = "/rentals/new")} disabled={!canCreateRental}>
+                <Button onClick={() => setIsRentalDialogOpen(true)} disabled={!canCreateRental}>
                   <Plus className="mr-2 h-4 w-4" />
                   Nova Locação
                 </Button>
@@ -324,6 +326,14 @@ export default function Rentals() {
             </Card>
           )}
         </div>
+
+        <RentalFormDialog
+          open={isRentalDialogOpen}
+          onOpenChange={setIsRentalDialogOpen}
+          availableProperties={availableProperties}
+          availableTenants={availableTenants}
+          onSuccess={loadData}
+        />
       </Layout>
     </>
   );
