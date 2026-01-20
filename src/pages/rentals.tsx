@@ -106,6 +106,12 @@ export default function Rentals() {
     if (!rentalToDelete) return;
 
     try {
+      // Atualizar status do imóvel para disponível
+      await updateProperty(rentalToDelete.propertyId, { status: "available" });
+      
+      // Atualizar status do inquilino para ativo
+      await updateTenant(rentalToDelete.tenantId, { status: "active" });
+
       await deleteRental(rentalToDelete.id);
       toast({
         title: "Sucesso!",

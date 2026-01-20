@@ -106,7 +106,7 @@ export interface Tenant {
   cnpj?: string;
   location_id?: string;
   document_type?: "cpf" | "cnpj"; // Database field match
-  status: "active" | "inactive" | "rented";
+  status: "active" | "inactive" | "rented" | "locatario";
   createdAt?: string;
   created_at?: string;
   updatedAt?: string;
