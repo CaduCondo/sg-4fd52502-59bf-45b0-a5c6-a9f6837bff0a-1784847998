@@ -10,11 +10,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, Trash2, Grid3x3, List, AlertCircle, X } from "lucide-react";
+import { Plus, Search, Trash2, Grid3x3, List, AlertCircle, X, Bed, Bath } from "lucide-react";
 import { propertyService, locationService } from "@/services";
 import type { Property, Location } from "@/types";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { applyMoneyMask, parseCurrencyToFloat, formatCurrency } from "@/lib/masks";
 
 export default function PropertiesPage() {
   const router = useRouter();
@@ -40,6 +41,8 @@ export default function PropertiesPage() {
     monthly_rent: "",
     status: "available",
     description: "",
+    bedrooms: "",
+    bathrooms: "",
   });
 
   useEffect(() => {
@@ -78,6 +81,12 @@ export default function PropertiesPage() {
     setFilteredProperties(filtered);
   };
 
+  const handleMoneyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    const masked = applyMoneyMask(value);
+    setFormData({ ...formData, monthly_rent: masked });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -88,9 +97,11 @@ export default function PropertiesPage() {
         location_id: formData.location_id,
         property_identifier: formData.property_identifier || "Apartamento",
         type: "residential" as const,
-        monthly_rent: parseFloat(formData.monthly_rent),
+        monthly_rent: parseCurrencyToFloat(formData.monthly_rent),
         status: formData.status as "available" | "occupied" | "unavailable",
         description: formData.description,
+        bedrooms: formData.bedrooms ? parseInt(formData.bedrooms) : undefined,
+        bathrooms: formData.bathrooms ? parseInt(formData.bathrooms) : undefined,
       };
 
       if (editingProperty) {
@@ -113,9 +124,11 @@ export default function PropertiesPage() {
     setFormData({
       location_id: property.location_id,
       property_identifier: property.property_identifier || "Apartamento",
-      monthly_rent: property.monthly_rent?.toString() || "",
+      monthly_rent: formatCurrency(property.monthly_rent || 0).replace("R$", "").trim(),
       status: property.status,
       description: property.description || "",
+      bedrooms: property.bedrooms?.toString() || "",
+      bathrooms: property.bathrooms?.toString() || "",
     });
     setIsEditMode(false);
     setIsDialogOpen(true);
@@ -151,6 +164,8 @@ export default function PropertiesPage() {
       monthly_rent: "",
       status: "available",
       description: "",
+      bedrooms: "",
+      bathrooms: "",
     });
     setEditingProperty(null);
     setIsEditMode(false);
@@ -168,13 +183,6 @@ export default function PropertiesPage() {
       unavailable: "Indisponível",
     };
     return <Badge variant={variants[status]}>{labels[status]}</Badge>;
-  };
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    }).format(value);
   };
 
   if (loading) {
@@ -299,6 +307,24 @@ export default function PropertiesPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
+                      {/* Quartos e Banheiros */}
+                      {(property.bedrooms || property.bathrooms) && (
+                        <div className="flex gap-4 text-sm text-muted-foreground">
+                          {property.bedrooms && (
+                            <div className="flex items-center gap-1">
+                              <Bed className="h-4 w-4" />
+                              <span>{property.bedrooms} Quartos</span>
+                            </div>
+                          )}
+                          {property.bathrooms && (
+                            <div className="flex items-center gap-1">
+                              <Bath className="h-4 w-4" />
+                              <span>{property.bathrooms} Banheiros</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
                       {/* Descrição - 2 linhas */}
                       {property.description ? (
                         <p className="text-sm text-muted-foreground line-clamp-2 min-h-[40px]">
@@ -314,16 +340,15 @@ export default function PropertiesPage() {
                       <div className="pt-2 border-t">
                         <p className="text-xs text-muted-foreground uppercase tracking-wider">Aluguel Mensal</p>
                         <p className="text-2xl font-bold text-primary">
-                          {formatCurrency(property.monthly_rent)}
+                          {formatCurrency(property.monthly_rent || 0)}
                         </p>
                       </div>
 
                       {/* Botão Deletar */}
                       <div className="flex justify-end pt-2">
                         <Button
-                          variant="ghost"
+                          variant="destructive"
                           size="sm"
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
                           onClick={(e) => confirmDelete(e, property.id)}
                         >
                           <Trash2 className="h-4 w-4 mr-2" />
@@ -347,6 +372,8 @@ export default function PropertiesPage() {
                   <TableRow>
                     <TableHead>Local</TableHead>
                     <TableHead>Complemento</TableHead>
+                    <TableHead>Quartos</TableHead>
+                    <TableHead>Banheiros</TableHead>
                     <TableHead>Aluguel</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
@@ -365,13 +392,28 @@ export default function PropertiesPage() {
                       <TableCell>
                         {property.complement || "-"}
                       </TableCell>
+                      <TableCell>
+                        {property.bedrooms ? (
+                          <div className="flex items-center gap-1">
+                            <Bed className="h-4 w-4" />
+                            <span>{property.bedrooms}</span>
+                          </div>
+                        ) : "-"}
+                      </TableCell>
+                      <TableCell>
+                        {property.bathrooms ? (
+                          <div className="flex items-center gap-1">
+                            <Bath className="h-4 w-4" />
+                            <span>{property.bathrooms}</span>
+                          </div>
+                        ) : "-"}
+                      </TableCell>
                       <TableCell>{formatCurrency(property.monthly_rent || 0)}</TableCell>
                       <TableCell>{getStatusBadge(property.status)}</TableCell>
                       <TableCell className="text-right">
                         <Button
-                          variant="ghost"
+                          variant="destructive"
                           size="sm"
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
                           onClick={(e) => confirmDelete(e, property.id)}
                         >
                           <Trash2 className="h-4 w-4" />
@@ -421,17 +463,42 @@ export default function PropertiesPage() {
                   </select>
                 </div>
 
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="bedrooms">Quartos</Label>
+                    <Input
+                      id="bedrooms"
+                      type="number"
+                      min="0"
+                      value={formData.bedrooms}
+                      onChange={(e) => setFormData({ ...formData, bedrooms: e.target.value })}
+                      placeholder="0"
+                      disabled={editingProperty && !isEditMode}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="bathrooms">Banheiros</Label>
+                    <Input
+                      id="bathrooms"
+                      type="number"
+                      min="0"
+                      value={formData.bathrooms}
+                      onChange={(e) => setFormData({ ...formData, bathrooms: e.target.value })}
+                      placeholder="0"
+                      disabled={editingProperty && !isEditMode}
+                    />
+                  </div>
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="monthly_rent">Aluguel Mensal (R$) *</Label>
                   <Input
                     id="monthly_rent"
-                    type="number"
-                    step="0.01"
+                    type="text"
                     value={formData.monthly_rent}
-                    onChange={(e) =>
-                      setFormData({ ...formData, monthly_rent: e.target.value })
-                    }
-                    placeholder="0.00"
+                    onChange={handleMoneyChange}
+                    placeholder="0,00"
                     required
                     disabled={editingProperty && !isEditMode}
                   />
