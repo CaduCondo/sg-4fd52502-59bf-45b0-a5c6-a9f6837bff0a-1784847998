@@ -38,8 +38,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Search, Mail, Phone, FileText, User, Trash2, AlertCircle } from "lucide-react";
-import { getAll as getAllTenants, create as createTenant, remove as deleteTenant } from "@/services/tenantService";
+import { Plus, Search, Mail, Phone, FileText, User, Trash2, Edit, AlertCircle } from "lucide-react";
+import { getAll as getAllTenants, create as createTenant, update as updateTenant, remove as deleteTenant } from "@/services/tenantService";
 import { toast } from "@/hooks/use-toast";
 import type { Tenant } from "@/types";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
@@ -51,9 +51,18 @@ export default function TenantsPage() {
   const [filteredTenants, setFilteredTenants] = useState<Tenant[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  
+  // Dialog states
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
+  
+  // Delete states
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [tenantToDelete, setTenantToDelete] = useState<string | null>(null);
+  
+  // Form data
   const [formData, setFormData] = useState<Partial<Tenant>>({
     name: "",
     email: "",
@@ -182,7 +191,7 @@ export default function TenantsPage() {
         description: "Inquilino cadastrado com sucesso!",
       });
 
-      setIsDialogOpen(false);
+      setIsCreateDialogOpen(false);
       setFormData({
         name: "",
         email: "",
@@ -203,9 +212,139 @@ export default function TenantsPage() {
     }
   }
 
-  function handleCardClick(tenantId: string) {
-    router.push(`/tenants/${tenantId}`);
+  function handleCardClick(tenant: Tenant) {
+    setSelectedTenant(tenant);
+    setFormData({
+      name: tenant.name,
+      email: tenant.email || "",
+      phone: tenant.phone || "",
+      documentType: tenant.document_type as "cpf" | "cnpj" || "cpf",
+      document: tenant.document || tenant.cpf || "",
+      cpf: tenant.cpf || "",
+      rg: tenant.rg || "",
+    });
+    setIsEditMode(false);
+    setIsDetailsDialogOpen(true);
   }
+
+  function handleEdit() {
+    setIsEditMode(true);
+  }
+
+  function handleCancelEdit() {
+    if (selectedTenant) {
+      setFormData({
+        name: selectedTenant.name,
+        email: selectedTenant.email || "",
+        phone: selectedTenant.phone || "",
+        documentType: selectedTenant.document_type as "cpf" | "cnpj" || "cpf",
+        document: selectedTenant.document || selectedTenant.cpf || "",
+        cpf: selectedTenant.cpf || "",
+        rg: selectedTenant.rg || "",
+      });
+    }
+    setIsEditMode(false);
+  }
+
+  async function handleSaveEdit(e: React.FormEvent) {
+    e.preventDefault();
+
+    if (!selectedTenant) return;
+
+    if (!formData.name?.trim()) {
+      toast({
+        title: "Nome obrigatório",
+        description: "Por favor, informe o nome do inquilino.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!formData.document?.trim()) {
+      toast({
+        title: "Documento obrigatório",
+        description: `Por favor, informe o ${formData.documentType === "cpf" ? "CPF" : "CNPJ"}.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const tenantData: any = {
+        name: formData.name,
+        email: formData.email || "",
+        phone: formData.phone || "",
+        document_type: formData.documentType,
+        document: formData.document,
+        status: selectedTenant.status || "active",
+      };
+
+      if (formData.documentType === "cpf") {
+        tenantData.cpf = formData.document;
+        if (formData.rg) {
+          tenantData.rg = formData.rg;
+        }
+      }
+
+      await updateTenant(selectedTenant.id, tenantData);
+      
+      toast({
+        title: "Inquilino atualizado",
+        description: "Dados atualizados com sucesso!",
+      });
+
+      setIsEditMode(false);
+      loadTenants();
+      
+      // Update selected tenant
+      const updatedTenant = { ...selectedTenant, ...tenantData };
+      setSelectedTenant(updatedTenant);
+    } catch (error) {
+      console.error("❌ Error updating tenant:", error);
+      toast({
+        title: "Erro ao atualizar",
+        description: "Não foi possível atualizar os dados.",
+        variant: "destructive",
+      });
+    }
+  }
+
+  const confirmDelete = (e: React.MouseEvent, tenantId: string) => {
+    e.stopPropagation();
+    setTenantToDelete(tenantId);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteFromDetails = () => {
+    if (selectedTenant) {
+      setTenantToDelete(selectedTenant.id);
+      setIsDetailsDialogOpen(false);
+      setIsDeleteDialogOpen(true);
+    }
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!tenantToDelete) return;
+    
+    try {
+      await deleteTenant(tenantToDelete);
+      toast({
+        title: "Inquilino excluído",
+        description: "Inquilino excluído com sucesso!",
+      });
+      setIsDeleteDialogOpen(false);
+      setTenantToDelete(null);
+      setIsDetailsDialogOpen(false);
+      loadTenants();
+    } catch (error) {
+      console.error("❌ Error deleting tenant:", error);
+      toast({
+        title: "Erro ao excluir",
+        description: "Não foi possível excluir o inquilino.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     const normalizedStatus = status?.toLowerCase() || "active";
@@ -235,34 +374,6 @@ export default function TenantsPage() {
     );
   };
 
-  const confirmDelete = (e: React.MouseEvent, tenantId: string) => {
-    e.stopPropagation();
-    setTenantToDelete(tenantId);
-    setIsDeleteDialogOpen(true);
-  };
-
-  const handleDelete = async () => {
-    if (!tenantToDelete) return;
-    
-    try {
-      await deleteTenant(tenantToDelete);
-      toast({
-        title: "Inquilino excluído",
-        description: "Inquilino excluído com sucesso!",
-      });
-      setIsDeleteDialogOpen(false);
-      setTenantToDelete(null);
-      loadTenants();
-    } catch (error) {
-      console.error("❌ Error deleting tenant:", error);
-      toast({
-        title: "Erro ao excluir",
-        description: "Não foi possível excluir o inquilino.",
-        variant: "destructive",
-      });
-    }
-  };
-
   return (
     <>
       <SEO
@@ -278,7 +389,7 @@ export default function TenantsPage() {
                 Gerencie os inquilinos dos seus imóveis
               </p>
             </div>
-            <Button onClick={() => setIsDialogOpen(true)} size="lg">
+            <Button onClick={() => setIsCreateDialogOpen(true)} size="lg">
               <Plus className="mr-2 h-4 w-4" />
               Novo Inquilino
             </Button>
@@ -326,7 +437,7 @@ export default function TenantsPage() {
                     : "Comece cadastrando seu primeiro inquilino"}
                 </p>
                 {!searchTerm && (
-                  <Button onClick={() => setIsDialogOpen(true)}>
+                  <Button onClick={() => setIsCreateDialogOpen(true)}>
                     <Plus className="mr-2 h-4 w-4" />
                     Novo Inquilino
                   </Button>
@@ -337,7 +448,10 @@ export default function TenantsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredTenants.map((tenant, index) => (
                 <ScrollReveal key={tenant.id} delay={index * 0.1}>
-                  <Card>
+                  <Card
+                    className="cursor-pointer hover:shadow-lg transition-shadow duration-300"
+                    onClick={() => handleCardClick(tenant)}
+                  >
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1">
@@ -385,7 +499,8 @@ export default function TenantsPage() {
           )}
         </div>
 
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        {/* Create Dialog */}
+        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogContent className="max-w-2xl">
             <form onSubmit={handleSubmit}>
               <DialogHeader>
@@ -501,7 +616,7 @@ export default function TenantsPage() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setIsDialogOpen(false)}
+                  onClick={() => setIsCreateDialogOpen(false)}
                 >
                   Cancelar
                 </Button>
@@ -511,6 +626,216 @@ export default function TenantsPage() {
           </DialogContent>
         </Dialog>
 
+        {/* Details/Edit Dialog */}
+        <Dialog open={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen}>
+          <DialogContent className="max-w-2xl">
+            {!isEditMode ? (
+              // View Mode
+              <>
+                <DialogHeader>
+                  <DialogTitle>Detalhes do Inquilino</DialogTitle>
+                  <DialogDescription>
+                    Informações do inquilino cadastrado
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-muted-foreground">Nome completo</Label>
+                      <p className="text-sm font-medium">{formData.name}</p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-muted-foreground">Email</Label>
+                      <p className="text-sm font-medium">{formData.email || "Não informado"}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-muted-foreground">Tipo de Documento</Label>
+                      <p className="text-sm font-medium">{formData.documentType === "cpf" ? "CPF" : "CNPJ"}</p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-muted-foreground">{formData.documentType === "cpf" ? "CPF" : "CNPJ"}</Label>
+                      <p className="text-sm font-medium">{formData.document}</p>
+                    </div>
+                  </div>
+
+                  {formData.documentType === "cpf" && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-muted-foreground">RG</Label>
+                        <p className="text-sm font-medium">{formData.rg || "Não informado"}</p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-muted-foreground">Telefone</Label>
+                        <p className="text-sm font-medium">{formData.phone || "Não informado"}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {formData.documentType === "cnpj" && (
+                    <div className="space-y-2">
+                      <Label className="text-muted-foreground">Telefone</Label>
+                      <p className="text-sm font-medium">{formData.phone || "Não informado"}</p>
+                    </div>
+                  )}
+                </div>
+
+                <DialogFooter>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsDetailsDialogOpen(false)}
+                  >
+                    Fechar
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    onClick={confirmDeleteFromDetails}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Excluir
+                  </Button>
+                  <Button type="button" onClick={handleEdit}>
+                    <Edit className="h-4 w-4 mr-2" />
+                    Editar
+                  </Button>
+                </DialogFooter>
+              </>
+            ) : (
+              // Edit Mode
+              <form onSubmit={handleSaveEdit}>
+                <DialogHeader>
+                  <DialogTitle>Editar Inquilino</DialogTitle>
+                  <DialogDescription>
+                    Altere as informações do inquilino
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-name">
+                        Nome completo <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        id="edit-name"
+                        value={formData.name || ""}
+                        onChange={(e) => handleInputChange("name", e.target.value)}
+                        placeholder="João da Silva"
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-email">Email</Label>
+                      <Input
+                        id="edit-email"
+                        type="email"
+                        value={formData.email || ""}
+                        onChange={(e) => handleInputChange("email", e.target.value)}
+                        placeholder="joao@email.com"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-documentType">
+                        Tipo de Documento <span className="text-destructive">*</span>
+                      </Label>
+                      <Select
+                        value={formData.documentType}
+                        onValueChange={(value: "cpf" | "cnpj") => handleDocumentTypeChange(value)}
+                      >
+                        <SelectTrigger id="edit-documentType">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="cpf">CPF</SelectItem>
+                          <SelectItem value="cnpj">CNPJ</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-document">
+                        {formData.documentType === "cpf" ? "CPF" : "CNPJ"}{" "}
+                        <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        id="edit-document"
+                        value={formData.document || ""}
+                        onChange={(e) => handleInputChange("document", e.target.value)}
+                        placeholder={
+                          formData.documentType === "cpf"
+                            ? "000.000.000-00"
+                            : "00.000.000/0000-00"
+                        }
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {formData.documentType === "cpf" && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="edit-rg">RG</Label>
+                        <Input
+                          id="edit-rg"
+                          value={formData.rg || ""}
+                          onChange={(e) => handleInputChange("rg", e.target.value)}
+                          placeholder="00.000.000-0"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="edit-phone">Telefone</Label>
+                        <Input
+                          id="edit-phone"
+                          value={formData.phone || ""}
+                          onChange={(e) => handleInputChange("phone", e.target.value)}
+                          placeholder="(11) 99999-9999"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {formData.documentType === "cnpj" && (
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-phone">Telefone</Label>
+                      <Input
+                        id="edit-phone"
+                        value={formData.phone || ""}
+                        onChange={(e) => handleInputChange("phone", e.target.value)}
+                        placeholder="(11) 99999-9999"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <DialogFooter>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleCancelEdit}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button type="submit">Salvar</Button>
+                </DialogFooter>
+              </form>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Confirmation Dialog */}
         <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
@@ -524,7 +849,7 @@ export default function TenantsPage() {
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel onClick={() => setTenantToDelete(null)}>Cancelar</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
+              <AlertDialogAction onClick={handleDeleteConfirm} className="bg-red-600 hover:bg-red-700">
                 Sim, Excluir
               </AlertDialogAction>
             </AlertDialogFooter>
