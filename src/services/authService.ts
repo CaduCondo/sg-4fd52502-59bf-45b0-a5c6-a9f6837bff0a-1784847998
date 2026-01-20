@@ -15,6 +15,7 @@ interface UserSession {
     name: string;
     username: string;
     role: SystemUser["role"];
+    photo?: string | null;
   };
   expiresAt: number;
 }
@@ -97,6 +98,7 @@ export async function login(credentials: LoginCredentials): Promise<LoginResult>
         name: user.name,
         username: user.username,
         role: user.role,
+        photo: user.photo,
       },
       expiresAt: Date.now() + (24 * 60 * 60 * 1000), // 24 hours
     };
