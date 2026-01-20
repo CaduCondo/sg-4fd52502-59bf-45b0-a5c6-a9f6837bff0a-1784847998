@@ -340,6 +340,19 @@ export default function PropertiesPage() {
                       )}
                     </PopoverContent>
                   </Popover>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-[160px]">
+                      <SelectValue placeholder="Todos Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos Status</SelectItem>
+                      <SelectItem value="available">Disponível</SelectItem>
+                      <SelectItem value="occupied">Ocupado</SelectItem>
+                      <SelectItem value="unavailable">Indisponível</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex gap-2 items-center">
                   <Select value={sortOrder} onValueChange={(value: any) => setSortOrder(value)}>
                     <SelectTrigger className="w-[200px]">
                       <SelectValue placeholder="Ordenar por" />
@@ -350,33 +363,22 @@ export default function PropertiesPage() {
                       <SelectItem value="price-desc">Valor: Maior → Menor</SelectItem>
                     </SelectContent>
                   </Select>
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-[140px]">
-                      <SelectValue placeholder="Status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todos</SelectItem>
-                      <SelectItem value="available">Disponível</SelectItem>
-                      <SelectItem value="occupied">Ocupado</SelectItem>
-                      <SelectItem value="unavailable">Indisponível</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex gap-2 border rounded-md p-1">
-                  <Button
-                    variant={viewMode === "grid" ? "default" : "ghost"}
-                    size="sm"
-                    onClick={() => setViewMode("grid")}
-                  >
-                    <Grid3x3 className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant={viewMode === "table" ? "default" : "ghost"}
-                    size="sm"
-                    onClick={() => setViewMode("table")}
-                  >
-                    <List className="h-4 w-4" />
-                  </Button>
+                  <div className="flex gap-2 border rounded-md p-1">
+                    <Button
+                      variant={viewMode === "grid" ? "default" : "ghost"}
+                      size="sm"
+                      onClick={() => setViewMode("grid")}
+                    >
+                      <Grid3x3 className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant={viewMode === "table" ? "default" : "ghost"}
+                      size="sm"
+                      onClick={() => setViewMode("table")}
+                    >
+                      <List className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
