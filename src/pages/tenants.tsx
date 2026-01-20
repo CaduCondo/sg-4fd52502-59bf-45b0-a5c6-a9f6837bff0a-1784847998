@@ -38,7 +38,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Search, Mail, Phone, FileText, User, Trash2, Edit, AlertCircle } from "lucide-react";
+import { Plus, Search, Mail, Phone, FileText, User, Trash2, Edit, AlertCircle, CreditCard } from "lucide-react";
 import { getAll as getAllTenants, create as createTenant, update as updateTenant, remove as deleteTenant } from "@/services/tenantService";
 import { toast } from "@/hooks/use-toast";
 import type { Tenant } from "@/types";
@@ -462,50 +462,46 @@ export default function TenantsPage() {
                   >
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1">
-                          <CardTitle className="text-xl font-bold text-blue-600">
-                            {tenant.name}
-                          </CardTitle>
-                          <CardDescription className="flex items-center gap-1 mt-1">
-                            <FileText className="h-3 w-3" />
-                            {tenant.document || tenant.cpf || "Documento não informado"}
-                          </CardDescription>
-                        </div>
+                        <CardTitle className="text-xl font-bold text-blue-600">
+                          {tenant.name}
+                        </CardTitle>
                         {getStatusBadge(tenant.status || "ativo")}
                       </div>
                     </CardHeader>
-                    <CardContent className="pt-3">
-                      <div className="space-y-1.5">
-                        {tenant.email && (
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Mail className="h-4 w-4" />
-                            <span className="truncate">{tenant.email}</span>
-                          </div>
-                        )}
-                        {tenant.phone && (
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Phone className="h-4 w-4" />
-                            <span>{tenant.phone}</span>
-                          </div>
-                        )}
+                    <CardContent className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <FileText className="h-4 w-4" />
+                        <span>{tenant.documentType === "cpf" || tenant.document_type === "cpf" ? "CPF" : "CNPJ"}: {tenant.document || tenant.cpf}</span>
                       </div>
                       
-                      <div className="flex items-center gap-3">
-                        {tenant.phone && (
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Phone className="h-4 w-4" />
-                            <span>{tenant.phone}</span>
-                          </div>
-                        )}
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          className="flex items-center justify-center h-10 w-10 p-0 ml-auto"
-                          onClick={(e) => confirmDelete(e, tenant.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+                      {tenant.rg && (tenant.documentType === "cpf" || tenant.document_type === "cpf") && (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <CreditCard className="h-4 w-4" />
+                          <span>RG: {tenant.rg}</span>
+                        </div>
+                      )}
+                      
+                      {tenant.email && (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Mail className="h-4 w-4" />
+                          <span className="truncate">{tenant.email}</span>
+                        </div>
+                      )}
+                      
+                      {tenant.phone && (
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                          <Phone className="h-4 w-4" />
+                          <span>{tenant.phone}</span>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            className="flex items-center justify-center h-10 w-10 p-0 ml-auto"
+                            onClick={(e) => confirmDelete(e, tenant.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 </ScrollReveal>
