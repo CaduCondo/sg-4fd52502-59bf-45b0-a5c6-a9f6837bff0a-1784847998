@@ -258,7 +258,7 @@ export function Layout({ children }: LayoutProps) {
                   <SheetHeader>
                     <SheetTitle className="text-left">
                       <div className="flex items-center gap-2">
-                        <Building2 className="h-5 w-5 text-emerald-600" />
+                        <Building2 className="h-5 w-5 text-blue-600" />
                         <span className="font-bold text-slate-900">D</span>
                       </div>
                     </SheetTitle>
@@ -300,7 +300,7 @@ export function Layout({ children }: LayoutProps) {
                           href={item.path}
                           className={cn(
                             "-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 hover:bg-slate-50",
-                            active ? "text-emerald-600" : "text-slate-900"
+                            active ? "text-blue-600" : "text-slate-900"
                           )}
                         >
                           <div className="flex items-center gap-2">
@@ -360,8 +360,8 @@ export function Layout({ children }: LayoutProps) {
                     className={cn(
                       "group flex items-center gap-x-3 rounded-md p-2 text-sm font-semibold leading-6",
                       isActive
-                        ? "bg-slate-50 text-emerald-600 dark:bg-slate-800 dark:text-emerald-400"
-                        : "text-slate-700 hover:bg-slate-50 hover:text-emerald-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-emerald-400"
+                        ? "bg-slate-50 text-blue-600 dark:bg-slate-800 dark:text-blue-400"
+                        : "text-slate-700 hover:bg-slate-50 hover:text-blue-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-blue-400"
                     )}
                   >
                     {item.icon}
