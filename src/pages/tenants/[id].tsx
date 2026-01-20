@@ -49,7 +49,7 @@ export default function TenantDetails() {
           name: tenantData.name,
           email: tenantData.email,
           phone: tenantData.phone,
-          document: tenantData.document || "",
+          document: tenantData.document || tenantData.cpf || "",
           documentType: (tenantData.documentType === "cnpj" ? "cnpj" : "cpf") as "cpf" | "cnpj",
         });
       }
@@ -76,7 +76,7 @@ export default function TenantDetails() {
         email: tenant.email || "",
         phone: tenant.phone || "",
         documentType: (tenant.documentType === "cnpj" ? "cnpj" : "cpf") as "cpf" | "cnpj",
-        document: tenant.document || "",
+        document: tenant.document || tenant.cpf || "",
       });
     }
     setIsEditing(false);
@@ -175,7 +175,7 @@ export default function TenantDetails() {
     <>
       <SEO title="Detalhes do Inquilino - Gerenciador de Locações" />
       <Layout>
-        <div className="space-y-4">
+        <div className="space-y-6">
           <div className="flex items-center justify-between">
             <Button
               variant="ghost"
@@ -274,7 +274,9 @@ export default function TenantDetails() {
                       </SelectContent>
                     </Select>
                   ) : (
-                    <p className="text-sm font-medium">{tenant.documentType === "cpf" ? "CPF" : "CNPJ"}</p>
+                    <p className="text-sm font-medium">
+                      {tenant.documentType === "cnpj" ? "CNPJ" : "CPF"}
+                    </p>
                   )}
                 </div>
 
@@ -291,7 +293,7 @@ export default function TenantDetails() {
                       className="h-9"
                     />
                   ) : (
-                    <p className="text-sm font-medium">{tenant.document || "—"}</p>
+                    <p className="text-sm font-medium">{tenant.document || tenant.cpf || "—"}</p>
                   )}
                 </div>
 

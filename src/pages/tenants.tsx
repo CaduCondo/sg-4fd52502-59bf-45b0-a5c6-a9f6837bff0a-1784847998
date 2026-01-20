@@ -306,12 +306,6 @@ export default function TenantsPage() {
                             <span>{tenant.phone}</span>
                           </div>
                         )}
-                        {tenant.rg && (
-                          <div className="flex items-center gap-2 text-muted-foreground">
-                            <FileText className="h-4 w-4" />
-                            <span>RG: {tenant.rg}</span>
-                          </div>
-                        )}
                       </div>
                     </CardContent>
                   </Card>
@@ -373,16 +367,6 @@ export default function TenantsPage() {
                     value={formData.cpf || ""}
                     onChange={(e) => handleInputChange("cpf", e.target.value)}
                     placeholder="000.000.000-00"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="rg">RG</Label>
-                  <Input
-                    id="rg"
-                    value={formData.rg || ""}
-                    onChange={(e) => handleInputChange("rg", e.target.value)}
-                    placeholder="00.000.000-0"
                   />
                 </div>
               </div>
