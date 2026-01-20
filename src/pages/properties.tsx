@@ -144,8 +144,16 @@ export default function PropertiesPage() {
 
   const handleCardClick = (property: Property) => {
     setEditingProperty(property);
+    
+    const locationId = property.location_id || "";
+    
+    console.log("=== DEBUG handleCardClick ===");
+    console.log("Property location_id:", property.location_id);
+    console.log("Property location name:", property.location);
+    console.log("Setting formData.location_id to:", locationId);
+    
     setFormData({
-      location_id: property.location_id || "",
+      location_id: locationId,
       property_identifier: property.property_identifier || "Apartamento",
       complement: property.complement || "",
       monthly_rent: formatCurrency(property.value || property.monthly_rent || 0).replace("R$", "").trim(),
@@ -154,6 +162,10 @@ export default function PropertiesPage() {
       bedrooms: property.rooms?.toString() || property.bedrooms?.toString() || "",
       bathrooms: property.bathrooms?.toString() || "",
     });
+    
+    console.log("Locations available:", locations.map(l => ({ id: l.id, name: l.name })));
+    console.log("=== END DEBUG ===");
+    
     setIsEditMode(false);
     setIsDialogOpen(true);
   };
@@ -457,8 +469,12 @@ export default function PropertiesPage() {
                 <div className="space-y-2">
                   <Label htmlFor="location_id">Local *</Label>
                   <Select
+                    key={`location-select-${formData.location_id}-${isDialogOpen}`}
                     value={formData.location_id}
-                    onValueChange={(value) => setFormData({...formData, location_id: value})}
+                    onValueChange={(value) => {
+                      console.log("Select onValueChange called with:", value);
+                      setFormData({...formData, location_id: value});
+                    }}
                     disabled={editingProperty && !isEditMode}
                     required
                   >
