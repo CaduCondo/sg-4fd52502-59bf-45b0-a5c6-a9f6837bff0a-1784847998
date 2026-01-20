@@ -85,7 +85,11 @@ export default function TenantsPage() {
     try {
       setIsLoading(true);
       const data = await getAllTenants();
-      setTenants(data);
+      // Sort alphabetically by name
+      const sortedData = data.sort((a, b) => 
+        (a.name || "").localeCompare(b.name || "")
+      );
+      setTenants(sortedData);
     } catch (error) {
       console.error("❌ Error loading tenants:", error);
       toast({
@@ -113,7 +117,11 @@ export default function TenantsPage() {
         tenant.document?.includes(term) ||
         tenant.cpf?.includes(term)
     );
-    setFilteredTenants(filtered);
+    // Sort filtered results alphabetically
+    const sortedFiltered = filtered.sort((a, b) => 
+      (a.name || "").localeCompare(b.name || "")
+    );
+    setFilteredTenants(sortedFiltered);
   }
 
   function handleInputChange(field: keyof Tenant, value: string) {
@@ -693,14 +701,6 @@ export default function TenantsPage() {
                     onClick={() => setIsDetailsDialogOpen(false)}
                   >
                     Fechar
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    onClick={confirmDeleteFromDetails}
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Excluir
                   </Button>
                   <Button type="button" onClick={handleEdit}>
                     <Edit className="h-4 w-4 mr-2" />
