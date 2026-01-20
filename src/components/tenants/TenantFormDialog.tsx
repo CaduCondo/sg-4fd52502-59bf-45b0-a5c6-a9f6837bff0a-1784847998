@@ -258,6 +258,7 @@ export function TenantFormDialog({
               <SelectContent>
                 <SelectItem value="active">Ativo</SelectItem>
                 <SelectItem value="inactive">Inativo</SelectItem>
+                <SelectItem value="tenant">Locatário</SelectItem>
               </SelectContent>
             </Select>
           </div>

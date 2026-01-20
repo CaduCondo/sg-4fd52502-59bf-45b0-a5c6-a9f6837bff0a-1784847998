@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { Layout } from "@/components/Layout";
 import { SEO } from "@/components/SEO";
@@ -35,6 +35,21 @@ export default function TenantsPage() {
   const [tenantToDelete, setTenantToDelete] = useState<Tenant | null>(null);
   const [isViewMode, setIsViewMode] = useState(false);
 
+  // Handle view query parameter from URL
+  useEffect(() => {
+    const viewId = router.query.view as string;
+    if (viewId && tenants.length > 0) {
+      const tenant = tenants.find((t) => t.id === viewId);
+      if (tenant) {
+        setSelectedTenant(tenant);
+        setIsViewMode(true);
+        setIsDialogOpen(true);
+        // Remove query parameter
+        router.replace("/tenants", undefined, { shallow: true });
+      }
+    }
+  }, [router.query.view, tenants, router]);
+
   const handleCreateNew = () => {
     setSelectedTenant(null);
     setIsViewMode(false);
@@ -48,7 +63,9 @@ export default function TenantsPage() {
   };
 
   const handleViewTenant = (tenant: Tenant) => {
-    router.push(`/tenants/${tenant.id}`);
+    setSelectedTenant(tenant);
+    setIsViewMode(true);
+    setIsDialogOpen(true);
   };
 
   const handleDeleteClick = (tenant: Tenant) => {
