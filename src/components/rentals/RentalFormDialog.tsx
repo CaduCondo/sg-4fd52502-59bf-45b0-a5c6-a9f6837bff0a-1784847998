@@ -146,10 +146,10 @@ export function RentalFormDialog({
         monthly_rent: propertyValue,
         value: totalValue,
         has_garage: hasGarage,
-        garage_value: hasGarage ? garageValueNum : undefined,
+        garage_value: hasGarage ? garageValueNum : null,
         is_active: true,
-        attachments,
-        location_id: selectedProperty.locationId,
+        contract_attachments: attachments,
+        attachments: attachments,
       };
 
       const createdRental = await createRental(newRental);
