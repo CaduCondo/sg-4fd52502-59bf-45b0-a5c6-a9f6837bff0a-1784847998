@@ -48,7 +48,7 @@ export function useTenants() {
 
   useEffect(() => {
     loadData();
-  }, [loadData]); // Load when user becomes available
+  }, [user, toast]); // Fixed: depend on user directly, not loadData
 
   const filteredAndSortedTenants = useMemo(() => {
     let filtered = tenants;
