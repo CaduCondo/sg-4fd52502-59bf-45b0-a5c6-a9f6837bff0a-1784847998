@@ -155,7 +155,7 @@ export function RentalFormDialog({
       const createdRental = await createRental(newRental);
 
       await updateProperty(selectedPropertyId, { status: "occupied" });
-      await updateTenant(selectedTenantId, { status: "locatario" });
+      await updateTenant(selectedTenantId, { status: "rented" });
 
       console.log("Creating payments for rental:", createdRental);
       await createPaymentsForRental(createdRental);
@@ -210,20 +210,29 @@ export function RentalFormDialog({
                   <SelectValue placeholder="Selecione o imóvel" />
                 </SelectTrigger>
                 <SelectContent>
-                  {availableProperties.map((property) => (
-                    <SelectItem key={property.id} value={property.id}>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">
-                          {getLocationName(property.locationId)}
-                          {property.complement && ` - ${property.complement}`}
-                        </span>
-                        <span className="text-muted-foreground">•</span>
-                        <span className="text-sm font-semibold text-emerald-600">
-                          {formatCurrency(property.value || 0)}
-                        </span>
-                      </div>
-                    </SelectItem>
-                  ))}
+                  {availableProperties
+                    .slice()
+                    .sort((a, b) => {
+                      const locationA = getLocationName(a.locationId);
+                      const locationB = getLocationName(b.locationId);
+                      if (locationA < locationB) return -1;
+                      if (locationA > locationB) return 1;
+                      return 0;
+                    })
+                    .map((property) => (
+                      <SelectItem key={property.id} value={property.id}>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">
+                            {getLocationName(property.locationId)}
+                            {property.complement && ` - ${property.complement}`}
+                          </span>
+                          <span className="text-muted-foreground">•</span>
+                          <span className="text-sm font-semibold text-emerald-600">
+                            {formatCurrency(property.value || 0)}
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>
@@ -235,11 +244,18 @@ export function RentalFormDialog({
                   <SelectValue placeholder="Selecione o inquilino" />
                 </SelectTrigger>
                 <SelectContent>
-                  {availableTenants.map((tenant) => (
-                    <SelectItem key={tenant.id} value={tenant.id}>
-                      {tenant.name}
-                    </SelectItem>
-                  ))}
+                  {availableTenants
+                    .slice()
+                    .sort((a, b) => {
+                      if (a.name < b.name) return -1;
+                      if (a.name > b.name) return 1;
+                      return 0;
+                    })
+                    .map((tenant) => (
+                      <SelectItem key={tenant.id} value={tenant.id}>
+                        {tenant.name}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>
