@@ -11,7 +11,6 @@ import { User, Mail, Phone, MapPin, Calendar, Shield, Save, KeyRound, Unlock, Ca
 import { applyCpfMask, applyPhoneMask, applyCepMask, removeMask } from "@/lib/masks";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
-// Interface extendida para campos de UI que podem não estar no tipo SystemUser principal
 interface ExtendedSystemUser extends SystemUser {
   photo?: string;
   document?: string;
@@ -29,7 +28,7 @@ interface EditProfileDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   user: SystemUser | null;
-  onSuccess: () => void; // Renomeado de onUserUpdated para padronizar com Layout
+  onSuccess: () => void;
 }
 
 export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditProfileDialogProps) {
@@ -42,7 +41,20 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
 
   useEffect(() => {
     if (open && user) {
-      setSelectedUser({ ...user } as ExtendedSystemUser);
+      const extendedUser: ExtendedSystemUser = {
+        ...user,
+        document: (user as any).document || "",
+        birthDate: (user as any).birthDate || "",
+        cep: (user as any).cep || "",
+        street: (user as any).street || "",
+        number: (user as any).number || "",
+        complement: (user as any).complement || "",
+        neighborhood: (user as any).neighborhood || "",
+        city: (user as any).city || "",
+        state: (user as any).state || "",
+        photo: (user as any).photo || null,
+      };
+      setSelectedUser(extendedUser);
       setPhotoPreview((user as any).photo || null);
     }
   }, [open, user]);
@@ -132,36 +144,25 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
       const cleanPhone = selectedUser.phone ? removeMask(selectedUser.phone) : undefined;
       const cleanCep = selectedUser.cep ? removeMask(selectedUser.cep) : undefined;
 
-      // Montar payload com campos que existem no backend
-      // Em produção, adicione os campos faltantes ao banco
       const payload: Partial<SystemUser> = {
         name: selectedUser.name,
         email: selectedUser.email,
         phone: cleanPhone,
         role: selectedUser.role,
+        active: selectedUser.active,
       };
 
       if (user?.id) {
         await updateUser(user.id, payload);
-        
-        // Atualizar contexto/sessão se necessário
-        // updateSession(updates);
         
         toast({
           title: "Sucesso",
           description: "Perfil atualizado com sucesso.",
         });
         
+        onSuccess();
         onOpenChange(false);
       }
-
-      toast({
-        title: "Perfil atualizado!",
-        description: "As informações do usuário foram atualizadas com sucesso.",
-      });
-
-      onSuccess();
-      onOpenChange(false);
     } catch (error) {
       console.error("Erro ao atualizar perfil:", error);
       toast({
@@ -174,32 +175,32 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
     }
   };
 
-  const handleChange = (field: keyof ExtendedSystemUser | "active", value: string | boolean) => {
+  const handleInputChange = (field: keyof ExtendedSystemUser, value: string) => {
     if (!selectedUser) return;
 
     if (field === "document") {
-      const masked = applyCpfMask(value as string);
-      setSelectedUser({ ...selectedUser, [field]: masked });
+      const masked = applyCpfMask(value);
+      setSelectedUser(prev => prev ? { ...prev, document: masked } : null);
     } else if (field === "phone") {
-      const masked = applyPhoneMask(value as string);
-      setSelectedUser({ ...selectedUser, [field]: masked });
+      const masked = applyPhoneMask(value);
+      setSelectedUser(prev => prev ? { ...prev, phone: masked } : null);
     } else if (field === "cep") {
-      const masked = applyCepMask(value as string);
-      setSelectedUser({ ...selectedUser, [field]: masked });
-    } else if (field === 'role') {
-      const roleValue = value as "admin" | "broker" | "financial";
-      setSelectedUser({ ...selectedUser, role: roleValue });
-    } else if (field === 'active') {
-       // value comes as string from onValueChange in the Select above, but we passed .toString()
-       // actually let's simplify the call above to pass the boolean directly if possible, or handle conversion here
-       // The Select onValueChange gives a string.
-       // Let's assume we change the call in Select to: onChange={(val) => handleChange('active', val === 'active')}
-       // Wait, I updated the Select to pass string. Let's fix the handleChange signature to accept logic.
-       setSelectedUser({ ...selectedUser, active: value === "true" || value === true });
+      const masked = applyCepMask(value);
+      setSelectedUser(prev => prev ? { ...prev, cep: masked } : null);
     } else {
-      // Dynamic assignment
-      setSelectedUser({ ...selectedUser, [field as keyof ExtendedSystemUser]: value });
+      setSelectedUser(prev => prev ? { ...prev, [field]: value } : null);
     }
+  };
+
+  const handleRoleChange = (value: string) => {
+    if (!selectedUser) return;
+    const roleValue = value as "admin" | "broker" | "financial";
+    setSelectedUser(prev => prev ? { ...prev, role: roleValue } : null);
+  };
+
+  const handleStatusChange = (value: string) => {
+    if (!selectedUser) return;
+    setSelectedUser(prev => prev ? { ...prev, active: value === "active" } : null);
   };
 
   if (!selectedUser) return null;
@@ -256,7 +257,7 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
                 <Input
                   id="name"
                   value={selectedUser.name}
-                  onChange={(e) => handleChange("name", e.target.value)}
+                  onChange={(e) => handleInputChange("name", e.target.value)}
                   required
                 />
               </div>
@@ -269,7 +270,7 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
                 <Input
                   id="document"
                   value={selectedUser.document || ""}
-                  onChange={(e) => handleChange("document", e.target.value)}
+                  onChange={(e) => handleInputChange("document", e.target.value)}
                   placeholder="000.000.000-00"
                   maxLength={14}
                 />
@@ -284,7 +285,7 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
                   id="email"
                   type="email"
                   value={selectedUser.email}
-                  onChange={(e) => handleChange("email", e.target.value)}
+                  onChange={(e) => handleInputChange("email", e.target.value)}
                   required
                 />
               </div>
@@ -297,7 +298,7 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
                 <Input
                   id="phone"
                   value={selectedUser.phone || ""}
-                  onChange={(e) => handleChange("phone", e.target.value)}
+                  onChange={(e) => handleInputChange("phone", e.target.value)}
                   placeholder="(00) 00000-0000"
                   maxLength={15}
                   required
@@ -313,16 +314,15 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
                   id="birthDate"
                   type="date"
                   value={selectedUser.birthDate || ""}
-                  onChange={(e) => handleChange("birthDate", e.target.value)}
+                  onChange={(e) => handleInputChange("birthDate", e.target.value)}
                 />
               </div>
 
-              {/* Role */}
               <div className="space-y-2">
                 <Label htmlFor="role">Perfil</Label>
                 <Select
                   value={selectedUser.role}
-                  onValueChange={(value) => handleChange("role", value as SystemUser["role"])}
+                  onValueChange={handleRoleChange}
                   disabled={user?.role !== "admin"}
                 >
                   <SelectTrigger>
@@ -336,12 +336,11 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
                 </Select>
               </div>
 
-              {/* Status */}
               <div className="space-y-2">
                 <Label htmlFor="status">Status</Label>
                 <Select
                   value={selectedUser.active ? "active" : "inactive"}
-                  onValueChange={(value) => handleChange("active", value === "active")}
+                  onValueChange={handleStatusChange}
                   disabled={user?.role !== "admin"}
                 >
                   <SelectTrigger>
@@ -371,7 +370,7 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
                 <Input
                   id="cep"
                   value={selectedUser.cep || ""}
-                  onChange={(e) => handleChange("cep", e.target.value)}
+                  onChange={(e) => handleInputChange("cep", e.target.value)}
                   placeholder="00000-000"
                   maxLength={9}
                 />
@@ -382,7 +381,7 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
                 <Input
                   id="street"
                   value={selectedUser.street || ""}
-                  onChange={(e) => handleChange("street", e.target.value)}
+                  onChange={(e) => handleInputChange("street", e.target.value)}
                 />
               </div>
 
@@ -391,7 +390,7 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
                 <Input
                   id="number"
                   value={selectedUser.number || ""}
-                  onChange={(e) => handleChange("number", e.target.value)}
+                  onChange={(e) => handleInputChange("number", e.target.value)}
                 />
               </div>
 
@@ -400,7 +399,7 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
                 <Input
                   id="complement"
                   value={selectedUser.complement || ""}
-                  onChange={(e) => handleChange("complement", e.target.value)}
+                  onChange={(e) => handleInputChange("complement", e.target.value)}
                 />
               </div>
 
@@ -409,7 +408,7 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
                 <Input
                   id="neighborhood"
                   value={selectedUser.neighborhood || ""}
-                  onChange={(e) => handleChange("neighborhood", e.target.value)}
+                  onChange={(e) => handleInputChange("neighborhood", e.target.value)}
                 />
               </div>
 
@@ -418,7 +417,7 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
                 <Input
                   id="city"
                   value={selectedUser.city || ""}
-                  onChange={(e) => handleChange("city", e.target.value)}
+                  onChange={(e) => handleInputChange("city", e.target.value)}
                 />
               </div>
 
@@ -427,7 +426,7 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
                 <Input
                   id="state"
                   value={selectedUser.state || ""}
-                  onChange={(e) => handleChange("state", e.target.value)}
+                  onChange={(e) => handleInputChange("state", e.target.value)}
                   maxLength={2}
                   placeholder="SP"
                 />

@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, Eye, Edit2, Trash2, Grid3x3, List, AlertCircle } from "lucide-react";
+import { Plus, Search, Trash2, Grid3x3, List, AlertCircle, X } from "lucide-react";
 import { propertyService, locationService } from "@/services";
 import type { Property, Location } from "@/types";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
@@ -31,11 +31,12 @@ export default function PropertiesPage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [propertyToDelete, setPropertyToDelete] = useState<string | null>(null);
   const [editingProperty, setEditingProperty] = useState<Property | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const [formData, setFormData] = useState({
     location_id: "",
-    property_identifier: "Apartamento", // Valor padrão conforme migração
+    property_identifier: "Apartamento",
     monthly_rent: "",
     status: "available",
     description: "",
@@ -86,7 +87,7 @@ export default function PropertiesPage() {
         location: selectedLocation?.name || "",
         location_id: formData.location_id,
         property_identifier: formData.property_identifier || "Apartamento",
-        type: "residential" as const, // Default fixed type
+        type: "residential" as const,
         monthly_rent: parseFloat(formData.monthly_rent),
         status: formData.status as "available" | "occupied" | "unavailable",
         description: formData.description,
@@ -100,25 +101,32 @@ export default function PropertiesPage() {
 
       await loadData();
       setIsDialogOpen(false);
+      setIsEditMode(false);
       resetForm();
     } catch (error) {
       console.error("Erro ao salvar imóvel:", error);
     }
   };
 
-  const handleEdit = (property: Property) => {
+  const handleCardClick = (property: Property) => {
     setEditingProperty(property);
     setFormData({
       location_id: property.location_id,
       property_identifier: property.property_identifier || "Apartamento",
-      monthly_rent: property.monthly_rent.toString(),
+      monthly_rent: property.monthly_rent?.toString() || "",
       status: property.status,
       description: property.description || "",
     });
+    setIsEditMode(false);
     setIsDialogOpen(true);
   };
 
-  const confirmDelete = (id: string) => {
+  const handleEnableEdit = () => {
+    setIsEditMode(true);
+  };
+
+  const confirmDelete = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
     setPropertyToDelete(id);
     setIsDeleteDialogOpen(true);
   };
@@ -145,6 +153,7 @@ export default function PropertiesPage() {
       description: "",
     });
     setEditingProperty(null);
+    setIsEditMode(false);
   };
 
   const getStatusBadge = (status: string) => {
@@ -268,11 +277,15 @@ export default function PropertiesPage() {
           <ScrollReveal>
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {filteredProperties.map((property) => (
-                <Card key={property.id} className="hover:shadow-lg transition-shadow">
+                <Card 
+                  key={property.id} 
+                  className="hover:shadow-lg transition-shadow cursor-pointer"
+                  onClick={() => handleCardClick(property)}
+                >
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <CardTitle className="text-lg font-semibold text-slate-800">
+                        <CardTitle className="text-lg font-semibold text-blue-600">
                           {property.location}
                         </CardTitle>
                         {property.complement && (
@@ -281,20 +294,18 @@ export default function PropertiesPage() {
                           </p>
                         )}
                       </div>
-                      <Badge variant={property.status === "available" ? "default" : property.status === "occupied" ? "secondary" : "destructive"}>
-                        {property.status === "available" ? "Disponível" : property.status === "occupied" ? "Ocupado" : "Indisponível"}
-                      </Badge>
+                      {getStatusBadge(property.status)}
                     </div>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      {/* Descrição */}
+                      {/* Descrição - 2 linhas */}
                       {property.description ? (
-                        <p className="text-sm text-muted-foreground line-clamp-2 h-10">
+                        <p className="text-sm text-muted-foreground line-clamp-2 min-h-[40px]">
                           {property.description}
                         </p>
                       ) : (
-                         <p className="text-sm text-muted-foreground h-10 italic">
+                        <p className="text-sm text-muted-foreground min-h-[40px] italic">
                           Sem descrição adicional
                         </p>
                       )}
@@ -307,32 +318,16 @@ export default function PropertiesPage() {
                         </p>
                       </div>
 
-                      {/* Ações */}
-                      <div className="flex gap-2 pt-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex-1"
-                          onClick={() => router.push(`/properties/${property.id}`)}
-                        >
-                          <Eye className="mr-2 h-4 w-4" />
-                          Detalhes
-                        </Button>
+                      {/* Botão Deletar */}
+                      <div className="flex justify-end pt-2">
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-8 w-8 p-0"
-                          onClick={() => handleEdit(property)}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          onClick={(e) => confirmDelete(e, property.id)}
                         >
-                          <Edit2 className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                          onClick={() => confirmDelete(property.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Excluir
                         </Button>
                       </div>
                     </div>
@@ -359,8 +354,12 @@ export default function PropertiesPage() {
                 </TableHeader>
                 <TableBody>
                   {filteredProperties.map((property) => (
-                    <TableRow key={property.id}>
-                      <TableCell className="font-medium">
+                    <TableRow 
+                      key={property.id}
+                      className="cursor-pointer"
+                      onClick={() => handleCardClick(property)}
+                    >
+                      <TableCell className="font-medium text-blue-600">
                         {property.location}
                       </TableCell>
                       <TableCell>
@@ -369,30 +368,14 @@ export default function PropertiesPage() {
                       <TableCell>{formatCurrency(property.monthly_rent || 0)}</TableCell>
                       <TableCell>{getStatusBadge(property.status)}</TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => router.push(`/properties/${property.id}`)}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEdit(property)}
-                          >
-                            <Edit2 className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                            onClick={() => confirmDelete(property.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          onClick={(e) => confirmDelete(e, property.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -402,12 +385,17 @@ export default function PropertiesPage() {
           </ScrollReveal>
         )}
 
-        {/* Dialog de Cadastro/Edição */}
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        {/* Dialog de Visualização/Edição */}
+        <Dialog open={isDialogOpen} onOpenChange={(open) => {
+          setIsDialogOpen(open);
+          if (!open) {
+            resetForm();
+          }
+        }}>
           <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>
-                {editingProperty ? "Editar Imóvel" : "Novo Imóvel"}
+                {editingProperty ? (isEditMode ? "Editar Imóvel" : "Detalhes do Imóvel") : "Novo Imóvel"}
               </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -420,6 +408,7 @@ export default function PropertiesPage() {
                     onChange={(e) => setFormData({...formData, location_id: e.target.value})}
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     required
+                    disabled={editingProperty && !isEditMode}
                   >
                     <option value="">Selecione um local</option>
                     {[...locations]
@@ -444,6 +433,7 @@ export default function PropertiesPage() {
                     }
                     placeholder="0.00"
                     required
+                    disabled={editingProperty && !isEditMode}
                   />
                 </div>
 
@@ -454,6 +444,7 @@ export default function PropertiesPage() {
                     onValueChange={(value) =>
                       setFormData({ ...formData, status: value })
                     }
+                    disabled={editingProperty && !isEditMode}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -475,24 +466,53 @@ export default function PropertiesPage() {
                       setFormData({ ...formData, description: e.target.value })
                     }
                     placeholder="Informações adicionais..."
+                    disabled={editingProperty && !isEditMode}
                   />
                 </div>
               </div>
 
               <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setIsDialogOpen(false);
-                    resetForm();
-                  }}
-                >
-                  Cancelar
-                </Button>
-                <Button type="submit">
-                  {editingProperty ? "Atualizar" : "Cadastrar"}
-                </Button>
+                {editingProperty && !isEditMode ? (
+                  <>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setIsDialogOpen(false);
+                        resetForm();
+                      }}
+                    >
+                      <X className="mr-2 h-4 w-4" />
+                      Fechar
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={handleEnableEdit}
+                    >
+                      Editar
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        if (isEditMode) {
+                          setIsEditMode(false);
+                        } else {
+                          setIsDialogOpen(false);
+                          resetForm();
+                        }
+                      }}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button type="submit">
+                      {editingProperty ? "Salvar" : "Cadastrar"}
+                    </Button>
+                  </>
+                )}
               </DialogFooter>
             </form>
           </DialogContent>
