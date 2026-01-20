@@ -232,8 +232,8 @@ export async function createPaymentsForRental(rental: any): Promise<void> {
       due_date: dueDate.toISOString().split('T')[0],
       expected_amount: rental.value || rental.monthly_rent,
       status: 'pending',
-      reference_month: (referenceDate.getMonth() + 1).toString(),
-      reference_year: referenceDate.getFullYear().toString(),
+      reference_month: (referenceDate.getMonth() + 1),
+      reference_year: referenceDate.getFullYear(),
     });
   }
 
