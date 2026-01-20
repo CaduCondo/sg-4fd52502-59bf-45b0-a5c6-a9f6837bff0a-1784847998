@@ -138,18 +138,18 @@ export function RentalFormDialog({
       const totalValue = propertyValue + garageValueNum;
 
       const newRental = {
-        propertyId: selectedPropertyId,
-        tenantId: selectedTenantId,
-        startDate,
-        endDate: endDate || null,
-        paymentDay: parseInt(paymentDay),
-        monthlyRent: propertyValue,
+        property_id: selectedPropertyId,
+        tenant_id: selectedTenantId,
+        start_date: startDate,
+        end_date: endDate || null,
+        payment_day: parseInt(paymentDay),
+        monthly_rent: propertyValue,
         value: totalValue,
-        hasGarage,
-        garageValue: hasGarage ? garageValueNum : undefined,
-        isActive: true,
+        has_garage: hasGarage,
+        garage_value: hasGarage ? garageValueNum : undefined,
+        is_active: true,
         attachments,
-        locationId: selectedProperty.locationId,
+        location_id: selectedProperty.locationId,
       };
 
       const createdRental = await createRental(newRental);
