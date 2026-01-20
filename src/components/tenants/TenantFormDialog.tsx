@@ -39,7 +39,6 @@ export function TenantFormDialog({
     cpf: "",
     cnpj: "",
     rg: "",
-    location_id: "",
     status: "active",
   });
 
@@ -68,7 +67,6 @@ export function TenantFormDialog({
         cpf: "",
         cnpj: "",
         rg: "",
-        location_id: "",
         status: "active",
       });
       setDocumentType("cpf");
@@ -123,8 +121,7 @@ export function TenantFormDialog({
       phone: formData.phone,
       document_type: documentType,
       documentType: documentType,
-      location_id: formData.location_id,
-      status: formData.status,
+      status: "active", // Always set as active for new tenants
     };
 
     if (documentType === "cpf") {
@@ -242,44 +239,6 @@ export function TenantFormDialog({
               disabled={!isEditing}
               required
             />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="location">Localização</Label>
-            <Select
-              value={formData.location_id || ""}
-              onValueChange={(value) => handleInputChange("location_id", value)}
-              disabled={!isEditing}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione uma localização" />
-              </SelectTrigger>
-              <SelectContent>
-                {locations.map((location) => (
-                  <SelectItem key={location.id} value={location.id}>
-                    {location.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="status">Status *</Label>
-            <Select
-              value={formData.status || "active"}
-              onValueChange={(value) => handleInputChange("status", value)}
-              disabled={!isEditing}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="active">Ativo</SelectItem>
-                <SelectItem value="inactive">Inativo</SelectItem>
-                <SelectItem value="tenant">Locatário</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
 
           <DialogFooter className="gap-2 sm:gap-0">

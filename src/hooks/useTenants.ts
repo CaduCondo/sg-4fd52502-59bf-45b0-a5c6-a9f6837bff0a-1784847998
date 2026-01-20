@@ -18,7 +18,12 @@ export function useTenants() {
   const [sortBy, setSortBy] = useState<"alphabetical" | "recent">("alphabetical");
 
   const loadData = useCallback(async () => {
-    if (!user) return;
+    if (!user) {
+      setTenants([]);
+      setLocations([]);
+      setIsLoading(false);
+      return;
+    }
 
     setIsLoading(true);
     try {
@@ -43,7 +48,7 @@ export function useTenants() {
 
   useEffect(() => {
     loadData();
-  }, [loadData]);
+  }, []); // Empty dependency array - only load on mount
 
   const filteredAndSortedTenants = useMemo(() => {
     let filtered = tenants;
