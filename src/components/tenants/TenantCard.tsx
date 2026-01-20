@@ -12,10 +12,10 @@ interface TenantCardProps {
 
 export function TenantCard({ tenant, onClick, onDelete }: TenantCardProps) {
   const statusConfig = {
-    active: { label: "Ativo", className: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100" },
-    inactive: { label: "Inativo", className: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100" },
-    rented: { label: "Alugado", className: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100" },
-  }[tenant.status] || { label: "Ativo", className: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100" };
+    active: { label: "Ativo", className: "bg-green-500/10 text-green-700 dark:bg-green-500/20 dark:text-green-400" },
+    inactive: { label: "Inativo", className: "bg-gray-500/10 text-gray-700 dark:bg-gray-500/20 dark:text-gray-400" },
+    rented: { label: "Alugado", className: "bg-blue-500/10 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400" },
+  }[tenant.status] || { label: "Ativo", className: "bg-green-500/10 text-green-700 dark:bg-green-500/20 dark:text-green-400" };
 
   const formatDocument = (tenant: Tenant) => {
     if (tenant.document_type === "cpf" && tenant.cpf) {
