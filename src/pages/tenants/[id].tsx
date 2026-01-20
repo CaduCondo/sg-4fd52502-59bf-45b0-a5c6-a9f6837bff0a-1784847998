@@ -6,21 +6,17 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Users, ArrowLeft, Edit, X, Trash2 } from "lucide-react";
 import { Tenant } from "@/types";
 import { getById as getTenantById, update as updateTenant, remove as deleteTenant } from "@/services/tenantService";
-import { applyCpfMask, applyCnpjMask, applyPhoneMask, removeMask } from "@/lib/masks";
-import { hasPermission } from "@/lib/permissions";
-import { useAuth } from "@/contexts/AuthContext";
+import { applyCpfMask, applyPhoneMask, removeMask } from "@/lib/masks";
 
 export default function TenantDetails() {
   const router = useRouter();
   const { id } = router.query;
   const { toast } = useToast();
-  const { user } = useAuth();
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
@@ -29,8 +25,7 @@ export default function TenantDetails() {
     name: "",
     email: "",
     phone: "",
-    documentType: "cpf" as "cpf" | "cnpj",
-    document: "",
+    cpf: "",
   });
 
   useEffect(() => {
@@ -42,15 +37,14 @@ export default function TenantDetails() {
   const loadTenant = async (tenantId: string) => {
     try {
       setLoading(true);
-      const tenantData = await getTenantById(id as string);
+      const tenantData = await getTenantById(tenantId);
       if (tenantData) {
         setTenant(tenantData);
         setFormData({
           name: tenantData.name,
-          email: tenantData.email,
-          phone: tenantData.phone,
-          document: tenantData.document || tenantData.cpf || "",
-          documentType: (tenantData.documentType === "cnpj" ? "cnpj" : "cpf") as "cpf" | "cnpj",
+          email: tenantData.email || "",
+          phone: tenantData.phone || "",
+          cpf: tenantData.cpf || "",
         });
       }
     } catch (error) {
@@ -75,8 +69,7 @@ export default function TenantDetails() {
         name: tenant.name,
         email: tenant.email || "",
         phone: tenant.phone || "",
-        documentType: (tenant.documentType === "cnpj" ? "cnpj" : "cpf") as "cpf" | "cnpj",
-        document: tenant.document || tenant.cpf || "",
+        cpf: tenant.cpf || "",
       });
     }
     setIsEditing(false);
@@ -122,33 +115,29 @@ export default function TenantDetails() {
   };
 
   const getStatusBadge = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "rented":
-      case "active":
-        return (
-          <Badge className="bg-green-100 text-green-800 border-green-200">
-            Ativo
-          </Badge>
-        );
-      case "inactive":
-      case "unavailable":
-        return (
-          <Badge className="bg-red-100 text-red-800 border-red-200">
-            Inativo
-          </Badge>
-        );
-      default:
-        return (
-          <Badge className="bg-gray-100 text-gray-800 border-gray-200">
-            {status}
-          </Badge>
-        );
+    const normalizedStatus = status?.toLowerCase() || "active";
+    
+    if (normalizedStatus === "active" || normalizedStatus === "ativo" || normalizedStatus === "rented") {
+      return (
+        <Badge className="bg-green-100 text-green-800 border-green-200">
+          Ativo
+        </Badge>
+      );
     }
-  };
-
-  const handleDocumentChange = (value: string) => {
-    const masked = formData.documentType === "cpf" ? applyCpfMask(value) : applyCnpjMask(value);
-    setFormData({ ...formData, document: masked });
+    
+    if (normalizedStatus === "inactive" || normalizedStatus === "inativo" || normalizedStatus === "unavailable") {
+      return (
+        <Badge className="bg-red-100 text-red-800 border-red-200">
+          Inativo
+        </Badge>
+      );
+    }
+    
+    return (
+      <Badge className="bg-gray-100 text-gray-800 border-gray-200">
+        {status}
+      </Badge>
+    );
   };
 
   if (loading) {
@@ -198,18 +187,14 @@ export default function TenantDetails() {
                 </>
               ) : (
                 <>
-                  {hasPermission(user?.role, "canEditTenant") && (
-                    <Button onClick={() => setIsEditing(true)}>
-                      <Edit className="mr-2 h-4 w-4" />
-                      Editar
-                    </Button>
-                  )}
-                  {hasPermission(user?.role, "canDeleteTenant") && (
-                    <Button variant="destructive" onClick={handleDelete}>
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Excluir
-                    </Button>
-                  )}
+                  <Button onClick={handleEdit}>
+                    <Edit className="mr-2 h-4 w-4" />
+                    Editar
+                  </Button>
+                  <Button variant="destructive" onClick={handleDelete}>
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Excluir
+                  </Button>
                 </>
               )}
             </div>
@@ -226,7 +211,7 @@ export default function TenantDetails() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <Label className="text-xs text-muted-foreground">Nome Completo</Label>
                   {isEditing ? (
@@ -257,43 +242,17 @@ export default function TenantDetails() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-xs text-muted-foreground">Tipo de Documento</Label>
-                  {isEditing ? (
-                    <Select
-                      value={formData.documentType}
-                      onValueChange={(value: "cpf" | "cnpj") => {
-                        setFormData({ ...formData, documentType: value, document: "" });
-                      }}
-                    >
-                      <SelectTrigger className="h-9">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="cpf">CPF</SelectItem>
-                        <SelectItem value="cnpj">CNPJ</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <p className="text-sm font-medium">
-                      {tenant.documentType === "cnpj" ? "CNPJ" : "CPF"}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-xs text-muted-foreground">
-                    {formData.documentType === "cpf" ? "CPF" : "CNPJ"}
-                  </Label>
+                  <Label className="text-xs text-muted-foreground">CPF</Label>
                   {isEditing ? (
                     <Input
-                      placeholder={formData.documentType === "cpf" ? "000.000.000-00" : "00.000.000/0000-00"}
-                      value={formData.document}
-                      onChange={(e) => handleDocumentChange(e.target.value)}
-                      maxLength={formData.documentType === "cpf" ? 14 : 18}
+                      placeholder="000.000.000-00"
+                      value={applyCpfMask(formData.cpf)}
+                      onChange={(e) => setFormData({ ...formData, cpf: removeMask(e.target.value) })}
+                      maxLength={14}
                       className="h-9"
                     />
                   ) : (
-                    <p className="text-sm font-medium">{tenant.document || tenant.cpf || "—"}</p>
+                    <p className="text-sm font-medium">{tenant.cpf ? applyCpfMask(tenant.cpf) : "—"}</p>
                   )}
                 </div>
 

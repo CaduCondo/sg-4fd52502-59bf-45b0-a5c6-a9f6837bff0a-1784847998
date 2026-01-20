@@ -40,7 +40,6 @@ export default function TenantsPage() {
     email: "",
     phone: "",
     cpf: "",
-    rg: "",
   });
 
   useEffect(() => {
@@ -88,7 +87,6 @@ export default function TenantsPage() {
   function handleInputChange(field: keyof Tenant, value: string) {
     let maskedValue = value;
 
-    // Apply masks
     if (field === "phone") {
       maskedValue = applyPhoneMask(value);
     } else if (field === "cpf") {
@@ -125,7 +123,6 @@ export default function TenantsPage() {
         email: "",
         phone: "",
         cpf: "",
-        rg: "",
       });
       loadTenants();
     } catch (error) {
@@ -143,28 +140,29 @@ export default function TenantsPage() {
   }
 
   const getStatusBadge = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "rented":
-      case "active":
-        return (
-          <Badge className="bg-green-100 text-green-800 border-green-200">
-            Ativo
-          </Badge>
-        );
-      case "inactive":
-      case "unavailable":
-        return (
-          <Badge className="bg-red-100 text-red-800 border-red-200">
-            Inativo
-          </Badge>
-        );
-      default:
-        return (
-          <Badge className="bg-gray-100 text-gray-800 border-gray-200">
-            {status}
-          </Badge>
-        );
+    const normalizedStatus = status?.toLowerCase() || "active";
+    
+    if (normalizedStatus === "active" || normalizedStatus === "ativo" || normalizedStatus === "rented") {
+      return (
+        <Badge className="bg-green-100 text-green-800 border-green-200">
+          Ativo
+        </Badge>
+      );
     }
+    
+    if (normalizedStatus === "inactive" || normalizedStatus === "inativo" || normalizedStatus === "unavailable") {
+      return (
+        <Badge className="bg-red-100 text-red-800 border-red-200">
+          Inativo
+        </Badge>
+      );
+    }
+    
+    return (
+      <Badge className="bg-gray-100 text-gray-800 border-gray-200">
+        {status}
+      </Badge>
+    );
   };
 
   async function handleDelete(e: React.MouseEvent, tenantId: string) {

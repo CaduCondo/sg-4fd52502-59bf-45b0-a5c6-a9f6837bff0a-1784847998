@@ -100,8 +100,7 @@ export interface Tenant {
   email: string;
   phone: string;
   cpf: string;
-  rg?: string;
-  document?: string; // Alias for cpf/cnpj
+  document?: string;
   documentType?: string;
   status: "active" | "inactive" | "rented";
   createdAt?: string;
