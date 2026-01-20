@@ -35,7 +35,6 @@ export default function TenantsPage() {
   const [tenantToDelete, setTenantToDelete] = useState<Tenant | null>(null);
   const [isViewMode, setIsViewMode] = useState(false);
 
-  // Handle view query parameter from URL
   useEffect(() => {
     const viewId = router.query.view as string;
     if (viewId && tenants.length > 0) {
@@ -44,7 +43,6 @@ export default function TenantsPage() {
         setSelectedTenant(tenant);
         setIsViewMode(true);
         setIsDialogOpen(true);
-        // Remove query parameter
         router.replace("/tenants", undefined, { shallow: true });
       }
     }
