@@ -47,8 +47,10 @@ export function useTenants() {
   }, [user, toast]);
 
   useEffect(() => {
-    loadData();
-  }, [user, toast]); // Fixed: depend on user directly, not loadData
+    if (user) {
+      loadData();
+    }
+  }, [user?.id]); // Fixed: only depend on user.id (primitive value), not user object or toast
 
   const filteredAndSortedTenants = useMemo(() => {
     let filtered = tenants;

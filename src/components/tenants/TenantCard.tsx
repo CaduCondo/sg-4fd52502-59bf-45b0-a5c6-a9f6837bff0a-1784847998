@@ -11,11 +11,19 @@ interface TenantCardProps {
 }
 
 export function TenantCard({ tenant, onClick, onDelete }: TenantCardProps) {
-  const statusConfig = {
-    active: { label: "Ativo", className: "bg-green-500/10 text-green-700 dark:bg-green-500/20 dark:text-green-400" },
-    inactive: { label: "Inativo", className: "bg-red-500/10 text-red-700 dark:bg-red-500/20 dark:text-red-400" },
-    tenant: { label: "Locatário", className: "bg-blue-500/10 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400" },
-  }[tenant.status] || { label: "Ativo", className: "bg-green-500/10 text-green-700 dark:bg-green-500/20 dark:text-green-400" };
+  const getStatusBadge = (status: string) => {
+    const variants: Record<string, "default" | "secondary" | "destructive"> = {
+      active: "default",
+      tenant: "secondary",
+      inactive: "destructive",
+    };
+    const labels: Record<string, string> = {
+      active: "Ativo",
+      tenant: "Locatário",
+      inactive: "Inativo",
+    };
+    return <Badge variant={variants[status] || "default"}>{labels[status] || "Ativo"}</Badge>;
+  };
 
   const formatDocument = (tenant: Tenant) => {
     if (tenant.document_type === "cpf" && (tenant.cpf || tenant.document)) {
@@ -35,7 +43,7 @@ export function TenantCard({ tenant, onClick, onDelete }: TenantCardProps) {
             <User className="h-4 w-4 text-muted-foreground" />
             <span className="font-medium text-blue-600 hover:text-blue-700">{tenant.name}</span>
           </div>
-          <Badge className={statusConfig.className}>{statusConfig.label}</Badge>
+          {getStatusBadge(tenant.status)}
         </div>
 
         {(tenant.cpf || tenant.cnpj || tenant.document) && (
