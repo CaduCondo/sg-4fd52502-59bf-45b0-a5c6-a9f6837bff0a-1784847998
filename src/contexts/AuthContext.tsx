@@ -1,10 +1,18 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { useRouter } from "next/router";
-import { SystemUser } from "@/types";
 import { getCurrentUser, isAuthenticated } from "@/services/authService";
 
+// Define simpler User type that matches authService
+interface User {
+  id: string;
+  email: string;
+  name: string;
+  username: string;
+  role: string;
+}
+
 interface AuthContextType {
-  user: SystemUser | null;
+  user: User | null;
   loading: boolean;
   refreshUser: () => void;
 }
@@ -12,14 +20,14 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<SystemUser | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   const refreshUser = () => {
     const currentUser = getCurrentUser();
     if (currentUser) {
-      setUser(currentUser as SystemUser);
+      setUser(currentUser as User);
     } else {
       setUser(null);
     }
@@ -33,7 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (isAuthenticated()) {
           const currentUser = getCurrentUser();
           if (currentUser) {
-            setUser(currentUser as SystemUser);
+            setUser(currentUser as User);
           } else {
             setUser(null);
             if (router.pathname !== "/login") {

@@ -15,7 +15,6 @@ interface UserSession {
     name: string;
     username: string;
     role: SystemUser["role"];
-    locationId?: string | null;
   };
   expiresAt: number;
 }
@@ -98,7 +97,6 @@ export async function login(credentials: LoginCredentials): Promise<LoginResult>
         name: user.name,
         username: user.username,
         role: user.role,
-        locationId: user.location_id,
       },
       expiresAt: Date.now() + (24 * 60 * 60 * 1000), // 24 hours
     };
@@ -117,7 +115,6 @@ export async function login(credentials: LoginCredentials): Promise<LoginResult>
     console.log("✅ Session created successfully for:", session.user.name);
     console.log("✅ Username:", session.user.username);
     console.log("✅ Role:", session.user.role);
-    console.log("✅ Location ID:", session.user.locationId);
 
     return { success: true, user: session.user };
 
