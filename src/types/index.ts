@@ -99,9 +99,10 @@ export interface Tenant {
   name: string;
   email: string;
   phone: string;
-  cpf: string;
-  document?: string;
-  documentType?: string;
+  documentType: "cpf" | "cnpj";
+  document: string;
+  cpf?: string;
+  rg?: string;
   status: "active" | "inactive" | "rented";
   createdAt?: string;
   updatedAt?: string;

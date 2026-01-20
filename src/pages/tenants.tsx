@@ -6,6 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -26,7 +33,7 @@ import { getAll as getAllTenants, create as createTenant, remove as deleteTenant
 import { toast } from "@/hooks/use-toast";
 import type { Tenant } from "@/types";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
-import { applyPhoneMask, applyCpfMask } from "@/lib/masks";
+import { applyPhoneMask, applyCpfMask, applyCnpjMask, applyRgMask } from "@/lib/masks";
 
 export default function TenantsPage() {
   const router = useRouter();
@@ -39,7 +46,11 @@ export default function TenantsPage() {
     name: "",
     email: "",
     phone: "",
+    documentType: "cpf",
+    document: "",
     cpf: "",
+    rg: "",
+    status: "active",
   });
 
   useEffect(() => {
@@ -79,6 +90,7 @@ export default function TenantsPage() {
         tenant.name?.toLowerCase().includes(term) ||
         tenant.email?.toLowerCase().includes(term) ||
         tenant.phone?.includes(term) ||
+        tenant.document?.includes(term) ||
         tenant.cpf?.includes(term)
     );
     setFilteredTenants(filtered);
@@ -89,11 +101,27 @@ export default function TenantsPage() {
 
     if (field === "phone") {
       maskedValue = applyPhoneMask(value);
-    } else if (field === "cpf") {
-      maskedValue = applyCpfMask(value);
+    } else if (field === "document") {
+      if (formData.documentType === "cpf") {
+        maskedValue = applyCpfMask(value);
+      } else {
+        maskedValue = applyCnpjMask(value);
+      }
+    } else if (field === "rg") {
+      maskedValue = applyRgMask(value);
     }
 
     setFormData((prev) => ({ ...prev, [field]: maskedValue }));
+  }
+
+  function handleDocumentTypeChange(type: "cpf" | "cnpj") {
+    setFormData((prev) => ({
+      ...prev,
+      documentType: type,
+      document: "",
+      cpf: type === "cpf" ? "" : prev.cpf,
+      rg: type === "cpf" ? prev.rg : "",
+    }));
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -108,9 +136,35 @@ export default function TenantsPage() {
       return;
     }
 
+    if (!formData.document?.trim()) {
+      toast({
+        title: "Documento obrigatório",
+        description: `Por favor, informe o ${formData.documentType === "cpf" ? "CPF" : "CNPJ"}.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       console.log("📤 Creating tenant:", formData);
-      await createTenant(formData as Omit<Tenant, "id" | "createdAt">);
+      
+      const tenantData: any = {
+        name: formData.name,
+        email: formData.email || "",
+        phone: formData.phone || "",
+        document_type: formData.documentType,
+        document: formData.document,
+        status: "active",
+      };
+
+      if (formData.documentType === "cpf") {
+        tenantData.cpf = formData.document;
+        if (formData.rg) {
+          tenantData.rg = formData.rg;
+        }
+      }
+
+      await createTenant(tenantData);
       
       toast({
         title: "Inquilino cadastrado",
@@ -122,7 +176,11 @@ export default function TenantsPage() {
         name: "",
         email: "",
         phone: "",
+        documentType: "cpf",
+        document: "",
         cpf: "",
+        rg: "",
+        status: "active",
       });
       loadTenants();
     } catch (error) {
@@ -211,7 +269,7 @@ export default function TenantsPage() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar por nome, email, telefone ou CPF..."
+              placeholder="Buscar por nome, email, telefone ou documento..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
@@ -284,7 +342,7 @@ export default function TenantsPage() {
                           </CardTitle>
                           <CardDescription className="flex items-center gap-1">
                             <FileText className="h-3 w-3" />
-                            {tenant.cpf || tenant.document || "CPF não informado"}
+                            {tenant.document || tenant.cpf || "Documento não informado"}
                           </CardDescription>
                         </div>
                         {getStatusBadge(tenant.status || "ativo")}
@@ -314,7 +372,7 @@ export default function TenantsPage() {
         </div>
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent>
+          <DialogContent className="max-w-2xl">
             <form onSubmit={handleSubmit}>
               <DialogHeader>
                 <DialogTitle>Novo Inquilino</DialogTitle>
@@ -324,49 +382,105 @@ export default function TenantsPage() {
               </DialogHeader>
 
               <div className="grid gap-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">
-                    Nome completo <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    id="name"
-                    value={formData.name || ""}
-                    onChange={(e) => handleInputChange("name", e.target.value)}
-                    placeholder="João da Silva"
-                    required
-                  />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">
+                      Nome completo <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="name"
+                      value={formData.name || ""}
+                      onChange={(e) => handleInputChange("name", e.target.value)}
+                      placeholder="João da Silva"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={formData.email || ""}
+                      onChange={(e) => handleInputChange("email", e.target.value)}
+                      placeholder="joao@email.com"
+                    />
+                  </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={formData.email || ""}
-                    onChange={(e) => handleInputChange("email", e.target.value)}
-                    placeholder="joao@email.com"
-                  />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="documentType">
+                      Tipo de Documento <span className="text-destructive">*</span>
+                    </Label>
+                    <Select
+                      value={formData.documentType}
+                      onValueChange={(value: "cpf" | "cnpj") => handleDocumentTypeChange(value)}
+                    >
+                      <SelectTrigger id="documentType">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="cpf">CPF</SelectItem>
+                        <SelectItem value="cnpj">CNPJ</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="document">
+                      {formData.documentType === "cpf" ? "CPF" : "CNPJ"}{" "}
+                      <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="document"
+                      value={formData.document || ""}
+                      onChange={(e) => handleInputChange("document", e.target.value)}
+                      placeholder={
+                        formData.documentType === "cpf"
+                          ? "000.000.000-00"
+                          : "00.000.000/0000-00"
+                      }
+                      required
+                    />
+                  </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Telefone</Label>
-                  <Input
-                    id="phone"
-                    value={formData.phone || ""}
-                    onChange={(e) => handleInputChange("phone", e.target.value)}
-                    placeholder="(11) 99999-9999"
-                  />
-                </div>
+                {formData.documentType === "cpf" && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="rg">RG</Label>
+                      <Input
+                        id="rg"
+                        value={formData.rg || ""}
+                        onChange={(e) => handleInputChange("rg", e.target.value)}
+                        placeholder="00.000.000-0"
+                      />
+                    </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="cpf">CPF</Label>
-                  <Input
-                    id="cpf"
-                    value={formData.cpf || ""}
-                    onChange={(e) => handleInputChange("cpf", e.target.value)}
-                    placeholder="000.000.000-00"
-                  />
-                </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="phone">Telefone</Label>
+                      <Input
+                        id="phone"
+                        value={formData.phone || ""}
+                        onChange={(e) => handleInputChange("phone", e.target.value)}
+                        placeholder="(11) 99999-9999"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {formData.documentType === "cnpj" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Telefone</Label>
+                    <Input
+                      id="phone"
+                      value={formData.phone || ""}
+                      onChange={(e) => handleInputChange("phone", e.target.value)}
+                      placeholder="(11) 99999-9999"
+                    />
+                  </div>
+                )}
               </div>
 
               <DialogFooter>
