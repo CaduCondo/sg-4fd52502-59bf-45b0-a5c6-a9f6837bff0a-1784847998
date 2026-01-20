@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Home, Plus, User, Building2, CheckCircle, XCircle, ChevronDown, ChevronUp } from "lucide-react";
+import { Home, Plus, User, Building2, CheckCircle, XCircle, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
 import { getAll as getAllRentals, create as createRental, remove as deleteRental, update as updateRental } from "@/services/rentalService";
 import { getAll as getAllProperties } from "@/services/propertyService";
 import { getAll as getAllTenants } from "@/services/tenantService";
@@ -14,9 +14,21 @@ import { getAll as getAllLocations } from "@/services/locationService";
 import { RentalFormDialog } from "@/components/rentals/RentalFormDialog";
 import type { Rental, Property, Tenant, Location } from "@/types";
 import { formatCurrency } from "@/lib/masks";
+import { useRouter } from "next/router";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function Rentals() {
   const { toast } = useToast();
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [rentals, setRentals] = useState<Rental[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
@@ -24,6 +36,7 @@ export default function Rentals() {
   const [locations, setLocations] = useState<Location[]>([]);
   const [showInactive, setShowInactive] = useState(false);
   const [isRentalDialogOpen, setIsRentalDialogOpen] = useState(false);
+  const [rentalToDelete, setRentalToDelete] = useState<Rental | null>(null);
 
   const loadData = async () => {
     try {
@@ -87,6 +100,31 @@ export default function Rentals() {
     const month = String(date.getMonth() + 1).padStart(2, "0");
     const year = date.getFullYear();
     return `${day}/${month}/${year}`;
+  };
+
+  const handleDeleteRental = async () => {
+    if (!rentalToDelete) return;
+
+    try {
+      await deleteRental(rentalToDelete.id);
+      toast({
+        title: "Sucesso!",
+        description: "Locação removida com sucesso.",
+      });
+      setRentalToDelete(null);
+      loadData();
+    } catch (error) {
+      console.error("Erro ao deletar locação:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível remover a locação.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleViewRental = (rentalId: string) => {
+    router.push(`/rentals/${rentalId}`);
   };
 
   return (
@@ -213,7 +251,11 @@ export default function Rentals() {
                     const tenant = tenants.find((t) => t.id === rental.tenantId);
 
                     return (
-                      <Card key={rental.id} className="hover:shadow-lg transition-shadow cursor-pointer">
+                      <Card 
+                        key={rental.id} 
+                        className="hover:shadow-lg transition-shadow cursor-pointer relative"
+                        onClick={() => handleViewRental(rental.id)}
+                      >
                         <CardHeader className="pb-3">
                           <CardTitle className="text-lg text-blue-600">
                             {location?.name || "Local não encontrado"}
@@ -242,6 +284,17 @@ export default function Rentals() {
                             Início: {formatDate(rental.startDate)}
                           </div>
                         </CardContent>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          className="absolute bottom-4 right-4"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setRentalToDelete(rental);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </Card>
                     );
                   })}
@@ -334,6 +387,23 @@ export default function Rentals() {
           availableTenants={availableTenants}
           onSuccess={loadData}
         />
+
+        <AlertDialog open={!!rentalToDelete} onOpenChange={() => setRentalToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que deseja excluir esta locação? Esta ação não pode ser desfeita.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDeleteRental} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                Excluir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </Layout>
     </>
   );
