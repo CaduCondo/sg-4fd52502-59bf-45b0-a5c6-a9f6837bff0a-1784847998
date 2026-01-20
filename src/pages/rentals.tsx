@@ -70,7 +70,11 @@ export default function Rentals() {
 
   // Filtrar imóveis e inquilinos disponíveis
   const availableProperties = properties.filter((p) => p.status === "available");
-  const availableTenants = tenants.filter((t) => t.status === "active");
+  const availableTenants = tenants.filter((t) => {
+    // Inquilino disponível = não está em nenhuma locação ativa
+    const isInActiveRental = activeRentals.some((r) => r.tenantId === t.id);
+    return !isInActiveRental;
+  });
 
   // Filtrar locações ativas e inativas
   const activeRentals = rentals.filter((r) => r.isActive);
