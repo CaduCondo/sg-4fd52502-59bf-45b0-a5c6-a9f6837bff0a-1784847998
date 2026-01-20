@@ -337,11 +337,8 @@ export default function TenantsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredTenants.map((tenant, index) => (
                 <ScrollReveal key={tenant.id} delay={index * 0.1}>
-                  <Card
-                    className="cursor-pointer hover:shadow-lg transition-shadow duration-300"
-                    onClick={() => handleCardClick(tenant.id)}
-                  >
-                    <CardHeader className="pb-2">
+                  <Card>
+                    <CardHeader className="pb-3">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1">
                           <CardTitle className="text-xl font-bold text-blue-600">
