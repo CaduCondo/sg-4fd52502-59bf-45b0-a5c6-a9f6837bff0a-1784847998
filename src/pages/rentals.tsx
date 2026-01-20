@@ -8,8 +8,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Home, Plus, User, Building2, CheckCircle, XCircle, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
 import { getAll as getAllRentals, create as createRental, remove as deleteRental, update as updateRental } from "@/services/rentalService";
-import { getAll as getAllProperties } from "@/services/propertyService";
-import { getAll as getAllTenants } from "@/services/tenantService";
+import { getAll as getAllProperties, update as updateProperty } from "@/services/propertyService";
+import { getAll as getAllTenants, update as updateTenant } from "@/services/tenantService";
 import { getAll as getAllLocations } from "@/services/locationService";
 import { RentalFormDialog } from "@/components/rentals/RentalFormDialog";
 import type { Rental, Property, Tenant, Location } from "@/types";
@@ -70,11 +70,7 @@ export default function Rentals() {
 
   // Filtrar imóveis e inquilinos disponíveis
   const availableProperties = properties.filter((p) => p.status === "available");
-  const availableTenants = tenants.filter((t) => {
-    // Inquilino disponível = não está em nenhuma locação ativa
-    const isInActiveRental = activeRentals.some((r) => r.tenantId === t.id);
-    return !isInActiveRental;
-  });
+  const availableTenants = tenants; // Mostra TODOS os inquilinos cadastrados
 
   // Filtrar locações ativas e inativas
   const activeRentals = rentals.filter((r) => r.isActive);
