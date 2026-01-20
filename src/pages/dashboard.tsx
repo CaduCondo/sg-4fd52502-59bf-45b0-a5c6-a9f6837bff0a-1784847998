@@ -416,12 +416,21 @@ export default function Dashboard() {
       <Layout>
         <div className="space-y-6">
           <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-lg p-6 text-white shadow-lg">
-            <h1 className="text-3xl font-bold">
-              {greeting}, {user?.name?.split(" ")[0] || "Usuário"}!
-            </h1>
-            <p className="text-blue-100 mt-2">
-              Bem-vindo ao painel de controle do D'Uvo Enterprise.
-            </p>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <Building2 className="h-12 w-12 text-white" />
+                <div>
+                  <h1 className="text-3xl font-bold flex items-center gap-2">
+                    Olá, {greeting.toLowerCase()} {user?.name?.split(" ")[0] || "Usuário"}!
+                    <span className="inline-block animate-wave">👋</span>
+                  </h1>
+                  <p className="text-blue-100 mt-2">
+                    Bem-vindo ao painel de controle do D'Uvo Enterprise.
+                  </p>
+                </div>
+              </div>
+              <TrendingUp className="h-16 w-16 text-white/80" />
+            </div>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">

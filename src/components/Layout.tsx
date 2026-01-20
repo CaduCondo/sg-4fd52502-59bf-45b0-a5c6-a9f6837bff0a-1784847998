@@ -343,7 +343,7 @@ export function Layout({ children }: LayoutProps) {
               </Sheet>
 
               <Link href="/dashboard" className="flex items-center gap-2 flex-shrink-0">
-                <Building2 className="h-6 w-6 text-emerald-600" />
+                <Building2 className="h-6 w-6 text-blue-600" />
                 <span className="font-bold text-slate-900 text-base sm:text-lg">D&apos;Uvo Enterprise</span>
               </Link>
             </div>
@@ -358,7 +358,7 @@ export function Layout({ children }: LayoutProps) {
                     key={item.name}
                     href={item.path}
                     className={cn(
-                      "group flex items-center gap-x-3 rounded-md p-2 text-sm font-semibold leading-6",
+                      "group flex items-center gap-x-2 rounded-md p-2 text-sm font-semibold leading-6",
                       isActive
                         ? "bg-slate-50 text-blue-600 dark:bg-slate-800 dark:text-blue-400"
                         : "text-slate-700 hover:bg-slate-50 hover:text-blue-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-blue-400"
