@@ -52,8 +52,10 @@ export default function RentalDetails() {
       loadRental();
     } else if (id === "new") {
       setLoading(false);
+      // Redirect to rentals page - new rentals should be created from the modal there
+      router.push("/rentals");
     }
-  }, [id]);
+  }, [id, router]);
 
   const loadRental = async () => {
     try {
@@ -298,6 +300,17 @@ export default function RentalDetails() {
   }
 
   if (!rental || !property || !tenant) {
+    // If id is 'new', we're redirecting, so show loading
+    if (id === "new") {
+      return (
+        <Layout>
+          <div className="flex justify-center items-center h-64">
+            <p className="text-muted-foreground">Redirecionando...</p>
+          </div>
+        </Layout>
+      );
+    }
+    
     return (
       <Layout>
         <div className="flex justify-center items-center h-64">
