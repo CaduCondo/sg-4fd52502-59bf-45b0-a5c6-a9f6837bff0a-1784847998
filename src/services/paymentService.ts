@@ -190,6 +190,9 @@ export async function updateFuturePaymentsOnPaymentDayChange(
 }
 
 export async function createPaymentsForRental(rental: any): Promise<void> {
+  console.log("=== INICIO createPaymentsForRental ===");
+  console.log("Rental recebido:", rental);
+  
   const startDate = new Date(rental.startDate || rental.start_date);
   const endDate = rental.endDate || rental.end_date 
     ? new Date(rental.endDate || rental.end_date) 
@@ -201,7 +204,7 @@ export async function createPaymentsForRental(rental: any): Promise<void> {
   const monthsDiff = endDate.getMonth() - startDate.getMonth();
   const totalMonths = (yearsDiff * 12) + monthsDiff + 1; // +1 to include both start and end month
 
-  console.log("Creating payments for rental:", {
+  console.log("Dados processados:", {
     rentalId: rental.id,
     startDate: startDate.toISOString().split('T')[0],
     endDate: endDate.toISOString().split('T')[0],
@@ -234,16 +237,18 @@ export async function createPaymentsForRental(rental: any): Promise<void> {
     });
   }
 
-  console.log(`Creating ${payments.length} payments:`, payments);
+  console.log(`Preparando para criar ${payments.length} pagamentos:`, payments);
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from(TABLE)
-    .insert(payments);
+    .insert(payments)
+    .select();
 
   if (error) {
-    console.error("Erro ao criar pagamentos:", error);
+    console.error("ERRO ao criar pagamentos:", error);
     throw error;
   }
 
-  console.log(`Successfully created ${payments.length} payments for rental ${rental.id}`);
+  console.log(`✅ Sucesso! Criados ${data?.length || 0} pagamentos:`, data);
+  console.log("=== FIM createPaymentsForRental ===");
 }
