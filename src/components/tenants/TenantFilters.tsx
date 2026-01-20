@@ -1,19 +1,13 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Filter, Plus } from "lucide-react";
-import { Location } from "@/types";
+import { Search } from "lucide-react";
 
 interface TenantFiltersProps {
   searchTerm: string;
   onSearchChange: (value: string) => void;
   statusFilter: string;
   onStatusFilterChange: (value: string) => void;
-  selectedLocations: string[];
-  onLocationToggle: (locationId: string) => void;
-  locations: Location[];
   sortBy: "alphabetical" | "recent";
   onSortChange: (value: "alphabetical" | "recent") => void;
 }
@@ -23,9 +17,6 @@ export function TenantFilters({
   onSearchChange,
   statusFilter,
   onStatusFilterChange,
-  selectedLocations,
-  onLocationToggle,
-  locations,
   sortBy,
   onSortChange,
 }: TenantFiltersProps) {
@@ -43,40 +34,6 @@ export function TenantFilters({
         </div>
 
         <div className="flex gap-2">
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className="gap-2">
-                <Filter className="h-4 w-4" />
-                Locais
-                {selectedLocations.length > 0 && (
-                  <span className="ml-1 rounded-full bg-primary px-2 py-0.5 text-xs text-primary-foreground">
-                    {selectedLocations.length}
-                  </span>
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-56">
-              <div className="space-y-2">
-                <h4 className="font-medium text-sm">Filtrar por local</h4>
-                {locations.map((location) => (
-                  <div key={location.id} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`location-${location.id}`}
-                      checked={selectedLocations.includes(location.id)}
-                      onCheckedChange={() => onLocationToggle(location.id)}
-                    />
-                    <label
-                      htmlFor={`location-${location.id}`}
-                      className="text-sm font-normal cursor-pointer"
-                    >
-                      {location.name}
-                    </label>
-                  </div>
-                ))}
-              </div>
-            </PopoverContent>
-          </Popover>
-
           <Select value={statusFilter} onValueChange={onStatusFilterChange}>
             <SelectTrigger className="w-[140px]">
               <SelectValue placeholder="Status" />

@@ -188,9 +188,6 @@ export default function Dashboard() {
             greeting={greeting} 
             userName={user?.name?.split(" ")[0] || "Usuário"} 
           />
-          <p className="text-blue-100 mt-2">
-            Bem-vindo(a) ao painel de controle de recebimentos das locações dos imóveis do D&apos;Uvo Enterprise Corporation
-          </p>
 
           <PeriodSelector
             selectedMonth={selectedMonth}

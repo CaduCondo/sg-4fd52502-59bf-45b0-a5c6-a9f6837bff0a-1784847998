@@ -124,11 +124,8 @@ export default function TenantsPage() {
           onSearchChange={setSearchTerm}
           statusFilter={statusFilter}
           onStatusFilterChange={setStatusFilter}
-          selectedLocations={selectedLocations}
-          onLocationToggle={handleLocationToggle}
           sortBy={sortBy}
           onSortChange={setSortBy}
-          locations={locations}
         />
 
         {tenants.length === 0 ? (
