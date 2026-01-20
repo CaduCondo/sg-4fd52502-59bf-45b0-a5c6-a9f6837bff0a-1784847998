@@ -75,7 +75,9 @@ export function useTenants() {
       if (sortBy === "alphabetical") {
         return a.name.localeCompare(b.name);
       } else {
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        const dateA = a.created_at || a.createdAt || "";
+        const dateB = b.created_at || b.createdAt || "";
+        return new Date(dateB).getTime() - new Date(dateA).getTime();
       }
     });
 
@@ -124,7 +126,7 @@ export function useTenants() {
 
   const deleteTenant = async (id: string) => {
     try {
-      await tenantService.delete(id);
+      await tenantService.deleteTenant(id);
       toast({
         title: "Inquilino excluído",
         description: "O inquilino foi excluído com sucesso.",

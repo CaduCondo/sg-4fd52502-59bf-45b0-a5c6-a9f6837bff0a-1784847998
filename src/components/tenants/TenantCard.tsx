@@ -20,8 +20,9 @@ export function TenantCard({ tenant, onClick, onDelete }: TenantCardProps) {
     if (tenant.document_type === "cpf" && tenant.cpf) {
       return `CPF: ${tenant.cpf}`;
     }
-    if (tenant.document_type === "cnpj" && tenant.cnpj) {
-      return `CNPJ: ${tenant.cnpj}`;
+    // Access cnpj safely or fallback to document if type is cnpj
+    if (tenant.document_type === "cnpj" && (tenant.cnpj || tenant.document)) {
+      return `CNPJ: ${tenant.cnpj || tenant.document}`;
     }
     return "";
   };
