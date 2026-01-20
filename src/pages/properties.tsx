@@ -10,12 +10,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, Trash2, Grid3x3, List, AlertCircle, X, Bed, Bath } from "lucide-react";
+import { Plus, Search, Trash2, Grid3x3, List, AlertCircle, X, Bed, Bath, ChevronDown } from "lucide-react";
 import { propertyService, locationService } from "@/services";
 import type { Property, Location } from "@/types";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { applyMoneyMask, parseCurrencyToFloat, formatCurrency } from "@/lib/masks";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export default function PropertiesPage() {
   const router = useRouter();
@@ -24,7 +26,8 @@ export default function PropertiesPage() {
   const [filteredProperties, setFilteredProperties] = useState<Property[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [locationFilter, setLocationFilter] = useState<string>("all");
+  const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
+  const [sortOrder, setSortOrder] = useState<"alphabetical" | "price-asc" | "price-desc">("alphabetical");
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -51,7 +54,7 @@ export default function PropertiesPage() {
 
   useEffect(() => {
     filterProperties();
-  }, [properties, searchTerm, statusFilter, locationFilter]);
+  }, [properties, searchTerm, statusFilter, selectedLocations, sortOrder]);
 
   const loadData = async () => {
     try {
@@ -69,17 +72,37 @@ export default function PropertiesPage() {
   };
 
   const filterProperties = () => {
-    const filtered = properties.filter((property) => {
+    let filtered = properties.filter((property) => {
       const matchesSearch =
         property.location?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         property.complement?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         property.description?.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = statusFilter === "all" || property.status === statusFilter;
-      const matchesLocation = locationFilter === "all" || property.location_id === locationFilter;
+      const matchesLocation = selectedLocations.length === 0 || selectedLocations.includes(property.location_id);
 
       return matchesSearch && matchesStatus && matchesLocation;
     });
+
+    // Apply sorting
+    if (sortOrder === "alphabetical") {
+      filtered = filtered.sort((a, b) => (a.location || "").localeCompare(b.location || ""));
+    } else if (sortOrder === "price-asc") {
+      filtered = filtered.sort((a, b) => (a.value || 0) - (b.value || 0));
+    } else if (sortOrder === "price-desc") {
+      filtered = filtered.sort((a, b) => (b.value || 0) - (a.value || 0));
+    }
+
     setFilteredProperties(filtered);
+  };
+
+  const handleLocationToggle = (locationId: string) => {
+    setSelectedLocations((prev) => {
+      if (prev.includes(locationId)) {
+        return prev.filter((id) => id !== locationId);
+      } else {
+        return [...prev, locationId];
+      }
+    });
   };
 
   const handleMoneyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -242,7 +265,7 @@ export default function PropertiesPage() {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Imóveis</h1>
             <p className="text-muted-foreground">
-              Gerencie os imóveis disponíveis para locação
+              Gerenciamento de cadastro dos imóveis para locação.
             </p>
           </div>
           <Button
@@ -270,19 +293,61 @@ export default function PropertiesPage() {
                       className="pl-8"
                     />
                   </div>
-                  <Select value={locationFilter} onValueChange={setLocationFilter}>
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder="Local" />
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-[200px] justify-between">
+                        <span className="truncate">
+                          {selectedLocations.length === 0
+                            ? "Todos os Locais"
+                            : selectedLocations.length === 1
+                            ? locations.find((l) => l.id === selectedLocations[0])?.name
+                            : `${selectedLocations.length} locais`}
+                        </span>
+                        <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[200px] p-0" align="start">
+                      <div className="max-h-[300px] overflow-y-auto p-2">
+                        {[...locations]
+                          .sort((a, b) => a.name.localeCompare(b.name))
+                          .map((location) => (
+                            <div
+                              key={location.id}
+                              className="flex items-center space-x-2 rounded-sm px-2 py-1.5 hover:bg-accent cursor-pointer"
+                              onClick={() => handleLocationToggle(location.id)}
+                            >
+                              <Checkbox
+                                checked={selectedLocations.includes(location.id)}
+                                onCheckedChange={() => handleLocationToggle(location.id)}
+                              />
+                              <label className="flex-1 text-sm cursor-pointer">
+                                {location.name}
+                              </label>
+                            </div>
+                          ))}
+                      </div>
+                      {selectedLocations.length > 0 && (
+                        <div className="border-t p-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="w-full"
+                            onClick={() => setSelectedLocations([])}
+                          >
+                            Limpar Seleção
+                          </Button>
+                        </div>
+                      )}
+                    </PopoverContent>
+                  </Popover>
+                  <Select value={sortOrder} onValueChange={(value: any) => setSortOrder(value)}>
+                    <SelectTrigger className="w-[200px]">
+                      <SelectValue placeholder="Ordenar por" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Todos os Locais</SelectItem>
-                      {[...locations]
-                        .sort((a, b) => a.name.localeCompare(b.name))
-                        .map((location) => (
-                          <SelectItem key={location.id} value={location.id}>
-                            {location.name}
-                          </SelectItem>
-                      ))}
+                      <SelectItem value="alphabetical">Alfabético (A-Z)</SelectItem>
+                      <SelectItem value="price-asc">Valor: Menor → Maior</SelectItem>
+                      <SelectItem value="price-desc">Valor: Maior → Menor</SelectItem>
                     </SelectContent>
                   </Select>
                   <Select value={statusFilter} onValueChange={setStatusFilter}>
