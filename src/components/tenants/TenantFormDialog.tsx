@@ -119,18 +119,17 @@ export function TenantFormDialog({
       name: formData.name,
       email: formData.email,
       phone: formData.phone,
-      document_type: documentType,
-      documentType: documentType,
-      status: "active", // Always set as active for new tenants
+      documentType: documentType, // Will be transformed to document_type by service
+      status: "active",
     };
 
     if (documentType === "cpf") {
-      dataToSave.cpf = formData.cpf;
-      dataToSave.document = formData.cpf;
+      dataToSave.document = formData.cpf; // Store CPF in document field
+      dataToSave.cpf = formData.cpf; // Also populate cpf field (legacy)
       dataToSave.rg = formData.rg;
     } else {
-      dataToSave.cnpj = formData.cnpj;
-      dataToSave.document = formData.cnpj;
+      dataToSave.document = formData.cnpj; // Store CNPJ in document field
+      dataToSave.cnpj = formData.cnpj; // Also populate cnpj field
     }
 
     const success = await onSave(dataToSave);
