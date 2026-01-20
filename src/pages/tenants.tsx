@@ -21,8 +21,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Mail, Phone, FileText, User } from "lucide-react";
-import { getAll as getAllTenants, create as createTenant } from "@/services/tenantService";
+import { Plus, Search, Mail, Phone, FileText, User, X } from "lucide-react";
+import { getAll as getAllTenants, create as createTenant, remove as deleteTenant } from "@/services/tenantService";
 import { toast } from "@/hooks/use-toast";
 import type { Tenant } from "@/types";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
@@ -145,11 +145,6 @@ export default function TenantsPage() {
   const getStatusBadge = (status: string) => {
     switch (status.toLowerCase()) {
       case "rented":
-        return (
-          <Badge className="bg-blue-100 text-blue-800 border-blue-200">
-            Locatário
-          </Badge>
-        );
       case "active":
         return (
           <Badge className="bg-green-100 text-green-800 border-green-200">
@@ -159,8 +154,8 @@ export default function TenantsPage() {
       case "inactive":
       case "unavailable":
         return (
-          <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">
-            Indisponível
+          <Badge className="bg-red-100 text-red-800 border-red-200">
+            Inativo
           </Badge>
         );
       default:
@@ -171,6 +166,28 @@ export default function TenantsPage() {
         );
     }
   };
+
+  async function handleDelete(e: React.MouseEvent, tenantId: string) {
+    e.stopPropagation();
+    
+    if (!confirm("Tem certeza que deseja excluir este inquilino?")) return;
+    
+    try {
+      await deleteTenant(tenantId);
+      toast({
+        title: "Inquilino excluído",
+        description: "Inquilino excluído com sucesso!",
+      });
+      loadTenants();
+    } catch (error) {
+      console.error("❌ Error deleting tenant:", error);
+      toast({
+        title: "Erro ao excluir",
+        description: "Não foi possível excluir o inquilino.",
+        variant: "destructive",
+      });
+    }
+  }
 
   return (
     <>
@@ -250,18 +267,26 @@ export default function TenantsPage() {
                   delay={index * 0.1}
                 >
                   <Card
-                    className="cursor-pointer hover:shadow-lg transition-shadow duration-300"
+                    className="cursor-pointer hover:shadow-lg transition-shadow duration-300 relative"
                     onClick={() => handleCardClick(tenant.id)}
                   >
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute top-2 right-2 h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50 z-10"
+                      onClick={(e) => handleDelete(e, tenant.id)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
                     <CardHeader>
-                      <div className="flex items-start justify-between">
+                      <div className="flex items-start justify-between pr-8">
                         <div className="flex-1">
                           <CardTitle className="text-primary text-lg font-semibold">
                             {tenant.name}
                           </CardTitle>
                           <CardDescription className="flex items-center gap-1">
                             <FileText className="h-3 w-3" />
-                            {tenant.cpf || "CPF não informado"}
+                            {tenant.cpf || tenant.document || "CPF não informado"}
                           </CardDescription>
                         </div>
                         {getStatusBadge(tenant.status || "ativo")}

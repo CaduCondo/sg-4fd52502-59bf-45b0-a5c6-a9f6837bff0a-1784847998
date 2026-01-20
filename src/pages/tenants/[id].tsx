@@ -121,36 +121,9 @@ export default function TenantDetails() {
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "active":
-        return "bg-green-500";
-      case "rented":
-        return "bg-blue-500";
-      default:
-        return "bg-gray-500";
-    }
-  };
-
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case "active":
-        return "Ativo";
-      case "rented":
-        return "Locador";
-      default:
-        return status;
-    }
-  };
-
   const getStatusBadge = (status: string) => {
     switch (status.toLowerCase()) {
       case "rented":
-        return (
-          <Badge className="bg-blue-100 text-blue-800 border-blue-200">
-            Locatário
-          </Badge>
-        );
       case "active":
         return (
           <Badge className="bg-green-100 text-green-800 border-green-200">
@@ -160,8 +133,8 @@ export default function TenantDetails() {
       case "inactive":
       case "unavailable":
         return (
-          <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">
-            Indisponível
+          <Badge className="bg-red-100 text-red-800 border-red-200">
+            Inativo
           </Badge>
         );
       default:
@@ -249,26 +222,41 @@ export default function TenantDetails() {
                   <Users className="h-5 w-5 text-emerald-600" />
                   <CardTitle className="text-lg">{tenant.name}</CardTitle>
                 </div>
-                {getStatusBadge(tenant.status)}
+                {getStatusBadge(tenant.status || "active")}
               </div>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div className="space-y-1">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
                   <Label className="text-xs text-muted-foreground">Nome Completo</Label>
                   {isEditing ? (
                     <Input
                       placeholder="João da Silva"
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="h-8 text-sm"
+                      className="h-9"
                     />
                   ) : (
                     <p className="text-sm font-medium">{tenant.name}</p>
                   )}
                 </div>
 
-                <div className="space-y-1">
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">E-mail</Label>
+                  {isEditing ? (
+                    <Input
+                      type="email"
+                      placeholder="joao@email.com"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      className="h-9"
+                    />
+                  ) : (
+                    <p className="text-sm font-medium">{tenant.email || "—"}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
                   <Label className="text-xs text-muted-foreground">Tipo de Documento</Label>
                   {isEditing ? (
                     <Select
@@ -277,7 +265,7 @@ export default function TenantDetails() {
                         setFormData({ ...formData, documentType: value, document: "" });
                       }}
                     >
-                      <SelectTrigger className="h-8 text-sm">
+                      <SelectTrigger className="h-9">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -290,7 +278,7 @@ export default function TenantDetails() {
                   )}
                 </div>
 
-                <div className="space-y-1">
+                <div className="space-y-2">
                   <Label className="text-xs text-muted-foreground">
                     {formData.documentType === "cpf" ? "CPF" : "CNPJ"}
                   </Label>
@@ -300,29 +288,14 @@ export default function TenantDetails() {
                       value={formData.document}
                       onChange={(e) => handleDocumentChange(e.target.value)}
                       maxLength={formData.documentType === "cpf" ? 14 : 18}
-                      className="h-8 text-sm"
+                      className="h-9"
                     />
                   ) : (
                     <p className="text-sm font-medium">{tenant.document || "—"}</p>
                   )}
                 </div>
 
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">E-mail</Label>
-                  {isEditing ? (
-                    <Input
-                      type="email"
-                      placeholder="joao@email.com"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className="h-8 text-sm"
-                    />
-                  ) : (
-                    <p className="text-sm font-medium">{tenant.email || "—"}</p>
-                  )}
-                </div>
-
-                <div className="space-y-1">
+                <div className="space-y-2">
                   <Label className="text-xs text-muted-foreground">Telefone</Label>
                   {isEditing ? (
                     <Input
@@ -330,7 +303,7 @@ export default function TenantDetails() {
                       value={applyPhoneMask(formData.phone)}
                       onChange={(e) => setFormData({ ...formData, phone: removeMask(e.target.value) })}
                       maxLength={15}
-                      className="h-8 text-sm"
+                      className="h-9"
                     />
                   ) : (
                     <p className="text-sm font-medium">{tenant.phone ? applyPhoneMask(tenant.phone) : "—"}</p>
