@@ -48,7 +48,7 @@ export function useTenants() {
 
   useEffect(() => {
     loadData();
-  }, []); // Empty dependency array - only load on mount
+  }, [loadData]); // Load when user becomes available
 
   const filteredAndSortedTenants = useMemo(() => {
     let filtered = tenants;

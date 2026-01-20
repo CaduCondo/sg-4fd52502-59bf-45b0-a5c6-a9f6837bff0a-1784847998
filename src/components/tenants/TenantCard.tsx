@@ -13,7 +13,7 @@ interface TenantCardProps {
 export function TenantCard({ tenant, onClick, onDelete }: TenantCardProps) {
   const statusConfig = {
     active: { label: "Ativo", className: "bg-green-500/10 text-green-700 dark:bg-green-500/20 dark:text-green-400" },
-    inactive: { label: "Inativo", className: "bg-gray-500/10 text-gray-700 dark:bg-gray-500/20 dark:text-gray-400" },
+    inactive: { label: "Inativo", className: "bg-red-500/10 text-red-700 dark:bg-red-500/20 dark:text-red-400" },
     tenant: { label: "Locatário", className: "bg-blue-500/10 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400" },
   }[tenant.status] || { label: "Ativo", className: "bg-green-500/10 text-green-700 dark:bg-green-500/20 dark:text-green-400" };
 
