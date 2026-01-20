@@ -243,39 +243,6 @@ export function RentalFormDialog({
             </div>
           </div>
 
-          {selectedProperty && (
-            <div className="p-4 bg-emerald-50 dark:bg-emerald-950 rounded-lg border border-emerald-200 dark:border-emerald-800">
-              <div className="space-y-2">
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-emerald-900 dark:text-emerald-100">
-                    Valor do Aluguel:
-                  </span>
-                  <span className="font-semibold text-emerald-700 dark:text-emerald-300">
-                    {formatCurrency(selectedProperty.value || 0)}
-                  </span>
-                </div>
-                {hasGarage && (
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-emerald-900 dark:text-emerald-100">
-                      Vaga Garagem:
-                    </span>
-                    <span className="font-semibold text-emerald-700 dark:text-emerald-300">
-                      {garageValue ? `+ ${garageValue}` : "+ R$ 0,00"}
-                    </span>
-                  </div>
-                )}
-                <div className="flex justify-between items-center pt-2 border-t border-emerald-200 dark:border-emerald-800">
-                  <span className="font-bold text-emerald-900 dark:text-emerald-100">
-                    Valor Total:
-                  </span>
-                  <span className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
-                    {formatCurrency(calculatedTotal())}
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
-
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="startDate">Data Início *</Label>
