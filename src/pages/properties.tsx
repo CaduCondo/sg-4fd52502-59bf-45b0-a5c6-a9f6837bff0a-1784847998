@@ -95,7 +95,8 @@ export default function PropertiesPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.location_id) {
+    // Strict validation for location_id
+    if (!formData.location_id || formData.location_id.trim() === "") {
       alert("Por favor, selecione um local");
       return;
     }
@@ -103,8 +104,13 @@ export default function PropertiesPage() {
     try {
       const selectedLocation = locations.find(loc => loc.id === formData.location_id);
       
+      if (!selectedLocation) {
+        alert("Local selecionado inválido. Por favor, selecione novamente.");
+        return;
+      }
+
       const propertyData = {
-        location: selectedLocation?.name || "",
+        location: selectedLocation.name,
         location_id: formData.location_id,
         property_identifier: formData.property_identifier || "Apartamento",
         type: "residential" as const,
@@ -114,6 +120,8 @@ export default function PropertiesPage() {
         bedrooms: formData.bedrooms ? parseInt(formData.bedrooms) : undefined,
         bathrooms: formData.bathrooms ? parseInt(formData.bathrooms) : undefined,
       };
+
+      console.log("Dados a serem salvos:", propertyData);
 
       if (editingProperty) {
         await propertyService.update(editingProperty.id, propertyData);
