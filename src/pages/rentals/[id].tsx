@@ -48,8 +48,10 @@ export default function RentalDetails() {
   const [editAttachments, setEditAttachments] = useState<string[]>([]);
 
   useEffect(() => {
-    if (id) {
+    if (id && id !== "new") {
       loadRental();
+    } else if (id === "new") {
+      setLoading(false);
     }
   }, [id]);
 
