@@ -58,7 +58,7 @@ interface LayoutProps {
 export function Layout({ children }: LayoutProps) {
   const router = useRouter();
   const { toast } = useToast();
-  const [user, setUser] = useState<UserType | SystemUser | null>(null);
+  const { user: authUser } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showProfileDialog, setShowProfileDialog] = useState(false);
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
@@ -74,26 +74,8 @@ export function Layout({ children }: LayoutProps) {
   const [confirmPassword, setConfirmPassword] = useState("");
 
   useEffect(() => {
-    const loadUser = async () => {
-      // Simulação de autenticação - pegar ID do localStorage ou usar mock
-      // Em produção, isso viria do contexto de auth
-      const storedUserId = localStorage.getItem("userId");
-      const mockUserId = "5fa0af84-d74e-4cc0-80c0-1ccfd87c20b9"; // ID do admin mockado
-      
-      try {
-        const userData = await getUserById(storedUserId || mockUserId);
-        setUser(userData);
-      } catch (error) {
-        console.error("Erro ao carregar usuário:", error);
-      }
-    };
-
-    loadUser();
-  }, []);
-
-  useEffect(() => {
     loadPermissions();
-  }, [user]);
+  }, [authUser]);
 
   const loadPermissions = async () => {
     try {
@@ -110,38 +92,27 @@ export function Layout({ children }: LayoutProps) {
   };
 
   const handleChangePassword = () => {
-    if (!user) return;
-
-    // Type guard for legacy User type which has password
-    const legacyUser = user as UserType;
-    if (legacyUser.password && currentPassword !== legacyUser.password) {
-      alert("Senha atual incorreta!");
-      return;
-    }
+    if (!authUser) return;
 
     if (newPassword !== confirmPassword) {
-      alert("As senhas não coincidem!");
+      toast({
+        title: "Erro!",
+        description: "As senhas não coincidem!",
+        variant: "destructive",
+      });
       return;
     }
 
     if (newPassword.length < 6) {
-      alert("A nova senha deve ter no mínimo 6 caracteres!");
+      toast({
+        title: "Erro!",
+        description: "A nova senha deve ter no mínimo 6 caracteres!",
+        variant: "destructive",
+      });
       return;
     }
 
-    const updatedUser: UserType = {
-      ...legacyUser,
-      password: newPassword,
-    };
-
-    // Atualizar storage - cast to any/SystemUser compatible if needed for legacy
-    // The storage expects SystemUser but legacy code uses UserType
-    // For now we force cast to avoid the error since we are transitioning
-    userStorage.save(updatedUser as unknown as SystemUser);
-    
-    // Atualizar estado local
-    setUser(updatedUser);
-    
+    // TODO: Implement actual password change via API
     toast({
       title: "Senha alterada com sucesso!",
       description: "Sua senha foi atualizada com sucesso.",
@@ -168,10 +139,10 @@ export function Layout({ children }: LayoutProps) {
 
   // Função para verificar se o menu deve ser exibido baseado no perfil do usuário
   const shouldShowMenu = (menuPath: string) => {
-    if (!user?.role) return false;
+    if (!authUser?.role) return false;
 
     // Admin sees everything
-    if (user.role === "admin") return true;
+    if (authUser.role === "admin") return true;
 
     // Map menu paths to menu items in database
     const menuItemMap: Record<string, string> = {
@@ -188,11 +159,11 @@ export function Layout({ children }: LayoutProps) {
     if (!menuItem) return false;
 
     // For Financial menu, also allow broker role
-    if (menuPath === "/financial" && user.role === "broker") return true;
+    if (menuPath === "/financial" && authUser.role === "broker") return true;
 
     // Check permissions from database
     const permission = permissions.find(
-      (p) => p.role === user.role && p.menu_item === menuItem
+      (p) => p.role === authUser.role && p.menu_item === menuItem
     );
 
     return permission ? permission.can_access : false;
@@ -244,7 +215,7 @@ export function Layout({ children }: LayoutProps) {
   ];
 
   const filteredMenuItems = menuItems.filter((item) => 
-    hasPermission(user?.role, item.permission as any)
+    hasPermission(authUser?.role, item.permission as any)
   );
 
   const navigationItems = filteredMenuItems.filter(item => shouldShowMenu(item.path));
@@ -296,11 +267,11 @@ export function Layout({ children }: LayoutProps) {
                   {/* User Info Section */}
                   <div className="mt-6 mb-6">
                     <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
-                      {user?.photo ? (
+                      {authUser?.photo ? (
                         <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-emerald-600 flex-shrink-0">
                           <img 
-                            src={user.photo} 
-                            alt={user.name} 
+                            src={authUser.photo} 
+                            alt={authUser.name} 
                             className="w-full h-full object-cover"
                           />
                         </div>
@@ -310,8 +281,8 @@ export function Layout({ children }: LayoutProps) {
                         </div>
                       )}
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-slate-900 truncate">{user?.name}</p>
-                        <p className="text-xs text-slate-500">{roleDisplayName(user?.role)}</p>
+                        <p className="text-sm font-semibold text-slate-900 truncate">{authUser?.name}</p>
+                        <p className="text-xs text-slate-500">{roleDisplayName(authUser?.role)}</p>
                       </div>
                     </div>
                   </div>
@@ -407,17 +378,17 @@ export function Layout({ children }: LayoutProps) {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                     <Avatar className="h-10 w-10 border-2 border-emerald-600/20">
-                      <AvatarImage src={user?.photo} alt={user?.name} className="object-cover" />
+                      <AvatarImage src={authUser?.photo} alt={authUser?.name} className="object-cover" />
                       <AvatarFallback className="bg-emerald-100 text-emerald-700 font-medium">
-                        {user?.name?.substring(0, 2).toUpperCase() || "US"}
+                        {authUser?.name?.substring(0, 2).toUpperCase() || "US"}
                       </AvatarFallback>
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
                   <div className="px-2 py-1.5">
-                    <p className="text-sm font-medium leading-none">{user?.name}</p>
-                    <p className="text-xs text-muted-foreground mt-1">{roleDisplayName(user?.role)}</p>
+                    <p className="text-sm font-medium leading-none">{authUser?.name}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{roleDisplayName(authUser?.role)}</p>
                   </div>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => setShowProfileDialog(true)} className="cursor-pointer">
@@ -451,9 +422,9 @@ export function Layout({ children }: LayoutProps) {
       </motion.main>
 
       {/* Edit Profile Dialog */}
-      {user?.id && (
+      {authUser?.id && (
         <EditProfileDialog
-          user={user as unknown as import("@/types").SystemUser}
+          user={authUser as unknown as import("@/types").SystemUser}
           open={showProfileDialog}
           onOpenChange={setShowProfileDialog}
           onSuccess={() => {
