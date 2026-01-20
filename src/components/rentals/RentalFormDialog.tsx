@@ -155,6 +155,7 @@ export function RentalFormDialog({
       const createdRental = await createRental(newRental);
 
       await updateProperty(selectedPropertyId, { status: "occupied" });
+      console.log("Updating tenant status:", selectedTenantId, { status: "rented" });
       await updateTenant(selectedTenantId, { status: "rented" });
 
       console.log("Creating payments for rental:", createdRental);
