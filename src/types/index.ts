@@ -125,9 +125,9 @@ export interface Rental {
   monthlyRent?: number; // Alias
   value?: number; // Alias for total value
   depositAmount?: number;
-  deposit?: number; // Alias
+  deposit?: string; // DB field is text
   garageValue?: number;
-  adminFee?: number;
+  // adminFee removido pois não existe na tabela rentals
 
   // Status & Config
   status: "pending" | "active" | "completed" | "paid" | "overdue";

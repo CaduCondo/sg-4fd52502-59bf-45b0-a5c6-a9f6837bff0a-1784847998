@@ -46,21 +46,37 @@ function mapRentalToDB(data: Partial<Rental>): any {
   if (data.tenantId) dbData.tenant_id = data.tenantId;
   if (data.startDate) dbData.start_date = data.startDate;
   if (data.endDate !== undefined) dbData.end_date = data.endDate;
-  if (data.rentAmount) dbData.rent_amount = data.rentAmount;
-  if (data.depositAmount) dbData.deposit_amount = data.depositAmount;
-  if (data.paymentDay !== undefined) dbData.payment_day = data.paymentDay;
-  if (data.contractUrl) dbData.contract_url = data.contractUrl;
-  if (data.autoRenew !== undefined) dbData.auto_renew = data.autoRenew;
-  if (data.adminFee) dbData.admin_fee = data.adminFee;
+  // Mapear rentAmount para monthly_rent (nome da coluna no banco)
+  if (data.rentAmount !== undefined) dbData.monthly_rent = data.rentAmount;
+  else if (data.monthlyRent !== undefined) dbData.monthly_rent = data.monthlyRent;
   
-  if (data.monthlyRent !== undefined) dbData.monthly_rent = data.monthlyRent;
+  // Tratar deposit (banco é text)
+  if (data.depositAmount !== undefined) dbData.deposit = String(data.depositAmount);
+  else if (data.deposit !== undefined) dbData.deposit = data.deposit;
+  
+  if (data.paymentDay !== undefined) dbData.payment_day = data.paymentDay;
+  // contract_url não existe no schema fornecido, mas pode ser útil manter se for adicionado depois. 
+  // O erro original era sobre endDate, mas vamos limpar o que não existe.
+  // contract_url removido pois não aparece no schema.
+  
+  // auto_renew não existe no schema fornecido.
+  
+  // admin_fee não existe no schema fornecido.
+  
   if (data.value !== undefined) dbData.value = data.value;
   if (data.isActive !== undefined) dbData.is_active = data.isActive;
   if (data.hasGarage !== undefined) dbData.has_garage = data.hasGarage;
   if (data.garageValue !== undefined) dbData.garage_value = data.garageValue;
-  if (data.attachments) dbData.contract_attachments = data.attachments;
+  
+  // Mapear attachments para ambos os campos JSONB por segurança, ou preferir contract_attachments
+  if (data.attachments) {
+    dbData.contract_attachments = data.attachments; 
+    dbData.attachments = data.attachments;
+  }
+  
   if (data.pixCode) dbData.pix_code = data.pixCode;
-  if (data.locationId) dbData.location_id = data.locationId;
+  
+  // location_id removido pois não existe na tabela rentals
 
   return dbData;
 }
