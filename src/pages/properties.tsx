@@ -27,7 +27,6 @@ export default function PropertiesPage() {
   const [locationFilter, setLocationFilter] = useState<string>("all");
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
 
-  // Dialogs state
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [propertyToDelete, setPropertyToDelete] = useState<string | null>(null);
@@ -87,8 +86,20 @@ export default function PropertiesPage() {
     setFormData({ ...formData, monthly_rent: masked });
   };
 
+  const handleNumberChange = (field: "bedrooms" | "bathrooms", value: string) => {
+    const numbersOnly = value.replace(/\D/g, "");
+    const limitedValue = numbersOnly.slice(0, 2);
+    setFormData({ ...formData, [field]: limitedValue });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!formData.location_id) {
+      alert("Por favor, selecione um local");
+      return;
+    }
+
     try {
       const selectedLocation = locations.find(loc => loc.id === formData.location_id);
       
@@ -116,6 +127,7 @@ export default function PropertiesPage() {
       resetForm();
     } catch (error) {
       console.error("Erro ao salvar imóvel:", error);
+      alert("Erro ao salvar imóvel. Por favor, verifique os dados e tente novamente.");
     }
   };
 
@@ -217,7 +229,6 @@ export default function PropertiesPage() {
           </Button>
         </div>
 
-        {/* Filtros e Visualização */}
         <Card>
           <CardContent className="pt-6">
             <div className="flex flex-col gap-4">
@@ -280,7 +291,6 @@ export default function PropertiesPage() {
           </CardContent>
         </Card>
 
-        {/* Visualização em Grade */}
         {viewMode === "grid" && (
           <ScrollReveal>
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -307,7 +317,6 @@ export default function PropertiesPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      {/* Quartos e Banheiros */}
                       {(property.bedrooms || property.bathrooms) && (
                         <div className="flex gap-4 text-sm text-muted-foreground">
                           {property.bedrooms && (
@@ -325,7 +334,6 @@ export default function PropertiesPage() {
                         </div>
                       )}
 
-                      {/* Descrição - 2 linhas */}
                       {property.description ? (
                         <p className="text-sm text-muted-foreground line-clamp-2 min-h-[40px]">
                           {property.description}
@@ -336,7 +344,6 @@ export default function PropertiesPage() {
                         </p>
                       )}
                       
-                      {/* Valor */}
                       <div className="pt-2 border-t">
                         <p className="text-xs text-muted-foreground uppercase tracking-wider">Aluguel Mensal</p>
                         <p className="text-2xl font-bold text-primary">
@@ -344,7 +351,6 @@ export default function PropertiesPage() {
                         </p>
                       </div>
 
-                      {/* Botão Deletar */}
                       <div className="flex justify-end pt-2">
                         <Button
                           variant="destructive"
@@ -363,7 +369,6 @@ export default function PropertiesPage() {
           </ScrollReveal>
         )}
 
-        {/* Visualização em Tabela */}
         {viewMode === "table" && (
           <ScrollReveal>
             <div className="rounded-md border bg-white">
@@ -427,7 +432,6 @@ export default function PropertiesPage() {
           </ScrollReveal>
         )}
 
-        {/* Dialog de Visualização/Edição */}
         <Dialog open={isDialogOpen} onOpenChange={(open) => {
           setIsDialogOpen(open);
           if (!open) {
@@ -444,23 +448,25 @@ export default function PropertiesPage() {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="location_id">Local *</Label>
-                  <select
-                    id="location_id"
+                  <Select
                     value={formData.location_id}
-                    onChange={(e) => setFormData({...formData, location_id: e.target.value})}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    required
+                    onValueChange={(value) => setFormData({...formData, location_id: value})}
                     disabled={editingProperty && !isEditMode}
+                    required
                   >
-                    <option value="">Selecione um local</option>
-                    {[...locations]
-                      .sort((a, b) => a.name.localeCompare(b.name))
-                      .map((location) => (
-                        <option key={location.id} value={location.id}>
-                          {location.name}
-                        </option>
-                      ))}
-                  </select>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um local" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[...locations]
+                        .sort((a, b) => a.name.localeCompare(b.name))
+                        .map((location) => (
+                          <SelectItem key={location.id} value={location.id}>
+                            {location.name}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -468,12 +474,13 @@ export default function PropertiesPage() {
                     <Label htmlFor="bedrooms">Quartos</Label>
                     <Input
                       id="bedrooms"
-                      type="number"
-                      min="0"
+                      type="text"
+                      inputMode="numeric"
                       value={formData.bedrooms}
-                      onChange={(e) => setFormData({ ...formData, bedrooms: e.target.value })}
+                      onChange={(e) => handleNumberChange("bedrooms", e.target.value)}
                       placeholder="0"
                       disabled={editingProperty && !isEditMode}
+                      maxLength={2}
                     />
                   </div>
 
@@ -481,12 +488,13 @@ export default function PropertiesPage() {
                     <Label htmlFor="bathrooms">Banheiros</Label>
                     <Input
                       id="bathrooms"
-                      type="number"
-                      min="0"
+                      type="text"
+                      inputMode="numeric"
                       value={formData.bathrooms}
-                      onChange={(e) => setFormData({ ...formData, bathrooms: e.target.value })}
+                      onChange={(e) => handleNumberChange("bathrooms", e.target.value)}
                       placeholder="0"
                       disabled={editingProperty && !isEditMode}
+                      maxLength={2}
                     />
                   </div>
                 </div>
@@ -496,6 +504,7 @@ export default function PropertiesPage() {
                   <Input
                     id="monthly_rent"
                     type="text"
+                    inputMode="decimal"
                     value={formData.monthly_rent}
                     onChange={handleMoneyChange}
                     placeholder="0,00"
@@ -585,7 +594,6 @@ export default function PropertiesPage() {
           </DialogContent>
         </Dialog>
 
-        {/* Dialog de Confirmação de Exclusão */}
         <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
