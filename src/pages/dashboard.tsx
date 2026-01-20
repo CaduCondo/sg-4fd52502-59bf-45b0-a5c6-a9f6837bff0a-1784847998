@@ -425,7 +425,7 @@ export default function Dashboard() {
                     <span className="inline-block animate-wave">👋</span>
                   </h1>
                   <p className="text-blue-100 mt-2">
-                    Bem-vindo ao painel de controle do D'Uvo Enterprise.
+                    Bem-vindo(a) ao painel de controle de recebimentos das locações dos imóveis do D&apos;Uvo Enterprise Corporation
                   </p>
                 </div>
               </div>
