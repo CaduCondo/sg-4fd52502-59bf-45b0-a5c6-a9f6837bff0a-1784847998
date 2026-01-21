@@ -40,7 +40,6 @@ export default function RentalDetails() {
   const [property, setProperty] = useState<Property | null>(null);
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [isViewMode, setIsViewMode] = useState(true);
   const [isEndDialogOpen, setIsEndDialogOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   
@@ -176,7 +175,6 @@ export default function RentalDetails() {
 
   const handleCancelEdit = () => {
     setIsEditing(false);
-    setIsViewMode(true);
     loadData();
   };
 
@@ -237,102 +235,25 @@ export default function RentalDetails() {
   };
 
   const handleEndRental = async () => {
-    if (!rental) return;
-
-    const confirmEnd = confirm(
-      "Tem certeza que deseja encerrar este contrato? Esta ação não pode ser desfeita."
-    );
-
-    if (!confirmEnd) return;
+    if (!rental || !property || !tenant) return;
 
     try {
-      const updatedRental: Rental = {
-        ...rental,
-        status: "completed",
-        endDate: new Date().toISOString().split("T")[0],
-      };
-
-      await updateRental(rental.id, updatedRental);
-
-      if (rental.propertyId) {
-        const property = await propertyService.getById(rental.propertyId);
-        if (property) {
-          await updateProperty(rental.propertyId, {
-            ...property,
-            status: "available",
-          });
-        }
-      }
-
-      if (rental.tenantId) {
-        const tenant = await tenantService.getById(rental.tenantId);
-        if (tenant) {
-          await updateTenant(rental.tenantId, {
-            ...tenant,
-            status: "active",
-          });
-        }
-      }
+      await updateRental(rental.id, { isActive: false });
+      await updateProperty(property.id, { status: "available" });
+      await updateTenant(tenant.id, { status: "active" });
 
       toast({
         title: "Sucesso",
-        description: "Contrato encerrado com sucesso!",
+        description: "Locação encerrada com sucesso.",
       });
 
+      setIsEndDialogOpen(false);
       router.push("/rentals");
     } catch (error) {
       console.error("Error ending rental:", error);
       toast({
         title: "Erro",
-        description: "Não foi possível finalizar a locação.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!rental) return;
-
-    const confirmDelete = confirm(
-      "Tem certeza que deseja excluir esta locação? Esta ação não pode ser desfeita e todos os pagamentos relacionados serão excluídos."
-    );
-
-    if (!confirmDelete) return;
-
-    try {
-      if (rental.propertyId) {
-        const property = await propertyService.getById(rental.propertyId);
-        if (property) {
-          await updateProperty(rental.propertyId, {
-            ...property,
-            status: "available",
-          });
-        }
-      }
-
-      if (rental.tenantId) {
-        const tenant = await tenantService.getById(rental.tenantId);
-        if (tenant) {
-          await updateTenant(rental.tenantId, {
-            ...tenant,
-            status: "active",
-          });
-        }
-      }
-
-      await deleteRental(rental.id);
-
-      toast({
-        title: "Sucesso",
-        description: "Locação excluída com sucesso!",
-      });
-
-      router.push("/rentals");
-    } catch (error) {
-      console.error("Error deleting rental:", error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível excluir a locação.",
+        description: "Não foi possível encerrar a locação.",
         variant: "destructive",
       });
     }
@@ -386,9 +307,9 @@ export default function RentalDetails() {
               Voltar
             </Button>
             <div className="flex gap-2">
-              {isViewMode && !isEditing ? (
+              {!isEditing ? (
                 <>
-                  <Button onClick={() => setIsEditing(true)} variant="outline">
+                  <Button onClick={handleEdit} variant="outline">
                     <Edit className="mr-2 h-4 w-4" />
                     Editar
                   </Button>
@@ -397,7 +318,7 @@ export default function RentalDetails() {
                     Encerrar Contrato
                   </Button>
                   <Button variant="outline" onClick={() => router.push("/rentals")}>
-                    Voltar
+                    Cancelar
                   </Button>
                 </>
               ) : (

@@ -1,4 +1,4 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import React, { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,6 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tenant, Location } from "@/types";
 import { applyCpfMask, applyCnpjMask, applyPhoneMask, applyRgMask } from "@/lib/masks";
 import { Pencil } from "lucide-react";
-import { Textarea } from "@/components/ui/textarea";
 
 interface TenantFormDialogProps {
   open: boolean;
@@ -146,103 +145,123 @@ export function TenantFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{tenant ? "Editar Inquilino" : "Novo Inquilino"}</DialogTitle>
-          <DialogDescription>
-            {tenant ? "Atualize as informações do inquilino" : "Preencha os dados do novo inquilino"}
-          </DialogDescription>
+          <DialogTitle>
+            {tenant?.id 
+              ? (isEditing ? "Editar Inquilino" : "Detalhes do Inquilino")
+              : "Novo Inquilino"
+            }
+          </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label htmlFor="name" className="text-xs">Nome Completo *</Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Nome completo"
-                required
-                disabled={!isEditing}
-                className="h-8 text-sm"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <Label htmlFor="document" className="text-xs">CPF/CNPJ *</Label>
-              <Input
-                id="document"
-                value={documentType === "cpf" ? formData.cpf : formData.cnpj}
-                onChange={documentType === "cpf" ? handleCpfChange : handleCnpjChange}
-                placeholder={documentType === "cpf" ? "000.000.000-00" : "00.000.000/0000-00"}
-                required
-                disabled={!isEditing}
-                className="h-8 text-sm"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <Label htmlFor="phone" className="text-xs">Telefone *</Label>
-              <Input
-                id="phone"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: applyPhoneMask(e.target.value) })}
-                placeholder="(00) 00000-0000"
-                required
-                disabled={!isEditing}
-                className="h-8 text-sm"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <Label htmlFor="email" className="text-xs">E-mail *</Label>
-              <Input
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                placeholder="email@exemplo.com"
-                required
-                disabled={!isEditing}
-                className="h-8 text-sm"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <Label htmlFor="notes" className="text-xs">Observações</Label>
-            <Textarea
-              id="notes"
-              value={formData.notes || ""}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              placeholder="Observações adicionais"
-              rows={2}
+          <div className="space-y-2">
+            <Label htmlFor="name">Nome Completo *</Label>
+            <Input
+              id="name"
+              value={formData.name || ""}
+              onChange={(e) => handleInputChange("name", e.target.value)}
               disabled={!isEditing}
-              className="resize-none text-sm min-h-[60px]"
+              required
             />
           </div>
 
-          <DialogFooter>
-            {isViewMode && !isEditing ? (
-              <>
-                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                  Fechar
-                </Button>
-                <Button type="button" onClick={() => setIsEditing(true)}>
-                  <Pencil className="h-4 w-4 mr-2" />
-                  Editar
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                  Cancelar
-                </Button>
-                <Button type="submit">
-                  {tenant ? "Atualizar" : "Criar"}
-                </Button>
-              </>
+          <div className="space-y-2">
+            <Label>Tipo de Documento *</Label>
+            <Tabs value={documentType} onValueChange={(value) => handleDocumentTypeChange(value as "cpf" | "cnpj")}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="cpf" disabled={!isEditing}>CPF</TabsTrigger>
+                <TabsTrigger value="cnpj" disabled={!isEditing}>CNPJ</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+
+          {documentType === "cpf" ? (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="cpf">CPF *</Label>
+                <Input
+                  id="cpf"
+                  value={formData.cpf || ""}
+                  onChange={handleCpfChange}
+                  placeholder="000.000.000-00"
+                  disabled={!isEditing}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="rg">RG</Label>
+                <Input
+                  id="rg"
+                  value={formData.rg || ""}
+                  onChange={handleRgChange}
+                  placeholder="00.000.000-0"
+                  disabled={!isEditing}
+                />
+              </div>
+            </>
+          ) : (
+            <div className="space-y-2">
+              <Label htmlFor="cnpj">CNPJ *</Label>
+              <Input
+                id="cnpj"
+                value={formData.cnpj || ""}
+                onChange={handleCnpjChange}
+                placeholder="00.000.000/0000-00"
+                disabled={!isEditing}
+                required
+              />
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <Label htmlFor="email">Email *</Label>
+            <Input
+              id="email"
+              type="email"
+              value={formData.email || ""}
+              onChange={(e) => handleInputChange("email", e.target.value)}
+              disabled={!isEditing}
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="phone">Telefone *</Label>
+            <Input
+              id="phone"
+              value={formData.phone || ""}
+              onChange={handlePhoneChange}
+              placeholder="(00) 00000-0000"
+              disabled={!isEditing}
+              required
+            />
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            {/* Se estiver no modo visualização (isEditing false) e veio de viewMode (tenant existe) */}
+            {!isEditing && tenant?.id && (
+              <Button type="button" onClick={toggleEdit} className="w-full sm:w-auto">
+                <Pencil className="w-4 h-4 mr-2" />
+                Editar
+              </Button>
+            )}
+
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => onOpenChange(false)}
+              className="w-full sm:w-auto"
+            >
+              {isEditing ? "Cancelar" : "Fechar"}
+            </Button>
+
+            {isEditing && (
+              <Button type="submit" className="w-full sm:w-auto">
+                {tenant?.id ? "Salvar Alterações" : "Criar Inquilino"}
+              </Button>
             )}
           </DialogFooter>
         </form>

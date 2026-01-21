@@ -3,14 +3,13 @@ import { useRouter } from "next/router";
 import { Layout } from "@/components/Layout";
 import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
-import { Plus, Search, User, LayoutGrid, List } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useTenants } from "@/hooks/useTenants";
 import { TenantCard } from "@/components/tenants/TenantCard";
 import { TenantFilters } from "@/components/tenants/TenantFilters";
 import { TenantFormDialog } from "@/components/tenants/TenantFormDialog";
 import { TenantDeleteAlert } from "@/components/tenants/TenantDeleteAlert";
 import { Tenant } from "@/types";
-import { ScrollReveal } from "@/components/animations/ScrollReveal";
 
 export default function TenantsPage() {
   const router = useRouter();
@@ -55,23 +54,20 @@ export default function TenantsPage() {
     setIsDialogOpen(true);
   };
 
-  const handleViewTenant = (tenant: Tenant) => {
-    setSelectedTenant(tenant);
-    setIsViewMode(true);
-    setIsDialogOpen(true);
-  };
-
   const handleEditTenant = (tenant: Tenant) => {
     setSelectedTenant(tenant);
     setIsViewMode(false);
     setIsDialogOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
-    const tenant = tenants.find(t => t.id === id);
-    if (tenant) {
-      setTenantToDelete(tenant);
-    }
+  const handleViewTenant = (tenant: Tenant) => {
+    setSelectedTenant(tenant);
+    setIsViewMode(true);
+    setIsDialogOpen(true);
+  };
+
+  const handleDeleteClick = (tenant: Tenant) => {
+    setTenantToDelete(tenant);
   };
 
   const handleConfirmDelete = async () => {
@@ -110,20 +106,18 @@ export default function TenantsPage() {
       />
 
       <div className="space-y-6">
-        <ScrollReveal>
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-            <div>
-              <h1 className="text-4xl font-bold mb-2">Inquilinos</h1>
-              <p className="text-muted-foreground">Gerencie os inquilinos dos seus imóveis</p>
-            </div>
-            <div className="flex gap-3">
-              <Button onClick={() => setIsDialogOpen(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                Novo Inquilino
-              </Button>
-            </div>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Inquilinos</h1>
+            <p className="text-muted-foreground">
+              Gerencie os inquilinos do sistema
+            </p>
           </div>
-        </ScrollReveal>
+          <Button onClick={handleCreateNew}>
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Inquilino
+          </Button>
+        </div>
 
         <TenantFilters
           searchTerm={searchTerm}
@@ -145,13 +139,13 @@ export default function TenantsPage() {
             </Button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {tenants.map((tenant) => (
               <TenantCard
                 key={tenant.id}
                 tenant={tenant}
                 onClick={() => handleViewTenant(tenant)}
-                onDelete={() => handleDelete(tenant.id)}
+                onDelete={() => handleDeleteClick(tenant)}
               />
             ))}
           </div>
