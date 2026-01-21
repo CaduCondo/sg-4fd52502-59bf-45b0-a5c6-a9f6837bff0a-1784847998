@@ -35,7 +35,6 @@ export default function TenantsPage() {
   const [selectedTenant, setSelectedTenant] = useState<Partial<Tenant> | null>(null);
   const [tenantToDelete, setTenantToDelete] = useState<Tenant | null>(null);
   const [isViewMode, setIsViewMode] = useState(false);
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
   useEffect(() => {
     const viewId = router.query.view as string;
@@ -56,20 +55,23 @@ export default function TenantsPage() {
     setIsDialogOpen(true);
   };
 
-  const handleEditTenant = (tenant: Tenant) => {
-    setSelectedTenant(tenant);
-    setIsViewMode(false);
-    setIsDialogOpen(true);
-  };
-
   const handleViewTenant = (tenant: Tenant) => {
     setSelectedTenant(tenant);
     setIsViewMode(true);
     setIsDialogOpen(true);
   };
 
-  const handleDeleteClick = (tenant: Tenant) => {
-    setTenantToDelete(tenant);
+  const handleEditTenant = (tenant: Tenant) => {
+    setSelectedTenant(tenant);
+    setIsViewMode(false);
+    setIsDialogOpen(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    const tenant = tenants.find(t => t.id === id);
+    if (tenant) {
+      setTenantToDelete(tenant);
+    }
   };
 
   const handleConfirmDelete = async () => {
@@ -109,30 +111,12 @@ export default function TenantsPage() {
 
       <div className="space-y-6">
         <ScrollReveal>
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
             <div>
-              <h1 className="text-3xl font-bold tracking-tight">Inquilinos</h1>
-              <p className="text-muted-foreground mt-2">
-                Gerencie os inquilinos dos seus imóveis
-              </p>
+              <h1 className="text-4xl font-bold mb-2">Inquilinos</h1>
+              <p className="text-muted-foreground">Gerencie os inquilinos dos seus imóveis</p>
             </div>
-            <div className="flex gap-2">
-              <Button
-                variant={viewMode === "grid" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setViewMode("grid")}
-              >
-                <LayoutGrid className="h-4 w-4 mr-2" />
-                Grade
-              </Button>
-              <Button
-                variant={viewMode === "list" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setViewMode("list")}
-              >
-                <List className="h-4 w-4 mr-2" />
-                Lista
-              </Button>
+            <div className="flex gap-3">
               <Button onClick={() => setIsDialogOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" />
                 Novo Inquilino
@@ -161,14 +145,13 @@ export default function TenantsPage() {
             </Button>
           </div>
         ) : (
-          <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" : "space-y-3"}>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {tenants.map((tenant) => (
               <TenantCard
                 key={tenant.id}
                 tenant={tenant}
                 onClick={() => handleViewTenant(tenant)}
-                onDelete={() => handleDeleteClick(tenant)}
-                viewMode={viewMode}
+                onDelete={() => handleDelete(tenant.id)}
               />
             ))}
           </div>

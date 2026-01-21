@@ -34,11 +34,9 @@ export default function RentalsPage() {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [showInactive, setShowInactive] = useState(false);
   const [isRentalDialogOpen, setIsRentalDialogOpen] = useState(false);
   const [rentalToDelete, setRentalToDelete] = useState<Rental | null>(null);
+  const [showInactive, setShowInactive] = useState(false);
 
   const loadData = async () => {
     try {
@@ -72,7 +70,8 @@ export default function RentalsPage() {
 
   // Filtrar imóveis e inquilinos disponíveis
   const availableProperties = properties.filter((p) => p.status === "available");
-  const availableTenants = tenants; // Mostra TODOS os inquilinos cadastrados
+  const availableTenants = tenants.filter((t) => t.status === "active");
+  const vacantProperties = properties.filter((p) => p.status === "available");
 
   // Filtrar locações ativas e inativas
   const activeRentals = rentals.filter((r) => r.isActive);
@@ -145,28 +144,12 @@ export default function RentalsPage() {
       <Layout>
         <div className="space-y-6">
           {/* Header com Botão Nova Locação */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
             <div>
-              <h1 className="text-3xl font-bold tracking-tight">Locações</h1>
-              <p className="text-muted-foreground mt-2">Gerencie as locações dos seus imóveis</p>
+              <h1 className="text-4xl font-bold mb-2">Locações</h1>
+              <p className="text-muted-foreground">Gerencie os contratos de locação</p>
             </div>
-            <div className="flex gap-2">
-              <Button
-                variant={viewMode === "grid" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setViewMode("grid")}
-              >
-                <LayoutGrid className="h-4 w-4 mr-2" />
-                Grade
-              </Button>
-              <Button
-                variant={viewMode === "list" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setViewMode("list")}
-              >
-                <List className="h-4 w-4 mr-2" />
-                Lista
-              </Button>
+            <div className="flex gap-3">
               <Button onClick={handleCreateNew}>
                 <Plus className="mr-2 h-4 w-4" />
                 Nova Locação
@@ -174,55 +157,50 @@ export default function RentalsPage() {
             </div>
           </div>
 
-          {/* Duas Colunas: Imóveis Vagos e Inquilinos Disponíveis */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Building className="h-4 w-4" />
+          {/* Blocos Imóveis Vagos e Inquilinos Disponíveis em Linha Única */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <Card className="h-full">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Home className="h-4 w-4" />
                   Imóveis Vagos
-                  <Badge variant="secondary" className="ml-2">{availableProperties.length}</Badge>
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {availableProperties.length === 0 ? (
+                {vacantProperties.length === 0 ? (
                   <p className="text-sm text-muted-foreground">Nenhum imóvel disponível</p>
                 ) : (
                   <div className="space-y-2">
-                    {availableProperties.map((property) => (
-                      <div
-                        key={property.id}
-                        className="flex items-center justify-between p-2 bg-muted rounded-lg hover:bg-muted/80 transition-colors"
-                      >
-                        <div className="flex items-center gap-2 flex-1 min-w-0">
-                          <Home className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">
-                              {getLocationName(property.locationId)}
-                            </p>
-                            {property.complement && (
-                              <p className="text-xs text-muted-foreground truncate">
-                                {property.complement}
-                              </p>
-                            )}
+                    {vacantProperties.map((property) => {
+                      const location = locations.find(loc => loc.id === property.locationId);
+                      return (
+                        <div
+                          key={property.id}
+                          className="flex items-center justify-between p-2 bg-muted rounded-lg hover:bg-muted/80 transition-colors"
+                        >
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <Home className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                            <span className="text-sm font-medium truncate">
+                              {location?.name || "Local não encontrado"}
+                              {property.complement && ` - ${property.complement}`}
+                            </span>
                           </div>
+                          <span className="text-sm font-semibold text-emerald-600 whitespace-nowrap ml-2">
+                            {formatCurrency(property.value || 0)}
+                          </span>
                         </div>
-                        <span className="text-sm font-semibold text-emerald-600 whitespace-nowrap ml-2">
-                          {formatCurrency(property.value || 0)}
-                        </span>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <User className="h-4 w-4" />
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <User className="h-5 w-5" />
                   Inquilinos Disponíveis
-                  <Badge variant="secondary" className="ml-2">{availableTenants.length}</Badge>
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -233,15 +211,10 @@ export default function RentalsPage() {
                     {availableTenants.map((tenant) => (
                       <div
                         key={tenant.id}
-                        className="flex items-center justify-between p-2 bg-muted rounded-lg hover:bg-muted/80 transition-colors"
+                        className="flex items-center gap-2 p-2 bg-muted rounded-lg hover:bg-muted/80 transition-colors"
                       >
-                        <div className="flex items-center gap-2 flex-1 min-w-0">
-                          <User className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">{tenant.name}</p>
-                            <p className="text-xs text-muted-foreground truncate">{tenant.document}</p>
-                          </div>
-                        </div>
+                        <User className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        <p className="text-sm font-medium truncate flex-1">{tenant.name}</p>
                       </div>
                     ))}
                   </div>
@@ -260,48 +233,11 @@ export default function RentalsPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" : "space-y-3"}>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {activeRentals.map((rental) => {
                     const property = getPropertyByRental(rental);
                     const location = property ? locations.find((loc) => loc.id === property.locationId) : null;
                     const tenant = tenants.find((t) => t.id === rental.tenantId);
-
-                    if (viewMode === "list") {
-                      return (
-                        <div
-                          key={rental.id}
-                          className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
-                          onClick={() => handleViewRental(rental.id)}
-                        >
-                          <div className="flex items-center gap-4 flex-1">
-                            <div className="min-w-[200px]">
-                              <p className="font-semibold text-blue-600">{location?.name || "N/A"}</p>
-                              {property?.complement && <p className="text-sm text-muted-foreground">{property.complement}</p>}
-                            </div>
-                            <div className="flex-1">
-                              <p className="text-sm font-medium">{tenant?.name || "-"}</p>
-                              <p className="text-xs text-muted-foreground">Início: {formatDate(rental.startDate)}</p>
-                            </div>
-                          </div>
-                          
-                          <div className="flex items-center gap-4">
-                            <span className="font-bold text-emerald-600">{formatCurrency(rental.value)}</span>
-                            <Badge variant="default">Ativa</Badge>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setRentalToDelete(rental);
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      );
-                    }
 
                     return (
                       <Card 

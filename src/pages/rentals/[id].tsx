@@ -40,6 +40,7 @@ export default function RentalDetails() {
   const [property, setProperty] = useState<Property | null>(null);
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [isViewMode, setIsViewMode] = useState(true);
   const [isEndDialogOpen, setIsEndDialogOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   
@@ -175,6 +176,7 @@ export default function RentalDetails() {
 
   const handleCancelEdit = () => {
     setIsEditing(false);
+    setIsViewMode(true);
     loadData();
   };
 
@@ -384,9 +386,9 @@ export default function RentalDetails() {
               Voltar
             </Button>
             <div className="flex gap-2">
-              {!isEditing ? (
+              {isViewMode && !isEditing ? (
                 <>
-                  <Button onClick={handleEdit} variant="outline">
+                  <Button onClick={() => setIsEditing(true)} variant="outline">
                     <Edit className="mr-2 h-4 w-4" />
                     Editar
                   </Button>
@@ -395,7 +397,7 @@ export default function RentalDetails() {
                     Encerrar Contrato
                   </Button>
                   <Button variant="outline" onClick={() => router.push("/rentals")}>
-                    Cancelar
+                    Voltar
                   </Button>
                 </>
               ) : (

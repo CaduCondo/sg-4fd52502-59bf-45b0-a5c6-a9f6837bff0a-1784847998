@@ -99,10 +99,33 @@ export async function createPayment(data: Partial<Payment>): Promise<Payment> {
 // Alias
 export const create = createPayment;
 
-export async function updatePayment(id: string, data: Partial<Payment>): Promise<Payment> {
-  const dbData = mapPaymentToDB(data);
-  const result = await updateSingle<any>(TABLE, id, dbData);
-  return mapPaymentFromDB(result);
+export async function updatePayment(id: string, payment: Partial<Payment>): Promise<Payment> {
+  const { data, error } = await supabase
+    .from("payments")
+    .update({
+      rental_id: payment.rentalId,
+      expected_amount: payment.expectedAmount,
+      paid_amount: payment.paidAmount,
+      payment_date: payment.paymentDate,
+      status: payment.status,
+      payment_method: payment.paymentMethod,
+      payment_location: payment.paymentLocation,
+      payment_code: payment.paymentCode,
+      notes: payment.notes,
+      reference_month: payment.referenceMonth?.toString(),
+      reference_year: payment.referenceYear?.toString(),
+      receipt_url: payment.receiptUrl,
+      attachments: payment.attachments,
+      penalty_amount: payment.penaltyAmount,
+      interest_amount: payment.interestAmount,
+      discount_amount: payment.discountAmount,
+    })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return mapPaymentFromDB(data);
 }
 
 // Alias

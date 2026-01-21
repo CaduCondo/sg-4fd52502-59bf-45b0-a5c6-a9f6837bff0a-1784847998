@@ -479,21 +479,14 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
                   <Label htmlFor="paymentMethod" className="text-xs">
                     Método de Pagamento
                   </Label>
-                  <Select
-                    value={formData.paymentMethod}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, paymentMethod: value })
-                    }
-                  >
-                    <SelectTrigger className="h-8 text-sm">
-                      <SelectValue />
+                  <Select value={formData.paymentMethod} onValueChange={(value) => setFormData({ ...formData, paymentMethod: value })}>
+                    <SelectTrigger className="h-9 text-sm">
+                      <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="pix">PIX</SelectItem>
-                      <SelectItem value="dinheiro">Dinheiro</SelectItem>
-                      <SelectItem value="transferencia">Transferência</SelectItem>
                       <SelectItem value="boleto">Boleto</SelectItem>
-                      <SelectItem value="cartao">Cartão</SelectItem>
+                      <SelectItem value="dinheiro">Dinheiro</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -516,19 +509,36 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
               </div>
 
               <div className="space-y-1">
-                <Label htmlFor="attachments" className="text-xs">
-                  Comprovante / Anexos
-                </Label>
-                <Input
-                  id="attachments"
+                <Label htmlFor="attachments" className="text-xs">Comprovante / Anexos</Label>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => document.getElementById("paymentFileUpload")?.click()}
+                  >
+                    <Paperclip className="mr-2 h-4 w-4" />
+                    Anexar Arquivo
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => document.getElementById("paymentCameraCapture")?.click()}
+                  >
+                    <Camera className="mr-2 h-4 w-4" />
+                    Tirar Foto
+                  </Button>
+                </div>
+                <input
+                  id="paymentFileUpload"
                   type="file"
                   accept="image/*,.pdf"
-                  capture="environment"
                   multiple
+                  className="hidden"
                   onChange={(e) => {
                     const files = e.target.files;
                     if (files && files.length > 0) {
-                      const newAttachments: string[] = [];
                       Array.from(files).forEach(file => {
                         const reader = new FileReader();
                         reader.onloadend = () => {
@@ -543,11 +553,30 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
                       });
                     }
                   }}
-                  className="h-9 text-sm"
                 />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Você pode anexar imagens ou PDFs do seu dispositivo, ou tirar uma foto
-                </p>
+                <input
+                  id="paymentCameraCapture"
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={(e) => {
+                    const files = e.target.files;
+                    if (files && files.length > 0) {
+                      const file = files[0];
+                      const reader = new FileReader();
+                      reader.onloadend = () => {
+                        if (reader.result) {
+                          setFormData(prev => ({
+                            ...prev,
+                            attachments: [...prev.attachments, reader.result as string]
+                          }));
+                        }
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                />
               </div>
 
               <Button type="submit" className="w-full" disabled={loading}>

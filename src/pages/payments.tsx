@@ -44,6 +44,7 @@ export default function Payments() {
   const [selectedYear, setSelectedYear] = useState<string>(
     "2026"
   );
+  const [statusFilter, setStatusFilter] = useState<string>("all");
 
   useEffect(() => {
     loadPayments();
@@ -210,44 +211,42 @@ export default function Payments() {
   const getFilteredPayments = () => {
     let filtered = [...payments];
 
-    console.log("=== DEBUG FILTRO DETALHADO ===");
-    console.log("Total payments:", payments.length);
-    console.log("Selected month:", selectedMonth);
-    console.log("Selected year:", selectedYear);
-    
-    // Log de cada payment
-    payments.forEach((p, index) => {
-      console.log(`Payment ${index}:`, {
-        id: p.id,
-        referenceMonth: p.referenceMonth,
-        referenceYear: p.referenceYear,
-        status: p.status,
-        dueDate: p.dueDate,
+    // Filtrar por mês e ano baseado na DATA DE VENCIMENTO (dueDate)
+    if (selectedMonth !== "all" && selectedYear !== "all") {
+      filtered = filtered.filter((payment) => {
+        if (!payment.dueDate) return false;
+        
+        // CORREÇÃO: Usar dueDate para o filtro, ignorando referenceMonth/Year se necessário para visualização temporal
+        // A lógica do usuário pede que o filtro respeite o vencimento
+        const dueDateObj = new Date(payment.dueDate + "T00:00:00"); // Garantir fuso
+        const dueMonth = dueDateObj.getMonth() + 1;
+        const dueYear = dueDateObj.getFullYear();
+        
+        return (
+          dueMonth === parseInt(selectedMonth) &&
+          dueYear === parseInt(selectedYear)
+        );
       });
-    });
-
-    if (selectedMonth !== "all") {
-      const monthNum = parseInt(selectedMonth);
-      console.log("Filtering by month:", monthNum);
-      filtered = filtered.filter((p) => {
-        const matches = p.referenceMonth === monthNum;
-        console.log(`Payment ${p.id} month ${p.referenceMonth} matches ${monthNum}:`, matches);
-        return matches;
-      });
+    } else if (selectedMonth !== "all") {
+       // Filtro só por mês...
+       filtered = filtered.filter((payment) => {
+          if (!payment.dueDate) return false;
+          const dueMonth = new Date(payment.dueDate + "T00:00:00").getMonth() + 1;
+          return dueMonth === parseInt(selectedMonth);
+       });
+    } else if (selectedYear !== "all") {
+       // Filtro só por ano...
+       filtered = filtered.filter((payment) => {
+          if (!payment.dueDate) return false;
+          const dueYear = new Date(payment.dueDate + "T00:00:00").getFullYear();
+          return dueYear === parseInt(selectedYear);
+       });
     }
 
-    if (selectedYear !== "all") {
-      const yearNum = parseInt(selectedYear);
-      console.log("Filtering by year:", yearNum);
-      filtered = filtered.filter((p) => {
-        const matches = p.referenceYear === yearNum;
-        console.log(`Payment ${p.id} year ${p.referenceYear} matches ${yearNum}:`, matches);
-        return matches;
-      });
+    // Filtrar por status
+    if (statusFilter !== "all") {
+      filtered = filtered.filter((payment) => payment.status === statusFilter);
     }
-
-    console.log("Filtered payments:", filtered.length);
-    console.log("=== FIM DEBUG ===");
 
     return filtered.sort((a, b) => {
       const dateA = new Date(a.dueDate);

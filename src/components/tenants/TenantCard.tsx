@@ -1,90 +1,81 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { User } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { User, Trash2, Phone, Mail } from "lucide-react";
 import { Tenant } from "@/types";
 
 interface TenantCardProps {
   tenant: Tenant;
   onClick: () => void;
   onDelete: () => void;
-  viewMode?: "grid" | "list";
 }
 
-export function TenantCard({ tenant, onClick, onDelete, viewMode = "grid" }: TenantCardProps) {
-  const getStatusBadge = (status: Tenant["status"]) => {
+export function TenantCard({ tenant, onClick, onDelete }: TenantCardProps) {
+  const getStatusColor = (status: string) => {
     switch (status) {
-      case "locatario":
-        return <Badge className="bg-blue-500">Locatário</Badge>;
       case "active":
-        return <Badge className="bg-green-500">Ativo</Badge>;
+        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300";
+      case "locatario":
+      case "rented":
+        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300";
       case "inactive":
-        return <Badge className="bg-gray-500">Inativo</Badge>;
+        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300";
       default:
-        return <Badge className="bg-gray-500">{status}</Badge>;
+        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300";
     }
   };
 
-  if (viewMode === "list") {
-    return (
-      <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={onClick}>
-        <CardContent className="py-3 px-4">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3 flex-1 min-w-0">
-              <User className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-              <div className="flex-1 min-w-0">
-                <h3 className="text-sm font-semibold truncate">{tenant.name}</h3>
-                <p className="text-xs text-muted-foreground truncate">{tenant.document}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="text-right">
-                <p className="text-xs text-muted-foreground">Telefone</p>
-                <p className="text-sm">{tenant.phone || "N/A"}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-xs text-muted-foreground">Email</p>
-                <p className="text-sm truncate max-w-[200px]">{tenant.email || "N/A"}</p>
-              </div>
-              <div className="flex items-center gap-2">
-                {getStatusBadge(tenant.status)}
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case "active":
+        return "Ativo";
+      case "locatario":
+      case "rented":
+        return "Locatário";
+      case "inactive":
+        return "Inativo";
+      default:
+        return status;
+    }
+  };
 
   return (
-    <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={onClick}>
-      <CardHeader>
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-2">
-            <User className="h-5 w-5 text-muted-foreground" />
-            <CardTitle className="text-lg">{tenant.name}</CardTitle>
-          </div>
-          {getStatusBadge(tenant.status)}
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="space-y-2 text-sm">
-          <div className="flex items-center gap-2">
-            <span className="text-muted-foreground">CPF/CNPJ:</span>
-            <span className="font-medium">{tenant.document}</span>
-          </div>
-          {tenant.phone && (
-            <div className="flex items-center gap-2">
-              <span className="text-muted-foreground">Telefone:</span>
-              <span className="font-medium">{tenant.phone}</span>
+    <Card className="hover:shadow-lg transition-shadow cursor-pointer relative" onClick={onClick}>
+      <CardContent className="p-4">
+        <div className="flex justify-between items-start mb-3">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+              <User className="h-5 w-5 text-primary" />
             </div>
-          )}
-          {tenant.email && (
-            <div className="flex items-center gap-2">
-              <span className="text-muted-foreground">Email:</span>
-              <span className="font-medium truncate">{tenant.email}</span>
+            <div>
+              <h3 className="font-semibold text-base text-blue-600">{tenant.name}</h3>
             </div>
-          )}
+          </div>
+          <Badge className={getStatusColor(tenant.status)} variant="outline">
+            {getStatusLabel(tenant.status)}
+          </Badge>
         </div>
+        <div className="space-y-1.5 text-sm">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Phone className="h-3.5 w-3.5" />
+            <span>{tenant.phone || "N/A"}</span>
+          </div>
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Mail className="h-3.5 w-3.5" />
+            <span className="truncate max-w-[200px]">{tenant.email || "N/A"}</span>
+          </div>
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="absolute bottom-2 right-2 h-8 w-8 text-destructive hover:text-destructive/90"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
       </CardContent>
     </Card>
   );
