@@ -10,6 +10,7 @@ import { updateUser, resetPassword, unlockUser } from "@/services/systemUserServ
 import { User, Mail, Phone, MapPin, Calendar, Shield, Save, KeyRound, Unlock, Camera } from "lucide-react";
 import { applyCpfMask, applyPhoneMask, applyCepMask, removeMask } from "@/lib/masks";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ExtendedSystemUser extends SystemUser {
   photo?: string;
@@ -172,9 +173,12 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
       if (user?.id) {
         await updateUser(user.id, updates);
         
-        // Se admin alterou a senha, fazer update separado
+        // Se admin alterou a senha, atualizar separadamente
         if (user.role === "admin" && formData.newPassword) {
-          await resetPassword(user.id);
+          await supabase
+            .from("system_users")
+            .update({ password: formData.newPassword })
+            .eq("id", user.id);
         }
         
         toast({

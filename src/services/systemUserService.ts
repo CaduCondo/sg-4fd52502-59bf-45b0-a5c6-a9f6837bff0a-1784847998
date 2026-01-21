@@ -7,6 +7,7 @@ import {
   deleteSingle, 
   getByField 
 } from "@/lib/supabaseHelpers";
+import { supabase } from "@/integrations/supabase/client";
 
 const TABLE = "system_users";
 
@@ -25,8 +26,6 @@ export async function getUserByEmail(email: string): Promise<SystemUser | null> 
 }
 
 export async function createUser(user: Omit<SystemUser, "id" | "created_at" | "updated_at"> & { password?: string }): Promise<SystemUser> {
-  // In a real app, this would create the auth user too
-  // For now we just create the record in public.users
   const { password, ...userData } = user;
   return createSingle<SystemUser>(TABLE, userData as any);
 }
@@ -39,14 +38,21 @@ export async function deleteUser(id: string): Promise<void> {
   return deleteSingle(TABLE, id);
 }
 
-export async function unlockUser(id: string, active: boolean): Promise<SystemUser> {
-  return updateSingle<SystemUser>(TABLE, id, { active });
+export async function unlockUser(userId: string, active: boolean): Promise<void> {
+  const { error } = await supabase
+    .from("system_users")
+    .update({ active })
+    .eq("id", userId);
+
+  if (error) throw error;
 }
 
-export async function resetPassword(id: string): Promise<void> {
-  // Em um cenário real, isso dispararia um email de recuperação do Supabase Auth
-  // ou atualizaria o hash da senha se fosse autenticação própria.
-  // Por enquanto, vamos simular que foi feito.
-  console.log(`Resetting password for user ${id}`);
-  return Promise.resolve();
+export async function resetPassword(userId: string): Promise<void> {
+  // Resetar senha para "mudar123"
+  const { error } = await supabase
+    .from("system_users")
+    .update({ password: "mudar123" })
+    .eq("id", userId);
+
+  if (error) throw error;
 }
