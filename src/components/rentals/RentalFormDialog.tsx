@@ -58,14 +58,14 @@ export function RentalFormDialog({
     setIsEditing(!isViewMode);
     
     if (rental) {
-      setSelectedPropertyId(rental.property_id || rental.propertyId || "");
-      setSelectedTenantId(rental.tenant_id || rental.tenantId || "");
-      setStartDate(rental.start_date || rental.startDate || "");
-      setEndDate(rental.end_date || rental.endDate || "");
-      setPaymentDay(rental.payment_day?.toString() || rental.paymentDay?.toString() || "");
-      setHasGarage(rental.has_garage || rental.hasGarage || false);
-      setGarageValue(rental.garage_value ? formatCurrency(rental.garage_value) : rental.garageValue ? formatCurrency(rental.garageValue) : "");
-      setAttachments(rental.contract_attachments || rental.attachments || []);
+      setSelectedPropertyId(rental.propertyId || "");
+      setSelectedTenantId(rental.tenantId || "");
+      setStartDate(rental.startDate || "");
+      setEndDate(rental.endDate || "");
+      setPaymentDay(rental.paymentDay?.toString() || "");
+      setHasGarage(rental.hasGarage || false);
+      setGarageValue(rental.garageValue ? formatCurrency(rental.garageValue) : "");
+      setAttachments(rental.contractAttachments || rental.attachments || []);
     } else {
       resetForm();
     }
