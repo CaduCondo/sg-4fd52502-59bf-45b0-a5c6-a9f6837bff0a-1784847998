@@ -390,7 +390,7 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
               <span>Aluguel:</span>
               <span className="font-medium">{formatCurrency(calculatedValues.rentAmount)}</span>
             </div>
-            {calculatedValues.lateDays > 0 && (
+            {calculatedValues.daysLate > 0 && (
               <>
                 <div className="flex justify-between text-orange-600">
                   <span>Multa ({config?.late_fee_percentage || 0}%):</span>
@@ -398,7 +398,7 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
                 </div>
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-emerald-900 dark:text-emerald-100">
-                    Juros ({systemConfig?.interest_rate || "0.033"}%/dia x {calculatedValues.daysLate} dias):
+                    Juros ({config?.interest_rate_percentage || "0.033"}%/dia x {calculatedValues.daysLate} dias):
                   </span>
                   <span className="font-semibold text-emerald-700 dark:text-emerald-300">
                     {formatCurrency(calculatedValues.interestAmount)}
