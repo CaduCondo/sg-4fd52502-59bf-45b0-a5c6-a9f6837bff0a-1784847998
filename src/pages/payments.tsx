@@ -63,13 +63,18 @@ export default function Payments() {
 
   const loadPayments = async () => {
     try {
-      setIsLoading(true);
-      const [paymentsData, rentalsData] = await Promise.all([
+      setLoading(true);
+      const [paymentsData, rentalsData, propertiesData, tenantsData] = await Promise.all([
         getAllPayments(),
-        getAllRentals()
+        getAllRentals(),
+        propertyService.getAll(),
+        tenantService.getAll()
       ]);
+      
       setPayments(paymentsData);
       setRentals(rentalsData);
+      setProperties(propertiesData);
+      setTenants(tenantsData);
     } catch (error) {
       console.error("Error loading data:", error);
       toast({
