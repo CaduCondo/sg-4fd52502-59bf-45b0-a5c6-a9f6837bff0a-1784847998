@@ -8,12 +8,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { DollarSign, Calendar, Home, User, AlertCircle, CheckCircle, X, LayoutGrid, List, Edit, Trash2 } from "lucide-react";
+import { DollarSign, Calendar, Home, User, AlertCircle, CheckCircle, X, LayoutGrid, List } from "lucide-react";
 import type { Payment, Rental, Property, Tenant } from "@/types";
 import { 
   getAll as getAllPayments, 
   remove as deletePayment, 
-  create as createPayment, 
   update as updatePayment 
 } from "@/services/paymentService";
 import { getAll as getAllRentals } from "@/services/rentalService";
@@ -22,8 +21,6 @@ import { formatCurrency } from "@/lib/masks";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
 import { FloatingCard } from "@/components/animations/FloatingCard";
 import ManagePaymentContent from "@/pages/payments/manage/[id]";
-import { isAuthenticatedAsync } from "@/lib/auth";
-import { hasPermission } from "@/lib/permissions";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function Payments() {
@@ -38,24 +35,9 @@ export default function Payments() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const { user } = useAuth();
-  const [isLoading, setIsLoading] = useState(true);
 
-  // Filter state - Initialize with current month/year
-  const currentDate = new Date();
-  const [selectedMonth, setSelectedMonth] = useState<string>((currentDate.getMonth() + 1).toString());
-  const [selectedYear, setSelectedYear] = useState<string>(currentDate.getFullYear().toString());
-
-  // useEffect(() => {
-  //   const checkAuth = async () => {
-  //     const isAuth = await isAuthenticatedAsync();
-  //     if (!isAuth) {
-  //       router.push("/login");
-  //       return;
-  //     }
-  //     loadPayments();
-  //   };
-  //   checkAuth();
-  // }, [router]);
+  const [selectedMonth, setSelectedMonth] = useState<string>("all");
+  const [selectedYear, setSelectedYear] = useState<string>("all");
 
   useEffect(() => {
     loadPayments();
@@ -170,10 +152,6 @@ export default function Payments() {
     return tenants.find((t) => t.id === rental.tenantId);
   };
 
-  const getRentalInfo = (rentalId: string) => {
-    return rentals.find((r) => r.id === rentalId);
-  };
-
   const getStatusBadge = (status: Payment["status"]) => {
     switch (status) {
       case "paid":
@@ -195,7 +173,6 @@ export default function Payments() {
     return months[month - 1] || "";
   };
 
-  // Get color class based on due date
   const getDueDateColor = (dueDate: string): { border: string; icon: string; amount: string } => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -204,21 +181,18 @@ export default function Payments() {
     due.setHours(0, 0, 0, 0);
     
     if (due < today) {
-      // Overdue - Red
       return { 
         border: "border-l-red-500", 
         icon: "text-red-600", 
         amount: "text-red-600" 
       };
     } else if (due.getTime() === today.getTime()) {
-      // Due today - Yellow
       return { 
         border: "border-l-yellow-500", 
         icon: "text-yellow-600", 
         amount: "text-yellow-600" 
       };
     } else {
-      // Future - Blue
       return { 
         border: "border-l-blue-500", 
         icon: "text-blue-600", 
@@ -227,10 +201,18 @@ export default function Payments() {
     }
   };
 
-  // Filter payments: show all payments without any restrictions
   const getFilteredPayments = () => {
-    // Simply return all payments sorted by due date
-    return [...payments].sort((a, b) => {
+    let filtered = [...payments];
+
+    if (selectedMonth !== "all") {
+      filtered = filtered.filter(p => p.referenceMonth === parseInt(selectedMonth));
+    }
+
+    if (selectedYear !== "all") {
+      filtered = filtered.filter(p => p.referenceYear === parseInt(selectedYear));
+    }
+
+    return filtered.sort((a, b) => {
       const dateA = new Date(a.dueDate);
       const dateB = new Date(b.dueDate);
       return dateA.getTime() - dateB.getTime();
@@ -263,14 +245,8 @@ export default function Payments() {
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 5 }, (_, i) => (currentYear - 2 + i).toString());
 
-  const clearFilters = () => {
-    setSelectedMonth("all");
-    setSelectedYear("all");
-  };
-
   const hasActiveFilters = selectedMonth !== "all" || selectedYear !== "all";
 
-  // Calculate expected amount including late fees and interest
   const getExpectedAmount = (payment: Payment): number => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -278,23 +254,12 @@ export default function Payments() {
     const dueDate = new Date(payment.dueDate);
     dueDate.setHours(0, 0, 0, 0);
     
-    // If not overdue, return base amount
     if (dueDate >= today) {
       return payment.expectedAmount;
     }
     
-    // If overdue, add late fee and interest
     const totalWithFees = payment.expectedAmount + (payment.lateFee || 0) + (payment.interest || 0);
     return totalWithFees;
-  };
-
-  const handleGeneratePayments = async (rentalId: string) => {
-    // Logic to generate payments
-    // This function seemed to be the source of the error.
-    // Assuming we want to create a new payment
-    
-    // Placeholder implementation if logic is missing
-    console.log("Generating payments for", rentalId);
   };
 
   return (
@@ -337,7 +302,6 @@ export default function Payments() {
                 </div>
               </div>
               
-              {/* Month/Year Filter Dropdowns */}
               <div className="flex gap-2 items-center">
                 <Select value={selectedMonth} onValueChange={setSelectedMonth}>
                   <SelectTrigger className="w-[150px]">
@@ -376,7 +340,6 @@ export default function Payments() {
             </div>
           ) : (
             <>
-              {/* Unpaid Payments Section */}
               <div className="space-y-4">
                 <ScrollReveal delay={0.2}>
                   <div className="flex items-center gap-2">
@@ -405,13 +368,6 @@ export default function Payments() {
                       const property = getPropertyInfo(payment.rentalId);
                       const tenant = getTenantInfo(payment.rentalId);
                       const colors = getDueDateColor(payment.dueDate);
-                      
-                      // Check if payment is actually overdue (not just due today)
-                      const today = new Date();
-                      today.setHours(0, 0, 0, 0);
-                      const due = new Date(payment.dueDate + "T00:00:00");
-                      due.setHours(0, 0, 0, 0);
-                      const isActuallyOverdue = due < today;
 
                       if (viewMode === "grid") {
                         return (
@@ -541,7 +497,6 @@ export default function Payments() {
                 )}
               </div>
 
-              {/* Paid Payments Section */}
               <div className="space-y-4">
                 <ScrollReveal delay={0.4}>
                   <div className="flex items-center gap-2">
@@ -717,7 +672,6 @@ export default function Payments() {
           )}
         </div>
 
-        {/* Payment Management Dialog */}
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0">
             {selectedPaymentId && (
