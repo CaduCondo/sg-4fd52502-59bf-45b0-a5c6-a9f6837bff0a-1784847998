@@ -202,3 +202,5 @@ export interface Location {
   cep?: string;
   zipCode?: string;
 }
+
+export type TenantStatus = "active" | "inactive" | "rented";

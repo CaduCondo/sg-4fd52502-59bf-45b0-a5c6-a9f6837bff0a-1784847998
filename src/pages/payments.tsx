@@ -222,20 +222,10 @@ export default function Payments() {
     }
   };
 
-  // Filter payments: show all payments within contract period by default
+  // Filter payments: show all payments without any restrictions
   const getFilteredPayments = () => {
-    let filtered = payments;
-    
-    // Apply month/year filters ONLY if explicitly selected
-    if (selectedMonth !== "all") {
-      filtered = filtered.filter(p => p.referenceMonth === parseInt(selectedMonth));
-    }
-    if (selectedYear !== "all") {
-      filtered = filtered.filter(p => p.referenceYear === parseInt(selectedYear));
-    }
-    
-    // Sort by due date (oldest first)
-    return filtered.sort((a, b) => {
+    // Simply return all payments sorted by due date
+    return [...payments].sort((a, b) => {
       const dateA = new Date(a.dueDate);
       const dateB = new Date(b.dueDate);
       return dateA.getTime() - dateB.getTime();

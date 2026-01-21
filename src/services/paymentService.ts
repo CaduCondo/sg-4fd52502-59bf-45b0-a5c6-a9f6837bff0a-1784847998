@@ -57,18 +57,22 @@ function mapPaymentToDB(data: Partial<Payment>): any {
   return dbData;
 }
 
-export async function getAllPayments(): Promise<Payment[]> {
+export async function getAll(): Promise<Payment[]> {
   const { data, error } = await supabase
-    .from(TABLE)
+    .from("payments")
     .select("*")
-    .order('due_date', { ascending: true });
-    
-  if (error) throw error;
+    .order("due_date", { ascending: true });
+
+  if (error) {
+    console.error("Error fetching payments:", error);
+    throw error;
+  }
+
   return (data || []).map(mapPaymentFromDB);
 }
 
 // Alias
-export const getAll = getAllPayments;
+export const getAllPayments = getAll;
 
 export async function getPaymentById(id: string): Promise<Payment> {
   const { data, error } = await supabase

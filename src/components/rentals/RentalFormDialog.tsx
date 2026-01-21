@@ -170,6 +170,9 @@ export function RentalFormDialog({
       resetForm();
       onOpenChange(false);
       onSuccess();
+      
+      // Reload para garantir que os dados sejam atualizados
+      window.location.reload();
     } catch (error) {
       console.error("Error creating rental:", error);
       toast({
