@@ -65,18 +65,18 @@ export function RentalFormDialog({
     setIsEditing(!isViewMode);
     
     if (rental) {
-      setSelectedPropertyId(rental.propertyId || rental.property_id || "");
-      setSelectedTenantId(rental.tenantId || rental.tenant_id || "");
-      setStartDate(rental.startDate || rental.start_date || "");
-      setEndDate(rental.endDate || rental.end_date || "");
-      setPaymentDay(rental.paymentDay?.toString() || rental.payment_day?.toString() || "");
-      setHasGarage(rental.hasGarage || rental.has_garage || false);
+      setSelectedPropertyId(rental.propertyId || "");
+      setSelectedTenantId(rental.tenantId || "");
+      setStartDate(rental.startDate || "");
+      setEndDate(rental.endDate || "");
+      setPaymentDay(rental.paymentDay?.toString() || "");
+      setHasGarage(rental.hasGarage || false);
       setGarageValue(
-        rental.garageValue || rental.garage_value 
-          ? formatCurrency(rental.garageValue || rental.garage_value) 
+        rental.garageValue
+          ? formatCurrency(rental.garageValue) 
           : ""
       );
-      setAttachments(rental.contractAttachments || rental.contract_attachments || rental.attachments || []);
+      setAttachments(rental.contractAttachments || rental.attachments || []);
     } else {
       resetForm();
     }
@@ -205,7 +205,7 @@ export function RentalFormDialog({
         await updateRentalService(rental.id, rentalData);
         await updateFuturePayments(rental.id, totalValue);
         
-        if (rental.paymentDay !== parseInt(paymentDay) || rental.payment_day !== parseInt(paymentDay)) {
+        if (rental.paymentDay !== parseInt(paymentDay)) {
           await updateFuturePaymentsOnPaymentDayChange(rental.id, parseInt(paymentDay));
         }
 
