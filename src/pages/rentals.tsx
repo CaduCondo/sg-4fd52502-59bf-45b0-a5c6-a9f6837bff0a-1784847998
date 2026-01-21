@@ -248,49 +248,45 @@ export default function RentalsPage() {
                     return (
                       <Card
                         key={rental.id}
-                        className="hover:shadow-lg transition-shadow cursor-pointer"
+                        className="hover:shadow-lg transition-shadow cursor-pointer relative"
                         onClick={() => handleViewRental(rental)}
                       >
-                        <div className="space-y-3">
-                          {/* Header: Location name + Badge */}
-                          <div className="flex items-start justify-between gap-2">
-                            <h3 className="text-lg font-semibold text-blue-600">
+                        <CardContent className="p-4">
+                          <div className="flex items-start justify-between mb-3">
+                            <h3 className="text-base font-medium text-blue-600">
                               {location?.name || "Local não encontrado"}
                             </h3>
-                            <Badge variant="default" className="shrink-0">Ativa</Badge>
+                            <Badge className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 text-xs font-medium rounded-md">
+                              Ativa
+                            </Badge>
                           </div>
 
-                          {/* Complement */}
                           {property?.complement && (
-                            <p className="text-sm text-muted-foreground">
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
                               {property.complement}
                             </p>
                           )}
 
-                          {/* Tenant */}
-                          <div>
-                            <p className="text-sm font-semibold">Inquilino:</p>
-                            <p className="text-sm text-muted-foreground">{tenant?.name || "-"}</p>
+                          <div className="mb-3">
+                            <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">Inquilino:</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">{tenant?.name || "-"}</p>
                           </div>
 
-                          {/* Value */}
-                          <div>
-                            <p className="text-sm text-muted-foreground">Valor</p>
+                          <div className="mb-3">
+                            <p className="text-xs text-gray-600 dark:text-gray-400">Valor</p>
                             <p className="text-2xl font-bold text-emerald-600">
                               {formatCurrency(rental.value)}
                             </p>
                           </div>
 
-                          {/* Start date */}
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-xs text-gray-600 dark:text-gray-400 mb-10">
                             Início: {formatDate(rental.startDate)}
                           </p>
 
-                          {/* Delete button */}
                           <Button
-                            variant="destructive"
+                            variant="ghost"
                             size="icon"
-                            className="absolute bottom-4 right-4"
+                            className="absolute bottom-3 right-3 h-10 w-10 bg-red-500 hover:bg-red-600 text-white rounded-md"
                             onClick={(e) => {
                               e.stopPropagation();
                               setRentalToDelete(rental);
@@ -298,7 +294,7 @@ export default function RentalsPage() {
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
-                        </div>
+                        </CardContent>
                       </Card>
                     );
                   })}

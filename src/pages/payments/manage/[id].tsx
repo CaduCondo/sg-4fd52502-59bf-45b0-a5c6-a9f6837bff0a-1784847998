@@ -22,6 +22,7 @@ import { hasPermission } from "@/lib/permissions";
 import { useAuth } from "@/contexts/AuthContext";
 import { Checkbox } from "@/components/ui/checkbox";
 import { format } from "date-fns";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ManagePaymentContentProps {
   paymentId: string;
@@ -40,27 +41,29 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
   const [config, setConfig] = useState<CompanyConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [showReceipt, setShowReceipt] = useState(false);
+  const [dueDate, setDueDate] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
-    paymentDate: new Date().toISOString().split("T")[0],
     paidAmount: "",
-    paymentMethod: "pix",
+    paymentDate: "",
+    paymentMethod: "",
     paymentLocation: "",
     paymentCode: "",
     notes: "",
     attachments: [] as string[],
   });
-
+  const [waiveLateFees, setWaiveLateFees] = useState(false);
+  
   const [calculatedValues, setCalculatedValues] = useState({
     baseAmount: 0,
     rentAmount: 0,
-    lateFee: 0,
-    interest: 0,
+    penaltyAmount: 0,
+    interestAmount: 0,
     totalAmount: 0,
-    lateDays: 0,
+    daysLate: 0,
+    lateFee: 0, // Mantendo compatibilidade se usado em outro lugar
+    interest: 0, // Mantendo compatibilidade
   });
-
-  const [waiveLateFees, setWaiveLateFees] = useState(false);
 
   useEffect(() => {
     const id = embedded ? paymentId : (router.query.id as string);
@@ -104,48 +107,23 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
   const loadData = async (id: string) => {
     try {
       setLoading(true);
-      const paymentData = await getPaymentById(id as string);
+      const paymentData = await getPaymentById(id);
+      const rentalData = await getRentalById(paymentData.rentalId);
+
       setPayment(paymentData);
-
-      const [rentalData, configData] = await Promise.all([
-        getRentalById(paymentData.rentalId),
-        getConfig()
-      ]);
-
       setRental(rentalData);
-      setConfig(configData);
-
-      if (paymentData) {
-        setPayment(paymentData);
-
-        const rentalData = await rentalService.getById(paymentData.rentalId);
-        if (rentalData) {
-          setRental(rentalData);
-
-          const [propertyData, tenantData] = await Promise.all([
-            propertyService.getById(rentalData.propertyId),
-            tenantService.getById(rentalData.tenantId),
-          ]);
-
-          setProperty(propertyData);
-          setTenant(tenantData);
-        }
-
-        setFormData({
-          paymentDate: paymentData.paymentDate || new Date().toISOString().split("T")[0],
-          paidAmount: applyRealMask((paymentData.paidAmount * 100).toString()),
-          paymentMethod: (paymentData.paymentMethod || "pix").toLowerCase(),
-          paymentLocation: paymentData.paymentLocation || "CP",
-          paymentCode: paymentData.paymentCode || "",
-          notes: paymentData.notes || "",
-          attachments: paymentData.attachments || [],
-        });
-      }
+      setDueDate(paymentData.dueDate);
+      
+      // Inicializar formData com anexos existentes se houver
+      setFormData(prev => ({
+        ...prev,
+        attachments: paymentData.attachments || []
+      }));
     } catch (error) {
-      console.error("Error loading payment:", error);
+      console.error("Error loading data:", error);
       toast({
         title: "Erro",
-        description: "Não foi possível carregar os dados do recebimento.",
+        description: "Não foi possível carregar os dados do pagamento.",
         variant: "destructive",
       });
     } finally {
@@ -154,35 +132,50 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
   };
 
   const calculateValues = () => {
-    if (!payment || !rental || !config) return;
-
-    const baseAmount = payment.expectedAmount;
-    const dueDate = new Date(payment.dueDate + "T00:00:00");
-    const paymentDate = new Date(formData.paymentDate + "T00:00:00");
-
-    let lateFee = 0;
-    let interest = 0;
-    let lateDays = 0;
-
-    if (paymentDate > dueDate) {
-      lateDays = Math.ceil((paymentDate.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
-
-      const lateFeePercentage = config.late_fee_percentage || 2;
-      lateFee = baseAmount * (lateFeePercentage / 100);
-
-      const dailyInterestRate = (config.interest_rate_percentage || 1) / 30;
-      interest = baseAmount * (dailyInterestRate / 100) * lateDays;
+    if (!payment || !dueDate || !config) {
+      setCalculatedValues({
+        baseAmount: 0,
+        rentAmount: 0,
+        penaltyAmount: 0,
+        interestAmount: 0,
+        totalAmount: 0,
+        daysLate: 0,
+        lateFee: 0,
+        interest: 0
+      });
+      return;
     }
 
-    const totalAmount = waiveLateFees ? baseAmount : baseAmount + lateFee + interest;
+    const expectedAmount = payment.expectedAmount || 0;
+    const dueDateObj = new Date(dueDate + "T00:00:00");
+    const paymentDateStr = formData.paymentDate || new Date().toISOString().split('T')[0];
+    const paymentDateObj = new Date(paymentDateStr + "T00:00:00");
+    
+    const diffTime = paymentDateObj.getTime() - dueDateObj.getTime();
+    const daysLate = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+
+    // Usar configurações carregadas
+    const penaltyRate = (config.late_fee_percentage || 2) / 100;
+    const interestRate = (config.interest_rate_percentage || 0.033) / 100;
+
+    const penaltyAmount = daysLate > 0 ? expectedAmount * penaltyRate : 0;
+    const interestAmount = daysLate > 0 ? expectedAmount * interestRate * daysLate : 0;
+    
+    // Se waiveLateFees estiver marcado, zera multas e juros
+    const finalPenalty = waiveLateFees ? 0 : penaltyAmount;
+    const finalInterest = waiveLateFees ? 0 : interestAmount;
+    
+    const totalAmount = expectedAmount + finalPenalty + finalInterest;
 
     setCalculatedValues({
-      baseAmount,
-      rentAmount: baseAmount,
-      lateFee,
-      interest,
+      baseAmount: expectedAmount,
+      rentAmount: expectedAmount,
+      penaltyAmount: finalPenalty,
+      interestAmount: finalInterest,
       totalAmount,
-      lateDays,
+      daysLate,
+      lateFee: finalPenalty,
+      interest: finalInterest
     });
   };
 
@@ -403,11 +396,13 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
                   <span>Multa ({config?.late_fee_percentage || 0}%):</span>
                   <span className="font-medium">{formatCurrency(calculatedValues.lateFee)}</span>
                 </div>
-                <div className="flex justify-between text-orange-600">
-                  <span>
-                    Juros ({((config?.interest_rate_percentage || 1) / 30).toFixed(3)}%/dia x {calculatedValues.lateDays} dias):
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-emerald-900 dark:text-emerald-100">
+                    Juros ({systemConfig?.interest_rate || "0.033"}%/dia x {calculatedValues.daysLate} dias):
                   </span>
-                  <span className="font-medium">{formatCurrency(calculatedValues.interest)}</span>
+                  <span className="font-semibold text-emerald-700 dark:text-emerald-300">
+                    {formatCurrency(calculatedValues.interestAmount)}
+                  </span>
                 </div>
                 <div className="flex items-center space-x-2 pt-2">
                   <Checkbox
