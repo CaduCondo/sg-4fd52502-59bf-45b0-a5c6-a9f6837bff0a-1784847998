@@ -20,6 +20,8 @@ import { getById as getRentalById } from "@/services/rentalService";
 import { getConfig } from "@/services/configService";
 import { hasPermission } from "@/lib/permissions";
 import { useAuth } from "@/contexts/AuthContext";
+import { Checkbox } from "@/components/ui/checkbox";
+import { format } from "date-fns";
 
 interface ManagePaymentContentProps {
   paymentId: string;
@@ -51,9 +53,11 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
 
   const [calculatedValues, setCalculatedValues] = useState({
     baseAmount: 0,
+    rentAmount: 0,
     lateFee: 0,
     interest: 0,
     totalAmount: 0,
+    lateDays: 0,
   });
 
   const [waiveLateFees, setWaiveLateFees] = useState(false);
@@ -82,6 +86,15 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
   useEffect(() => {
     loadConfig();
   }, []);
+
+  useEffect(() => {
+    if (calculatedValues.totalAmount > 0) {
+      setFormData((prev) => ({
+        ...prev,
+        paidAmount: applyRealMask((calculatedValues.totalAmount * 100).toString()),
+      }));
+    }
+  }, [calculatedValues.totalAmount]);
 
   const loadConfig = async () => {
     const data = await configService.getConfig();
@@ -149,30 +162,28 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
 
     let lateFee = 0;
     let interest = 0;
+    let lateDays = 0;
 
     if (paymentDate > dueDate) {
-      const daysLate = Math.ceil((paymentDate.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
+      lateDays = Math.ceil((paymentDate.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
 
       const lateFeePercentage = config.late_fee_percentage || 2;
       lateFee = baseAmount * (lateFeePercentage / 100);
 
-      const interestRatePercentage = config.interest_rate_percentage || 0.033;
-      interest = baseAmount * (interestRatePercentage / 100) * daysLate;
+      const dailyInterestRate = (config.interest_rate_percentage || 1) / 30;
+      interest = baseAmount * (dailyInterestRate / 100) * lateDays;
     }
 
     const totalAmount = waiveLateFees ? baseAmount : baseAmount + lateFee + interest;
 
     setCalculatedValues({
       baseAmount,
+      rentAmount: baseAmount,
       lateFee,
       interest,
       totalAmount,
+      lateDays,
     });
-
-    setFormData((prev) => ({
-      ...prev,
-      paidAmount: applyRealMask((totalAmount * 100).toString()),
-    }));
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -338,334 +349,196 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
   }
 
   const content = (
-    <div className="space-y-4 p-4">
-      <div className="flex items-center justify-between">
+    <div className="space-y-3 p-4">
+      <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold">Registrar Recebimento</h1>
-        <Button variant="ghost" size="icon" onClick={handleBack}>
-          <X className="h-5 w-5" />
-        </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+        {/* Bloco 1: Informações do Recebimento */}
         <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <DollarSign className="h-4 w-4" />
-              Informações do Recebimento
-            </CardTitle>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Informações do Recebimento</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Home className="h-4 w-4 text-muted-foreground" />
-              <div>
-                <p className="text-sm font-medium">{property?.location}</p>
-                <p className="text-xs text-muted-foreground">{property?.complement}</p>
-              </div>
+          <CardContent className="space-y-2 text-sm">
+            <div>
+              <p className="text-xs text-muted-foreground">Imóvel</p>
+              <p className="font-medium">{property?.location || "N/A"}</p>
             </div>
-
-            <div className="flex items-center gap-2">
-              <User className="h-4 w-4 text-muted-foreground" />
-              <div>
-                <p className="text-sm font-medium">{tenant?.name}</p>
-                <p className="text-xs text-muted-foreground">{tenant?.document}</p>
-              </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Inquilino</p>
+              <p className="font-medium">{tenant?.name || "N/A"}</p>
+              {tenant?.phone && (
+                <p className="text-xs text-muted-foreground">{tenant.phone}</p>
+              )}
             </div>
-
-            <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-              <p className="text-sm">
-                Vencimento: {new Date(payment.dueDate + "T00:00:00").toLocaleDateString("pt-BR")}
+            <div>
+              <p className="text-xs text-muted-foreground">Vencimento</p>
+              <p className="font-medium">
+                {payment.dueDate
+                  ? format(new Date(payment.dueDate), "dd/MM/yyyy")
+                  : "N/A"}
               </p>
             </div>
-
-            <div className="pt-2 border-t">
-              <Badge className={payment.status === "paid" ? "bg-green-500" : "bg-yellow-500"}>
-                {payment.status === "paid" ? "Pago" : payment.status === "partial" ? "Parcial" : "Pendente"}
-              </Badge>
+            <div>
+              <p className="text-xs text-muted-foreground">Valor Esperado</p>
+              <p className="text-lg font-bold text-primary">
+                {formatCurrency(calculatedValues.totalAmount)}
+              </p>
             </div>
           </CardContent>
         </Card>
 
+        {/* Bloco 2: Composição de Valores */}
         <Card>
-          <CardHeader className="pb-3">
+          <CardHeader className="pb-2">
             <CardTitle className="text-base">Composição de Valores</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
-            <div className="flex justify-between text-sm">
+          <CardContent className="space-y-2 text-sm">
+            <div className="flex justify-between">
               <span className="text-muted-foreground">Valor do Aluguel:</span>
-              <span className="font-medium">{formatCurrency(calculatedValues.baseAmount)}</span>
+              <span className="font-medium">
+                {formatCurrency(calculatedValues.rentAmount)}
+              </span>
             </div>
-
-            {payment.status === "partial" && payment.paidAmount > 0 && (
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Valor Já Pago:</span>
-                <span className="font-medium text-green-600">-{formatCurrency(payment.paidAmount)}</span>
-              </div>
+            {calculatedValues.lateDays > 0 && !waiveLateFees && (
+              <>
+                <div className="flex justify-between text-orange-600">
+                  <span>Multa ({config?.late_fee_percentage}%):</span>
+                  <span className="font-medium">
+                    {formatCurrency(calculatedValues.lateFee)}
+                  </span>
+                </div>
+                <div className="flex justify-between text-orange-600">
+                  <span>Juros ({(config?.interest_rate_percentage ? config.interest_rate_percentage / 30 : 0.033).toFixed(3)}%/dia):</span>
+                  <span className="font-medium">
+                    {formatCurrency(calculatedValues.interest)}
+                  </span>
+                </div>
+              </>
             )}
-
-            {calculatedValues.lateFee > 0 && (
-              <div className="flex justify-between text-sm">
-                <span className={waiveLateFees ? "line-through text-muted-foreground" : "text-muted-foreground"}>
-                  Multa ({formatPercentage(config?.late_fee_percentage || 2)}%):
-                </span>
-                <span className={waiveLateFees ? "line-through text-muted-foreground" : "font-medium text-red-600"}>
-                  {formatCurrency(calculatedValues.lateFee)}
-                </span>
-              </div>
-            )}
-
-            {calculatedValues.interest > 0 && (
-              <div className="flex justify-between text-sm">
-                <span className={waiveLateFees ? "line-through text-muted-foreground" : "text-muted-foreground"}>
-                  Juros ({formatPercentage(config?.interest_rate_percentage || 0.033)}% ao dia):
-                </span>
-                <span className={waiveLateFees ? "line-through text-muted-foreground" : "font-medium text-red-600"}>
-                  {formatCurrency(calculatedValues.interest)}
+            {waiveLateFees && calculatedValues.lateDays > 0 && (
+              <div className="flex justify-between text-green-600">
+                <span>Multa e Juros Descontados:</span>
+                <span className="font-medium">
+                  -{formatCurrency(calculatedValues.lateFee + calculatedValues.interest)}
                 </span>
               </div>
             )}
-
-            {(calculatedValues.lateFee > 0 || calculatedValues.interest > 0) && (
-              <div className="flex items-center gap-2 py-2">
-                <input
-                  type="checkbox"
-                  id="waiveLateFees"
-                  checked={waiveLateFees}
-                  onChange={(e) => setWaiveLateFees(e.target.checked)}
-                  className="h-4 w-4 rounded border-gray-300"
-                />
-                <Label htmlFor="waiveLateFees" className="text-sm cursor-pointer">
-                  Descontar multa e juros
-                </Label>
-              </div>
-            )}
-
-            <div className="pt-2 border-t flex justify-between">
-              <span className="font-medium">Valor Esperado:</span>
-              <span className="text-lg font-bold text-emerald-600">
-                {formatCurrency(calculatedValues.totalAmount - (payment.status === "partial" ? payment.paidAmount : 0))}
+            <div className="flex justify-between pt-2 border-t">
+              <span className="font-semibold">Total:</span>
+              <span className="font-bold text-lg text-primary">
+                {formatCurrency(calculatedValues.totalAmount)}
               </span>
             </div>
           </CardContent>
         </Card>
-      </div>
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Dados do Recebimento</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-3">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="space-y-1">
-                <Label htmlFor="paymentDate" className="text-sm">
-                  Data do Recebimento <span className="text-red-500">*</span>
+        {/* Bloco 3: Dados do Recebimento */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Dados do Recebimento</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-3">
+              <div>
+                <Label htmlFor="paymentDate" className="text-xs">
+                  Data do Pagamento *
                 </Label>
                 <Input
                   id="paymentDate"
                   type="date"
                   value={formData.paymentDate}
-                  onChange={(e) => setFormData({ ...formData, paymentDate: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, paymentDate: e.target.value })
+                  }
                   required
-                  className="h-9"
+                  className="h-8 text-sm"
                 />
               </div>
 
-              <div className="space-y-1">
-                <Label htmlFor="paidAmount" className="text-sm">
-                  Valor Recebido <span className="text-red-500">*</span>
+              <div>
+                <Label htmlFor="paidAmount" className="text-xs">
+                  Valor Recebido *
                 </Label>
                 <Input
                   id="paidAmount"
+                  type="text"
                   value={formData.paidAmount}
-                  onChange={(e) => setFormData({ ...formData, paidAmount: applyRealMask(e.target.value) })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      paidAmount: applyRealMask(e.target.value),
+                    })
+                  }
                   placeholder="R$ 0,00"
                   required
-                  className="h-9"
+                  className="h-8 text-sm"
                 />
               </div>
 
-              <div className="space-y-1">
-                <Label htmlFor="paymentMethod" className="text-sm">
-                  Método de Pagamento <span className="text-red-500">*</span>
+              <div>
+                <Label htmlFor="paymentMethod" className="text-xs">
+                  Método de Pagamento *
                 </Label>
                 <Select
                   value={formData.paymentMethod}
-                  onValueChange={(value) => setFormData({ ...formData, paymentMethod: value })}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, paymentMethod: value })
+                  }
                 >
-                  <SelectTrigger id="paymentMethod" className="h-9">
-                    <SelectValue />
+                  <SelectTrigger id="paymentMethod" className="h-8 text-sm">
+                    <SelectValue placeholder="Selecione o método" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="pix">PIX</SelectItem>
+                    <SelectItem value="transferencia">Transferência</SelectItem>
                     <SelectItem value="dinheiro">Dinheiro</SelectItem>
                     <SelectItem value="boleto">Boleto</SelectItem>
+                    <SelectItem value="cartao">Cartão</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
-              {formData.paymentMethod === "pix" && (
-                <>
-                  <div className="space-y-1">
-                    <Label htmlFor="paymentLocation" className="text-sm">
-                      Local do Pagamento <span className="text-red-500">*</span>
-                    </Label>
-                    <Select
-                      value={formData.paymentLocation}
-                      onValueChange={(value) => setFormData({ ...formData, paymentLocation: value })}
-                    >
-                      <SelectTrigger id="paymentLocation" className="h-9">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="CP">CP</SelectItem>
-                        <SelectItem value="CD">CD</SelectItem>
-                        <SelectItem value="CE">CE</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="waiveLateFees"
+                  checked={waiveLateFees}
+                  onCheckedChange={(checked) =>
+                    setWaiveLateFees(checked as boolean)
+                  }
+                />
+                <Label
+                  htmlFor="waiveLateFees"
+                  className="text-xs font-normal cursor-pointer"
+                >
+                  Descontar multa e juros
+                </Label>
+              </div>
 
-                  <div className="space-y-1">
-                    <Label htmlFor="paymentCode" className="text-sm">Código PIX</Label>
-                    <Input
-                      id="paymentCode"
-                      value={formData.paymentCode}
-                      onChange={(e) => setFormData({ ...formData, paymentCode: e.target.value })}
-                      placeholder="Ex: 15XXXXCP"
-                      className="h-9"
-                    />
-                  </div>
-                </>
-              )}
-
-              <div className="space-y-1 sm:col-span-3">
-                <Label htmlFor="notes" className="text-sm">Observações</Label>
+              <div>
+                <Label htmlFor="notes" className="text-xs">
+                  Observações
+                </Label>
                 <Textarea
                   id="notes"
                   value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  placeholder="Adicione observações sobre este recebimento..."
-                  rows={2}
-                  className="resize-none"
+                  onChange={(e) =>
+                    setFormData({ ...formData, notes: e.target.value })
+                  }
+                  placeholder="Adicione observações (opcional)"
+                  className="resize-none text-sm min-h-[80px]"
                 />
               </div>
-            </div>
 
-            <div className="space-y-3 border-t pt-3">
-              <div className="flex items-center justify-between">
-                <Label className="text-sm font-medium">Anexos</Label>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => document.getElementById("cameraCapture")?.click()}
-                    className="h-8"
-                  >
-                    <Camera className="mr-2 h-3 w-3" />
-                    Tirar Foto
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => document.getElementById("fileUpload")?.click()}
-                    className="h-8"
-                  >
-                    <Paperclip className="mr-2 h-3 w-3" />
-                    Anexar Arquivo
-                  </Button>
-                  <input
-                    id="cameraCapture"
-                    type="file"
-                    accept="image/*"
-                    capture="environment"
-                    className="hidden"
-                    onChange={handleCameraCapture}
-                  />
-                  <input
-                    id="fileUpload"
-                    type="file"
-                    accept="image/*,.pdf,.doc,.docx"
-                    className="hidden"
-                    onChange={handleFileUpload}
-                  />
-                </div>
-              </div>
-
-              {formData.attachments.length > 0 && (
-                <div className="space-y-2">
-                  {formData.attachments.map((attachment, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between p-2 bg-muted rounded-lg"
-                    >
-                      <span className="text-sm truncate flex-1">
-                        Arquivo {index + 1}
-                      </span>
-                      <div className="flex gap-2">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            const link = document.createElement("a");
-                            link.href = attachment;
-                            link.target = "_blank";
-                            document.body.appendChild(link);
-                            link.click();
-                            document.body.removeChild(link);
-                          }}
-                          className="h-7"
-                        >
-                          <Eye className="h-3 w-3 mr-1" />
-                          Ver
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            const link = document.createElement("a");
-                            link.href = attachment;
-                            link.download = `anexo-${index + 1}`;
-                            document.body.appendChild(link);
-                            link.click();
-                            document.body.removeChild(link);
-                          }}
-                          className="h-7"
-                        >
-                          <Download className="h-3 w-3 mr-1" />
-                          Baixar
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeAttachment(index)}
-                          className="h-7"
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="flex gap-2 justify-end pt-2">
-              <Button type="button" variant="outline" onClick={handleBack} className="h-9">
-                Cancelar
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? "Processando..." : "Confirmar Recebimento"}
               </Button>
-              <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700 h-9">
-                Registrar Recebimento
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-      
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+
       {payment.status === 'paid' && (
         <PaymentReceipt 
           isOpen={showReceipt} 

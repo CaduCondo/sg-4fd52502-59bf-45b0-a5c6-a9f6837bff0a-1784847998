@@ -36,8 +36,14 @@ export default function Payments() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const { user } = useAuth();
 
-  const [selectedMonth, setSelectedMonth] = useState<string>("all");
-  const [selectedYear, setSelectedYear] = useState<string>("all");
+  // Filter state - Initialize with current month/year
+  const currentDate = new Date();
+  const [selectedMonth, setSelectedMonth] = useState<string>(
+    (currentDate.getMonth() + 1).toString()
+  );
+  const [selectedYear, setSelectedYear] = useState<string>(
+    currentDate.getFullYear().toString()
+  );
 
   useEffect(() => {
     loadPayments();
@@ -377,27 +383,20 @@ export default function Payments() {
                               onClick={() => handleCardClick(payment.id)}
                             >
                               <CardHeader className="pb-2 p-3">
-                                <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-start justify-between mb-2">
                                   <div className="flex items-center gap-2">
+                                    <Home className="w-4 h-4 text-muted-foreground" />
+                                    <span className="font-medium text-sm">
+                                      {getPropertyInfo(payment.rentalId)?.location || "Imóvel não encontrado"}
+                                    </span>
+                                  </div>
+                                  <div className="flex flex-col items-end gap-1">
+                                    <span className="text-xs text-muted-foreground">
+                                      {getMonthName(payment.referenceMonth)}/{payment.referenceYear}
+                                    </span>
                                     {getStatusBadge(payment.status)}
                                   </div>
-                                  <span className="text-xs text-muted-foreground">
-                                    {getMonthName(payment.referenceMonth)}/{payment.referenceYear}
-                                  </span>
                                 </div>
-                                <CardTitle className="flex items-center gap-2 text-sm">
-                                  <div className="flex flex-col gap-1 flex-1">
-                                    <span className="flex items-center gap-1.5">
-                                      <Home className={`h-4 w-4 ${colors.icon}`} />
-                                      {property?.location || "N/A"}
-                                    </span>
-                                    {property?.complement && (
-                                      <span className="text-xs font-normal text-muted-foreground ml-5">
-                                        {property.complement}
-                                      </span>
-                                    )}
-                                  </div>
-                                </CardTitle>
                               </CardHeader>
                               <CardContent className="space-y-2 p-3 pt-0">
                                 <div className="flex items-start gap-1.5">
@@ -449,12 +448,14 @@ export default function Payments() {
                                     <Home className={`h-5 w-5 ${colors.icon} flex-shrink-0`} />
                                     <div className="flex-1 min-w-0">
                                       <div className="flex items-center gap-2 mb-1">
-                                        {getStatusBadge(payment.status)}
                                         <span className="text-xs text-muted-foreground">
                                           {getMonthName(payment.referenceMonth)}/{payment.referenceYear}
                                         </span>
+                                        {getStatusBadge(payment.status)}
                                       </div>
-                                      <h3 className="text-sm font-semibold truncate">{property?.location || "N/A"}</h3>
+                                      <h3 className="text-sm font-semibold truncate">
+                                        {property?.location || "N/A"}
+                                      </h3>
                                       {property?.complement && (
                                         <p className="text-xs text-muted-foreground truncate">{property.complement}</p>
                                       )}
@@ -533,25 +534,20 @@ export default function Payments() {
                               onClick={() => handleCardClick(payment.id)}
                             >
                               <CardHeader className="pb-2 p-3">
-                                <div className="flex items-center justify-between mb-2">
-                                  {getStatusBadge(payment.status)}
-                                  <span className="text-xs text-muted-foreground">
-                                    {getMonthName(payment.referenceMonth)}/{payment.referenceYear}
-                                  </span>
-                                </div>
-                                <CardTitle className="flex items-center gap-2 text-sm">
-                                  <div className="flex flex-col gap-1 flex-1">
-                                    <span className="flex items-center gap-1.5">
-                                      <Home className="h-4 w-4 text-green-600" />
-                                      {property?.location || "N/A"}
+                                <div className="flex items-start justify-between mb-2">
+                                  <div className="flex items-center gap-2">
+                                    <Home className="w-4 h-4 text-muted-foreground" />
+                                    <span className="font-medium text-sm">
+                                      {getPropertyInfo(payment.rentalId)?.location || "Imóvel não encontrado"}
                                     </span>
-                                    {property?.complement && (
-                                      <span className="text-xs font-normal text-muted-foreground ml-5">
-                                        {property.complement}
-                                      </span>
-                                    )}
                                   </div>
-                                </CardTitle>
+                                  <div className="flex flex-col items-end gap-1">
+                                    <span className="text-xs text-muted-foreground">
+                                      {getMonthName(payment.referenceMonth)}/{payment.referenceYear}
+                                    </span>
+                                    {getStatusBadge(payment.status)}
+                                  </div>
+                                </div>
                               </CardHeader>
                               <CardContent className="space-y-2 p-3 pt-0">
                                 <div className="flex items-start gap-1.5">
@@ -613,12 +609,14 @@ export default function Payments() {
                                     <Home className="h-5 w-5 text-green-600 flex-shrink-0" />
                                     <div className="flex-1 min-w-0">
                                       <div className="flex items-center gap-2 mb-1">
-                                        {getStatusBadge(payment.status)}
                                         <span className="text-xs text-muted-foreground">
                                           {getMonthName(payment.referenceMonth)}/{payment.referenceYear}
                                         </span>
+                                        {getStatusBadge(payment.status)}
                                       </div>
-                                      <h3 className="text-sm font-semibold truncate">{property?.location || "N/A"}</h3>
+                                      <h3 className="text-sm font-semibold truncate">
+                                        {property?.location || "N/A"}
+                                      </h3>
                                       {property?.complement && (
                                         <p className="text-xs text-muted-foreground truncate">{property.complement}</p>
                                       )}

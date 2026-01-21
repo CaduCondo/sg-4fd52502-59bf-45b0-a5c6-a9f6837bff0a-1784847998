@@ -250,7 +250,7 @@ export function RentalFormDialog({
                 <SelectContent>
                   {availableTenants
                     .slice()
-                    .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"))
+                    .sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }))
                     .map((tenant) => (
                       <SelectItem key={tenant.id} value={tenant.id}>
                         {tenant.name}
