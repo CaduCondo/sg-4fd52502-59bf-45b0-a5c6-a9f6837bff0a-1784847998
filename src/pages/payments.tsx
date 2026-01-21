@@ -42,7 +42,7 @@ export default function Payments() {
     (currentDate.getMonth() + 1).toString()
   );
   const [selectedYear, setSelectedYear] = useState<string>(
-    currentDate.getFullYear().toString()
+    "2026"
   );
 
   useEffect(() => {
@@ -386,9 +386,16 @@ export default function Payments() {
                                 <div className="flex items-start justify-between mb-2">
                                   <div className="flex items-center gap-2">
                                     <Home className="w-4 h-4 text-muted-foreground" />
-                                    <span className="font-medium text-sm">
-                                      {getPropertyInfo(payment.rentalId)?.location || "Imóvel não encontrado"}
-                                    </span>
+                                    <div>
+                                      <span className={`font-medium text-sm ${colors.icon}`}>
+                                        {property?.location || "Imóvel não encontrado"}
+                                      </span>
+                                      {property?.complement && (
+                                        <p className="text-xs text-muted-foreground">
+                                          {property.complement}
+                                        </p>
+                                      )}
+                                    </div>
                                   </div>
                                   <div className="flex flex-col items-end gap-1">
                                     <span className="text-xs text-muted-foreground">
@@ -453,7 +460,7 @@ export default function Payments() {
                                         </span>
                                         {getStatusBadge(payment.status)}
                                       </div>
-                                      <h3 className="text-sm font-semibold truncate">
+                                      <h3 className={`text-sm font-semibold truncate ${colors.icon}`}>
                                         {property?.location || "N/A"}
                                       </h3>
                                       {property?.complement && (
@@ -537,9 +544,16 @@ export default function Payments() {
                                 <div className="flex items-start justify-between mb-2">
                                   <div className="flex items-center gap-2">
                                     <Home className="w-4 h-4 text-muted-foreground" />
-                                    <span className="font-medium text-sm">
-                                      {getPropertyInfo(payment.rentalId)?.location || "Imóvel não encontrado"}
-                                    </span>
+                                    <div>
+                                      <span className="font-medium text-sm">
+                                        {property?.location || "Imóvel não encontrado"}
+                                      </span>
+                                      {property?.complement && (
+                                        <p className="text-xs text-muted-foreground">
+                                          {property.complement}
+                                        </p>
+                                      )}
+                                    </div>
                                   </div>
                                   <div className="flex flex-col items-end gap-1">
                                     <span className="text-xs text-muted-foreground">

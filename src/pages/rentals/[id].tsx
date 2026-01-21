@@ -235,25 +235,45 @@ export default function RentalDetails() {
   };
 
   const handleEndRental = async () => {
-    if (!rental || !property || !tenant) return;
+    if (!rental) return;
+
+    const confirmEnd = confirm(
+      "Tem certeza que deseja finalizar esta locação? Esta ação não pode ser desfeita."
+    );
+
+    if (!confirmEnd) return;
 
     try {
-      await updateRental(rental.id, { isActive: false });
-      await updateProperty(property.id, { status: "available" });
-      await updateTenant(tenant.id, { status: "active" });
+      const updatedRental: Rental = {
+        ...rental,
+        status: "finished",
+        endDate: new Date().toISOString().split("T")[0],
+      };
+
+      await rentalService.update(rental.id, updatedRental);
+
+      // Atualizar status do inquilino para 'active' ao finalizar a locação
+      if (rental.tenantId) {
+        const tenant = await tenantService.getById(rental.tenantId);
+        if (tenant) {
+          await tenantService.update(rental.tenantId, {
+            ...tenant,
+            status: "active"
+          });
+        }
+      }
 
       toast({
         title: "Sucesso",
-        description: "Locação encerrada com sucesso.",
+        description: "Locação finalizada com sucesso.",
       });
 
-      setIsEndDialogOpen(false);
       router.push("/rentals");
     } catch (error) {
       console.error("Error ending rental:", error);
       toast({
         title: "Erro",
-        description: "Não foi possível encerrar a locação.",
+        description: "Não foi possível finalizar a locação.",
         variant: "destructive",
       });
     }
