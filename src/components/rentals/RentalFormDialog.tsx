@@ -155,8 +155,15 @@ export function RentalFormDialog({
       const createdRental = await createRental(newRental);
 
       await updateProperty(selectedPropertyId, { status: "occupied" });
-      console.log("Updating tenant status:", selectedTenantId, { status: "rented" });
-      await updateTenant(selectedTenantId, { status: "rented" });
+      console.log("Updating tenant status:", selectedTenantId, { status: "locatario" });
+      
+      const tenant = availableTenants.find(t => t.id === selectedTenantId);
+      if (tenant) {
+        await updateTenant(selectedTenantId, { 
+          ...tenant,
+          status: "locatario" 
+        });
+      }
 
       console.log("Creating payments for rental:", createdRental);
       await createPaymentsForRental(createdRental);
@@ -250,11 +257,7 @@ export function RentalFormDialog({
                 <SelectContent>
                   {availableTenants
                     .slice()
-                    .sort((a, b) => {
-                      if (a.name < b.name) return -1;
-                      if (a.name > b.name) return 1;
-                      return 0;
-                    })
+                    .sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }))
                     .map((tenant) => (
                       <SelectItem key={tenant.id} value={tenant.id}>
                         {tenant.name}

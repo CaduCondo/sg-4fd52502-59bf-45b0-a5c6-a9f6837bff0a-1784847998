@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Home, Plus, User, Building2, CheckCircle, XCircle, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
+import { Home, Plus, User, Building2, CheckCircle, XCircle, ChevronDown, ChevronUp, Trash2, LayoutGrid, List, Building } from "lucide-react";
 import { getAll as getAllRentals, create as createRental, remove as deleteRental, update as updateRental } from "@/services/rentalService";
 import { getAll as getAllProperties, update as updateProperty } from "@/services/propertyService";
 import { getAll as getAllTenants, update as updateTenant } from "@/services/tenantService";
@@ -26,17 +26,17 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-export default function Rentals() {
-  const { toast } = useToast();
+export default function RentalsPage() {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
   const [rentals, setRentals] = useState<Rental[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
-  const [showInactive, setShowInactive] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [isRentalDialogOpen, setIsRentalDialogOpen] = useState(false);
   const [rentalToDelete, setRentalToDelete] = useState<Rental | null>(null);
+  const [showInactive, setShowInactive] = useState(false);
 
   const loadData = async () => {
     try {
@@ -70,7 +70,8 @@ export default function Rentals() {
 
   // Filtrar imóveis e inquilinos disponíveis
   const availableProperties = properties.filter((p) => p.status === "available");
-  const availableTenants = tenants; // Mostra TODOS os inquilinos cadastrados
+  const availableTenants = tenants.filter((t) => t.status === "active");
+  const vacantProperties = properties.filter((p) => p.status === "available");
 
   // Filtrar locações ativas e inativas
   const activeRentals = rentals.filter((r) => r.isActive);
@@ -129,6 +130,10 @@ export default function Rentals() {
     }
   };
 
+  const handleCreateNew = () => {
+    setIsRentalDialogOpen(true);
+  };
+
   const handleViewRental = (rentalId: string) => {
     router.push(`/rentals/${rentalId}`);
   };
@@ -139,62 +144,51 @@ export default function Rentals() {
       <Layout>
         <div className="space-y-6">
           {/* Header com Botão Nova Locação */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
             <div>
-              <h1 className="text-3xl font-bold flex items-center gap-2">
-                <Home className="h-8 w-8" />
-                Locações
-              </h1>
-              <p className="text-muted-foreground mt-1">
-                {activeRentals.length} locações ativas
-              </p>
+              <h1 className="text-4xl font-bold mb-2">Locações</h1>
+              <p className="text-muted-foreground">Gerencie os contratos de locação</p>
             </div>
-            <Button
-              onClick={() => setIsRentalDialogOpen(true)}
-              disabled={!canCreateRental}
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Nova Locação
-            </Button>
+            <div className="flex gap-3">
+              <Button onClick={handleCreateNew}>
+                <Plus className="mr-2 h-4 w-4" />
+                Nova Locação
+              </Button>
+            </div>
           </div>
 
-          {/* Duas Colunas: Imóveis Vagos e Inquilinos Disponíveis */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Coluna 1: Imóveis Vagos */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Building2 className="h-5 w-5" />
-                  Imóveis Vagos ({availableProperties.length})
+          {/* Blocos Imóveis Vagos e Inquilinos Disponíveis em Linha Única */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <Card className="h-full">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Home className="h-4 w-4" />
+                  Imóveis Vagos
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {availableProperties.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    Nenhum imóvel disponível
-                  </p>
+                {vacantProperties.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Nenhum imóvel disponível</p>
                 ) : (
-                  <div className="space-y-3">
-                    {availableProperties.map((property) => {
-                      const location = locations.find((loc) => loc.id === property.locationId);
+                  <div className="space-y-2">
+                    {vacantProperties.map((property) => {
+                      const location = locations.find(loc => loc.id === property.locationId);
                       return (
-                        <Card className="hover:shadow-md transition-shadow" key={property.id}>
-                          <CardContent className="p-4 flex items-center justify-between">
-                            <div className="flex items-center gap-2 overflow-hidden">
-                              <span className="font-semibold text-blue-600 truncate">
-                                {location?.name || "Local não encontrado"}
-                              </span>
-                              {property.complement && (
-                                <span className="text-sm text-muted-foreground truncate border-l pl-2">
-                                  {property.complement}
-                                </span>
-                              )}
-                            </div>
-                            <span className="font-semibold text-emerald-600 whitespace-nowrap ml-2">
-                              {formatCurrency(property.value)}
+                        <div
+                          key={property.id}
+                          className="flex items-center justify-between p-2 bg-muted rounded-lg hover:bg-muted/80 transition-colors"
+                        >
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <Home className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                            <span className="text-sm font-medium truncate">
+                              {location?.name || "Local não encontrado"}
+                              {property.complement && ` - ${property.complement}`}
                             </span>
-                          </CardContent>
-                        </Card>
+                          </div>
+                          <span className="text-sm font-semibold text-emerald-600 whitespace-nowrap ml-2">
+                            {formatCurrency(property.value || 0)}
+                          </span>
+                        </div>
                       );
                     })}
                   </div>
@@ -202,37 +196,26 @@ export default function Rentals() {
               </CardContent>
             </Card>
 
-            {/* Coluna 2: Inquilinos Disponíveis */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <User className="h-5 w-5" />
-                  Inquilinos Disponíveis ({availableTenants.length})
+                  Inquilinos Disponíveis
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 {availableTenants.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    Nenhum inquilino disponível
-                  </p>
+                  <p className="text-sm text-muted-foreground">Nenhum inquilino disponível</p>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     {availableTenants.map((tenant) => (
-                      <Card className="hover:shadow-md transition-shadow" key={tenant.id}>
-                        <CardContent className="p-4 flex items-center justify-between">
-                          <div className="flex items-center gap-3 overflow-hidden">
-                            <Avatar className="h-8 w-8">
-                              <AvatarFallback className="text-xs">
-                                {tenant.name.substring(0, 2).toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                            <span className="font-semibold truncate">{tenant.name}</span>
-                          </div>
-                          <span className="text-sm text-muted-foreground whitespace-nowrap ml-2">
-                            {tenant.phone}
-                          </span>
-                        </CardContent>
-                      </Card>
+                      <div
+                        key={tenant.id}
+                        className="flex items-center gap-2 p-2 bg-muted rounded-lg hover:bg-muted/80 transition-colors"
+                      >
+                        <User className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        <p className="text-sm font-medium truncate flex-1">{tenant.name}</p>
+                      </div>
                     ))}
                   </div>
                 )}
