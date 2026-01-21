@@ -4,6 +4,7 @@ import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -652,6 +653,134 @@ export default function Settings() {
     setShowLocationForm(true);
   };
 
+  const [selectedUserForPermissions, setSelectedUserForPermissions] =
+    useState<SystemUser | null>(null);
+  const [selectedUserForFeeExemption, setSelectedUserForFeeExemption] =
+    useState<SystemUser | null>(null);
+  const [userPermissions, setUserPermissions] = useState<string[]>([]);
+  const [userFeeExemptions, setUserFeeExemptions] = useState<string[]>([]);
+  const [isPermissionDialogOpen, setIsPermissionDialogOpen] = useState(false);
+  const [isFeeExemptionDialogOpen, setIsFeeExemptionDialogOpen] = useState(false);
+
+  const handleOpenPermissionDialog = async (user: SystemUser) => {
+    setSelectedUserForPermissions(user);
+    try {
+      const permissions = await getUserLocationPermissions(user.id);
+      setUserPermissions(permissions.map((p) => p.location_id));
+      setIsPermissionDialogOpen(true);
+    } catch (error) {
+      console.error("Error loading permissions:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar as permissões.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleOpenFeeExemptionDialog = async (user: SystemUser) => {
+    setSelectedUserForFeeExemption(user);
+    try {
+      // Carregar isenções existentes do usuário
+      const { data, error } = await supabase
+        .from("user_fee_exemptions")
+        .select("location_id")
+        .eq("user_id", user.id);
+
+      if (error) throw error;
+      setUserFeeExemptions(data?.map((e) => e.location_id) || []);
+      setIsFeeExemptionDialogOpen(true);
+    } catch (error) {
+      console.error("Error loading fee exemptions:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar as isenções de taxa.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSaveFeeExemptions = async () => {
+    if (!selectedUserForFeeExemption) return;
+
+    try {
+      // Remover isenções existentes
+      await supabase
+        .from("user_fee_exemptions")
+        .delete()
+        .eq("user_id", selectedUserForFeeExemption.id);
+
+      // Adicionar novas isenções
+      if (userFeeExemptions.length > 0) {
+        const exemptions = userFeeExemptions.map((locationId) => ({
+          user_id: selectedUserForFeeExemption.id,
+          location_id: locationId,
+        }));
+
+        const { error: insertError } = await supabase
+          .from("user_fee_exemptions")
+          .insert(exemptions);
+
+        if (insertError) throw insertError;
+      }
+
+      toast({
+        title: "Sucesso",
+        description: "Isenções de taxa atualizadas com sucesso.",
+      });
+
+      setIsFeeExemptionDialogOpen(false);
+    } catch (error) {
+      console.error("Error saving fee exemptions:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível salvar as isenções de taxa.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const toggleFeeExemption = (locationId: string) => {
+    setUserFeeExemptions((prev) =>
+      prev.includes(locationId)
+        ? prev.filter((id) => id !== locationId)
+        : [...prev, locationId]
+    );
+  };
+
+  const toggleUserPermissionLocation = (locationId: string) => {
+    setUserPermissions((prev) =>
+      prev.includes(locationId)
+        ? prev.filter((id) => id !== locationId)
+        : [...prev, locationId]
+    );
+  };
+
+  const handleSavePermissions = async () => {
+    if (!selectedUserForPermissions) return;
+
+    try {
+      const currentPerms = await getUserLocationPermissions(selectedUserForPermissions.id);
+      const currentLocationIds = currentPerms.map(p => p.location_id);
+      
+      const toAdd = userPermissions.filter(id => !currentLocationIds.includes(id));
+      const toRemove = currentLocationIds.filter(id => !userPermissions.includes(id));
+      
+      const promises = [
+        ...toAdd.map(id => updateUserLocationPermission(selectedUserForPermissions.id, id, true)),
+        ...toRemove.map(id => updateUserLocationPermission(selectedUserForPermissions.id, id, false))
+      ];
+      
+      await Promise.all(promises);
+      
+      toast({ title: "Permissões salvas com sucesso!" });
+      setIsPermissionDialogOpen(false);
+    } catch (error) {
+      console.error("Erro ao salvar permissões:", error);
+      toast({ title: "Erro ao salvar permissões", variant: "destructive" });
+    }
+  };
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -1000,7 +1129,6 @@ export default function Settings() {
 
           {/* PERMISSÕES */}
           <TabsContent value="permissions" className="space-y-6">
-            {/* Seção 1: Permissões de Menu por Perfil */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -1098,6 +1226,114 @@ export default function Settings() {
                           >
                             <MapPin className="h-3 w-3" />
                             Gerenciar Locais
+                          </Button>
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Seção 3: NOVA - Taxa de Administração por Usuário */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <DollarSign className="h-5 w-5" />
+                  Taxa de Administração por Usuário (Corretores)
+                </CardTitle>
+                <CardDescription>
+                  Defina de quais locais cada corretor NÃO receberá taxa de administração
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {users.filter(u => u.role === "broker").length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    Nenhum usuário com perfil Corretor cadastrado
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {users
+                      .filter((u) => u.role === "broker")
+                      .map((user) => (
+                        <div
+                          key={user.id}
+                          className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors"
+                        >
+                          <div className="flex-1">
+                            <h4 className="font-semibold flex items-center gap-2">
+                              <User className="h-4 w-4 text-primary" />
+                              {user.name}
+                            </h4>
+                            <p className="text-sm text-muted-foreground">{user.email}</p>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-2"
+                            onClick={() => {
+                              toast({
+                                title: "Em desenvolvimento",
+                                description: "Funcionalidade será implementada em breve.",
+                              });
+                            }}
+                          >
+                            <DollarSign className="h-3 w-3" />
+                            Configurar Taxa
+                          </Button>
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* NOVA SEÇÃO: Isenção de Taxa por Corretor */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <DollarSign className="h-5 w-5" />
+                  Isenção de Taxa de Administração
+                </CardTitle>
+                <CardDescription>
+                  Defina quais locais cada corretor NÃO receberá taxa de administração
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {loadingUsers ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    Carregando usuários...
+                  </div>
+                ) : users.filter((u) => u.role === "broker").length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    Nenhum corretor cadastrado
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {users
+                      .filter((u) => u.role === "broker")
+                      .map((user) => (
+                        <div
+                          key={user.id}
+                          className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent transition-colors"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-full bg-emerald-100 flex items-center justify-center">
+                              <DollarSign className="h-5 w-5 text-emerald-600" />
+                            </div>
+                            <div>
+                              <h4 className="font-semibold">{user.name}</h4>
+                              <p className="text-sm text-muted-foreground">
+                                Configurar locais sem taxa de administração
+                              </p>
+                            </div>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleOpenFeeExemptionDialog(user)}
+                          >
+                            <DollarSign className="h-3 w-3 mr-2" />
+                            Configurar Isenção
                           </Button>
                         </div>
                       ))}
@@ -1473,12 +1709,10 @@ export default function Settings() {
                       key={location.id}
                       className="flex items-center gap-3 p-3 border rounded hover:bg-accent/50 transition-colors"
                     >
-                      <input
-                        type="checkbox"
-                        id={`location-${location.id}`}
+                      <Checkbox
+                        id={`perm-${location.id}`}
                         checked={userLocationPermissions.includes(location.id)}
-                        onChange={() => handleToggleLocationPermission(location.id)}
-                        className="h-4 w-4 rounded border-gray-300"
+                        onCheckedChange={() => handleToggleLocationPermission(location.id)}
                       />
                       <label
                         htmlFor={`location-${location.id}`}
@@ -1509,6 +1743,113 @@ export default function Settings() {
               >
                 <Save className="h-4 w-4 mr-2" />
                 Salvar Permissões
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* DIALOG DE PERMISSÕES */}
+        <Dialog
+          open={isPermissionDialogOpen}
+          onOpenChange={setIsPermissionDialogOpen}
+        >
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>
+                Gerenciar Permissões - {selectedUserForPermissions?.name}
+              </DialogTitle>
+              <DialogDescription>
+                Selecione os locais que este corretor poderá acessar
+              </DialogDescription>
+            </DialogHeader>
+            <div className="max-h-[400px] overflow-y-auto">
+              <div className="space-y-2">
+                {locations.map((location) => (
+                  <div
+                    key={location.id}
+                    className="flex items-center space-x-2 p-3 hover:bg-accent rounded-lg transition-colors"
+                  >
+                    <Checkbox
+                      id={`perm-${location.id}`}
+                      checked={userPermissions.includes(location.id)}
+                      onCheckedChange={() => toggleUserPermissionLocation(location.id)}
+                    />
+                    <Label
+                      htmlFor={`perm-${location.id}`}
+                      className="flex-1 cursor-pointer"
+                    >
+                      {location.name}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setIsPermissionDialogOpen(false)}
+              >
+                Cancelar
+              </Button>
+              <Button onClick={handleSavePermissions}>
+                Salvar Permissões
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* DIALOG DE ISENÇÃO DE TAXA */}
+        <Dialog
+          open={isFeeExemptionDialogOpen}
+          onOpenChange={setIsFeeExemptionDialogOpen}
+        >
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>
+                Configurar Isenção de Taxa - {selectedUserForFeeExemption?.name}
+              </DialogTitle>
+              <DialogDescription>
+                Selecione os locais onde este corretor NÃO receberá taxa de administração
+              </DialogDescription>
+            </DialogHeader>
+            <div className="max-h-[400px] overflow-y-auto">
+              <div className="space-y-2">
+                {locations.map((location) => (
+                  <div
+                    key={location.id}
+                    className="flex items-center space-x-2 p-3 hover:bg-accent rounded-lg transition-colors"
+                  >
+                    <Checkbox
+                      id={`fee-${location.id}`}
+                      checked={userFeeExemptions.includes(location.id)}
+                      onCheckedChange={() => toggleFeeExemption(location.id)}
+                    />
+                    <Label
+                      htmlFor={`fee-${location.id}`}
+                      className="flex-1 cursor-pointer"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span>{location.name}</span>
+                        {userFeeExemptions.includes(location.id) && (
+                          <Badge variant="secondary" className="ml-2">
+                            Sem Taxa
+                          </Badge>
+                        )}
+                      </div>
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setIsFeeExemptionDialogOpen(false)}
+              >
+                Cancelar
+              </Button>
+              <Button onClick={handleSaveFeeExemptions}>
+                Salvar Isenções
               </Button>
             </DialogFooter>
           </DialogContent>

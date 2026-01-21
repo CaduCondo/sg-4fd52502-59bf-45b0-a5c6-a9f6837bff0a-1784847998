@@ -486,6 +486,42 @@ export type Database = {
         }
         Relationships: []
       }
+      user_fee_exemptions: {
+        Row: {
+          created_at: string | null
+          id: string
+          location_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          location_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          location_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_fee_exemptions_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_fee_exemptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "system_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_location_permissions: {
         Row: {
           can_delete: boolean | null

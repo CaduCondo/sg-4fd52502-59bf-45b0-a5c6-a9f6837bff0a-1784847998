@@ -180,7 +180,6 @@ export default function TenantsPage() {
           onOpenChange={setIsDialogOpen}
           tenant={selectedTenant}
           onSave={handleSave}
-          locations={locations}
           isViewMode={isViewMode}
         />
 

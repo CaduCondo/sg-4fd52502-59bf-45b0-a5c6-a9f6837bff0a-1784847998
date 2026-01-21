@@ -1,11 +1,9 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Tenant, Location } from "@/types";
+import { Tenant } from "@/types";
 import { applyCpfMask, applyCnpjMask, applyPhoneMask, applyRgMask } from "@/lib/masks";
 import { Pencil } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
@@ -15,7 +13,6 @@ interface TenantFormDialogProps {
   onOpenChange: (open: boolean) => void;
   tenant: Partial<Tenant> | null;
   onSave: (data: Partial<Tenant>) => Promise<boolean>;
-  locations: Location[];
   isViewMode?: boolean;
 }
 
@@ -24,14 +21,11 @@ export function TenantFormDialog({
   onOpenChange,
   tenant,
   onSave,
-  locations,
   isViewMode = false,
 }: TenantFormDialogProps) {
-  // Se isViewMode for true, começamos não editáveis (disabled=true).
-  // Se isViewMode for false (criação), começamos editáveis (disabled=false).
   const [isEditing, setIsEditing] = useState(!isViewMode);
-
-  const [formData, setFormData] = React.useState<Partial<Tenant>>({
+  const [documentType, setDocumentType] = useState<"cpf" | "cnpj">("cpf");
+  const [formData, setFormData] = useState<Partial<Tenant>>({
     name: "",
     email: "",
     phone: "",
@@ -41,16 +35,16 @@ export function TenantFormDialog({
     cnpj: "",
     rg: "",
     status: "active",
+    notes: "",
   });
 
-  const [documentType, setDocumentType] = React.useState<"cpf" | "cnpj">("cpf");
+  const initializedRef = useRef(false);
 
   useEffect(() => {
-    // Quando abrir o diálogo ou mudar o tenant, configuramos o formulário,
-    // mas só definimos isEditing com base em isViewMode na abertura.
-    if (open) {
+    if (open && !initializedRef.current) {
+      initializedRef.current = true;
       setIsEditing(!isViewMode);
-
+      
       if (tenant) {
         const docType = tenant.document_type || tenant.documentType || "cpf";
         setFormData({
@@ -82,7 +76,11 @@ export function TenantFormDialog({
         setDocumentType("cpf");
       }
     }
-  }, [open, tenant, isViewMode]);
+
+    if (!open) {
+      initializedRef.current = false;
+    }
+  }, [open]);
 
   const handleDocumentTypeChange = (type: "cpf" | "cnpj") => {
     setDocumentType(type);
@@ -117,11 +115,6 @@ export function TenantFormDialog({
     setFormData((prev) => ({ ...prev, rg: masked }));
   };
 
-  const toggleEdit = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setIsEditing(true);
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -131,6 +124,7 @@ export function TenantFormDialog({
       phone: formData.phone,
       documentType: documentType,
       status: "active",
+      notes: formData.notes,
     };
 
     if (documentType === "cpf") {
@@ -239,7 +233,11 @@ export function TenantFormDialog({
                 <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                   Fechar
                 </Button>
-                <Button type="button" onClick={() => setIsEditing(true)}>
+                <Button type="button" onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsEditing(true);
+                }}>
                   <Pencil className="h-4 w-4 mr-2" />
                   Editar
                 </Button>

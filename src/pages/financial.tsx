@@ -66,6 +66,7 @@ export default function Financial() {
 
   const router = useRouter();
   const { user } = useAuth();
+  const { toast } = useToast();
 
   useEffect(() => {
     if (user) {
@@ -91,32 +92,30 @@ export default function Financial() {
         getConfig()
       ]);
 
-      // setConfig(configData); // config state might be missing, check if needed
       setConfig(configData);
 
-      // Filter based on permissions if user is broker
       if (user && user.role === "broker") {
         const permissions = await getUserLocationPermissions(user.id);
         const allowedLocationIds = permissions.map(p => p.location_id);
         
-        // Filter properties by location permission
         const allowedProperties = propertiesData.filter(p => 
           p.locationId && allowedLocationIds.includes(p.locationId)
         );
         const allowedPropertyIds = allowedProperties.map(p => p.id);
         
-        // Filter everything else based on allowed properties
-        setProperties(allowedProperties);
-        setRentals(rentalsData.filter(r => allowedPropertyIds.includes(r.propertyId)));
+        const allowedRentals = rentalsData.filter(r => 
+          allowedPropertyIds.includes(r.propertyId)
+        );
+        const allowedRentalIds = allowedRentals.map(r => r.id);
         
-        // Payments linked to allowed rentals
-        const allowedRentalIds = rentalsData
-          .filter(r => allowedPropertyIds.includes(r.propertyId))
-          .map(r => r.id);
-          
-        setPayments(paymentsData.filter(p => allowedRentalIds.includes(p.rentalId)));
+        const allowedPayments = paymentsData.filter(p => 
+          allowedRentalIds.includes(p.rentalId)
+        );
+        
+        setProperties(allowedProperties);
+        setRentals(allowedRentals);
+        setPayments(allowedPayments);
       } else {
-        // Admin/Financial sees everything
         setPayments(paymentsData);
         setProperties(propertiesData);
         setRentals(rentalsData);
@@ -125,8 +124,14 @@ export default function Financial() {
       setTenants(tenantsData);
     } catch (error) {
       console.error("Error loading financial data:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar os dados financeiros.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
+      setIsLoading(false);
     }
   };
 

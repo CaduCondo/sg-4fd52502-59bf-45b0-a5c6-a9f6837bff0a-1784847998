@@ -215,7 +215,6 @@ export async function updateFuturePaymentsOnPaymentDayChange(
 ): Promise<void> {
   const today = new Date().toISOString().split('T')[0];
   
-  // Buscar recebimentos pendentes do mês atual e futuros
   const { data: payments, error: fetchError } = await supabase
     .from(TABLE)
     .select("*")
@@ -226,16 +225,13 @@ export async function updateFuturePaymentsOnPaymentDayChange(
   if (fetchError) throw fetchError;
   if (!payments || payments.length === 0) return;
 
-  // Atualizar cada recebimento com o novo dia
   for (const payment of payments) {
     const currentDueDate = new Date(payment.due_date + 'T00:00:00');
     const year = currentDueDate.getFullYear();
     const month = currentDueDate.getMonth();
     
-    // Criar nova data com o novo dia
     let newDueDate = new Date(year, month, newDay);
     
-    // Se o dia for inválido (ex: 31 em fevereiro), usar último dia do mês
     if (newDueDate.getMonth() !== month) {
       newDueDate = new Date(year, month + 1, 0);
     }
@@ -299,10 +295,9 @@ export async function createPaymentsForRental(rental: any): Promise<void> {
     : new Date(startDate.getFullYear() + 1, startDate.getMonth(), startDate.getDate());
   const paymentDay = rental.paymentDay || rental.payment_day;
   
-  // Calculate months diff correctly
   const yearsDiff = endDate.getFullYear() - startDate.getFullYear();
   const monthsDiff = endDate.getMonth() - startDate.getMonth();
-  const totalMonths = (yearsDiff * 12) + monthsDiff + 1; // +1 to include both start and end month
+  const totalMonths = (yearsDiff * 12) + monthsDiff + 1;
 
   console.log("Dados processados:", {
     rentalId: rental.id,
@@ -316,13 +311,10 @@ export async function createPaymentsForRental(rental: any): Promise<void> {
   const payments = [];
 
   for (let i = 0; i < totalMonths; i++) {
-    // Calculate reference date (first day of the month)
     const referenceDate = new Date(startDate.getFullYear(), startDate.getMonth() + i, 1);
     
-    // Calculate due date (payment day of that month)
     let dueDate = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), paymentDay);
     
-    // If payment day is invalid (e.g. 31st in Feb), set to last day of month
     if (dueDate.getMonth() !== referenceDate.getMonth()) {
       dueDate = new Date(referenceDate.getFullYear(), referenceDate.getMonth() + 1, 0);
     }

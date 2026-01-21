@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,8 +25,8 @@ interface RentalFormDialogProps {
   onOpenChange: (open: boolean) => void;
   availableProperties: Property[];
   availableTenants: Tenant[];
-  properties?: Property[]; // Nova prop opcional
-  tenants?: Tenant[];      // Nova prop opcional
+  properties?: Property[];
+  tenants?: Tenant[];
   onSuccess: () => void;
   rental?: Rental | null;
   isViewMode?: boolean;
@@ -37,8 +37,8 @@ export function RentalFormDialog({
   onOpenChange,
   availableProperties,
   availableTenants,
-  properties = [], // Default para array vazio
-  tenants = [],    // Default para array vazio
+  properties = [],
+  tenants = [],
   onSuccess,
   rental = null,
   isViewMode = false,
@@ -57,30 +57,40 @@ export function RentalFormDialog({
   const [garageValue, setGarageValue] = useState("");
   const [attachments, setAttachments] = useState<string[]>([]);
 
+  const initializedRef = useRef(false);
+
   useEffect(() => {
     loadLocations();
   }, []);
 
   useEffect(() => {
-    setIsEditing(!isViewMode);
-    
-    if (rental) {
-      setSelectedPropertyId(rental.propertyId || "");
-      setSelectedTenantId(rental.tenantId || "");
-      setStartDate(rental.startDate || "");
-      setEndDate(rental.endDate || "");
-      setPaymentDay(rental.paymentDay?.toString() || "");
-      setHasGarage(rental.hasGarage || false);
-      setGarageValue(
-        rental.garageValue
-          ? formatCurrency(rental.garageValue) 
-          : ""
-      );
-      setAttachments(rental.contractAttachments || rental.attachments || []);
-    } else {
+    if (open && !initializedRef.current) {
+      initializedRef.current = true;
+      setIsEditing(!isViewMode);
+      
+      if (rental) {
+        setSelectedPropertyId(rental.propertyId || "");
+        setSelectedTenantId(rental.tenantId || "");
+        setStartDate(rental.startDate || "");
+        setEndDate(rental.endDate || "");
+        setPaymentDay(rental.paymentDay?.toString() || "");
+        setHasGarage(rental.hasGarage || false);
+        setGarageValue(
+          rental.garageValue
+            ? formatCurrency(rental.garageValue) 
+            : ""
+        );
+        setAttachments(rental.contractAttachments || rental.attachments || []);
+      } else {
+        resetForm();
+      }
+    }
+
+    if (!open) {
+      initializedRef.current = false;
       resetForm();
     }
-  }, [rental, open, isViewMode]);
+  }, [open]);
 
   const loadLocations = async () => {
     try {
@@ -163,8 +173,6 @@ export function RentalFormDialog({
     try {
       setLoading(true);
 
-      // Sempre usar a lista completa de propriedades (properties) para encontrar o imóvel,
-      // pois availableProperties não inclui os imóveis já alugados.
       const selectedProperty = properties.find((p) => p.id === selectedPropertyId);
       if (!selectedProperty) {
         throw new Error("Imóvel não encontrado");
@@ -193,7 +201,7 @@ export function RentalFormDialog({
         end_date: endDate || null,
         payment_day: parseInt(paymentDay),
         monthly_rent: propertyValue,
-        value: totalValue, // campo NOT NULL sempre preenchido
+        value: totalValue,
         has_garage: hasGarage,
         garage_value: hasGarage ? garageValueNum : null,
         is_active: true,
@@ -252,20 +260,13 @@ export function RentalFormDialog({
   };
 
   const getLocationName = (locationId: string) => {
-    const locationsList = locations; // Usar locations do estado local
-    const location = locationsList.find((loc) => loc.id === locationId);
+    const location = locations.find((loc) => loc.id === locationId);
     return location?.name || "Local não encontrado";
   };
 
-  // Determinar qual lista de propriedades usar:
-  // Se estiver editando/visualizando, usa a lista completa (para mostrar o imóvel ocupado atual).
-  // Se for nova locação, usa apenas as disponíveis.
   const propertiesToDisplay = rental ? properties : availableProperties;
-  
-  // O mesmo para inquilinos
   const tenantsToDisplay = rental ? tenants : availableTenants;
 
-  // IMPORTANTE: Sempre buscar na lista completa de propriedades para garantir que encontre mesmo se ocupada
   const selectedProperty = properties.find((p) => p.id === selectedPropertyId);
   
   const calculatedTotal = () => {
@@ -452,6 +453,7 @@ export function RentalFormDialog({
                   variant="outline"
                   size="sm"
                   onClick={() => document.getElementById("rentalCameraCapture")?.click()}
+                  disabled={!isEditing}
                 >
                   <Camera className="mr-2 h-4 w-4" />
                   Tirar Foto
@@ -461,6 +463,7 @@ export function RentalFormDialog({
                   variant="outline"
                   size="sm"
                   onClick={() => document.getElementById("rentalFileUpload")?.click()}
+                  disabled={!isEditing}
                 >
                   <Paperclip className="mr-2 h-4 w-4" />
                   Anexar Arquivo
@@ -496,6 +499,7 @@ export function RentalFormDialog({
                       variant="ghost"
                       size="sm"
                       onClick={() => removeAttachment(index)}
+                      disabled={!isEditing}
                     >
                       <X className="h-4 w-4" />
                     </Button>
@@ -521,7 +525,11 @@ export function RentalFormDialog({
                 </Button>
                 <Button
                   type="button"
-                  onClick={() => setIsEditing(true)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsEditing(true);
+                  }}
                 >
                   Editar
                 </Button>

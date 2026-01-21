@@ -64,7 +64,6 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
     if (open && user) {
       const extendedUser: ExtendedSystemUser = {
         ...user,
-        document: (user as any).document || "",
         birthDate: (user as any).birthDate || "",
         cep: (user as any).cep || "",
         street: (user as any).street || "",
@@ -157,38 +156,40 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
     if (!selectedUser) return;
 
-    setIsSubmitting(true);
     try {
-      const cleanDocument = selectedUser.document ? removeMask(selectedUser.document) : undefined;
-      const cleanPhone = selectedUser.phone ? removeMask(selectedUser.phone) : undefined;
-      const cleanCep = selectedUser.cep ? removeMask(selectedUser.cep) : undefined;
+      setIsSubmitting(true);
 
-      const payload: Partial<SystemUser> = {
+      const updates: Partial<SystemUser> = {
         name: selectedUser.name,
         email: selectedUser.email,
-        phone: cleanPhone,
+        phone: selectedUser.phone,
         role: selectedUser.role,
-        active: selectedUser.active,
       };
 
       if (user?.id) {
-        await updateUser(user.id, payload);
+        await updateUser(user.id, updates);
+        
+        // Se admin alterou a senha, fazer update separado
+        if (user.role === "admin" && formData.newPassword) {
+          await resetPassword(user.id);
+        }
         
         toast({
           title: "Sucesso",
-          description: "Perfil atualizado com sucesso.",
+          description: "Perfil atualizado com sucesso!",
         });
         
         onSuccess();
         onOpenChange(false);
       }
     } catch (error) {
-      console.error("Erro ao atualizar perfil:", error);
+      console.error("Error updating profile:", error);
       toast({
-        title: "Erro ao atualizar perfil",
-        description: error instanceof Error ? error.message : "Não foi possível atualizar o perfil.",
+        title: "Erro",
+        description: "Não foi possível atualizar o perfil.",
         variant: "destructive",
       });
     } finally {
@@ -278,8 +279,8 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
                 </Label>
                 <Input
                   id="document"
-                  value={selectedUser?.document || ""}
-                  onChange={(e) => handleInputChange("document", applyCpfMask(e.target.value))}
+                  value={selectedUser?.phone ? applyCpfMask(selectedUser.phone.replace(/\D/g, '').slice(0, 11)) : ""}
+                  onChange={(e) => handleInputChange("phone", e.target.value)}
                   placeholder="000.000.000-00"
                   maxLength={14}
                 />
@@ -440,6 +441,28 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
               </div>
             </div>
           </div>
+
+          {/* Nova Senha - Apenas para Admin */}
+          {user?.role === "admin" && (
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                Alterar Senha
+              </h3>
+              <div className="space-y-2">
+                <Label htmlFor="newPassword">Nova Senha</Label>
+                <Input
+                  id="newPassword"
+                  type="password"
+                  value={formData.newPassword}
+                  onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
+                  placeholder="Digite a nova senha (deixe em branco para não alterar)"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Deixe em branco se não quiser alterar a senha
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Botões de Ação */}
           <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
