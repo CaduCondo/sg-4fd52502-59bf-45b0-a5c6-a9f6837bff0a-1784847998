@@ -117,14 +117,35 @@ export function RentalFormDialog({
     if (!files || files.length === 0) return;
 
     const file = files[0];
+    
+    const uuid = crypto.randomUUID();
+    const extension = file.name.split('.').pop();
+    const fileName = `rental_${uuid}.${extension}`;
+    
     const reader = new FileReader();
 
     reader.onloadend = () => {
       const base64String = reader.result as string;
-      setAttachments([...attachments, base64String]);
-      toast({
-        title: "Arquivo anexado",
-        description: `${file.name} foi anexado com sucesso.`,
+      
+      fetch('/api/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fileName,
+          fileData: base64String
+        })
+      }).then(() => {
+        setAttachments([...attachments, `/uploads/${fileName}`]);
+        toast({
+          title: "Arquivo anexado",
+          description: `${file.name} foi anexado com sucesso.`,
+        });
+      }).catch(() => {
+        toast({
+          title: "Erro ao anexar arquivo",
+          description: "Não foi possível salvar o arquivo.",
+          variant: "destructive"
+        });
       });
     };
 
@@ -136,14 +157,34 @@ export function RentalFormDialog({
     if (!files || files.length === 0) return;
 
     const file = files[0];
+    
+    const uuid = crypto.randomUUID();
+    const fileName = `rental_photo_${uuid}.jpg`;
+    
     const reader = new FileReader();
 
     reader.onloadend = () => {
       const base64String = reader.result as string;
-      setAttachments([...attachments, base64String]);
-      toast({
-        title: "Foto capturada",
-        description: "Foto anexada com sucesso.",
+      
+      fetch('/api/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fileName,
+          fileData: base64String
+        })
+      }).then(() => {
+        setAttachments([...attachments, `/uploads/${fileName}`]);
+        toast({
+          title: "Foto capturada",
+          description: "Foto anexada com sucesso.",
+        });
+      }).catch(() => {
+        toast({
+          title: "Erro ao capturar foto",
+          description: "Não foi possível salvar a foto.",
+          variant: "destructive"
+        });
       });
     };
 
@@ -179,10 +220,10 @@ export function RentalFormDialog({
       }
 
       const propertyValue = selectedProperty.value || 0;
-      const garageValueNum = hasGarage
-        ? parseFloat(garageValue.replace(/\./g, "").replace(",", ".") || "0")
+      const cleanGarageValue = hasGarage
+        ? parseFloat(garageValue.replace(/[^\d,]/g, "").replace(",", ".") || "0")
         : 0;
-      const totalValue = propertyValue + garageValueNum;
+      const totalValue = propertyValue + cleanGarageValue;
 
       if (!totalValue || totalValue <= 0) {
         toast({
@@ -203,7 +244,7 @@ export function RentalFormDialog({
         monthly_rent: propertyValue,
         value: totalValue,
         has_garage: hasGarage,
-        garage_value: hasGarage ? garageValueNum : null,
+        garage_value: hasGarage ? cleanGarageValue : null,
         is_active: true,
         contract_attachments: attachments,
         attachments: attachments,
@@ -244,7 +285,6 @@ export function RentalFormDialog({
       resetForm();
       onOpenChange(false);
       onSuccess();
-      window.location.reload();
     } catch (error) {
       console.error("Error saving rental:", error);
       toast({
@@ -271,7 +311,9 @@ export function RentalFormDialog({
   
   const calculatedTotal = () => {
     const propertyValue = selectedProperty?.value || 0;
-    const garage = hasGarage ? parseFloat(garageValue.replace(/\./g, "").replace(",", ".") || "0") : 0;
+    const garage = hasGarage 
+      ? parseFloat(garageValue.replace(/[^\d,]/g, "").replace(",", ".") || "0") 
+      : 0;
     return propertyValue + garage;
   };
 

@@ -44,6 +44,7 @@ import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { getConfig } from "@/services/configService";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function Financial() {
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -52,6 +53,7 @@ export default function Financial() {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
   const [allowedLocationIds, setAllowedLocationIds] = useState<string[]>([]);
+  const [exemptLocationIds, setExemptLocationIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [config, setConfig] = useState<any>(null);
 
@@ -94,34 +96,32 @@ export default function Financial() {
 
       setConfig(configData);
 
-      if (user && user.role === "broker") {
-        const permissions = await getUserLocationPermissions(user.id);
-        const allowedLocationIds = permissions.map(p => p.location_id);
+      // Buscar isenções do usuário logado
+      if (user) {
+        const { data: exemptions } = await supabase
+          .from("user_fee_exemptions")
+          .select("location_id")
+          .eq("user_id", user.id);
         
-        const allowedProperties = propertiesData.filter(p => 
-          p.locationId && allowedLocationIds.includes(p.locationId)
-        );
-        const allowedPropertyIds = allowedProperties.map(p => p.id);
-        
-        const allowedRentals = rentalsData.filter(r => 
-          allowedPropertyIds.includes(r.propertyId)
-        );
-        const allowedRentalIds = allowedRentals.map(r => r.id);
-        
-        const allowedPayments = paymentsData.filter(p => 
-          allowedRentalIds.includes(p.rentalId)
-        );
-        
-        setProperties(allowedProperties);
-        setRentals(allowedRentals);
-        setPayments(allowedPayments);
-      } else {
-        setPayments(paymentsData);
-        setProperties(propertiesData);
-        setRentals(rentalsData);
+        const ids = exemptions?.map(e => e.location_id) || [];
+        setExemptLocationIds(ids);
       }
-      
+
+      setProperties(propertiesData);
+      setRentals(rentalsData);
       setTenants(tenantsData);
+
+      // Filtrar pagamentos pelo mês/ano selecionado
+      const filteredPayments = paymentsData.filter((payment) => {
+        const dueDate = new Date(payment.dueDate);
+        return (
+          dueDate.getMonth() === parseInt(selectedMonth) &&
+          dueDate.getFullYear() === parseInt(selectedYear)
+        );
+      });
+      
+      setPayments(filteredPayments);
+
     } catch (error) {
       console.error("Error loading financial data:", error);
       toast({
@@ -195,8 +195,20 @@ export default function Financial() {
     .filter((p) => p.status === "paid" || p.status === "partial")
     .reduce((sum, p) => sum + (p.paidAmount || 0), 0);
 
-  const adminFeeRate = 0.05; // 5%
-  const adminFee = totalReceived * adminFeeRate;
+  // Calcular taxa adm considerando isenções
+  const adminFee = filteredPayments
+    .filter((p) => p.status === "paid" || p.status === "partial")
+    .reduce((sum, p) => {
+      const rental = rentals.find(r => r.id === p.rentalId);
+      const property = properties.find(prop => prop.id === rental?.propertyId);
+      
+      if (property && exemptLocationIds.includes(property.locationId)) {
+        return sum;
+      }
+      
+      const feeRate = config ? (config.admin_fee_percentage || 0) / 100 : 0.05;
+      return sum + ((p.paidAmount || 0) * feeRate);
+    }, 0);
   
   const netRevenue = totalReceived - adminFee;
 

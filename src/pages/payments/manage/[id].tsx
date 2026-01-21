@@ -81,6 +81,25 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
   }, [formData.paymentDate, payment, rental, config, waiveLateFees]);
 
   useEffect(() => {
+    if (payment) {
+      const expectedAmount = payment.expectedAmount || 0;
+      const penaltyAmount = payment.penaltyAmount || 0;
+      const interestAmount = payment.interestAmount || 0;
+      const totalAmount = expectedAmount + penaltyAmount + interestAmount;
+
+      setFormData({
+        paymentDate: payment.paymentDate || new Date().toISOString().split("T")[0],
+        paidAmount: formatCurrency(totalAmount),
+        paymentMethod: payment.paymentMethod || "pix",
+        paymentLocation: payment.paymentLocation || "",
+        paymentCode: payment.paymentCode || "",
+        notes: payment.notes || "",
+        attachments: payment.attachments || []
+      });
+    }
+  }, [payment]);
+
+  useEffect(() => {
     if (formData.paymentMethod === "pix") {
       const day = new Date().getDate().toString().padStart(2, "0");
       const code = `${day}XXXX${formData.paymentLocation}`;
@@ -207,17 +226,37 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
     if (!files || files.length === 0) return;
 
     const file = files[0];
+    const uuid = crypto.randomUUID();
+    const extension = file.name.split('.').pop();
+    const fileName = `payment_${uuid}.${extension}`;
+    
     const reader = new FileReader();
 
     reader.onloadend = () => {
       const base64String = reader.result as string;
-      setFormData({
-        ...formData,
-        attachments: [...formData.attachments, base64String],
-      });
-      toast({
-        title: "Arquivo anexado",
-        description: `${file.name} foi anexado com sucesso.`,
+      
+      fetch('/api/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fileName,
+          fileData: base64String
+        })
+      }).then(() => {
+        setFormData({
+          ...formData,
+          attachments: [...formData.attachments, `/uploads/${fileName}`],
+        });
+        toast({
+          title: "Arquivo anexado",
+          description: `${file.name} foi anexado com sucesso.`,
+        });
+      }).catch(() => {
+        toast({
+          title: "Erro ao anexar arquivo",
+          description: "Não foi possível salvar o arquivo.",
+          variant: "destructive"
+        });
       });
     };
 
@@ -229,17 +268,36 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
     if (!files || files.length === 0) return;
 
     const file = files[0];
+    const uuid = crypto.randomUUID();
+    const fileName = `payment_photo_${uuid}.jpg`;
+    
     const reader = new FileReader();
 
     reader.onloadend = () => {
       const base64String = reader.result as string;
-      setFormData({
-        ...formData,
-        attachments: [...formData.attachments, base64String],
-      });
-      toast({
-        title: "Foto capturada",
-        description: "Foto anexada com sucesso.",
+      
+      fetch('/api/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fileName,
+          fileData: base64String
+        })
+      }).then(() => {
+        setFormData({
+          ...formData,
+          attachments: [...formData.attachments, `/uploads/${fileName}`],
+        });
+        toast({
+          title: "Foto capturada",
+          description: "Foto anexada com sucesso.",
+        });
+      }).catch(() => {
+        toast({
+          title: "Erro ao capturar foto",
+          description: "Não foi possível salvar a foto.",
+          variant: "destructive"
+        });
       });
     };
 

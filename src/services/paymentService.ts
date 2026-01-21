@@ -213,14 +213,11 @@ export async function updateFuturePaymentsOnPaymentDayChange(
   rentalId: string,
   newDay: number
 ): Promise<void> {
-  const today = new Date().toISOString().split('T')[0];
-  
   const { data: payments, error: fetchError } = await supabase
     .from(TABLE)
     .select("*")
     .eq('rental_id', rentalId)
-    .eq('status', 'pending')
-    .gte('due_date', today);
+    .in('status', ['pending', 'overdue', 'partial']);
 
   if (fetchError) throw fetchError;
   if (!payments || payments.length === 0) return;
@@ -244,16 +241,11 @@ export async function updateFuturePaymentsOnPaymentDayChange(
 }
 
 export async function updateFuturePayments(rentalId: string, newValue: number): Promise<void> {
-  const now = new Date();
-  const currentMonth = now.getMonth() + 1;
-  const currentYear = now.getFullYear();
-
-  // Buscar todos os pagamentos da locação que não foram pagos
   const { data: payments, error } = await supabase
     .from(TABLE)
     .select("*")
     .eq("rental_id", rentalId)
-    .eq("status", "pending");
+    .in('status', ['pending', 'overdue', 'partial']);
 
   if (error) {
     console.error("Error fetching payments:", error);
@@ -264,25 +256,14 @@ export async function updateFuturePayments(rentalId: string, newValue: number): 
     return;
   }
 
-  // Filtrar apenas pagamentos do mês atual e futuros
-  const futurePayments = payments.filter((payment) => {
-    const refMonth = parseInt(payment.reference_month);
-    const refYear = parseInt(payment.reference_year);
-    
-    if (refYear > currentYear) return true;
-    if (refYear === currentYear && refMonth >= currentMonth) return true;
-    return false;
-  });
-
-  // Atualizar cada pagamento
-  for (const payment of futurePayments) {
+  for (const payment of payments) {
     await supabase
       .from(TABLE)
       .update({ expected_amount: newValue })
       .eq("id", payment.id);
   }
 
-  console.log(`✅ Atualizados ${futurePayments.length} pagamentos futuros`);
+  console.log(`✅ Atualizados ${payments.length} pagamentos não pagos`);
 }
 
 export async function createPaymentsForRental(rental: any): Promise<void> {

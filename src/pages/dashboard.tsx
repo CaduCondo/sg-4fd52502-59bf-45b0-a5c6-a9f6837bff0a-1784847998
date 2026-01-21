@@ -9,6 +9,8 @@ import { OverviewCards } from "@/components/dashboard/OverviewCards";
 import { AnalyticsCharts } from "@/components/dashboard/AnalyticsCharts";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { formatCurrency } from "@/lib/masks";
+import { supabase } from "@/integrations/supabase/client";
+import { getConfig } from "@/services/configService";
 
 export default function Dashboard() {
   const router = useRouter();
@@ -17,6 +19,8 @@ export default function Dashboard() {
   const [greeting, setGreeting] = useState("Olá");
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
+  const [exemptLocationIds, setExemptLocationIds] = useState<string[]>([]);
+  const [config, setConfig] = useState<any>(null);
 
   const {
     properties,
@@ -27,8 +31,32 @@ export default function Dashboard() {
     filteredPayments,
     dueSoonPayments,
     stats,
-    loadData
+    loadData: refreshDashboard
   } = useDashboardData(selectedMonth, selectedYear);
+
+  const [loading, setLoading] = useState(false);
+
+  const totalExpected = filteredPayments.reduce((sum, p) => sum + p.expectedAmount, 0);
+  
+  const totalReceived = filteredPayments
+    .filter((p) => p.status === "paid" || p.status === "partial")
+    .reduce((sum, p) => sum + (p.paidAmount || 0), 0);
+
+  const adminFee = filteredPayments
+    .filter((p) => p.status === "paid" || p.status === "partial")
+    .reduce((sum, p) => {
+      const rental = rentals.find(r => r.id === p.rentalId);
+      const property = properties.find(prop => prop.id === rental?.propertyId);
+      
+      if (property && exemptLocationIds.includes(property.locationId)) {
+        return sum;
+      }
+      
+      const feeRate = config ? (config.admin_fee_percentage || 0) / 100 : 0.05;
+      return sum + ((p.paidAmount || 0) * feeRate);
+    }, 0);
+  
+  const netRevenue = totalReceived - adminFee;
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -47,15 +75,70 @@ export default function Dashboard() {
   useEffect(() => {
     if (mounted) {
       setGreeting(getGreeting());
-      loadData();
+      refreshDashboard();
     }
   }, [mounted]);
 
   useEffect(() => {
     if (mounted && selectedMonth && selectedYear) {
-      loadData();
+      refreshDashboard();
     }
   }, [selectedMonth, selectedYear, mounted]);
+
+  useEffect(() => {
+    loadContextData();
+  }, [selectedMonth, selectedYear, user]);
+
+  const loadContextData = async () => {
+    try {
+      const configData = await getConfig();
+      setConfig(configData);
+
+      if (user) {
+        const { data: exemptions } = await supabase
+          .from("user_fee_exemptions")
+          .select("location_id")
+          .eq("user_id", user.id);
+        
+        const ids = exemptions?.map(e => e.location_id) || [];
+        setExemptLocationIds(ids);
+      }
+    } catch (error) {
+      console.error("Error loading context data:", error);
+    }
+  };
+
+  // Calcular totais usando a mesma lógica do Financeiro
+  const calculatedTotalExpected = filteredPayments.reduce((sum, p) => sum + p.expectedAmount, 0);
+  
+  const calculatedTotalReceived = filteredPayments
+    .filter((p) => p.status === "paid" || p.status === "partial")
+    .reduce((sum, p) => sum + (p.paidAmount || 0), 0);
+
+  const calculatedAdminFee = filteredPayments
+    .filter((p) => p.status === "paid" || p.status === "partial")
+    .reduce((sum, p) => {
+      const rental = rentals.find(r => r.id === p.rentalId);
+      const property = properties.find(prop => prop.id === rental?.propertyId);
+      
+      if (property && exemptLocationIds.includes(property.locationId)) {
+        return sum;
+      }
+      
+      const feeRate = config ? (config.admin_fee_percentage || 0) / 100 : 0.05;
+      return sum + ((p.paidAmount || 0) * feeRate);
+    }, 0);
+  
+  const calculatedNetRevenue = calculatedTotalReceived - calculatedAdminFee;
+
+  // Mesclar com stats originais para passar para os cards
+  const displayStats = {
+    ...stats,
+    monthlyRevenue: calculatedTotalReceived, // Receita Bruta
+    adminFee: calculatedAdminFee,            // Taxa Admin
+    netRevenue: calculatedNetRevenue,        // Receita Líquida
+    // Total Esperado geralmente não está no stats padrão do hook, mas OverviewCards pode usar
+  };
 
   const exportDashboardData = () => {
     if (!selectedMonth || !selectedYear) return;
@@ -197,10 +280,10 @@ export default function Dashboard() {
             onExport={exportDashboardData}
           />
 
-          <OverviewCards stats={stats} />
+          <OverviewCards stats={displayStats} />
 
           <AnalyticsCharts
-            stats={stats}
+            stats={displayStats}
             adminFeePercentage={adminFeePercentage}
             selectedMonth={selectedMonth}
             filteredPayments={filteredPayments}

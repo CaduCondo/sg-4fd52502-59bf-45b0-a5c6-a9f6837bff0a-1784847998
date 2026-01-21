@@ -57,6 +57,9 @@ export default function RentalDetails() {
   const [editGarageValue, setEditGarageValue] = useState("");
   const [editAttachments, setEditAttachments] = useState<string[]>([]);
 
+  const propertyItem = properties.find((p) => p.id === rental?.propertyId);
+  const tenantItem = tenants.find((t) => t.id === rental?.tenantId);
+
   useEffect(() => {
     if (id && id !== "new") {
       loadData();
@@ -190,7 +193,9 @@ export default function RentalDetails() {
       }
 
       const propertyValue = selectedProperty.value || 0;
-      const garageValue = editHasGarage ? parseFloat(editGarageValue.replace(/\./g, "").replace(",", ".") || "0") : 0;
+      const garageValue = editHasGarage 
+        ? parseFloat(editGarageValue.replace(/[^\d,]/g, "").replace(",", ".") || "0") 
+        : 0;
       const totalValue = propertyValue + garageValue;
 
       const updatedRental: Rental = {
@@ -341,7 +346,9 @@ export default function RentalDetails() {
   const calculatedTotal = () => {
     const selectedProperty = properties.find((p) => p.id === editPropertyId);
     const propertyValue = selectedProperty?.value || 0;
-    const garage = editHasGarage ? parseFloat(editGarageValue.replace(/\./g, "").replace(",", ".") || "0") : 0;
+    const garage = editHasGarage 
+      ? parseFloat(editGarageValue.replace(/[^\d,]/g, "").replace(",", ".") || "0") 
+      : 0;
     return propertyValue + garage;
   };
 
