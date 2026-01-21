@@ -8,12 +8,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { DollarSign, Calendar, Home, User, AlertCircle, CheckCircle, X, LayoutGrid, List, Edit, Trash2 } from "lucide-react";
+import { DollarSign, Calendar, Home, User, AlertCircle, CheckCircle, X, LayoutGrid, List } from "lucide-react";
 import type { Payment, Rental, Property, Tenant } from "@/types";
 import { 
   getAll as getAllPayments, 
   remove as deletePayment, 
-  create as createPayment, 
   update as updatePayment 
 } from "@/services/paymentService";
 import { getAll as getAllRentals } from "@/services/rentalService";
@@ -22,8 +21,6 @@ import { formatCurrency } from "@/lib/masks";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
 import { FloatingCard } from "@/components/animations/FloatingCard";
 import ManagePaymentContent from "@/pages/payments/manage/[id]";
-import { isAuthenticatedAsync } from "@/lib/auth";
-import { hasPermission } from "@/lib/permissions";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function Payments() {
@@ -38,24 +35,16 @@ export default function Payments() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const { user } = useAuth();
-  const [isLoading, setIsLoading] = useState(true);
 
   // Filter state - Initialize with current month/year
   const currentDate = new Date();
-  const [selectedMonth, setSelectedMonth] = useState<string>((currentDate.getMonth() + 1).toString());
-  const [selectedYear, setSelectedYear] = useState<string>(currentDate.getFullYear().toString());
-
-  // useEffect(() => {
-  //   const checkAuth = async () => {
-  //     const isAuth = await isAuthenticatedAsync();
-  //     if (!isAuth) {
-  //       router.push("/login");
-  //       return;
-  //     }
-  //     loadPayments();
-  //   };
-  //   checkAuth();
-  // }, [router]);
+  const [selectedMonth, setSelectedMonth] = useState<string>(
+    (currentDate.getMonth() + 1).toString()
+  );
+  const [selectedYear, setSelectedYear] = useState<string>(
+    "2026"
+  );
+  const [statusFilter, setStatusFilter] = useState<string>("all");
 
   useEffect(() => {
     loadPayments();
@@ -170,10 +159,6 @@ export default function Payments() {
     return tenants.find((t) => t.id === rental.tenantId);
   };
 
-  const getRentalInfo = (rentalId: string) => {
-    return rentals.find((r) => r.id === rentalId);
-  };
-
   const getStatusBadge = (status: Payment["status"]) => {
     switch (status) {
       case "paid":
@@ -195,7 +180,6 @@ export default function Payments() {
     return months[month - 1] || "";
   };
 
-  // Get color class based on due date
   const getDueDateColor = (dueDate: string): { border: string; icon: string; amount: string } => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -204,21 +188,18 @@ export default function Payments() {
     due.setHours(0, 0, 0, 0);
     
     if (due < today) {
-      // Overdue - Red
       return { 
         border: "border-l-red-500", 
         icon: "text-red-600", 
         amount: "text-red-600" 
       };
     } else if (due.getTime() === today.getTime()) {
-      // Due today - Yellow
       return { 
         border: "border-l-yellow-500", 
         icon: "text-yellow-600", 
         amount: "text-yellow-600" 
       };
     } else {
-      // Future - Blue
       return { 
         border: "border-l-blue-500", 
         icon: "text-blue-600", 
@@ -227,10 +208,47 @@ export default function Payments() {
     }
   };
 
-  // Filter payments: show all payments without any restrictions
   const getFilteredPayments = () => {
-    // Simply return all payments sorted by due date
-    return [...payments].sort((a, b) => {
+    let filtered = [...payments];
+
+    // Filtrar por mês e ano baseado na DATA DE VENCIMENTO (dueDate)
+    if (selectedMonth !== "all" && selectedYear !== "all") {
+      filtered = filtered.filter((payment) => {
+        if (!payment.dueDate) return false;
+        
+        // CORREÇÃO: Usar dueDate para o filtro, ignorando referenceMonth/Year se necessário para visualização temporal
+        // A lógica do usuário pede que o filtro respeite o vencimento
+        const dueDateObj = new Date(payment.dueDate + "T00:00:00"); // Garantir fuso
+        const dueMonth = dueDateObj.getMonth() + 1;
+        const dueYear = dueDateObj.getFullYear();
+        
+        return (
+          dueMonth === parseInt(selectedMonth) &&
+          dueYear === parseInt(selectedYear)
+        );
+      });
+    } else if (selectedMonth !== "all") {
+       // Filtro só por mês...
+       filtered = filtered.filter((payment) => {
+          if (!payment.dueDate) return false;
+          const dueMonth = new Date(payment.dueDate + "T00:00:00").getMonth() + 1;
+          return dueMonth === parseInt(selectedMonth);
+       });
+    } else if (selectedYear !== "all") {
+       // Filtro só por ano...
+       filtered = filtered.filter((payment) => {
+          if (!payment.dueDate) return false;
+          const dueYear = new Date(payment.dueDate + "T00:00:00").getFullYear();
+          return dueYear === parseInt(selectedYear);
+       });
+    }
+
+    // Filtrar por status
+    if (statusFilter !== "all") {
+      filtered = filtered.filter((payment) => payment.status === statusFilter);
+    }
+
+    return filtered.sort((a, b) => {
       const dateA = new Date(a.dueDate);
       const dateB = new Date(b.dueDate);
       return dateA.getTime() - dateB.getTime();
@@ -263,14 +281,8 @@ export default function Payments() {
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 5 }, (_, i) => (currentYear - 2 + i).toString());
 
-  const clearFilters = () => {
-    setSelectedMonth("all");
-    setSelectedYear("all");
-  };
-
   const hasActiveFilters = selectedMonth !== "all" || selectedYear !== "all";
 
-  // Calculate expected amount including late fees and interest
   const getExpectedAmount = (payment: Payment): number => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -278,23 +290,12 @@ export default function Payments() {
     const dueDate = new Date(payment.dueDate);
     dueDate.setHours(0, 0, 0, 0);
     
-    // If not overdue, return base amount
     if (dueDate >= today) {
       return payment.expectedAmount;
     }
     
-    // If overdue, add late fee and interest
     const totalWithFees = payment.expectedAmount + (payment.lateFee || 0) + (payment.interest || 0);
     return totalWithFees;
-  };
-
-  const handleGeneratePayments = async (rentalId: string) => {
-    // Logic to generate payments
-    // This function seemed to be the source of the error.
-    // Assuming we want to create a new payment
-    
-    // Placeholder implementation if logic is missing
-    console.log("Generating payments for", rentalId);
   };
 
   return (
@@ -337,7 +338,6 @@ export default function Payments() {
                 </div>
               </div>
               
-              {/* Month/Year Filter Dropdowns */}
               <div className="flex gap-2 items-center">
                 <Select value={selectedMonth} onValueChange={setSelectedMonth}>
                   <SelectTrigger className="w-[150px]">
@@ -376,7 +376,6 @@ export default function Payments() {
             </div>
           ) : (
             <>
-              {/* Unpaid Payments Section */}
               <div className="space-y-4">
                 <ScrollReveal delay={0.2}>
                   <div className="flex items-center gap-2">
@@ -405,13 +404,6 @@ export default function Payments() {
                       const property = getPropertyInfo(payment.rentalId);
                       const tenant = getTenantInfo(payment.rentalId);
                       const colors = getDueDateColor(payment.dueDate);
-                      
-                      // Check if payment is actually overdue (not just due today)
-                      const today = new Date();
-                      today.setHours(0, 0, 0, 0);
-                      const due = new Date(payment.dueDate + "T00:00:00");
-                      due.setHours(0, 0, 0, 0);
-                      const isActuallyOverdue = due < today;
 
                       if (viewMode === "grid") {
                         return (
@@ -421,27 +413,27 @@ export default function Payments() {
                               onClick={() => handleCardClick(payment.id)}
                             >
                               <CardHeader className="pb-2 p-3">
-                                <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-start justify-between mb-2">
                                   <div className="flex items-center gap-2">
+                                    <Home className="w-4 h-4 text-muted-foreground" />
+                                    <div>
+                                      <span className={`font-medium text-sm ${colors.icon}`}>
+                                        {property?.location || "Imóvel não encontrado"}
+                                      </span>
+                                      {property?.complement && (
+                                        <p className="text-xs text-muted-foreground">
+                                          {property.complement}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div className="flex flex-col items-end gap-1">
+                                    <span className="text-xs text-muted-foreground">
+                                      {getMonthName(payment.referenceMonth)}/{payment.referenceYear}
+                                    </span>
                                     {getStatusBadge(payment.status)}
                                   </div>
-                                  <span className="text-xs text-muted-foreground">
-                                    {getMonthName(payment.referenceMonth)}/{payment.referenceYear}
-                                  </span>
                                 </div>
-                                <CardTitle className="flex items-center gap-2 text-sm">
-                                  <div className="flex flex-col gap-1 flex-1">
-                                    <span className="flex items-center gap-1.5">
-                                      <Home className={`h-4 w-4 ${colors.icon}`} />
-                                      {property?.location || "N/A"}
-                                    </span>
-                                    {property?.complement && (
-                                      <span className="text-xs font-normal text-muted-foreground ml-5">
-                                        {property.complement}
-                                      </span>
-                                    )}
-                                  </div>
-                                </CardTitle>
                               </CardHeader>
                               <CardContent className="space-y-2 p-3 pt-0">
                                 <div className="flex items-start gap-1.5">
@@ -493,12 +485,14 @@ export default function Payments() {
                                     <Home className={`h-5 w-5 ${colors.icon} flex-shrink-0`} />
                                     <div className="flex-1 min-w-0">
                                       <div className="flex items-center gap-2 mb-1">
-                                        {getStatusBadge(payment.status)}
                                         <span className="text-xs text-muted-foreground">
                                           {getMonthName(payment.referenceMonth)}/{payment.referenceYear}
                                         </span>
+                                        {getStatusBadge(payment.status)}
                                       </div>
-                                      <h3 className="text-sm font-semibold truncate">{property?.location || "N/A"}</h3>
+                                      <h3 className={`text-sm font-semibold truncate ${colors.icon}`}>
+                                        {property?.location || "N/A"}
+                                      </h3>
                                       {property?.complement && (
                                         <p className="text-xs text-muted-foreground truncate">{property.complement}</p>
                                       )}
@@ -541,7 +535,6 @@ export default function Payments() {
                 )}
               </div>
 
-              {/* Paid Payments Section */}
               <div className="space-y-4">
                 <ScrollReveal delay={0.4}>
                   <div className="flex items-center gap-2">
@@ -578,25 +571,27 @@ export default function Payments() {
                               onClick={() => handleCardClick(payment.id)}
                             >
                               <CardHeader className="pb-2 p-3">
-                                <div className="flex items-center justify-between mb-2">
-                                  {getStatusBadge(payment.status)}
-                                  <span className="text-xs text-muted-foreground">
-                                    {getMonthName(payment.referenceMonth)}/{payment.referenceYear}
-                                  </span>
-                                </div>
-                                <CardTitle className="flex items-center gap-2 text-sm">
-                                  <div className="flex flex-col gap-1 flex-1">
-                                    <span className="flex items-center gap-1.5">
-                                      <Home className="h-4 w-4 text-green-600" />
-                                      {property?.location || "N/A"}
-                                    </span>
-                                    {property?.complement && (
-                                      <span className="text-xs font-normal text-muted-foreground ml-5">
-                                        {property.complement}
+                                <div className="flex items-start justify-between mb-2">
+                                  <div className="flex items-center gap-2">
+                                    <Home className="w-4 h-4 text-muted-foreground" />
+                                    <div>
+                                      <span className="font-medium text-sm">
+                                        {property?.location || "Imóvel não encontrado"}
                                       </span>
-                                    )}
+                                      {property?.complement && (
+                                        <p className="text-xs text-muted-foreground">
+                                          {property.complement}
+                                        </p>
+                                      )}
+                                    </div>
                                   </div>
-                                </CardTitle>
+                                  <div className="flex flex-col items-end gap-1">
+                                    <span className="text-xs text-muted-foreground">
+                                      {getMonthName(payment.referenceMonth)}/{payment.referenceYear}
+                                    </span>
+                                    {getStatusBadge(payment.status)}
+                                  </div>
+                                </div>
                               </CardHeader>
                               <CardContent className="space-y-2 p-3 pt-0">
                                 <div className="flex items-start gap-1.5">
@@ -658,12 +653,14 @@ export default function Payments() {
                                     <Home className="h-5 w-5 text-green-600 flex-shrink-0" />
                                     <div className="flex-1 min-w-0">
                                       <div className="flex items-center gap-2 mb-1">
-                                        {getStatusBadge(payment.status)}
                                         <span className="text-xs text-muted-foreground">
                                           {getMonthName(payment.referenceMonth)}/{payment.referenceYear}
                                         </span>
+                                        {getStatusBadge(payment.status)}
                                       </div>
-                                      <h3 className="text-sm font-semibold truncate">{property?.location || "N/A"}</h3>
+                                      <h3 className="text-sm font-semibold truncate">
+                                        {property?.location || "N/A"}
+                                      </h3>
                                       {property?.complement && (
                                         <p className="text-xs text-muted-foreground truncate">{property.complement}</p>
                                       )}
@@ -717,7 +714,6 @@ export default function Payments() {
           )}
         </div>
 
-        {/* Payment Management Dialog */}
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0">
             {selectedPaymentId && (

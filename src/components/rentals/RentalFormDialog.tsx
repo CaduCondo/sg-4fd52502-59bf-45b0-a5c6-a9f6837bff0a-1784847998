@@ -13,7 +13,9 @@ import { update as updateProperty } from "@/services/propertyService";
 import { update as updateTenant } from "@/services/tenantService";
 import { getAll as getAllLocations } from "@/services/locationService";
 import { createPaymentsForRental } from "@/services/paymentService";
-import type { Property, Tenant, Location } from "@/types";
+import type { Property, Tenant, Location, Rental } from "@/types";
+import { update as updateRentalService } from "@/services/rentalService";
+import { updateFuturePayments } from "@/services/paymentService";
 
 interface RentalFormDialogProps {
   open: boolean;
@@ -21,6 +23,8 @@ interface RentalFormDialogProps {
   availableProperties: Property[];
   availableTenants: Tenant[];
   onSuccess: () => void;
+  rental?: Rental | null;
+  isViewMode?: boolean;
 }
 
 export function RentalFormDialog({
@@ -29,10 +33,13 @@ export function RentalFormDialog({
   availableProperties,
   availableTenants,
   onSuccess,
+  rental = null,
+  isViewMode = false,
 }: RentalFormDialogProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [locations, setLocations] = useState<Location[]>([]);
+  const [isEditing, setIsEditing] = useState(!isViewMode);
 
   const [selectedPropertyId, setSelectedPropertyId] = useState("");
   const [selectedTenantId, setSelectedTenantId] = useState("");
@@ -46,6 +53,23 @@ export function RentalFormDialog({
   useEffect(() => {
     loadLocations();
   }, []);
+
+  useEffect(() => {
+    setIsEditing(!isViewMode);
+    
+    if (rental) {
+      setSelectedPropertyId(rental.propertyId || "");
+      setSelectedTenantId(rental.tenantId || "");
+      setStartDate(rental.startDate || "");
+      setEndDate(rental.endDate || "");
+      setPaymentDay(rental.paymentDay?.toString() || "");
+      setHasGarage(rental.hasGarage || false);
+      setGarageValue(rental.garageValue ? formatCurrency(rental.garageValue) : "");
+      setAttachments(rental.contractAttachments || rental.attachments || []);
+    } else {
+      resetForm();
+    }
+  }, [rental, open, isViewMode]);
 
   const loadLocations = async () => {
     try {
@@ -137,7 +161,7 @@ export function RentalFormDialog({
       const garageValueNum = hasGarage ? parseFloat(garageValue.replace(/\./g, "").replace(",", ".") || "0") : 0;
       const totalValue = propertyValue + garageValueNum;
 
-      const newRental = {
+      const rentalData = {
         property_id: selectedPropertyId,
         tenant_id: selectedTenantId,
         start_date: startDate,
@@ -152,32 +176,47 @@ export function RentalFormDialog({
         attachments: attachments,
       };
 
-      const createdRental = await createRental(newRental);
+      if (rental) {
+        // Atualizar locação existente
+        await updateRentalService(rental.id, rentalData);
+        
+        // Atualizar recebimentos futuros
+        await updateFuturePayments(rental.id, totalValue);
 
-      await updateProperty(selectedPropertyId, { status: "occupied" });
-      console.log("Updating tenant status:", selectedTenantId, { status: "rented" });
-      await updateTenant(selectedTenantId, { status: "rented" });
+        toast({
+          title: "Sucesso!",
+          description: "Locação atualizada com sucesso.",
+        });
+      } else {
+        // Criar nova locação
+        const createdRental = await createRental(rentalData);
+        await updateProperty(selectedPropertyId, { status: "occupied" });
+        
+        const tenant = availableTenants.find(t => t.id === selectedTenantId);
+        if (tenant) {
+          await updateTenant(selectedTenantId, { 
+            ...tenant,
+            status: "rented" 
+          });
+        }
 
-      console.log("Creating payments for rental:", createdRental);
-      await createPaymentsForRental(createdRental);
-      console.log("Payments created for rental:", createdRental);
+        await createPaymentsForRental(createdRental);
 
-      toast({
-        title: "Sucesso!",
-        description: "Locação criada com sucesso.",
-      });
+        toast({
+          title: "Sucesso!",
+          description: "Locação criada com sucesso.",
+        });
+      }
 
       resetForm();
       onOpenChange(false);
       onSuccess();
-      
-      // Reload para garantir que os dados sejam atualizados
       window.location.reload();
     } catch (error) {
-      console.error("Error creating rental:", error);
+      console.error("Error saving rental:", error);
       toast({
         title: "Erro",
-        description: "Não foi possível criar a locação.",
+        description: rental ? "Não foi possível atualizar a locação." : "Não foi possível criar a locação.",
         variant: "destructive",
       });
     } finally {
@@ -209,7 +248,7 @@ export function RentalFormDialog({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="property">Imóveis Disponíveis *</Label>
-              <Select value={selectedPropertyId} onValueChange={setSelectedPropertyId}>
+              <Select value={selectedPropertyId} onValueChange={setSelectedPropertyId} disabled={!isEditing}>
                 <SelectTrigger id="property">
                   <SelectValue placeholder="Selecione o imóvel" />
                 </SelectTrigger>
@@ -243,14 +282,14 @@ export function RentalFormDialog({
 
             <div className="space-y-2">
               <Label htmlFor="tenant">Inquilinos Disponíveis *</Label>
-              <Select value={selectedTenantId} onValueChange={setSelectedTenantId}>
+              <Select value={selectedTenantId} onValueChange={setSelectedTenantId} disabled={!isEditing}>
                 <SelectTrigger id="tenant">
                   <SelectValue placeholder="Selecione o inquilino" />
                 </SelectTrigger>
                 <SelectContent>
                   {availableTenants
                     .slice()
-                    .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"))
+                    .sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }))
                     .map((tenant) => (
                       <SelectItem key={tenant.id} value={tenant.id}>
                         {tenant.name}
@@ -270,6 +309,7 @@ export function RentalFormDialog({
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
                 required
+                disabled={!isEditing}
               />
             </div>
 
@@ -280,12 +320,13 @@ export function RentalFormDialog({
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
+                disabled={!isEditing}
               />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="paymentDay">Dia Pagamento *</Label>
-              <Select value={paymentDay} onValueChange={setPaymentDay}>
+              <Select value={paymentDay} onValueChange={setPaymentDay} disabled={!isEditing}>
                 <SelectTrigger id="paymentDay">
                   <SelectValue placeholder="Selecione o dia" />
                 </SelectTrigger>
@@ -311,6 +352,7 @@ export function RentalFormDialog({
                     setGarageValue("");
                   }
                 }}
+                disabled={!isEditing}
               />
               <Label htmlFor="hasGarage" className="cursor-pointer">
                 Vaga Garagem ?
@@ -322,6 +364,7 @@ export function RentalFormDialog({
                 value={garageValue}
                 onChange={(e) => setGarageValue(applyRealMask(e.target.value))}
                 placeholder="R$ 0,00"
+                disabled={!isEditing}
               />
             )}
           </div>
@@ -420,20 +463,48 @@ export function RentalFormDialog({
           </div>
 
           <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                resetForm();
-                onOpenChange(false);
-              }}
-              disabled={loading}
-            >
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? "Criando..." : "Criar Locação"}
-            </Button>
+            {isViewMode && !isEditing ? (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    resetForm();
+                    onOpenChange(false);
+                  }}
+                  disabled={loading}
+                >
+                  Fechar
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => setIsEditing(true)}
+                >
+                  Editar
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    if (rental && isViewMode) {
+                      setIsEditing(false);
+                    } else {
+                      resetForm();
+                      onOpenChange(false);
+                    }
+                  }}
+                  disabled={loading}
+                >
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={loading}>
+                  {loading ? (rental ? "Atualizando..." : "Criando...") : (rental ? "Atualizar Locação" : "Criar Locação")}
+                </Button>
+              </>
+            )}
           </DialogFooter>
         </form>
       </DialogContent>

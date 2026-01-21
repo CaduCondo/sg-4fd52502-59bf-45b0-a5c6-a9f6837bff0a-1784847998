@@ -10,17 +10,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, DollarSign, Calendar, Home, User, X, Upload, Camera, Paperclip, Eye, Download, Edit, Trash2 } from "lucide-react";
+import { DollarSign, Calendar, Home, User, X, Camera, Paperclip, Eye, Download, Loader2, CheckCircle2 } from "lucide-react";
 import type { Payment, Rental, Property, Tenant, CompanyConfig } from "@/types";
 import { paymentService, rentalService, propertyService, tenantService, configService } from "@/services";
-import { applyRealMask, removeMask, formatCurrency, parseCurrencyToFloat, formatPercentage } from "@/lib/masks";
+import { applyRealMask, formatCurrency, parseCurrencyToFloat, formatPercentage } from "@/lib/masks";
 import { PaymentReceipt } from "@/components/PaymentReceipt";
-import { AttachmentViewer } from "@/components/AttachmentViewer";
-import { getById as getPaymentById, update as updatePayment, remove as deletePayment } from "@/services/paymentService";
+import { getById as getPaymentById, update as updatePayment } from "@/services/paymentService";
 import { getById as getRentalById } from "@/services/rentalService";
 import { getConfig } from "@/services/configService";
 import { hasPermission } from "@/lib/permissions";
 import { useAuth } from "@/contexts/AuthContext";
+import { Checkbox } from "@/components/ui/checkbox";
+import { format } from "date-fns";
 
 interface ManagePaymentContentProps {
   paymentId: string;
@@ -31,7 +32,7 @@ interface ManagePaymentContentProps {
 export default function ManagePaymentContent({ paymentId, onClose, embedded = false }: ManagePaymentContentProps) {
   const router = useRouter();
   const { toast } = useToast();
-  const { user } = useAuth(); // Ensure this is present
+  const { user } = useAuth();
   const [payment, setPayment] = useState<Payment | null>(null);
   const [rental, setRental] = useState<Rental | null>(null);
   const [property, setProperty] = useState<Property | null>(null);
@@ -44,7 +45,7 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
     paymentDate: new Date().toISOString().split("T")[0],
     paidAmount: "",
     paymentMethod: "pix",
-    paymentLocation: "CP",
+    paymentLocation: "",
     paymentCode: "",
     notes: "",
     attachments: [] as string[],
@@ -52,14 +53,14 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
 
   const [calculatedValues, setCalculatedValues] = useState({
     baseAmount: 0,
+    rentAmount: 0,
     lateFee: 0,
     interest: 0,
     totalAmount: 0,
+    lateDays: 0,
   });
 
   const [waiveLateFees, setWaiveLateFees] = useState(false);
-  const [isViewMode, setIsViewMode] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
     const id = embedded ? paymentId : (router.query.id as string);
@@ -75,7 +76,6 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
   }, [formData.paymentDate, payment, rental, config, waiveLateFees]);
 
   useEffect(() => {
-    // Auto-generate payment code when method or location changes
     if (formData.paymentMethod === "pix") {
       const day = new Date().getDate().toString().padStart(2, "0");
       const code = `${day}XXXX${formData.paymentLocation}`;
@@ -86,6 +86,15 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
   useEffect(() => {
     loadConfig();
   }, []);
+
+  useEffect(() => {
+    if (calculatedValues.totalAmount > 0) {
+      setFormData((prev) => ({
+        ...prev,
+        paidAmount: applyRealMask((calculatedValues.totalAmount * 100).toString()),
+      }));
+    }
+  }, [calculatedValues.totalAmount, waiveLateFees]);
 
   const loadConfig = async () => {
     const data = await configService.getConfig();
@@ -122,7 +131,6 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
           setTenant(tenantData);
         }
 
-        // Set initial form data with lowercase payment method
         setFormData({
           paymentDate: paymentData.paymentDate || new Date().toISOString().split("T")[0],
           paidAmount: applyRealMask((paymentData.paidAmount * 100).toString()),
@@ -132,12 +140,6 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
           notes: paymentData.notes || "",
           attachments: paymentData.attachments || [],
         });
-
-        // Set view mode if payment is paid
-        if (paymentData.status === "paid") {
-          setIsViewMode(true);
-          setIsEditing(false);
-        }
       }
     } catch (error) {
       console.error("Error loading payment:", error);
@@ -160,35 +162,28 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
 
     let lateFee = 0;
     let interest = 0;
+    let lateDays = 0;
 
-    // Calculate late fee and interest if payment is after due date
     if (paymentDate > dueDate) {
-      const daysLate = Math.ceil((paymentDate.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
+      lateDays = Math.ceil((paymentDate.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
 
-      // Late fee from config (default 2%)
       const lateFeePercentage = config.late_fee_percentage || 2;
       lateFee = baseAmount * (lateFeePercentage / 100);
 
-      // Interest from config (default 0.033% per day)
-      const interestRatePercentage = config.interest_rate_percentage || 0.033;
-      interest = baseAmount * (interestRatePercentage / 100) * daysLate;
+      const dailyInterestRate = (config.interest_rate_percentage || 1) / 30;
+      interest = baseAmount * (dailyInterestRate / 100) * lateDays;
     }
 
-    // Apply or remove fees based on waiveLateFees checkbox
     const totalAmount = waiveLateFees ? baseAmount : baseAmount + lateFee + interest;
 
     setCalculatedValues({
       baseAmount,
+      rentAmount: baseAmount,
       lateFee,
       interest,
       totalAmount,
+      lateDays,
     });
-
-    // Update paid amount to total
-    setFormData((prev) => ({
-      ...prev,
-      paidAmount: applyRealMask((totalAmount * 100).toString()),
-    }));
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -248,11 +243,8 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
     if (!payment) return;
 
     try {
-      // ✅ Use parseCurrencyToFloat to correctly convert "1.534,95" -> 1534.95
       const paidAmount = parseCurrencyToFloat(formData.paidAmount);
 
-      // Determine status based on paid amount vs expected amount
-      // Allow small difference for floating point comparisons
       let status: Payment["status"] = "pending";
       const diff = Math.abs(paidAmount - calculatedValues.totalAmount);
       
@@ -266,7 +258,7 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
         ...payment,
         paidAmount,
         paymentDate: formData.paymentDate,
-        paymentMethod: formData.paymentMethod.toLowerCase(), // Ensure lowercase
+        paymentMethod: formData.paymentMethod.toLowerCase(),
         paymentLocation: formData.paymentMethod === "pix" ? formData.paymentLocation : undefined,
         paymentCode: formData.paymentMethod === "pix" ? formData.paymentCode : undefined,
         status,
@@ -278,7 +270,6 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
 
       const savedPayment = await updatePayment(payment.id, updatedPayment);
       
-      // Update local state with saved payment to ensure receipt has latest data
       setPayment(savedPayment);
 
       toast({
@@ -315,50 +306,6 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
     handleBack();
   };
 
-  const handleEdit = () => {
-    setIsEditing(true);
-  };
-
-  const handleCancelEdit = () => {
-    setIsEditing(false);
-    if (payment) {
-      // Reset form data to original payment data
-      setFormData({
-        paymentDate: payment.paymentDate || new Date().toISOString().split("T")[0],
-        paidAmount: applyRealMask((payment.paidAmount * 100).toString()),
-        paymentMethod: (payment.paymentMethod || "pix").toLowerCase(),
-        paymentLocation: payment.paymentLocation || "CP",
-        paymentCode: payment.paymentCode || "",
-        notes: payment.notes || "",
-        attachments: payment.attachments || [],
-      });
-    }
-  };
-
-  const handlePrint = () => {
-    window.print();
-  };
-
-  const handleDelete = async () => {
-    if (!confirm("Tem certeza que deseja excluir este recebimento?")) return;
-
-    try {
-      await deletePayment(paymentId as string);
-      toast({
-        title: "Sucesso",
-        description: "Recebimento excluído com sucesso."
-      });
-      router.push("/payments");
-    } catch (error) {
-      console.error("Error deleting payment:", error);
-      toast({
-        title: "Erro",
-        description: "Erro ao excluir recebimento.",
-        variant: "destructive"
-      });
-    }
-  };
-  
   if (loading) {
     return embedded ? (
       <div className="p-8 text-center">
@@ -402,417 +349,253 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
   }
 
   const content = (
-    <div className="space-y-6 p-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">
-            {isViewMode && !isEditing ? "Visualizar Recebimento" : "Registrar Recebimento"}
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            {property?.location} - {tenant?.name}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          {isViewMode && !isEditing ? (
-            <>
-              <Button variant="outline" onClick={handleEdit}>
-                Editar
-              </Button>
-              <Button variant="ghost" size="icon" onClick={handleBack}>
-                <X className="h-5 w-5" />
-              </Button>
-            </>
-          ) : (
-            <>
-              {embedded && (
-                <Button variant="ghost" size="icon" onClick={handleBack}>
-                  <X className="h-5 w-5" />
-                </Button>
-              )}
-              {!embedded && (
-                <Button variant="outline" onClick={handleBack}>
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Voltar
-                </Button>
-              )}
-            </>
-          )}
-        </div>
+    <div className="space-y-3 p-4">
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-bold">Registrar Recebimento</h1>
       </div>
 
-      {/* Header Actions */}
-      <div className="flex justify-end gap-2 mb-6 no-print">
-        {hasPermission(user?.role, "canEditPayment") && (
-          <Button 
-            variant="outline" 
-            onClick={() => setIsEditing(!isEditing)}
-          >
-            <Edit className="w-4 h-4 mr-2" />
-            {isEditing ? "Cancelar Edição" : "Editar"}
-          </Button>
-        )}
-        {hasPermission(user?.role, "canDeletePayment") && (
-          <Button 
-            variant="destructive" 
-            onClick={handleDelete}
-          >
-            <Trash2 className="w-4 h-4 mr-2" />
-            Excluir
-          </Button>
-        )}
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Payment Information Card */}
+      {/* Primeira linha: Informações do Recebimento + Composição de Valores */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        {/* Bloco 1: Informações do Recebimento */}
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <DollarSign className="h-5 w-5" />
-              Informações do Recebimento
-            </CardTitle>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Informações do Recebimento</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Home className="h-4 w-4 text-muted-foreground" />
-              <div>
-                <p className="text-sm font-medium">{property?.location}</p>
-                <p className="text-xs text-muted-foreground">{property?.complement}</p>
-              </div>
+          <CardContent className="space-y-2 text-sm">
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">Imóvel</p>
+              <p className="font-medium">{property?.location || "N/A"}</p>
+              {property?.complement && (
+                <p className="text-xs text-muted-foreground">{property.complement}</p>
+              )}
             </div>
-
-            <div className="flex items-center gap-2">
-              <User className="h-4 w-4 text-muted-foreground" />
-              <div>
-                <p className="text-sm font-medium">{tenant?.name}</p>
-                <p className="text-xs text-muted-foreground">{tenant?.document}</p>
-              </div>
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">Inquilino</p>
+              <p className="font-medium">{tenant?.name || "N/A"}</p>
+              {tenant?.phone && (
+                <p className="text-xs text-muted-foreground">{tenant.phone}</p>
+              )}
             </div>
-
-            <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-              <p className="text-sm">
-                Vencimento: {new Date(payment.dueDate + "T00:00:00").toLocaleDateString("pt-BR")}
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">Vencimento</p>
+              <p className="font-medium">
+                {payment?.dueDate
+                  ? new Date(payment.dueDate + "T00:00:00").toLocaleDateString("pt-BR")
+                  : "N/A"}
               </p>
             </div>
-
-            <div className="pt-2 border-t">
-              <Badge className={payment.status === "paid" ? "bg-green-500" : "bg-yellow-500"}>
-                {payment.status === "paid" ? "Pago" : payment.status === "partial" ? "Parcial" : "Pendente"}
-              </Badge>
-            </div>
           </CardContent>
         </Card>
 
-        {/* Value Composition Card */}
+        {/* Bloco 2: Composição de Valores */}
         <Card>
-          <CardHeader>
-            <CardTitle>Composição de Valores</CardTitle>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Composição de Valores</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-2 text-sm">
             <div className="flex justify-between">
-              <span className="text-sm text-muted-foreground">Valor do Aluguel:</span>
-              <span className="text-sm font-medium">{formatCurrency(calculatedValues.baseAmount)}</span>
+              <span>Aluguel:</span>
+              <span className="font-medium">{formatCurrency(calculatedValues.rentAmount)}</span>
             </div>
-
-            {payment.status === "partial" && payment.paidAmount > 0 && (
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Valor Já Pago:</span>
-                <span className="text-sm font-medium text-green-600">-{formatCurrency(payment.paidAmount)}</span>
-              </div>
+            {calculatedValues.lateDays > 0 && (
+              <>
+                <div className="flex justify-between text-orange-600">
+                  <span>Multa ({config?.late_fee_percentage || 0}%):</span>
+                  <span className="font-medium">{formatCurrency(calculatedValues.lateFee)}</span>
+                </div>
+                <div className="flex justify-between text-orange-600">
+                  <span>
+                    Juros ({((config?.interest_rate_percentage || 1) / 30).toFixed(3)}%/dia x {calculatedValues.lateDays} dias):
+                  </span>
+                  <span className="font-medium">{formatCurrency(calculatedValues.interest)}</span>
+                </div>
+                <div className="flex items-center space-x-2 pt-2">
+                  <Checkbox
+                    id="waive-fees"
+                    checked={waiveLateFees}
+                    onCheckedChange={(checked) => setWaiveLateFees(checked as boolean)}
+                  />
+                  <label
+                    htmlFor="waive-fees"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    Retirar multa e juros
+                  </label>
+                </div>
+              </>
             )}
-
-            {calculatedValues.lateFee > 0 && (
-              <div className="flex justify-between">
-                <span className={`text-sm ${waiveLateFees ? "line-through text-muted-foreground" : "text-muted-foreground"}`}>
-                  Multa ({formatPercentage(config?.late_fee_percentage || 2)}%):
-                </span>
-                <span className={`text-sm font-medium ${waiveLateFees ? "line-through text-muted-foreground" : "text-red-600"}`}>
-                  {formatCurrency(calculatedValues.lateFee)}
-                </span>
-              </div>
-            )}
-
-            {calculatedValues.interest > 0 && (
-              <div className="flex justify-between">
-                <span className={`text-sm ${waiveLateFees ? "line-through text-muted-foreground" : "text-muted-foreground"}`}>
-                  Juros ({formatPercentage(config?.interest_rate_percentage || 0.033)}% ao dia):
-                </span>
-                <span className={`text-sm font-medium ${waiveLateFees ? "line-through text-muted-foreground" : "text-red-600"}`}>
-                  {formatCurrency(calculatedValues.interest)}
-                </span>
-              </div>
-            )}
-
-            {(calculatedValues.lateFee > 0 || calculatedValues.interest > 0) && (
-              <div className="flex items-center gap-2 py-2">
-                <input
-                  type="checkbox"
-                  id="waiveLateFees"
-                  checked={waiveLateFees}
-                  onChange={(e) => setWaiveLateFees(e.target.checked)}
-                  className="h-4 w-4 rounded border-gray-300"
-                />
-                <Label htmlFor="waiveLateFees" className="text-sm cursor-pointer">
-                  Descontar multa e juros
-                </Label>
-              </div>
-            )}
-
-            <div className="pt-3 border-t flex justify-between">
-              <span className="font-medium">Valor Esperado:</span>
-              <span className="text-lg font-bold text-emerald-600">
-                {formatCurrency(calculatedValues.totalAmount - (payment.status === "partial" ? payment.paidAmount : 0))}
-              </span>
+            <div className="flex justify-between pt-2 border-t text-base font-bold">
+              <span>Total:</span>
+              <span>{formatCurrency(calculatedValues.totalAmount)}</span>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Payment Form */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Dados do Recebimento</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="paymentDate">
-                  Data do Recebimento <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="paymentDate"
-                  type="date"
-                  value={formData.paymentDate}
-                  onChange={(e) => setFormData({ ...formData, paymentDate: e.target.value })}
-                  disabled={isViewMode && !isEditing}
-                  required
-                />
+      {/* Segunda linha: Dados do Recebimento (formulário) - ABAIXO dos outros blocos */}
+      <div className="w-full">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Dados do Recebimento</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <Label htmlFor="paymentDate" className="text-xs">
+                    Data do Pagamento
+                  </Label>
+                  <Input
+                    id="paymentDate"
+                    type="date"
+                    value={formData.paymentDate}
+                    onChange={(e) =>
+                      setFormData({ ...formData, paymentDate: e.target.value })
+                    }
+                    required
+                    className="h-8 text-sm"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="paidAmount" className="text-xs">
+                    Valor Recebido
+                  </Label>
+                  <Input
+                    id="paidAmount"
+                    type="text"
+                    value={formData.paidAmount}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        paidAmount: applyRealMask(e.target.value),
+                      })
+                    }
+                    required
+                    placeholder="R$ 0,00"
+                    className="h-8 text-sm"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="paymentMethod" className="text-xs">
+                    Método de Pagamento
+                  </Label>
+                  <Select value={formData.paymentMethod} onValueChange={(value) => setFormData({ ...formData, paymentMethod: value })}>
+                    <SelectTrigger className="h-9 text-sm">
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pix">PIX</SelectItem>
+                      <SelectItem value="boleto">Boleto</SelectItem>
+                      <SelectItem value="dinheiro">Dinheiro</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="paidAmount">
-                  Valor Recebido <span className="text-red-500">*</span>
+              <div className="space-y-1">
+                <Label htmlFor="notes" className="text-xs">
+                  Observações
                 </Label>
-                <Input
-                  id="paidAmount"
-                  value={formData.paidAmount}
-                  onChange={(e) => setFormData({ ...formData, paidAmount: applyRealMask(e.target.value) })}
-                  placeholder="R$ 0,00"
-                  disabled={isViewMode && !isEditing}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="paymentMethod">
-                  Método de Pagamento <span className="text-red-500">*</span>
-                </Label>
-                <Select
-                  value={formData.paymentMethod}
-                  onValueChange={(value) => setFormData({ ...formData, paymentMethod: value })}
-                  disabled={isViewMode && !isEditing}
-                >
-                  <SelectTrigger id="paymentMethod">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pix">PIX</SelectItem>
-                    <SelectItem value="dinheiro">Dinheiro</SelectItem>
-                    <SelectItem value="boleto">Boleto</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {formData.paymentMethod === "pix" && (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="paymentLocation">
-                      Local do Pagamento <span className="text-red-500">*</span>
-                    </Label>
-                    <Select
-                      value={formData.paymentLocation}
-                      onValueChange={(value) => setFormData({ ...formData, paymentLocation: value })}
-                      disabled={isViewMode && !isEditing}
-                    >
-                      <SelectTrigger id="paymentLocation">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="CP">CP</SelectItem>
-                        <SelectItem value="CD">CD</SelectItem>
-                        <SelectItem value="CE">CE</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="paymentCode">Código PIX</Label>
-                    <Input
-                      id="paymentCode"
-                      value={formData.paymentCode}
-                      onChange={(e) => setFormData({ ...formData, paymentCode: e.target.value })}
-                      placeholder="Ex: 15XXXXCP"
-                      disabled={isViewMode && !isEditing}
-                    />
-                  </div>
-                </>
-              )}
-
-              <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="notes">Observações</Label>
                 <Textarea
                   id="notes"
                   value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  placeholder="Adicione observações sobre este recebimento..."
+                  onChange={(e) =>
+                    setFormData({ ...formData, notes: e.target.value })
+                  }
+                  placeholder="Observações adicionais sobre o pagamento..."
                   rows={3}
-                  disabled={isViewMode && !isEditing}
+                  className="resize-none text-sm"
                 />
               </div>
-            </div>
 
-            {/* Attachments Section */}
-            <div className="space-y-4 border-t pt-4">
-              <div className="flex items-center justify-between">
-                <Label className="text-base font-medium">Anexos</Label>
-                {(!isViewMode || isEditing) && (
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => document.getElementById("cameraCapture")?.click()}
-                    >
-                      <Camera className="mr-2 h-4 w-4" />
-                      Tirar Foto
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => document.getElementById("fileUpload")?.click()}
-                    >
-                      <Paperclip className="mr-2 h-4 w-4" />
-                      Anexar Arquivo
-                    </Button>
-                    <input
-                      id="cameraCapture"
-                      type="file"
-                      accept="image/*"
-                      capture="environment"
-                      className="hidden"
-                      onChange={handleCameraCapture}
-                    />
-                    <input
-                      id="fileUpload"
-                      type="file"
-                      accept="image/*,.pdf,.doc,.docx"
-                      className="hidden"
-                      onChange={handleFileUpload}
-                    />
-                  </div>
-                )}
-              </div>
-
-              {formData.attachments.length > 0 && (
-                <div className="space-y-2">
-                  {formData.attachments.map((attachment, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between p-3 bg-muted rounded-lg"
-                    >
-                      <span className="text-sm truncate flex-1">
-                        Arquivo {index + 1}
-                      </span>
-                      <div className="flex gap-2">
-                        {isViewMode && !isEditing && (
-                          <>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                const link = document.createElement("a");
-                                link.href = attachment;
-                                link.target = "_blank";
-                                document.body.appendChild(link);
-                                link.click();
-                                document.body.removeChild(link);
-                              }}
-                            >
-                              <Eye className="h-4 w-4 mr-2" />
-                              Ver
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                const link = document.createElement("a");
-                                link.href = attachment;
-                                link.download = `anexo-${index + 1}`;
-                                document.body.appendChild(link);
-                                link.click();
-                                document.body.removeChild(link);
-                              }}
-                            >
-                              <Download className="h-4 w-4 mr-2" />
-                              Baixar
-                            </Button>
-                          </>
-                        )}
-                        {(!isViewMode || isEditing) && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeAttachment(index)}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+              <div className="space-y-1">
+                <Label htmlFor="attachments" className="text-xs">Comprovante / Anexos</Label>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => document.getElementById("paymentFileUpload")?.click()}
+                  >
+                    <Paperclip className="mr-2 h-4 w-4" />
+                    Anexar Arquivo
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => document.getElementById("paymentCameraCapture")?.click()}
+                  >
+                    <Camera className="mr-2 h-4 w-4" />
+                    Tirar Foto
+                  </Button>
                 </div>
-              )}
-            </div>
-
-            {(!isViewMode || isEditing) && (
-              <div className="flex gap-2 justify-end pt-4">
-                {isEditing && (
-                  <Button type="button" variant="outline" onClick={handleCancelEdit}>
-                    Cancelar
-                  </Button>
-                )}
-                {!isEditing && (
-                  <Button type="button" variant="outline" onClick={handleBack}>
-                    Cancelar
-                  </Button>
-                )}
-                <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">
-                  {isEditing ? "Salvar Alterações" : "Registrar Recebimento"}
-                </Button>
+                <input
+                  id="paymentFileUpload"
+                  type="file"
+                  accept="image/*,.pdf"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => {
+                    const files = e.target.files;
+                    if (files && files.length > 0) {
+                      Array.from(files).forEach(file => {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          if (reader.result) {
+                            setFormData(prev => ({
+                              ...prev,
+                              attachments: [...prev.attachments, reader.result as string]
+                            }));
+                          }
+                        };
+                        reader.readAsDataURL(file);
+                      });
+                    }
+                  }}
+                />
+                <input
+                  id="paymentCameraCapture"
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={(e) => {
+                    const files = e.target.files;
+                    if (files && files.length > 0) {
+                      const file = files[0];
+                      const reader = new FileReader();
+                      reader.onloadend = () => {
+                        if (reader.result) {
+                          setFormData(prev => ({
+                            ...prev,
+                            attachments: [...prev.attachments, reader.result as string]
+                          }));
+                        }
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                />
               </div>
-            )}
-          </form>
-        </CardContent>
-      </Card>
-      
-      {/* Receipt Modal */}
-      {payment.status === 'paid' && (
-        <PaymentReceipt 
-          isOpen={showReceipt} 
-          onClose={() => setShowReceipt(false)}
-          tenantName={rental.tenant?.name || "Inquilino"}
-          propertyAddress={`${rental.property?.location || ""} ${rental.property?.complement || ""}`}
-          amount={payment.paidAmount || payment.expectedAmount}
-          referenceMonth={`${payment.referenceMonth}/${payment.referenceYear}`}
-          paymentDate={payment.paymentDate || new Date().toISOString()}
-          ownerName={config?.company_name || "Imobiliária"}
-        />
-      )}
+
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Processando...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-4 h-4 mr-2" />
+                    Confirmar Recebimento
+                  </>
+                )}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 
