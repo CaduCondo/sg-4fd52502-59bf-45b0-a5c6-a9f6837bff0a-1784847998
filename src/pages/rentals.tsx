@@ -35,6 +35,8 @@ export default function RentalsPage() {
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
   const [isRentalDialogOpen, setIsRentalDialogOpen] = useState(false);
+  const [selectedRental, setSelectedRental] = useState<Rental | null>(null);
+  const [isViewMode, setIsViewMode] = useState(false);
   const [rentalToDelete, setRentalToDelete] = useState<Rental | null>(null);
   const [showInactive, setShowInactive] = useState(false);
 
@@ -130,12 +132,16 @@ export default function RentalsPage() {
     }
   };
 
-  const handleCreateNew = () => {
+  const handleViewRental = (rental: Rental) => {
+    setSelectedRental(rental);
+    setIsViewMode(true);
     setIsRentalDialogOpen(true);
   };
 
-  const handleViewRental = (rentalId: string) => {
-    router.push(`/rentals/${rentalId}`);
+  const handleCreateNew = () => {
+    setSelectedRental(null);
+    setIsViewMode(false);
+    setIsRentalDialogOpen(true);
   };
 
   return (
@@ -240,10 +246,10 @@ export default function RentalsPage() {
                     const tenant = tenants.find((t) => t.id === rental.tenantId);
 
                     return (
-                      <Card 
-                        key={rental.id} 
-                        className="hover:shadow-lg transition-shadow cursor-pointer relative p-4"
-                        onClick={() => handleViewRental(rental.id)}
+                      <Card
+                        key={rental.id}
+                        className="hover:shadow-lg transition-shadow cursor-pointer"
+                        onClick={() => handleViewRental(rental)}
                       >
                         <div className="space-y-3">
                           {/* Header: Location name + Badge */}
@@ -384,6 +390,8 @@ export default function RentalsPage() {
           availableProperties={availableProperties}
           availableTenants={availableTenants}
           onSuccess={loadData}
+          rental={selectedRental}
+          isViewMode={isViewMode}
         />
 
         <AlertDialog open={!!rentalToDelete} onOpenChange={() => setRentalToDelete(null)}>
