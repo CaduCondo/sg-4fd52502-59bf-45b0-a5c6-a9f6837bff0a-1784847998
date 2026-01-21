@@ -210,13 +210,44 @@ export default function Payments() {
   const getFilteredPayments = () => {
     let filtered = [...payments];
 
+    console.log("=== DEBUG FILTRO DETALHADO ===");
+    console.log("Total payments:", payments.length);
+    console.log("Selected month:", selectedMonth);
+    console.log("Selected year:", selectedYear);
+    
+    // Log de cada payment
+    payments.forEach((p, index) => {
+      console.log(`Payment ${index}:`, {
+        id: p.id,
+        referenceMonth: p.referenceMonth,
+        referenceYear: p.referenceYear,
+        status: p.status,
+        dueDate: p.dueDate,
+      });
+    });
+
     if (selectedMonth !== "all") {
-      filtered = filtered.filter(p => p.referenceMonth === parseInt(selectedMonth));
+      const monthNum = parseInt(selectedMonth);
+      console.log("Filtering by month:", monthNum);
+      filtered = filtered.filter((p) => {
+        const matches = p.referenceMonth === monthNum;
+        console.log(`Payment ${p.id} month ${p.referenceMonth} matches ${monthNum}:`, matches);
+        return matches;
+      });
     }
 
     if (selectedYear !== "all") {
-      filtered = filtered.filter(p => p.referenceYear === parseInt(selectedYear));
+      const yearNum = parseInt(selectedYear);
+      console.log("Filtering by year:", yearNum);
+      filtered = filtered.filter((p) => {
+        const matches = p.referenceYear === yearNum;
+        console.log(`Payment ${p.id} year ${p.referenceYear} matches ${yearNum}:`, matches);
+        return matches;
+      });
     }
+
+    console.log("Filtered payments:", filtered.length);
+    console.log("=== FIM DEBUG ===");
 
     return filtered.sort((a, b) => {
       const dateA = new Date(a.dueDate);

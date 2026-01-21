@@ -204,3 +204,4 @@ export interface Location {
 }
 
 export type TenantStatus = "active" | "inactive" | "rented";
+export type RentalStatus = "active" | "completed" | "canceled";

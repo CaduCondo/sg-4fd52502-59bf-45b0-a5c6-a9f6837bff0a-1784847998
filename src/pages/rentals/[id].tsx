@@ -238,7 +238,7 @@ export default function RentalDetails() {
     if (!rental) return;
 
     const confirmEnd = confirm(
-      "Tem certeza que deseja finalizar esta locação? Esta ação não pode ser desfeita."
+      "Tem certeza que deseja encerrar este contrato? Esta ação não pode ser desfeita."
     );
 
     if (!confirmEnd) return;
@@ -246,26 +246,35 @@ export default function RentalDetails() {
     try {
       const updatedRental: Rental = {
         ...rental,
-        status: "finished",
+        status: "completed",
         endDate: new Date().toISOString().split("T")[0],
       };
 
-      await rentalService.update(rental.id, updatedRental);
+      await updateRental(rental.id, updatedRental);
 
-      // Atualizar status do inquilino para 'active' ao finalizar a locação
+      if (rental.propertyId) {
+        const property = await propertyService.getById(rental.propertyId);
+        if (property) {
+          await updateProperty(rental.propertyId, {
+            ...property,
+            status: "available",
+          });
+        }
+      }
+
       if (rental.tenantId) {
         const tenant = await tenantService.getById(rental.tenantId);
         if (tenant) {
-          await tenantService.update(rental.tenantId, {
+          await updateTenant(rental.tenantId, {
             ...tenant,
-            status: "active"
+            status: "active",
           });
         }
       }
 
       toast({
         title: "Sucesso",
-        description: "Locação finalizada com sucesso.",
+        description: "Contrato encerrado com sucesso!",
       });
 
       router.push("/rentals");
@@ -274,6 +283,54 @@ export default function RentalDetails() {
       toast({
         title: "Erro",
         description: "Não foi possível finalizar a locação.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!rental) return;
+
+    const confirmDelete = confirm(
+      "Tem certeza que deseja excluir esta locação? Esta ação não pode ser desfeita e todos os pagamentos relacionados serão excluídos."
+    );
+
+    if (!confirmDelete) return;
+
+    try {
+      if (rental.propertyId) {
+        const property = await propertyService.getById(rental.propertyId);
+        if (property) {
+          await updateProperty(rental.propertyId, {
+            ...property,
+            status: "available",
+          });
+        }
+      }
+
+      if (rental.tenantId) {
+        const tenant = await tenantService.getById(rental.tenantId);
+        if (tenant) {
+          await updateTenant(rental.tenantId, {
+            ...tenant,
+            status: "active",
+          });
+        }
+      }
+
+      await deleteRental(rental.id);
+
+      toast({
+        title: "Sucesso",
+        description: "Locação excluída com sucesso!",
+      });
+
+      router.push("/rentals");
+    } catch (error) {
+      console.error("Error deleting rental:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível excluir a locação.",
         variant: "destructive",
       });
     }

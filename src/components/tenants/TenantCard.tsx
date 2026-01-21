@@ -1,88 +1,89 @@
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { User, FileText, CreditCard, Mail, Phone, Trash2 } from "lucide-react";
+import { User } from "lucide-react";
 import { Tenant } from "@/types";
 
 interface TenantCardProps {
   tenant: Tenant;
   onClick: () => void;
   onDelete: () => void;
+  viewMode?: "grid" | "list";
 }
 
-export function TenantCard({ tenant, onClick, onDelete }: TenantCardProps) {
-  const getStatusBadge = (status: string) => {
-    const variants: Record<string, "default" | "secondary" | "destructive"> = {
-      active: "default",
-      tenant: "secondary",
-      inactive: "destructive",
-    };
-    const labels: Record<string, string> = {
-      active: "Ativo",
-      tenant: "Locatário",
-      inactive: "Inativo",
-    };
-    return <Badge variant={variants[status] || "default"}>{labels[status] || "Ativo"}</Badge>;
+export function TenantCard({ tenant, onClick, onDelete, viewMode = "grid" }: TenantCardProps) {
+  const getStatusBadge = (status: Tenant["status"]) => {
+    switch (status) {
+      case "locatario":
+        return <Badge className="bg-blue-500">Locatário</Badge>;
+      case "active":
+        return <Badge className="bg-green-500">Ativo</Badge>;
+      case "inactive":
+        return <Badge className="bg-gray-500">Inativo</Badge>;
+      default:
+        return <Badge className="bg-gray-500">{status}</Badge>;
+    }
   };
 
-  const formatDocument = (tenant: Tenant) => {
-    if (tenant.document_type === "cpf" && (tenant.cpf || tenant.document)) {
-      return `CPF: ${tenant.cpf || tenant.document}`;
-    }
-    if (tenant.document_type === "cnpj" && (tenant.cnpj || tenant.document)) {
-      return `CNPJ: ${tenant.cnpj || tenant.document}`;
-    }
-    return "";
-  };
+  if (viewMode === "list") {
+    return (
+      <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={onClick}>
+        <CardContent className="py-3 px-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <User className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <h3 className="text-sm font-semibold truncate">{tenant.name}</h3>
+                <p className="text-xs text-muted-foreground truncate">{tenant.document}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="text-right">
+                <p className="text-xs text-muted-foreground">Telefone</p>
+                <p className="text-sm">{tenant.phone || "N/A"}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-muted-foreground">Email</p>
+                <p className="text-sm truncate max-w-[200px]">{tenant.email || "N/A"}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                {getStatusBadge(tenant.status)}
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
-    <Card className="hover:shadow-lg transition-shadow cursor-pointer relative" onClick={onClick}>
-      <CardContent className="p-6 space-y-3">
-        <div className="flex items-center justify-between">
+    <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={onClick}>
+      <CardHeader>
+        <div className="flex items-start justify-between">
           <div className="flex items-center gap-2">
-            <User className="h-4 w-4 text-muted-foreground" />
-            <span className="font-medium text-blue-600 hover:text-blue-700">{tenant.name}</span>
+            <User className="h-5 w-5 text-muted-foreground" />
+            <CardTitle className="text-lg">{tenant.name}</CardTitle>
           </div>
           {getStatusBadge(tenant.status)}
         </div>
-
-        {(tenant.cpf || tenant.cnpj || tenant.document) && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <FileText className="h-4 w-4" />
-            <span>{formatDocument(tenant)}</span>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="space-y-2 text-sm">
+          <div className="flex items-center gap-2">
+            <span className="text-muted-foreground">CPF/CNPJ:</span>
+            <span className="font-medium">{tenant.document}</span>
           </div>
-        )}
-
-        {tenant.rg && tenant.document_type === "cpf" && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <CreditCard className="h-4 w-4" />
-            <span>RG: {tenant.rg}</span>
-          </div>
-        )}
-
-        {tenant.email && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Mail className="h-4 w-4" />
-            <span className="truncate">{tenant.email}</span>
-          </div>
-        )}
-
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Phone className="h-4 w-4" />
-          <span>{tenant.phone}</span>
-        </div>
-
-        <div className="absolute bottom-4 right-4">
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete();
-            }}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          {tenant.phone && (
+            <div className="flex items-center gap-2">
+              <span className="text-muted-foreground">Telefone:</span>
+              <span className="font-medium">{tenant.phone}</span>
+            </div>
+          )}
+          {tenant.email && (
+            <div className="flex items-center gap-2">
+              <span className="text-muted-foreground">Email:</span>
+              <span className="font-medium truncate">{tenant.email}</span>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
