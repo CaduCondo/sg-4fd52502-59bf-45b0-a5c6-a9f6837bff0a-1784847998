@@ -1218,41 +1218,34 @@ export default function Settings() {
             <form onSubmit={handleUserSubmit} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="userName">Nome Completo</Label>
+                  <Label htmlFor="newUserName">Nome Completo</Label>
                   <Input 
-                    id="userName" 
+                    id="newUserName" 
                     value={userFormData.name} 
                     onChange={(e) => setUserFormData({...userFormData, name: e.target.value})}
+                    placeholder="Nome do usuário"
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="userEmail">Email</Label>
+                  <Label htmlFor="newUserEmail">E-mail</Label>
                   <Input 
-                    id="userEmail" 
+                    id="newUserEmail" 
                     type="email" 
                     value={userFormData.email} 
                     onChange={(e) => setUserFormData({...userFormData, email: e.target.value})}
+                    placeholder="email@exemplo.com"
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="userPhone">Telefone</Label>
-                  <Input 
-                    id="userPhone" 
-                    value={userFormData.phone} 
-                    onChange={(e) => setUserFormData({...userFormData, phone: applyPhoneMask(e.target.value)})}
-                  />
-                </div>
-                {/* Campo de Perfil (Role) - Apenas admin pode alterar */}
-                <div className="space-y-2">
-                  <Label htmlFor="role">Perfil</Label>
+                  <Label htmlFor="newUserRole">Perfil</Label>
                   <Select
                     value={userFormData.role}
                     onValueChange={(value) => setUserFormData({ ...userFormData, role: value as SystemUser["role"] })}
                     disabled={currentUser?.role !== "admin"}
                   >
-                    <SelectTrigger id="role">
+                    <SelectTrigger id="newUserRole">
                       <SelectValue placeholder="Selecione o perfil" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1267,29 +1260,17 @@ export default function Settings() {
                     </p>
                   )}
                 </div>
-                {!editingUser && (
-                  <>
-                    <div className="space-y-2">
-                      <Label htmlFor="userUsername">Usuário (Login)</Label>
-                      <Input 
-                        id="userUsername" 
-                        value={userFormData.username} 
-                        onChange={(e) => setUserFormData({...userFormData, username: e.target.value})}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="userPassword">Senha</Label>
-                      <Input 
-                        id="userPassword" 
-                        type="password"
-                        value={userFormData.password} 
-                        onChange={(e) => setUserFormData({...userFormData, password: e.target.value})}
-                        required
-                      />
-                    </div>
-                  </>
-                )}
+                <div className="space-y-2">
+                  <Label htmlFor="newUserPassword">Senha Temporária</Label>
+                  <Input 
+                    id="newUserPassword" 
+                    type="password"
+                    value={userFormData.password} 
+                    onChange={(e) => setUserFormData({...userFormData, password: e.target.value})}
+                    placeholder="Senha de acesso"
+                    required
+                  />
+                </div>
               </div>
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setIsUserDialogOpen(false)}>Cancelar</Button>

@@ -5,16 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Home, Plus, User, Building2, CheckCircle, XCircle, ChevronDown, ChevronUp, Trash2, LayoutGrid, List, Building } from "lucide-react";
-import { getAll as getAllRentals, create as createRental, remove as deleteRental, update as updateRental } from "@/services/rentalService";
+import { Home, Plus, User, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
+import { getAll as getAllRentals, remove as deleteRental } from "@/services/rentalService";
 import { getAll as getAllProperties, update as updateProperty } from "@/services/propertyService";
 import { getAll as getAllTenants, update as updateTenant } from "@/services/tenantService";
 import { getAll as getAllLocations } from "@/services/locationService";
 import { RentalFormDialog } from "@/components/rentals/RentalFormDialog";
 import type { Rental, Property, Tenant, Location } from "@/types";
 import { formatCurrency } from "@/lib/masks";
-import { useRouter } from "next/router";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,7 +25,6 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export default function RentalsPage() {
-  const router = useRouter();
   const { toast } = useToast();
   const [rentals, setRentals] = useState<Rental[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
@@ -70,26 +67,16 @@ export default function RentalsPage() {
     loadData();
   }, []);
 
-  // Filtrar imóveis e inquilinos disponíveis
   const availableProperties = properties.filter((p) => p.status === "available");
   const availableTenants = tenants.filter((t) => t.status === "active");
   const vacantProperties = properties.filter((p) => p.status === "available");
-
-  // Filtrar locações ativas e inativas
   const activeRentals = rentals.filter((r) => r.isActive);
   const inactiveRentals = rentals.filter((r) => !r.isActive);
-
-  // Verificar se pode criar nova locação
   const canCreateRental = availableProperties.length > 0 && availableTenants.length > 0;
 
   const getLocationName = (locationId: string) => {
     const location = locations.find((loc) => loc.id === locationId);
     return location?.name || "Local não encontrado";
-  };
-
-  const getTenantName = (tenantId: string) => {
-    const tenant = tenants.find((t) => t.id === tenantId);
-    return tenant?.name || "Inquilino não encontrado";
   };
 
   const getPropertyByRental = (rental: Rental) => {
@@ -109,12 +96,8 @@ export default function RentalsPage() {
     if (!rentalToDelete) return;
 
     try {
-      // Atualizar status do imóvel para disponível
       await updateProperty(rentalToDelete.propertyId, { status: "available" });
-      
-      // Atualizar status do inquilino para ativo
       await updateTenant(rentalToDelete.tenantId, { status: "active" });
-
       await deleteRental(rentalToDelete.id);
       toast({
         title: "Sucesso!",
@@ -149,7 +132,6 @@ export default function RentalsPage() {
       <SEO title="Locações - Gerenciador de Locações" />
       <Layout>
         <div className="space-y-6">
-          {/* Header com Botão Nova Locação */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
             <div>
               <h1 className="text-4xl font-bold mb-2">Locações</h1>
@@ -163,7 +145,6 @@ export default function RentalsPage() {
             </div>
           </div>
 
-          {/* Blocos Imóveis Vagos e Inquilinos Disponíveis em Linha Única */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <Card className="h-full">
               <CardHeader className="pb-2">
@@ -229,14 +210,10 @@ export default function RentalsPage() {
             </Card>
           </div>
 
-          {/* Active Rentals Section */}
           {activeRentals.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <CheckCircle className="h-5 w-5 text-green-600" />
-                  Locações Ativas
-                </CardTitle>
+                <CardTitle className="text-lg">Locações Ativas</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -253,10 +230,10 @@ export default function RentalsPage() {
                       >
                         <CardContent className="p-4">
                           <div className="flex items-start justify-between mb-3">
-                            <h3 className="text-base font-medium text-blue-600">
+                            <h3 className="text-lg font-semibold text-blue-600">
                               {location?.name || "Local não encontrado"}
                             </h3>
-                            <Badge className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 text-xs font-medium rounded-md">
+                            <Badge className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 text-xs font-medium rounded-lg">
                               Ativa
                             </Badge>
                           </div>
@@ -268,25 +245,25 @@ export default function RentalsPage() {
                           )}
 
                           <div className="mb-3">
-                            <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">Inquilino:</p>
+                            <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Inquilino:</p>
                             <p className="text-sm text-gray-600 dark:text-gray-400">{tenant?.name || "-"}</p>
                           </div>
 
                           <div className="mb-3">
-                            <p className="text-xs text-gray-600 dark:text-gray-400">Valor</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">Valor</p>
                             <p className="text-2xl font-bold text-emerald-600">
                               {formatCurrency(rental.value)}
                             </p>
                           </div>
 
-                          <p className="text-xs text-gray-600 dark:text-gray-400 mb-10">
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-10">
                             Início: {formatDate(rental.startDate)}
                           </p>
 
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="absolute bottom-3 right-3 h-10 w-10 bg-red-500 hover:bg-red-600 text-white rounded-md"
+                            className="absolute bottom-3 right-3 h-10 w-10 bg-red-500 hover:bg-red-600 text-white rounded-lg"
                             onClick={(e) => {
                               e.stopPropagation();
                               setRentalToDelete(rental);
@@ -303,7 +280,6 @@ export default function RentalsPage() {
             </Card>
           )}
 
-          {/* Locações Inativas (Colapsável) */}
           {inactiveRentals.length > 0 && (
             <Card>
               <CardHeader
@@ -325,33 +301,37 @@ export default function RentalsPage() {
 
                       return (
                         <Card key={rental.id} className="opacity-75">
-                          <CardHeader className="pb-3">
-                            <CardTitle className="text-lg text-blue-600">
-                              {location?.name || "Local não encontrado"}
-                            </CardTitle>
+                          <CardContent className="p-4">
+                            <div className="flex items-start justify-between mb-3">
+                              <h3 className="text-lg font-semibold text-blue-600">
+                                {location?.name || "Local não encontrado"}
+                              </h3>
+                              <Badge className="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 text-xs font-medium rounded-lg">
+                                Inativa
+                              </Badge>
+                            </div>
+
                             {property?.complement && (
-                              <p className="text-sm text-muted-foreground">
+                              <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
                                 {property.complement}
                               </p>
                             )}
-                          </CardHeader>
-                          <CardContent className="space-y-2">
-                            <div>
-                              <p className="text-sm font-medium">Inquilino:</p>
-                              <p className="text-sm text-muted-foreground">{tenant?.name || "-"}</p>
+
+                            <div className="mb-3">
+                              <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Inquilino:</p>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">{tenant?.name || "-"}</p>
                             </div>
-                            <div className="flex justify-between items-center pt-2 border-t">
-                              <div>
-                                <p className="text-xs text-muted-foreground">Valor</p>
-                                <p className="font-semibold text-muted-foreground">
-                                  {formatCurrency(rental.value)}
-                                </p>
-                              </div>
-                              <Badge variant="secondary">Inativa</Badge>
+
+                            <div className="mb-3">
+                              <p className="text-sm text-gray-600 dark:text-gray-400">Valor</p>
+                              <p className="text-2xl font-bold text-gray-600">
+                                {formatCurrency(rental.value)}
+                              </p>
                             </div>
-                            <div className="text-xs text-muted-foreground">
+
+                            <p className="text-sm text-gray-600 dark:text-gray-400">
                               Término: {formatDate(rental.endDate)}
-                            </div>
+                            </p>
                           </CardContent>
                         </Card>
                       );
@@ -362,7 +342,6 @@ export default function RentalsPage() {
             </Card>
           )}
 
-          {/* Mensagem quando não há locações */}
           {activeRentals.length === 0 && inactiveRentals.length === 0 && !loading && (
             <Card>
               <CardContent className="text-center py-12">
@@ -371,7 +350,7 @@ export default function RentalsPage() {
                 <p className="text-muted-foreground mb-4">
                   Comece criando sua primeira locação
                 </p>
-                <Button onClick={() => setIsRentalDialogOpen(true)} disabled={!canCreateRental}>
+                <Button onClick={handleCreateNew} disabled={!canCreateRental}>
                   <Plus className="mr-2 h-4 w-4" />
                   Nova Locação
                 </Button>
@@ -385,6 +364,8 @@ export default function RentalsPage() {
           onOpenChange={setIsRentalDialogOpen}
           availableProperties={availableProperties}
           availableTenants={availableTenants}
+          properties={properties} // Passando lista completa
+          tenants={tenants}       // Passando lista completa
           onSuccess={loadData}
           rental={selectedRental}
           isViewMode={isViewMode}

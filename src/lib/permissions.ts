@@ -147,8 +147,8 @@ export const PERMISSIONS: Record<Role, RolePermissions> = {
     canViewTenants: true,
     canViewRentals: true,
     canViewPayments: true,
-    canViewFinancial: false, // ← Não pode ver financeiro
-    canViewSettings: true, // Pode ver settings mas com restrições
+    canViewFinancial: true, // ← Acesso ao módulo financeiro
+    canViewSettings: false,
 
     // Operações de Imóveis
     canCreateProperty: true,
@@ -168,7 +168,7 @@ export const PERMISSIONS: Record<Role, RolePermissions> = {
     // Operações de Pagamentos
     canCreatePayment: true,
     canEditPayment: true,
-    canDeletePayment: true,
+    canDeletePayment: false,
     canMarkAsPaid: true,
 
     // Configurações Gerais

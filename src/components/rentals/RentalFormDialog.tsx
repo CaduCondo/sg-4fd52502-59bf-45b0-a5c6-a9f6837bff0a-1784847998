@@ -22,6 +22,8 @@ interface RentalFormDialogProps {
   onOpenChange: (open: boolean) => void;
   availableProperties: Property[];
   availableTenants: Tenant[];
+  properties?: Property[]; // Nova prop opcional
+  tenants?: Tenant[];      // Nova prop opcional
   onSuccess: () => void;
   rental?: Rental | null;
   isViewMode?: boolean;
@@ -32,6 +34,8 @@ export function RentalFormDialog({
   onOpenChange,
   availableProperties,
   availableTenants,
+  properties = [], // Default para array vazio
+  tenants = [],    // Default para array vazio
   onSuccess,
   rental = null,
   isViewMode = false,
@@ -225,11 +229,20 @@ export function RentalFormDialog({
   };
 
   const getLocationName = (locationId: string) => {
-    const location = locations.find((loc) => loc.id === locationId);
+    const locationsList = locations; // Usar locations do estado local
+    const location = locationsList.find((loc) => loc.id === locationId);
     return location?.name || "Local não encontrado";
   };
 
-  const selectedProperty = availableProperties.find((p) => p.id === selectedPropertyId);
+  // Determinar qual lista de propriedades usar:
+  // Se estiver editando/visualizando, usa a lista completa (para mostrar o imóvel ocupado atual).
+  // Se for nova locação, usa apenas as disponíveis.
+  const propertiesToDisplay = rental ? properties : availableProperties;
+  
+  // O mesmo para inquilinos
+  const tenantsToDisplay = rental ? tenants : availableTenants;
+
+  const selectedProperty = properties.find((p) => p.id === selectedPropertyId);
   
   const calculatedTotal = () => {
     const propertyValue = selectedProperty?.value || 0;
@@ -241,19 +254,25 @@ export function RentalFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Nova Locação</DialogTitle>
+          <DialogTitle>
+            {rental && isViewMode && !isEditing
+              ? "Visualização da Locação"
+              : rental && isEditing
+              ? "Edição da Locação"
+              : "Nova Locação"}
+          </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="property">Imóveis Disponíveis *</Label>
-              <Select value={selectedPropertyId} onValueChange={setSelectedPropertyId} disabled={!isEditing}>
+              <Label htmlFor="property">{rental ? "Imóvel Selecionado" : "Imóveis Disponíveis"} *</Label>
+              <Select value={selectedPropertyId} onValueChange={setSelectedPropertyId} disabled={!isEditing || !!rental}>
                 <SelectTrigger id="property">
                   <SelectValue placeholder="Selecione o imóvel" />
                 </SelectTrigger>
                 <SelectContent>
-                  {availableProperties
+                  {propertiesToDisplay
                     .slice()
                     .sort((a, b) => {
                       const locationA = getLocationName(a.locationId);
@@ -281,13 +300,13 @@ export function RentalFormDialog({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="tenant">Inquilinos Disponíveis *</Label>
-              <Select value={selectedTenantId} onValueChange={setSelectedTenantId} disabled={!isEditing}>
+              <Label htmlFor="tenant">{rental ? "Inquilino Selecionado" : "Inquilinos Disponíveis"} *</Label>
+              <Select value={selectedTenantId} onValueChange={setSelectedTenantId} disabled={!isEditing || !!rental}>
                 <SelectTrigger id="tenant">
                   <SelectValue placeholder="Selecione o inquilino" />
                 </SelectTrigger>
                 <SelectContent>
-                  {availableTenants
+                  {tenantsToDisplay
                     .slice()
                     .sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }))
                     .map((tenant) => (

@@ -38,6 +38,27 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
   const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [isUnlocking, setIsUnlocking] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [formData, setFormData] = useState({
+    name: user?.name || "",
+    email: user?.email || "",
+    phone: user?.phone || "",
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+
+  useEffect(() => {
+    if (user && open) {
+      setFormData({
+        name: user.name || "",
+        email: user.email || "",
+        phone: user.phone || "",
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+    }
+  }, [user, open]);
 
   useEffect(() => {
     if (open && user) {
@@ -175,21 +196,11 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
     }
   };
 
-  const handleInputChange = (field: keyof ExtendedSystemUser, value: string) => {
-    if (!selectedUser) return;
-
-    if (field === "document") {
-      const masked = applyCpfMask(value);
-      setSelectedUser(prev => prev ? { ...prev, document: masked } : null);
-    } else if (field === "phone") {
-      const masked = applyPhoneMask(value);
-      setSelectedUser(prev => prev ? { ...prev, phone: masked } : null);
-    } else if (field === "cep") {
-      const masked = applyCepMask(value);
-      setSelectedUser(prev => prev ? { ...prev, cep: masked } : null);
-    } else {
-      setSelectedUser(prev => prev ? { ...prev, [field]: value } : null);
-    }
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
   const handleRoleChange = (value: string) => {
@@ -250,15 +261,15 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="name" className="flex items-center gap-2">
+                <Label htmlFor="profile-name" className="flex items-center gap-2">
                   <User className="h-4 w-4" />
                   Nome Completo
                 </Label>
                 <Input
-                  id="name"
-                  value={selectedUser.name}
+                  id="profile-name"
+                  value={formData.name}
                   onChange={(e) => handleInputChange("name", e.target.value)}
-                  required
+                  placeholder="Seu nome completo"
                 />
               </div>
 
@@ -277,31 +288,29 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email" className="flex items-center gap-2">
+                <Label htmlFor="profile-email" className="flex items-center gap-2">
                   <Mail className="h-4 w-4" />
                   E-mail
                 </Label>
                 <Input
-                  id="email"
+                  id="profile-email"
                   type="email"
-                  value={selectedUser.email}
+                  value={formData.email}
                   onChange={(e) => handleInputChange("email", e.target.value)}
-                  required
+                  placeholder="seu@email.com"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="phone" className="flex items-center gap-2">
+                <Label htmlFor="profile-phone" className="flex items-center gap-2">
                   <Phone className="h-4 w-4" />
                   Telefone
                 </Label>
                 <Input
-                  id="phone"
-                  value={selectedUser.phone || ""}
-                  onChange={(e) => handleInputChange("phone", e.target.value)}
+                  id="profile-phone"
+                  value={formData.phone}
+                  onChange={(e) => handleInputChange("phone", applyPhoneMask(e.target.value))}
                   placeholder="(00) 00000-0000"
-                  maxLength={15}
-                  required
                 />
               </div>
 
