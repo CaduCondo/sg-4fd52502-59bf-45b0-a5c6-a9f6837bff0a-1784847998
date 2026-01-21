@@ -213,7 +213,38 @@ export async function updateFuturePaymentsOnPaymentDayChange(
   rentalId: string,
   newDay: number
 ): Promise<void> {
-  console.log("Atualização de dia de pagamento em massa ainda não implementada no novo padrão");
+  const today = new Date().toISOString().split('T')[0];
+  
+  // Buscar recebimentos pendentes do mês atual e futuros
+  const { data: payments, error: fetchError } = await supabase
+    .from(TABLE)
+    .select("*")
+    .eq('rental_id', rentalId)
+    .eq('status', 'pending')
+    .gte('due_date', today);
+
+  if (fetchError) throw fetchError;
+  if (!payments || payments.length === 0) return;
+
+  // Atualizar cada recebimento com o novo dia
+  for (const payment of payments) {
+    const currentDueDate = new Date(payment.due_date + 'T00:00:00');
+    const year = currentDueDate.getFullYear();
+    const month = currentDueDate.getMonth();
+    
+    // Criar nova data com o novo dia
+    let newDueDate = new Date(year, month, newDay);
+    
+    // Se o dia for inválido (ex: 31 em fevereiro), usar último dia do mês
+    if (newDueDate.getMonth() !== month) {
+      newDueDate = new Date(year, month + 1, 0);
+    }
+
+    await supabase
+      .from(TABLE)
+      .update({ due_date: newDueDate.toISOString().split('T')[0] })
+      .eq('id', payment.id);
+  }
 }
 
 export async function updateFuturePayments(rentalId: string, newValue: number): Promise<void> {

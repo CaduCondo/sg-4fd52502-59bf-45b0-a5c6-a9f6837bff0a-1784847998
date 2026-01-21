@@ -12,11 +12,11 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { DollarSign, Calendar, Home, User, X, Camera, Paperclip, Eye, Download, Loader2, CheckCircle2 } from "lucide-react";
 import type { Payment, Rental, Property, Tenant, CompanyConfig } from "@/types";
-import { paymentService, rentalService, propertyService, tenantService, configService } from "@/services";
 import { applyRealMask, formatCurrency, parseCurrencyToFloat, formatPercentage } from "@/lib/masks";
-import { PaymentReceipt } from "@/components/PaymentReceipt";
 import { getById as getPaymentById, update as updatePayment } from "@/services/paymentService";
 import { getById as getRentalById } from "@/services/rentalService";
+import { getById as getPropertyById } from "@/services/propertyService";
+import { getById as getTenantById } from "@/services/tenantService";
 import { getConfig } from "@/services/configService";
 import { hasPermission } from "@/lib/permissions";
 import { useAuth } from "@/contexts/AuthContext";
@@ -42,6 +42,8 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
   const [loading, setLoading] = useState(true);
   const [showReceipt, setShowReceipt] = useState(false);
   const [dueDate, setDueDate] = useState<string | null>(null);
+  const [isViewMode, setIsViewMode] = useState(false);
+  const [isEditing, setIsEditing] = useState(true);
 
   const [formData, setFormData] = useState({
     paidAmount: "",
@@ -61,8 +63,8 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
     interestAmount: 0,
     totalAmount: 0,
     daysLate: 0,
-    lateFee: 0, // Mantendo compatibilidade se usado em outro lugar
-    interest: 0, // Mantendo compatibilidade
+    lateFee: 0,
+    interest: 0,
   });
 
   useEffect(() => {
@@ -91,16 +93,16 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
   }, []);
 
   useEffect(() => {
-    if (calculatedValues.totalAmount > 0) {
+    if (calculatedValues.totalAmount > 0 && !isViewMode) {
       setFormData((prev) => ({
         ...prev,
         paidAmount: applyRealMask((calculatedValues.totalAmount * 100).toString()),
       }));
     }
-  }, [calculatedValues.totalAmount, waiveLateFees]);
+  }, [calculatedValues.totalAmount, waiveLateFees, isViewMode]);
 
   const loadConfig = async () => {
-    const data = await configService.getConfig();
+    const data = await getConfig();
     setConfig(data);
   };
 
@@ -109,16 +111,39 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
       setLoading(true);
       const paymentData = await getPaymentById(id);
       const rentalData = await getRentalById(paymentData.rentalId);
+      const propertyData = await getPropertyById(rentalData.propertyId);
+      const tenantData = await getTenantById(rentalData.tenantId);
 
       setPayment(paymentData);
       setRental(rentalData);
+      setProperty(propertyData);
+      setTenant(tenantData);
       setDueDate(paymentData.dueDate);
       
-      // Inicializar formData com anexos existentes se houver
-      setFormData(prev => ({
-        ...prev,
-        attachments: paymentData.attachments || []
-      }));
+      if (paymentData.status === "paid") {
+        setIsViewMode(true);
+        setIsEditing(false);
+        setFormData({
+          paidAmount: applyRealMask((paymentData.paidAmount * 100).toString()),
+          paymentDate: paymentData.paymentDate || "",
+          paymentMethod: paymentData.paymentMethod || "",
+          paymentLocation: paymentData.paymentLocation || "",
+          paymentCode: paymentData.paymentCode || "",
+          notes: paymentData.notes || "",
+          attachments: paymentData.attachments || []
+        });
+      } else {
+        const today = new Date().toISOString().split('T')[0];
+        setFormData({
+          paidAmount: "",
+          paymentDate: today,
+          paymentMethod: "pix",
+          paymentLocation: "",
+          paymentCode: "",
+          notes: "",
+          attachments: paymentData.attachments || []
+        });
+      }
     } catch (error) {
       console.error("Error loading data:", error);
       toast({
@@ -154,14 +179,12 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
     const diffTime = paymentDateObj.getTime() - dueDateObj.getTime();
     const daysLate = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
 
-    // Usar configurações carregadas
     const penaltyRate = (config.late_fee_percentage || 2) / 100;
     const interestRate = (config.interest_rate_percentage || 0.033) / 100;
 
     const penaltyAmount = daysLate > 0 ? expectedAmount * penaltyRate : 0;
     const interestAmount = daysLate > 0 ? expectedAmount * interestRate * daysLate : 0;
     
-    // Se waiveLateFees estiver marcado, zera multas e juros
     const finalPenalty = waiveLateFees ? 0 : penaltyAmount;
     const finalInterest = waiveLateFees ? 0 : interestAmount;
     
@@ -261,20 +284,14 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
         attachments: formData.attachments,
       };
 
-      const savedPayment = await updatePayment(payment.id, updatedPayment);
-      
-      setPayment(savedPayment);
+      await updatePayment(payment.id, updatedPayment);
 
       toast({
         title: "Sucesso",
         description: "Recebimento registrado com sucesso!",
       });
 
-      if (status === "paid" || status === "partial") {
-        setShowReceipt(true);
-      } else {
-        handleBack();
-      }
+      handleBack();
 
     } catch (error) {
       console.error("Error updating payment:", error);
@@ -292,11 +309,6 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
     } else {
       router.push("/payments");
     }
-  };
-  
-  const handleReceiptClose = () => {
-    setShowReceipt(false);
-    handleBack();
   };
 
   if (loading) {
@@ -327,7 +339,7 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
     );
   }
 
-  if (!hasPermission(user?.role, "canEditPayment")) {
+  if (!hasPermission(user?.role, "canEditPayment") && !isViewMode) {
     return embedded ? (
       <div className="p-8 text-center">
         <p className="text-muted-foreground">Você não tem permissão para editar recebimentos.</p>
@@ -344,12 +356,12 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
   const content = (
     <div className="space-y-3 p-4">
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-bold">Registrar Recebimento</h1>
+        <h1 className="text-2xl font-bold">
+          {isViewMode && !isEditing ? "Visualização do Recebimento" : "Registrar Recebimento"}
+        </h1>
       </div>
 
-      {/* Primeira linha: Informações do Recebimento + Composição de Valores */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-        {/* Bloco 1: Informações do Recebimento */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Informações do Recebimento</CardTitle>
@@ -380,7 +392,6 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
           </CardContent>
         </Card>
 
-        {/* Bloco 2: Composição de Valores */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Composição de Valores</CardTitle>
@@ -392,23 +403,20 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
             </div>
             {calculatedValues.daysLate > 0 && (
               <>
-                <div className="flex justify-between text-orange-600">
+                <div className={`flex justify-between ${waiveLateFees ? 'line-through text-gray-400' : 'text-orange-600'}`}>
                   <span>Multa ({config?.late_fee_percentage || 0}%):</span>
                   <span className="font-medium">{formatCurrency(calculatedValues.lateFee)}</span>
                 </div>
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-emerald-900 dark:text-emerald-100">
-                    Juros ({config?.interest_rate_percentage || "0.033"}%/dia x {calculatedValues.daysLate} dias):
-                  </span>
-                  <span className="font-semibold text-emerald-700 dark:text-emerald-300">
-                    {formatCurrency(calculatedValues.interestAmount)}
-                  </span>
+                <div className={`flex justify-between ${waiveLateFees ? 'line-through text-gray-400' : 'text-red-600'}`}>
+                  <span>Juros ({config?.interest_rate_percentage || "0.033"}%/dia × {calculatedValues.daysLate} dias):</span>
+                  <span className="font-medium">{formatCurrency(calculatedValues.interestAmount)}</span>
                 </div>
                 <div className="flex items-center space-x-2 pt-2">
                   <Checkbox
                     id="waive-fees"
                     checked={waiveLateFees}
                     onCheckedChange={(checked) => setWaiveLateFees(checked as boolean)}
+                    disabled={!isEditing}
                   />
                   <label
                     htmlFor="waive-fees"
@@ -427,7 +435,6 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
         </Card>
       </div>
 
-      {/* Segunda linha: Dados do Recebimento (formulário) - ABAIXO dos outros blocos */}
       <div className="w-full">
         <Card>
           <CardHeader className="pb-3">
@@ -448,6 +455,7 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
                       setFormData({ ...formData, paymentDate: e.target.value })
                     }
                     required
+                    disabled={!isEditing}
                     className="h-8 text-sm"
                   />
                 </div>
@@ -467,6 +475,7 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
                     }
                     required
                     placeholder="R$ 0,00"
+                    disabled={!isEditing}
                     className="h-8 text-sm"
                   />
                 </div>
@@ -474,7 +483,11 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
                   <Label htmlFor="paymentMethod" className="text-xs">
                     Método de Pagamento
                   </Label>
-                  <Select value={formData.paymentMethod} onValueChange={(value) => setFormData({ ...formData, paymentMethod: value })}>
+                  <Select 
+                    value={formData.paymentMethod} 
+                    onValueChange={(value) => setFormData({ ...formData, paymentMethod: value })}
+                    disabled={!isEditing}
+                  >
                     <SelectTrigger className="h-9 text-sm">
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
@@ -499,42 +512,68 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
                   }
                   placeholder="Observações adicionais sobre o pagamento..."
                   rows={3}
+                  disabled={!isEditing}
                   className="resize-none text-sm"
                 />
               </div>
 
-              <div className="space-y-1">
-                <Label htmlFor="attachments" className="text-xs">Comprovante / Anexos</Label>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => document.getElementById("paymentFileUpload")?.click()}
-                  >
-                    <Paperclip className="mr-2 h-4 w-4" />
-                    Anexar Arquivo
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => document.getElementById("paymentCameraCapture")?.click()}
-                  >
-                    <Camera className="mr-2 h-4 w-4" />
-                    Tirar Foto
-                  </Button>
-                </div>
-                <input
-                  id="paymentFileUpload"
-                  type="file"
-                  accept="image/*,.pdf"
-                  multiple
-                  className="hidden"
-                  onChange={(e) => {
-                    const files = e.target.files;
-                    if (files && files.length > 0) {
-                      Array.from(files).forEach(file => {
+              {isEditing && (
+                <div className="space-y-1">
+                  <Label htmlFor="attachments" className="text-xs">Comprovante / Anexos</Label>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => document.getElementById("paymentFileUpload")?.click()}
+                    >
+                      <Paperclip className="mr-2 h-4 w-4" />
+                      Anexar Arquivo
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => document.getElementById("paymentCameraCapture")?.click()}
+                    >
+                      <Camera className="mr-2 h-4 w-4" />
+                      Tirar Foto
+                    </Button>
+                  </div>
+                  <input
+                    id="paymentFileUpload"
+                    type="file"
+                    accept="image/*,.pdf"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => {
+                      const files = e.target.files;
+                      if (files && files.length > 0) {
+                        Array.from(files).forEach(file => {
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            if (reader.result) {
+                              setFormData(prev => ({
+                                ...prev,
+                                attachments: [...prev.attachments, reader.result as string]
+                              }));
+                            }
+                          };
+                          reader.readAsDataURL(file);
+                        });
+                      }
+                    }}
+                  />
+                  <input
+                    id="paymentCameraCapture"
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="hidden"
+                    onChange={(e) => {
+                      const files = e.target.files;
+                      if (files && files.length > 0) {
+                        const file = files[0];
                         const reader = new FileReader();
                         reader.onloadend = () => {
                           if (reader.result) {
@@ -545,48 +584,68 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
                           }
                         };
                         reader.readAsDataURL(file);
-                      });
-                    }
-                  }}
-                />
-                <input
-                  id="paymentCameraCapture"
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  className="hidden"
-                  onChange={(e) => {
-                    const files = e.target.files;
-                    if (files && files.length > 0) {
-                      const file = files[0];
-                      const reader = new FileReader();
-                      reader.onloadend = () => {
-                        if (reader.result) {
-                          setFormData(prev => ({
-                            ...prev,
-                            attachments: [...prev.attachments, reader.result as string]
-                          }));
-                        }
-                      };
-                      reader.readAsDataURL(file);
-                    }
-                  }}
-                />
-              </div>
+                      }
+                    }}
+                  />
+                </div>
+              )}
 
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Processando...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="w-4 h-4 mr-2" />
-                    Confirmar Recebimento
-                  </>
-                )}
-              </Button>
+              {formData.attachments.length > 0 && (
+                <div className="space-y-2">
+                  {formData.attachments.map((attachment, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-3 bg-muted rounded-lg"
+                    >
+                      <span className="text-sm truncate flex-1">Arquivo {index + 1}</span>
+                      {isEditing && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeAttachment(index)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {isViewMode && !isEditing ? (
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleBack}
+                    className="flex-1"
+                  >
+                    Fechar
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={() => setIsEditing(true)}
+                    className="flex-1"
+                  >
+                    Editar
+                  </Button>
+                </div>
+              ) : (
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Processando...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-4 h-4 mr-2" />
+                      Confirmar Recebimento
+                    </>
+                  )}
+                </Button>
+              )}
             </form>
           </CardContent>
         </Card>

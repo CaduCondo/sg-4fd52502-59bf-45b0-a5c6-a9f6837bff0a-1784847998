@@ -12,10 +12,13 @@ import { create as createRental } from "@/services/rentalService";
 import { update as updateProperty } from "@/services/propertyService";
 import { update as updateTenant } from "@/services/tenantService";
 import { getAll as getAllLocations } from "@/services/locationService";
-import { createPaymentsForRental } from "@/services/paymentService";
+import { 
+  createPaymentsForRental, 
+  updateFuturePayments, 
+  updateFuturePaymentsOnPaymentDayChange 
+} from "@/services/paymentService";
 import type { Property, Tenant, Location, Rental } from "@/types";
 import { update as updateRentalService } from "@/services/rentalService";
-import { updateFuturePayments } from "@/services/paymentService";
 
 interface RentalFormDialogProps {
   open: boolean;
@@ -62,14 +65,18 @@ export function RentalFormDialog({
     setIsEditing(!isViewMode);
     
     if (rental) {
-      setSelectedPropertyId(rental.propertyId || "");
-      setSelectedTenantId(rental.tenantId || "");
-      setStartDate(rental.startDate || "");
-      setEndDate(rental.endDate || "");
-      setPaymentDay(rental.paymentDay?.toString() || "");
-      setHasGarage(rental.hasGarage || false);
-      setGarageValue(rental.garageValue ? formatCurrency(rental.garageValue) : "");
-      setAttachments(rental.contractAttachments || rental.attachments || []);
+      setSelectedPropertyId(rental.propertyId || rental.property_id || "");
+      setSelectedTenantId(rental.tenantId || rental.tenant_id || "");
+      setStartDate(rental.startDate || rental.start_date || "");
+      setEndDate(rental.endDate || rental.end_date || "");
+      setPaymentDay(rental.paymentDay?.toString() || rental.payment_day?.toString() || "");
+      setHasGarage(rental.hasGarage || rental.has_garage || false);
+      setGarageValue(
+        rental.garageValue || rental.garage_value 
+          ? formatCurrency(rental.garageValue || rental.garage_value) 
+          : ""
+      );
+      setAttachments(rental.contractAttachments || rental.contract_attachments || rental.attachments || []);
     } else {
       resetForm();
     }
@@ -197,6 +204,10 @@ export function RentalFormDialog({
       if (rental) {
         await updateRentalService(rental.id, rentalData);
         await updateFuturePayments(rental.id, totalValue);
+        
+        if (rental.paymentDay !== parseInt(paymentDay) || rental.payment_day !== parseInt(paymentDay)) {
+          await updateFuturePaymentsOnPaymentDayChange(rental.id, parseInt(paymentDay));
+        }
 
         toast({
           title: "Sucesso!",
@@ -254,6 +265,7 @@ export function RentalFormDialog({
   // O mesmo para inquilinos
   const tenantsToDisplay = rental ? tenants : availableTenants;
 
+  // IMPORTANTE: Sempre buscar na lista completa de propriedades para garantir que encontre mesmo se ocupada
   const selectedProperty = properties.find((p) => p.id === selectedPropertyId);
   
   const calculatedTotal = () => {

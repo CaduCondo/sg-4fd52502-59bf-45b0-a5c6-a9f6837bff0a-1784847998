@@ -225,7 +225,7 @@ export default function RentalsPage() {
                     return (
                       <Card
                         key={rental.id}
-                        className="hover:shadow-lg transition-shadow cursor-pointer relative"
+                        className="hover:shadow-lg transition-shadow cursor-pointer"
                         onClick={() => handleViewRental(rental)}
                       >
                         <CardContent className="p-4">
@@ -249,28 +249,28 @@ export default function RentalsPage() {
                             <p className="text-sm text-gray-600 dark:text-gray-400">{tenant?.name || "-"}</p>
                           </div>
 
-                          <div className="mb-3">
-                            <p className="text-sm text-gray-600 dark:text-gray-400">Valor</p>
-                            <p className="text-2xl font-bold text-emerald-600">
-                              {formatCurrency(rental.value)}
-                            </p>
+                          <div className="flex items-end justify-between">
+                            <div>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">Valor</p>
+                              <p className="text-2xl font-bold text-emerald-600">
+                                {formatCurrency(rental.value)}
+                              </p>
+                              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                Início: {formatDate(rental.startDate)}
+                              </p>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-10 w-10 bg-red-500 hover:bg-red-600 text-white rounded-md"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setRentalToDelete(rental);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
-
-                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-10">
-                            Início: {formatDate(rental.startDate)}
-                          </p>
-
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="absolute bottom-3 right-3 h-10 w-10 bg-red-500 hover:bg-red-600 text-white rounded-md"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setRentalToDelete(rental);
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
                         </CardContent>
                       </Card>
                     );
