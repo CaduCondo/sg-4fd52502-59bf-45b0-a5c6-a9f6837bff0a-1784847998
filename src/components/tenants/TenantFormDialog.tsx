@@ -46,37 +46,43 @@ export function TenantFormDialog({
   const [documentType, setDocumentType] = React.useState<"cpf" | "cnpj">("cpf");
 
   useEffect(() => {
-    // Sempre que abrir ou mudar o tenant, reseta o modo de edição baseado no isViewMode
-    setIsEditing(!isViewMode);
-    
-    if (tenant) {
-      setFormData({
-        ...tenant,
-        documentType: tenant.document_type || tenant.documentType || "cpf",
-        // Garantir que cpf/cnpj estejam preenchidos se document existir
-        cpf: tenant.cpf || (tenant.document_type === "cpf" ? tenant.document : ""),
-        cnpj: tenant.cnpj || (tenant.document_type === "cnpj" ? tenant.document : ""),
-      });
-      setDocumentType(tenant.document_type || tenant.documentType || "cpf");
-    } else {
-      setFormData({
-        name: "",
-        email: "",
-        phone: "",
-        documentType: "cpf",
-        document: "",
-        cpf: "",
-        cnpj: "",
-        rg: "",
-        status: "active",
-      });
-      setDocumentType("cpf");
-    }
-  }, [tenant, open, isViewMode]);
+    // Quando abrir o diálogo ou mudar o tenant, configuramos o formulário,
+    // mas só definimos isEditing com base em isViewMode na abertura.
+    if (open) {
+      setIsEditing(!isViewMode);
 
-  const handleInputChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-  };
+      if (tenant) {
+        const docType = tenant.document_type || tenant.documentType || "cpf";
+        setFormData({
+          name: tenant.name || "",
+          email: tenant.email || "",
+          phone: tenant.phone || "",
+          documentType: docType,
+          document: tenant.document || "",
+          cpf: tenant.cpf || (docType === "cpf" ? tenant.document : "") || "",
+          cnpj: tenant.cnpj || (docType === "cnpj" ? tenant.document : "") || "",
+          rg: tenant.rg || "",
+          status: tenant.status || "active",
+          notes: tenant.notes || "",
+        });
+        setDocumentType(docType);
+      } else {
+        setFormData({
+          name: "",
+          email: "",
+          phone: "",
+          documentType: "cpf",
+          document: "",
+          cpf: "",
+          cnpj: "",
+          rg: "",
+          status: "active",
+          notes: "",
+        });
+        setDocumentType("cpf");
+      }
+    }
+  }, [open, tenant, isViewMode]);
 
   const handleDocumentTypeChange = (type: "cpf" | "cnpj") => {
     setDocumentType(type);
@@ -93,24 +99,27 @@ export function TenantFormDialog({
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const masked = applyPhoneMask(e.target.value);
-    handleInputChange("phone", masked);
+    setFormData((prev) => ({ ...prev, phone: masked }));
   };
 
   const handleCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const masked = applyCpfMask(e.target.value);
-    handleInputChange("cpf", masked);
-    handleInputChange("document", masked);
+    setFormData((prev) => ({ ...prev, cpf: masked, document: masked }));
   };
 
   const handleCnpjChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const masked = applyCnpjMask(e.target.value);
-    handleInputChange("cnpj", masked);
-    handleInputChange("document", masked);
+    setFormData((prev) => ({ ...prev, cnpj: masked, document: masked }));
   };
 
   const handleRgChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const masked = applyRgMask(e.target.value);
-    handleInputChange("rg", masked);
+    setFormData((prev) => ({ ...prev, rg: masked }));
+  };
+
+  const toggleEdit = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsEditing(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -120,17 +129,17 @@ export function TenantFormDialog({
       name: formData.name,
       email: formData.email,
       phone: formData.phone,
-      documentType: documentType, // Will be transformed to document_type by service
+      documentType: documentType,
       status: "active",
     };
 
     if (documentType === "cpf") {
-      dataToSave.document = formData.cpf; // Store CPF in document field
-      dataToSave.cpf = formData.cpf; // Also populate cpf field (legacy)
+      dataToSave.document = formData.cpf;
+      dataToSave.cpf = formData.cpf;
       dataToSave.rg = formData.rg;
     } else {
-      dataToSave.document = formData.cnpj; // Store CNPJ in document field
-      dataToSave.cnpj = formData.cnpj; // Also populate cnpj field
+      dataToSave.document = formData.cnpj;
+      dataToSave.cnpj = formData.cnpj;
     }
 
     const success = await onSave(dataToSave);
@@ -139,16 +148,17 @@ export function TenantFormDialog({
     }
   };
 
-  const toggleEdit = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setIsEditing(true);
-  };
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{tenant ? "Editar Inquilino" : "Novo Inquilino"}</DialogTitle>
+          <DialogTitle>
+            {tenant && isViewMode && !isEditing
+              ? "Visualização do Inquilino"
+              : tenant && isEditing
+              ? "Editar Inquilino"
+              : "Novo Inquilino"}
+          </DialogTitle>
           <DialogDescription>
             {tenant ? "Atualize as informações do inquilino" : "Preencha os dados do novo inquilino"}
           </DialogDescription>
@@ -187,7 +197,7 @@ export function TenantFormDialog({
               <Input
                 id="phone"
                 value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: applyPhoneMask(e.target.value) })}
+                onChange={handlePhoneChange}
                 placeholder="(00) 00000-0000"
                 required
                 disabled={!isEditing}

@@ -233,7 +233,7 @@ export default function RentalsPage() {
                             <h3 className="text-lg font-semibold text-blue-600">
                               {location?.name || "Local não encontrado"}
                             </h3>
-                            <Badge className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 text-xs font-medium rounded-lg">
+                            <Badge className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 text-xs font-medium rounded-md">
                               Ativa
                             </Badge>
                           </div>
@@ -263,7 +263,7 @@ export default function RentalsPage() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="absolute bottom-3 right-3 h-10 w-10 bg-red-500 hover:bg-red-600 text-white rounded-lg"
+                            className="absolute bottom-3 right-3 h-10 w-10 bg-red-500 hover:bg-red-600 text-white rounded-md"
                             onClick={(e) => {
                               e.stopPropagation();
                               setRentalToDelete(rental);
@@ -306,7 +306,7 @@ export default function RentalsPage() {
                               <h3 className="text-lg font-semibold text-blue-600">
                                 {location?.name || "Local não encontrado"}
                               </h3>
-                              <Badge className="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 text-xs font-medium rounded-lg">
+                              <Badge className="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 text-xs font-medium rounded-md">
                                 Inativa
                               </Badge>
                             </div>
@@ -364,8 +364,8 @@ export default function RentalsPage() {
           onOpenChange={setIsRentalDialogOpen}
           availableProperties={availableProperties}
           availableTenants={availableTenants}
-          properties={properties} // Passando lista completa
-          tenants={tenants}       // Passando lista completa
+          properties={properties}
+          tenants={tenants}
           onSuccess={loadData}
           rental={selectedRental}
           isViewMode={isViewMode}

@@ -1,166 +1,150 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { tenantService } from "@/services";
-import { locationService } from "@/services";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Tenant, Location } from "@/types";
+import {
+  getAll as getAllTenants,
+  create as createTenant,
+  update as updateTenant,
+  remove as deleteTenant,
+} from "@/services/tenantService";
+import { getAll as getAllLocations } from "@/services/locationService";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/contexts/AuthContext";
 
 export function useTenants() {
   const { toast } = useToast();
-  const { user } = useAuth();
-
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<"alphabetical" | "recent">("alphabetical");
 
   const loadData = useCallback(async () => {
-    if (!user) {
-      setTenants([]);
-      setLocations([]);
-      setIsLoading(false);
-      return;
-    }
-
-    setIsLoading(true);
     try {
+      setIsLoading(true);
       const [tenantsData, locationsData] = await Promise.all([
-        tenantService.getAll(),
-        locationService.getAll(),
+        getAllTenants(),
+        getAllLocations(),
       ]);
-
-      setTenants(tenantsData || []);
-      setLocations(locationsData || []);
+      setTenants(tenantsData);
+      setLocations(locationsData);
     } catch (error) {
-      console.error("Error loading data:", error);
+      console.error("Error loading tenants:", error);
       toast({
-        title: "Erro ao carregar dados",
+        title: "Erro",
         description: "Não foi possível carregar os inquilinos.",
         variant: "destructive",
       });
     } finally {
       setIsLoading(false);
     }
-  }, [user, toast]);
+  }, [toast]);
 
   useEffect(() => {
-    if (user) {
-      loadData();
-    }
-  }, [user?.id]); // Fixed: only depend on user.id (primitive value), not user object or toast
+    // loadData é memorizado por useCallback, então este efeito não causa loops
+    loadData();
+  }, [loadData]);
 
-  const filteredAndSortedTenants = useMemo(() => {
-    let filtered = tenants;
+  const handleLocationToggle = useCallback((locationId: string) => {
+    setSelectedLocations((prev) =>
+      prev.includes(locationId) ? prev.filter((id) => id !== locationId) : [...prev, locationId],
+    );
+  }, []);
 
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(
-        (tenant) =>
-          tenant.name.toLowerCase().includes(term) ||
-          tenant.email?.toLowerCase().includes(term) ||
-          tenant.phone?.toLowerCase().includes(term) ||
-          tenant.cpf?.toLowerCase().includes(term) ||
-          tenant.cnpj?.toLowerCase().includes(term) ||
-          tenant.rg?.toLowerCase().includes(term)
-      );
-    }
-
-    if (statusFilter !== "all") {
-      filtered = filtered.filter((tenant) => tenant.status === statusFilter);
-    }
-
-    if (selectedLocations.length > 0) {
-      filtered = filtered.filter((tenant) =>
-        selectedLocations.includes(tenant.location_id || "")
-      );
-    }
-
-    const sorted = [...filtered].sort((a, b) => {
-      if (sortBy === "alphabetical") {
-        return a.name.localeCompare(b.name);
-      } else {
-        const dateA = a.created_at || a.createdAt || "";
-        const dateB = b.created_at || b.createdAt || "";
-        return new Date(dateB).getTime() - new Date(dateA).getTime();
+  const createTenantHandler = useCallback(
+    async (data: Partial<Tenant>) => {
+      try {
+        await createTenant(data);
+        toast({
+          title: "Sucesso!",
+          description: "Inquilino criado com sucesso.",
+        });
+        await loadData();
+        return true;
+      } catch (error) {
+        console.error("Error creating tenant:", error);
+        toast({
+          title: "Erro",
+          description: "Não foi possível criar o inquilino.",
+          variant: "destructive",
+        });
+        return false;
       }
+    },
+    [toast, loadData],
+  );
+
+  const updateTenantHandler = useCallback(
+    async (id: string, data: Partial<Tenant>) => {
+      try {
+        await updateTenant(id, data);
+        toast({
+          title: "Sucesso!",
+          description: "Inquilino atualizado com sucesso.",
+        });
+        await loadData();
+        return true;
+      } catch (error) {
+        console.error("Error updating tenant:", error);
+        toast({
+          title: "Erro",
+          description: "Não foi possível atualizar o inquilino.",
+          variant: "destructive",
+        });
+        return false;
+      }
+    },
+    [toast, loadData],
+  );
+
+  const deleteTenantHandler = useCallback(
+    async (id: string) => {
+      try {
+        await deleteTenant(id);
+        toast({
+          title: "Sucesso!",
+          description: "Inquilino removido com sucesso.",
+        });
+        await loadData();
+      } catch (error) {
+        console.error("Error deleting tenant:", error);
+        toast({
+          title: "Erro",
+          description: "Não foi possível remover o inquilino.",
+          variant: "destructive",
+        });
+      }
+    },
+    [toast, loadData],
+  );
+
+  const filteredTenants = useMemo(() => {
+    const list = tenants.filter((tenant) => {
+      const term = searchTerm.toLowerCase();
+      const matchesSearch =
+        tenant.name?.toLowerCase().includes(term) ||
+        tenant.email?.toLowerCase().includes(term) ||
+        tenant.document?.includes(searchTerm);
+
+      const matchesStatus = statusFilter === "all" || tenant.status === statusFilter;
+
+      const matchesLocation =
+        selectedLocations.length === 0 ||
+        (tenant.location_id ? selectedLocations.includes(tenant.location_id) : false);
+
+      return matchesSearch && matchesStatus && matchesLocation;
     });
 
-    return sorted;
+    if (sortBy === "alphabetical") {
+      return [...list].sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    return list;
   }, [tenants, searchTerm, statusFilter, selectedLocations, sortBy]);
 
-  const createTenant = async (data: Partial<Tenant>) => {
-    try {
-      await tenantService.create(data);
-      toast({
-        title: "Inquilino criado",
-        description: "O inquilino foi criado com sucesso.",
-      });
-      await loadData();
-      return true;
-    } catch (error) {
-      console.error("Error creating tenant:", error);
-      toast({
-        title: "Erro ao criar inquilino",
-        description: "Não foi possível criar o inquilino.",
-        variant: "destructive",
-      });
-      return false;
-    }
-  };
-
-  const updateTenant = async (id: string, data: Partial<Tenant>) => {
-    try {
-      await tenantService.update(id, data);
-      toast({
-        title: "Inquilino atualizado",
-        description: "O inquilino foi atualizado com sucesso.",
-      });
-      await loadData();
-      return true;
-    } catch (error) {
-      console.error("Error updating tenant:", error);
-      toast({
-        title: "Erro ao atualizar inquilino",
-        description: "Não foi possível atualizar o inquilino.",
-        variant: "destructive",
-      });
-      return false;
-    }
-  };
-
-  const deleteTenant = async (id: string) => {
-    try {
-      await tenantService.deleteTenant(id);
-      toast({
-        title: "Inquilino excluído",
-        description: "O inquilino foi excluído com sucesso.",
-      });
-      await loadData();
-      return true;
-    } catch (error) {
-      console.error("Error deleting tenant:", error);
-      toast({
-        title: "Erro ao excluir inquilino",
-        description: "Não foi possível excluir o inquilino.",
-        variant: "destructive",
-      });
-      return false;
-    }
-  };
-
-  const handleLocationToggle = (locationId: string) => {
-    setSelectedLocations((prev) =>
-      prev.includes(locationId)
-        ? prev.filter((id) => id !== locationId)
-        : [...prev, locationId]
-    );
-  };
-
   return {
-    tenants: filteredAndSortedTenants,
+    tenants: filteredTenants,
     locations,
     isLoading,
     searchTerm,
@@ -171,9 +155,8 @@ export function useTenants() {
     handleLocationToggle,
     sortBy,
     setSortBy,
-    loadData,
-    createTenant,
-    updateTenant,
-    deleteTenant,
+    createTenant: createTenantHandler,
+    updateTenant: updateTenantHandler,
+    deleteTenant: deleteTenantHandler,
   };
 }

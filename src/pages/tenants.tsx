@@ -147,8 +147,8 @@ export default function TenantsPage() {
           onSearchChange={setSearchTerm}
           statusFilter={statusFilter}
           onStatusFilterChange={setStatusFilter}
-          sortBy={sortBy}
-          onSortChange={setSortBy}
+          sortBy={sortBy as "alphabetical" | "recent"} // Cast explícito ou garantir tipagem compatível
+          onSortChange={(value) => setSortBy(value as "alphabetical" | "recent")}
         />
 
         {tenants.length === 0 ? (

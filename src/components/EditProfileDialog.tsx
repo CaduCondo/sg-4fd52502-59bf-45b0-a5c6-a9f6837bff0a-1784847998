@@ -197,10 +197,8 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
   };
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
+    if (!selectedUser) return;
+    setSelectedUser(prev => prev ? { ...prev, [field]: value } : null);
   };
 
   const handleRoleChange = (value: string) => {
@@ -267,7 +265,7 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
                 </Label>
                 <Input
                   id="profile-name"
-                  value={formData.name}
+                  value={selectedUser?.name || ""}
                   onChange={(e) => handleInputChange("name", e.target.value)}
                   placeholder="Seu nome completo"
                 />
@@ -280,8 +278,8 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
                 </Label>
                 <Input
                   id="document"
-                  value={selectedUser.document || ""}
-                  onChange={(e) => handleInputChange("document", e.target.value)}
+                  value={selectedUser?.document || ""}
+                  onChange={(e) => handleInputChange("document", applyCpfMask(e.target.value))}
                   placeholder="000.000.000-00"
                   maxLength={14}
                 />
@@ -295,7 +293,7 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
                 <Input
                   id="profile-email"
                   type="email"
-                  value={formData.email}
+                  value={selectedUser?.email || ""}
                   onChange={(e) => handleInputChange("email", e.target.value)}
                   placeholder="seu@email.com"
                 />
@@ -308,7 +306,7 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
                 </Label>
                 <Input
                   id="profile-phone"
-                  value={formData.phone}
+                  value={selectedUser?.phone || ""}
                   onChange={(e) => handleInputChange("phone", applyPhoneMask(e.target.value))}
                   placeholder="(00) 00000-0000"
                 />

@@ -156,14 +156,28 @@ export function RentalFormDialog({
     try {
       setLoading(true);
 
-      const selectedProperty = availableProperties.find((p) => p.id === selectedPropertyId);
+      // Sempre usar a lista completa de propriedades (properties) para encontrar o imóvel,
+      // pois availableProperties não inclui os imóveis já alugados.
+      const selectedProperty = properties.find((p) => p.id === selectedPropertyId);
       if (!selectedProperty) {
         throw new Error("Imóvel não encontrado");
       }
 
       const propertyValue = selectedProperty.value || 0;
-      const garageValueNum = hasGarage ? parseFloat(garageValue.replace(/\./g, "").replace(",", ".") || "0") : 0;
+      const garageValueNum = hasGarage
+        ? parseFloat(garageValue.replace(/\./g, "").replace(",", ".") || "0")
+        : 0;
       const totalValue = propertyValue + garageValueNum;
+
+      if (!totalValue || totalValue <= 0) {
+        toast({
+          title: "Erro",
+          description: "O valor total da locação deve ser maior que zero.",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
 
       const rentalData = {
         property_id: selectedPropertyId,
@@ -172,7 +186,7 @@ export function RentalFormDialog({
         end_date: endDate || null,
         payment_day: parseInt(paymentDay),
         monthly_rent: propertyValue,
-        value: totalValue,
+        value: totalValue, // campo NOT NULL sempre preenchido
         has_garage: hasGarage,
         garage_value: hasGarage ? garageValueNum : null,
         is_active: true,
@@ -181,10 +195,7 @@ export function RentalFormDialog({
       };
 
       if (rental) {
-        // Atualizar locação existente
         await updateRentalService(rental.id, rentalData);
-        
-        // Atualizar recebimentos futuros
         await updateFuturePayments(rental.id, totalValue);
 
         toast({
@@ -192,15 +203,14 @@ export function RentalFormDialog({
           description: "Locação atualizada com sucesso.",
         });
       } else {
-        // Criar nova locação
         const createdRental = await createRental(rentalData);
         await updateProperty(selectedPropertyId, { status: "occupied" });
-        
-        const tenant = availableTenants.find(t => t.id === selectedTenantId);
+
+        const tenant = availableTenants.find((t) => t.id === selectedTenantId);
         if (tenant) {
-          await updateTenant(selectedTenantId, { 
+          await updateTenant(selectedTenantId, {
             ...tenant,
-            status: "rented" 
+            status: "rented",
           });
         }
 
@@ -220,7 +230,9 @@ export function RentalFormDialog({
       console.error("Error saving rental:", error);
       toast({
         title: "Erro",
-        description: rental ? "Não foi possível atualizar a locação." : "Não foi possível criar a locação.",
+        description: rental
+          ? "Não foi possível atualizar a locação."
+          : "Não foi possível criar a locação.",
         variant: "destructive",
       });
     } finally {
