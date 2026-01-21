@@ -111,10 +111,6 @@ export interface Tenant {
   created_at?: string;
   updatedAt?: string;
   updated_at?: string;
-  active: boolean;
-  // Campos opcionais para UI/Formulário
-  address?: string;
-  notes?: string;
 }
 
 export interface Rental {
@@ -208,4 +204,3 @@ export interface Location {
 }
 
 export type TenantStatus = "active" | "inactive" | "rented";
-export type RentalStatus = "active" | "completed" | "canceled";

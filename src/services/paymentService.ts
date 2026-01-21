@@ -99,33 +99,10 @@ export async function createPayment(data: Partial<Payment>): Promise<Payment> {
 // Alias
 export const create = createPayment;
 
-export async function updatePayment(id: string, payment: Partial<Payment>): Promise<Payment> {
-  const { data, error } = await supabase
-    .from("payments")
-    .update({
-      rental_id: payment.rentalId,
-      expected_amount: payment.expectedAmount,
-      paid_amount: payment.paidAmount,
-      payment_date: payment.paymentDate,
-      status: payment.status,
-      payment_method: payment.paymentMethod,
-      payment_location: payment.paymentLocation,
-      payment_code: payment.paymentCode,
-      notes: payment.notes,
-      reference_month: payment.referenceMonth?.toString(),
-      reference_year: payment.referenceYear?.toString(),
-      receipt_url: payment.receiptUrl,
-      attachments: payment.attachments,
-      penalty_amount: payment.penaltyAmount,
-      interest_amount: payment.interestAmount,
-      discount_amount: payment.discountAmount,
-    })
-    .eq("id", id)
-    .select()
-    .single();
-
-  if (error) throw error;
-  return mapPaymentFromDB(data);
+export async function updatePayment(id: string, data: Partial<Payment>): Promise<Payment> {
+  const dbData = mapPaymentToDB(data);
+  const result = await updateSingle<any>(TABLE, id, dbData);
+  return mapPaymentFromDB(result);
 }
 
 // Alias
@@ -214,48 +191,6 @@ export async function updateFuturePaymentsOnPaymentDayChange(
   newDay: number
 ): Promise<void> {
   console.log("Atualização de dia de pagamento em massa ainda não implementada no novo padrão");
-}
-
-export async function updateFuturePayments(rentalId: string, newValue: number): Promise<void> {
-  const now = new Date();
-  const currentMonth = now.getMonth() + 1;
-  const currentYear = now.getFullYear();
-
-  // Buscar todos os pagamentos da locação que não foram pagos
-  const { data: payments, error } = await supabase
-    .from(TABLE)
-    .select("*")
-    .eq("rental_id", rentalId)
-    .eq("status", "pending");
-
-  if (error) {
-    console.error("Error fetching payments:", error);
-    throw error;
-  }
-
-  if (!payments || payments.length === 0) {
-    return;
-  }
-
-  // Filtrar apenas pagamentos do mês atual e futuros
-  const futurePayments = payments.filter((payment) => {
-    const refMonth = parseInt(payment.reference_month);
-    const refYear = parseInt(payment.reference_year);
-    
-    if (refYear > currentYear) return true;
-    if (refYear === currentYear && refMonth >= currentMonth) return true;
-    return false;
-  });
-
-  // Atualizar cada pagamento
-  for (const payment of futurePayments) {
-    await supabase
-      .from(TABLE)
-      .update({ expected_amount: newValue })
-      .eq("id", payment.id);
-  }
-
-  console.log(`✅ Atualizados ${futurePayments.length} pagamentos futuros`);
 }
 
 export async function createPaymentsForRental(rental: any): Promise<void> {
