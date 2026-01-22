@@ -126,44 +126,26 @@ export default function PropertiesPage() {
     setIsLoading(true);
 
     try {
-      const propertyData: PropertyFormData = {
-        location_id: formData.location_id,
-        property_identifier: formData.property_identifier || "Apartamento",
-        complement: formData.complement || "",
-        monthly_rent: formData.monthly_rent,
-        status: formData.status,
-        description: formData.description || "",
-        rooms: formData.rooms || "0",
-        bathrooms: formData.bathrooms || "0",
-        images: formData.images,
-        hasFurniture: formData.hasFurniture,
-        acceptsPets: formData.acceptsPets,
-        area: formData.area,
-        hasGarage: formData.hasGarage,
-      };
-
       if (editingProperty) {
-        await updateProperty(editingProperty.id, propertyData);
+        await updateProperty(editingProperty.id, formData);
         toast({
-          title: "Imóvel atualizado com sucesso",
-          variant: "default",
+          title: "Sucesso!",
+          description: "Imóvel atualizado com sucesso.",
         });
       } else {
-        await createProperty(propertyData);
+        await createProperty(formData);
         toast({
-          title: "Imóvel cadastrado com sucesso",
-          variant: "default",
+          title: "Sucesso!",
+          description: "Imóvel criado com sucesso.",
         });
       }
-
-      await loadData();
       setIsDialogOpen(false);
       resetForm();
-    } catch (error: any) {
-      console.error("Error saving property:", error);
+    } catch (error: unknown) {
+      console.error("Erro ao salvar imóvel:", error);
       toast({
-        title: "Erro ao salvar imóvel",
-        description: error.message,
+        title: "Erro",
+        description: error instanceof Error ? error.message : "Erro ao salvar o imóvel. Tente novamente.",
         variant: "destructive",
       });
     } finally {

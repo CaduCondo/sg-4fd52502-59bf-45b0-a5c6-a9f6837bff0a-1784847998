@@ -9,21 +9,17 @@ type PropertyRow = Tables<"properties"> & {
 function mapPropertyFromDB(row: PropertyRow): Property {
   return {
     id: row.id,
-    // Location info - mapped from join
     locationId: row.location_id,
-    location: row.locations?.name, // Mapped name from joined table
+    location: row.locations?.name,
     address: row.locations?.street || undefined,
     number: row.locations?.number || undefined,
     neighborhood: row.locations?.neighborhood || undefined,
     city: row.locations?.city || undefined,
     state: row.locations?.state || undefined,
     zipCode: row.locations?.zip_code || undefined,
-    
     complement: row.complement || undefined,
     value: row.value || 0,
     status: (row.status as "available" | "occupied" | "unavailable") || "available",
-    
-    // Additional fields
     rooms: row.rooms || 0,
     bathrooms: row.bathrooms || 0,
     area: row.area || 0,
@@ -31,12 +27,9 @@ function mapPropertyFromDB(row: PropertyRow): Property {
     garageValue: row.garage_value || 0,
     description: row.description || undefined,
     propertyIdentifier: row.property_identifier || undefined,
-    
-    // Novos campos
     images: (row.images as string[]) || [],
     hasFurniture: row.has_furniture || false,
     acceptsPets: row.accepts_pets || false,
-    
     createdAt: row.created_at || undefined,
     updatedAt: row.updated_at || undefined,
   };
@@ -52,10 +45,12 @@ export async function createProperty(property: Partial<Property>) {
       status: property.status || "available",
       rooms: property.rooms,
       bathrooms: property.bathrooms,
+      area: property.area,
       description: property.description,
       images: property.images || [],
       has_furniture: property.hasFurniture || false,
       accepts_pets: property.acceptsPets || false,
+      has_garage: property.hasGarage || false,
     })
     .select("*, locations(*)")
     .single();
@@ -64,7 +59,6 @@ export async function createProperty(property: Partial<Property>) {
   return mapPropertyFromDB(data);
 }
 
-// Alias for create
 export const create = createProperty;
 
 export async function getAll() {
@@ -77,7 +71,6 @@ export async function getAll() {
   return data.map(mapPropertyFromDB);
 }
 
-// Alias for list
 export const list = getAll;
 
 export async function getById(id: string) {
@@ -94,17 +87,18 @@ export async function getById(id: string) {
 export async function update(id: string, property: Partial<Property>) {
   const updateData: any = {};
   
-  // Only update fields that are present
   if (property.locationId !== undefined) updateData.location_id = property.locationId;
   if (property.complement !== undefined) updateData.complement = property.complement;
   if (property.value !== undefined) updateData.value = property.value;
   if (property.status !== undefined) updateData.status = property.status;
   if (property.rooms !== undefined) updateData.rooms = property.rooms;
   if (property.bathrooms !== undefined) updateData.bathrooms = property.bathrooms;
+  if (property.area !== undefined) updateData.area = property.area;
   if (property.description !== undefined) updateData.description = property.description;
   if (property.images !== undefined) updateData.images = property.images;
   if (property.hasFurniture !== undefined) updateData.has_furniture = property.hasFurniture;
   if (property.acceptsPets !== undefined) updateData.accepts_pets = property.acceptsPets;
+  if (property.hasGarage !== undefined) updateData.has_garage = property.hasGarage;
 
   const { data, error } = await supabase
     .from("properties")
@@ -117,7 +111,6 @@ export async function update(id: string, property: Partial<Property>) {
   return mapPropertyFromDB(data);
 }
 
-// Alias for update
 export const updateProperty = update;
 
 export async function remove(id: string) {
@@ -129,7 +122,6 @@ export async function remove(id: string) {
   if (error) throw error;
 }
 
-// Alias for remove
 export const deleteProperty = remove;
 
 export const propertyService = {
@@ -159,7 +151,7 @@ export const propertyService = {
       monthly_rent: property.value || 0,
       status: (property.status as "available" | "occupied" | "unavailable") || "available",
       description: property.description || "",
-      images: (property.images as unknown as string[]) || [],
+      images: Array.isArray(property.images) ? property.images as string[] : [],
       hasFurniture: property.has_furniture || false,
       has_furniture: property.has_furniture || false,
       acceptsPets: property.accepts_pets || false,
@@ -171,23 +163,29 @@ export const propertyService = {
   },
 
   async create(property: Partial<Property>): Promise<Property> {
+    console.log("Creating property with area:", property.area);
+    
+    const insertData = {
+      location_id: property.locationId,
+      property_identifier: property.propertyIdentifier || "Apartamento",
+      complement: property.complement,
+      rooms: property.rooms || 0,
+      bathrooms: property.bathrooms || 0,
+      value: property.monthlyRent || property.value || 0,
+      status: property.status || "available",
+      description: property.description,
+      images: property.images || [],
+      has_furniture: property.hasFurniture || false,
+      accepts_pets: property.acceptsPets || false,
+      area: property.area || 0,
+      has_garage: property.hasGarage || false,
+    };
+    
+    console.log("Insert data:", insertData);
+
     const { data, error } = await supabase
       .from("properties")
-      .insert({
-        location_id: property.locationId,
-        property_identifier: property.propertyIdentifier || "Apartamento",
-        complement: property.complement,
-        rooms: property.rooms || 0,
-        bathrooms: property.bathrooms || 0,
-        value: property.monthlyRent || property.value || 0,
-        status: property.status || "available",
-        description: property.description,
-        images: property.images || [],
-        has_furniture: property.hasFurniture || false,
-        accepts_pets: property.acceptsPets || false,
-        area: property.area || 0,
-        has_garage: property.hasGarage || false,
-      })
+      .insert(insertData)
       .select(`
         *,
         locations!properties_location_id_fkey (
@@ -197,9 +195,13 @@ export const propertyService = {
       `)
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error("Error creating property:", error);
+      throw error;
+    }
     
-    // Mapeamento manual para garantir conformidade com a interface Property
+    console.log("Property created with data:", data);
+    
     const result: Property = {
       id: data.id,
       locationId: data.location_id,
@@ -212,7 +214,7 @@ export const propertyService = {
       monthly_rent: data.value || 0,
       status: (data.status as "available" | "occupied" | "unavailable") || "available",
       description: data.description || "",
-      images: (data.images as unknown as string[]) || [],
+      images: Array.isArray(data.images) ? data.images as string[] : [],
       hasFurniture: data.has_furniture || false,
       has_furniture: data.has_furniture || false,
       acceptsPets: data.accepts_pets || false,
@@ -222,27 +224,35 @@ export const propertyService = {
       createdAt: data.created_at,
     };
     
+    console.log("Returning property with area:", result.area);
+    
     return result;
   },
 
   async update(id: string, property: Partial<Property>): Promise<Property> {
+    console.log("Updating property with area:", property.area);
+    
+    const updateData = {
+      location_id: property.locationId,
+      property_identifier: property.propertyIdentifier,
+      complement: property.complement,
+      rooms: property.rooms,
+      bathrooms: property.bathrooms,
+      value: property.value || property.monthly_rent,
+      status: property.status,
+      description: property.description,
+      images: property.images,
+      has_furniture: property.hasFurniture,
+      accepts_pets: property.acceptsPets,
+      area: property.area,
+      has_garage: property.hasGarage,
+    };
+    
+    console.log("Update data:", updateData);
+
     const { data, error } = await supabase
       .from("properties")
-      .update({
-        location_id: property.locationId,
-        property_identifier: property.propertyIdentifier,
-        complement: property.complement,
-        rooms: property.rooms,
-        bathrooms: property.bathrooms,
-        value: property.value || property.monthly_rent,
-        status: property.status,
-        description: property.description,
-        images: property.images,
-        has_furniture: property.hasFurniture,
-        accepts_pets: property.acceptsPets,
-        area: property.area,
-        has_garage: property.hasGarage,
-      })
+      .update(updateData)
       .eq("id", id)
       .select(`
         *,
@@ -253,9 +263,13 @@ export const propertyService = {
       `)
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error("Error updating property:", error);
+      throw error;
+    }
     
-    // Mapeamento manual para garantir conformidade com a interface Property
+    console.log("Property updated with data:", data);
+    
     const result: Property = {
       id: data.id,
       locationId: data.location_id,
@@ -268,7 +282,7 @@ export const propertyService = {
       monthly_rent: data.value || 0,
       status: (data.status as "available" | "occupied" | "unavailable") || "available",
       description: data.description || "",
-      images: (data.images as unknown as string[]) || [],
+      images: Array.isArray(data.images) ? data.images as string[] : [],
       hasFurniture: data.has_furniture || false,
       has_furniture: data.has_furniture || false,
       acceptsPets: data.accepts_pets || false,
@@ -277,6 +291,8 @@ export const propertyService = {
       hasGarage: data.has_garage || false,
       createdAt: data.created_at,
     };
+    
+    console.log("Returning property with area:", result.area);
     
     return result;
   },
