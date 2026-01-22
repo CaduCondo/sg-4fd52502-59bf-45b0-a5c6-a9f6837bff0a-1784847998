@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Bed, Bath, Trash2 } from "lucide-react";
+import { Bed, Bath, Trash2, Camera } from "lucide-react";
 import { formatCurrency } from "@/lib/masks";
 import type { Property } from "@/types";
 
@@ -26,6 +26,8 @@ export function PropertyCard({ property, onCardClick, onDeleteClick }: PropertyC
     return <Badge variant={variants[status]}>{labels[status]}</Badge>;
   };
 
+  const hasImages = property.images && property.images.length > 0;
+
   return (
     <Card 
       className="hover:shadow-lg transition-shadow cursor-pointer"
@@ -43,7 +45,14 @@ export function PropertyCard({ property, onCardClick, onDeleteClick }: PropertyC
               </p>
             )}
           </div>
-          {getStatusBadge(property.status)}
+          <div className="flex items-center gap-2">
+            {getStatusBadge(property.status)}
+            {hasImages && (
+              <div className="flex items-center gap-1 text-muted-foreground">
+                <Camera className="h-4 w-4" />
+              </div>
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent className="pt-3">
