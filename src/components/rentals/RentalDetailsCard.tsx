@@ -97,12 +97,12 @@ export function RentalDetailsCard({ rental, property, tenant }: RentalDetailsCar
             </p>
             <p className="text-sm">
               <span className="text-muted-foreground">Término:</span>{" "}
-              {formatDate(rental.endDate)}
+              {formatDate(rental.endDate || "")}
             </p>
-            {rental.status === "terminated" && rental.end_date && (
+            {rental.status === "terminated" && rental.endDate && (
               <p className="text-sm">
                 <span className="text-muted-foreground">Encerrado em:</span>{" "}
-                {formatDate(rental.end_date)}
+                {formatDate(rental.endDate)}
               </p>
             )}
           </div>

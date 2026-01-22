@@ -57,10 +57,75 @@ export function useRentalDetails(rentalId: string) {
         .eq("rental_id", rentalId)
         .order("due_date", { ascending: true });
 
-      setRental(rentalData as Rental);
-      setProperty(propertyData as Property);
-      setTenant(tenantData as Tenant);
-      setPayments((paymentsData || []) as Payment[]);
+      // Dados brutos com type casting para any para facilitar o mapeamento
+      // Isso resolve os erros de propriedades que o TS acha que não existem
+      const r: any = rentalData;
+      const p: any = propertyData;
+      const t: any = tenantData;
+
+      // Mapear Rental (Snake Case -> Camel Case)
+      const mappedRental: Rental = {
+        ...r,
+        id: r.id,
+        propertyId: r.property_id,
+        tenantId: r.tenant_id,
+        startDate: r.start_date,
+        endDate: r.end_date,
+        rentAmount: r.rent_amount || r.value || 0,
+        condominiumFee: r.condominium_fee || 0,
+        iptuFee: r.iptu_fee || 0,
+        depositAmount: r.deposit_amount,
+        paymentDay: r.payment_day,
+        autoRenew: r.auto_renew,
+        installments: r.installments,
+        status: r.status as Rental["status"],
+        attachments: (r.attachments as string[]) || [],
+        contractAttachments: (r.contract_attachments as string[]) || [],
+      };
+
+      // Mapear Property
+      const mappedProperty: Property = {
+        ...p,
+        id: p.id,
+        locationId: p.location_id,
+        address: p.street || p.address || "", // Fallback
+        hasGarage: p.has_garage,
+        monthlyRent: p.monthly_rent || p.value || 0,
+        garageValue: p.garage_value || 0,
+        hasFurniture: p.has_furniture,
+        acceptsPets: p.accepts_pets,
+        status: p.status as Property["status"],
+        images: (p.images as string[]) || [],
+      };
+
+      // Mapear Tenant
+      const mappedTenant: Tenant = {
+        ...t,
+        id: t.id,
+        documentType: (t.document_type as "cpf" | "cnpj") || "cpf",
+        document: t.document || t.cpf || t.cnpj || "",
+        status: t.status as Tenant["status"],
+        active: t.is_active !== undefined ? t.is_active : (t.status === 'active'),
+      };
+
+      // Mapear Payments
+      const mappedPayments: Payment[] = (paymentsData || []).map((pay: any) => ({
+        ...pay,
+        id: pay.id,
+        rentalId: pay.rental_id,
+        dueDate: pay.due_date,
+        expectedAmount: pay.expected_amount || pay.amount || 0,
+        paidAmount: pay.paid_amount,
+        referenceMonth: pay.reference_month,
+        referenceYear: pay.reference_year,
+        installmentNumber: pay.installment_number,
+        status: pay.status as Payment["status"],
+      }));
+
+      setRental(mappedRental);
+      setProperty(mappedProperty);
+      setTenant(mappedTenant);
+      setPayments(mappedPayments);
     } catch (error) {
       console.error("Erro ao carregar dados da locação:", error);
       toast({

@@ -148,10 +148,12 @@ export interface Rental {
   depositAmount?: number;
   deposit?: string; // DB field is text
   garageValue?: number;
-  // adminFee removido pois não existe na tabela rentals
-
+  condominiumFee?: number;
+  iptuFee?: number;
+  installments?: number;
+  
   // Status & Config
-  status: "pending" | "active" | "completed" | "paid" | "overdue";
+  status: "pending" | "active" | "completed" | "paid" | "overdue" | "terminated";
   isActive?: boolean;
   paymentDay: number;
   autoRenew: boolean;
@@ -201,6 +203,7 @@ export interface Payment {
   lateFee?: number; // Alias
   interest?: number; // Alias
   
+  installmentNumber?: number;
   partialPayments?: any[];
   createdAt?: string;
 }
