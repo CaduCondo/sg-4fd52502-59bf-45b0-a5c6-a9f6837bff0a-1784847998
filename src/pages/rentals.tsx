@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Home, Plus, User, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
-import { getAll as getAllRentals, remove as deleteRental } from "@/services/rentalService";
+import { Home, Plus, User, ChevronDown, ChevronUp, Trash2, XCircle } from "lucide-react";
+import { getAll as getAllRentals, remove as deleteRental, terminateContract } from "@/services/rentalService";
 import { getAll as getAllProperties, update as updateProperty } from "@/services/propertyService";
 import { getAll as getAllTenants, update as updateTenant } from "@/services/tenantService";
 import { getAll as getAllLocations } from "@/services/locationService";
@@ -90,6 +90,34 @@ export default function RentalsPage() {
     const month = String(date.getMonth() + 1).padStart(2, "0");
     const year = date.getFullYear();
     return `${day}/${month}/${year}`;
+  };
+
+  const handleEndContract = async (rental: Rental) => {
+    try {
+      await terminateContract(rental.id);
+      
+      // Update property and tenant status
+      if (rental.propertyId) {
+        await updateProperty(rental.propertyId, { status: "available" });
+      }
+      if (rental.tenantId) {
+        await updateTenant(rental.tenantId, { status: "active" });
+      }
+
+      toast({
+        title: "Sucesso",
+        description: "Contrato encerrado com sucesso!",
+      });
+      
+      loadData();
+    } catch (error) {
+      console.error("Error ending contract:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível encerrar o contrato.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleDeleteRental = async () => {
@@ -259,17 +287,30 @@ export default function RentalsPage() {
                                 Início: {formatDate(rental.startDate)}
                               </p>
                             </div>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-10 w-10 bg-red-500 hover:bg-red-600 text-white rounded-md"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setRentalToDelete(rental);
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            <div className="flex flex-col gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="bg-yellow-500 hover:bg-yellow-600 text-white border-yellow-500"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const confirmEnd = confirm("Tem certeza que deseja encerrar este contrato?");
+                                  if (confirmEnd) handleEndContract(rental);
+                                }}
+                              >
+                                <XCircle className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setRentalToDelete(rental);
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </div>
                         </CardContent>
                       </Card>

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Eye, Download, X } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Download, Eye, FileText, X } from "lucide-react";
 
 interface AttachmentViewerProps {
   attachments: string[];
@@ -10,132 +10,116 @@ interface AttachmentViewerProps {
 }
 
 export function AttachmentViewer({ attachments, onRemove, readOnly = false }: AttachmentViewerProps) {
-  const [selectedAttachment, setSelectedAttachment] = useState<string | null>(null);
-  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewType, setPreviewType] = useState<"image" | "pdf" | null>(null);
 
-  const getFileType = (base64String: string): string => {
-    if (base64String.startsWith("data:image/")) return "image";
-    if (base64String.startsWith("data:application/pdf")) return "pdf";
-    return "file";
-  };
-
-  const handleView = (attachment: string) => {
-    setSelectedAttachment(attachment);
-    setPreviewOpen(true);
+  const handlePreview = (attachment: string) => {
+    const isPdf = attachment.toLowerCase().endsWith(".pdf");
+    setPreviewType(isPdf ? "pdf" : "image");
+    setPreviewUrl(attachment);
   };
 
   const handleDownload = (attachment: string, index: number) => {
-    const fileType = getFileType(attachment);
-    let extension = "bin";
-    
-    if (fileType === "image") {
-      if (attachment.includes("image/png")) extension = "png";
-      else if (attachment.includes("image/jpeg") || attachment.includes("image/jpg")) extension = "jpg";
-      else if (attachment.includes("image/gif")) extension = "gif";
-      else if (attachment.includes("image/webp")) extension = "webp";
-    } else if (fileType === "pdf") {
-      extension = "pdf";
-    }
-
     const link = document.createElement("a");
     link.href = attachment;
-    link.download = `anexo_${index + 1}.${extension}`;
+    link.download = `arquivo_${index + 1}${attachment.substring(attachment.lastIndexOf("."))}`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
-  if (attachments.length === 0) {
-    return null;
-  }
-
   return (
     <>
-      <div className="space-y-2">
-        <div className="text-xs text-muted-foreground font-medium mb-2">
-          Anexos ({attachments.length})
-        </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
         {attachments.map((attachment, index) => {
-          const fileType = getFileType(attachment);
-          
+          const isPdf = attachment.toLowerCase().endsWith(".pdf");
+          const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(attachment);
+
           return (
             <div
               key={index}
-              className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200"
+              className="relative border rounded-lg p-3 hover:bg-muted/50 transition-colors"
             >
-              <div className="flex items-center gap-2 flex-1 min-w-0">
-                {fileType === "image" ? (
-                  <div className="w-10 h-10 rounded overflow-hidden flex-shrink-0 bg-slate-200">
-                    <img 
-                      src={attachment} 
+              <div className="flex flex-col gap-2">
+                {/* Preview Thumbnail */}
+                <div className="w-full h-24 flex items-center justify-center bg-muted rounded">
+                  {isImage ? (
+                    <img
+                      src={attachment}
                       alt={`Anexo ${index + 1}`}
-                      className="w-full h-full object-cover"
+                      className="max-h-full max-w-full object-contain"
                     />
-                  </div>
-                ) : (
-                  <div className="w-10 h-10 rounded flex items-center justify-center bg-slate-200 flex-shrink-0">
-                    <FileText className="h-5 w-5 text-slate-600" />
-                  </div>
-                )}
-                <span className="text-sm truncate">
-                  {fileType === "image" ? "Imagem" : fileType === "pdf" ? "PDF" : "Arquivo"} {index + 1}
-                </span>
-              </div>
-              
-              <div className="flex items-center gap-1 flex-shrink-0">
-                {fileType === "image" && (
+                  ) : isPdf ? (
+                    <div className="text-red-500 font-bold text-2xl">PDF</div>
+                  ) : (
+                    <div className="text-muted-foreground text-sm">Arquivo</div>
+                  )}
+                </div>
+
+                {/* File Name */}
+                <p className="text-xs text-center text-muted-foreground truncate">
+                  Arquivo {index + 1}
+                </p>
+
+                {/* Action Buttons */}
+                <div className="flex gap-1">
                   <Button
                     type="button"
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
-                    onClick={() => handleView(attachment)}
-                    title="Visualizar"
+                    className="flex-1"
+                    onClick={() => handlePreview(attachment)}
                   >
-                    <Eye className="h-4 w-4" />
+                    <Eye className="h-3 w-3" />
                   </Button>
-                )}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleDownload(attachment, index)}
-                  title="Baixar"
-                >
-                  <Download className="h-4 w-4" />
-                </Button>
-                {!readOnly && onRemove && (
                   <Button
                     type="button"
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
-                    onClick={() => onRemove(index)}
-                    title="Remover"
-                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    className="flex-1"
+                    onClick={() => handleDownload(attachment, index)}
                   >
-                    <X className="h-4 w-4" />
+                    <Download className="h-3 w-3" />
                   </Button>
-                )}
+                  {!readOnly && onRemove && (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => onRemove(index)}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           );
         })}
       </div>
 
-      {/* Image Preview Dialog */}
-      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-        <DialogContent className="max-w-4xl">
+      {/* Preview Modal */}
+      <Dialog open={!!previewUrl} onOpenChange={() => setPreviewUrl(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh]">
           <DialogHeader>
             <DialogTitle>Visualizar Anexo</DialogTitle>
           </DialogHeader>
-          {selectedAttachment && (
-            <div className="flex items-center justify-center p-4">
-              <img 
-                src={selectedAttachment} 
+          <div className="w-full h-[70vh] flex items-center justify-center overflow-auto">
+            {previewType === "image" && previewUrl && (
+              <img
+                src={previewUrl}
                 alt="Preview"
-                className="max-w-full max-h-[70vh] object-contain rounded-lg"
+                className="max-w-full max-h-full object-contain"
               />
-            </div>
-          )}
+            )}
+            {previewType === "pdf" && previewUrl && (
+              <iframe
+                src={previewUrl}
+                className="w-full h-full border-0"
+                title="PDF Preview"
+              />
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </>

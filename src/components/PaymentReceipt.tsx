@@ -3,9 +3,7 @@ import { formatCurrency, formatDate } from '@/lib/utils';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { FileText } from "lucide-react";
-
-// Register fonts if needed, or use standard fonts
-// Font.register({ ... });
+import { Payment, Rental, Property, Tenant } from "@/types";
 
 const styles = StyleSheet.create({
   page: {
@@ -112,29 +110,45 @@ const ReceiptDocument = ({ tenantName, propertyAddress, amount, referenceMonth, 
   </Document>
 );
 
-interface PaymentReceiptProps extends ReceiptDataProps {
-  isOpen?: boolean;
+interface PaymentReceiptProps {
+  payment: Payment;
+  rental: Rental;
+  property: Property;
+  tenant: Tenant;
   onClose?: () => void;
+  isOpen?: boolean;
   trigger?: React.ReactNode;
 }
 
-export function PaymentReceipt(props: PaymentReceiptProps) {
-  // If used as a standalone display (not modal)
-  if (!props.trigger && !props.isOpen && !props.onClose) {
+export function PaymentReceipt({ payment, rental, property, tenant, onClose, isOpen, trigger }: PaymentReceiptProps) {
+  // Preparar dados para o recibo
+  const receiptData: ReceiptDataProps = {
+    tenantName: tenant.name,
+    propertyAddress: `${property.location} ${property.complement ? `- ${property.complement}` : ''}`,
+    amount: payment.paidAmount || 0,
+    referenceMonth: `${payment.referenceMonth}/${payment.referenceYear}`,
+    paymentDate: payment.paymentDate || new Date().toISOString(),
+    ownerName: "Imobiliária Demo" // Idealmente viria das configs
+  };
+
+  // Se for usado como modal controlado (isOpen passado)
+  if (isOpen !== undefined) {
     return (
-      <div className="w-full h-[600px] border rounded-lg overflow-hidden bg-gray-100">
-         <PDFViewer width="100%" height="100%" className="border-0">
-            <ReceiptDocument {...props} />
-         </PDFViewer>
-      </div>
+      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose && onClose()}>
+        <DialogContent className="max-w-4xl h-[80vh]">
+          <PDFViewer width="100%" height="100%" className="border-0 rounded-md">
+            <ReceiptDocument {...receiptData} />
+          </PDFViewer>
+        </DialogContent>
+      </Dialog>
     );
   }
 
-  // If used as a modal/dialog
+  // Se for usado com trigger
   return (
-    <Dialog open={props.isOpen} onOpenChange={(open) => !open && props.onClose && props.onClose()}>
+    <Dialog>
       <DialogTrigger asChild>
-        {props.trigger || (
+        {trigger || (
           <Button variant="outline">
             <FileText className="mr-2 h-4 w-4" />
             Gerar Recibo
@@ -143,7 +157,7 @@ export function PaymentReceipt(props: PaymentReceiptProps) {
       </DialogTrigger>
       <DialogContent className="max-w-4xl h-[80vh]">
         <PDFViewer width="100%" height="100%" className="border-0 rounded-md">
-          <ReceiptDocument {...props} />
+          <ReceiptDocument {...receiptData} />
         </PDFViewer>
       </DialogContent>
     </Dialog>

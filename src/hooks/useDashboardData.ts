@@ -5,6 +5,7 @@ import { getAll as getAllTenants } from "@/services/tenantService";
 import { getAll as getAllPayments } from "@/services/paymentService";
 import { getConfig } from "@/services/configService";
 import type { Property, Tenant, Rental, Payment } from "@/types";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Stats {
   totalProperties: number;
@@ -23,14 +24,16 @@ interface Stats {
 }
 
 export function useDashboardData(selectedMonth: number | null, selectedYear: number | null) {
+  const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [properties, setProperties] = useState<any[]>([]);
   const [tenants, setTenants] = useState<any[]>([]);
   const [rentals, setRentals] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
-  const [adminFeePercentage, setAdminFeePercentage] = useState(6);
+  const [adminFeePercentage, setAdminFeePercentage] = useState(5);
   const [filteredPayments, setFilteredPayments] = useState<Payment[]>([]);
   const [dueSoonPayments, setDueSoonPayments] = useState<Payment[]>([]);
+  const [exemptLocationIds, setExemptLocationIds] = useState<string[]>([]);
   const [stats, setStats] = useState<Stats>({
     totalProperties: 0,
     availableProperties: 0,
@@ -46,6 +49,27 @@ export function useDashboardData(selectedMonth: number | null, selectedYear: num
     pendingPayments: 0,
     overduePayments: 0,
   });
+
+  useEffect(() => {
+    if (user) {
+      loadExemptions();
+    }
+  }, [user]);
+
+  const loadExemptions = async () => {
+    if (!user) return;
+    try {
+      const { data: exemptions } = await supabase
+        .from("user_fee_exemptions")
+        .select("location_id")
+        .eq("user_id", user.id);
+      
+      const ids = exemptions?.map(e => e.location_id) || [];
+      setExemptLocationIds(ids);
+    } catch (error) {
+      console.error("Error loading exemptions:", error);
+    }
+  };
 
   const loadData = async () => {
     if (!selectedMonth || !selectedYear) return;
@@ -105,57 +129,65 @@ export function useDashboardData(selectedMonth: number | null, selectedYear: num
   ) => {
     if (!selectedMonth || !selectedYear) return;
 
-    const activeRentalsInPeriod = rents.filter((rental) => {
-      if (!rental.isActive) return false;
-      const startDate = new Date(rental.startDate);
-      const endDate = rental.endDate ? new Date(rental.endDate) : null;
-      const monthStart = new Date(selectedYear, selectedMonth - 1, 1);
-      const monthEnd = new Date(selectedYear, selectedMonth, 0);
-
-      const startsBeforeMonthEnd = startDate <= monthEnd;
-      const endsAfterMonthStart = !endDate || endDate >= monthStart;
-
-      return startsBeforeMonthEnd && endsAfterMonthStart;
+    const periodPayments = pays.filter((payment) => {
+      const dueDate = new Date(payment.dueDate);
+      return (
+        dueDate.getMonth() === (selectedMonth - 1) &&
+        dueDate.getFullYear() === selectedYear
+      );
     });
 
-    const periodPayments = pays.filter(
-      (p) => p.referenceMonth === selectedMonth && p.referenceYear === selectedYear
-    );
-
-    const paid = periodPayments.filter((p) => p.status === "paid");
-    const overdue = periodPayments.filter((p) => p.status === "overdue");
-    const pending = periodPayments.filter(
-      (p) => p.status === "pending" || p.status === "partial"
-    );
-
-    const revenue = paid.reduce((sum, p) => sum + (p.paidAmount || 0), 0);
-
-    let fee = 0;
-    for (const payment of paid) {
-      const rental = rents.find(r => r.id === payment.rentalId);
-      const property = rental ? props.find(p => p.id === rental.propertyId) : undefined;
-      if (property && property.location.toLowerCase() !== "outros") {
-        const paymentFee = (payment.paidAmount || 0) * (adminFeePercentage / 100);
-        fee += paymentFee;
-      }
-    }
-
-    const net = revenue - fee;
-    const expected = periodPayments.reduce((sum, p) => sum + (p.expectedAmount || 0), 0);
+    const activeRentalsInPeriod = rents.filter((rental) => rental.isActive);
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const dueSoon = pays.filter(p => {
-      if (p.status === "paid") return false;
+
+    const overdueCount = periodPayments.filter(p => {
+      if (p.status !== "pending" && p.status !== "partial") return false;
       const dueDate = new Date(p.dueDate);
       dueDate.setHours(0, 0, 0, 0);
-      return dueDate.getTime() === today.getTime();
-    });
+      return dueDate < today;
+    }).length;
+
+    const paidCount = periodPayments.filter(p => p.status === "paid").length;
+    const pendingCount = periodPayments.filter(p => p.status === "pending").length;
+
+    const expected = periodPayments.reduce((sum, p) => sum + (p.expectedAmount || 0), 0);
+
+    const paidPaymentsList = periodPayments.filter((p) => p.status === "paid" || p.status === "partial");
+    const revenue = paidPaymentsList.reduce((sum, p) => sum + (p.paidAmount || 0), 0);
+
+    const feeRate = (adminFeePercentage || 0) / 100;
+    const adminFee = paidPaymentsList.reduce((sum, p) => {
+      const rental = rents.find(r => r.id === p.rentalId);
+      const property = props.find(prop => prop.id === rental?.propertyId);
+      
+      if (property && exemptLocationIds.includes(property.locationId)) {
+        return sum;
+      }
+      
+      return sum + ((p.paidAmount || 0) * feeRate);
+    }, 0);
+
+    const net = revenue - adminFee;
+
+    const dueSoon = pays
+      .filter(p => {
+        if (p.status === "paid") return false;
+        const dueDate = new Date(p.dueDate);
+        dueDate.setHours(0, 0, 0, 0);
+        const diffTime = dueDate.getTime() - today.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays >= -30 && diffDays <= 30;
+      })
+      .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
+      .slice(0, 5);
 
     const activeTenants = tens.filter(t => t.status === "active" || t.status === "rented");
 
     setFilteredPayments(periodPayments);
     setDueSoonPayments(dueSoon);
+    
     setStats({
       totalProperties: props.length,
       availableProperties: props.filter((p) => p.status === "available").length,
@@ -164,12 +196,12 @@ export function useDashboardData(selectedMonth: number | null, selectedYear: num
       activeRentals: activeRentalsInPeriod.length,
       totalTenants: activeTenants.length,
       monthlyRevenue: revenue,
-      adminFee: fee,
+      adminFee: adminFee,
       netRevenue: net,
       expectedValue: expected,
-      paidPayments: paid.length,
-      pendingPayments: pending.length,
-      overduePayments: overdue.length,
+      paidPayments: paidCount,
+      pendingPayments: pendingCount,
+      overduePayments: overdueCount,
     });
   };
 

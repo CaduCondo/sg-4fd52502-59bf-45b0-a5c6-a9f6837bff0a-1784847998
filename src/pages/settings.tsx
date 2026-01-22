@@ -61,7 +61,8 @@ import {
   CheckCircle2,
   XCircle,
   Link as LinkIcon,
-  Pencil
+  Pencil,
+  Settings as SettingsIcon
 } from "lucide-react";
 
 // Services
@@ -1234,59 +1235,6 @@ export default function Settings() {
               </CardContent>
             </Card>
 
-            {/* Seção 3: NOVA - Taxa de Administração por Usuário */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <DollarSign className="h-5 w-5" />
-                  Taxa de Administração por Usuário (Corretores)
-                </CardTitle>
-                <CardDescription>
-                  Defina de quais locais cada corretor NÃO receberá taxa de administração
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {users.filter(u => u.role === "broker").length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    Nenhum usuário com perfil Corretor cadastrado
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {users
-                      .filter((u) => u.role === "broker")
-                      .map((user) => (
-                        <div
-                          key={user.id}
-                          className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors"
-                        >
-                          <div className="flex-1">
-                            <h4 className="font-semibold flex items-center gap-2">
-                              <User className="h-4 w-4 text-primary" />
-                              {user.name}
-                            </h4>
-                            <p className="text-sm text-muted-foreground">{user.email}</p>
-                          </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="gap-2"
-                            onClick={() => {
-                              toast({
-                                title: "Em desenvolvimento",
-                                description: "Funcionalidade será implementada em breve.",
-                              });
-                            }}
-                          >
-                            <DollarSign className="h-3 w-3" />
-                            Configurar Taxa
-                          </Button>
-                        </div>
-                      ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
             {/* NOVA SEÇÃO: Isenção de Taxa por Corretor */}
             <Card>
               <CardHeader>
@@ -1330,9 +1278,12 @@ export default function Settings() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleOpenFeeExemptionDialog(user)}
+                            onClick={() => {
+                              setSelectedUserForFeeExemption(user);
+                              setIsFeeExemptionDialogOpen(true);
+                            }}
                           >
-                            <DollarSign className="h-3 w-3 mr-2" />
+                            <SettingsIcon className="mr-2 h-4 w-4" />
                             Configurar Isenção
                           </Button>
                         </div>
@@ -1479,7 +1430,6 @@ export default function Settings() {
                   <Select
                     value={userFormData.role}
                     onValueChange={(value) => setUserFormData({ ...userFormData, role: value as SystemUser["role"] })}
-                    disabled={currentUser?.role !== "admin"}
                   >
                     <SelectTrigger id="newUserRole">
                       <SelectValue placeholder="Selecione o perfil" />
@@ -1490,11 +1440,6 @@ export default function Settings() {
                       <SelectItem value="financial">Financeiro</SelectItem>
                     </SelectContent>
                   </Select>
-                  {currentUser?.role !== "admin" && (
-                    <p className="text-xs text-muted-foreground">
-                      ⚠️ Apenas administradores podem alterar o perfil
-                    </p>
-                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="newUserPassword">Senha Temporária</Label>
@@ -1854,6 +1799,48 @@ export default function Settings() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Isenção de Taxa de Administração */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <DollarSign className="h-5 w-5" />
+              Isenção de Taxa de Administração
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              Configure quais locais não deverão ter taxa de administração calculada para cada corretor.
+            </p>
+            
+            <div className="space-y-4">
+              {users
+                .filter((u) => u.role === "broker")
+                .map((user) => (
+                  <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <User className="h-5 w-5 text-muted-foreground" />
+                      <div>
+                        <p className="font-medium">{user.name}</p>
+                        <p className="text-sm text-muted-foreground">{user.email}</p>
+                      </div>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedUserForFeeExemption(user);
+                        setIsFeeExemptionDialogOpen(true);
+                      }}
+                    >
+                      <SettingsIcon className="mr-2 h-4 w-4" />
+                      Configurar Isenção
+                    </Button>
+                  </div>
+                ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </Layout>
   );

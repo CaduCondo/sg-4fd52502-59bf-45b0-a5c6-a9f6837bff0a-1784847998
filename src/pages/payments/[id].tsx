@@ -23,6 +23,7 @@ export default function PaymentDetails() {
   const [property, setProperty] = useState<Property | null>(null);
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showReceipt, setShowReceipt] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -150,17 +151,23 @@ export default function PaymentDetails() {
 
         {payment.status === 'paid' && payment.paidAmount && (
           <div className="mt-8">
-            <h2 className="text-xl font-bold mb-4">Recibo de Pagamento</h2>
-            <div className="border rounded-lg p-4 bg-white">
-              <PaymentReceipt
-                tenantName={tenant?.name || "Inquilino"}
-                propertyAddress={`${property?.location || ""} ${property?.complement || ""}`}
-                amount={payment.paidAmount}
-                referenceMonth={`${payment.referenceMonth}/${payment.referenceYear}`}
-                paymentDate={payment.paymentDate || new Date().toISOString()}
-                ownerName={"Imobiliária"} // Fallback
-              />
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold">Recibo de Pagamento</h2>
+              <Button onClick={() => setShowReceipt(true)}>
+                Visualizar Recibo
+              </Button>
             </div>
+            
+            {showReceipt && payment && rental && property && tenant && (
+              <PaymentReceipt
+                payment={payment}
+                rental={rental}
+                property={property}
+                tenant={tenant}
+                onClose={() => setShowReceipt(false)}
+                isOpen={showReceipt}
+              />
+            )}
           </div>
         )}
       </div>

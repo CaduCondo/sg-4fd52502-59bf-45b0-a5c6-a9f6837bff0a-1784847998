@@ -19,6 +19,7 @@ import {
 } from "@/services/paymentService";
 import type { Property, Tenant, Location, Rental } from "@/types";
 import { update as updateRentalService } from "@/services/rentalService";
+import { AttachmentViewer } from "@/components/AttachmentViewer";
 
 interface RentalFormDialogProps {
   open: boolean;
@@ -529,25 +530,10 @@ export function RentalFormDialog({
             </div>
 
             {attachments.length > 0 && (
-              <div className="space-y-2">
-                {attachments.map((attachment, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between p-3 bg-muted rounded-lg"
-                  >
-                    <span className="text-sm truncate flex-1">Arquivo {index + 1}</span>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeAttachment(index)}
-                      disabled={!isEditing}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
+              <AttachmentViewer
+                attachments={attachments}
+                onRemove={removeAttachment}
+              />
             )}
           </div>
 

@@ -40,26 +40,26 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
   const [isUnlocking, setIsUnlocking] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [formData, setFormData] = useState({
-    name: user?.name || "",
-    email: user?.email || "",
-    phone: user?.phone || "",
-    currentPassword: "",
-    newPassword: "",
+    name: "",
+    email: "",
+    phone: "",
+    password: "",
     confirmPassword: "",
+    newPassword: "",
   });
 
   useEffect(() => {
-    if (user && open) {
+    if (user) {
       setFormData({
         name: user.name || "",
         email: user.email || "",
         phone: user.phone || "",
-        currentPassword: "",
-        newPassword: "",
+        password: "",
         confirmPassword: "",
+        newPassword: "",
       });
     }
-  }, [user, open]);
+  }, [user]);
 
   useEffect(() => {
     if (open && user) {
@@ -270,8 +270,8 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
                 </Label>
                 <Input
                   id="profile-name"
-                  value={selectedUser?.name || ""}
-                  onChange={(e) => handleInputChange("name", e.target.value)}
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="Seu nome completo"
                 />
               </div>
@@ -283,8 +283,8 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
                 </Label>
                 <Input
                   id="document"
-                  value={selectedUser?.phone ? applyCpfMask(selectedUser.phone.replace(/\D/g, '').slice(0, 11)) : ""}
-                  onChange={(e) => handleInputChange("phone", e.target.value)}
+                  value={selectedUser?.document ? applyCpfMask(selectedUser.document) : ""}
+                  onChange={(e) => handleInputChange("document", removeMask(e.target.value))}
                   placeholder="000.000.000-00"
                   maxLength={14}
                 />
@@ -311,8 +311,8 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
                 </Label>
                 <Input
                   id="profile-phone"
-                  value={selectedUser?.phone || ""}
-                  onChange={(e) => handleInputChange("phone", applyPhoneMask(e.target.value))}
+                  value={selectedUser?.phone ? applyPhoneMask(selectedUser.phone) : ""}
+                  onChange={(e) => handleInputChange("phone", removeMask(e.target.value))}
                   placeholder="(00) 00000-0000"
                 />
               </div>
@@ -325,7 +325,7 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
                 <Input
                   id="birthDate"
                   type="date"
-                  value={selectedUser.birthDate || ""}
+                  value={selectedUser?.birthDate || ""}
                   onChange={(e) => handleInputChange("birthDate", e.target.value)}
                 />
               </div>
@@ -381,8 +381,8 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
                 </Label>
                 <Input
                   id="cep"
-                  value={selectedUser.cep || ""}
-                  onChange={(e) => handleInputChange("cep", e.target.value)}
+                  value={selectedUser?.cep ? applyCepMask(selectedUser.cep) : ""}
+                  onChange={(e) => handleInputChange("cep", removeMask(e.target.value))}
                   placeholder="00000-000"
                   maxLength={9}
                 />

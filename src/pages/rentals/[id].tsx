@@ -16,10 +16,12 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { applyRealMask, formatCurrency } from "@/lib/masks";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AttachmentViewer } from "@/components/AttachmentViewer";
+import { RentalFormDialog } from "@/components/rentals/RentalFormDialog";
 import { 
   getById as getRentalById, 
   update as updateRental, 
-  remove as deleteRental 
+  remove as deleteRental,
+  terminateContract
 } from "@/services/rentalService";
 import { hasPermission } from "@/lib/permissions";
 import { useAuth } from "@/contexts/AuthContext";
@@ -42,6 +44,7 @@ export default function RentalDetails() {
   const [isEditing, setIsEditing] = useState(false);
   const [isViewMode, setIsViewMode] = useState(true);
   const [isEndDialogOpen, setIsEndDialogOpen] = useState(false);
+  const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   
   const [properties, setProperties] = useState<Property[]>([]);
@@ -245,19 +248,13 @@ export default function RentalDetails() {
     if (!rental) return;
 
     const confirmEnd = confirm(
-      "Tem certeza que deseja encerrar este contrato? Esta ação não pode ser desfeita."
+      "Tem certeza que deseja encerrar este contrato? Esta ação inativará a locação e deletará os recebimentos futuros."
     );
 
     if (!confirmEnd) return;
 
     try {
-      const updatedRental: Rental = {
-        ...rental,
-        status: "completed",
-        endDate: new Date().toISOString().split("T")[0],
-      };
-
-      await updateRental(rental.id, updatedRental);
+      await terminateContract(rental.id);
 
       if (rental.propertyId) {
         const property = await propertyService.getById(rental.propertyId);
@@ -289,7 +286,7 @@ export default function RentalDetails() {
       console.error("Error ending rental:", error);
       toast({
         title: "Erro",
-        description: "Não foi possível finalizar a locação.",
+        description: "Não foi possível encerrar o contrato.",
         variant: "destructive",
       });
     }
@@ -395,16 +392,20 @@ export default function RentalDetails() {
             <div className="flex gap-2">
               {isViewMode && !isEditing ? (
                 <>
-                  <Button onClick={() => setIsEditing(true)} variant="outline">
-                    <Edit className="mr-2 h-4 w-4" />
-                    Editar
-                  </Button>
-                  <Button variant="destructive" onClick={() => setIsEndDialogOpen(true)}>
+                  <Button
+                    variant="outline"
+                    className="bg-yellow-500 hover:bg-yellow-600 text-white border-yellow-500"
+                    onClick={() => setIsEndDialogOpen(true)}
+                  >
                     <XCircle className="mr-2 h-4 w-4" />
                     Encerrar Contrato
                   </Button>
-                  <Button variant="outline" onClick={() => router.push("/rentals")}>
-                    Voltar
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsFormDialogOpen(true)}
+                  >
+                    <Edit className="mr-2 h-4 w-4" />
+                    Editar Locação
                   </Button>
                 </>
               ) : (
@@ -613,61 +614,11 @@ export default function RentalDetails() {
                   </div>
 
                   {editAttachments.length > 0 && (
-                    <div className="space-y-2">
-                      {editAttachments.map((attachment, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center justify-between p-3 bg-muted rounded-lg"
-                        >
-                          <span className="text-sm truncate flex-1">Arquivo {index + 1}</span>
-                          {isEditing ? (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => removeAttachment(index)}
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          ) : (
-                            <div className="flex gap-2">
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  const link = document.createElement("a");
-                                  link.href = attachment;
-                                  link.download = `arquivo-${index + 1}.jpg`;
-                                  document.body.appendChild(link);
-                                  link.click();
-                                  document.body.removeChild(link);
-                                }}
-                              >
-                                <Download className="h-4 w-4 mr-2" />
-                                Baixar
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  const link = document.createElement("a");
-                                  link.href = attachment;
-                                  link.target = "_blank";
-                                  document.body.appendChild(link);
-                                  link.click();
-                                  document.body.removeChild(link);
-                                }}
-                              >
-                                <Eye className="h-4 w-4 mr-2" />
-                                Visualizar
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
+                    <AttachmentViewer
+                      attachments={editAttachments}
+                      onRemove={isEditing ? removeAttachment : undefined}
+                      readOnly={!isEditing}
+                    />
                   )}
                 </div>
               </div>
@@ -693,6 +644,18 @@ export default function RentalDetails() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        <RentalFormDialog
+          open={isFormDialogOpen}
+          onOpenChange={setIsFormDialogOpen}
+          availableProperties={properties}
+          availableTenants={tenants}
+          properties={properties}
+          tenants={tenants}
+          onSuccess={loadData}
+          rental={rental}
+          isViewMode={false}
+        />
       </Layout>
     </>
   );

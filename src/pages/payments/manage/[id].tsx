@@ -23,6 +23,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Checkbox } from "@/components/ui/checkbox";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
+import { AttachmentViewer } from "@/components/AttachmentViewer";
+import { PaymentReceipt } from "@/components/PaymentReceipt";
 
 interface ManagePaymentContentProps {
   paymentId: string;
@@ -191,6 +193,9 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
     }
 
     const expectedAmount = payment.expectedAmount || 0;
+    const alreadyPaid = payment.status === "partial" ? (payment.paidAmount || 0) : 0;
+    const remainingAmount = expectedAmount - alreadyPaid;
+    
     const dueDateObj = new Date(dueDate + "T00:00:00");
     const paymentDateStr = formData.paymentDate || new Date().toISOString().split('T')[0];
     const paymentDateObj = new Date(paymentDateStr + "T00:00:00");
@@ -201,17 +206,17 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
     const penaltyRate = (config.late_fee_percentage || 2) / 100;
     const interestRate = (config.interest_rate_percentage || 0.033) / 100;
 
-    const penaltyAmount = daysLate > 0 ? expectedAmount * penaltyRate : 0;
-    const interestAmount = daysLate > 0 ? expectedAmount * interestRate * daysLate : 0;
+    const penaltyAmount = daysLate > 0 ? remainingAmount * penaltyRate : 0;
+    const interestAmount = daysLate > 0 ? remainingAmount * interestRate * daysLate : 0;
     
     const finalPenalty = waiveLateFees ? 0 : penaltyAmount;
     const finalInterest = waiveLateFees ? 0 : interestAmount;
     
-    const totalAmount = expectedAmount + finalPenalty + finalInterest;
+    const totalAmount = remainingAmount + finalPenalty + finalInterest;
 
     setCalculatedValues({
       baseAmount: expectedAmount,
-      rentAmount: expectedAmount,
+      rentAmount: remainingAmount,
       penaltyAmount: finalPenalty,
       interestAmount: finalInterest,
       totalAmount,
@@ -349,7 +354,7 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
         description: "Recebimento registrado com sucesso!",
       });
 
-      handleBack();
+      setShowReceipt(true);
 
     } catch (error) {
       console.error("Error updating payment:", error);
@@ -457,6 +462,16 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
           <CardContent className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span>Aluguel:</span>
+              <span className="font-medium">{formatCurrency(calculatedValues.baseAmount)}</span>
+            </div>
+            {payment?.status === "partial" && payment.paidAmount > 0 && (
+              <div className="flex justify-between text-green-600">
+                <span>Já Pago:</span>
+                <span className="font-medium">- {formatCurrency(payment.paidAmount)}</span>
+              </div>
+            )}
+            <div className="flex justify-between">
+              <span>Valor Restante:</span>
               <span className="font-medium">{formatCurrency(calculatedValues.rentAmount)}</span>
             </div>
             {calculatedValues.daysLate > 0 && (
@@ -577,97 +592,51 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
 
               {isEditing && (
                 <div className="space-y-1">
-                  <Label htmlFor="attachments" className="text-xs">Comprovante / Anexos</Label>
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => document.getElementById("paymentFileUpload")?.click()}
-                    >
-                      <Paperclip className="mr-2 h-4 w-4" />
-                      Anexar Arquivo
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => document.getElementById("paymentCameraCapture")?.click()}
-                    >
-                      <Camera className="mr-2 h-4 w-4" />
-                      Tirar Foto
-                    </Button>
-                  </div>
-                  <input
-                    id="paymentFileUpload"
-                    type="file"
-                    accept="image/*,.pdf"
-                    multiple
-                    className="hidden"
-                    onChange={(e) => {
-                      const files = e.target.files;
-                      if (files && files.length > 0) {
-                        Array.from(files).forEach(file => {
-                          const reader = new FileReader();
-                          reader.onloadend = () => {
-                            if (reader.result) {
-                              setFormData(prev => ({
-                                ...prev,
-                                attachments: [...prev.attachments, reader.result as string]
-                              }));
-                            }
-                          };
-                          reader.readAsDataURL(file);
-                        });
-                      }
-                    }}
-                  />
-                  <input
-                    id="paymentCameraCapture"
-                    type="file"
-                    accept="image/*"
-                    capture="environment"
-                    className="hidden"
-                    onChange={(e) => {
-                      const files = e.target.files;
-                      if (files && files.length > 0) {
-                        const file = files[0];
-                        const reader = new FileReader();
-                        reader.onloadend = () => {
-                          if (reader.result) {
-                            setFormData(prev => ({
-                              ...prev,
-                              attachments: [...prev.attachments, reader.result as string]
-                            }));
-                          }
-                        };
-                        reader.readAsDataURL(file);
-                      }
-                    }}
-                  />
-                </div>
-              )}
-
-              {formData.attachments.length > 0 && (
-                <div className="space-y-2">
-                  {formData.attachments.map((attachment, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between p-3 bg-muted rounded-lg"
-                    >
-                      <span className="text-sm truncate flex-1">Arquivo {index + 1}</span>
-                      {isEditing && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeAttachment(index)}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      )}
+                  <div className="flex items-center justify-between">
+                    <Label>Anexos</Label>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => document.getElementById("paymentCameraCapture")?.click()}
+                      >
+                        <Camera className="mr-2 h-4 w-4" />
+                        Tirar Foto
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => document.getElementById("paymentFileUpload")?.click()}
+                      >
+                        <Paperclip className="mr-2 h-4 w-4" />
+                        Anexar Arquivo
+                      </Button>
+                      <input
+                        id="paymentCameraCapture"
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        className="hidden"
+                        onChange={handleCameraCapture}
+                      />
+                      <input
+                        id="paymentFileUpload"
+                        type="file"
+                        accept="image/*,.pdf,.doc,.docx"
+                        className="hidden"
+                        onChange={handleFileUpload}
+                      />
                     </div>
-                  ))}
+                  </div>
+
+                  {formData.attachments.length > 0 && (
+                    <AttachmentViewer
+                      attachments={formData.attachments}
+                      onRemove={removeAttachment}
+                    />
+                  )}
                 </div>
               )}
 
@@ -708,6 +677,25 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
           </CardContent>
         </Card>
       </div>
+
+      {showReceipt && payment && rental && property && tenant && (
+        <PaymentReceipt
+          payment={{
+            ...payment,
+            paidAmount: parseCurrencyToFloat(formData.paidAmount),
+            paymentDate: formData.paymentDate,
+            paymentMethod: formData.paymentMethod,
+            notes: formData.notes,
+          }}
+          rental={rental}
+          property={property}
+          tenant={tenant}
+          onClose={() => {
+            setShowReceipt(false);
+            handleBack();
+          }}
+        />
+      )}
     </div>
   );
 
