@@ -261,7 +261,7 @@ export default function Settings() {
         name: user.name,
         email: user.email,
         phone: user.phone || "",
-        username: "",
+        username: user.email.split("@")[0],
         password: "",
         role: user.role,
         isActive: user.active
@@ -1436,6 +1436,16 @@ export default function Settings() {
                   />
                 </div>
                 <div className="space-y-2">
+                  <Label htmlFor="newUserUsername">Usuário</Label>
+                  <Input 
+                    id="newUserUsername" 
+                    value={userFormData.username} 
+                    onChange={(e) => setUserFormData({...userFormData, username: e.target.value})}
+                    placeholder="usuario.login"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="newUserRole">Perfil</Label>
                   <Select
                     value={userFormData.role}
@@ -1452,14 +1462,17 @@ export default function Settings() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="newUserPassword">Senha Temporária</Label>
+                  <Label htmlFor="newUserPassword">
+                    Senha Temporária
+                    {editingUser && <span className="text-muted-foreground text-xs ml-1">(deixe em branco para manter a senha atual)</span>}
+                  </Label>
                   <Input 
                     id="newUserPassword" 
                     type="password"
                     value={userFormData.password} 
                     onChange={(e) => setUserFormData({...userFormData, password: e.target.value})}
-                    placeholder="Senha de acesso"
-                    required
+                    placeholder={editingUser ? "Deixe em branco para não alterar" : "Senha de acesso"}
+                    required={!editingUser}
                   />
                 </div>
               </div>
