@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Bed, Bath, Trash2 } from "lucide-react";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
-import { formatCurrency } from "@/lib/masks";
+import { formatCurrency, parseCurrencyToFloat } from "@/lib/masks";
 import type { Property } from "@/types";
 import { useProperties, type PropertyFormData } from "@/hooks/useProperties";
 import { PropertyCard } from "@/components/properties/PropertyCard";
@@ -15,6 +15,7 @@ import { PropertyFilters } from "@/components/properties/PropertyFilters";
 import { PropertyFormDialog } from "@/components/properties/PropertyFormDialog";
 import { PropertyDeleteAlert } from "@/components/properties/PropertyDeleteAlert";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
 
 export default function PropertiesPage() {
   const router = useRouter();
@@ -40,6 +41,8 @@ export default function PropertiesPage() {
     deleteProperty,
   } = useProperties();
 
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [propertyToDelete, setPropertyToDelete] = useState<string | null>(null);
@@ -48,31 +51,81 @@ export default function PropertiesPage() {
 
   const [formData, setFormData] = useState<PropertyFormData>({
     location_id: "",
-    property_identifier: "Apartamento",
+    property_identifier: "",
     complement: "",
     monthly_rent: "",
     status: "available",
     description: "",
     bedrooms: "",
     bathrooms: "",
+    images: [],
+    hasFurniture: false,
+    acceptsPets: false,
   });
+
+  const handleEdit = (property: Property) => {
+    setEditingProperty(property);
+    setFormData({
+      location_id: property.locationId,
+      property_identifier: property.propertyIdentifier || "",
+      complement: property.complement || "",
+      monthly_rent: formatCurrency(property.value || 0),
+      status: property.status,
+      description: property.description || "",
+      bedrooms: property.rooms?.toString() || "",
+      bathrooms: property.bathrooms?.toString() || "",
+      images: property.images || [],
+      hasFurniture: property.hasFurniture || false,
+      acceptsPets: property.acceptsPets || false,
+    });
+    setIsDialogOpen(true);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
 
     try {
+      const propertyData: PropertyFormData = {
+        location_id: formData.location_id,
+        property_identifier: formData.property_identifier || "Apartamento",
+        complement: formData.complement || "",
+        monthly_rent: formData.monthly_rent,
+        status: formData.status,
+        description: formData.description || "",
+        bedrooms: formData.bedrooms || "0",
+        bathrooms: formData.bathrooms || "0",
+        images: formData.images,
+        hasFurniture: formData.hasFurniture,
+        acceptsPets: formData.acceptsPets,
+      };
+
       if (editingProperty) {
-        await updateProperty(editingProperty.id, formData);
+        await updateProperty(editingProperty.id, propertyData);
+        toast({
+          title: "Imóvel atualizado com sucesso",
+          variant: "default",
+        });
       } else {
-        await createProperty(formData);
+        await createProperty(propertyData);
+        toast({
+          title: "Imóvel cadastrado com sucesso",
+          variant: "default",
+        });
       }
 
+      await loadData();
       setIsDialogOpen(false);
-      setIsEditMode(false);
       resetForm();
-    } catch (error) {
-      console.error("Erro ao salvar imóvel:", error);
-      alert(error instanceof Error ? error.message : "Erro ao salvar imóvel. Por favor, verifique os dados e tente novamente.");
+    } catch (error: any) {
+      console.error("Error saving property:", error);
+      toast({
+        title: "Erro ao salvar imóvel",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -90,6 +143,9 @@ export default function PropertiesPage() {
       description: property.description || "",
       bedrooms: property.rooms?.toString() || property.bedrooms?.toString() || "",
       bathrooms: property.bathrooms?.toString() || "",
+      images: property.images || [],
+      hasFurniture: property.hasFurniture || false,
+      acceptsPets: property.acceptsPets || false,
     });
     
     setIsEditMode(false);
@@ -121,13 +177,16 @@ export default function PropertiesPage() {
   const resetForm = () => {
     setFormData({
       location_id: "",
-      property_identifier: "Apartamento",
+      property_identifier: "",
       complement: "",
       monthly_rent: "",
       status: "available",
       description: "",
       bedrooms: "",
       bathrooms: "",
+      images: [],
+      hasFurniture: false,
+      acceptsPets: false,
     });
     setEditingProperty(null);
     setIsEditMode(false);

@@ -3,10 +3,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { X } from "lucide-react";
-import { applyMoneyMask, formatCurrency } from "@/lib/masks";
+import { X, Camera, Paperclip } from "lucide-react";
+import { applyMoneyMask } from "@/lib/masks";
+import { AttachmentViewer } from "@/components/AttachmentViewer";
 import type { Property, Location } from "@/types";
 import type { PropertyFormData } from "@/hooks/useProperties";
+import { useRef } from "react";
 
 interface PropertyFormDialogProps {
   open: boolean;
@@ -33,6 +35,9 @@ export function PropertyFormDialog({
   onEnableEdit,
   onReset,
 }: PropertyFormDialogProps) {
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const handleMoneyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     const masked = applyMoneyMask(value);
@@ -45,9 +50,44 @@ export function PropertyFormDialog({
     setFormData({ ...formData, [field]: limitedValue });
   };
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const formDataUpload = new FormData();
+    Array.from(files).forEach((file) => {
+      formDataUpload.append("files", file);
+    });
+
+    try {
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: formDataUpload,
+      });
+
+      if (!response.ok) throw new Error("Erro ao fazer upload");
+
+      const result = await response.json();
+      const newImages = result.files.map((f: any) => f.url);
+      
+      setFormData({
+        ...formData,
+        images: [...formData.images, ...newImages],
+      });
+    } catch (error) {
+      console.error("Error uploading images:", error);
+      alert("Erro ao fazer upload das imagens");
+    }
+  };
+
+  const handleRemoveImage = (index: number) => {
+    const newImages = formData.images.filter((_, i) => i !== index);
+    setFormData({ ...formData, images: newImages });
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {editingProperty ? (isEditMode ? "Editar Imóvel" : "Detalhes do Imóvel") : "Novo Imóvel"}
@@ -137,6 +177,42 @@ export function PropertyFormDialog({
               />
             </div>
 
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="has_furniture">Móveis Planejados</Label>
+                <Select
+                  value={formData.hasFurniture ? "yes" : "no"}
+                  onValueChange={(value) => setFormData({ ...formData, hasFurniture: value === "yes" })}
+                  disabled={editingProperty && !isEditMode}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="yes">Sim</SelectItem>
+                    <SelectItem value="no">Não</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="accepts_pets">Aceita Pets</Label>
+                <Select
+                  value={formData.acceptsPets ? "yes" : "no"}
+                  onValueChange={(value) => setFormData({ ...formData, acceptsPets: value === "yes" })}
+                  disabled={editingProperty && !isEditMode}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="yes">Sim</SelectItem>
+                    <SelectItem value="no">Não</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="status">Status *</Label>
               <Select
@@ -164,6 +240,55 @@ export function PropertyFormDialog({
                 placeholder="Informações adicionais..."
                 disabled={editingProperty && !isEditMode}
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Fotos do Imóvel</Label>
+              {formData.images.length > 0 && (
+                <AttachmentViewer
+                  attachments={formData.images}
+                  onRemove={!editingProperty || isEditMode ? handleRemoveImage : undefined}
+                />
+              )}
+              {(!editingProperty || isEditMode) && (
+                <div className="flex gap-2">
+                  <input
+                    ref={cameraInputRef}
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    multiple
+                    className="hidden"
+                    onChange={handleImageUpload}
+                  />
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={handleImageUpload}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => cameraInputRef.current?.click()}
+                    className="flex-1"
+                  >
+                    <Camera className="mr-2 h-4 w-4" />
+                    Tirar Foto
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex-1"
+                  >
+                    <Paperclip className="mr-2 h-4 w-4" />
+                    Anexar Arquivo
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
 

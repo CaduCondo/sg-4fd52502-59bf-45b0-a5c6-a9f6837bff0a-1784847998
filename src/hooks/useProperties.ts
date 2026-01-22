@@ -29,11 +29,14 @@ export interface PropertyFormData {
   location_id: string;
   property_identifier: string;
   complement: string;
+  bedrooms: string;
+  bathrooms: string;
   monthly_rent: string;
   status: string;
   description: string;
-  bedrooms: string;
-  bathrooms: string;
+  images: string[];
+  hasFurniture: boolean;
+  acceptsPets: boolean;
 }
 
 export function useProperties(): UsePropertiesReturn {
@@ -46,6 +49,19 @@ export function useProperties(): UsePropertiesReturn {
   const [sortOrder, setSortOrder] = useState<"alphabetical" | "price-asc" | "price-desc">("alphabetical");
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
   const [loading, setLoading] = useState(true);
+  const [formData, setFormData] = useState<PropertyFormData>({
+    location_id: "",
+    property_identifier: "",
+    complement: "",
+    bedrooms: "",
+    bathrooms: "",
+    monthly_rent: "",
+    status: "available",
+    description: "",
+    images: [],
+    hasFurniture: false,
+    acceptsPets: false,
+  });
 
   const loadData = useCallback(async () => {
     try {

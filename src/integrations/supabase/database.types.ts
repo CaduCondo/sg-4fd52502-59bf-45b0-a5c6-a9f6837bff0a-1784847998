@@ -228,14 +228,17 @@ export type Database = {
       }
       properties: {
         Row: {
+          accepts_pets: boolean | null
           area: number | null
           bathrooms: number | null
           complement: string | null
           created_at: string | null
           description: string | null
           garage_value: number | null
+          has_furniture: boolean | null
           has_garage: boolean | null
           id: string
+          images: Json | null
           location_id: string
           property_identifier: string | null
           rooms: number | null
@@ -244,14 +247,17 @@ export type Database = {
           value: number | null
         }
         Insert: {
+          accepts_pets?: boolean | null
           area?: number | null
           bathrooms?: number | null
           complement?: string | null
           created_at?: string | null
           description?: string | null
           garage_value?: number | null
+          has_furniture?: boolean | null
           has_garage?: boolean | null
           id?: string
+          images?: Json | null
           location_id: string
           property_identifier?: string | null
           rooms?: number | null
@@ -260,14 +266,17 @@ export type Database = {
           value?: number | null
         }
         Update: {
+          accepts_pets?: boolean | null
           area?: number | null
           bathrooms?: number | null
           complement?: string | null
           created_at?: string | null
           description?: string | null
           garage_value?: number | null
+          has_furniture?: boolean | null
           has_garage?: boolean | null
           id?: string
+          images?: Json | null
           location_id?: string
           property_identifier?: string | null
           rooms?: number | null

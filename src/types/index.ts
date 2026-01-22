@@ -83,6 +83,11 @@ export interface Property {
   area?: number; // DB field
   hasGarage?: boolean; // Mapped from has_garage
   
+  // Novos campos
+  images?: string[]; // Array de URLs das imagens
+  hasFurniture?: boolean; // Móveis planejados
+  acceptsPets?: boolean; // Aceita pets
+  
   // Financial
   value?: number;
   monthlyRent?: number; // Mapped from monthly_rent
@@ -100,6 +105,8 @@ export interface Property {
   has_garage?: boolean;
   garage_value?: number;
   property_identifier?: string;
+  has_furniture?: boolean;
+  accepts_pets?: boolean;
 }
 
 export interface Tenant {

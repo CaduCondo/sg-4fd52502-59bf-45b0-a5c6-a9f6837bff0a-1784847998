@@ -32,6 +32,11 @@ function mapPropertyFromDB(row: PropertyRow): Property {
     description: row.description || undefined,
     propertyIdentifier: row.property_identifier || undefined,
     
+    // Novos campos
+    images: (row.images as string[]) || [],
+    hasFurniture: row.has_furniture || false,
+    acceptsPets: row.accepts_pets || false,
+    
     createdAt: row.created_at || undefined,
     updatedAt: row.updated_at || undefined,
   };
@@ -48,6 +53,9 @@ export async function createProperty(property: Partial<Property>) {
       rooms: property.rooms,
       bathrooms: property.bathrooms,
       description: property.description,
+      images: property.images || [],
+      has_furniture: property.hasFurniture || false,
+      accepts_pets: property.acceptsPets || false,
     })
     .select("*, locations(*)")
     .single();
@@ -94,6 +102,9 @@ export async function update(id: string, property: Partial<Property>) {
   if (property.rooms !== undefined) updateData.rooms = property.rooms;
   if (property.bathrooms !== undefined) updateData.bathrooms = property.bathrooms;
   if (property.description !== undefined) updateData.description = property.description;
+  if (property.images !== undefined) updateData.images = property.images;
+  if (property.hasFurniture !== undefined) updateData.has_furniture = property.hasFurniture;
+  if (property.acceptsPets !== undefined) updateData.accepts_pets = property.acceptsPets;
 
   const { data, error } = await supabase
     .from("properties")
