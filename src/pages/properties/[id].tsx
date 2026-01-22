@@ -15,7 +15,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Save, Upload } from "lucide-react";
+import { ArrowLeft, Save, Upload, BedDouble, Bath, Maximize2, DollarSign } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrencyInput } from "@/lib/masks";
 import { AttachmentViewer } from "@/components/AttachmentViewer";

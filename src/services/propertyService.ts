@@ -131,3 +131,158 @@ export async function remove(id: string) {
 
 // Alias for remove
 export const deleteProperty = remove;
+
+export const propertyService = {
+  async getAll(): Promise<Property[]> {
+    const { data, error } = await supabase
+      .from("properties")
+      .select(`
+        *,
+        locations!properties_location_id_fkey (
+          id,
+          name
+        )
+      `)
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+
+    return (data || []).map((property) => ({
+      id: property.id,
+      locationId: property.location_id,
+      location: property.locations?.name || "",
+      propertyIdentifier: property.property_identifier || "",
+      complement: property.complement || "",
+      rooms: property.rooms || 0,
+      bathrooms: property.bathrooms || 0,
+      value: property.value || 0,
+      monthly_rent: property.value || 0,
+      status: (property.status as "available" | "occupied" | "unavailable") || "available",
+      description: property.description || "",
+      images: (property.images as unknown as string[]) || [],
+      hasFurniture: property.has_furniture || false,
+      has_furniture: property.has_furniture || false,
+      acceptsPets: property.accepts_pets || false,
+      accepts_pets: property.accepts_pets || false,
+      area: property.area || 0,
+      hasGarage: property.has_garage || false,
+      createdAt: property.created_at,
+    }));
+  },
+
+  async create(property: Partial<Property>): Promise<Property> {
+    const { data, error } = await supabase
+      .from("properties")
+      .insert({
+        location_id: property.locationId,
+        property_identifier: property.propertyIdentifier || "Apartamento",
+        complement: property.complement,
+        rooms: property.rooms || 0,
+        bathrooms: property.bathrooms || 0,
+        value: property.monthlyRent || property.value || 0,
+        status: property.status || "available",
+        description: property.description,
+        images: property.images || [],
+        has_furniture: property.hasFurniture || false,
+        accepts_pets: property.acceptsPets || false,
+        area: property.area || 0,
+        has_garage: property.hasGarage || false,
+      })
+      .select(`
+        *,
+        locations!properties_location_id_fkey (
+          id,
+          name
+        )
+      `)
+      .single();
+
+    if (error) throw error;
+    
+    // Mapeamento manual para garantir conformidade com a interface Property
+    const result: Property = {
+      id: data.id,
+      locationId: data.location_id,
+      location: data.locations?.name || "",
+      propertyIdentifier: data.property_identifier || "",
+      complement: data.complement || "",
+      rooms: data.rooms || 0,
+      bathrooms: data.bathrooms || 0,
+      value: data.value || 0,
+      monthly_rent: data.value || 0,
+      status: (data.status as "available" | "occupied" | "unavailable") || "available",
+      description: data.description || "",
+      images: (data.images as unknown as string[]) || [],
+      hasFurniture: data.has_furniture || false,
+      has_furniture: data.has_furniture || false,
+      acceptsPets: data.accepts_pets || false,
+      accepts_pets: data.accepts_pets || false,
+      area: data.area || 0,
+      hasGarage: data.has_garage || false,
+      createdAt: data.created_at,
+    };
+    
+    return result;
+  },
+
+  async update(id: string, property: Partial<Property>): Promise<Property> {
+    const { data, error } = await supabase
+      .from("properties")
+      .update({
+        location_id: property.locationId,
+        property_identifier: property.propertyIdentifier,
+        complement: property.complement,
+        rooms: property.rooms,
+        bathrooms: property.bathrooms,
+        value: property.value || property.monthly_rent,
+        status: property.status,
+        description: property.description,
+        images: property.images,
+        has_furniture: property.hasFurniture,
+        accepts_pets: property.acceptsPets,
+        area: property.area,
+        has_garage: property.hasGarage,
+      })
+      .eq("id", id)
+      .select(`
+        *,
+        locations!properties_location_id_fkey (
+          id,
+          name
+        )
+      `)
+      .single();
+
+    if (error) throw error;
+    
+    // Mapeamento manual para garantir conformidade com a interface Property
+    const result: Property = {
+      id: data.id,
+      locationId: data.location_id,
+      location: data.locations?.name || "",
+      propertyIdentifier: data.property_identifier || "",
+      complement: data.complement || "",
+      rooms: data.rooms || 0,
+      bathrooms: data.bathrooms || 0,
+      value: data.value || 0,
+      monthly_rent: data.value || 0,
+      status: (data.status as "available" | "occupied" | "unavailable") || "available",
+      description: data.description || "",
+      images: (data.images as unknown as string[]) || [],
+      hasFurniture: data.has_furniture || false,
+      has_furniture: data.has_furniture || false,
+      acceptsPets: data.accepts_pets || false,
+      accepts_pets: data.accepts_pets || false,
+      area: data.area || 0,
+      hasGarage: data.has_garage || false,
+      createdAt: data.created_at,
+    };
+    
+    return result;
+  },
+
+  async remove(id: string): Promise<void> {
+    const { error } = await supabase.from("properties").delete().eq("id", id);
+    if (error) throw error;
+  },
+};

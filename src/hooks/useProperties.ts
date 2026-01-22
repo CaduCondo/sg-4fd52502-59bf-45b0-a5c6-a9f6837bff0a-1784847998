@@ -137,12 +137,12 @@ export function useProperties(): UsePropertiesReturn {
       complement: formData.complement,
       rooms: Number(formData.rooms) || 0,
       bathrooms: Number(formData.bathrooms) || 0,
-      monthlyRent: parseFloat(formData.monthly_rent.replace(",", ".")) || 0,
+      monthlyRent: parseFloat(formData.monthly_rent.replace(/[^\d,]/g, "").replace(",", ".")) || 0,
       description: formData.description,
       images: formData.images,
       hasFurniture: formData.hasFurniture,
       acceptsPets: formData.acceptsPets,
-      area: formData.area ? parseFloat(formData.area.replace(",", ".")) : undefined,
+      area: formData.area ? parseFloat(formData.area.replace(",", ".")) : 0,
       hasGarage: formData.hasGarage,
     };
 
@@ -174,7 +174,7 @@ export function useProperties(): UsePropertiesReturn {
       images: formData.images,
       hasFurniture: formData.hasFurniture,
       acceptsPets: formData.acceptsPets,
-      area: formData.area ? parseFloat(formData.area.replace(",", ".")) : undefined,
+      area: formData.area ? parseFloat(formData.area.replace(",", ".")) : 0,
       hasGarage: formData.hasGarage,
     };
 
