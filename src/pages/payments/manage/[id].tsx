@@ -206,8 +206,8 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
     const penaltyRate = (config.late_fee_percentage || 2) / 100;
     const interestRate = (config.interest_rate_percentage || 0.033) / 100;
 
-    const penaltyAmount = daysLate > 0 ? remainingAmount * penaltyRate : 0;
-    const interestAmount = daysLate > 0 ? remainingAmount * interestRate * daysLate : 0;
+    const penaltyAmount = daysLate > 1 ? remainingAmount * penaltyRate : 0;
+    const interestAmount = daysLate > 1 ? remainingAmount * interestRate * daysLate : 0;
     
     const finalPenalty = waiveLateFees ? 0 : penaltyAmount;
     const finalInterest = waiveLateFees ? 0 : interestAmount;
@@ -474,7 +474,7 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
               <span>Valor Restante:</span>
               <span className="font-medium">{formatCurrency(calculatedValues.rentAmount)}</span>
             </div>
-            {calculatedValues.daysLate > 0 && (
+            {calculatedValues.daysLate > 1 && (
               <>
                 <div className={`flex justify-between ${waiveLateFees ? 'line-through text-gray-400' : 'text-orange-600'}`}>
                   <span>Multa ({config?.late_fee_percentage || 0}%):</span>
