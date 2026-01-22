@@ -12,8 +12,8 @@ export function PublicHeader() {
               <Building2 className="h-7 w-7 text-white" />
             </div>
             <div>
-              <h1 className="font-display text-2xl font-bold text-slate-900">
-                Imóveis Premium
+              <h1 className="font-display text-2xl font-bold text-slate-900">D'Uva Enterprise Corporation
+
               </h1>
               <p className="text-xs text-slate-600">Seu novo lar está aqui</p>
             </div>
@@ -22,14 +22,14 @@ export function PublicHeader() {
           <Link href="/login">
             <Button
               variant="outline"
-              className="gap-2 border-slate-300 hover:bg-slate-50"
-            >
+              className="gap-2 border-slate-300 hover:bg-slate-50">
+
               <LogIn className="h-4 w-4" />
               Gerenciador
             </Button>
           </Link>
         </div>
       </div>
-    </header>
-  );
+    </header>);
+
 }
