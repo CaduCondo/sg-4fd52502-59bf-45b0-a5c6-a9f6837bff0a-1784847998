@@ -12,6 +12,10 @@ function mapPropertyFromDB(row: PropertyRow): Property {
     // Location info - mapped from join
     locationId: row.location_id,
     location: row.locations?.name, // Mapped name from joined table
+    neighborhood: row.locations?.neighborhood || undefined,
+    city: row.locations?.city || undefined,
+    state: row.locations?.state || undefined,
+    zipCode: row.locations?.zip_code || undefined,
     
     complement: row.complement || undefined,
     value: row.value || 0,

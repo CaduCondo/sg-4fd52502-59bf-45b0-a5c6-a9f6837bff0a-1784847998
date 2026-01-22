@@ -65,6 +65,12 @@ export interface Property {
   locationId: string;
   location?: string; // Derived name
   complement?: string; // DB field
+  
+  // Address details mapped from Location
+  neighborhood?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
 
   // Details
   description?: string; // DB field

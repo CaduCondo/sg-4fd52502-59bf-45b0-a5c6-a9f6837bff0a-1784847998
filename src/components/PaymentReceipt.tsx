@@ -1,10 +1,10 @@
-import { useState, useContext } from "react";
+import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { FileText, Download, Mail, Share2, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { AuthContext } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/AuthContext";
 import type { Payment, Rental, Property, Tenant } from "@/types";
 import { formatCurrency } from "@/lib/masks";
 import { format, differenceInMonths } from "date-fns";
@@ -104,7 +104,7 @@ export function PaymentReceipt({
   onClose,
 }: PaymentReceiptProps) {
   const { toast } = useToast();
-  const { user } = useContext(AuthContext);
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
 
   const totalAmount = payment.paidAmount || 0;
@@ -119,7 +119,6 @@ export function PaymentReceipt({
   ];
 
   const referenceMonthName = monthNames[(payment.referenceMonth || 1) - 1];
-  const paymentDate = payment.paymentDate ? new Date(payment.paymentDate + "T00:00:00") : new Date();
   const dueDate = payment.dueDate ? new Date(payment.dueDate + "T00:00:00") : new Date();
 
   const contractStartDate = new Date(rental.startDate + "T00:00:00");
@@ -204,11 +203,11 @@ export function PaymentReceipt({
 
   const fullAddress = [
     property.location,
-    property.complement,
+    property.complement ? ` ${property.complement}` : "",
     property.neighborhood,
     property.city,
     property.state,
-    property.zipCode
+    property.zipCode ? `CEP: ${property.zipCode}` : ""
   ].filter(Boolean).join(", ");
 
   return (
@@ -227,34 +226,13 @@ export function PaymentReceipt({
               <div className="text-center border-b pb-4">
                 <h2 className="text-2xl font-bold uppercase">Recibo de Aluguel</h2>
                 <p className="text-sm text-muted-foreground mt-2">
-                  Nº {currentPaymentNumber}/{totalMonths}
+                  ({currentPaymentNumber}/{totalMonths})
                 </p>
               </div>
 
-              <div className="space-y-4 text-sm leading-relaxed">
+              <div className="space-y-4 text-sm leading-relaxed text-justify">
                 <p>
-                  Recebi dos Srs. <span className="font-semibold uppercase">{tenant.name}</span>, a importância de:{" "}
-                  <span className="font-semibold uppercase">{numberToWords(totalAmount)}</span>
-                </p>
-
-                <p>
-                  Referente ao mês de <span className="font-semibold">{referenceMonthName}/{payment.referenceYear}</span>,
-                  sendo esse aluguel referente ao imóvel localizado em:
-                </p>
-
-                <p className="font-semibold uppercase pl-4">
-                  {property.location}
-                  {property.complement && `, ${property.complement}`}
-                </p>
-
-                <p>
-                  Ao mês de <span className="font-semibold">{format(paymentDate, "MM/yyyy", { locale: ptBR })}</span>,
-                  sendo seu vencimento em <span className="font-semibold">{format(dueDate, "dd/MM/yyyy", { locale: ptBR })}</span>,
-                  sendo esse INSTRUMENTO PARTICULAR DE CONTRATO DE LOCAÇÃO PARA FINS RESIDENCIAL,
-                  assinado entre as partes em <span className="font-semibold">{format(new Date(rental.startDate + "T00:00:00"), "dd/MM/yyyy", { locale: ptBR })}</span>,
-                  apresentado dos comprovantes de depósito bancário e contas de água e luz do mês anterior pagos sendo
-                  este vinculado ao INSTRUMENTO PARTICULAR DE CONTRATO DE LOCAÇÃO,
-                  este "imóvel" está apresentação dos comprovantes de depósito
+                  Recebi dos Srs. <span className="font-semibold uppercase">{tenant.name}</span>, a importância de <span className="font-semibold uppercase">{numberToWords(totalAmount)}</span>, proveniente ao depósito de aluguel referente ao mês de <span className="font-semibold">{referenceMonthName} de {payment.referenceYear}</span>, tendo seu vencimento em <span className="font-semibold">{format(dueDate, "dd/MM/yyyy", { locale: ptBR })}</span>, do imóvel situado <span className="font-semibold uppercase">{property.location}{property.complement ? `, ${property.complement}` : ""}{property.neighborhood ? `, ${property.neighborhood}` : ""}{property.city ? `, ${property.city}` : ""}{property.state ? ` - ${property.state}` : ""}{property.zipCode ? `, CEP ${property.zipCode}` : ""}</span>, após a apresentação dos comprovantes de depósito bancário e contas de água e luz do mês anterior pagas, sendo este vinculado ao INSTRUMENTO PARTICULAR DE CONTRATO DE LOCAÇÃO PARA FINS RESIDENCIAL, assinado entre as partes em <span className="font-semibold">{format(new Date(rental.startDate + "T00:00:00"), "dd/MM/yyyy", { locale: ptBR })}</span>.
                 </p>
               </div>
 
@@ -280,31 +258,31 @@ export function PaymentReceipt({
               <div className="border-t pt-6 space-y-8">
                 <div className="text-center">
                   <p className="font-semibold uppercase">
-                    São Paulo, dia {format(paymentDate, "dd/MM/yyyy", { locale: ptBR })}
+                    São Paulo, {format(new Date(), "dd 'de' MMMM 'de' yyyy, HH:mm", { locale: ptBR })}
                   </p>
                 </div>
 
                 <div className="flex justify-center pt-8">
-                  <div className="text-center">
-                    {typeof window !== "undefined" && (
+                  <div className="text-center flex flex-col items-center">
+                    <div className="h-24 flex items-end justify-center mb-2">
+                      {/* O usuário deve colocar o arquivo signature.png na pasta public/ */}
                       <Image
                         src="/signature.png"
                         alt="Assinatura"
                         width={200}
                         height={100}
-                        className="mx-auto mb-2"
+                        className="object-contain max-h-20"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                        }}
                       />
-                    )}
-                    <div className="border-t-2 border-gray-400 w-64 mb-2"></div>
-                    <p className="text-xs uppercase font-semibold">Assinatura</p>
+                    </div>
+                    <div className="border-t-2 border-gray-400 w-80 mb-2"></div>
+                    <p className="font-semibold uppercase">{user?.name || "Administrador"}</p>
+                    <p className="text-xs text-muted-foreground uppercase">Assinatura</p>
                   </div>
                 </div>
-              </div>
-
-              <div className="border-t pt-4 text-xs text-muted-foreground text-center">
-                <p>
-                  Documento gerado em {format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                </p>
               </div>
             </CardContent>
           </Card>
