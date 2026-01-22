@@ -18,10 +18,13 @@ import {
   ChevronLeft,
   ChevronRight,
   Building2,
+  Heart,
 } from "lucide-react";
 import { Property } from "@/types";
 import { formatCurrency } from "@/lib/masks";
 import { PublicProperty } from "@/hooks/usePublicProperties";
+import { ShareButtons } from "./ShareButtons";
+import { InterestFormDialog } from "./InterestFormDialog";
 
 interface PropertyPublicCardProps {
   property: PublicProperty;
@@ -29,6 +32,7 @@ interface PropertyPublicCardProps {
 
 export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
   const [showDetails, setShowDetails] = useState(false);
+  const [showInterest, setShowInterest] = useState(false);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
 
   const photos = property.photos || [];
@@ -140,14 +144,28 @@ export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
             )}
           </div>
 
-          <Button
-            onClick={() => setShowDetails(true)}
-            className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
-          >
-            Ver Detalhes
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={() => setShowInterest(true)}
+              className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
+            >
+              <Heart className="h-4 w-4 mr-2" />
+              Tenho Interesse
+            </Button>
+            <ShareButtons
+              propertyName={property.name || "Imóvel"}
+              propertyUrl={`/?property=${property.id}`}
+            />
+          </div>
         </CardContent>
       </Card>
+
+      <InterestFormDialog
+        open={showInterest}
+        onOpenChange={setShowInterest}
+        propertyName={property.name || "Imóvel"}
+        propertyId={property.id}
+      />
 
       <Dialog open={showDetails} onOpenChange={setShowDetails}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">

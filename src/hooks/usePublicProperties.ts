@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Property } from "@/types";
 
+export type SortOption = "newest" | "price-asc" | "price-desc" | "area-desc";
+
 export interface PublicProperty extends Property {
   locationName?: string;
   name?: string;
@@ -18,6 +20,7 @@ export function usePublicProperties() {
   const [locations, setLocations] = useState<Array<{ id: string; name: string }>>([]);
   const [selectedLocation, setSelectedLocation] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
+  const [sortBy, setSortBy] = useState<SortOption>("newest");
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -101,6 +104,21 @@ export function usePublicProperties() {
       property.city?.toLowerCase().includes(searchTerm.toLowerCase());
 
     return matchesLocation && matchesSearch;
+  }).sort((a, b) => {
+    const totalA = a.rentAmount + (a.condominiumAmount || 0) + (a.iptuAmount || 0);
+    const totalB = b.rentAmount + (b.condominiumAmount || 0) + (b.iptuAmount || 0);
+
+    switch (sortBy) {
+      case "price-asc":
+        return totalA - totalB;
+      case "price-desc":
+        return totalB - totalA;
+      case "area-desc":
+        return (b.area || 0) - (a.area || 0);
+      case "newest":
+      default:
+        return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+    }
   });
 
   return {
@@ -110,6 +128,8 @@ export function usePublicProperties() {
     setSelectedLocation,
     searchTerm,
     setSearchTerm,
+    sortBy,
+    setSortBy,
     isLoading,
   };
 }

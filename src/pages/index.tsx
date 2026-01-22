@@ -3,10 +3,15 @@ import Head from "next/head";
 import { PublicHeader } from "@/components/public/PublicHeader";
 import { LocationFilter } from "@/components/public/LocationFilter";
 import { PropertyPublicCard } from "@/components/public/PropertyPublicCard";
+import { PropertyListCard } from "@/components/public/PropertyListCard";
+import { WhatsAppButton } from "@/components/public/WhatsAppButton";
+import { ViewModeToggle } from "@/components/public/ViewModeToggle";
+import { SortSelector, SortOption } from "@/components/public/SortSelector";
 import { usePublicProperties } from "@/hooks/usePublicProperties";
 import { Input } from "@/components/ui/input";
-import { Search, Home, Building2 } from "lucide-react";
+import { Search, Home, Building2, Phone, Mail, MapPin, Facebook, Instagram, Linkedin } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { siteConfig } from "@/services/configService";
 
 export default function PublicHome() {
   const {
@@ -16,17 +21,28 @@ export default function PublicHome() {
     setSelectedLocation,
     searchTerm,
     setSearchTerm,
+    sortBy,
+    setSortBy,
     isLoading
   } = usePublicProperties();
+
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
   return (
     <>
       <Head>
-        <title>Imóveis Premium - Encontre seu novo lar</title>
+        <title>{siteConfig.name} - Encontre seu novo lar</title>
         <meta
           name="description"
-          content="Encontre o imóvel perfeito para você. Apartamentos, casas e imóveis comerciais disponíveis para locação." />
-
+          content={siteConfig.description}
+        />
+        <meta property="og:title" content={`${siteConfig.name} - Encontre seu novo lar`} />
+        <meta property="og:description" content={siteConfig.description} />
+        <meta property="og:type" content="website" />
+        <meta property="og:image" content="/og-image.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={`${siteConfig.name} - Encontre seu novo lar`} />
+        <meta name="twitter:description" content={siteConfig.description} />
       </Head>
 
       <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
@@ -43,8 +59,8 @@ export default function PublicHome() {
                 <br />
                 <span className="text-orange-400">Perfeito para Você</span>
               </h1>
-              <p className="text-xl text-blue-100 mb-8">Apartamentos e imóveis comerciais em diversas localidades
-
+              <p className="text-xl text-blue-100 mb-8">
+                Apartamentos e imóveis comerciais em diversas localidades
               </p>
 
               {/* Search Bar */}
@@ -55,40 +71,47 @@ export default function PublicHome() {
                   placeholder="Buscar por bairro, cidade ou nome do imóvel..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-12 pr-4 py-6 text-lg rounded-full shadow-2xl border-0" />
-
+                  className="pl-12 pr-4 py-6 text-lg rounded-full shadow-2xl border-0"
+                />
               </div>
             </div>
           </div>
         </section>
 
         {/* Filters Section */}
-        <section className="border-b bg-white shadow-sm">
+        <section className="border-b bg-white shadow-sm sticky top-0 z-40">
           <div className="container mx-auto px-4 py-6">
-            <LocationFilter
-              locations={locations}
-              selectedLocation={selectedLocation}
-              onSelectLocation={setSelectedLocation} />
-
+            <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+              <LocationFilter
+                locations={locations}
+                selectedLocation={selectedLocation}
+                onSelectLocation={setSelectedLocation}
+              />
+              
+              <div className="flex gap-3 items-center">
+                <SortSelector sortBy={sortBy} onSortChange={setSortBy} />
+                <ViewModeToggle viewMode={viewMode} onViewModeChange={setViewMode} />
+              </div>
+            </div>
           </div>
         </section>
 
-        {/* Properties Grid */}
+        {/* Properties Grid/List */}
         <section className="py-12">
           <div className="container mx-auto px-4">
-            {isLoading ?
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {[...Array(6)].map((_, i) =>
-              <div key={i} className="space-y-4">
+            {isLoading ? (
+              <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" : "space-y-6"}>
+                {[...Array(6)].map((_, i) => (
+                  <div key={i} className="space-y-4">
                     <Skeleton className="aspect-[4/3] w-full rounded-lg" />
                     <Skeleton className="h-6 w-3/4" />
                     <Skeleton className="h-4 w-1/2" />
                     <Skeleton className="h-10 w-full" />
                   </div>
-              )}
-              </div> :
-            properties.length === 0 ?
-            <div className="text-center py-20">
+                ))}
+              </div>
+            ) : properties.length === 0 ? (
+              <div className="text-center py-20">
                 <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-slate-100 mb-6">
                   <Home className="h-10 w-10 text-slate-400" />
                 </div>
@@ -98,9 +121,9 @@ export default function PublicHome() {
                 <p className="text-slate-600">
                   Tente ajustar os filtros ou fazer uma nova busca
                 </p>
-              </div> :
-
-            <>
+              </div>
+            ) : (
+              <>
                 <div className="flex items-center justify-between mb-8">
                   <h2 className="font-display text-3xl font-bold text-slate-900">
                     Imóveis Disponíveis
@@ -114,38 +137,119 @@ export default function PublicHome() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                  {properties.map((property) =>
-                <PropertyPublicCard key={property.id} property={property} />
+                {viewMode === "grid" ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    {properties.map((property) => (
+                      <PropertyPublicCard key={property.id} property={property} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {properties.map((property) => (
+                      <PropertyListCard key={property.id} property={property} />
+                    ))}
+                  </div>
                 )}
-                </div>
               </>
-            }
+            )}
           </div>
         </section>
 
         {/* Footer */}
-        <footer className="bg-slate-900 text-slate-300 py-12 mt-20">
+        <footer className="bg-slate-900 text-slate-300 py-16 mt-20">
           <div className="container mx-auto px-4">
-            <div className="text-center">
-              <div className="flex items-center justify-center gap-3 mb-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600">
-                  <Building2 className="h-7 w-7 text-white" />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-12">
+              {/* Logo e Descrição */}
+              <div>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600">
+                    <Building2 className="h-7 w-7 text-white" />
+                  </div>
+                  <h3 className="font-display text-2xl font-bold text-white">
+                    {siteConfig.name}
+                  </h3>
                 </div>
-                <h3 className="font-display text-2xl font-bold text-white">
-                  Imóveis Premium
-                </h3>
+                <p className="text-slate-400">
+                  {siteConfig.description}
+                </p>
               </div>
-              <p className="text-slate-400 mb-6">
-                Gerenciamento profissional de imóveis
-              </p>
+
+              {/* Contato */}
+              <div>
+                <h4 className="font-display text-lg font-bold text-white mb-4">
+                  Entre em Contato
+                </h4>
+                <div className="space-y-3">
+                  <a 
+                    href={`tel:${siteConfig.contact.phone}`}
+                    className="flex items-center gap-3 text-slate-300 hover:text-white transition-colors"
+                  >
+                    <Phone className="h-5 w-5 text-blue-400" />
+                    {siteConfig.contact.phone}
+                  </a>
+                  <a 
+                    href={`mailto:${siteConfig.contact.email}`}
+                    className="flex items-center gap-3 text-slate-300 hover:text-white transition-colors"
+                  >
+                    <Mail className="h-5 w-5 text-blue-400" />
+                    {siteConfig.contact.email}
+                  </a>
+                  <div className="flex items-center gap-3 text-slate-300">
+                    <MapPin className="h-5 w-5 text-blue-400" />
+                    {siteConfig.contact.address}
+                  </div>
+                </div>
+              </div>
+
+              {/* Redes Sociais */}
+              <div>
+                <h4 className="font-display text-lg font-bold text-white mb-4">
+                  Redes Sociais
+                </h4>
+                <div className="flex gap-4">
+                  <a
+                    href={siteConfig.social.facebook}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-800 text-slate-300 hover:bg-blue-600 hover:text-white transition-colors"
+                    aria-label="Facebook"
+                  >
+                    <Facebook className="h-5 w-5" />
+                  </a>
+                  <a
+                    href={siteConfig.social.instagram}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-800 text-slate-300 hover:bg-pink-600 hover:text-white transition-colors"
+                    aria-label="Instagram"
+                  >
+                    <Instagram className="h-5 w-5" />
+                  </a>
+                  <a
+                    href={siteConfig.social.linkedin}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-800 text-slate-300 hover:bg-blue-700 hover:text-white transition-colors"
+                    aria-label="LinkedIn"
+                  >
+                    <Linkedin className="h-5 w-5" />
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            {/* Copyright */}
+            <div className="border-t border-slate-800 pt-8 text-center">
               <p className="text-sm text-slate-500">
-                © {new Date().getFullYear()} Imóveis Premium. Todos os direitos reservados.
+                © {new Date().getFullYear()} {siteConfig.name}. Todos os direitos reservados.
               </p>
             </div>
           </div>
         </footer>
-      </div>
-    </>);
 
+        {/* WhatsApp Floating Button */}
+        <WhatsAppButton />
+      </div>
+    </>
+  );
 }
