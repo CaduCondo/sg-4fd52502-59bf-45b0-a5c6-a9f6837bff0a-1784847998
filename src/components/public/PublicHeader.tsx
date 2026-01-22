@@ -12,7 +12,7 @@ export function PublicHeader() {
               <Building2 className="h-7 w-7 text-white" />
             </div>
             <div>
-              <h1 className="font-display text-2xl font-bold text-slate-900">D'Uva Enterprise Corporation
+              <h1 className="font-display text-2xl font-bold text-slate-900">D'Uvo Enterprise Corporation
 
               </h1>
               <p className="text-xs text-slate-600">Seu novo lar está aqui</p>
