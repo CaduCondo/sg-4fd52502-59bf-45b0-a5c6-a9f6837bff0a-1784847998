@@ -30,7 +30,7 @@ import {
   TrendingUp
 } from "lucide-react";
 import { Payment, Property, Rental, Tenant, User } from "@/types";
-import { format } from "date-fns";
+import { format, differenceInMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { getAll as getAllPayments } from "@/services/paymentService";
 import { getAll as getAllProperties } from "@/services/propertyService";
@@ -236,6 +236,19 @@ export default function Financial() {
     };
   };
 
+  const calculatePaymentNumber = (payment: Payment, rental: Rental | undefined) => {
+    if (!rental) return "N/A";
+    
+    const contractStartDate = new Date(rental.startDate + "T00:00:00");
+    const contractEndDate = new Date(rental.endDate + "T00:00:00");
+    const totalMonths = differenceInMonths(contractEndDate, contractStartDate) + 1;
+    
+    const referenceDate = new Date(payment.referenceYear || 0, (payment.referenceMonth || 1) - 1, 1);
+    const currentPaymentNumber = differenceInMonths(referenceDate, contractStartDate) + 1;
+    
+    return `${currentPaymentNumber}/${totalMonths}`;
+  };
+
   const formatCurrency = (value: number) => {
     return value.toLocaleString("pt-BR", {
       style: "currency",
@@ -408,13 +421,13 @@ export default function Financial() {
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={11} className="h-24 text-center text-slate-500">
+                      <TableCell colSpan={12} className="h-24 text-center text-slate-500">
                         Carregando...
                       </TableCell>
                     </TableRow>
                   ) : filteredPayments.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={11} className="h-24 text-center text-slate-500">
+                      <TableCell colSpan={12} className="h-24 text-center text-slate-500">
                         Nenhum registro encontrado para este período.
                       </TableCell>
                     </TableRow>
@@ -422,9 +435,13 @@ export default function Financial() {
                     filteredPayments.map((payment) => {
                       const details = getPaymentDetails(payment);
                       const monthName = months[parseInt(selectedMonth)].label;
+                      const paymentNumber = calculatePaymentNumber(payment, details.rental);
                       
                       return (
                         <TableRow key={payment.id} className="hover:bg-slate-50 transition-colors">
+                          <TableCell className="font-medium text-slate-900">
+                            {paymentNumber}
+                          </TableCell>
                           <TableCell className="font-medium text-slate-900">
                             {details.local}
                           </TableCell>

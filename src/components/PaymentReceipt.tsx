@@ -6,8 +6,9 @@ import { FileText, Download, Mail, Share2, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Payment, Rental, Property, Tenant } from "@/types";
 import { formatCurrency } from "@/lib/masks";
-import { format } from "date-fns";
+import { format, differenceInMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import Image from "next/image";
 
 interface PaymentReceiptProps {
   payment: Payment;
@@ -118,6 +119,14 @@ export function PaymentReceipt({
   const referenceMonthName = monthNames[(payment.referenceMonth || 1) - 1];
   const paymentDate = payment.paymentDate ? new Date(payment.paymentDate + "T00:00:00") : new Date();
   const dueDate = payment.dueDate ? new Date(payment.dueDate + "T00:00:00") : new Date();
+
+  // Calcular o número da parcela do contrato
+  const contractStartDate = new Date(rental.startDate + "T00:00:00");
+  const contractEndDate = new Date(rental.endDate + "T00:00:00");
+  const totalMonths = differenceInMonths(contractEndDate, contractStartDate) + 1;
+  
+  const referenceDate = new Date(payment.referenceYear || 0, (payment.referenceMonth || 1) - 1, 1);
+  const currentPaymentNumber = differenceInMonths(referenceDate, contractStartDate) + 1;
 
   const handlePrint = () => {
     setLoading(true);
