@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useContext } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { FileText, Download, Mail, Share2, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { AuthContext } from "@/contexts/AuthContext";
 import type { Payment, Rental, Property, Tenant } from "@/types";
 import { formatCurrency } from "@/lib/masks";
 import { format, differenceInMonths } from "date-fns";
@@ -103,6 +104,7 @@ export function PaymentReceipt({
   onClose,
 }: PaymentReceiptProps) {
   const { toast } = useToast();
+  const { user } = useContext(AuthContext);
   const [loading, setLoading] = useState(false);
 
   const totalAmount = payment.paidAmount || 0;
@@ -120,7 +122,6 @@ export function PaymentReceipt({
   const paymentDate = payment.paymentDate ? new Date(payment.paymentDate + "T00:00:00") : new Date();
   const dueDate = payment.dueDate ? new Date(payment.dueDate + "T00:00:00") : new Date();
 
-  // Calcular o número da parcela do contrato
   const contractStartDate = new Date(rental.startDate + "T00:00:00");
   const contractEndDate = new Date(rental.endDate + "T00:00:00");
   const totalMonths = differenceInMonths(contractEndDate, contractStartDate) + 1;
@@ -156,12 +157,12 @@ export function PaymentReceipt({
     const shareText = 
       `RECIBO DE ALUGUEL\n\n` +
       `Recebi dos Srs. ${tenant.name.toUpperCase()}, a importância de: ${numberToWords(totalAmount).toUpperCase()}\n\n` +
-      `Referente ao mês de ${referenceMonthName}/${payment.referenceYear}, sendo esse aluguel referente ao imóvel localizado em:\n` +
-      `${property.location.toUpperCase()}\n\n` +
+      `Referente ao mês de ${referenceMonthName}/${payment.referenceYear}, tendo seu vencimento em ${format(dueDate, "dd/MM/yyyy", { locale: ptBR })}\n` +
+      `Imóvel: ${property.location.toUpperCase()}\n\n` +
       `Valor: ${formatCurrency(baseAmount)}\n` +
       (totalCharges > 0 ? `Multa/Juros: ${formatCurrency(totalCharges)}\n` : "") +
       `Total: ${formatCurrency(totalAmount)}\n\n` +
-      `SÃO PAULO, DIA ${format(paymentDate, "dd/MM/yyyy", { locale: ptBR })}`;
+      `SÃO PAULO, ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`;
 
     const shareData = {
       title: `Recibo de Pagamento - ${property.location}`,
@@ -201,6 +202,15 @@ export function PaymentReceipt({
     }
   };
 
+  const fullAddress = [
+    property.location,
+    property.complement,
+    property.neighborhood,
+    property.city,
+    property.state,
+    property.zipCode
+  ].filter(Boolean).join(", ");
+
   return (
     <Dialog open={true} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -217,7 +227,7 @@ export function PaymentReceipt({
               <div className="text-center border-b pb-4">
                 <h2 className="text-2xl font-bold uppercase">Recibo de Aluguel</h2>
                 <p className="text-sm text-muted-foreground mt-2">
-                  Nº {payment.referenceMonth?.toString().padStart(2, "0")}/{payment.referenceYear?.toString().slice(-2)}
+                  Nº {currentPaymentNumber}/{totalMonths}
                 </p>
               </div>
 
@@ -248,22 +258,24 @@ export function PaymentReceipt({
                 </p>
               </div>
 
-              <div className="border-t pt-4">
-                <div className="grid grid-cols-3 gap-4 text-center font-semibold">
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">Valor</p>
-                    <p className="text-lg">{formatCurrency(baseAmount)}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">Multa + Juros</p>
-                    <p className="text-lg">{formatCurrency(totalCharges)}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">Total</p>
-                    <p className="text-lg text-primary">{formatCurrency(totalAmount)}</p>
+              {totalCharges > 0 && (
+                <div className="border-t pt-4">
+                  <div className="grid grid-cols-3 gap-4 text-center font-semibold">
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Valor</p>
+                      <p className="text-lg">{formatCurrency(baseAmount)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Multa + Juros</p>
+                      <p className="text-lg">{formatCurrency(totalCharges)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Total</p>
+                      <p className="text-lg text-primary">{formatCurrency(totalAmount)}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               <div className="border-t pt-6 space-y-8">
                 <div className="text-center">
@@ -274,6 +286,15 @@ export function PaymentReceipt({
 
                 <div className="flex justify-center pt-8">
                   <div className="text-center">
+                    {typeof window !== "undefined" && (
+                      <Image
+                        src="/signature.png"
+                        alt="Assinatura"
+                        width={200}
+                        height={100}
+                        className="mx-auto mb-2"
+                      />
+                    )}
                     <div className="border-t-2 border-gray-400 w-64 mb-2"></div>
                     <p className="text-xs uppercase font-semibold">Assinatura</p>
                   </div>
