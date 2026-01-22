@@ -290,12 +290,30 @@ export default function Payments() {
     const dueDate = new Date(payment.dueDate);
     dueDate.setHours(0, 0, 0, 0);
     
+    // Só cobrar juros e multa se estiver atrasado (vencimento já passou)
     if (dueDate >= today) {
       return payment.expectedAmount;
     }
     
     const totalWithFees = payment.expectedAmount + (payment.lateFee || 0) + (payment.interest || 0);
     return totalWithFees;
+  };
+
+  const getPaymentInstallment = (payment: Payment): string => {
+    const rental = rentals.find(r => r.id === payment.rentalId);
+    if (!rental) return "";
+    
+    // Calcular número de meses entre início do contrato e vencimento do pagamento
+    const startDate = new Date(rental.startDate);
+    const dueDate = new Date(payment.dueDate);
+    
+    const monthsDiff = (dueDate.getFullYear() - startDate.getFullYear()) * 12 + 
+                       (dueDate.getMonth() - startDate.getMonth()) + 1;
+    
+    // Total de meses do contrato
+    const totalMonths = rental.durationMonths || 0;
+    
+    return `${monthsDiff}/${totalMonths}`;
   };
 
   return (
@@ -425,6 +443,9 @@ export default function Payments() {
                                           {property.complement}
                                         </p>
                                       )}
+                                      <p className="text-xs font-semibold text-muted-foreground mt-0.5">
+                                        {getPaymentInstallment(payment)}
+                                      </p>
                                     </div>
                                   </div>
                                   <div className="flex flex-col items-end gap-1">
@@ -489,6 +510,9 @@ export default function Payments() {
                                           {getMonthName(payment.referenceMonth)}/{payment.referenceYear}
                                         </span>
                                         {getStatusBadge(payment.status)}
+                                        <span className="text-xs font-semibold text-muted-foreground">
+                                          {getPaymentInstallment(payment)}
+                                        </span>
                                       </div>
                                       <h3 className={`text-sm font-semibold truncate ${colors.icon}`}>
                                         {property?.location || "N/A"}
@@ -583,6 +607,9 @@ export default function Payments() {
                                           {property.complement}
                                         </p>
                                       )}
+                                      <p className="text-xs font-semibold text-muted-foreground mt-0.5">
+                                        {getPaymentInstallment(payment)}
+                                      </p>
                                     </div>
                                   </div>
                                   <div className="flex flex-col items-end gap-1">
@@ -657,6 +684,9 @@ export default function Payments() {
                                           {getMonthName(payment.referenceMonth)}/{payment.referenceYear}
                                         </span>
                                         {getStatusBadge(payment.status)}
+                                        <span className="text-xs font-semibold text-muted-foreground">
+                                          {getPaymentInstallment(payment)}
+                                        </span>
                                       </div>
                                       <h3 className="text-sm font-semibold truncate">
                                         {property?.location || "N/A"}
