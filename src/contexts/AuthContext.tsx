@@ -25,6 +25,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
+  // Lista de rotas públicas que não requerem autenticação
+  const publicRoutes = ["/", "/login"];
+
   const refreshUser = () => {
     const currentUser = getCurrentUser();
     if (currentUser) {
@@ -38,6 +41,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Check authentication on mount
     const checkAuth = () => {
       try {
+        const isPublicRoute = publicRoutes.includes(router.pathname);
+        
         // Use authService as single source of truth
         if (isAuthenticated()) {
           const currentUser = getCurrentUser();
@@ -45,13 +50,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setUser(currentUser as User);
           } else {
             setUser(null);
-            if (router.pathname !== "/login") {
+            if (!isPublicRoute) {
               router.push("/login");
             }
           }
         } else {
           setUser(null);
-          if (router.pathname !== "/login") {
+          // Apenas redireciona para login se NÃO estiver em rota pública
+          if (!isPublicRoute) {
             router.push("/login");
           }
         }
@@ -67,11 +73,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Poll for auth changes every 5 seconds
     const interval = setInterval(() => {
+      const isPublicRoute = publicRoutes.includes(router.pathname);
+      
       if (isAuthenticated()) {
         refreshUser();
       } else {
         setUser(null);
-        if (router.pathname !== "/login") {
+        // Apenas redireciona para login se NÃO estiver em rota pública
+        if (!isPublicRoute) {
           router.push("/login");
         }
       }

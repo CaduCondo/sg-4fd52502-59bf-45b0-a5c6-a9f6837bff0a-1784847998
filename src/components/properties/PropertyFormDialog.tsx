@@ -150,10 +150,16 @@ export function PropertyFormDialog({
               </Label>
               <Input
                 id="rooms"
-                type="number"
-                min="0"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 value={formData.rooms}
-                onChange={(e) => handleNumberChange("rooms", e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/\D/g, "");
+                  setFormData({ ...formData, rooms: value });
+                }}
+                placeholder="Ex: 3"
+                required
                 className="h-8 text-sm"
                 disabled={isReadOnly}
               />
@@ -165,10 +171,16 @@ export function PropertyFormDialog({
               </Label>
               <Input
                 id="bathrooms"
-                type="number"
-                min="0"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 value={formData.bathrooms}
-                onChange={(e) => handleNumberChange("bathrooms", e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/\D/g, "");
+                  setFormData({ ...formData, bathrooms: value });
+                }}
+                placeholder="Ex: 2"
+                required
                 className="h-8 text-sm"
                 disabled={isReadOnly}
               />
