@@ -163,8 +163,8 @@ export default function PublicHome() {
               <div>
                 <div className="flex items-center gap-2 mb-4">
                   <Building2 className="h-8 w-8 text-blue-600" />
-                  <span className="font-display text-2xl font-bold text-white">
-                    {siteConfig.name}
+                  <span className="font-display text-2xl font-bold text-white">D'Uvo Enterprise Corporation
+
                   </span>
                 </div>
                 <p className="text-slate-400 mb-4">
@@ -180,15 +180,15 @@ export default function PublicHome() {
                 <div className="space-y-3">
                   <a
                     href={`tel:${siteConfig.contact.phone}`}
-                    className="flex items-center gap-3 text-slate-300 hover:text-white transition-colors"
-                  >
+                    className="flex items-center gap-3 text-slate-300 hover:text-white transition-colors">
+
                     <Phone className="h-5 w-5 text-blue-400" />
                     {siteConfig.contact.phone}
                   </a>
                   <a
                     href={`mailto:${siteConfig.contact.email}`}
-                    className="flex items-center gap-3 text-slate-300 hover:text-white transition-colors"
-                  >
+                    className="flex items-center gap-3 text-slate-300 hover:text-white transition-colors">
+
                     <Mail className="h-5 w-5 text-blue-400" />
                     {siteConfig.contact.email}
                   </a>
