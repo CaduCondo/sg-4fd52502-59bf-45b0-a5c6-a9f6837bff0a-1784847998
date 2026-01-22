@@ -54,50 +54,29 @@ export function PropertyFormDialog({
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
+    const formDataUpload = new FormData();
+    Array.from(files).forEach((file) => {
+      formDataUpload.append("files", file);
+    });
+
     try {
-      const uploadPromises = Array.from(files).map(async (file) => {
-        const reader = new FileReader();
-        return new Promise<string>((resolve, reject) => {
-          reader.onload = async () => {
-            try {
-              const base64Data = reader.result as string;
-              const fileName = `image_${crypto.randomUUID()}.${file.name.split(".").pop()}`;
-
-              const response = await fetch("/api/upload", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  fileName,
-                  fileData: base64Data,
-                }),
-              });
-
-              if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || "Erro ao fazer upload");
-              }
-
-              const result = await response.json();
-              resolve(result.filePath); // API retorna { filePath: "/uploads/..." }
-            } catch (error) {
-              reject(error);
-            }
-          };
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: formDataUpload,
       });
 
-      const uploadedUrls = await Promise.all(uploadPromises);
+      if (!response.ok) throw new Error("Erro ao fazer upload");
+
+      const result = await response.json();
+      const newImages = result.files.map((f: any) => f.url);
+      
       setFormData({
         ...formData,
-        images: [...formData.images, ...uploadedUrls],
+        images: [...formData.images, ...newImages],
       });
     } catch (error) {
       console.error("Error uploading images:", error);
-      alert("Erro ao fazer upload das imagens. Por favor, tente novamente.");
+      alert("Erro ao fazer upload das imagens");
     }
   };
 
