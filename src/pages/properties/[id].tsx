@@ -82,7 +82,7 @@ export default function PropertyDetails() {
           bathrooms: data.bathrooms?.toString() || "",
           monthlyRent: data.value?.toString() || "",
           description: data.description || "",
-          images: Array.isArray(data.images) ? data.images : [],
+          images: Array.isArray(data.images) ? data.images.map((img: any) => String(img)) : [],
           hasFurniture: data.has_furniture || false,
           acceptsPets: data.accepts_pets || false,
           status: (data.status as "available" | "occupied" | "unavailable") || "available",
