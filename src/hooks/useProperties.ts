@@ -37,6 +37,7 @@ export interface PropertyFormData {
   images: string[];
   hasFurniture: boolean;
   acceptsPets: boolean;
+  area?: number;
 }
 
 export function useProperties(): UsePropertiesReturn {
@@ -139,6 +140,7 @@ export function useProperties(): UsePropertiesReturn {
       images: formData.images,
       hasFurniture: formData.hasFurniture,
       acceptsPets: formData.acceptsPets,
+      area: formData.area,
     };
 
     await propertyService.create(propertyData);
@@ -169,6 +171,7 @@ export function useProperties(): UsePropertiesReturn {
       images: formData.images,
       hasFurniture: formData.hasFurniture,
       acceptsPets: formData.acceptsPets,
+      area: formData.area,
     };
 
     await propertyService.update(id, propertyData);

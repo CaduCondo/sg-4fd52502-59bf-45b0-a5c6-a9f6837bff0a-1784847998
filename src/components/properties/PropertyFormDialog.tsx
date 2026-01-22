@@ -180,6 +180,19 @@ export function PropertyFormDialog({
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="area">Área (m²)</Label>
+              <Input
+                id="area"
+                type="text"
+                inputMode="decimal"
+                value={formData.area}
+                onChange={(e) => setFormData({ ...formData, area: e.target.value })}
+                placeholder="0,00"
+                disabled={editingProperty && !isEditMode}
+              />
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="monthly_rent">Aluguel Mensal (R$) *</Label>
               <Input
                 id="monthly_rent"
