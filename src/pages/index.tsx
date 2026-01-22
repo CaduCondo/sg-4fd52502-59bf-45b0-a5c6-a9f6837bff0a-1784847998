@@ -16,7 +16,7 @@ export default function PublicHome() {
     setSelectedLocation,
     searchTerm,
     setSearchTerm,
-    isLoading,
+    isLoading
   } = usePublicProperties();
 
   return (
@@ -25,8 +25,8 @@ export default function PublicHome() {
         <title>Imóveis Premium - Encontre seu novo lar</title>
         <meta
           name="description"
-          content="Encontre o imóvel perfeito para você. Apartamentos, casas e imóveis comerciais disponíveis para locação."
-        />
+          content="Encontre o imóvel perfeito para você. Apartamentos, casas e imóveis comerciais disponíveis para locação." />
+
       </Head>
 
       <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
@@ -43,8 +43,8 @@ export default function PublicHome() {
                 <br />
                 <span className="text-orange-400">Perfeito para Você</span>
               </h1>
-              <p className="text-xl text-blue-100 mb-8">
-                Apartamentos, casas e imóveis comerciais em diversas localidades
+              <p className="text-xl text-blue-100 mb-8">Apartamentos e imóveis comerciais em diversas localidades
+
               </p>
 
               {/* Search Bar */}
@@ -55,8 +55,8 @@ export default function PublicHome() {
                   placeholder="Buscar por bairro, cidade ou nome do imóvel..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-12 pr-4 py-6 text-lg rounded-full shadow-2xl border-0"
-                />
+                  className="pl-12 pr-4 py-6 text-lg rounded-full shadow-2xl border-0" />
+
               </div>
             </div>
           </div>
@@ -68,27 +68,27 @@ export default function PublicHome() {
             <LocationFilter
               locations={locations}
               selectedLocation={selectedLocation}
-              onSelectLocation={setSelectedLocation}
-            />
+              onSelectLocation={setSelectedLocation} />
+
           </div>
         </section>
 
         {/* Properties Grid */}
         <section className="py-12">
           <div className="container mx-auto px-4">
-            {isLoading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {[...Array(6)].map((_, i) => (
-                  <div key={i} className="space-y-4">
+            {isLoading ?
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {[...Array(6)].map((_, i) =>
+              <div key={i} className="space-y-4">
                     <Skeleton className="aspect-[4/3] w-full rounded-lg" />
                     <Skeleton className="h-6 w-3/4" />
                     <Skeleton className="h-4 w-1/2" />
                     <Skeleton className="h-10 w-full" />
                   </div>
-                ))}
-              </div>
-            ) : properties.length === 0 ? (
-              <div className="text-center py-20">
+              )}
+              </div> :
+            properties.length === 0 ?
+            <div className="text-center py-20">
                 <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-slate-100 mb-6">
                   <Home className="h-10 w-10 text-slate-400" />
                 </div>
@@ -98,9 +98,9 @@ export default function PublicHome() {
                 <p className="text-slate-600">
                   Tente ajustar os filtros ou fazer uma nova busca
                 </p>
-              </div>
-            ) : (
-              <>
+              </div> :
+
+            <>
                 <div className="flex items-center justify-between mb-8">
                   <h2 className="font-display text-3xl font-bold text-slate-900">
                     Imóveis Disponíveis
@@ -115,12 +115,12 @@ export default function PublicHome() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                  {properties.map((property) => (
-                    <PropertyPublicCard key={property.id} property={property} />
-                  ))}
+                  {properties.map((property) =>
+                <PropertyPublicCard key={property.id} property={property} />
+                )}
                 </div>
               </>
-            )}
+            }
           </div>
         </section>
 
@@ -146,6 +146,6 @@ export default function PublicHome() {
           </div>
         </footer>
       </div>
-    </>
-  );
+    </>);
+
 }
