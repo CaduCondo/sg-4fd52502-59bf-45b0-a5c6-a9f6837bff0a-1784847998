@@ -1822,48 +1822,6 @@ export default function Settings() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-
-        {/* Isenção de Taxa de Administração */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <DollarSign className="h-5 w-5" />
-              Isenção de Taxa de Administração
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground mb-4">
-              Configure quais locais não deverão ter taxa de administração calculada para cada corretor.
-            </p>
-            
-            <div className="space-y-4">
-              {users
-                .filter((u) => u.role === "broker")
-                .map((user) => (
-                  <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <User className="h-5 w-5 text-muted-foreground" />
-                      <div>
-                        <p className="font-medium">{user.name}</p>
-                        <p className="text-sm text-muted-foreground">{user.email}</p>
-                      </div>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedUserForFeeExemption(user);
-                        setIsFeeExemptionDialogOpen(true);
-                      }}
-                    >
-                      <SettingsIcon className="mr-2 h-4 w-4" />
-                      Configurar Isenção
-                    </Button>
-                  </div>
-                ))}
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </Layout>
   );
