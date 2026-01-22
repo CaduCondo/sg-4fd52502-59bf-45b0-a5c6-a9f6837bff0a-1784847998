@@ -128,7 +128,7 @@ export function PaymentReceipt({
   const referenceDate = new Date(payment.referenceYear || 0, (payment.referenceMonth || 1) - 1, 1);
   const currentPaymentNumber = differenceInMonths(referenceDate, contractStartDate) + 1;
 
-  const handlePrint = () => {
+  const handleDownloadPDF = () => {
     setLoading(true);
     setTimeout(() => {
       window.print();
@@ -137,7 +137,7 @@ export function PaymentReceipt({
   };
 
   const handleEmail = () => {
-    const subject = encodeURIComponent(`Recibo de Pagamento - ${property.location}`);
+    const subject = encodeURIComponent(`Recibo de Pagamento - ${property.address || property.location}`);
     const body = encodeURIComponent(
       `Prezado(a) ${tenant.name},\n\n` +
       `Segue recibo de pagamento referente ao aluguel.\n\n` +
@@ -153,18 +153,28 @@ export function PaymentReceipt({
   };
 
   const handleShare = async () => {
+    const addressParts = [
+      property.address,
+      property.number,
+      rental.complement,
+      property.neighborhood,
+      property.city,
+      property.state,
+      property.zipCode ? `CEP ${property.zipCode}` : ""
+    ].filter(Boolean);
+
     const shareText = 
       `RECIBO DE ALUGUEL\n\n` +
       `Recebi dos Srs. ${tenant.name.toUpperCase()}, a importância de: ${numberToWords(totalAmount).toUpperCase()}\n\n` +
       `Referente ao mês de ${referenceMonthName}/${payment.referenceYear}, tendo seu vencimento em ${format(dueDate, "dd/MM/yyyy", { locale: ptBR })}\n` +
-      `Imóvel: ${property.location.toUpperCase()}\n\n` +
+      `Imóvel: ${addressParts.join(", ").toUpperCase()}\n\n` +
       `Valor: ${formatCurrency(baseAmount)}\n` +
       (totalCharges > 0 ? `Multa/Juros: ${formatCurrency(totalCharges)}\n` : "") +
       `Total: ${formatCurrency(totalAmount)}\n\n` +
       `SÃO PAULO, ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`;
 
     const shareData = {
-      title: `Recibo de Pagamento - ${property.location}`,
+      title: `Recibo de Pagamento - ${property.address || property.location}`,
       text: shareText,
     };
 
@@ -201,14 +211,17 @@ export function PaymentReceipt({
     }
   };
 
-  const fullAddress = [
-    property.location,
-    property.complement ? ` ${property.complement}` : "",
+  const addressParts = [
+    property.address,
+    property.number,
+    rental.complement,
     property.neighborhood,
     property.city,
-    property.state,
-    property.zipCode ? `CEP: ${property.zipCode}` : ""
-  ].filter(Boolean).join(", ");
+    property.state ? `${property.state}` : "",
+    property.zipCode ? `CEP ${property.zipCode}` : ""
+  ].filter(Boolean);
+
+  const fullAddress = addressParts.join(", ");
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
@@ -232,7 +245,7 @@ export function PaymentReceipt({
 
               <div className="space-y-4 text-sm leading-relaxed text-justify">
                 <p>
-                  Recebi dos Srs. <span className="font-semibold uppercase">{tenant.name}</span>, a importância de <span className="font-semibold uppercase">{numberToWords(totalAmount)}</span>, proveniente ao depósito de aluguel referente ao mês de <span className="font-semibold">{referenceMonthName} de {payment.referenceYear}</span>, tendo seu vencimento em <span className="font-semibold">{format(dueDate, "dd/MM/yyyy", { locale: ptBR })}</span>, do imóvel situado <span className="font-semibold uppercase">{property.location}{property.complement ? `, ${property.complement}` : ""}{property.neighborhood ? `, ${property.neighborhood}` : ""}{property.city ? `, ${property.city}` : ""}{property.state ? ` - ${property.state}` : ""}{property.zipCode ? `, CEP ${property.zipCode}` : ""}</span>, após a apresentação dos comprovantes de depósito bancário e contas de água e luz do mês anterior pagas, sendo este vinculado ao INSTRUMENTO PARTICULAR DE CONTRATO DE LOCAÇÃO PARA FINS RESIDENCIAL, assinado entre as partes em <span className="font-semibold">{format(new Date(rental.startDate + "T00:00:00"), "dd/MM/yyyy", { locale: ptBR })}</span>.
+                  Recebi dos Srs. <span className="font-semibold uppercase">{tenant.name}</span>, a importância de <span className="font-semibold uppercase">{numberToWords(totalAmount)}</span>, proveniente ao depósito de aluguel referente ao mês de <span className="font-semibold">{referenceMonthName} de {payment.referenceYear}</span>, tendo seu vencimento em <span className="font-semibold">{format(dueDate, "dd/MM/yyyy", { locale: ptBR })}</span>, do imóvel situado em <span className="font-semibold uppercase">{fullAddress}</span>, após a apresentação dos comprovantes de depósito bancário e contas de água e luz do mês anterior pagas, sendo este vinculado ao INSTRUMENTO PARTICULAR DE CONTRATO DE LOCAÇÃO PARA FIM RESIDENCIAL, assinado entre as partes em <span className="font-semibold">{format(new Date(rental.startDate + "T00:00:00"), "dd/MM/yyyy", { locale: ptBR })}</span>.
                 </p>
               </div>
 
@@ -265,7 +278,6 @@ export function PaymentReceipt({
                 <div className="flex justify-center pt-8">
                   <div className="text-center flex flex-col items-center">
                     <div className="h-24 flex items-end justify-center mb-2">
-                      {/* O usuário deve colocar o arquivo signature.png na pasta public/ */}
                       <Image
                         src="/signature.png"
                         alt="Assinatura"
@@ -280,7 +292,6 @@ export function PaymentReceipt({
                     </div>
                     <div className="border-t-2 border-gray-400 w-80 mb-2"></div>
                     <p className="font-semibold uppercase">{user?.name || "Administrador"}</p>
-                    <p className="text-xs text-muted-foreground uppercase">Assinatura</p>
                   </div>
                 </div>
               </div>
@@ -300,9 +311,9 @@ export function PaymentReceipt({
               <Mail className="mr-2 h-4 w-4" />
               Enviar por Email
             </Button>
-            <Button onClick={handlePrint} disabled={loading}>
+            <Button onClick={handleDownloadPDF} disabled={loading}>
               <Download className="mr-2 h-4 w-4" />
-              {loading ? "Gerando..." : "Gerar PDF"}
+              {loading ? "Salvando..." : "Salvar PDF"}
             </Button>
           </div>
         </div>
