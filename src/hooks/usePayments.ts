@@ -8,7 +8,7 @@ import {
 } from "@/services/paymentService";
 import { getAll as getAllRentals } from "@/services/rentalService";
 import { propertyService, tenantService } from "@/services";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 
 export function usePayments() {
   const { toast } = useToast();
@@ -159,21 +159,26 @@ export function usePayments() {
       if (error) throw error;
       
       // Mapear campos do banco para o tipo Payment
+      // Extrair mês e ano da data de vencimento se não vier do banco
+      const dueDateObj = new Date(data.due_date);
+      
       return {
         id: data.id,
         rentalId: data.rental_id,
         dueDate: data.due_date,
-        amount: data.amount,
+        amount: data.expected_amount, // Mapeado de expected_amount
         status: data.status,
-        expectedAmount: data.amount, // Valor base
+        expectedAmount: data.expected_amount,
         paidAmount: data.paid_amount || 0,
         paymentDate: data.payment_date,
         paymentMethod: data.payment_method,
         notes: data.notes,
-        discountAmount: data.discount_amount,
-        penaltyAmount: data.penalty_amount,
-        interestAmount: data.interest_amount,
-        attachments: data.attachments,
+        discountAmount: 0, // Campo não existente no banco
+        penaltyAmount: data.late_fee, // Mapeado de late_fee
+        interestAmount: data.interest, // Mapeado de interest
+        attachments: data.attachments as string[], // Cast explícito para string[]
+        referenceMonth: data.reference_month || (dueDateObj.getMonth() + 1),
+        referenceYear: data.reference_year || dueDateObj.getFullYear(),
         createdAt: data.created_at,
         updatedAt: data.updated_at
       } as Payment;
