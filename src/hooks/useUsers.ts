@@ -18,7 +18,14 @@ export function useUsers() {
         .order("name");
 
       if (error) throw error;
-      setUsers(data || []);
+      
+      // Cast explícito para garantir a tipagem correta do role
+      const typedUsers: SystemUser[] = (data || []).map((user) => ({
+        ...user,
+        role: user.role as "admin" | "broker" | "financial",
+      }));
+      
+      setUsers(typedUsers);
     } catch (error) {
       console.error("Erro ao carregar usuários:", error);
       toast({

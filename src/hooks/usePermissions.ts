@@ -2,14 +2,11 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
-interface RoleMenuPermission {
+export interface RoleMenuPermission {
   id: string;
   role: string;
-  menu_id: string;
-  can_view: boolean;
-  can_create: boolean;
-  can_edit: boolean;
-  can_delete: boolean;
+  menu_item: string;
+  can_access: boolean;
 }
 
 interface LocationPermission {
@@ -32,7 +29,15 @@ export function usePermissions() {
         .order("role");
 
       if (error) throw error;
-      setRoleMenuPermissions(data || []);
+      
+      const typedPermissions: RoleMenuPermission[] = (data || []).map(p => ({
+        id: p.id,
+        role: p.role,
+        menu_item: p.menu_item,
+        can_access: p.can_access || false
+      }));
+
+      setRoleMenuPermissions(typedPermissions);
     } catch (error) {
       console.error("Erro ao carregar permissões:", error);
       toast({
@@ -71,17 +76,30 @@ export function usePermissions() {
 
   const updateRoleMenuPermission = async (
     role: string,
-    menuId: string,
-    permissions: Partial<RoleMenuPermission>
+    menuItem: string,
+    hasAccess: boolean
   ) => {
     try {
-      const { error } = await supabase
+      // Primeiro verificamos se já existe
+      const { data: existing } = await supabase
         .from("role_menu_permissions")
-        .update(permissions)
+        .select("id")
         .eq("role", role)
-        .eq("menu_id", menuId);
+        .eq("menu_item", menuItem)
+        .single();
 
-      if (error) throw error;
+      if (existing) {
+        const { error } = await supabase
+          .from("role_menu_permissions")
+          .update({ can_access: hasAccess })
+          .eq("id", existing.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("role_menu_permissions")
+          .insert({ role, menu_item: menuItem, can_access: hasAccess });
+        if (error) throw error;
+      }
       
       toast({ title: "Permissão atualizada com sucesso!" });
       await fetchRoleMenuPermissions();
@@ -139,6 +157,36 @@ export function usePermissions() {
     }
   };
 
+  const getUserLocationPermissions = async (userId: string): Promise<string[]> => {
+    try {
+      const { data, error } = await supabase
+        .from("user_location_permissions")
+        .select("location_id")
+        .eq("user_id", userId);
+
+      if (error) throw error;
+      return data?.map(p => p.location_id) || [];
+    } catch (error) {
+      console.error("Erro ao carregar permissões de local:", error);
+      return [];
+    }
+  };
+
+  const getUserFeeExemptions = async (userId: string): Promise<string[]> => {
+    try {
+      const { data, error } = await supabase
+        .from("user_fee_exemptions")
+        .select("location_id")
+        .eq("user_id", userId);
+
+      if (error) throw error;
+      return data?.map(e => e.location_id) || [];
+    } catch (error) {
+      console.error("Erro ao carregar isenções de taxa:", error);
+      return [];
+    }
+  };
+
   const saveFeeExemptions = async (userId: string, locationIds: string[]) => {
     try {
       const { data: existingExemptions } = await supabase
@@ -178,36 +226,6 @@ export function usePermissions() {
         variant: "destructive",
       });
       return false;
-    }
-  };
-
-  const getUserLocationPermissions = async (userId: string): Promise<string[]> => {
-    try {
-      const { data, error } = await supabase
-        .from("user_location_permissions")
-        .select("location_id")
-        .eq("user_id", userId);
-
-      if (error) throw error;
-      return data?.map(p => p.location_id) || [];
-    } catch (error) {
-      console.error("Erro ao carregar permissões de local:", error);
-      return [];
-    }
-  };
-
-  const getUserFeeExemptions = async (userId: string): Promise<string[]> => {
-    try {
-      const { data, error } = await supabase
-        .from("user_fee_exemptions")
-        .select("location_id")
-        .eq("user_id", userId);
-
-      if (error) throw error;
-      return data?.map(e => e.location_id) || [];
-    } catch (error) {
-      console.error("Erro ao carregar isenções de taxa:", error);
-      return [];
     }
   };
 
