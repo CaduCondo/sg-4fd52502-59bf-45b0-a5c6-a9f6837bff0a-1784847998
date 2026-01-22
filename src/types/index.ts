@@ -158,6 +158,7 @@ export interface Rental {
   pixCode?: string;
   
   // Helper fields for display/logic
+  durationMonths?: number;
   dueDate?: string;
   receivedDate?: string;
   paidAmount?: number;

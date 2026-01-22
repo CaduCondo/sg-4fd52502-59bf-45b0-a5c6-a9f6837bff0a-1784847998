@@ -69,12 +69,22 @@ export async function terminateContract(rentalId: string): Promise<void> {
 }
 
 function mapRentalFromDB(data: any): Rental {
+  // Calcular duração em meses se não vier do banco
+  let durationMonths = data.duration_months;
+  if (!durationMonths && data.start_date && data.end_date) {
+    const start = new Date(data.start_date);
+    const end = new Date(data.end_date);
+    durationMonths = (end.getFullYear() - start.getFullYear()) * 12 + 
+                     (end.getMonth() - start.getMonth());
+  }
+
   return {
     id: data.id,
     propertyId: data.property_id,
     tenantId: data.tenant_id,
     startDate: data.start_date,
     endDate: data.end_date,
+    durationMonths,
     paymentDay: data.payment_day,
     monthlyRent: data.monthly_rent,
     value: data.value,
