@@ -20,6 +20,7 @@ import {
 import type { Property, Tenant, Location, Rental } from "@/types";
 import { update as updateRentalService } from "@/services/rentalService";
 import { AttachmentViewer } from "@/components/AttachmentViewer";
+import { RentalContract } from "@/components/RentalContract";
 
 interface RentalFormDialogProps {
   open: boolean;
@@ -48,6 +49,13 @@ export function RentalFormDialog({
   const [loading, setLoading] = useState(false);
   const [locations, setLocations] = useState<Location[]>([]);
   const [isEditing, setIsEditing] = useState(!isViewMode);
+  const [showContract, setShowContract] = useState(false);
+  const [createdRentalData, setCreatedRentalData] = useState<{
+    rental: Rental;
+    property: Property;
+    tenant: Tenant;
+    location?: Location;
+  } | null>(null);
 
   const [selectedPropertyId, setSelectedPropertyId] = useState("");
   const [selectedTenantId, setSelectedTenantId] = useState("");
@@ -220,6 +228,11 @@ export function RentalFormDialog({
         throw new Error("Imóvel não encontrado");
       }
 
+      const selectedTenant = tenants.find((t) => t.id === selectedTenantId);
+      if (!selectedTenant) {
+        throw new Error("Inquilino não encontrado");
+      }
+
       const propertyValue = selectedProperty.value || 0;
       const cleanGarageValue = hasGarage
         ? parseFloat(garageValue.replace(/[^\d,]/g, "").replace(",", ".") || "0")
@@ -252,17 +265,28 @@ export function RentalFormDialog({
       };
 
       if (rental) {
-        await updateRentalService(rental.id, rentalData);
+        const updatedRental = await updateRentalService(rental.id, rentalData);
         await updateFuturePayments(rental.id, totalValue);
         
         if (rental.paymentDay !== parseInt(paymentDay)) {
           await updateFuturePaymentsOnPaymentDayChange(rental.id, parseInt(paymentDay));
         }
 
+        const selectedLocation = locations.find((loc) => loc.id === selectedProperty.locationId);
+
+        setCreatedRentalData({
+          rental: { ...rental, ...updatedRental },
+          property: selectedProperty,
+          tenant: selectedTenant,
+          location: selectedLocation,
+        });
+
         toast({
           title: "Sucesso!",
           description: "Locação atualizada com sucesso.",
         });
+
+        setShowContract(true);
       } else {
         const createdRental = await createRental(rentalData);
         await updateProperty(selectedPropertyId, { status: "occupied" });
@@ -277,15 +301,22 @@ export function RentalFormDialog({
 
         await createPaymentsForRental(createdRental);
 
+        const selectedLocation = locations.find((loc) => loc.id === selectedProperty.locationId);
+
+        setCreatedRentalData({
+          rental: createdRental,
+          property: selectedProperty,
+          tenant: selectedTenant,
+          location: selectedLocation,
+        });
+
         toast({
           title: "Sucesso!",
           description: "Locação criada com sucesso.",
         });
-      }
 
-      resetForm();
-      onOpenChange(false);
-      onSuccess();
+        setShowContract(true);
+      }
     } catch (error) {
       console.error("Error saving rental:", error);
       toast({
@@ -587,6 +618,22 @@ export function RentalFormDialog({
           </DialogFooter>
         </form>
       </DialogContent>
+
+      {showContract && createdRentalData && (
+        <RentalContract
+          rental={createdRentalData.rental}
+          property={createdRentalData.property}
+          tenant={createdRentalData.tenant}
+          location={createdRentalData.location}
+          onClose={() => {
+            setShowContract(false);
+            setCreatedRentalData(null);
+            resetForm();
+            onOpenChange(false);
+            onSuccess();
+          }}
+        />
+      )}
     </Dialog>
   );
 }
