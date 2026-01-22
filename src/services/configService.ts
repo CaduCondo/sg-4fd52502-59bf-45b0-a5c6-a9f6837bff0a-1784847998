@@ -1,22 +1,39 @@
 import { supabase } from "@/integrations/supabase/client";
 import { CompanyConfig } from "@/types";
 
-// Configurações estáticas para a parte pública
-export const siteConfig = {
-  name: "Imóveis Premium",
-  description: "Gerenciamento profissional de imóveis para locação",
+export interface SiteConfig {
+  name: string;
+  description: string;
+  logo: string;
   contact: {
-    phone: "(11) 99999-9999",
-    whatsapp: "5511999999999",
-    email: "contato@imoveispremium.com.br",
-    address: "São Paulo, SP",
+    phone: string;
+    whatsapp: string;
+    email: string;
+    address: string;
+  };
+  theme: {
+    primaryColor: string;
+    secondaryColor: string;
+  };
+  whatsappMessage: string;
+}
+
+// Configurações estáticas para a parte pública
+export const siteConfig: SiteConfig = {
+  name: "Imobiliária Premium",
+  description: "Encontre o imóvel ideal para você",
+  logo: "/logo.png",
+  contact: {
+    phone: "(11) 99680-3386",
+    whatsapp: "5511996803386",
+    email: "carlos.uva@terra.com.br",
+    address: "Rua Exemplo, 123 - São Paulo, SP",
   },
-  social: {
-    facebook: "https://facebook.com/imoveispremium",
-    instagram: "https://instagram.com/imoveispremium",
-    linkedin: "https://linkedin.com/company/imoveispremium",
+  theme: {
+    primaryColor: "#2563eb",
+    secondaryColor: "#1e40af",
   },
-  whatsappMessage: "Olá! Tenho interesse em conhecer mais sobre os imóveis disponíveis.",
+  whatsappMessage: "Olá! Gostaria de mais informações sobre os imóveis disponíveis.",
 };
 
 // Funções para gerenciar configurações dinâmicas do sistema (banco de dados)
