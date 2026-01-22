@@ -1426,6 +1426,16 @@ export default function Settings() {
                   />
                 </div>
                 <div className="space-y-2">
+                  <Label htmlFor="newUserPhone">Telefone</Label>
+                  <Input 
+                    id="newUserPhone" 
+                    value={userFormData.phone} 
+                    onChange={(e) => setUserFormData({...userFormData, phone: applyPhoneMask(e.target.value)})}
+                    placeholder="(11) 98765-4321"
+                    maxLength={15}
+                  />
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="newUserRole">Perfil</Label>
                   <Select
                     value={userFormData.role}

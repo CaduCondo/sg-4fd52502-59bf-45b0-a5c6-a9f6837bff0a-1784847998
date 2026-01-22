@@ -443,9 +443,6 @@ export default function Payments() {
                                           {property.complement}
                                         </p>
                                       )}
-                                      <p className="text-xs font-semibold text-muted-foreground mt-0.5">
-                                        {getPaymentInstallment(payment)}
-                                      </p>
                                     </div>
                                   </div>
                                   <div className="flex flex-col items-end gap-1">
@@ -472,6 +469,9 @@ export default function Payments() {
                                   <p className="text-xs">
                                     Vencimento: {new Date(new Date(payment.dueDate).getTime() + 24 * 60 * 60 * 1000).toLocaleDateString("pt-BR")}
                                   </p>
+                                  <span className="ml-auto text-xs font-semibold text-muted-foreground">
+                                    Parcela {getPaymentInstallment(payment)}
+                                  </span>
                                 </div>
 
                                 <div className="pt-2 border-t">
@@ -607,9 +607,6 @@ export default function Payments() {
                                           {property.complement}
                                         </p>
                                       )}
-                                      <p className="text-xs font-semibold text-muted-foreground mt-0.5">
-                                        {getPaymentInstallment(payment)}
-                                      </p>
                                     </div>
                                   </div>
                                   <div className="flex flex-col items-end gap-1">
@@ -636,6 +633,9 @@ export default function Payments() {
                                   <p className="text-xs">
                                     Pago em: {payment.paymentDate ? new Date(payment.paymentDate + "T12:00:00").toLocaleDateString("pt-BR") : "N/A"}
                                   </p>
+                                  <span className="ml-auto text-xs font-semibold text-muted-foreground">
+                                    Parcela {getPaymentInstallment(payment)}
+                                  </span>
                                 </div>
 
                                 <div className="pt-2 border-t">

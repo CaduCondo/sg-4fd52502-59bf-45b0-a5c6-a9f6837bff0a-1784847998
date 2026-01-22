@@ -33,8 +33,8 @@ export async function createUser(userData: {
   password: string;
   active: boolean;
 }): Promise<SystemUser> {
-  const { password, ...user } = userData;
-  return createSingle<SystemUser>(TABLE, user as any);
+  // NÃO remover o password - enviar todos os dados incluindo password
+  return createSingle<SystemUser>(TABLE, userData as any);
 }
 
 export async function updateUser(id: string, user: Partial<SystemUser>): Promise<SystemUser> {
