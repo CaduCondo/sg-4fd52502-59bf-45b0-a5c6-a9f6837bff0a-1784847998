@@ -61,7 +61,13 @@ export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
   return (
     <>
       <Card className="group overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
-        <div className="relative aspect-[4/3] overflow-hidden bg-slate-200">
+        <div 
+          className="relative aspect-[4/3] overflow-hidden bg-slate-200 cursor-pointer"
+          onClick={() => {
+            setCurrentPhotoIndex(0);
+            setShowDetails(true);
+          }}
+        >
           {hasPhotos ? (
             <Image
               src={photos[0]}
@@ -85,6 +91,14 @@ export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
               </Badge>
             )}
           </div>
+
+          {hasPhotos && (
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+              <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 px-3 py-1.5 rounded-full text-sm font-medium">
+                Clique para ver fotos
+              </div>
+            </div>
+          )}
         </div>
 
         <CardContent className="p-5">
@@ -146,16 +160,19 @@ export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
 
           <div className="flex gap-2">
             <Button
+              onClick={() => setShowDetails(true)}
+              variant="outline"
+              className="flex-1"
+            >
+              Ver Detalhes
+            </Button>
+            <Button
               onClick={() => setShowInterest(true)}
               className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
             >
               <Heart className="h-4 w-4 mr-2" />
               Tenho Interesse
             </Button>
-            <ShareButtons
-              propertyName={property.name || "Imóvel"}
-              propertyUrl={`/?property=${property.id}`}
-            />
           </div>
         </CardContent>
       </Card>
@@ -297,6 +314,23 @@ export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
                   </div>
                 </div>
               </div>
+            </div>
+
+            <div className="flex gap-3">
+              <Button
+                onClick={() => {
+                  setShowDetails(false);
+                  setShowInterest(true);
+                }}
+                className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
+              >
+                <Heart className="h-4 w-4 mr-2" />
+                Tenho Interesse
+              </Button>
+              <ShareButtons
+                propertyName={property.name || "Imóvel"}
+                propertyUrl={`/?property=${property.id}`}
+              />
             </div>
           </div>
         </DialogContent>
