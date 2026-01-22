@@ -23,7 +23,7 @@ interface ManagePaymentFormProps {
 export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded = false }: ManagePaymentFormProps) {
   const router = useRouter();
   const { toast } = useToast();
-  const { getPaymentInstallment, getPropertyInfo, getTenantInfo } = usePayments();
+  const { getPaymentById, getPropertyInfo, getTenantInfo } = usePayments();
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -55,8 +55,7 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded = fa
   const loadInstallmentData = async (id: string) => {
     try {
       setIsLoading(true);
-      // Aqui usamos o hook, mas precisamos garantir que ele retorne os dados corretamente
-      const data = await getPaymentInstallment(id);
+      const data = await getPaymentById(id);
       
       if (!data) {
         toast({ title: "Pagamento não encontrado", variant: "destructive" });
@@ -89,7 +88,7 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded = fa
         amount_paid: formatCurrency((data.paidAmount || data.expectedAmount || 0).toString()),
         payment_method: data.paymentMethod || "",
         discount: formatCurrency((data.discountAmount || 0).toString()),
-        late_fee: formatCurrency((data.penaltyAmount || 0).toString()), // penalty_amount mapeado para late_fee visualmente
+        late_fee: formatCurrency((data.penaltyAmount || 0).toString()),
         interest: formatCurrency((data.interestAmount || 0).toString()),
         notes: data.notes || "",
       });
@@ -147,8 +146,8 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded = fa
     handleFileUpload(e);
   };
 
-  const handleRemoveAttachment = (id: string) => {
-    setAttachments((prev) => prev.filter((att) => att.id !== id));
+  const handleRemoveAttachment = (index: number) => {
+    setAttachments((prev) => prev.filter((_, i) => i !== index));
   };
 
   const calculateTotals = () => {
@@ -443,7 +442,7 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded = fa
             </div>
 
             <AttachmentViewer
-              attachments={attachments}
+              attachments={attachments.map(a => a.url)}
               onRemove={handleRemoveAttachment}
             />
           </div>

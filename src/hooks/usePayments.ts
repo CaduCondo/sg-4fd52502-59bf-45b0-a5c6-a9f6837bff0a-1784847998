@@ -8,6 +8,7 @@ import {
 } from "@/services/paymentService";
 import { getAll as getAllRentals } from "@/services/rentalService";
 import { propertyService, tenantService } from "@/services";
+import { supabase } from "@/lib/supabase";
 
 export function usePayments() {
   const { toast } = useToast();
@@ -141,6 +142,47 @@ export function usePayments() {
     return `${monthsDiff}/${totalMonths}`;
   };
 
+  const getPaymentById = async (id: string): Promise<Payment | null> => {
+    try {
+      // Tenta encontrar no estado local primeiro
+      const localPayment = payments.find(p => p.id === id);
+      if (localPayment) return localPayment;
+
+      // Se não encontrar, busca do banco (útil para acesso direto via URL)
+      // Usamos o serviço existente ou query direta se o serviço não tiver getById
+      const { data, error } = await supabase
+        .from("payments")
+        .select("*")
+        .eq("id", id)
+        .single();
+      
+      if (error) throw error;
+      
+      // Mapear campos do banco para o tipo Payment
+      return {
+        id: data.id,
+        rentalId: data.rental_id,
+        dueDate: data.due_date,
+        amount: data.amount,
+        status: data.status,
+        expectedAmount: data.amount, // Valor base
+        paidAmount: data.paid_amount || 0,
+        paymentDate: data.payment_date,
+        paymentMethod: data.payment_method,
+        notes: data.notes,
+        discountAmount: data.discount_amount,
+        penaltyAmount: data.penalty_amount,
+        interestAmount: data.interest_amount,
+        attachments: data.attachments,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at
+      } as Payment;
+    } catch (error) {
+      console.error("Erro ao buscar pagamento:", error);
+      return null;
+    }
+  };
+
   return {
     payments,
     rentals,
@@ -154,5 +196,6 @@ export function usePayments() {
     getTenantInfo,
     getExpectedAmount,
     getPaymentInstallment,
+    getPaymentById,
   };
 }
