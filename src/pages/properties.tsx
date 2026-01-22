@@ -154,26 +154,24 @@ export default function PropertiesPage() {
   };
 
   const handleCardClick = (property: Property) => {
+    setEditingProperty(property);
     setFormData({
       location_id: property.locationId || "",
       property_identifier: property.propertyIdentifier || "",
       complement: property.complement || "",
-      rooms: property.rooms?.toString() || "",
-      bathrooms: property.bathrooms?.toString() || "",
-      monthly_rent: property.value?.toString() || "",
+      rooms: String(property.rooms || ""),
+      bathrooms: String(property.bathrooms || ""),
+      monthly_rent: formatCurrency(property.value || property.monthly_rent || 0),
       description: property.description || "",
       status: property.status || "available",
       images: property.images || [],
-      hasFurniture: property.has_furniture || false,
-      acceptsPets: property.accepts_pets || false,
-      area: property.area?.toString() || "",
+      hasFurniture: property.hasFurniture || property.has_furniture || false,
+      acceptsPets: property.acceptsPets || property.accepts_pets || false,
+      area: String(property.area || ""),
       hasGarage: property.hasGarage || false,
     });
-    
-    setEditingProperty(property);
-    setIsEditMode(true);
-    setIsViewMode(true);
     setIsDialogOpen(true);
+    setIsViewMode(true);
   };
 
   const handleEnableEdit = () => {

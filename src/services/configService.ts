@@ -19,19 +19,14 @@ export interface SiteConfig {
 }
 
 // Configurações estáticas para a parte pública
-export const siteConfig: SiteConfig = {
-  name: "Gerenciador de Locações",
-  description: "Sistema completo para gerenciar locações de imóveis",
-  logo: "/logo.png",
+export const siteConfig = {
+  name: "D'Uvo Enterprise",
+  description: "Encontre o imóvel perfeito para você",
   contact: {
-    phone: "(11) 99680-3386",
-    email: "contato@locacoes.com.br",
-    whatsapp: "5511996803386",
+    phone: "(11) 97654-3210",
+    whatsapp: "5511976543210",
+    email: "carlos.uva@terra.com.br",
     address: "São Paulo, SP",
-  },
-  theme: {
-    primaryColor: "#2563eb",
-    secondaryColor: "#1e40af",
   },
   whatsappMessage: "Olá! Gostaria de mais informações sobre os imóveis disponíveis.",
 };
