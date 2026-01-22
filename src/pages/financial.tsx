@@ -405,6 +405,7 @@ export default function Financial() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-slate-50/50 hover:bg-slate-50/50">
+                    <TableHead className="w-[80px] text-xs font-semibold text-slate-500 uppercase tracking-wider">Nº</TableHead>
                     <TableHead className="w-[150px] text-xs font-semibold text-slate-500 uppercase tracking-wider">Local</TableHead>
                     <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Complemento</TableHead>
                     <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Ano</TableHead>
