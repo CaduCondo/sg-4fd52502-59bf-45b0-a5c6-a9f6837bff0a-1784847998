@@ -34,8 +34,8 @@ export default function PublicHome() {
         <title>{siteConfig.name} - Encontre seu novo lar</title>
         <meta
           name="description"
-          content={siteConfig.description}
-        />
+          content={siteConfig.description} />
+
         <meta property="og:title" content={`${siteConfig.name} - Encontre seu novo lar`} />
         <meta property="og:description" content={siteConfig.description} />
         <meta property="og:type" content="website" />
@@ -71,8 +71,8 @@ export default function PublicHome() {
                   placeholder="Buscar por bairro, cidade ou nome do imóvel..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-12 pr-4 py-6 text-lg rounded-full shadow-2xl border-0"
-                />
+                  className="pl-12 pr-4 py-6 text-lg rounded-full shadow-2xl border-0" />
+
               </div>
             </div>
           </div>
@@ -85,8 +85,8 @@ export default function PublicHome() {
               <LocationFilter
                 locations={locations}
                 selectedLocation={selectedLocation}
-                onSelectLocation={setSelectedLocation}
-              />
+                onSelectLocation={setSelectedLocation} />
+
               
               <div className="flex gap-3 items-center">
                 <SortSelector sortBy={sortBy} onSortChange={setSortBy} />
@@ -99,19 +99,19 @@ export default function PublicHome() {
         {/* Properties Grid/List */}
         <section className="py-12">
           <div className="container mx-auto px-4">
-            {isLoading ? (
-              <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" : "space-y-6"}>
-                {[...Array(6)].map((_, i) => (
-                  <div key={i} className="space-y-4">
+            {isLoading ?
+            <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" : "space-y-6"}>
+                {[...Array(6)].map((_, i) =>
+              <div key={i} className="space-y-4">
                     <Skeleton className="aspect-[4/3] w-full rounded-lg" />
                     <Skeleton className="h-6 w-3/4" />
                     <Skeleton className="h-4 w-1/2" />
                     <Skeleton className="h-10 w-full" />
                   </div>
-                ))}
-              </div>
-            ) : properties.length === 0 ? (
-              <div className="text-center py-20">
+              )}
+              </div> :
+            properties.length === 0 ?
+            <div className="text-center py-20">
                 <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-slate-100 mb-6">
                   <Home className="h-10 w-10 text-slate-400" />
                 </div>
@@ -121,9 +121,9 @@ export default function PublicHome() {
                 <p className="text-slate-600">
                   Tente ajustar os filtros ou fazer uma nova busca
                 </p>
-              </div>
-            ) : (
-              <>
+              </div> :
+
+            <>
                 <div className="flex items-center justify-between mb-8">
                   <h2 className="font-display text-3xl font-bold text-slate-900">
                     Imóveis Disponíveis
@@ -137,21 +137,21 @@ export default function PublicHome() {
                   </div>
                 </div>
 
-                {viewMode === "grid" ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {properties.map((property) => (
-                      <PropertyPublicCard key={property.id} property={property} />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="space-y-6">
-                    {properties.map((property) => (
-                      <PropertyListCard key={property.id} property={property} />
-                    ))}
-                  </div>
+                {viewMode === "grid" ?
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    {properties.map((property) =>
+                <PropertyPublicCard key={property.id} property={property} />
                 )}
+                  </div> :
+
+              <div className="space-y-6">
+                    {properties.map((property) =>
+                <PropertyListCard key={property.id} property={property} />
+                )}
+                  </div>
+              }
               </>
-            )}
+            }
           </div>
         </section>
 
@@ -165,8 +165,8 @@ export default function PublicHome() {
                   <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600">
                     <Building2 className="h-7 w-7 text-white" />
                   </div>
-                  <h3 className="font-display text-2xl font-bold text-white">
-                    {siteConfig.name}
+                  <h3 className="font-display text-2xl font-bold text-white">D'Uvo Enterprise Corporation
+
                   </h3>
                 </div>
                 <p className="text-slate-400">
@@ -180,17 +180,17 @@ export default function PublicHome() {
                   Entre em Contato
                 </h4>
                 <div className="space-y-3">
-                  <a 
+                  <a
                     href={`tel:${siteConfig.contact.phone}`}
-                    className="flex items-center gap-3 text-slate-300 hover:text-white transition-colors"
-                  >
+                    className="flex items-center gap-3 text-slate-300 hover:text-white transition-colors">
+
                     <Phone className="h-5 w-5 text-blue-400" />
                     {siteConfig.contact.phone}
                   </a>
-                  <a 
+                  <a
                     href={`mailto:${siteConfig.contact.email}`}
-                    className="flex items-center gap-3 text-slate-300 hover:text-white transition-colors"
-                  >
+                    className="flex items-center gap-3 text-slate-300 hover:text-white transition-colors">
+
                     <Mail className="h-5 w-5 text-blue-400" />
                     {siteConfig.contact.email}
                   </a>
@@ -212,8 +212,8 @@ export default function PublicHome() {
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-800 text-slate-300 hover:bg-blue-600 hover:text-white transition-colors"
-                    aria-label="Facebook"
-                  >
+                    aria-label="Facebook">
+
                     <Facebook className="h-5 w-5" />
                   </a>
                   <a
@@ -221,8 +221,8 @@ export default function PublicHome() {
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-800 text-slate-300 hover:bg-pink-600 hover:text-white transition-colors"
-                    aria-label="Instagram"
-                  >
+                    aria-label="Instagram">
+
                     <Instagram className="h-5 w-5" />
                   </a>
                   <a
@@ -230,8 +230,8 @@ export default function PublicHome() {
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-800 text-slate-300 hover:bg-blue-700 hover:text-white transition-colors"
-                    aria-label="LinkedIn"
-                  >
+                    aria-label="LinkedIn">
+
                     <Linkedin className="h-5 w-5" />
                   </a>
                 </div>
@@ -250,6 +250,6 @@ export default function PublicHome() {
         {/* WhatsApp Floating Button */}
         <WhatsAppButton />
       </div>
-    </>
-  );
+    </>);
+
 }
