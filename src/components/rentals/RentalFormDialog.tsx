@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,21 +6,22 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Camera, Paperclip, X } from "lucide-react";
+import { Camera, Paperclip } from "lucide-react";
 import { applyRealMask, formatCurrency } from "@/lib/masks";
-import { create as createRental } from "@/services/rentalService";
+import { create as createRental, update as updateRentalService } from "@/services/rentalService";
 import { update as updateProperty } from "@/services/propertyService";
 import { update as updateTenant } from "@/services/tenantService";
 import { getAll as getAllLocations } from "@/services/locationService";
-import { 
-  createPaymentsForRental, 
-  updateFuturePayments, 
-  updateFuturePaymentsOnPaymentDayChange 
+import {
+  createPaymentsForRental,
+  updateFuturePayments,
+  updateFuturePaymentsOnPaymentDayChange,
 } from "@/services/paymentService";
 import type { Property, Tenant, Location, Rental } from "@/types";
-import { update as updateRentalService } from "@/services/rentalService";
 import { AttachmentViewer } from "@/components/AttachmentViewer";
 import { RentalContract } from "@/components/RentalContract";
+import { useRentalForm } from "@/hooks/useRentalForm";
+import { validateRentalForm, validateRentalValue, prepareRentalData } from "@/lib/rentalCalculations";
 
 interface RentalFormDialogProps {
   open: boolean;
@@ -48,7 +49,6 @@ export function RentalFormDialog({
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [locations, setLocations] = useState<Location[]>([]);
-  const [isEditing, setIsEditing] = useState(!isViewMode);
   const [showContract, setShowContract] = useState(false);
   const [createdRentalData, setCreatedRentalData] = useState<{
     rental: Rental;
@@ -57,49 +57,40 @@ export function RentalFormDialog({
     location?: Location;
   } | null>(null);
 
-  const [selectedPropertyId, setSelectedPropertyId] = useState("");
-  const [selectedTenantId, setSelectedTenantId] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [paymentDay, setPaymentDay] = useState("");
-  const [hasGarage, setHasGarage] = useState(false);
-  const [garageValue, setGarageValue] = useState("");
-  const [attachments, setAttachments] = useState<string[]>([]);
-
-  const initializedRef = useRef(false);
+  const {
+    isEditing,
+    setIsEditing,
+    selectedPropertyId,
+    setSelectedPropertyId,
+    selectedTenantId,
+    setSelectedTenantId,
+    startDate,
+    setStartDate,
+    endDate,
+    setEndDate,
+    paymentDay,
+    setPaymentDay,
+    hasGarage,
+    setHasGarage,
+    garageValue,
+    setGarageValue,
+    attachments,
+    resetForm,
+    handleFileUpload,
+    removeAttachment,
+    getSelectedProperty,
+    calculateTotal,
+  } = useRentalForm({
+    open,
+    rental,
+    isViewMode,
+    properties,
+    tenants,
+  });
 
   useEffect(() => {
     loadLocations();
   }, []);
-
-  useEffect(() => {
-    if (open && !initializedRef.current) {
-      initializedRef.current = true;
-      setIsEditing(!isViewMode);
-      
-      if (rental) {
-        setSelectedPropertyId(rental.propertyId || "");
-        setSelectedTenantId(rental.tenantId || "");
-        setStartDate(rental.startDate || "");
-        setEndDate(rental.endDate || "");
-        setPaymentDay(rental.paymentDay?.toString() || "");
-        setHasGarage(rental.hasGarage || false);
-        setGarageValue(
-          rental.garageValue
-            ? formatCurrency(rental.garageValue) 
-            : ""
-        );
-        setAttachments(rental.contractAttachments || rental.attachments || []);
-      } else {
-        resetForm();
-      }
-    }
-
-    if (!open) {
-      initializedRef.current = false;
-      resetForm();
-    }
-  }, [open]);
 
   const loadLocations = async () => {
     try {
@@ -110,111 +101,50 @@ export function RentalFormDialog({
     }
   };
 
-  const resetForm = () => {
-    setSelectedPropertyId("");
-    setSelectedTenantId("");
-    setStartDate("");
-    setEndDate("");
-    setPaymentDay("");
-    setHasGarage(false);
-    setGarageValue("");
-    setAttachments([]);
-  };
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const onFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
-
-    const file = files[0];
-    
-    const uuid = crypto.randomUUID();
-    const extension = file.name.split('.').pop();
-    const fileName = `rental_${uuid}.${extension}`;
-    
-    const reader = new FileReader();
-
-    reader.onloadend = () => {
-      const base64String = reader.result as string;
-      
-      fetch('/api/upload', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fileName,
-          fileData: base64String
-        })
-      }).then(() => {
-        setAttachments([...attachments, `/uploads/${fileName}`]);
-        toast({
-          title: "Arquivo anexado",
-          description: `${file.name} foi anexado com sucesso.`,
-        });
-      }).catch(() => {
-        toast({
-          title: "Erro ao anexar arquivo",
-          description: "Não foi possível salvar o arquivo.",
-          variant: "destructive"
-        });
-      });
-    };
-
-    reader.readAsDataURL(file);
-  };
-
-  const handleCameraCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    const file = files[0];
-    
-    const uuid = crypto.randomUUID();
-    const fileName = `rental_photo_${uuid}.jpg`;
-    
-    const reader = new FileReader();
-
-    reader.onloadend = () => {
-      const base64String = reader.result as string;
-      
-      fetch('/api/upload', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fileName,
-          fileData: base64String
-        })
-      }).then(() => {
-        setAttachments([...attachments, `/uploads/${fileName}`]);
-        toast({
-          title: "Foto capturada",
-          description: "Foto anexada com sucesso.",
-        });
-      }).catch(() => {
-        toast({
-          title: "Erro ao capturar foto",
-          description: "Não foi possível salvar a foto.",
-          variant: "destructive"
-        });
-      });
-    };
-
-    reader.readAsDataURL(file);
-  };
-
-  const removeAttachment = (index: number) => {
-    setAttachments(attachments.filter((_, i) => i !== index));
-    toast({
-      title: "Anexo removido",
-      description: "Anexo removido com sucesso.",
-    });
+    await handleFileUpload(files[0]);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!selectedPropertyId || !selectedTenantId || !startDate || !paymentDay) {
+    const validation = validateRentalForm({
+      propertyId: selectedPropertyId,
+      tenantId: selectedTenantId,
+      startDate,
+      paymentDay,
+    });
+
+    if (!validation.isValid) {
       toast({
         title: "Erro",
-        description: "Por favor, preencha todos os campos obrigatórios.",
+        description: validation.error,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const selectedProperty = properties.find((p) => p.id === selectedPropertyId);
+    const selectedTenant = tenants.find((t) => t.id === selectedTenantId);
+
+    if (!selectedProperty || !selectedTenant) {
+      toast({
+        title: "Erro",
+        description: "Imóvel ou inquilino não encontrado.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const totalValue = calculateTotal();
+    const valueValidation = validateRentalValue(totalValue);
+
+    if (!valueValidation.isValid) {
+      toast({
+        title: "Erro",
+        description: valueValidation.error,
         variant: "destructive",
       });
       return;
@@ -223,51 +153,22 @@ export function RentalFormDialog({
     try {
       setLoading(true);
 
-      const selectedProperty = properties.find((p) => p.id === selectedPropertyId);
-      if (!selectedProperty) {
-        throw new Error("Imóvel não encontrado");
-      }
-
-      const selectedTenant = tenants.find((t) => t.id === selectedTenantId);
-      if (!selectedTenant) {
-        throw new Error("Inquilino não encontrado");
-      }
-
-      const propertyValue = selectedProperty.value || 0;
-      const cleanGarageValue = hasGarage
-        ? parseFloat(garageValue.replace(/[^\d,]/g, "").replace(",", ".") || "0")
-        : 0;
-      const totalValue = propertyValue + cleanGarageValue;
-
-      if (!totalValue || totalValue <= 0) {
-        toast({
-          title: "Erro",
-          description: "O valor total da locação deve ser maior que zero.",
-          variant: "destructive",
-        });
-        setLoading(false);
-        return;
-      }
-
-      const rentalData = {
-        property_id: selectedPropertyId,
-        tenant_id: selectedTenantId,
-        start_date: startDate,
-        end_date: endDate || null,
-        payment_day: parseInt(paymentDay),
-        monthly_rent: propertyValue,
-        value: totalValue,
-        has_garage: hasGarage,
-        garage_value: hasGarage ? cleanGarageValue : null,
-        is_active: true,
-        contract_attachments: attachments,
-        attachments: attachments,
-      };
+      const rentalData = prepareRentalData(
+        selectedPropertyId,
+        selectedTenantId,
+        startDate,
+        endDate,
+        paymentDay,
+        selectedProperty.value || 0,
+        hasGarage,
+        garageValue,
+        attachments
+      );
 
       if (rental) {
         const updatedRental = await updateRentalService(rental.id, rentalData);
         await updateFuturePayments(rental.id, totalValue);
-        
+
         if (rental.paymentDay !== parseInt(paymentDay)) {
           await updateFuturePaymentsOnPaymentDayChange(rental.id, parseInt(paymentDay));
         }
@@ -338,16 +239,7 @@ export function RentalFormDialog({
 
   const propertiesToDisplay = rental ? properties : availableProperties;
   const tenantsToDisplay = rental ? tenants : availableTenants;
-
-  const selectedProperty = properties.find((p) => p.id === selectedPropertyId);
-  
-  const calculatedTotal = () => {
-    const propertyValue = selectedProperty?.value || 0;
-    const garage = hasGarage 
-      ? parseFloat(garageValue.replace(/[^\d,]/g, "").replace(",", ".") || "0") 
-      : 0;
-    return propertyValue + garage;
-  };
+  const selectedProperty = getSelectedProperty();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -490,29 +382,23 @@ export function RentalFormDialog({
           <div className="p-4 bg-emerald-50 dark:bg-emerald-950 rounded-lg border border-emerald-200 dark:border-emerald-800">
             <div className="space-y-2">
               <div className="flex justify-between items-center text-sm">
-                <span className="text-emerald-900 dark:text-emerald-100">
-                  Valor do Aluguel:
-                </span>
+                <span className="text-emerald-900 dark:text-emerald-100">Valor do Aluguel:</span>
                 <span className="font-semibold text-emerald-700 dark:text-emerald-300">
                   {formatCurrency(selectedProperty?.value || 0)}
                 </span>
               </div>
               {hasGarage && (
                 <div className="flex justify-between items-center text-sm">
-                  <span className="text-emerald-900 dark:text-emerald-100">
-                    Vaga Garagem:
-                  </span>
+                  <span className="text-emerald-900 dark:text-emerald-100">Vaga Garagem:</span>
                   <span className="font-semibold text-emerald-700 dark:text-emerald-300">
                     {garageValue ? `+ ${garageValue}` : "+ R$ 0,00"}
                   </span>
                 </div>
               )}
               <div className="flex justify-between items-center pt-2 border-t border-emerald-200 dark:border-emerald-800">
-                <span className="font-bold text-emerald-900 dark:text-emerald-100">
-                  Valor Total:
-                </span>
+                <span className="font-bold text-emerald-900 dark:text-emerald-100">Valor Total:</span>
                 <span className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
-                  {formatCurrency(calculatedTotal())}
+                  {formatCurrency(calculateTotal())}
                 </span>
               </div>
             </div>
@@ -548,23 +434,20 @@ export function RentalFormDialog({
                   accept="image/*"
                   capture="environment"
                   className="hidden"
-                  onChange={handleCameraCapture}
+                  onChange={onFileInputChange}
                 />
                 <input
                   id="rentalFileUpload"
                   type="file"
                   accept="image/*,.pdf,.doc,.docx"
                   className="hidden"
-                  onChange={handleFileUpload}
+                  onChange={onFileInputChange}
                 />
               </div>
             </div>
 
             {attachments.length > 0 && (
-              <AttachmentViewer
-                attachments={attachments}
-                onRemove={removeAttachment}
-              />
+              <AttachmentViewer attachments={attachments} onRemove={removeAttachment} />
             )}
           </div>
 
@@ -611,7 +494,13 @@ export function RentalFormDialog({
                   Cancelar
                 </Button>
                 <Button type="submit" disabled={loading}>
-                  {loading ? (rental ? "Atualizando..." : "Criando...") : (rental ? "Atualizar Locação" : "Criar Locação")}
+                  {loading
+                    ? rental
+                      ? "Atualizando..."
+                      : "Criando..."
+                    : rental
+                    ? "Atualizar Locação"
+                    : "Criar Locação"}
                 </Button>
               </>
             )}
