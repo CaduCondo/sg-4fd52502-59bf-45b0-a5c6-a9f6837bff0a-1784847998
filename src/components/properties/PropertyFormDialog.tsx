@@ -186,7 +186,7 @@ export function PropertyFormDialog({
                 type="text"
                 inputMode="decimal"
                 value={formData.area}
-                onChange={(e) => setFormData({ ...formData, area: Number(e.target.value) })}
+                onChange={(e) => setFormData({ ...formData, area: e.target.value })}
                 placeholder="0,00"
                 disabled={editingProperty && !isEditMode}
               />
