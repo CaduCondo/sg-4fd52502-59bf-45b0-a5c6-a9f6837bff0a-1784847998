@@ -165,7 +165,6 @@ export default function PaymentDetails() {
                 property={property}
                 tenant={tenant}
                 onClose={() => setShowReceipt(false)}
-                isOpen={showReceipt}
               />
             )}
           </div>
