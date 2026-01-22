@@ -289,8 +289,9 @@ export function PaymentReceipt({
                         }}
                       />
                     </div>
-                    <div className="border-t-2 border-gray-400 w-80 mb-2"></div>
-                    <p className="font-semibold uppercase">{user?.name || "Administrador"}</p>
+                    <div className="w-64 border-t border-gray-400 mx-auto mb-2"></div>
+                    <p className="text-sm font-medium">{user?.name || "Administrador"}</p>
+                    <p className="text-xs text-gray-600">Locador / Administrador</p>
                   </div>
                 </div>
               </div>
