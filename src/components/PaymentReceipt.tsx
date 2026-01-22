@@ -17,6 +17,83 @@ interface PaymentReceiptProps {
   onClose: () => void;
 }
 
+const numberToWords = (value: number): string => {
+  const units = ["", "um", "dois", "três", "quatro", "cinco", "seis", "sete", "oito", "nove"];
+  const teens = ["dez", "onze", "doze", "treze", "quatorze", "quinze", "dezesseis", "dezessete", "dezoito", "dezenove"];
+  const tens = ["", "", "vinte", "trinta", "quarenta", "cinquenta", "sessenta", "setenta", "oitenta", "noventa"];
+  const hundreds = ["", "cento", "duzentos", "trezentos", "quatrocentos", "quinhentos", "seiscentos", "setecentos", "oitocentos", "novecentos"];
+
+  if (value === 0) return "zero reais";
+  if (value === 100) return "cem reais";
+
+  let result = "";
+  const intValue = Math.floor(value);
+  const cents = Math.round((value - intValue) * 100);
+
+  if (intValue >= 1000000) {
+    const millions = Math.floor(intValue / 1000000);
+    result += millions === 1 ? "um milhão" : `${numberToWords(millions).replace(" reais", "")} milhões`;
+    const remainder = intValue % 1000000;
+    if (remainder > 0) result += " e ";
+  }
+
+  const thousands = Math.floor((intValue % 1000000) / 1000);
+  if (thousands > 0) {
+    result += thousands === 1 ? "mil" : `${numberToWords(thousands).replace(" reais", "")} mil`;
+    const remainder = intValue % 1000;
+    if (remainder > 0) result += " e ";
+  }
+
+  const remainder = intValue % 1000;
+  if (remainder > 0) {
+    if (remainder >= 100) {
+      const h = Math.floor(remainder / 100);
+      result += hundreds[h];
+      const r = remainder % 100;
+      if (r > 0) result += " e ";
+      
+      if (r >= 20) {
+        const t = Math.floor(r / 10);
+        result += tens[t];
+        const u = r % 10;
+        if (u > 0) result += ` e ${units[u]}`;
+      } else if (r >= 10) {
+        result += teens[r - 10];
+      } else if (r > 0) {
+        result += units[r];
+      }
+    } else if (remainder >= 20) {
+      const t = Math.floor(remainder / 10);
+      result += tens[t];
+      const u = remainder % 10;
+      if (u > 0) result += ` e ${units[u]}`;
+    } else if (remainder >= 10) {
+      result += teens[remainder - 10];
+    } else {
+      result += units[remainder];
+    }
+  }
+
+  result += intValue === 1 ? " real" : " reais";
+
+  if (cents > 0) {
+    result += " e ";
+    if (cents >= 20) {
+      const t = Math.floor(cents / 10);
+      result += tens[t];
+      const u = cents % 10;
+      if (u > 0) result += ` e ${units[u]}`;
+    } else if (cents >= 10) {
+      result += teens[cents - 10];
+    } else {
+      result += units[cents];
+    }
+    result += cents === 1 ? " centavo" : " centavos";
+  }
+
+  return result;
+};
+
 export function PaymentReceipt({
   payment,
   rental,
@@ -26,6 +103,21 @@ export function PaymentReceipt({
 }: PaymentReceiptProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+
+  const totalAmount = payment.paidAmount || 0;
+  const baseAmount = payment.expectedAmount || 0;
+  const lateFee = payment.lateFee || 0;
+  const interest = payment.interest || 0;
+  const totalCharges = lateFee + interest;
+
+  const monthNames = [
+    "janeiro", "fevereiro", "março", "abril", "maio", "junho",
+    "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"
+  ];
+
+  const referenceMonthName = monthNames[(payment.referenceMonth || 1) - 1];
+  const paymentDate = payment.paymentDate ? new Date(payment.paymentDate + "T00:00:00") : new Date();
+  const dueDate = payment.dueDate ? new Date(payment.dueDate + "T00:00:00") : new Date();
 
   const handlePrint = () => {
     setLoading(true);
@@ -39,11 +131,7 @@ export function PaymentReceipt({
     const subject = encodeURIComponent(`Recibo de Pagamento - ${property.location}`);
     const body = encodeURIComponent(
       `Prezado(a) ${tenant.name},\n\n` +
-      `Segue recibo de pagamento referente ao aluguel:\n\n` +
-      `Imóvel: ${property.location}\n` +
-      `Valor: ${formatCurrency(payment.paidAmount || 0)}\n` +
-      `Data: ${payment.paymentDate ? format(new Date(payment.paymentDate), "dd/MM/yyyy", { locale: ptBR }) : "N/A"}\n` +
-      `Referência: ${payment.referenceMonth}/${payment.referenceYear}\n\n` +
+      `Segue recibo de pagamento referente ao aluguel.\n\n` +
       `Atenciosamente.`
     );
     
@@ -51,20 +139,24 @@ export function PaymentReceipt({
     
     toast({
       title: "Email preparado",
-      description: "O cliente de email foi aberto com o recibo.",
+      description: "O cliente de email foi aberto.",
     });
   };
 
   const handleShare = async () => {
+    const shareText = 
+      `RECIBO DE ALUGUEL\n\n` +
+      `Recebi dos Srs. ${tenant.name.toUpperCase()}, a importância de: ${numberToWords(totalAmount).toUpperCase()}\n\n` +
+      `Referente ao mês de ${referenceMonthName}/${payment.referenceYear}, sendo esse aluguel referente ao imóvel localizado em:\n` +
+      `${property.location.toUpperCase()}\n\n` +
+      `Valor: ${formatCurrency(baseAmount)}\n` +
+      (totalCharges > 0 ? `Multa/Juros: ${formatCurrency(totalCharges)}\n` : "") +
+      `Total: ${formatCurrency(totalAmount)}\n\n` +
+      `SÃO PAULO, DIA ${format(paymentDate, "dd/MM/yyyy", { locale: ptBR })}`;
+
     const shareData = {
       title: `Recibo de Pagamento - ${property.location}`,
-      text: 
-        `Recibo de Pagamento\n\n` +
-        `Inquilino: ${tenant.name}\n` +
-        `Imóvel: ${property.location}\n` +
-        `Valor: ${formatCurrency(payment.paidAmount || 0)}\n` +
-        `Data: ${payment.paymentDate ? format(new Date(payment.paymentDate), "dd/MM/yyyy", { locale: ptBR }) : "N/A"}\n` +
-        `Referência: ${payment.referenceMonth}/${payment.referenceYear}`,
+      text: shareText,
     };
 
     if (navigator.share) {
@@ -84,7 +176,6 @@ export function PaymentReceipt({
         }
       }
     } else {
-      // Fallback: copiar para clipboard
       try {
         await navigator.clipboard.writeText(shareData.text);
         toast({
@@ -113,124 +204,74 @@ export function PaymentReceipt({
 
         <div className="space-y-6 print:p-8">
           <Card>
-            <CardContent className="pt-6 space-y-4">
+            <CardContent className="pt-6 space-y-6">
               <div className="text-center border-b pb-4">
-                <h2 className="text-2xl font-bold">Recibo de Pagamento de Aluguel</h2>
+                <h2 className="text-2xl font-bold uppercase">Recibo de Aluguel</h2>
                 <p className="text-sm text-muted-foreground mt-2">
-                  Comprovante de Recebimento - {format(new Date(), "dd/MM/yyyy", { locale: ptBR })}
+                  Nº {payment.referenceMonth?.toString().padStart(2, "0")}/{payment.referenceYear?.toString().slice(-2)}
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="font-semibold text-lg mb-3 text-primary">Dados do Imóvel</h3>
-                    <div className="space-y-2 text-sm">
-                      <div>
-                        <span className="text-muted-foreground">Endereço:</span>
-                        <p className="font-medium">{property.location}</p>
-                        {property.complement && (
-                          <p className="text-muted-foreground text-xs">{property.complement}</p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
+              <div className="space-y-4 text-sm leading-relaxed">
+                <p>
+                  Recebi dos Srs. <span className="font-semibold uppercase">{tenant.name}</span>, a importância de:{" "}
+                  <span className="font-semibold uppercase">{numberToWords(totalAmount)}</span>
+                </p>
 
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="font-semibold text-lg mb-3 text-primary">Dados do Inquilino</h3>
-                    <div className="space-y-2 text-sm">
-                      <div>
-                        <span className="text-muted-foreground">Nome:</span>
-                        <p className="font-medium">{tenant.name}</p>
-                      </div>
-                      {tenant.cpf && (
-                        <div>
-                          <span className="text-muted-foreground">CPF:</span>
-                          <p className="font-medium">{tenant.cpf}</p>
-                        </div>
-                      )}
-                      {tenant.phone && (
-                        <div>
-                          <span className="text-muted-foreground">Telefone:</span>
-                          <p className="font-medium">{tenant.phone}</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                <p>
+                  Referente ao mês de <span className="font-semibold">{referenceMonthName}/{payment.referenceYear}</span>,
+                  sendo esse aluguel referente ao imóvel localizado em:
+                </p>
+
+                <p className="font-semibold uppercase pl-4">
+                  {property.location}
+                  {property.complement && `, ${property.complement}`}
+                </p>
+
+                <p>
+                  Ao mês de <span className="font-semibold">{format(paymentDate, "MM/yyyy", { locale: ptBR })}</span>,
+                  sendo seu vencimento em <span className="font-semibold">{format(dueDate, "dd/MM/yyyy", { locale: ptBR })}</span>,
+                  sendo esse INSTRUMENTO PARTICULAR DE CONTRATO DE LOCAÇÃO PARA FINS RESIDENCIAL,
+                  assinado entre as partes em <span className="font-semibold">{format(new Date(rental.startDate + "T00:00:00"), "dd/MM/yyyy", { locale: ptBR })}</span>,
+                  apresentado dos comprovantes de depósito bancário e contas de água e luz do mês anterior pagos sendo
+                  este vinculado ao INSTRUMENTO PARTICULAR DE CONTRATO DE LOCAÇÃO,
+                  este "imóvel" está apresentação dos comprovantes de depósito
+                </p>
               </div>
 
               <div className="border-t pt-4">
-                <h3 className="font-semibold text-lg mb-3 text-primary">Dados do Pagamento</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div className="grid grid-cols-3 gap-4 text-center font-semibold">
                   <div>
-                    <span className="text-muted-foreground">Referência:</span>
-                    <p className="font-medium">
-                      {payment.referenceMonth}/{payment.referenceYear}
-                    </p>
+                    <p className="text-xs text-muted-foreground mb-1">Valor</p>
+                    <p className="text-lg">{formatCurrency(baseAmount)}</p>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">Data de Vencimento:</span>
-                    <p className="font-medium">
-                      {payment.dueDate
-                        ? format(new Date(payment.dueDate + "T00:00:00"), "dd/MM/yyyy", { locale: ptBR })
-                        : "N/A"}
-                    </p>
+                    <p className="text-xs text-muted-foreground mb-1">Multa + Juros</p>
+                    <p className="text-lg">{formatCurrency(totalCharges)}</p>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">Data do Pagamento:</span>
-                    <p className="font-medium">
-                      {payment.paymentDate
-                        ? format(new Date(payment.paymentDate + "T00:00:00"), "dd/MM/yyyy", { locale: ptBR })
-                        : "N/A"}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Método de Pagamento:</span>
-                    <p className="font-medium capitalize">{payment.paymentMethod || "N/A"}</p>
+                    <p className="text-xs text-muted-foreground mb-1">Total</p>
+                    <p className="text-lg text-primary">{formatCurrency(totalAmount)}</p>
                   </div>
                 </div>
               </div>
 
-              <div className="border-t pt-4">
-                <h3 className="font-semibold text-lg mb-3 text-primary">Valores</h3>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Valor do Aluguel:</span>
-                    <span className="font-medium">{formatCurrency(payment.expectedAmount || 0)}</span>
-                  </div>
-                  {payment.lateFee && payment.lateFee > 0 && (
-                    <div className="flex justify-between text-orange-600">
-                      <span>Multa:</span>
-                      <span className="font-medium">{formatCurrency(payment.lateFee)}</span>
-                    </div>
-                  )}
-                  {payment.interest && payment.interest > 0 && (
-                    <div className="flex justify-between text-red-600">
-                      <span>Juros:</span>
-                      <span className="font-medium">{formatCurrency(payment.interest)}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between pt-2 border-t text-lg font-bold text-primary">
-                    <span>Valor Pago:</span>
-                    <span>{formatCurrency(payment.paidAmount || 0)}</span>
+              <div className="border-t pt-6 space-y-8">
+                <div className="text-center">
+                  <p className="font-semibold uppercase">
+                    São Paulo, dia {format(paymentDate, "dd/MM/yyyy", { locale: ptBR })}
+                  </p>
+                </div>
+
+                <div className="flex justify-center pt-8">
+                  <div className="text-center">
+                    <div className="border-t-2 border-gray-400 w-64 mb-2"></div>
+                    <p className="text-xs uppercase font-semibold">Assinatura</p>
                   </div>
                 </div>
               </div>
-
-              {payment.notes && (
-                <div className="border-t pt-4">
-                  <h3 className="font-semibold text-lg mb-3 text-primary">Observações</h3>
-                  <p className="text-sm text-muted-foreground">{payment.notes}</p>
-                </div>
-              )}
 
               <div className="border-t pt-4 text-xs text-muted-foreground text-center">
-                <p>
-                  Este é um comprovante de recebimento de pagamento de aluguel.
-                </p>
                 <p>
                   Documento gerado em {format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                 </p>
