@@ -4,15 +4,35 @@ import { Property } from "@/types";
 
 export type SortOption = "newest" | "price-asc" | "price-desc" | "area-desc";
 
-export interface PublicProperty extends Property {
-  locationName?: string;
-  name?: string;
-  street?: string;
+export interface PublicProperty {
+  id: string;
+  name: string;
+  type: string;
+  street: string;
+  number: string;
+  complement: string;
+  neighborhood: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  bedrooms: number;
+  bathrooms: number;
+  parkingSpaces: number;
+  area: number;
   rentAmount: number;
   condominiumAmount: number;
   iptuAmount: number;
+  description: string;
   photos: string[];
-  parkingSpaces: number;
+  locationId?: string;
+  locationName?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  hasGarage?: boolean;
+  garageValue?: number;
+  hasFurniture?: boolean;
+  acceptsPets?: boolean;
+  propertyIdentifier?: string;
 }
 
 export function usePublicProperties() {
@@ -80,9 +100,14 @@ export function usePublicProperties() {
         photos: Array.isArray(item.photos) ? item.photos : [],
         status: item.status || "available",
         locationId: item.location_id,
-        locationName: item.locations?.name || "",
+        locationName: item.location?.name || "",
         createdAt: item.created_at,
         updatedAt: item.updated_at,
+        hasGarage: item.has_garage || false,
+        garageValue: Number(item.garage_value) || 0,
+        hasFurniture: item.has_furniture || false,
+        acceptsPets: item.accepts_pets || false,
+        propertyIdentifier: item.property_identifier || "",
       }));
 
       setProperties(mappedProperties);

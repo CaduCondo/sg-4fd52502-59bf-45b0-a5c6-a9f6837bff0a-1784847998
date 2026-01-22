@@ -229,7 +229,7 @@ export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
           <div className="space-y-6">
             <div>
               <h4 className="font-semibold text-lg mb-2">Descrição</h4>
-              <p className="text-slate-600">
+              <p className="text-slate-600 whitespace-pre-wrap">
                 {property.description || "Sem descrição disponível"}
               </p>
             </div>
@@ -267,70 +267,89 @@ export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
                 </div>
               </div>
             </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-3">
+                <h4 className="font-semibold text-lg">Detalhes Adicionais</h4>
+                <ul className="space-y-2 text-slate-700">
+                  {property.propertyIdentifier && (
+                    <li className="flex justify-between border-b pb-1">
+                      <span>Identificador:</span>
+                      <span className="font-medium">{property.propertyIdentifier}</span>
+                    </li>
+                  )}
+                  <li className="flex justify-between border-b pb-1">
+                    <span>Mobiliado:</span>
+                    <span className="font-medium">{property.hasFurniture ? "Sim" : "Não"}</span>
+                  </li>
+                  <li className="flex justify-between border-b pb-1">
+                    <span>Aceita Pets:</span>
+                    <span className="font-medium">{property.acceptsPets ? "Sim" : "Não"}</span>
+                  </li>
+                  {property.hasGarage && property.garageValue && property.garageValue > 0 && (
+                    <li className="flex justify-between border-b pb-1">
+                      <span>Valor Garagem:</span>
+                      <span className="font-medium">{formatCurrency(property.garageValue)}</span>
+                    </li>
+                  )}
+                </ul>
+              </div>
 
-            <div>
-              <h4 className="font-semibold text-lg mb-2">Endereço</h4>
-              <p className="text-slate-600">
-                {property.street}, {property.number}
-                {property.complement && ` - ${property.complement}`}
-                <br />
-                {property.neighborhood}, {property.city} - {property.state}
-                <br />
-                CEP: {property.zipCode}
-              </p>
+              <div className="space-y-3">
+                <h4 className="font-semibold text-lg">Localização</h4>
+                <p className="text-slate-600">
+                  {property.street}, {property.number}
+                  {property.complement && ` - ${property.complement}`}
+                  <br />
+                  {property.neighborhood}, {property.city} - {property.state}
+                  <br />
+                  CEP: {property.zipCode}
+                </p>
+              </div>
             </div>
 
             <div className="border-t pt-6">
               <div className="bg-blue-50 rounded-lg p-6">
                 <h4 className="font-semibold text-lg mb-4">Valores</h4>
                 <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span>Aluguel:</span>
-                    <span className="font-semibold">
+                  <div className="flex justify-between items-center">
+                    <span className="text-lg">Aluguel:</span>
+                    <span className="font-bold text-xl text-blue-700">
                       {formatCurrency(property.rentAmount)}
                     </span>
                   </div>
+                  {property.garageValue && property.garageValue > 0 && (
+                    <div className="flex justify-between text-slate-600">
+                      <span>Garagem:</span>
+                      <span className="font-medium">
+                        {formatCurrency(property.garageValue)}
+                      </span>
+                    </div>
+                  )}
                   {property.condominiumAmount > 0 && (
-                    <div className="flex justify-between">
+                    <div className="flex justify-between text-slate-600">
                       <span>Condomínio:</span>
-                      <span className="font-semibold">
+                      <span className="font-medium">
                         {formatCurrency(property.condominiumAmount)}
                       </span>
                     </div>
                   )}
                   {property.iptuAmount > 0 && (
-                    <div className="flex justify-between">
+                    <div className="flex justify-between text-slate-600">
                       <span>IPTU:</span>
-                      <span className="font-semibold">
+                      <span className="font-medium">
                         {formatCurrency(property.iptuAmount)}
                       </span>
                     </div>
                   )}
-                  <div className="flex justify-between border-t pt-2 text-lg">
-                    <span className="font-bold">Total:</span>
-                    <span className="font-bold text-blue-600">
-                      {formatCurrency(totalAmount)}/mês
+                  <div className="flex justify-between border-t pt-3 mt-2 text-xl">
+                    <span className="font-bold">Total Mensal:</span>
+                    <span className="font-bold text-blue-800">
+                      {formatCurrency(totalAmount + (property.garageValue || 0))}
                     </span>
                   </div>
                 </div>
               </div>
-            </div>
-
-            <div className="flex gap-3">
-              <Button
-                onClick={() => {
-                  setShowDetails(false);
-                  setShowInterest(true);
-                }}
-                className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
-              >
-                <Heart className="h-4 w-4 mr-2" />
-                Tenho Interesse
-              </Button>
-              <ShareButtons
-                propertyName={property.name || "Imóvel"}
-                propertyUrl={`/?property=${property.id}`}
-              />
             </div>
           </div>
         </DialogContent>
