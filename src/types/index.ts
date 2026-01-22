@@ -20,6 +20,8 @@ export interface SystemUser {
   email: string;
   photo?: string;
   phone?: string;
+  username?: string; // Adicionado
+  password?: string; // Adicionado para facilitar tipagem no formulário
   role: "admin" | "broker" | "financial";
   active: boolean;
   locationId?: string;
