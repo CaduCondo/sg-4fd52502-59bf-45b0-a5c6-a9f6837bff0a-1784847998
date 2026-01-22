@@ -33,23 +33,21 @@ export function PropertyCard({ property, onCardClick, onDeleteClick }: PropertyC
       className="hover:shadow-lg transition-shadow cursor-pointer"
       onClick={() => onCardClick(property)}
     >
-      <CardHeader className="pb-2">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex-1">
-            <CardTitle className="text-xl font-bold text-blue-600">
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between">
+          <div>
+            <CardTitle className="text-lg font-bold text-primary">
               {property.location}
             </CardTitle>
-            {property.complement && (
-              <p className="text-sm text-slate-600 mt-1">
-                {property.complement}
-              </p>
-            )}
+            <p className="text-sm text-muted-foreground mt-1">
+              {property.propertyIdentifier || property.complement || "Sem identificador"}
+            </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col items-end gap-2">
             {getStatusBadge(property.status)}
             {hasImages && (
-              <div className="flex items-center gap-1 text-muted-foreground">
-                <Camera className="h-4 w-4" />
+              <div className="flex items-center justify-center pr-1" title={`${property.images?.length || 0} fotos`}>
+                <Camera className="h-4 w-4 text-muted-foreground" />
               </div>
             )}
           </div>
