@@ -8,6 +8,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   MapPin,
@@ -22,6 +23,9 @@ import {
   X,
   PawPrint,
   Sofa,
+  Armchair,
+  Maximize,
+  MessageCircle,
 } from "lucide-react";
 import { InterestFormDialog } from "./InterestFormDialog";
 import { ShareButtons } from "./ShareButtons";
@@ -82,6 +86,51 @@ export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
               <MapPin className="h-4 w-4" />
               {property.locationCity} - {property.locationState}
             </p>
+
+            {/* Características principais */}
+            <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600 py-2">
+              {property.rooms > 0 && (
+                <div className="flex items-center gap-1">
+                  <Bed className="h-4 w-4" />
+                  <span className="font-medium">{property.rooms} {property.rooms === 1 ? "quarto" : "quartos"}</span>
+                </div>
+              )}
+              {property.bathrooms > 0 && (
+                <div className="flex items-center gap-1">
+                  <Bath className="h-4 w-4" />
+                  <span className="font-medium">{property.bathrooms} {property.bathrooms === 1 ? "banheiro" : "banheiros"}</span>
+                </div>
+              )}
+              {property.area > 0 && (
+                <div className="flex items-center gap-1">
+                  <Maximize2 className="h-4 w-4" />
+                  <span className="font-medium">{property.area}m²</span>
+                </div>
+              )}
+              {property.hasGarage && (
+                <div className="flex items-center gap-1">
+                  <Car className="h-4 w-4" />
+                  <span className="font-medium">Garagem</span>
+                </div>
+              )}
+            </div>
+
+            {/* Valor do aluguel */}
+            <div className="pt-2 border-t">
+              <p className="text-2xl font-bold text-blue-600">
+                R$ {totalMonthly.toLocaleString("pt-BR", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+                <span className="text-sm font-normal text-slate-500">/mês</span>
+              </p>
+              {property.hasGarage && property.garageValue > 0 && (
+                <p className="text-xs text-slate-500 mt-1">
+                  Aluguel: R$ {property.value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} + 
+                  Garagem: R$ {property.garageValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                </p>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -90,195 +139,163 @@ export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
       <Dialog open={showDetails} onOpenChange={setShowDetails}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-bold">
+            <DialogTitle className="font-display text-3xl">
               {displayTitle}
             </DialogTitle>
+            <DialogDescription className="text-base">
+              {property.locationCity} - {property.locationState}
+            </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-6">
-            {/* Galeria de Fotos */}
-            {hasImages && (
-              <div className="relative h-96 bg-slate-100 rounded-lg overflow-hidden">
-                <Image
-                  src={images[currentImageIndex]}
-                  alt={`Foto ${currentImageIndex + 1}`}
-                  fill
-                  className="object-contain"
-                  sizes="(max-width: 1200px) 100vw, 1200px"
-                />
-                {images.length > 1 && (
-                  <>
-                    <button
-                      onClick={handlePrevImage}
-                      className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-3 rounded-full transition-colors"
-                      aria-label="Foto anterior"
-                    >
-                      <ChevronLeft className="h-6 w-6" />
-                    </button>
-                    <button
-                      onClick={handleNextImage}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-3 rounded-full transition-colors"
-                      aria-label="Próxima foto"
-                    >
-                      <ChevronRight className="h-6 w-6" />
-                    </button>
-                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/50 text-white px-3 py-1 rounded-full text-sm">
-                      {currentImageIndex + 1} / {images.length}
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-
-            {/* Identificação e Localização */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Home className="h-5 w-5 text-blue-600" />
-                <div>
-                  <p className="text-sm text-slate-600">Código do Imóvel</p>
-                  <p className="font-semibold">{property.propertyIdentifier || "Não informado"}</p>
+            {/* Galeria de Imagens */}
+            <div className="relative aspect-video bg-slate-100 rounded-lg overflow-hidden">
+              {images.length > 0 ? (
+                <>
+                  <Image
+                    src={images[currentImageIndex]}
+                    alt={`${displayTitle} - Foto ${currentImageIndex + 1}`}
+                    fill
+                    className="object-cover"
+                  />
+                  {images.length > 1 && (
+                    <>
+                      <button
+                        onClick={handlePrevImage}
+                        className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white p-2 rounded-full transition-colors"
+                        aria-label="Imagem anterior"
+                      >
+                        <ChevronLeft className="h-6 w-6" />
+                      </button>
+                      <button
+                        onClick={handleNextImage}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white p-2 rounded-full transition-colors"
+                        aria-label="Próxima imagem"
+                      >
+                        <ChevronRight className="h-6 w-6" />
+                      </button>
+                      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/50 text-white px-3 py-1 rounded-full text-sm">
+                        {currentImageIndex + 1} / {images.length}
+                      </div>
+                    </>
+                  )}
+                </>
+              ) : (
+                <div className="flex items-center justify-center h-full">
+                  <Home className="h-16 w-16 text-slate-300" />
                 </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <MapPin className="h-5 w-5 text-blue-600" />
-                <div>
-                  <p className="text-sm text-slate-600">Localização</p>
-                  <p className="font-semibold">
-                    {property.locationNeighborhood && `${property.locationNeighborhood}, `}
-                    {property.locationCity} - {property.locationState}
-                  </p>
-                </div>
-              </div>
+              )}
             </div>
 
-            {/* Descrição Completa */}
+            {/* Descrição */}
             {property.description && (
               <div>
-                <h4 className="font-semibold text-lg mb-2">Descrição</h4>
-                <p className="text-slate-700 leading-relaxed whitespace-pre-wrap">
-                  {property.description}
-                </p>
+                <h3 className="font-semibold text-lg mb-2">📝 Descrição</h3>
+                <p className="text-slate-600 leading-relaxed">{property.description}</p>
               </div>
             )}
 
-            {/* Características Principais */}
+            {/* Informações Principais */}
             <div>
-              <h4 className="font-semibold text-lg mb-3">Características</h4>
+              <h3 className="font-semibold text-lg mb-3">🏠 Informações do Imóvel</h3>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {property.rooms > 0 && (
-                  <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg">
-                    <Bed className="h-5 w-5 text-blue-600" />
-                    <div>
-                      <p className="text-xs text-slate-600">Quartos</p>
-                      <p className="font-semibold">{property.rooms}</p>
-                    </div>
-                  </div>
+                  <Card className="p-4 text-center">
+                    <Bed className="h-8 w-8 mx-auto mb-2 text-blue-600" />
+                    <p className="text-sm text-slate-600">Quartos</p>
+                    <p className="text-xl font-bold">{property.rooms}</p>
+                  </Card>
                 )}
                 {property.bathrooms > 0 && (
-                  <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg">
-                    <Bath className="h-5 w-5 text-blue-600" />
-                    <div>
-                      <p className="text-xs text-slate-600">Banheiros</p>
-                      <p className="font-semibold">{property.bathrooms}</p>
-                    </div>
-                  </div>
+                  <Card className="p-4 text-center">
+                    <Bath className="h-8 w-8 mx-auto mb-2 text-blue-600" />
+                    <p className="text-sm text-slate-600">Banheiros</p>
+                    <p className="text-xl font-bold">{property.bathrooms}</p>
+                  </Card>
                 )}
                 {property.area > 0 && (
-                  <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg">
-                    <Maximize2 className="h-5 w-5 text-blue-600" />
-                    <div>
-                      <p className="text-xs text-slate-600">Área</p>
-                      <p className="font-semibold">{property.area}m²</p>
-                    </div>
-                  </div>
+                  <Card className="p-4 text-center">
+                    <Maximize className="h-8 w-8 mx-auto mb-2 text-blue-600" />
+                    <p className="text-sm text-slate-600">Área</p>
+                    <p className="text-xl font-bold">{property.area}m²</p>
+                  </Card>
                 )}
                 {property.hasGarage && (
-                  <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg">
-                    <Car className="h-5 w-5 text-blue-600" />
-                    <div>
-                      <p className="text-xs text-slate-600">Garagem</p>
-                      <p className="font-semibold">Sim</p>
-                    </div>
-                  </div>
+                  <Card className="p-4 text-center">
+                    <Car className="h-8 w-8 mx-auto mb-2 text-blue-600" />
+                    <p className="text-sm text-slate-600">Garagem</p>
+                    <p className="text-xl font-bold">Sim</p>
+                  </Card>
                 )}
               </div>
             </div>
 
             {/* Detalhes Adicionais */}
             <div>
-              <h4 className="font-semibold text-lg mb-3">Detalhes Adicionais</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Móveis Planejados */}
-                <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-lg">
-                  <div className={`p-2 rounded-full ${property.hasFurniture ? "bg-green-100" : "bg-red-100"}`}>
-                    <Sofa className={`h-5 w-5 ${property.hasFurniture ? "text-green-600" : "text-red-600"}`} />
-                  </div>
+              <h3 className="font-semibold text-lg mb-3">✨ Detalhes Adicionais</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg">
+                  <Armchair className="h-5 w-5 text-slate-600" />
                   <div>
-                    <p className="text-sm text-slate-600">Móveis Planejados</p>
-                    <div className="flex items-center gap-2">
-                      {property.hasFurniture ? (
-                        <>
-                          <Check className="h-4 w-4 text-green-600" />
-                          <p className="font-semibold text-green-600">Sim</p>
-                        </>
-                      ) : (
-                        <>
-                          <X className="h-4 w-4 text-red-600" />
-                          <p className="font-semibold text-red-600">Não</p>
-                        </>
-                      )}
-                    </div>
+                    <p className="text-sm font-medium">Móveis Planejados</p>
+                    <Badge variant={property.hasFurniture ? "default" : "secondary"} className="mt-1">
+                      {property.hasFurniture ? "✅ Sim" : "❌ Não"}
+                    </Badge>
                   </div>
                 </div>
-
-                {/* Aceita Pets */}
-                <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-lg">
-                  <div className={`p-2 rounded-full ${property.acceptsPets ? "bg-green-100" : "bg-red-100"}`}>
-                    <PawPrint className={`h-5 w-5 ${property.acceptsPets ? "text-green-600" : "text-red-600"}`} />
-                  </div>
+                <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg">
+                  <PawPrint className="h-5 w-5 text-slate-600" />
                   <div>
-                    <p className="text-sm text-slate-600">Aceita Pets</p>
-                    <div className="flex items-center gap-2">
-                      {property.acceptsPets ? (
-                        <>
-                          <Check className="h-4 w-4 text-green-600" />
-                          <p className="font-semibold text-green-600">Sim</p>
-                        </>
-                      ) : (
-                        <>
-                          <X className="h-4 w-4 text-red-600" />
-                          <p className="font-semibold text-red-600">Não</p>
-                        </>
-                      )}
-                    </div>
+                    <p className="text-sm font-medium">Aceita Pets</p>
+                    <Badge variant={property.acceptsPets ? "default" : "secondary"} className="mt-1">
+                      {property.acceptsPets ? "✅ Sim" : "❌ Não"}
+                    </Badge>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg">
+                  <Car className="h-5 w-5 text-slate-600" />
+                  <div>
+                    <p className="text-sm font-medium">Vaga de Garagem</p>
+                    <Badge variant={property.hasGarage ? "default" : "secondary"} className="mt-1">
+                      {property.hasGarage ? "✅ Sim" : "❌ Não"}
+                    </Badge>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Valores Detalhados */}
-            <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-lg space-y-3">
-              <h4 className="font-semibold text-lg">Valores</h4>
+            {/* Valores */}
+            <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-6 rounded-lg">
+              <h3 className="font-semibold text-lg mb-4">💰 Valores</h3>
               <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-slate-700">Aluguel</span>
-                  <span className="font-semibold">
-                    R$ {property.value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-700">Aluguel:</span>
+                  <span className="text-xl font-semibold">
+                    {property.value.toLocaleString("pt-BR", {
+                      style: "currency",
+                      currency: "BRL",
+                    })}
                   </span>
                 </div>
                 {property.hasGarage && property.garageValue > 0 && (
-                  <div className="flex justify-between">
-                    <span className="text-slate-700">Garagem</span>
-                    <span className="font-semibold">
-                      R$ {property.garageValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-700">Garagem:</span>
+                    <span className="text-xl font-semibold">
+                      {property.garageValue.toLocaleString("pt-BR", {
+                        style: "currency",
+                        currency: "BRL",
+                      })}
                     </span>
                   </div>
                 )}
-                <div className="border-t border-blue-200 pt-2 mt-2">
-                  <div className="flex justify-between text-lg">
-                    <span className="font-bold text-blue-900">Total Mensal</span>
-                    <span className="font-bold text-blue-900">
-                      R$ {totalMonthly.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                <div className="border-t pt-2 mt-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-lg font-semibold">Total Mensal:</span>
+                    <span className="text-2xl font-bold text-blue-600">
+                      {(property.value + (property.hasGarage ? property.garageValue : 0)).toLocaleString("pt-BR", {
+                        style: "currency",
+                        currency: "BRL",
+                      })}
                     </span>
                   </div>
                 </div>
@@ -286,21 +303,16 @@ export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
             </div>
 
             {/* Botões de Ação */}
-            <div className="flex gap-3 pt-4 border-t">
+            <div className="flex flex-col sm:flex-row gap-3">
               <Button
-                className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
+                onClick={() => setShowInterestForm(true)}
+                className="flex-1 bg-green-500 hover:bg-green-600"
                 size="lg"
-                onClick={() => {
-                  setShowDetails(false);
-                  setShowInterestForm(true);
-                }}
               >
-                Tenho Interesse
+                <MessageCircle className="h-5 w-5 mr-2" />
+                Tenho Interesse!
               </Button>
-              <ShareButtons
-                propertyName={displayTitle}
-                propertyUrl={`/locations/${property.locationId}`}
-              />
+              <ShareButtons propertyName={displayTitle} propertyUrl={`/locations/${property.id}`} />
             </div>
           </div>
         </DialogContent>

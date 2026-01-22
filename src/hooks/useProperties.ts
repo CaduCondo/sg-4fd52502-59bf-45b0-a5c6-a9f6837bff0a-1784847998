@@ -29,15 +29,16 @@ export interface PropertyFormData {
   location_id: string;
   property_identifier: string;
   complement: string;
-  bedrooms: string;
+  rooms: string;
   bathrooms: string;
   monthly_rent: string;
-  status: string;
   description: string;
+  status: string;
   images: string[];
   hasFurniture: boolean;
   acceptsPets: boolean;
   area?: string;
+  hasGarage: boolean;
 }
 
 export function useProperties(): UsePropertiesReturn {
@@ -54,15 +55,16 @@ export function useProperties(): UsePropertiesReturn {
     location_id: "",
     property_identifier: "",
     complement: "",
-    bedrooms: "",
+    rooms: "",
     bathrooms: "",
     monthly_rent: "",
-    status: "available",
     description: "",
+    status: "available",
     images: [],
     hasFurniture: false,
     acceptsPets: false,
     area: "",
+    hasGarage: false,
   });
 
   const loadData = useCallback(async () => {
@@ -130,18 +132,18 @@ export function useProperties(): UsePropertiesReturn {
 
     const propertyData = {
       locationId: formData.location_id,
-      location: selectedLocation.name,
-      propertyIdentifier: formData.property_identifier || "Apartamento",
-      complement: formData.complement || undefined,
-      value: parseCurrencyToFloat(formData.monthly_rent),
-      status: formData.status as "available" | "occupied" | "unavailable",
+      location: selectedLocation?.name,
+      propertyIdentifier: formData.property_identifier,
+      complement: formData.complement,
+      rooms: Number(formData.rooms) || 0,
+      bathrooms: Number(formData.bathrooms) || 0,
+      monthlyRent: parseFloat(formData.monthly_rent.replace(",", ".")) || 0,
       description: formData.description,
-      rooms: formData.bedrooms ? parseInt(formData.bedrooms) : undefined,
-      bathrooms: formData.bathrooms ? parseInt(formData.bathrooms) : undefined,
       images: formData.images,
       hasFurniture: formData.hasFurniture,
       acceptsPets: formData.acceptsPets,
       area: formData.area ? parseFloat(formData.area.replace(",", ".")) : undefined,
+      hasGarage: formData.hasGarage,
     };
 
     await propertyService.create(propertyData);
@@ -167,12 +169,13 @@ export function useProperties(): UsePropertiesReturn {
       value: parseCurrencyToFloat(formData.monthly_rent),
       status: formData.status as "available" | "occupied" | "unavailable",
       description: formData.description,
-      rooms: formData.bedrooms ? parseInt(formData.bedrooms) : undefined,
+      rooms: formData.rooms ? parseInt(formData.rooms) : undefined,
       bathrooms: formData.bathrooms ? parseInt(formData.bathrooms) : undefined,
       images: formData.images,
       hasFurniture: formData.hasFurniture,
       acceptsPets: formData.acceptsPets,
       area: formData.area ? parseFloat(formData.area.replace(",", ".")) : undefined,
+      hasGarage: formData.hasGarage,
     };
 
     await propertyService.update(id, propertyData);

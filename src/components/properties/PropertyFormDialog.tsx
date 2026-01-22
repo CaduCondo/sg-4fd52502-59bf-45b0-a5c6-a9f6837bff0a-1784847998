@@ -9,6 +9,7 @@ import { AttachmentViewer } from "@/components/AttachmentViewer";
 import type { Property, Location } from "@/types";
 import type { PropertyFormData } from "@/hooks/useProperties";
 import { useRef } from "react";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface PropertyFormDialogProps {
   open: boolean;
@@ -44,7 +45,7 @@ export function PropertyFormDialog({
     setFormData({ ...formData, monthly_rent: masked });
   };
 
-  const handleNumberChange = (field: "bedrooms" | "bathrooms", value: string) => {
+  const handleNumberChange = (field: "rooms" | "bathrooms", value: string) => {
     const numbersOnly = value.replace(/\D/g, "");
     const limitedValue = numbersOnly.slice(0, 2);
     setFormData({ ...formData, [field]: limitedValue });
@@ -151,13 +152,13 @@ export function PropertyFormDialog({
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="bedrooms">Quartos</Label>
+                <Label htmlFor="rooms">Quartos</Label>
                 <Input
-                  id="bedrooms"
+                  id="rooms"
                   type="text"
                   inputMode="numeric"
-                  value={formData.bedrooms}
-                  onChange={(e) => handleNumberChange("bedrooms", e.target.value)}
+                  value={formData.rooms}
+                  onChange={(e) => handleNumberChange("rooms", e.target.value)}
                   placeholder="0"
                   disabled={editingProperty && !isEditMode}
                   maxLength={2}
@@ -240,6 +241,34 @@ export function PropertyFormDialog({
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="acceptsPets"
+                checked={formData.acceptsPets}
+                onCheckedChange={(checked) => {
+                  setFormData({ ...formData, acceptsPets: checked as boolean });
+                }}
+                disabled={editingProperty && !isEditMode}
+              />
+              <Label htmlFor="acceptsPets" className="cursor-pointer">
+                Aceita Pets
+              </Label>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="hasGarage"
+                checked={formData.hasGarage}
+                onCheckedChange={(checked) => {
+                  setFormData({ ...formData, hasGarage: checked as boolean });
+                }}
+                disabled={editingProperty && !isEditMode}
+              />
+              <Label htmlFor="hasGarage" className="cursor-pointer">
+                Vaga Garagem?
+              </Label>
             </div>
 
             <div className="space-y-2">

@@ -56,11 +56,13 @@ export default function PropertiesPage() {
     monthly_rent: "",
     status: "available",
     description: "",
-    bedrooms: "",
+    rooms: "",
     bathrooms: "",
     images: [],
     hasFurniture: false,
     acceptsPets: false,
+    area: "",
+    hasGarage: false,
   });
 
   const handleEdit = (property: Property) => {
@@ -72,11 +74,13 @@ export default function PropertiesPage() {
       monthly_rent: formatCurrency(property.value || 0),
       status: property.status,
       description: property.description || "",
-      bedrooms: property.rooms?.toString() || "",
+      rooms: property.rooms?.toString() || "",
       bathrooms: property.bathrooms?.toString() || "",
       images: property.images || [],
       hasFurniture: property.hasFurniture || false,
       acceptsPets: property.acceptsPets || false,
+      area: property.area?.toString() || "",
+      hasGarage: property.hasGarage || false,
     });
     setIsDialogOpen(true);
   };
@@ -93,11 +97,13 @@ export default function PropertiesPage() {
         monthly_rent: formData.monthly_rent,
         status: formData.status,
         description: formData.description || "",
-        bedrooms: formData.bedrooms || "0",
+        rooms: formData.rooms || "0",
         bathrooms: formData.bathrooms || "0",
         images: formData.images,
         hasFurniture: formData.hasFurniture,
         acceptsPets: formData.acceptsPets,
+        area: formData.area,
+        hasGarage: formData.hasGarage,
       };
 
       if (editingProperty) {
@@ -141,11 +147,13 @@ export default function PropertiesPage() {
       monthly_rent: formatCurrency(property.value || property.monthly_rent || 0).replace("R$", "").trim(),
       status: property.status,
       description: property.description || "",
-      bedrooms: property.rooms?.toString() || property.bedrooms?.toString() || "",
+      rooms: property.rooms?.toString() || "",
       bathrooms: property.bathrooms?.toString() || "",
       images: property.images || [],
       hasFurniture: property.hasFurniture || false,
       acceptsPets: property.acceptsPets || false,
+      area: property.area?.toString() || "",
+      hasGarage: property.hasGarage || false,
     });
     
     setIsEditMode(false);
@@ -182,11 +190,13 @@ export default function PropertiesPage() {
       monthly_rent: "",
       status: "available",
       description: "",
-      bedrooms: "",
+      rooms: "",
       bathrooms: "",
       images: [],
       hasFurniture: false,
       acceptsPets: false,
+      area: "",
+      hasGarage: false,
     });
     setEditingProperty(null);
     setIsEditMode(false);

@@ -15,6 +15,7 @@ import { Property, Location } from "@/types";
 import { getById as getPropertyById, update as updateProperty } from "@/services/propertyService";
 import { getAll as getAllLocations, getById as getLocationById } from "@/services/locationService";
 import { applyRealMask, removeMask } from "@/lib/masks";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export default function PropertyDetailPage() {
   const router = useRouter();
@@ -30,12 +31,13 @@ export default function PropertyDetailPage() {
   const [formData, setFormData] = useState({
     locationId: "",
     complement: "",
-    value: "",
     rooms: "",
     bathrooms: "",
-    area: "",
+    monthlyRent: "",
     description: "",
     status: "available" as "available" | "occupied" | "unavailable",
+    area: "",
+    hasGarage: false,
   });
 
   const getStatusBadge = (status: string) => {
@@ -88,12 +90,13 @@ export default function PropertyDetailPage() {
         setFormData({
           locationId: data.locationId || "",
           complement: data.complement || "",
-          value: data.value ? applyRealMask((data.value * 100).toString()) : "",
           rooms: data.rooms?.toString() || "",
           bathrooms: data.bathrooms?.toString() || "",
-          area: data.area?.toString() || "",
+          monthlyRent: data.monthlyRent?.toString() || "",
           description: data.description || "",
           status: data.status || "available",
+          area: data.area?.toString() || "",
+          hasGarage: data.hasGarage || false,
         });
       }
     } catch (error) {
@@ -117,12 +120,13 @@ export default function PropertyDetailPage() {
       const payload = {
         location_id: formData.locationId,
         complement: formData.complement,
-        value: parseFloat(removeMask(formData.value)) || 0,
         rooms: parseInt(formData.rooms) || 0,
         bathrooms: parseInt(formData.bathrooms) || 0,
+        value: parseFloat(formData.monthlyRent.replace(",", ".")) || 0,
         area: formData.area ? parseFloat(formData.area.replace(",", ".")) : 0,
         description: formData.description,
         status: formData.status,
+        has_garage: formData.hasGarage,
       };
 
       await updateProperty(property.id, payload);
@@ -239,8 +243,8 @@ export default function PropertyDetailPage() {
                     <Label htmlFor="value">Valor (R$)</Label>
                     <Input
                       id="value"
-                      value={formData.value}
-                      onChange={(e) => setFormData({ ...formData, value: applyRealMask(e.target.value) })}
+                      value={formData.monthlyRent}
+                      onChange={(e) => setFormData({ ...formData, monthlyRent: applyRealMask(e.target.value) })}
                       placeholder="0,00"
                     />
                   </div>
@@ -293,6 +297,25 @@ export default function PropertyDetailPage() {
                         <SelectItem value="unavailable">Indisponível</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="acceptsPets"
+                      checked={property?.acceptsPets || false}
+                    />
+                    <Label htmlFor="acceptsPets">Aceita Pets</Label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="hasGarage"
+                      checked={formData.hasGarage}
+                      onCheckedChange={(checked) =>
+                        setFormData({ ...formData, hasGarage: checked as boolean })
+                      }
+                    />
+                    <Label htmlFor="hasGarage">Vaga Garagem?</Label>
                   </div>
                 </CardContent>
               </Card>
