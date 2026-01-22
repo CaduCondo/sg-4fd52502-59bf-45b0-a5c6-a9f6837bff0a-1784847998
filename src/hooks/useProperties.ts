@@ -136,6 +136,9 @@ export function useProperties(): UsePropertiesReturn {
       description: formData.description,
       rooms: formData.bedrooms ? parseInt(formData.bedrooms) : undefined,
       bathrooms: formData.bathrooms ? parseInt(formData.bathrooms) : undefined,
+      images: formData.images,
+      hasFurniture: formData.hasFurniture,
+      acceptsPets: formData.acceptsPets,
     };
 
     await propertyService.create(propertyData);
@@ -163,6 +166,9 @@ export function useProperties(): UsePropertiesReturn {
       description: formData.description,
       rooms: formData.bedrooms ? parseInt(formData.bedrooms) : undefined,
       bathrooms: formData.bathrooms ? parseInt(formData.bathrooms) : undefined,
+      images: formData.images,
+      hasFurniture: formData.hasFurniture,
+      acceptsPets: formData.acceptsPets,
     };
 
     await propertyService.update(id, propertyData);
