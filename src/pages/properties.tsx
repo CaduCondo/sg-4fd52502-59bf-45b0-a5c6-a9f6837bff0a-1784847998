@@ -48,22 +48,58 @@ export default function PropertiesPage() {
   const [propertyToDelete, setPropertyToDelete] = useState<string | null>(null);
   const [editingProperty, setEditingProperty] = useState<Property | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [isViewMode, setIsViewMode] = useState(false);
 
   const [formData, setFormData] = useState<PropertyFormData>({
     location_id: "",
     property_identifier: "",
     complement: "",
-    monthly_rent: "",
-    status: "available",
-    description: "",
     rooms: "",
     bathrooms: "",
+    monthly_rent: "",
+    description: "",
+    status: "available",
     images: [],
     hasFurniture: false,
     acceptsPets: false,
     area: "",
     hasGarage: false,
   });
+
+  const handleNumberChange = (field: "rooms" | "bathrooms", value: string) => {
+    const numbersOnly = value.replace(/[^0-9]/g, "");
+    const limitedValue = numbersOnly.slice(0, 2);
+    setFormData({ ...formData, [field]: limitedValue });
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    const newImages: string[] = [];
+    Array.from(files).forEach((file) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (reader.result) {
+          newImages.push(reader.result as string);
+          if (newImages.length === files.length) {
+            setFormData((prev) => ({
+              ...prev,
+              images: [...prev.images, ...newImages],
+            }));
+          }
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removeImage = (index: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      images: prev.images.filter((_, i) => i !== index),
+    }));
+  };
 
   const handleEdit = (property: Property) => {
     setEditingProperty(property);
@@ -136,27 +172,25 @@ export default function PropertiesPage() {
   };
 
   const handleCardClick = (property: Property) => {
-    setEditingProperty(property);
-    
-    const locationId = property.locationId || "";
-    
     setFormData({
-      location_id: locationId,
-      property_identifier: property.property_identifier || "Apartamento",
+      location_id: property.locationId || "",
+      property_identifier: property.propertyIdentifier || "",
       complement: property.complement || "",
-      monthly_rent: formatCurrency(property.value || property.monthly_rent || 0).replace("R$", "").trim(),
-      status: property.status,
-      description: property.description || "",
       rooms: property.rooms?.toString() || "",
       bathrooms: property.bathrooms?.toString() || "",
+      monthly_rent: property.value?.toString() || "",
+      description: property.description || "",
+      status: property.status || "available",
       images: property.images || [],
-      hasFurniture: property.hasFurniture || false,
-      acceptsPets: property.acceptsPets || false,
+      hasFurniture: property.has_furniture || false,
+      acceptsPets: property.accepts_pets || false,
       area: property.area?.toString() || "",
       hasGarage: property.hasGarage || false,
     });
     
-    setIsEditMode(false);
+    setEditingProperty(property);
+    setIsEditMode(true);
+    setIsViewMode(true);
     setIsDialogOpen(true);
   };
 
@@ -187,11 +221,11 @@ export default function PropertiesPage() {
       location_id: "",
       property_identifier: "",
       complement: "",
-      monthly_rent: "",
-      status: "available",
-      description: "",
       rooms: "",
       bathrooms: "",
+      monthly_rent: "",
+      description: "",
+      status: "available",
       images: [],
       hasFurniture: false,
       acceptsPets: false,
@@ -200,6 +234,7 @@ export default function PropertiesPage() {
     });
     setEditingProperty(null);
     setIsEditMode(false);
+    setIsViewMode(false);
   };
 
   const getStatusBadge = (status: string) => {
@@ -353,14 +388,17 @@ export default function PropertiesPage() {
               resetForm();
             }
           }}
-          editingProperty={editingProperty}
-          isEditMode={isEditMode}
+          onSubmit={handleSubmit}
           formData={formData}
           setFormData={setFormData}
+          isEditMode={isEditMode}
           locations={locations}
-          onSubmit={handleSubmit}
-          onEnableEdit={handleEnableEdit}
-          onReset={resetForm}
+          handleNumberChange={handleNumberChange}
+          handleImageUpload={handleImageUpload}
+          removeImage={removeImage}
+          isSubmitting={isLoading}
+          viewOnly={isViewMode}
+          onEdit={() => setIsViewMode(false)}
         />
 
         <PropertyDeleteAlert
