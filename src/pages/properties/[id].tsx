@@ -33,6 +33,7 @@ export default function PropertyDetailPage() {
     value: "",
     rooms: "",
     bathrooms: "",
+    area: "",
     description: "",
     status: "available" as "available" | "occupied" | "unavailable",
   });
@@ -90,6 +91,7 @@ export default function PropertyDetailPage() {
           value: data.value ? applyRealMask((data.value * 100).toString()) : "",
           rooms: data.rooms?.toString() || "",
           bathrooms: data.bathrooms?.toString() || "",
+          area: data.area?.toString() || "",
           description: data.description || "",
           status: data.status || "available",
         });
@@ -118,6 +120,7 @@ export default function PropertyDetailPage() {
         value: parseFloat(removeMask(formData.value)) || 0,
         rooms: parseInt(formData.rooms) || 0,
         bathrooms: parseInt(formData.bathrooms) || 0,
+        area: formData.area ? parseFloat(formData.area.replace(",", ".")) : 0,
         description: formData.description,
         status: formData.status,
       };
@@ -261,6 +264,18 @@ export default function PropertyDetailPage() {
                         onChange={(e) => setFormData({ ...formData, bathrooms: e.target.value })}
                       />
                     </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="area">Área (m²)</Label>
+                    <Input
+                      id="area"
+                      type="text"
+                      inputMode="decimal"
+                      value={formData.area}
+                      onChange={(e) => setFormData({ ...formData, area: e.target.value })}
+                      placeholder="0,00"
+                    />
                   </div>
 
                   <div className="space-y-2">

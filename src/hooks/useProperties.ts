@@ -37,7 +37,7 @@ export interface PropertyFormData {
   images: string[];
   hasFurniture: boolean;
   acceptsPets: boolean;
-  area?: number;
+  area?: string;
 }
 
 export function useProperties(): UsePropertiesReturn {
@@ -62,6 +62,7 @@ export function useProperties(): UsePropertiesReturn {
     images: [],
     hasFurniture: false,
     acceptsPets: false,
+    area: "",
   });
 
   const loadData = useCallback(async () => {
@@ -140,7 +141,7 @@ export function useProperties(): UsePropertiesReturn {
       images: formData.images,
       hasFurniture: formData.hasFurniture,
       acceptsPets: formData.acceptsPets,
-      area: formData.area,
+      area: formData.area ? parseFloat(formData.area.replace(",", ".")) : undefined,
     };
 
     await propertyService.create(propertyData);
@@ -171,7 +172,7 @@ export function useProperties(): UsePropertiesReturn {
       images: formData.images,
       hasFurniture: formData.hasFurniture,
       acceptsPets: formData.acceptsPets,
-      area: formData.area,
+      area: formData.area ? parseFloat(formData.area.replace(",", ".")) : undefined,
     };
 
     await propertyService.update(id, propertyData);
