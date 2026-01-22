@@ -157,19 +157,17 @@ export default function PublicHome() {
 
         {/* Footer */}
         <footer className="bg-slate-900 text-slate-300 py-16 mt-20">
-          <div className="container mx-auto px-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-12">
+          <div className="container mx-auto px-4 py-12">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
               {/* Logo e Descrição */}
               <div>
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600">
-                    <Building2 className="h-7 w-7 text-white" />
-                  </div>
-                  <h3 className="font-display text-2xl font-bold text-white">D'Uvo Enterprise Corporation
-
-                  </h3>
+                <div className="flex items-center gap-2 mb-4">
+                  <Building2 className="h-8 w-8 text-blue-600" />
+                  <span className="font-display text-2xl font-bold text-white">
+                    {siteConfig.name}
+                  </span>
                 </div>
-                <p className="text-slate-400">
+                <p className="text-slate-400 mb-4">
                   {siteConfig.description}
                 </p>
               </div>
@@ -182,15 +180,15 @@ export default function PublicHome() {
                 <div className="space-y-3">
                   <a
                     href={`tel:${siteConfig.contact.phone}`}
-                    className="flex items-center gap-3 text-slate-300 hover:text-white transition-colors">
-
+                    className="flex items-center gap-3 text-slate-300 hover:text-white transition-colors"
+                  >
                     <Phone className="h-5 w-5 text-blue-400" />
                     {siteConfig.contact.phone}
                   </a>
                   <a
                     href={`mailto:${siteConfig.contact.email}`}
-                    className="flex items-center gap-3 text-slate-300 hover:text-white transition-colors">
-
+                    className="flex items-center gap-3 text-slate-300 hover:text-white transition-colors"
+                  >
                     <Mail className="h-5 w-5 text-blue-400" />
                     {siteConfig.contact.email}
                   </a>
@@ -198,42 +196,6 @@ export default function PublicHome() {
                     <MapPin className="h-5 w-5 text-blue-400" />
                     {siteConfig.contact.address}
                   </div>
-                </div>
-              </div>
-
-              {/* Redes Sociais */}
-              <div>
-                <h4 className="font-display text-lg font-bold text-white mb-4">
-                  Redes Sociais
-                </h4>
-                <div className="flex gap-4">
-                  <a
-                    href={siteConfig.social.facebook}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-800 text-slate-300 hover:bg-blue-600 hover:text-white transition-colors"
-                    aria-label="Facebook">
-
-                    <Facebook className="h-5 w-5" />
-                  </a>
-                  <a
-                    href={siteConfig.social.instagram}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-800 text-slate-300 hover:bg-pink-600 hover:text-white transition-colors"
-                    aria-label="Instagram">
-
-                    <Instagram className="h-5 w-5" />
-                  </a>
-                  <a
-                    href={siteConfig.social.linkedin}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-800 text-slate-300 hover:bg-blue-700 hover:text-white transition-colors"
-                    aria-label="LinkedIn">
-
-                    <Linkedin className="h-5 w-5" />
-                  </a>
                 </div>
               </div>
             </div>
