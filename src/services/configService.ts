@@ -20,14 +20,14 @@ export interface SiteConfig {
 
 // Configurações estáticas para a parte pública
 export const siteConfig: SiteConfig = {
-  name: "Imobiliária Premium",
-  description: "Encontre o imóvel ideal para você",
+  name: "Gerenciador de Locações",
+  description: "Sistema completo para gerenciar locações de imóveis",
   logo: "/logo.png",
   contact: {
     phone: "(11) 99680-3386",
+    email: "contato@locacoes.com.br",
     whatsapp: "5511996803386",
-    email: "carlos.uva@terra.com.br",
-    address: "Rua Exemplo, 123 - São Paulo, SP",
+    address: "São Paulo, SP",
   },
   theme: {
     primaryColor: "#2563eb",

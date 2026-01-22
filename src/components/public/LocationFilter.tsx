@@ -1,42 +1,39 @@
-import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { MapPin } from "lucide-react";
 
 interface LocationFilterProps {
-  locations: Array<{id: string;name: string;}>;
+  locations: Array<{ id: string; name: string; city: string; neighborhood: string }>;
   selectedLocation: string;
-  onSelectLocation: (locationId: string) => void;
+  onLocationChange: (locationId: string) => void;
 }
 
 export function LocationFilter({
   locations,
   selectedLocation,
-  onSelectLocation
+  onLocationChange,
 }: LocationFilterProps) {
   return (
-    <div className="flex flex-wrap items-center gap-3">
-      <div className="flex items-center gap-2 text-slate-700">
-        <MapPin className="h-5 w-5" />
-        <span className="font-medium">Local:</span>
-      </div>
-      
-      <Badge
-        variant={selectedLocation === "all" ? "default" : "outline"}
-        className="cursor-pointer px-4 py-2 text-sm transition-all hover:scale-105"
-        onClick={() => onSelectLocation("all")}>
-
-        Todos
-      </Badge>
-
-      {locations.map((location) =>
-      <Badge
-        key={location.id}
-        variant={selectedLocation === location.id ? "default" : "outline"}
-        className="cursor-pointer px-4 py-2 text-sm transition-all hover:scale-105"
-        onClick={() => onSelectLocation(location.id)}>
-
-          {location.name}
-        </Badge>
-      )}
-    </div>);
-
+    <div className="flex items-center gap-2">
+      <MapPin className="h-4 w-4 text-slate-500" />
+      <Select value={selectedLocation} onValueChange={onLocationChange}>
+        <SelectTrigger className="w-[280px]">
+          <SelectValue placeholder="Todos os locais" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">Todos os locais</SelectItem>
+          {locations.map((location) => (
+            <SelectItem key={location.id} value={location.id}>
+              {location.city} - {location.neighborhood}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
 }

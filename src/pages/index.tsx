@@ -85,7 +85,7 @@ export default function PublicHome() {
               <LocationFilter
                 locations={locations}
                 selectedLocation={selectedLocation}
-                onSelectLocation={setSelectedLocation} />
+                onLocationChange={setSelectedLocation} />
 
               
               <div className="flex gap-3 items-center">

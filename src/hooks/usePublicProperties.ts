@@ -21,64 +21,46 @@ export interface PublicProperty {
   locationName: string;
   locationCity: string;
   locationState: string;
+  locationNeighborhood: string;
   createdAt: string;
 }
 
 export function usePublicProperties() {
   const [properties, setProperties] = useState<PublicProperty[]>([]);
-  const [locations, setLocations] = useState<Array<{ id: string; name: string }>>([]);
-  const [selectedLocation, setSelectedLocation] = useState<string>("all");
+  const [locations, setLocations] = useState<
+    Array<{ id: string; name: string; city: string; neighborhood: string }>
+  >([]);
+  const [selectedLocation, setSelectedLocation] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("newest");
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    loadProperties();
-    loadLocations();
-  }, []);
+  // Definir funções de busca
+  const fetchLocations = async () => {
+    const { data } = await supabase
+      .from("locations")
+      .select("id, name, city, neighborhood")
+      .eq("is_active", true)
+      .order("name");
 
-  const loadLocations = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("locations")
-        .select("id, name")
-        .eq("is_active", true)
-        .order("name");
-
-      if (error) throw error;
-      setLocations(data || []);
-    } catch (error) {
-      console.error("Error loading locations:", error);
+    if (data) {
+      setLocations(data);
     }
   };
 
-  const loadProperties = async () => {
+  const fetchProperties = async () => {
     setIsLoading(true);
     try {
       const { data, error } = await supabase
         .from("properties")
         .select(`
-          id,
-          property_identifier,
-          description,
-          rooms,
-          bathrooms,
-          area,
-          has_garage,
-          garage_value,
-          value,
-          images,
-          has_furniture,
-          accepts_pets,
-          status,
-          location_id,
-          created_at,
+          *,
           locations!inner(
             id,
             name,
             city,
             state,
-            is_active
+            neighborhood
           )
         `)
         .eq("status", "available")
@@ -93,10 +75,10 @@ export function usePublicProperties() {
         description: item.description || "",
         rooms: item.rooms || 0,
         bathrooms: item.bathrooms || 0,
-        area: Number(item.area) || 0,
+        area: item.area || 0,
         hasGarage: item.has_garage || false,
-        garageValue: Number(item.garage_value) || 0,
-        value: Number(item.value) || 0,
+        garageValue: item.garage_value || 0,
+        value: item.value || 0,
         images: Array.isArray(item.images) ? item.images : [],
         hasFurniture: item.has_furniture || false,
         acceptsPets: item.accepts_pets || false,
@@ -105,7 +87,8 @@ export function usePublicProperties() {
         locationName: item.locations?.name || "",
         locationCity: item.locations?.city || "",
         locationState: item.locations?.state || "",
-        createdAt: item.created_at || "",
+        locationNeighborhood: item.locations?.neighborhood || "",
+        createdAt: item.created_at,
       }));
 
       setProperties(mappedProperties);
@@ -116,6 +99,12 @@ export function usePublicProperties() {
     }
   };
 
+  // Carregar dados ao montar
+  useEffect(() => {
+    fetchProperties();
+    fetchLocations();
+  }, []);
+
   const filteredProperties = properties.filter((property) => {
     const matchesLocation =
       selectedLocation === "all" || property.locationId === selectedLocation;
@@ -125,6 +114,7 @@ export function usePublicProperties() {
       property.propertyIdentifier?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       property.locationName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       property.locationCity?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      property.locationNeighborhood?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       property.description?.toLowerCase().includes(searchTerm.toLowerCase());
 
     return matchesLocation && matchesSearch;
