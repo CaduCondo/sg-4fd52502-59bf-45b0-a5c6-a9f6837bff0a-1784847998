@@ -172,10 +172,11 @@ export default function PropertiesPage() {
     });
     setIsDialogOpen(true);
     setIsViewMode(true);
+    setIsEditMode(true);
   };
 
   const handleEnableEdit = () => {
-    setIsEditMode(true);
+    setIsViewMode(false);
   };
 
   const confirmDelete = (e: React.MouseEvent, id: string) => {
@@ -378,7 +379,7 @@ export default function PropertiesPage() {
           removeImage={removeImage}
           isSubmitting={isLoading}
           viewOnly={isViewMode}
-          onEdit={() => setIsViewMode(false)}
+          onEdit={handleEnableEdit}
         />
 
         <PropertyDeleteAlert
