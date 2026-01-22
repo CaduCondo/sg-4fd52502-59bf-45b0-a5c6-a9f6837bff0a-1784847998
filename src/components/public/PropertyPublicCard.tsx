@@ -19,8 +19,9 @@ import {
   ChevronRight,
   Building2,
   Heart,
+  Sofa,
+  PawPrint,
 } from "lucide-react";
-import { Property } from "@/types";
 import { formatCurrency } from "@/lib/masks";
 import { PublicProperty } from "@/hooks/usePublicProperties";
 import { ShareButtons } from "./ShareButtons";
@@ -35,27 +36,16 @@ export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
   const [showInterest, setShowInterest] = useState(false);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
 
-  const photos = property.photos || [];
-  const hasPhotos = photos.length > 0;
-  const totalAmount =
-    property.rentAmount +
-    (property.condominiumAmount || 0) +
-    (property.iptuAmount || 0);
+  const images = property.images || [];
+  const hasImages = images.length > 0;
+  const totalAmount = property.value + (property.hasGarage ? property.garageValue : 0);
 
   const nextPhoto = () => {
-    setCurrentPhotoIndex((prev) => (prev + 1) % photos.length);
+    setCurrentPhotoIndex((prev) => (prev + 1) % images.length);
   };
 
   const prevPhoto = () => {
-    setCurrentPhotoIndex((prev) => (prev - 1 + photos.length) % photos.length);
-  };
-
-  const propertyTypes: Record<string, string> = {
-    apartment: "Apartamento",
-    house: "Casa",
-    commercial: "Comercial",
-    land: "Terreno",
-    farm: "Chácara",
+    setCurrentPhotoIndex((prev) => (prev - 1 + images.length) % images.length);
   };
 
   return (
@@ -68,10 +58,10 @@ export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
             setShowDetails(true);
           }}
         >
-          {hasPhotos ? (
+          {hasImages ? (
             <Image
-              src={photos[0]}
-              alt={property.name || "Imóvel"}
+              src={images[0]}
+              alt={property.propertyIdentifier || "Imóvel"}
               fill
               className="object-cover transition-transform duration-300 group-hover:scale-110"
             />
@@ -82,9 +72,11 @@ export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
           )}
           
           <div className="absolute top-3 left-3 flex gap-2">
-            <Badge className="bg-blue-600 text-white shadow-lg">
-              {propertyTypes[property.type] || property.type}
-            </Badge>
+            {property.propertyIdentifier && (
+              <Badge className="bg-blue-600 text-white shadow-lg">
+                {property.propertyIdentifier}
+              </Badge>
+            )}
             {property.locationName && (
               <Badge variant="secondary" className="shadow-lg">
                 {property.locationName}
@@ -92,7 +84,7 @@ export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
             )}
           </div>
 
-          {hasPhotos && (
+          {hasImages && (
             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
               <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 px-3 py-1.5 rounded-full text-sm font-medium">
                 Clique para ver fotos
@@ -103,21 +95,27 @@ export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
 
         <CardContent className="p-5">
           <h3 className="font-display text-xl font-bold text-slate-900 mb-2">
-            {property.name || "Imóvel sem nome"}
+            {property.propertyIdentifier || "Imóvel"}
           </h3>
 
           <div className="flex items-center gap-2 text-slate-600 mb-4">
             <MapPin className="h-4 w-4 flex-shrink-0" />
             <span className="text-sm line-clamp-1">
-              {property.neighborhood}, {property.city} - {property.state}
+              {property.locationCity} - {property.locationState}
             </span>
           </div>
 
+          {property.description && (
+            <p className="text-sm text-slate-600 line-clamp-2 mb-4">
+              {property.description}
+            </p>
+          )}
+
           <div className="flex items-center gap-4 mb-4 text-slate-700">
-            {property.bedrooms > 0 && (
+            {property.rooms > 0 && (
               <div className="flex items-center gap-1.5">
                 <Bed className="h-4 w-4" />
-                <span className="text-sm font-medium">{property.bedrooms}</span>
+                <span className="text-sm font-medium">{property.rooms}</span>
               </div>
             )}
             {property.bathrooms > 0 && (
@@ -126,10 +124,10 @@ export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
                 <span className="text-sm font-medium">{property.bathrooms}</span>
               </div>
             )}
-            {property.parkingSpaces > 0 && (
+            {property.hasGarage && (
               <div className="flex items-center gap-1.5">
                 <Car className="h-4 w-4" />
-                <span className="text-sm font-medium">{property.parkingSpaces}</span>
+                <span className="text-sm font-medium">Garagem</span>
               </div>
             )}
             {property.area > 0 && (
@@ -147,13 +145,9 @@ export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
               </span>
               <span className="text-sm text-slate-500">/mês</span>
             </div>
-            {(property.condominiumAmount > 0 || property.iptuAmount > 0) && (
+            {property.hasGarage && property.garageValue > 0 && (
               <p className="text-xs text-slate-500">
-                Aluguel: {formatCurrency(property.rentAmount)}
-                {property.condominiumAmount > 0 &&
-                  ` + Cond: ${formatCurrency(property.condominiumAmount)}`}
-                {property.iptuAmount > 0 &&
-                  ` + IPTU: ${formatCurrency(property.iptuAmount)}`}
+                Aluguel: {formatCurrency(property.value)} + Garagem: {formatCurrency(property.garageValue)}
               </p>
             )}
           </div>
@@ -180,7 +174,7 @@ export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
       <InterestFormDialog
         open={showInterest}
         onOpenChange={setShowInterest}
-        propertyName={property.name || "Imóvel"}
+        propertyName={property.propertyIdentifier || "Imóvel"}
         propertyId={property.id}
       />
 
@@ -188,19 +182,19 @@ export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-display text-2xl">
-              {property.name || "Detalhes do Imóvel"}
+              {property.propertyIdentifier || "Detalhes do Imóvel"}
             </DialogTitle>
           </DialogHeader>
 
-          {hasPhotos && (
+          {hasImages && (
             <div className="relative aspect-video overflow-hidden rounded-lg bg-slate-200">
               <Image
-                src={photos[currentPhotoIndex]}
+                src={images[currentPhotoIndex]}
                 alt={`Foto ${currentPhotoIndex + 1}`}
                 fill
                 className="object-cover"
               />
-              {photos.length > 1 && (
+              {images.length > 1 && (
                 <>
                   <Button
                     variant="secondary"
@@ -219,7 +213,7 @@ export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
                     <ChevronRight className="h-5 w-5" />
                   </Button>
                   <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/60 text-white px-3 py-1 rounded-full text-sm">
-                    {currentPhotoIndex + 1} / {photos.length}
+                    {currentPhotoIndex + 1} / {images.length}
                   </div>
                 </>
               )}
@@ -227,12 +221,14 @@ export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
           )}
 
           <div className="space-y-6">
-            <div>
-              <h4 className="font-semibold text-lg mb-2">Descrição</h4>
-              <p className="text-slate-600 whitespace-pre-wrap">
-                {property.description || "Sem descrição disponível"}
-              </p>
-            </div>
+            {property.description && (
+              <div>
+                <h4 className="font-semibold text-lg mb-2">Descrição</h4>
+                <p className="text-slate-600 whitespace-pre-wrap">
+                  {property.description}
+                </p>
+              </div>
+            )}
 
             <div>
               <h4 className="font-semibold text-lg mb-2">Características</h4>
@@ -241,21 +237,21 @@ export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
                   <Bed className="h-5 w-5 text-blue-600" />
                   <div>
                     <p className="text-sm text-slate-500">Quartos</p>
-                    <p className="font-semibold">{property.bedrooms}</p>
+                    <p className="font-semibold">{property.rooms || 0}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <Bath className="h-5 w-5 text-blue-600" />
                   <div>
                     <p className="text-sm text-slate-500">Banheiros</p>
-                    <p className="font-semibold">{property.bathrooms}</p>
+                    <p className="font-semibold">{property.bathrooms || 0}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <Car className="h-5 w-5 text-blue-600" />
                   <div>
-                    <p className="text-sm text-slate-500">Vagas</p>
-                    <p className="font-semibold">{property.parkingSpaces}</p>
+                    <p className="text-sm text-slate-500">Garagem</p>
+                    <p className="font-semibold">{property.hasGarage ? "Sim" : "Não"}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -272,24 +268,16 @@ export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
               <div className="space-y-3">
                 <h4 className="font-semibold text-lg">Detalhes Adicionais</h4>
                 <ul className="space-y-2 text-slate-700">
-                  {property.propertyIdentifier && (
-                    <li className="flex justify-between border-b pb-1">
-                      <span>Identificador:</span>
-                      <span className="font-medium">{property.propertyIdentifier}</span>
+                  {property.hasFurniture && (
+                    <li className="flex items-center gap-2">
+                      <Sofa className="h-4 w-4 text-blue-600" />
+                      <span>Mobiliado</span>
                     </li>
                   )}
-                  <li className="flex justify-between border-b pb-1">
-                    <span>Mobiliado:</span>
-                    <span className="font-medium">{property.hasFurniture ? "Sim" : "Não"}</span>
-                  </li>
-                  <li className="flex justify-between border-b pb-1">
-                    <span>Aceita Pets:</span>
-                    <span className="font-medium">{property.acceptsPets ? "Sim" : "Não"}</span>
-                  </li>
-                  {property.hasGarage && property.garageValue && property.garageValue > 0 && (
-                    <li className="flex justify-between border-b pb-1">
-                      <span>Valor Garagem:</span>
-                      <span className="font-medium">{formatCurrency(property.garageValue)}</span>
+                  {property.acceptsPets && (
+                    <li className="flex items-center gap-2">
+                      <PawPrint className="h-4 w-4 text-blue-600" />
+                      <span>Aceita Pets</span>
                     </li>
                   )}
                 </ul>
@@ -298,12 +286,9 @@ export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
               <div className="space-y-3">
                 <h4 className="font-semibold text-lg">Localização</h4>
                 <p className="text-slate-600">
-                  {property.street}, {property.number}
-                  {property.complement && ` - ${property.complement}`}
+                  {property.locationName}
                   <br />
-                  {property.neighborhood}, {property.city} - {property.state}
-                  <br />
-                  CEP: {property.zipCode}
+                  {property.locationCity} - {property.locationState}
                 </p>
               </div>
             </div>
@@ -315,10 +300,10 @@ export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
                   <div className="flex justify-between items-center">
                     <span className="text-lg">Aluguel:</span>
                     <span className="font-bold text-xl text-blue-700">
-                      {formatCurrency(property.rentAmount)}
+                      {formatCurrency(property.value)}
                     </span>
                   </div>
-                  {property.garageValue && property.garageValue > 0 && (
+                  {property.hasGarage && property.garageValue > 0 && (
                     <div className="flex justify-between text-slate-600">
                       <span>Garagem:</span>
                       <span className="font-medium">
@@ -326,30 +311,31 @@ export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
                       </span>
                     </div>
                   )}
-                  {property.condominiumAmount > 0 && (
-                    <div className="flex justify-between text-slate-600">
-                      <span>Condomínio:</span>
-                      <span className="font-medium">
-                        {formatCurrency(property.condominiumAmount)}
-                      </span>
-                    </div>
-                  )}
-                  {property.iptuAmount > 0 && (
-                    <div className="flex justify-between text-slate-600">
-                      <span>IPTU:</span>
-                      <span className="font-medium">
-                        {formatCurrency(property.iptuAmount)}
-                      </span>
-                    </div>
-                  )}
                   <div className="flex justify-between border-t pt-3 mt-2 text-xl">
                     <span className="font-bold">Total Mensal:</span>
                     <span className="font-bold text-blue-800">
-                      {formatCurrency(totalAmount + (property.garageValue || 0))}
+                      {formatCurrency(totalAmount)}
                     </span>
                   </div>
                 </div>
               </div>
+            </div>
+
+            <div className="flex gap-2">
+              <Button
+                onClick={() => {
+                  setShowDetails(false);
+                  setShowInterest(true);
+                }}
+                className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
+              >
+                <Heart className="h-4 w-4 mr-2" />
+                Tenho Interesse
+              </Button>
+              <ShareButtons
+                propertyName={property.propertyIdentifier || "Imóvel"}
+                propertyUrl={`/?property=${property.id}`}
+              />
             </div>
           </div>
         </DialogContent>

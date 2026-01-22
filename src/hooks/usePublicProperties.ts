@@ -1,38 +1,27 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Property } from "@/types";
 
 export type SortOption = "newest" | "price-asc" | "price-desc" | "area-desc";
 
 export interface PublicProperty {
   id: string;
-  name: string;
-  type: string;
-  street: string;
-  number: string;
-  complement: string;
-  neighborhood: string;
-  city: string;
-  state: string;
-  zipCode: string;
-  bedrooms: number;
-  bathrooms: number;
-  parkingSpaces: number;
-  area: number;
-  rentAmount: number;
-  condominiumAmount: number;
-  iptuAmount: number;
+  propertyIdentifier: string;
   description: string;
-  photos: string[];
-  locationId?: string;
-  locationName?: string;
-  createdAt?: string;
-  updatedAt?: string;
-  hasGarage?: boolean;
-  garageValue?: number;
-  hasFurniture?: boolean;
-  acceptsPets?: boolean;
-  propertyIdentifier?: string;
+  rooms: number;
+  bathrooms: number;
+  area: number;
+  hasGarage: boolean;
+  garageValue: number;
+  value: number;
+  images: string[];
+  hasFurniture: boolean;
+  acceptsPets: boolean;
+  status: string;
+  locationId: string;
+  locationName: string;
+  locationCity: string;
+  locationState: string;
+  createdAt: string;
 }
 
 export function usePublicProperties() {
@@ -69,8 +58,28 @@ export function usePublicProperties() {
       const { data, error } = await supabase
         .from("properties")
         .select(`
-          *,
-          locations!inner(id, name)
+          id,
+          property_identifier,
+          description,
+          rooms,
+          bathrooms,
+          area,
+          has_garage,
+          garage_value,
+          value,
+          images,
+          has_furniture,
+          accepts_pets,
+          status,
+          location_id,
+          created_at,
+          locations!inner(
+            id,
+            name,
+            city,
+            state,
+            is_active
+          )
         `)
         .eq("status", "available")
         .eq("locations.is_active", true)
@@ -80,34 +89,23 @@ export function usePublicProperties() {
 
       const mappedProperties: PublicProperty[] = (data || []).map((item: any) => ({
         id: item.id,
-        name: item.name || "",
+        propertyIdentifier: item.property_identifier || "",
         description: item.description || "",
-        street: item.street || "",
-        number: item.number || "",
-        complement: item.complement || "",
-        neighborhood: item.neighborhood || "",
-        city: item.city || "",
-        state: item.state || "",
-        zipCode: item.zip_code || "",
-        type: item.type || "apartment",
-        bedrooms: item.bedrooms || 0,
+        rooms: item.rooms || 0,
         bathrooms: item.bathrooms || 0,
-        parkingSpaces: item.parking_spaces || 0,
-        area: item.area || 0,
-        rentAmount: item.rent_amount || 0,
-        iptuAmount: item.iptu_amount || 0,
-        condominiumAmount: item.condominium_amount || 0,
-        photos: Array.isArray(item.photos) ? item.photos : [],
-        status: item.status || "available",
-        locationId: item.location_id,
-        locationName: item.location?.name || "",
-        createdAt: item.created_at,
-        updatedAt: item.updated_at,
+        area: Number(item.area) || 0,
         hasGarage: item.has_garage || false,
         garageValue: Number(item.garage_value) || 0,
+        value: Number(item.value) || 0,
+        images: Array.isArray(item.images) ? item.images : [],
         hasFurniture: item.has_furniture || false,
         acceptsPets: item.accepts_pets || false,
-        propertyIdentifier: item.property_identifier || "",
+        status: item.status || "available",
+        locationId: item.location_id,
+        locationName: item.locations?.name || "",
+        locationCity: item.locations?.city || "",
+        locationState: item.locations?.state || "",
+        createdAt: item.created_at || "",
       }));
 
       setProperties(mappedProperties);
@@ -124,14 +122,15 @@ export function usePublicProperties() {
     
     const matchesSearch =
       searchTerm === "" ||
-      property.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      property.neighborhood?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      property.city?.toLowerCase().includes(searchTerm.toLowerCase());
+      property.propertyIdentifier?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      property.locationName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      property.locationCity?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      property.description?.toLowerCase().includes(searchTerm.toLowerCase());
 
     return matchesLocation && matchesSearch;
   }).sort((a, b) => {
-    const totalA = a.rentAmount + (a.condominiumAmount || 0) + (a.iptuAmount || 0);
-    const totalB = b.rentAmount + (b.condominiumAmount || 0) + (b.iptuAmount || 0);
+    const totalA = a.value + (a.garageValue || 0);
+    const totalB = b.value + (b.garageValue || 0);
 
     switch (sortBy) {
       case "price-asc":
