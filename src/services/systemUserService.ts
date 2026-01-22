@@ -29,6 +29,7 @@ export async function createUser(userData: {
   name: string;
   email: string;
   phone?: string;
+  username?: string;
   role: "admin" | "broker" | "financial";
   password: string;
   active: boolean;
