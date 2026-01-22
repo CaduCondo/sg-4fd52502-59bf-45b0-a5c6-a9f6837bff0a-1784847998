@@ -249,24 +249,23 @@ export function PaymentReceipt({
                 </p>
               </div>
 
-              {totalCharges > 0 && (
-                <div className="border-t pt-4">
-                  <div className="grid grid-cols-3 gap-4 text-center font-semibold">
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">Valor</p>
-                      <p className="text-lg">{formatCurrency(baseAmount)}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">Multa + Juros</p>
-                      <p className="text-lg">{formatCurrency(totalCharges)}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">Total</p>
-                      <p className="text-lg text-primary">{formatCurrency(totalAmount)}</p>
-                    </div>
+              <div className="border-t pt-4 space-y-2">
+                <p className="font-semibold text-sm mb-3">Valores:</p>
+                <div className="space-y-1 text-sm">
+                  <div className="flex justify-between">
+                    <span>Valor:</span>
+                    <span className="font-semibold">{formatCurrency(baseAmount)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Multa:</span>
+                    <span className="font-semibold">{totalCharges > 0 ? formatCurrency(totalCharges) : "R$ ___"}</span>
+                  </div>
+                  <div className="flex justify-between border-t pt-1 mt-1">
+                    <span className="font-semibold">Total:</span>
+                    <span className="font-semibold text-lg">{formatCurrency(totalAmount)}</span>
                   </div>
                 </div>
-              )}
+              </div>
 
               <div className="border-t pt-6 space-y-8">
                 <div className="text-center">

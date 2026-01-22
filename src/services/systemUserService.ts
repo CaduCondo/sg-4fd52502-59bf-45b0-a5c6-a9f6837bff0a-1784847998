@@ -25,9 +25,16 @@ export async function getUserByEmail(email: string): Promise<SystemUser | null> 
   return getByField<SystemUser>(TABLE, "email", email);
 }
 
-export async function createUser(user: Omit<SystemUser, "id" | "created_at" | "updated_at"> & { password?: string }): Promise<SystemUser> {
-  const { password, ...userData } = user;
-  return createSingle<SystemUser>(TABLE, userData as any);
+export async function createUser(userData: {
+  name: string;
+  email: string;
+  phone?: string;
+  role: "admin" | "broker" | "financial";
+  password: string;
+  active: boolean;
+}): Promise<SystemUser> {
+  const { password, ...user } = userData;
+  return createSingle<SystemUser>(TABLE, user as any);
 }
 
 export async function updateUser(id: string, user: Partial<SystemUser>): Promise<SystemUser> {
