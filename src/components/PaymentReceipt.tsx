@@ -156,7 +156,7 @@ export function PaymentReceipt({
     const addressParts = [
       property.address,
       property.number,
-      rental.complement,
+      property.complement,
       property.neighborhood,
       property.city,
       property.state,
@@ -214,7 +214,7 @@ export function PaymentReceipt({
   const addressParts = [
     property.address,
     property.number,
-    rental.complement,
+    property.complement,
     property.neighborhood,
     property.city,
     property.state ? `${property.state}` : "",

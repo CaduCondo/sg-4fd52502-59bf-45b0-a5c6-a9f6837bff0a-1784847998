@@ -67,6 +67,8 @@ export interface Property {
   complement?: string; // DB field
   
   // Address details mapped from Location
+  address?: string; // Mapped from street
+  number?: string;
   neighborhood?: string;
   city?: string;
   state?: string;
