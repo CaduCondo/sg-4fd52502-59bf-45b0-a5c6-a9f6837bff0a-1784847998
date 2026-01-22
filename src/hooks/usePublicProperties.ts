@@ -2,8 +2,15 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Property } from "@/types";
 
-interface PublicProperty extends Property {
+export interface PublicProperty extends Property {
   locationName?: string;
+  name?: string;
+  street?: string;
+  rentAmount: number;
+  condominiumAmount: number;
+  iptuAmount: number;
+  photos: string[];
+  parkingSpaces: number;
 }
 
 export function usePublicProperties() {

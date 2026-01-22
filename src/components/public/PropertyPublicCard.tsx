@@ -17,12 +17,14 @@ import {
   MapPin,
   ChevronLeft,
   ChevronRight,
+  Building2,
 } from "lucide-react";
 import { Property } from "@/types";
 import { formatCurrency } from "@/lib/masks";
+import { PublicProperty } from "@/hooks/usePublicProperties";
 
 interface PropertyPublicCardProps {
-  property: Property & { locationName?: string };
+  property: PublicProperty;
 }
 
 export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
