@@ -1,25 +1,37 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { useEffect } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { X, Camera, Paperclip } from "lucide-react";
-import { applyMoneyMask } from "@/lib/masks";
-import { AttachmentViewer } from "@/components/AttachmentViewer";
-import type { Property, Location } from "@/types";
-import type { PropertyFormData } from "@/hooks/useProperties";
-import { useRef } from "react";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Upload } from "lucide-react";
+import { AttachmentViewer } from "@/components/AttachmentViewer";
+import { formatCurrencyInput } from "@/lib/masks";
+import type { PropertyFormData } from "@/hooks/useProperties";
+import type { Location } from "@/types";
 
 interface PropertyFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  editingProperty: Property | null;
+  editingProperty: any | null;
   isEditMode: boolean;
   formData: PropertyFormData;
   setFormData: (data: PropertyFormData) => void;
   locations: Location[];
-  onSubmit: (e: React.FormEvent) => void;
+  onSubmit: (e: React.FormEvent) => Promise<void>;
   onEnableEdit: () => void;
   onReset: () => void;
 }
@@ -33,68 +45,48 @@ export function PropertyFormDialog({
   setFormData,
   locations,
   onSubmit,
-  onEnableEdit,
-  onReset,
 }: PropertyFormDialogProps) {
-  const cameraInputRef = useRef<HTMLInputElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleMoneyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    const masked = applyMoneyMask(value);
-    setFormData({ ...formData, monthly_rent: masked });
-  };
-
   const handleNumberChange = (field: "rooms" | "bathrooms", value: string) => {
     const numbersOnly = value.replace(/\D/g, "");
     const limitedValue = numbersOnly.slice(0, 2);
     setFormData({ ...formData, [field]: limitedValue });
   };
 
+  const handleMoneyChange = (field: "monthly_rent", value: string) => {
+    const maskedValue = formatCurrencyInput(value);
+    setFormData({ ...formData, [field]: maskedValue });
+  };
+
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files || files.length === 0) return;
+    if (!files) return;
 
-    try {
-      const uploadPromises = Array.from(files).map(async (file) => {
-        const reader = new FileReader();
-        return new Promise<string>((resolve, reject) => {
-          reader.onload = async () => {
-            try {
-              const base64Data = reader.result as string;
-              const fileName = `image_${crypto.randomUUID()}.${file.name.split(".").pop()}`;
+    const uploadedUrls: string[] = [];
 
-              const response = await fetch("/api/upload", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ fileName, fileData: base64Data }),
-              });
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const uploadFormData = new FormData();
+      uploadFormData.append("file", file);
 
-              if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || "Erro ao fazer upload");
-              }
-
-              const result = await response.json();
-              resolve(result.filePath);
-            } catch (error) {
-              reject(error);
-            }
-          };
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
+      try {
+        const response = await fetch("/api/upload", {
+          method: "POST",
+          body: uploadFormData,
         });
-      });
 
-      const uploadedUrls = await Promise.all(uploadPromises);
-      setFormData({
-        ...formData,
-        images: [...formData.images, ...uploadedUrls],
-      });
-    } catch (error) {
-      console.error("Error uploading images:", error);
-      alert("Erro ao fazer upload das imagens. Por favor, tente novamente.");
+        if (response.ok) {
+          const data = await response.json();
+          uploadedUrls.push(data.url);
+        }
+      } catch (error) {
+        console.error("Erro ao fazer upload da imagem:", error);
+      }
     }
+
+    setFormData({
+      ...formData,
+      images: [...formData.images, ...uploadedUrls],
+    });
   };
 
   const handleRemoveImage = (index: number) => {
@@ -104,303 +96,247 @@ export function PropertyFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            {editingProperty ? (isEditMode ? "Editar Imóvel" : "Detalhes do Imóvel") : "Novo Imóvel"}
+          <DialogTitle className="text-lg">
+            {isEditMode ? "Editar Imóvel" : "Novo Imóvel"}
           </DialogTitle>
         </DialogHeader>
-        <form onSubmit={onSubmit} className="space-y-4">
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="location_id">Local *</Label>
+
+        <form onSubmit={onSubmit} className="space-y-3">
+          {/* Linha 1: Local e Código */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label htmlFor="location_id" className="text-xs">Local *</Label>
               <Select
-                key={open ? "open" : "closed"}
                 value={formData.location_id}
-                onValueChange={(value) => {
-                  setFormData({ ...formData, location_id: value });
-                }}
-                disabled={editingProperty && !isEditMode}
-                required
+                onValueChange={(value) =>
+                  setFormData({ ...formData, location_id: value })
+                }
               >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um local" />
+                <SelectTrigger id="location_id" className="h-8 text-sm">
+                  <SelectValue placeholder="Selecione o local" />
                 </SelectTrigger>
                 <SelectContent>
-                  {[...locations]
-                    .sort((a, b) => a.name.localeCompare(b.name))
-                    .map((location) => (
-                      <SelectItem key={location.id} value={location.id}>
-                        {location.name}
-                      </SelectItem>
-                    ))}
+                  {locations.map((location) => (
+                    <SelectItem key={location.id} value={location.id}>
+                      {location.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="complement">Complemento</Label>
+            <div className="space-y-1">
+              <Label htmlFor="property_identifier" className="text-xs">Código do Imóvel *</Label>
               <Input
-                id="complement"
+                id="property_identifier"
+                value={formData.property_identifier}
+                onChange={(e) =>
+                  setFormData({ ...formData, property_identifier: e.target.value })
+                }
+                required
+                placeholder="Ex: AP-001"
+                className="h-8 text-sm"
+              />
+            </div>
+          </div>
+
+          {/* Linha 2: Complemento */}
+          <div className="space-y-1">
+            <Label htmlFor="complement" className="text-xs">Complemento</Label>
+            <Input
+              id="complement"
+              value={formData.complement}
+              onChange={(e) =>
+                setFormData({ ...formData, complement: e.target.value })
+              }
+              placeholder="Ex: Apto 102, Bloco A"
+              className="h-8 text-sm"
+            />
+          </div>
+
+          {/* Linha 3: Quartos, Banheiros, Área, Valor */}
+          <div className="grid grid-cols-4 gap-3">
+            <div className="space-y-1">
+              <Label htmlFor="rooms" className="text-xs">Quartos</Label>
+              <Input
+                id="rooms"
                 type="text"
-                value={formData.complement}
-                onChange={(e) => setFormData({ ...formData, complement: e.target.value })}
-                placeholder="Ex: Apto 201, Bloco B, Casa 3..."
-                disabled={editingProperty && !isEditMode}
+                inputMode="numeric"
+                value={formData.rooms}
+                onChange={(e) => handleNumberChange("rooms", e.target.value)}
+                placeholder="0"
+                maxLength={2}
+                className="h-8 text-sm"
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="rooms">Quartos</Label>
-                <Input
-                  id="rooms"
-                  type="text"
-                  inputMode="numeric"
-                  value={formData.rooms}
-                  onChange={(e) => handleNumberChange("rooms", e.target.value)}
-                  placeholder="0"
-                  disabled={editingProperty && !isEditMode}
-                  maxLength={2}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="bathrooms">Banheiros</Label>
-                <Input
-                  id="bathrooms"
-                  type="text"
-                  inputMode="numeric"
-                  value={formData.bathrooms}
-                  onChange={(e) => handleNumberChange("bathrooms", e.target.value)}
-                  placeholder="0"
-                  disabled={editingProperty && !isEditMode}
-                  maxLength={2}
-                />
-              </div>
+            <div className="space-y-1">
+              <Label htmlFor="bathrooms" className="text-xs">Banheiros</Label>
+              <Input
+                id="bathrooms"
+                type="text"
+                inputMode="numeric"
+                value={formData.bathrooms}
+                onChange={(e) => handleNumberChange("bathrooms", e.target.value)}
+                placeholder="0"
+                maxLength={2}
+                className="h-8 text-sm"
+              />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="area">Área (m²)</Label>
+            <div className="space-y-1">
+              <Label htmlFor="area" className="text-xs">Área (m²)</Label>
               <Input
                 id="area"
                 type="text"
                 inputMode="decimal"
                 value={formData.area}
                 onChange={(e) => setFormData({ ...formData, area: e.target.value })}
-                placeholder="0,00"
-                disabled={editingProperty && !isEditMode}
+                placeholder="0"
+                className="h-8 text-sm"
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="monthly_rent">Aluguel Mensal (R$) *</Label>
+            <div className="space-y-1">
+              <Label htmlFor="monthly_rent" className="text-xs">Valor *</Label>
               <Input
                 id="monthly_rent"
-                type="text"
-                inputMode="decimal"
                 value={formData.monthly_rent}
-                onChange={handleMoneyChange}
-                placeholder="0,00"
+                onChange={(e) => handleMoneyChange("monthly_rent", e.target.value)}
                 required
-                disabled={editingProperty && !isEditMode}
+                placeholder="0,00"
+                className="h-8 text-sm"
               />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="has_furniture">Móveis Planejados</Label>
-                <Select
-                  value={formData.hasFurniture ? "yes" : "no"}
-                  onValueChange={(value) => setFormData({ ...formData, hasFurniture: value === "yes" })}
-                  disabled={editingProperty && !isEditMode}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="yes">Sim</SelectItem>
-                    <SelectItem value="no">Não</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="accepts_pets">Aceita Pets</Label>
-                <Select
-                  value={formData.acceptsPets ? "yes" : "no"}
-                  onValueChange={(value) => setFormData({ ...formData, acceptsPets: value === "yes" })}
-                  disabled={editingProperty && !isEditMode}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="yes">Sim</SelectItem>
-                    <SelectItem value="no">Não</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="acceptsPets"
-                checked={formData.acceptsPets}
-                onCheckedChange={(checked) => {
-                  setFormData({ ...formData, acceptsPets: checked as boolean });
-                }}
-                disabled={editingProperty && !isEditMode}
-              />
-              <Label htmlFor="acceptsPets" className="cursor-pointer">
-                Aceita Pets
-              </Label>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="hasGarage"
-                checked={formData.hasGarage}
-                onCheckedChange={(checked) => {
-                  setFormData({ ...formData, hasGarage: checked as boolean });
-                }}
-                disabled={editingProperty && !isEditMode}
-              />
-              <Label htmlFor="hasGarage" className="cursor-pointer">
-                Vaga Garagem?
-              </Label>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="status">Status *</Label>
-              <Select
-                value={formData.status}
-                onValueChange={(value) => setFormData({ ...formData, status: value })}
-                disabled={editingProperty && !isEditMode}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="available">Disponível</SelectItem>
-                  <SelectItem value="occupied">Ocupado</SelectItem>
-                  <SelectItem value="unavailable">Indisponível</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="description">Descrição</Label>
-              <Input
-                id="description"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Informações adicionais..."
-                disabled={editingProperty && !isEditMode}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Fotos do Imóvel</Label>
-              {formData.images.length > 0 && (
-                <AttachmentViewer
-                  attachments={formData.images}
-                  onRemove={!editingProperty || isEditMode ? handleRemoveImage : undefined}
-                />
-              )}
-              {(!editingProperty || isEditMode) && (
-                <div className="flex gap-2">
-                  <input
-                    ref={cameraInputRef}
-                    type="file"
-                    accept="image/*"
-                    capture="environment"
-                    multiple
-                    className="hidden"
-                    onChange={handleImageUpload}
-                  />
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    className="hidden"
-                    onChange={handleImageUpload}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => cameraInputRef.current?.click()}
-                    className="flex-1"
-                  >
-                    <Camera className="mr-2 h-4 w-4" />
-                    Tirar Foto
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="flex-1"
-                  >
-                    <Paperclip className="mr-2 h-4 w-4" />
-                    Anexar Arquivo
-                  </Button>
-                </div>
-              )}
             </div>
           </div>
 
-          <DialogFooter>
-            {editingProperty && !isEditMode ? (
-              <>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    onOpenChange(false);
-                    onReset();
-                  }}
-                >
-                  <X className="mr-2 h-4 w-4" />
-                  Fechar
-                </Button>
-                <Button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    onEnableEdit();
-                  }}
-                >
-                  Editar
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    if (isEditMode) {
-                      onReset();
-                    } else {
-                      onOpenChange(false);
-                      onReset();
-                    }
-                  }}
-                >
-                  Cancelar
-                </Button>
-                <Button type="submit">
-                  {editingProperty ? "Salvar" : "Cadastrar"}
-                </Button>
-              </>
+          {/* Linha 4: Status */}
+          <div className="space-y-1">
+            <Label htmlFor="status" className="text-xs">Status</Label>
+            <Select
+              value={formData.status}
+              onValueChange={(value: "available" | "occupied" | "unavailable") =>
+                setFormData({ ...formData, status: value })
+              }
+            >
+              <SelectTrigger id="status" className="h-8 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="available">Disponível</SelectItem>
+                <SelectItem value="occupied">Ocupado</SelectItem>
+                <SelectItem value="unavailable">Indisponível</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Linha 5: Checkboxes */}
+          <div className="space-y-1">
+            <Label className="text-xs">Características</Label>
+            <div className="flex gap-4 pt-1">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="hasFurniture"
+                  checked={formData.hasFurniture}
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, hasFurniture: checked as boolean })
+                  }
+                />
+                <Label htmlFor="hasFurniture" className="text-xs font-normal cursor-pointer">
+                  Móveis Planejados
+                </Label>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="acceptsPets"
+                  checked={formData.acceptsPets}
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, acceptsPets: checked as boolean })
+                  }
+                />
+                <Label htmlFor="acceptsPets" className="text-xs font-normal cursor-pointer">
+                  Aceita Pets
+                </Label>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="hasGarage"
+                  checked={formData.hasGarage}
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, hasGarage: checked as boolean })
+                  }
+                />
+                <Label htmlFor="hasGarage" className="text-xs font-normal cursor-pointer">
+                  Vaga Garagem
+                </Label>
+              </div>
+            </div>
+          </div>
+
+          {/* Linha 6: Descrição */}
+          <div className="space-y-1">
+            <Label htmlFor="description" className="text-xs">Descrição</Label>
+            <Textarea
+              id="description"
+              value={formData.description}
+              onChange={(e) =>
+                setFormData({ ...formData, description: e.target.value })
+              }
+              placeholder="Descreva as características do imóvel..."
+              rows={2}
+              className="resize-none text-sm"
+            />
+          </div>
+
+          {/* Linha 7: Imagens */}
+          <div className="space-y-1">
+            <Label className="text-xs">Fotos do Imóvel</Label>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => document.getElementById("image-upload")?.click()}
+              className="h-8"
+            >
+              <Upload className="h-3 w-3 mr-2" />
+              Selecionar Fotos
+            </Button>
+            <input
+              id="image-upload"
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleImageUpload}
+              className="hidden"
+            />
+            {formData.images.length > 0 && (
+              <div className="mt-2">
+                <AttachmentViewer
+                  attachments={formData.images}
+                  onRemove={handleRemoveImage}
+                />
+              </div>
             )}
-          </DialogFooter>
+          </div>
+
+          {/* Botões de Ação */}
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => onOpenChange(false)}
+            >
+              Cancelar
+            </Button>
+            <Button type="submit" size="sm">
+              {isEditMode ? "Atualizar" : "Criar Imóvel"}
+            </Button>
+          </div>
         </form>
       </DialogContent>
     </Dialog>

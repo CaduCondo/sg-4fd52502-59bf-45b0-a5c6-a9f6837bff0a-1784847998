@@ -1,352 +1,460 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { Layout } from "@/components/Layout";
-import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
-import { Building2, ArrowLeft, Save, MapPin } from "lucide-react";
-import { Property, Location } from "@/types";
-import { getById as getPropertyById, update as updateProperty } from "@/services/propertyService";
-import { getAll as getAllLocations, getById as getLocationById } from "@/services/locationService";
-import { applyRealMask, removeMask } from "@/lib/masks";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
+import { ArrowLeft, Save, Upload } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { formatCurrencyInput } from "@/lib/masks";
+import { AttachmentViewer } from "@/components/AttachmentViewer";
 
-export default function PropertyDetailPage() {
+export default function PropertyDetails() {
   const router = useRouter();
   const { id } = router.query;
   const { toast } = useToast();
-
-  const [property, setProperty] = useState<Property | null>(null);
-  const [locations, setLocations] = useState<Location[]>([]);
-  const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [locations, setLocations] = useState<any[]>([]);
 
   const [formData, setFormData] = useState({
     locationId: "",
     complement: "",
+    propertyIdentifier: "",
     rooms: "",
     bathrooms: "",
     monthlyRent: "",
     description: "",
+    images: [] as string[],
+    hasFurniture: false,
+    acceptsPets: false,
     status: "available" as "available" | "occupied" | "unavailable",
     area: "",
     hasGarage: false,
   });
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "occupied":
-        return <Badge className="bg-blue-100 text-blue-800 border-blue-200">Ocupado</Badge>;
-      case "available":
-        return <Badge className="bg-green-100 text-green-800 border-green-200">Vago</Badge>;
-      case "unavailable":
-        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">Indisponível</Badge>;
-      default:
-        return <Badge className="bg-gray-100 text-gray-800 border-gray-200">{status}</Badge>;
-    }
-  };
-
-  useEffect(() => {
-    loadLocations();
-  }, []);
-
   useEffect(() => {
     if (id && typeof id === "string") {
-      loadProperty(id);
+      fetchProperty(id);
+      fetchLocations();
     }
-  }, [id, locations]); // Reload property when locations are loaded to match location data
+  }, [id]);
 
-  // Update selected location when form locationId changes
-  useEffect(() => {
-    if (formData.locationId && locations.length > 0) {
-      const loc = locations.find(l => l.id === formData.locationId);
-      setSelectedLocation(loc || null);
-    }
-  }, [formData.locationId, locations]);
+  const fetchLocations = async () => {
+    const { data } = await supabase
+      .from("locations")
+      .select("*")
+      .eq("is_active", true)
+      .order("name");
 
-  const loadLocations = async () => {
-    try {
-      const locationsData = await getAllLocations();
-      setLocations(locationsData);
-    } catch (error) {
-      console.error("Error loading locations:", error);
+    if (data) {
+      setLocations(data);
     }
   };
 
-  const loadProperty = async (propertyId: string) => {
+  const fetchProperty = async (propertyId: string) => {
     try {
-      setLoading(true);
-      const data = await getPropertyById(propertyId);
-      
+      const { data, error } = await supabase
+        .from("properties")
+        .select("*")
+        .eq("id", propertyId)
+        .single();
+
+      if (error) throw error;
+
       if (data) {
-        setProperty(data);
         setFormData({
-          locationId: data.locationId || "",
+          locationId: data.location_id || "",
           complement: data.complement || "",
+          propertyIdentifier: data.property_identifier || "",
           rooms: data.rooms?.toString() || "",
           bathrooms: data.bathrooms?.toString() || "",
-          monthlyRent: data.monthlyRent?.toString() || "",
+          monthlyRent: data.value?.toString() || "",
           description: data.description || "",
-          status: data.status || "available",
+          images: Array.isArray(data.images) ? data.images : [],
+          hasFurniture: data.has_furniture || false,
+          acceptsPets: data.accepts_pets || false,
+          status: (data.status as "available" | "occupied" | "unavailable") || "available",
           area: data.area?.toString() || "",
-          hasGarage: data.hasGarage || false,
+          hasGarage: data.has_garage || false,
         });
       }
     } catch (error) {
-      console.error("Error loading property:", error);
+      console.error("Erro ao buscar imóvel:", error);
       toast({
         title: "Erro",
-        description: "Não foi possível carregar o imóvel.",
+        description: "Não foi possível carregar os dados do imóvel.",
         variant: "destructive",
       });
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!property) return;
-    
-    setSaving(true);
+  const handleNumberChange = (field: "rooms" | "bathrooms", value: string) => {
+    const numbersOnly = value.replace(/\D/g, "");
+    const limitedValue = numbersOnly.slice(0, 2);
+    setFormData({ ...formData, [field]: limitedValue });
+  };
+
+  const handleMoneyChange = (value: string) => {
+    const maskedValue = formatCurrencyInput(value);
+    setFormData({ ...formData, monthlyRent: maskedValue });
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    const uploadedUrls: string[] = [];
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const formDataUpload = new FormData();
+      formDataUpload.append("file", file);
+
+      try {
+        const response = await fetch("/api/upload", {
+          method: "POST",
+          body: formDataUpload,
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          uploadedUrls.push(data.url);
+        }
+      } catch (error) {
+        console.error("Erro ao fazer upload da imagem:", error);
+      }
+    }
+
+    setFormData({
+      ...formData,
+      images: [...formData.images, ...uploadedUrls],
+    });
+  };
+
+  const handleRemoveImage = (index: number) => {
+    const newImages = formData.images.filter((_, i) => i !== index);
+    setFormData({ ...formData, images: newImages });
+  };
+
+  const handleSave = async () => {
+    if (!id || typeof id !== "string") return;
+
+    setIsSaving(true);
+
     try {
       const payload = {
         location_id: formData.locationId,
         complement: formData.complement,
-        rooms: parseInt(formData.rooms) || 0,
-        bathrooms: parseInt(formData.bathrooms) || 0,
-        value: parseFloat(formData.monthlyRent.replace(",", ".")) || 0,
-        area: formData.area ? parseFloat(formData.area.replace(",", ".")) : 0,
+        property_identifier: formData.propertyIdentifier,
+        rooms: formData.rooms ? parseInt(formData.rooms) : null,
+        bathrooms: formData.bathrooms ? parseInt(formData.bathrooms) : null,
+        value: formData.monthlyRent
+          ? parseFloat(formData.monthlyRent.replace(/\./g, "").replace(",", "."))
+          : 0,
         description: formData.description,
+        images: formData.images,
+        has_furniture: formData.hasFurniture,
+        accepts_pets: formData.acceptsPets,
+        area: formData.area ? parseFloat(formData.area.replace(",", ".")) : null,
         status: formData.status,
         has_garage: formData.hasGarage,
       };
 
-      await updateProperty(property.id, payload);
-      
+      const { error } = await supabase
+        .from("properties")
+        .update(payload)
+        .eq("id", id);
+
+      if (error) throw error;
+
       toast({
         title: "Sucesso",
         description: "Imóvel atualizado com sucesso!",
       });
+
       router.push("/properties");
     } catch (error) {
-      console.error("Error updating property:", error);
+      console.error("Erro ao salvar:", error);
       toast({
         title: "Erro",
-        description: "Erro ao atualizar imóvel.",
+        description: "Não foi possível salvar as alterações.",
         variant: "destructive",
       });
     } finally {
-      setSaving(false);
+      setIsSaving(false);
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <Layout>
-        <div className="flex items-center justify-center h-screen">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <div className="flex items-center justify-center h-96">
+          <p>Carregando...</p>
         </div>
       </Layout>
     );
   }
 
-  if (!property) return null;
-
   return (
-    <>
-      <SEO title={`Editar Imóvel - ${property.location || "Detalhes"}`} />
-      <Layout>
-        <div className="space-y-6">
+    <Layout>
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => router.back()}>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => router.push("/properties")}
+            >
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            <h1 className="text-3xl font-bold tracking-tight">Editar Imóvel</h1>
-            <div className="ml-auto">
-              {getStatusBadge(property.status)}
-            </div>
+            <h1 className="text-2xl font-bold">Editar Imóvel</h1>
           </div>
-
-          <form onSubmit={handleSubmit} className="space-y-8">
-            <div className="grid gap-6 md:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <MapPin className="h-5 w-5" />
-                    Localização
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="location">Local *</Label>
-                    <Select
-                      value={formData.locationId}
-                      onValueChange={(value) => setFormData({ ...formData, locationId: value })}
-                      required
-                    >
-                      <SelectTrigger id="location">
-                        <SelectValue placeholder="Selecione o local" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {locations.map((loc) => (
-                          <SelectItem key={loc.id} value={loc.id}>
-                            {loc.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {selectedLocation && (
-                    <div className="bg-muted/50 p-4 rounded-lg border space-y-2 text-sm">
-                      <p className="font-medium text-base">{selectedLocation.name}</p>
-                      <p className="text-muted-foreground">
-                        {selectedLocation.street}, {selectedLocation.number}
-                        {selectedLocation.complement && ` - ${selectedLocation.complement}`}
-                      </p>
-                      <p className="text-muted-foreground">
-                        {selectedLocation.neighborhood} - {selectedLocation.city}/{selectedLocation.state}
-                      </p>
-                      <p className="text-muted-foreground">CEP: {selectedLocation.zip_code}</p>
-                    </div>
-                  )}
-
-                  <div className="space-y-2">
-                    <Label htmlFor="complement">Complemento</Label>
-                    <Input
-                      id="complement"
-                      value={formData.complement}
-                      onChange={(e) => setFormData({ ...formData, complement: e.target.value })}
-                      placeholder="Ex: Apto 101"
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Building2 className="h-5 w-5" />
-                    Detalhes do Imóvel
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="value">Valor (R$)</Label>
-                    <Input
-                      id="value"
-                      value={formData.monthlyRent}
-                      onChange={(e) => setFormData({ ...formData, monthlyRent: applyRealMask(e.target.value) })}
-                      placeholder="0,00"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="rooms">Quartos</Label>
-                      <Input
-                        id="rooms"
-                        type="number"
-                        value={formData.rooms}
-                        onChange={(e) => setFormData({ ...formData, rooms: e.target.value })}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="bathrooms">Banheiros</Label>
-                      <Input
-                        id="bathrooms"
-                        type="number"
-                        value={formData.bathrooms}
-                        onChange={(e) => setFormData({ ...formData, bathrooms: e.target.value })}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="area">Área (m²)</Label>
-                    <Input
-                      id="area"
-                      type="text"
-                      inputMode="decimal"
-                      value={formData.area}
-                      onChange={(e) => setFormData({ ...formData, area: e.target.value })}
-                      placeholder="0,00"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="status">Status</Label>
-                    <Select
-                      value={formData.status}
-                      onValueChange={(value: any) => setFormData({ ...formData, status: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="available">Disponível</SelectItem>
-                        <SelectItem value="occupied">Ocupado</SelectItem>
-                        <SelectItem value="unavailable">Indisponível</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="acceptsPets"
-                      checked={property?.acceptsPets || false}
-                    />
-                    <Label htmlFor="acceptsPets">Aceita Pets</Label>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="hasGarage"
-                      checked={formData.hasGarage}
-                      onCheckedChange={(checked) =>
-                        setFormData({ ...formData, hasGarage: checked as boolean })
-                      }
-                    />
-                    <Label htmlFor="hasGarage">Vaga Garagem?</Label>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="md:col-span-2">
-                <CardHeader>
-                  <CardTitle>Observações</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Textarea
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    rows={4}
-                    placeholder="Informações adicionais sobre o imóvel..."
-                  />
-                </CardContent>
-              </Card>
-            </div>
-
-            <div className="flex justify-end gap-4">
-              <Button type="button" variant="outline" onClick={() => router.back()}>
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={saving}>
-                <Save className="mr-2 h-4 w-4" />
-                {saving ? "Salvando..." : "Salvar Alterações"}
-              </Button>
-            </div>
-          </form>
+          <Button onClick={handleSave} disabled={isSaving}>
+            <Save className="h-4 w-4 mr-2" />
+            {isSaving ? "Salvando..." : "Salvar Alterações"}
+          </Button>
         </div>
-      </Layout>
-    </>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Informações do Imóvel</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {/* Linha 1: Local e Código */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label htmlFor="location" className="text-xs">Local *</Label>
+                <Select
+                  value={formData.locationId}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, locationId: value })
+                  }
+                >
+                  <SelectTrigger id="location" className="h-8 text-sm">
+                    <SelectValue placeholder="Selecione o local" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {locations.map((location) => (
+                      <SelectItem key={location.id} value={location.id}>
+                        {location.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="propertyIdentifier" className="text-xs">Código do Imóvel *</Label>
+                <Input
+                  id="propertyIdentifier"
+                  value={formData.propertyIdentifier}
+                  onChange={(e) =>
+                    setFormData({ ...formData, propertyIdentifier: e.target.value })
+                  }
+                  placeholder="Ex: AP-001"
+                  className="h-8 text-sm"
+                />
+              </div>
+            </div>
+
+            {/* Linha 2: Complemento */}
+            <div className="space-y-1">
+              <Label htmlFor="complement" className="text-xs">Complemento</Label>
+              <Input
+                id="complement"
+                value={formData.complement}
+                onChange={(e) =>
+                  setFormData({ ...formData, complement: e.target.value })
+                }
+                placeholder="Ex: Apto 102, Bloco A"
+                className="h-8 text-sm"
+              />
+            </div>
+
+            {/* Linha 3: Quartos, Banheiros, Área, Valor */}
+            <div className="grid grid-cols-4 gap-3">
+              <div className="space-y-1">
+                <Label htmlFor="rooms" className="text-xs">Quartos</Label>
+                <Input
+                  id="rooms"
+                  type="text"
+                  inputMode="numeric"
+                  value={formData.rooms}
+                  onChange={(e) => handleNumberChange("rooms", e.target.value)}
+                  placeholder="0"
+                  maxLength={2}
+                  className="h-8 text-sm"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="bathrooms" className="text-xs">Banheiros</Label>
+                <Input
+                  id="bathrooms"
+                  type="text"
+                  inputMode="numeric"
+                  value={formData.bathrooms}
+                  onChange={(e) => handleNumberChange("bathrooms", e.target.value)}
+                  placeholder="0"
+                  maxLength={2}
+                  className="h-8 text-sm"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="area" className="text-xs">Área (m²)</Label>
+                <Input
+                  id="area"
+                  type="text"
+                  inputMode="decimal"
+                  value={formData.area}
+                  onChange={(e) =>
+                    setFormData({ ...formData, area: e.target.value })
+                  }
+                  placeholder="0"
+                  className="h-8 text-sm"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="monthlyRent" className="text-xs">Valor *</Label>
+                <Input
+                  id="monthlyRent"
+                  value={formData.monthlyRent}
+                  onChange={(e) => handleMoneyChange(e.target.value)}
+                  placeholder="0,00"
+                  className="h-8 text-sm"
+                />
+              </div>
+            </div>
+
+            {/* Linha 4: Status */}
+            <div className="space-y-1">
+              <Label htmlFor="status" className="text-xs">Status</Label>
+              <Select
+                value={formData.status}
+                onValueChange={(value: "available" | "occupied" | "unavailable") =>
+                  setFormData({ ...formData, status: value })
+                }
+              >
+                <SelectTrigger id="status" className="h-8 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="available">Disponível</SelectItem>
+                  <SelectItem value="occupied">Ocupado</SelectItem>
+                  <SelectItem value="unavailable">Indisponível</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Linha 5: Checkboxes */}
+            <div className="space-y-1">
+              <Label className="text-xs">Características</Label>
+              <div className="flex gap-4 pt-1">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="hasFurniture"
+                    checked={formData.hasFurniture}
+                    onCheckedChange={(checked) =>
+                      setFormData({ ...formData, hasFurniture: checked as boolean })
+                    }
+                  />
+                  <Label htmlFor="hasFurniture" className="text-xs font-normal cursor-pointer">
+                    Móveis Planejados
+                  </Label>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="acceptsPets"
+                    checked={formData.acceptsPets}
+                    onCheckedChange={(checked) =>
+                      setFormData({ ...formData, acceptsPets: checked as boolean })
+                    }
+                  />
+                  <Label htmlFor="acceptsPets" className="text-xs font-normal cursor-pointer">
+                    Aceita Pets
+                  </Label>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="hasGarage"
+                    checked={formData.hasGarage}
+                    onCheckedChange={(checked) =>
+                      setFormData({ ...formData, hasGarage: checked as boolean })
+                    }
+                  />
+                  <Label htmlFor="hasGarage" className="text-xs font-normal cursor-pointer">
+                    Vaga Garagem
+                  </Label>
+                </div>
+              </div>
+            </div>
+
+            {/* Linha 6: Descrição */}
+            <div className="space-y-1">
+              <Label htmlFor="description" className="text-xs">Descrição</Label>
+              <Textarea
+                id="description"
+                value={formData.description}
+                onChange={(e) =>
+                  setFormData({ ...formData, description: e.target.value })
+                }
+                placeholder="Descreva as características do imóvel..."
+                rows={2}
+                className="resize-none text-sm"
+              />
+            </div>
+
+            {/* Linha 7: Imagens */}
+            <div className="space-y-1">
+              <Label className="text-xs">Fotos do Imóvel</Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => document.getElementById("image-upload")?.click()}
+                className="h-8"
+              >
+                <Upload className="h-3 w-3 mr-2" />
+                Selecionar Fotos
+              </Button>
+              <input
+                id="image-upload"
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleImageUpload}
+                className="hidden"
+              />
+              {formData.images.length > 0 && (
+                <div className="mt-2">
+                  <AttachmentViewer
+                    attachments={formData.images}
+                    onRemove={handleRemoveImage}
+                  />
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </Layout>
   );
 }
