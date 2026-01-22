@@ -686,6 +686,8 @@ export default function ManagePaymentContent({ paymentId, onClose, embedded = fa
             paymentDate: formData.paymentDate,
             paymentMethod: formData.paymentMethod,
             notes: formData.notes,
+            lateFee: waiveLateFees ? 0 : calculatedValues.lateFee,
+            interest: waiveLateFees ? 0 : calculatedValues.interest,
           }}
           rental={rental}
           property={property}
