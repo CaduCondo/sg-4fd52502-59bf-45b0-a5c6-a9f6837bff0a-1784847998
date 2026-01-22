@@ -289,7 +289,9 @@ export default function Settings() {
           name: userFormData.name,
           email: userFormData.email,
           phone: userFormData.phone,
+          username: userFormData.username,
           role: userFormData.role as "admin" | "broker" | "financial",
+          ...(userFormData.password && { password: userFormData.password }),
         });
         toast({ title: "Usuário atualizado com sucesso!" });
       } else {
@@ -297,6 +299,7 @@ export default function Settings() {
           name: userFormData.name,
           email: userFormData.email,
           phone: userFormData.phone,
+          username: userFormData.username,
           role: userFormData.role as "admin" | "broker" | "financial",
           password: userFormData.password,
           active: true,
@@ -706,10 +709,12 @@ export default function Settings() {
 
     try {
       // Remover isenções existentes
-      await supabase
+      const { error: deleteError } = await supabase
         .from("user_fee_exemptions")
         .delete()
         .eq("user_id", selectedUserForFeeExemption.id);
+
+      if (deleteError) throw deleteError;
 
       // Adicionar novas isenções
       if (userFeeExemptions.length > 0) {
@@ -731,6 +736,7 @@ export default function Settings() {
       });
 
       setIsFeeExemptionDialogOpen(false);
+      setUserFeeExemptions([]);
     } catch (error) {
       console.error("Error saving fee exemptions:", error);
       toast({
