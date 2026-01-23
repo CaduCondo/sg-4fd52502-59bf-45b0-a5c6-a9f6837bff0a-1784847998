@@ -568,6 +568,12 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
               </p>
             </div>
             <div>
+              <span className="font-medium text-muted-foreground">Data Vencimento:</span>
+              <p className="text-foreground">
+                {payment?.due_date ? new Date(payment.due_date + "T12:00:00").toLocaleDateString("pt-BR") : "-"}
+              </p>
+            </div>
+            <div>
               <span className="font-medium text-muted-foreground">Valor Aluguel:</span>
               <p className="text-foreground">{formatCurrency(rentalValue.toFixed(2))}</p>
             </div>
@@ -608,10 +614,10 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
               {values.juros > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600"}>
-                    Juros ({interestRatePercentage}%)
+                    Juros ({interestRatePercentage}% ao mês = {values.jurosDiario.toFixed(3)}% ao dia) - {values.diasAtraso} dias
                   </span>
                   <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600 font-medium"}>
-                    + {formatCurrency(values.juros.toFixed(2))} ({values.diasAtraso} dias)
+                    + {formatCurrency(values.juros.toFixed(2))}
                   </span>
                 </div>
               )}
@@ -652,81 +658,85 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div>
-                <Label htmlFor="payment_date">
-                  Data do Pagamento <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="payment_date"
-                  type="date"
-                  value={formData.payment_date}
-                  onChange={(e) => setFormData({ ...formData, payment_date: e.target.value })}
-                  required
-                  disabled={isReadOnly}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="payment_method">
-                  Forma de Pagamento <span className="text-red-500">*</span>
-                </Label>
-                <Select
-                  value={formData.payment_method}
-                  onValueChange={(value) => setFormData({ ...formData, payment_method: value })}
-                  disabled={isReadOnly}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pix">PIX</SelectItem>
-                    <SelectItem value="dinheiro">Dinheiro</SelectItem>
-                    <SelectItem value="transferencia">Transferência</SelectItem>
-                    <SelectItem value="debito">Débito</SelectItem>
-                    <SelectItem value="credito">Crédito</SelectItem>
-                    <SelectItem value="boleto">Boleto</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {formData.payment_method !== "dinheiro" && formData.payment_method !== "boleto" && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="pix_code_type">
-                    Código Pix <span className="text-red-500">*</span>
+                  <Label htmlFor="payment_date">
+                    Data do Pagamento <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="payment_date"
+                    type="date"
+                    value={formData.payment_date}
+                    onChange={(e) => setFormData({ ...formData, payment_date: e.target.value })}
+                    required
+                    disabled={isReadOnly}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="payment_method">
+                    Forma de Pagamento <span className="text-red-500">*</span>
                   </Label>
                   <Select
-                    value={formData.pix_code_type}
-                    onValueChange={(value) => setFormData({ ...formData, pix_code_type: value })}
+                    value={formData.payment_method}
+                    onValueChange={(value) => setFormData({ ...formData, payment_method: value })}
                     disabled={isReadOnly}
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="CP">CP</SelectItem>
-                      <SelectItem value="CD">CD</SelectItem>
-                      <SelectItem value="CE">CE</SelectItem>
+                      <SelectItem value="pix">PIX</SelectItem>
+                      <SelectItem value="dinheiro">Dinheiro</SelectItem>
+                      <SelectItem value="transferencia">Transferência</SelectItem>
+                      <SelectItem value="debito">Débito</SelectItem>
+                      <SelectItem value="credito">Crédito</SelectItem>
+                      <SelectItem value="boleto">Boleto</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-              )}
+              </div>
 
-              <div>
-                <Label htmlFor="amount_to_pay">
-                  Valor a Pagar <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="amount_to_pay"
-                  type="text"
-                  placeholder="R$ 0,00"
-                  value={formData.amount_to_pay}
-                  onChange={(e) => {
-                    const formatted = formatCurrency(e.target.value);
-                    setFormData({ ...formData, amount_to_pay: formatted });
-                  }}
-                  required
-                  disabled={isReadOnly}
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {formData.payment_method !== "dinheiro" && formData.payment_method !== "boleto" && (
+                  <div>
+                    <Label htmlFor="pix_code_type">
+                      Código Pix <span className="text-red-500">*</span>
+                    </Label>
+                    <Select
+                      value={formData.pix_code_type}
+                      onValueChange={(value) => setFormData({ ...formData, pix_code_type: value })}
+                      disabled={isReadOnly}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="CP">CP</SelectItem>
+                        <SelectItem value="CD">CD</SelectItem>
+                        <SelectItem value="CE">CE</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                <div>
+                  <Label htmlFor="amount_to_pay">
+                    Valor a Pagar <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="amount_to_pay"
+                    type="text"
+                    placeholder="R$ 0,00"
+                    value={formData.amount_to_pay}
+                    onChange={(e) => {
+                      const formatted = formatCurrency(e.target.value);
+                      setFormData({ ...formData, amount_to_pay: formatted });
+                    }}
+                    required
+                    disabled={isReadOnly}
+                  />
+                </div>
               </div>
             </div>
           </CardContent>
