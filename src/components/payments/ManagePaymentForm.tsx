@@ -118,7 +118,10 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
       setGarageValue(paymentData.rentals.garage_value || 0);
 
       if (paymentData.attachments && Array.isArray(paymentData.attachments)) {
-        setAttachments(paymentData.attachments);
+        // ✅ Converter Json[] para string[] com type guard
+        const attachmentStrings = paymentData.attachments
+          .filter((att): att is string => typeof att === "string");
+        setAttachments(attachmentStrings);
       }
 
       setFormData({
