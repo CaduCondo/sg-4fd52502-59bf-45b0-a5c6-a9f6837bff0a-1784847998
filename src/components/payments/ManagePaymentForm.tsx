@@ -252,10 +252,11 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
     setAttachments(attachments.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
+    console.log("🚀 handleSubmit CHAMADO!");
 
     if (!formData.payment_date || !formData.payment_method || !formData.amount_to_pay) {
+      console.log("❌ Validação falhou - campos obrigatórios faltando");
       toast({
         title: "Atenção",
         description: "Preencha todos os campos obrigatórios",
@@ -265,6 +266,7 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
     }
 
     try {
+      console.log("💾 Salvando pagamento no banco...");
       setIsSubmitting(true);
 
       const paymentData = {
@@ -277,24 +279,33 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
         updated_at: new Date().toISOString(),
       };
 
+      console.log("📤 Dados a serem salvos:", paymentData);
+
       const { error: updateError } = await supabase
         .from("payments")
         .update(paymentData)
         .eq("id", paymentId);
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error("❌ Erro ao salvar:", updateError);
+        throw updateError;
+      }
+
+      console.log("✅ Pagamento salvo com sucesso no banco!");
 
       toast({
         title: "Sucesso",
         description: "Pagamento registrado com sucesso!",
       });
 
+      console.log("📞 Chamando callback onSuccess...");
       if (onSuccess) {
         onSuccess();
       }
 
+      console.log("🎯 Preparando dados do recibo...");
       const calculatedValues = calculateValues();
-      
+
       const paymentForReceipt: Payment = {
         id: payment.id,
         rentalId: payment.rental_id,
@@ -358,6 +369,14 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
         active: true,
       };
 
+      console.log("📦 Dados do recibo preparados:", {
+        payment: paymentForReceipt,
+        rental: rentalForReceipt,
+        property: propertyForReceipt,
+        tenant: tenantForReceipt,
+      });
+
+      console.log("💾 Setando receiptData...");
       setReceiptData({
         payment: paymentForReceipt,
         rental: rentalForReceipt,
@@ -365,12 +384,13 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
         tenant: tenantForReceipt,
       });
 
-      setTimeout(() => {
-        setShowReceipt(true);
-      }, 100);
-      
+      console.log("🎬 Setando showReceipt para TRUE...");
+      setShowReceipt(true);
+
+      console.log("✅ Estados setados! Aguardando re-renderização...");
+
     } catch (error) {
-      console.error("Erro ao confirmar recebimento:", error);
+      console.error("💥 Erro ao confirmar recebimento:", error);
       toast({
         title: "Erro",
         description: "Erro inesperado ao registrar pagamento.",
@@ -378,8 +398,11 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
       });
     } finally {
       setIsSubmitting(false);
+      console.log("🏁 handleSubmit finalizado");
     }
   };
+
+  console.log("🔍 Estado atual na renderização:", { showReceipt, hasReceiptData: !!receiptData });
 
   if (showReceipt && receiptData) {
     console.log("📄 RENDERIZANDO RECIBO - showReceipt:", showReceipt, "receiptData:", !!receiptData);
@@ -390,7 +413,9 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
         property={receiptData.property}
         tenant={receiptData.tenant}
         onClose={() => {
+          console.log("🔙 Fechando recibo...");
           setShowReceipt(false);
+          setReceiptData(null);
           if (onClose) {
             onClose();
           } else if (!embedded) {
@@ -581,7 +606,7 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
               <div className="flex justify-between pt-3 border-t-2 border-primary">
                 <span className="font-bold text-base">Valor Total</span>
                 <span className="font-bold text-base text-primary">
-                  {formatCurrency(values.valorTotal.toFixed(2))}
+                  {formatCurrency(values.valorAPagar.toFixed(2))}
                 </span>
               </div>
             </div>
@@ -596,7 +621,7 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-4">
               <div>
                 <Label htmlFor="payment_date">
                   Data do Pagamento <span className="text-red-500">*</span>
@@ -647,7 +672,7 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
                   required
                 />
               </div>
-            </form>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -703,7 +728,12 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
         >
           Cancelar
         </Button>
-        <Button type="button" onClick={handleSubmit} disabled={isSubmitting} size="lg">
+        <Button 
+          type="button" 
+          onClick={handleSubmit} 
+          disabled={isSubmitting} 
+          size="lg"
+        >
           {isSubmitting ? "Salvando..." : "Confirmar Recebimento"}
         </Button>
       </div>
