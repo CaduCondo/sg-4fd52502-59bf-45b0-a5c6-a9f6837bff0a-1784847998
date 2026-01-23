@@ -45,27 +45,6 @@ export default function ManagePaymentPage() {
 
   console.log("🔍 Estado atual da página - showReceipt:", showReceipt, "hasReceiptData:", !!receiptData);
 
-  if (showReceipt && receiptData) {
-    console.log("✅ CONDIÇÃO SATISFEITA - Renderizando PaymentReceipt");
-    console.log("📊 showReceipt:", showReceipt, "receiptData:", !!receiptData);
-    return (
-      <>
-        <Head>
-          <title>Recibo de Pagamento - Sistema de Locações</title>
-        </Head>
-        <Layout>
-          <PaymentReceipt
-            payment={receiptData.payment}
-            rental={receiptData.rental}
-            property={receiptData.property}
-            tenant={receiptData.tenant}
-            onClose={handleCloseReceipt}
-          />
-        </Layout>
-      </>
-    );
-  }
-
   return (
     <>
       <Head>
@@ -87,6 +66,19 @@ export default function ManagePaymentPage() {
             onSuccess={handlePaymentSuccess}
           />
         </div>
+
+        {showReceipt && receiptData && (
+          <>
+            {console.log("✅ RENDERIZANDO PaymentReceipt - Dialog deve abrir!")}
+            <PaymentReceipt
+              payment={receiptData.payment}
+              rental={receiptData.rental}
+              property={receiptData.property}
+              tenant={receiptData.tenant}
+              onClose={handleCloseReceipt}
+            />
+          </>
+        )}
       </Layout>
     </>
   );
