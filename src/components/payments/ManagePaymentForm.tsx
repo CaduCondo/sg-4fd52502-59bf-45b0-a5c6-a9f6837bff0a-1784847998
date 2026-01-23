@@ -353,13 +353,6 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
         active: true,
       };
 
-      console.log("🎯 Preparando recibo com dados:", {
-        payment: paymentForReceipt,
-        rental: rentalForReceipt,
-        property: propertyForReceipt,
-        tenant: tenantForReceipt,
-      });
-
       setReceiptData({
         payment: paymentForReceipt,
         rental: rentalForReceipt,
@@ -367,9 +360,9 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
         tenant: tenantForReceipt,
       });
 
-      console.log("✅ Dados do recibo setados, exibindo recibo agora...");
-      setShowReceipt(true);
-      console.log("✅ showReceipt setado para true");
+      setTimeout(() => {
+        setShowReceipt(true);
+      }, 100);
       
     } catch (error) {
       console.error("Erro ao confirmar recebimento:", error);
@@ -383,10 +376,7 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
     }
   };
 
-  console.log("🔍 Estado atual:", { showReceipt, hasReceiptData: !!receiptData });
-
   if (showReceipt && receiptData) {
-    console.log("📄 Renderizando PaymentReceipt");
     return (
       <PaymentReceipt
         payment={receiptData.payment}
@@ -394,7 +384,6 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
         property={receiptData.property}
         tenant={receiptData.tenant}
         onClose={() => {
-          console.log("🔙 Fechando recibo");
           setShowReceipt(false);
           if (onClose) {
             onClose();
