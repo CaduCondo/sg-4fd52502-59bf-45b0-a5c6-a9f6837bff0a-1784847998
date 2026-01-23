@@ -354,43 +354,45 @@ export function RentalFormDialog({
             </div>
           </div>
 
-          <div className="space-y-2">
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="hasGarage"
-                checked={hasGarage}
-                onCheckedChange={(checked) => {
-                  setHasGarage(checked as boolean);
-                  if (!checked) {
-                    setGarageValue("");
-                  }
-                }}
-                disabled={!isEditing}
-              />
-              <Label htmlFor="hasGarage" className="cursor-pointer">
-                Vaga Garagem ?
-              </Label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="hasGarage"
+                  checked={hasGarage}
+                  onCheckedChange={(checked) => {
+                    setHasGarage(checked as boolean);
+                    if (!checked) {
+                      setGarageValue("");
+                    }
+                  }}
+                  disabled={!isEditing}
+                />
+                <Label htmlFor="hasGarage" className="cursor-pointer">
+                  Vaga Garagem ?
+                </Label>
+              </div>
+              {hasGarage && (
+                <Input
+                  id="garageValue"
+                  value={garageValue}
+                  onChange={(e) => setGarageValue(applyRealMask(e.target.value))}
+                  placeholder="R$ 0,00"
+                  disabled={!isEditing}
+                />
+              )}
             </div>
-            {hasGarage && (
+
+            <div className="space-y-2">
+              <Label htmlFor="securityDeposit">Valor Caução</Label>
               <Input
-                id="garageValue"
-                value={garageValue}
-                onChange={(e) => setGarageValue(applyRealMask(e.target.value))}
+                id="securityDeposit"
+                value={securityDeposit}
+                onChange={(e) => setSecurityDeposit(applyRealMask(e.target.value))}
                 placeholder="R$ 0,00"
                 disabled={!isEditing}
               />
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="securityDeposit">Valor Caução</Label>
-            <Input
-              id="securityDeposit"
-              value={securityDeposit}
-              onChange={(e) => setSecurityDeposit(applyRealMask(e.target.value))}
-              placeholder="R$ 0,00"
-              disabled={!isEditing}
-            />
+            </div>
           </div>
 
           <div className="p-4 bg-emerald-50 dark:bg-emerald-950 rounded-lg border border-emerald-200 dark:border-emerald-800">
