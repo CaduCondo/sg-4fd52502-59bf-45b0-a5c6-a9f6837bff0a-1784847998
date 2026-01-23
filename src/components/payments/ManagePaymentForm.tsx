@@ -96,18 +96,18 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded = fa
         rentalId: paymentData.rental_id,
         dueDate: paymentData.due_date,
         amount: paymentData.expected_amount,
-        status: paymentData.status,
+        status: paymentData.status as Payment["status"],
         expectedAmount: paymentData.expected_amount,
         paidAmount: paymentData.paid_amount || 0,
         paymentDate: paymentData.payment_date,
         paymentMethod: paymentData.payment_method,
         notes: paymentData.notes,
-        penaltyAmount: paymentData.penalty_amount || 0,
-        interestAmount: paymentData.interest_amount || 0,
+        penaltyAmount: paymentData.late_fee || 0,
+        interestAmount: paymentData.interest || 0,
         discountAmount: paymentData.discount_amount || 0,
         attachments: paymentData.attachments as string[] || [],
-        referenceMonth: paymentData.reference_month || new Date(paymentData.due_date).getMonth() + 1,
-        referenceYear: paymentData.reference_year || new Date(paymentData.due_date).getFullYear(),
+        referenceMonth: Number(paymentData.reference_month) || new Date(paymentData.due_date).getMonth() + 1,
+        referenceYear: Number(paymentData.reference_year) || new Date(paymentData.due_date).getFullYear(),
         createdAt: paymentData.created_at,
         updatedAt: paymentData.updated_at
       };
@@ -116,6 +116,7 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded = fa
 
       // Extrair informações relacionadas
       if (paymentData.rentals) {
+        // @ts-ignore - Supabase join types are complex
         const rental = Array.isArray(paymentData.rentals) ? paymentData.rentals[0] : paymentData.rentals;
         
         if (rental.properties) {
@@ -247,8 +248,8 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded = fa
         paid_amount: totals.amountPaid,
         payment_method: formData.payment_method,
         discount_amount: totals.discount,
-        penalty_amount: totals.lateFee,
-        interest_amount: totals.interest,
+        late_fee: totals.lateFee,
+        interest: totals.interest,
         notes: formData.notes || null,
         attachments: attachments.map((att) => att.url),
       };

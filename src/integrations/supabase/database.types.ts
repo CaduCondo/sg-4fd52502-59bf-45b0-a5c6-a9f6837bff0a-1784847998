@@ -151,6 +151,7 @@ export type Database = {
           admin_fee: number | null
           attachments: Json | null
           created_at: string | null
+          discount_amount: number | null
           due_date: string
           expected_amount: number
           id: string
@@ -174,6 +175,7 @@ export type Database = {
           admin_fee?: number | null
           attachments?: Json | null
           created_at?: string | null
+          discount_amount?: number | null
           due_date: string
           expected_amount: number
           id?: string
@@ -197,6 +199,7 @@ export type Database = {
           admin_fee?: number | null
           attachments?: Json | null
           created_at?: string | null
+          discount_amount?: number | null
           due_date?: string
           expected_amount?: number
           id?: string
