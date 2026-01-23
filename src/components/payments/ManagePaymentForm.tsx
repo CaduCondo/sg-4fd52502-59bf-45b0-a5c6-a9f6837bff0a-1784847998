@@ -298,6 +298,7 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
       }
 
       // ✅ Preparar dados do recibo IMEDIATAMENTE após salvamento bem-sucedido
+      // 4️⃣ Preparar dados COMPLETOS do recibo
       const calculatedValues = calculateValues();
       
       const paymentForReceipt: Payment = {
@@ -363,7 +364,7 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
         active: true,
       };
 
-      // ✅ Setar dados do recibo
+      // 5️⃣ Setar dados do recibo
       setReceiptData({
         payment: paymentForReceipt,
         rental: rentalForReceipt,
@@ -371,7 +372,7 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
         tenant: tenantForReceipt,
       });
 
-      // ✅ EXIBIR RECIBO IMEDIATAMENTE
+      // 6️⃣ EXIBIR RECIBO IMEDIATAMENTE
       setShowReceipt(true);
       
     } catch (error) {
