@@ -74,6 +74,8 @@ export function RentalFormDialog({
     setHasGarage,
     garageValue,
     setGarageValue,
+    securityDeposit,
+    setSecurityDeposit,
     attachments,
     resetForm,
     handleFileUpload,
@@ -162,7 +164,8 @@ export function RentalFormDialog({
         selectedProperty.value || 0,
         hasGarage,
         garageValue,
-        attachments
+        attachments,
+        securityDeposit
       );
 
       if (rental) {

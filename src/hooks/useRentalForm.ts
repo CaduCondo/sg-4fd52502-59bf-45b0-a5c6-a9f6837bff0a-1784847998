@@ -27,6 +27,7 @@ export function useRentalForm({
   const [paymentDay, setPaymentDay] = useState("");
   const [hasGarage, setHasGarage] = useState(false);
   const [garageValue, setGarageValue] = useState("");
+  const [securityDeposit, setSecurityDeposit] = useState("");
   const [attachments, setAttachments] = useState<string[]>([]);
 
   const initializedRef = useRef(false);
@@ -46,6 +47,9 @@ export function useRentalForm({
         setHasGarage(rental.hasGarage || false);
         setGarageValue(
           rental.garageValue ? formatCurrency(rental.garageValue) : ""
+        );
+        setSecurityDeposit(
+          rental.securityDeposit ? formatCurrency(rental.securityDeposit) : ""
         );
         setAttachments(rental.contractAttachments || rental.attachments || []);
       } else {
@@ -67,6 +71,7 @@ export function useRentalForm({
     setPaymentDay("");
     setHasGarage(false);
     setGarageValue("");
+    setSecurityDeposit("");
     setAttachments([]);
   };
 
@@ -151,6 +156,8 @@ export function useRentalForm({
     setHasGarage,
     garageValue,
     setGarageValue,
+    securityDeposit,
+    setSecurityDeposit,
     attachments,
     setAttachments,
 

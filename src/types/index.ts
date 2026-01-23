@@ -147,6 +147,7 @@ export interface Rental {
   value?: number; // Alias for total value
   depositAmount?: number;
   deposit?: string; // DB field is text
+  securityDeposit?: number; // Valor da Caução
   garageValue?: number;
   condominiumFee?: number;
   iptuFee?: number;
