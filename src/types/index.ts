@@ -206,6 +206,7 @@ export interface Payment {
   installmentNumber?: number;
   partialPayments?: any[];
   createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Location {
