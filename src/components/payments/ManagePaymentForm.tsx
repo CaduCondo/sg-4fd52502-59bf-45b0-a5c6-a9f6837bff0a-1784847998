@@ -162,7 +162,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
 
         multa = Math.round((valorAluguel * lateFeePercentage / 100) * 100) / 100;
 
-        const jurosDiario = interestRatePercentage / 30;
+        const jurosDiario = interestRatePercentage;
         juros = Math.round((valorAluguel * jurosDiario / 100 * diasAtraso) * 100) / 100;
       }
     }
@@ -183,7 +183,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       valorJaPago: Math.round(valorJaPago * 100) / 100,
       valorRestante: Math.round(valorRestante * 100) / 100,
       diasAtraso,
-      jurosDiario: interestRatePercentage / 30,
+      jurosDiario: interestRatePercentage,
     };
   };
 
@@ -640,7 +640,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
               {values.juros > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600"}>
-                    Juros ({values.jurosDiario.toFixed(3)}% ao dia) + {values.diasAtraso} dias
+                    Juros ({interestRatePercentage.toFixed(3)}% ao dia) + {values.diasAtraso} dias
                   </span>
                   <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600 font-medium"}>
                     + {formatCurrency(values.juros.toFixed(2))}
