@@ -48,7 +48,8 @@ import {
   applyPhoneMask,
   applyCepMask,
   parsePercentageToFloat,
-  formatPercentage
+  formatPercentage,
+  applyPercentageMask
 } from "@/lib/masks";
 
 // Types
@@ -549,7 +550,7 @@ export default function Settings() {
                           id="interestRate" 
                           type="text"
                           value={interestRate}
-                          onChange={(e) => setInterestRate(e.target.value)}
+                          onChange={(e) => setInterestRate(applyPercentageMask(e.target.value, 3))}
                           className="pr-8"
                           placeholder="0,000"
                         />
