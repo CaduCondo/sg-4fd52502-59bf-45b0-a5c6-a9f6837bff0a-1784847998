@@ -20,6 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function Payments() {
   const router = useRouter();
+  const { toast } = useToast();
   const {
     payments,
     rentals,
@@ -129,12 +130,12 @@ export default function Payments() {
         expectedAmount: paymentData.expected_amount,
         paidAmount: paymentData.paid_amount,
         paymentDate: paymentData.payment_date,
-        status: paymentData.status,
+        status: paymentData.status as "paid" | "pending" | "overdue" | "partial",
         paymentMethod: paymentData.payment_method,
         notes: paymentData.notes,
         referenceMonth: parseInt(paymentData.reference_month),
         referenceYear: parseInt(paymentData.reference_year),
-        attachments: paymentData.attachments || [],
+        attachments: (paymentData.attachments as string[]) || [],
         lateFee: paymentData.late_fee || 0,
         interest: paymentData.interest || 0,
       };
@@ -168,7 +169,7 @@ export default function Payments() {
         rooms: property.rooms || 0,
         bathrooms: property.bathrooms || 0,
         area: property.area || 0,
-        status: property.status || "available",
+        status: (property.status as "available" | "occupied" | "unavailable") || "available",
         value: property.value,
       };
 
@@ -177,11 +178,11 @@ export default function Payments() {
         name: tenant.name,
         email: tenant.email || "",
         phone: tenant.phone || "",
-        documentType: tenant.document_type || "cpf",
+        documentType: (tenant.document_type as "cnpj" | "cpf") || "cpf",
         document: tenant.document || "",
         cpf: tenant.cpf || "",
         rg: tenant.rg || "",
-        status: tenant.status || "active",
+        status: (tenant.status as "active" | "inactive" | "rented" | "locatario") || "active",
         active: true,
       };
 

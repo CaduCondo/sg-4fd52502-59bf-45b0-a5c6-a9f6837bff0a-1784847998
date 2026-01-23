@@ -132,7 +132,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         payment_method: paymentData.payment_method || "pix",
         amount_to_pay: formatCurrency((paymentData.paid_amount || paymentData.expected_amount || 0).toFixed(2)),
         notes: paymentData.notes || "",
-        pix_code_type: paymentData.pix_code_type || "CP",
+        pix_code_type: (paymentData as any).pix_code_type || "CP",
       });
     } catch (error) {
       console.error("Erro ao carregar dados do pagamento:", error);
