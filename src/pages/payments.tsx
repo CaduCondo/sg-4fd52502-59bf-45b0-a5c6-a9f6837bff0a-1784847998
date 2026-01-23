@@ -13,6 +13,8 @@ import { FloatingCard } from "@/components/animations/FloatingCard";
 import { PaymentFilters } from "@/components/payments/PaymentFilters";
 import { PaymentCard } from "@/components/payments/PaymentCard";
 import { ManagePaymentForm } from "@/components/payments/ManagePaymentForm";
+import { PaymentReceipt } from "@/components/PaymentReceipt";
+import type { Payment, Rental, Property, Tenant } from "@/types";
 
 export default function Payments() {
   const router = useRouter();
@@ -34,6 +36,15 @@ export default function Payments() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
+  // Estados para o recibo
+  const [showReceipt, setShowReceipt] = useState(false);
+  const [receiptData, setReceiptData] = useState<{
+    payment: Payment;
+    rental: Rental;
+    property: Property;
+    tenant: Tenant;
+  } | null>(null);
+
   const currentDate = new Date();
   const [selectedMonth, setSelectedMonth] = useState<string>(
     (currentDate.getMonth() + 1).toString()
@@ -47,8 +58,36 @@ export default function Payments() {
   };
 
   const handleCloseDialog = () => {
+    console.log("🚪 Fechando dialog de gerenciamento");
     setIsDialogOpen(false);
     setSelectedPaymentId(null);
+    loadPayments();
+  };
+
+  const handlePaymentSuccess = (data: {
+    payment: Payment;
+    rental: Rental;
+    property: Property;
+    tenant: Tenant;
+  }) => {
+    console.log("🎯 handlePaymentSuccess CHAMADO! Dados recebidos:", data);
+    
+    // Fechar o dialog de gerenciamento
+    setIsDialogOpen(false);
+    setSelectedPaymentId(null);
+    
+    // Configurar dados do recibo
+    console.log("📋 Setando dados do recibo...");
+    setReceiptData(data);
+    setShowReceipt(true);
+    
+    console.log("✅ Estados setados! Recibo deve abrir agora!");
+  };
+
+  const handleCloseReceipt = () => {
+    console.log("🚪 Fechando recibo");
+    setShowReceipt(false);
+    setReceiptData(null);
     loadPayments();
   };
 
@@ -275,13 +314,24 @@ export default function Payments() {
                 <ManagePaymentForm
                   paymentId={selectedPaymentId}
                   onClose={handleCloseDialog}
-                  onSuccess={handleCloseDialog}
+                  onSuccess={handlePaymentSuccess}
                   embedded={true}
                 />
               </div>
             )}
           </DialogContent>
         </Dialog>
+
+        {/* Dialog do Recibo */}
+        {showReceipt && receiptData && (
+          <PaymentReceipt
+            payment={receiptData.payment}
+            rental={receiptData.rental}
+            property={receiptData.property}
+            tenant={receiptData.tenant}
+            onClose={handleCloseReceipt}
+          />
+        )}
       </Layout>
     </>
   );
