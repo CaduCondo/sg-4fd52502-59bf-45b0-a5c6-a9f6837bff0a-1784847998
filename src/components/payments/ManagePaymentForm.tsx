@@ -292,21 +292,21 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
         description: "Pagamento registrado com sucesso!",
       });
 
-      // ✅ Preparar dados do recibo com tipos corretos
+      // ✅ Preparar dados do recibo IMEDIATAMENTE após salvamento bem-sucedido
       const calculatedValues = calculateValues();
       
       const paymentForReceipt: Payment = {
         id: payment.id,
-        rentalId: payment.rental_id,
-        dueDate: payment.due_date,
-        expectedAmount: payment.expected_amount,
+        rentalId: payment.rentalId,
+        dueDate: payment.dueDate,
+        expectedAmount: payment.expectedAmount,
         paidAmount: parseCurrency(formData.amount_to_pay),
         paymentDate: formData.payment_date,
         status: "paid",
         paymentMethod: formData.payment_method,
         notes: formData.notes,
-        referenceMonth: parseInt(payment.reference_month),
-        referenceYear: parseInt(payment.reference_year),
+        referenceMonth: parseInt(payment.referenceMonth),
+        referenceYear: parseInt(payment.referenceYear),
         attachments: attachments,
         lateFee: removeFees ? 0 : calculatedValues.multa,
         interest: removeFees ? 0 : calculatedValues.juros,
@@ -314,22 +314,22 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
 
       const rentalForReceipt: Rental = {
         id: rental.id,
-        propertyId: rental.property_id,
-        tenantId: rental.tenant_id,
-        startDate: rental.start_date,
-        endDate: rental.end_date,
-        rentAmount: rental.monthly_rent,
-        monthlyRent: rental.monthly_rent,
-        garageValue: rental.garage_value,
+        propertyId: rental.propertyId,
+        tenantId: rental.tenantId,
+        startDate: rental.startDate,
+        endDate: rental.endDate,
+        rentAmount: rental.monthlyRent,
+        monthlyRent: rental.monthlyRent,
+        garageValue: rental.garageValue,
         value: rental.value,
-        paymentDay: rental.payment_day,
-        status: rental.is_active ? "active" : "terminated",
+        paymentDay: rental.paymentDay,
+        status: rental.isActive ? "active" : "terminated",
         autoRenew: false,
       };
 
       const propertyForReceipt: Property = {
         id: property.id,
-        locationId: property.location_id,
+        locationId: property.locationId,
         location: location?.name || "",
         address: location?.street || "",
         number: location?.number || "",
@@ -337,7 +337,7 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
         neighborhood: location?.neighborhood || "",
         city: location?.city || "",
         state: location?.state || "",
-        zipCode: location?.zip_code || "",
+        zipCode: location?.zipCode || "",
         rooms: property.rooms || 0,
         bathrooms: property.bathrooms || 0,
         area: property.area || 0,
@@ -350,7 +350,7 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
         name: tenant.name,
         email: tenant.email || "",
         phone: tenant.phone || "",
-        documentType: tenant.document_type || "cpf",
+        documentType: tenant.documentType || "cpf",
         document: tenant.document || "",
         cpf: tenant.cpf || "",
         rg: tenant.rg || "",
@@ -365,9 +365,10 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
         tenant: tenantForReceipt,
       });
 
-      // ✅ Exibir recibo
+      // ✅ Exibir recibo IMEDIATAMENTE
       setShowReceipt(true);
 
+      // ✅ Chamar callback de sucesso (se existir)
       if (onSuccess) {
         onSuccess();
       }
