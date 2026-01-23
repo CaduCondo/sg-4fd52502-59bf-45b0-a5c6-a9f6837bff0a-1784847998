@@ -58,7 +58,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       const values = calculateValues();
       setFormData(prev => ({
         ...prev,
-        amount_to_pay: formatCurrency(values.valorAPagar.toFixed(2))
+        amount_to_pay: formatCurrency(values.valorRestante.toFixed(2))
       }));
     }
   }, [formData.payment_date, rentalValue, garageValue, lateFeePercentage, interestRatePercentage, removeFees, isEditMode]);
@@ -169,6 +169,10 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
 
     const valorTotalSemIsencao = Math.round((valorAluguel + multa + juros) * 100) / 100;
     const valorAPagar = removeFees ? valorAluguel : valorTotalSemIsencao;
+    
+    // Considerar valor já pago (se houver)
+    const valorJaPago = payment?.paid_amount || 0;
+    const valorRestante = Math.max(0, Math.round((valorAPagar - valorJaPago) * 100) / 100);
 
     return {
       valorAluguel: Math.round(valorAluguel * 100) / 100,
@@ -176,6 +180,8 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       juros: Math.round(juros * 100) / 100,
       valorTotal: Math.round(valorTotalSemIsencao * 100) / 100,
       valorAPagar: Math.round(valorAPagar * 100) / 100,
+      valorJaPago: Math.round(valorJaPago * 100) / 100,
+      valorRestante: Math.round(valorRestante * 100) / 100,
       diasAtraso,
       jurosDiario: interestRatePercentage / 30,
     };
@@ -302,13 +308,24 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       setIsSubmitting(true);
 
       const calculatedValues = calculateValues();
+      const paidAmount = parseCurrency(formData.amount_to_pay);
+      const expectedTotal = calculatedValues.valorAPagar;
+      
+      // Se houver valor já pago, somar ao novo pagamento
+      const totalPaid = (payment?.paid_amount || 0) + paidAmount;
+      
+      // Determinar status baseado no valor total pago
+      let paymentStatus: "paid" | "partial" = "paid";
+      if (totalPaid < expectedTotal) {
+        paymentStatus = "partial";
+      }
 
       const paymentData = {
         payment_date: formData.payment_date,
         payment_method: formData.payment_method,
-        paid_amount: parseCurrency(formData.amount_to_pay),
+        paid_amount: totalPaid, // Salvar o total acumulado
         notes: formData.notes,
-        status: "paid",
+        status: paymentStatus,
         attachments: attachments.length > 0 ? attachments : null,
         late_fee: removeFees ? 0 : calculatedValues.multa,
         interest: removeFees ? 0 : calculatedValues.juros,
@@ -348,10 +365,12 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
 
       toast({
         title: "Sucesso",
-        description: isPaid ? "Pagamento atualizado com sucesso!" : "Pagamento registrado com sucesso!",
+        description: paymentStatus === "partial" 
+          ? `Pagamento parcial registrado! Valor pago: ${formatCurrency(paidAmount.toFixed(2))}. Restante: ${formatCurrency((expectedTotal - totalPaid).toFixed(2))}`
+          : isPaid ? "Pagamento atualizado com sucesso!" : "Pagamento registrado com sucesso!",
       });
 
-      if (!isPaid && onSuccess) {
+      if (paymentStatus === "paid" && !isPaid && onSuccess) {
         console.log("📞 Chamando callback onSuccess com dados completos...");
 
         const paymentForReceipt: Payment = {
@@ -359,7 +378,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           rentalId: payment.rental_id,
           dueDate: payment.due_date,
           expectedAmount: payment.expected_amount,
-          paidAmount: parseCurrency(formData.amount_to_pay),
+          paidAmount: totalPaid,
           paymentDate: formData.payment_date,
           status: "paid",
           paymentMethod: formData.payment_method,
@@ -430,6 +449,13 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           console.log("✅ onSuccess foi chamado!");
         } else {
           console.log("❌ onSuccess NÃO existe!");
+        }
+      } else if (paymentStatus === "partial") {
+        // Pagamento parcial: apenas fecha o dialog e recarrega
+        if (onClose) {
+          onClose();
+        } else {
+          router.push("/payments");
         }
       } else if (isPaid) {
         // Se estava editando um pagamento já pago, apenas fecha
@@ -639,10 +665,21 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                 </div>
               )}
 
+              {values.valorJaPago > 0 && (
+                <div className="flex justify-between pt-3 border-t">
+                  <span className="text-sm text-green-600">Valor já Pago</span>
+                  <span className="text-sm text-green-600 font-medium">
+                    - {formatCurrency(values.valorJaPago.toFixed(2))}
+                  </span>
+                </div>
+              )}
+
               <div className="flex justify-between pt-3 border-t-2 border-primary">
-                <span className="font-bold text-base">Valor Total</span>
+                <span className="font-bold text-base">
+                  {values.valorJaPago > 0 ? "Valor Restante" : "Valor Total"}
+                </span>
                 <span className="font-bold text-base text-primary">
-                  {formatCurrency(values.valorAPagar.toFixed(2))}
+                  {formatCurrency(values.valorJaPago > 0 ? values.valorRestante.toFixed(2) : values.valorAPagar.toFixed(2))}
                 </span>
               </div>
             </div>
