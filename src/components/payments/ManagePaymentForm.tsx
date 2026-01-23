@@ -21,9 +21,11 @@ interface ManagePaymentFormProps {
     property: Property;
     tenant: Tenant;
   }) => void;
+  onClose?: () => void;
+  embedded?: boolean;
 }
 
-export function ManagePaymentForm({ paymentId, onSuccess }: ManagePaymentFormProps) {
+export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = false }: ManagePaymentFormProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
@@ -398,9 +400,11 @@ export function ManagePaymentForm({ paymentId, onSuccess }: ManagePaymentFormPro
 
   return (
     <div className="space-y-6 pb-8">
-      <div className="text-center mb-6">
-        <h1 className="text-2xl font-bold">Registro de Recebimento</h1>
-      </div>
+      {!embedded && (
+        <div className="text-center mb-6">
+          <h1 className="text-2xl font-bold">Registro de Recebimento</h1>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
@@ -674,7 +678,7 @@ export function ManagePaymentForm({ paymentId, onSuccess }: ManagePaymentFormPro
         <Button
           type="button"
           variant="outline"
-          onClick={() => router.push("/payments")}
+          onClick={() => onClose ? onClose() : router.push("/payments")}
           disabled={isSubmitting}
         >
           Cancelar
