@@ -36,6 +36,11 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
     tenant: Tenant;
   } | null>(null);
 
+  useEffect(() => {
+    console.log("🔄 Estado showReceipt mudou:", showReceipt);
+    console.log("🔄 Estado receiptData mudou:", receiptData);
+  }, [showReceipt, receiptData]);
+
   const [formData, setFormData] = useState({
     payment_date: "",
     payment_method: "pix",
@@ -377,6 +382,7 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
   };
 
   if (showReceipt && receiptData) {
+    console.log("📄 RENDERIZANDO RECIBO - showReceipt:", showReceipt, "receiptData:", !!receiptData);
     return (
       <PaymentReceipt
         payment={receiptData.payment}
@@ -396,6 +402,7 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
   }
 
   if (loading) {
+    console.log("⏳ RENDERIZANDO LOADING");
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -404,6 +411,8 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
   }
 
   const values = calculateValues();
+
+  console.log("📝 RENDERIZANDO FORMULÁRIO - showReceipt:", showReceipt, "receiptData:", !!receiptData);
 
   return (
     <div className="space-y-6 pb-8">
