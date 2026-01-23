@@ -57,8 +57,6 @@ export function RentalFormDialog({
     location?: Location;
   } | null>(null);
 
-  const [securityDeposit, setSecurityDeposit] = useState("");
-
   const {
     isEditing,
     setIsEditing,
