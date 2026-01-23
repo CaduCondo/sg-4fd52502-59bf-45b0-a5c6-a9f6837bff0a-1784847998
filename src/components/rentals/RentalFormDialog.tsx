@@ -76,8 +76,6 @@ export function RentalFormDialog({
     setGarageValue,
     hasPartnerBroker,
     setHasPartnerBroker,
-    partnerBrokerValue,
-    setPartnerBrokerValue,
     securityDeposit,
     setSecurityDeposit,
     attachments,
@@ -170,8 +168,7 @@ export function RentalFormDialog({
         garageValue,
         attachments,
         securityDeposit,
-        hasPartnerBroker,
-        partnerBrokerValue
+        hasPartnerBroker
       );
 
       if (rental) {
@@ -373,8 +370,7 @@ export function RentalFormDialog({
             </div>
 
             <div className="space-y-2">
-              <Label className="invisible">Placeholder</Label>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-2 h-10">
                 <Checkbox
                   id="hasGarage"
                   checked={hasGarage}
@@ -390,15 +386,13 @@ export function RentalFormDialog({
                   Vaga Garagem ?
                 </Label>
               </div>
-              {hasGarage && (
-                <Input
-                  id="garageValue"
-                  value={garageValue}
-                  onChange={(e) => setGarageValue(applyRealMask(e.target.value))}
-                  placeholder="R$ 0,00"
-                  disabled={!isEditing}
-                />
-              )}
+              <Input
+                id="garageValue"
+                value={garageValue}
+                onChange={(e) => setGarageValue(applyRealMask(e.target.value))}
+                placeholder="R$ 0,00"
+                disabled={!isEditing || !hasGarage}
+              />
             </div>
 
             <div className="space-y-2">
@@ -407,27 +401,13 @@ export function RentalFormDialog({
                 <Checkbox
                   id="hasPartnerBroker"
                   checked={hasPartnerBroker}
-                  onCheckedChange={(checked) => {
-                    setHasPartnerBroker(checked as boolean);
-                    if (!checked) {
-                      setPartnerBrokerValue("");
-                    }
-                  }}
+                  onCheckedChange={(checked) => setHasPartnerBroker(checked as boolean)}
                   disabled={!isEditing}
                 />
                 <Label htmlFor="hasPartnerBroker" className="cursor-pointer">
                   Corretor Parceiro ?
                 </Label>
               </div>
-              {hasPartnerBroker && (
-                <Input
-                  id="partnerBrokerValue"
-                  value={partnerBrokerValue}
-                  onChange={(e) => setPartnerBrokerValue(applyRealMask(e.target.value))}
-                  placeholder="R$ 0,00"
-                  disabled={!isEditing}
-                />
-              )}
             </div>
           </div>
 
