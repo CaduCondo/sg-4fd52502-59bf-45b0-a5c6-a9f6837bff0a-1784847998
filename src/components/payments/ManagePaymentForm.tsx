@@ -53,7 +53,6 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
   const [lateFeePercentage, setLateFeePercentage] = useState(0);
   const [interestRatePercentage, setInterestRatePercentage] = useState(0);
 
-  // ✅ Atualizar valor a pagar quando valores mudarem
   useEffect(() => {
     if (payment && rentalValue > 0) {
       const values = calculateValues();
@@ -118,7 +117,6 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
       setGarageValue(paymentData.rentals.garage_value || 0);
 
       if (paymentData.attachments && Array.isArray(paymentData.attachments)) {
-        // ✅ Converter Json[] para string[] com type guard
         const attachmentStrings = paymentData.attachments
           .filter((att): att is string => typeof att === "string");
         setAttachments(attachmentStrings);
@@ -142,7 +140,6 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
     }
   };
 
-  // ✅ Calcular valores com arredondamento correto
   const calculateValues = () => {
     const valorAluguel = Math.round((rentalValue + garageValue) * 100) / 100;
     let multa = 0;
@@ -157,19 +154,14 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
         const diffTime = paymentDate.getTime() - dueDate.getTime();
         diasAtraso = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-        // ✅ Calcular multa com arredondamento correto
         multa = Math.round((valorAluguel * lateFeePercentage / 100) * 100) / 100;
 
-        // ✅ Calcular juros por dia com arredondamento correto
         const jurosDiario = interestRatePercentage / 30;
         juros = Math.round((valorAluguel * jurosDiario / 100 * diasAtraso) * 100) / 100;
       }
     }
 
-    // ✅ Valor Total sempre soma os campos impressos (com arredondamento correto)
     const valorTotalSemIsencao = Math.round((valorAluguel + multa + juros) * 100) / 100;
-
-    // ✅ Valor a Pagar considera isenção se checkbox marcado
     const valorAPagar = removeFees ? valorAluguel : valorTotalSemIsencao;
 
     return {
@@ -292,13 +284,10 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
         description: "Pagamento registrado com sucesso!",
       });
 
-      // ✅ Chamar callback de sucesso ANTES de preparar recibo
       if (onSuccess) {
         onSuccess();
       }
 
-      // ✅ Preparar dados do recibo IMEDIATAMENTE após salvamento bem-sucedido
-      // 4️⃣ Preparar dados COMPLETOS do recibo
       const calculatedValues = calculateValues();
       
       const paymentForReceipt: Payment = {
@@ -364,7 +353,13 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
         active: true,
       };
 
-      // 5️⃣ Setar dados do recibo
+      console.log("🎯 Preparando recibo com dados:", {
+        payment: paymentForReceipt,
+        rental: rentalForReceipt,
+        property: propertyForReceipt,
+        tenant: tenantForReceipt,
+      });
+
       setReceiptData({
         payment: paymentForReceipt,
         rental: rentalForReceipt,
@@ -372,8 +367,9 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
         tenant: tenantForReceipt,
       });
 
-      // 6️⃣ EXIBIR RECIBO IMEDIATAMENTE
+      console.log("✅ Dados do recibo setados, exibindo recibo agora...");
       setShowReceipt(true);
+      console.log("✅ showReceipt setado para true");
       
     } catch (error) {
       console.error("Erro ao confirmar recebimento:", error);
@@ -387,8 +383,10 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
     }
   };
 
-  // ✅ Se recibo deve ser exibido, renderizar PaymentReceipt
+  console.log("🔍 Estado atual:", { showReceipt, hasReceiptData: !!receiptData });
+
   if (showReceipt && receiptData) {
+    console.log("📄 Renderizando PaymentReceipt");
     return (
       <PaymentReceipt
         payment={receiptData.payment}
@@ -396,6 +394,7 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
         property={receiptData.property}
         tenant={receiptData.tenant}
         onClose={() => {
+          console.log("🔙 Fechando recibo");
           setShowReceipt(false);
           if (onClose) {
             onClose();
@@ -419,12 +418,10 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
 
   return (
     <div className="space-y-6 pb-8">
-      {/* Título */}
       <div className="text-center mb-6">
         <h1 className="text-2xl font-bold">Registro de Recebimento</h1>
       </div>
 
-      {/* Informações do Imóvel e Locatário - Layout Compacto */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
           <CardHeader className="pb-3">
@@ -497,7 +494,6 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
         </Card>
       </div>
 
-      {/* Informações da Locação */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base">
@@ -531,9 +527,7 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
         </CardContent>
       </Card>
 
-      {/* Formação de Valores e Informações do Pagamento - Lado a lado */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Formação de Valores */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -543,13 +537,11 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {/* Valor Aluguel + Vaga */}
               <div className="flex justify-between text-sm">
                 <span>Valor Aluguel {garageValue > 0 && "+ Vaga"}</span>
                 <span className="font-medium">{formatCurrency(values.valorAluguel.toFixed(2))}</span>
               </div>
 
-              {/* Multa (se houver) */}
               {values.multa > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600"}>
@@ -561,7 +553,6 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
                 </div>
               )}
 
-              {/* Juros (se houver) */}
               {values.juros > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600"}>
@@ -573,7 +564,6 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
                 </div>
               )}
 
-              {/* Checkbox Retirar multa/juros */}
               {(values.multa > 0 || values.juros > 0) && (
                 <div className="flex items-center space-x-2 py-2 border-t">
                   <Checkbox
@@ -590,7 +580,6 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
                 </div>
               )}
 
-              {/* Valor Total */}
               <div className="flex justify-between pt-3 border-t-2 border-primary">
                 <span className="font-bold text-base">Valor Total</span>
                 <span className="font-bold text-base text-primary">
@@ -601,7 +590,6 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
           </CardContent>
         </Card>
 
-        {/* Informações do Pagamento */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -666,7 +654,6 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
         </Card>
       </div>
 
-      {/* Observações */}
       <Card>
         <CardHeader>
           <CardTitle>Observações</CardTitle>
@@ -681,7 +668,6 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
         </CardContent>
       </Card>
 
-      {/* Anexos */}
       <Card>
         <CardHeader>
           <CardTitle>Anexos</CardTitle>
@@ -704,7 +690,6 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
         </CardContent>
       </Card>
 
-      {/* Botões de Ação */}
       <div className="flex gap-4 justify-end pt-4">
         <Button
           type="button"
