@@ -330,6 +330,7 @@ export default function Payments() {
             property={receiptData.property}
             tenant={receiptData.tenant}
             onClose={handleCloseReceipt}
+            autoSavePdf={true}
           />
         )}
       </Layout>

@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { AttachmentViewer } from "@/components/AttachmentViewer";
-import { Camera, Paperclip, Home, User, DollarSign, CreditCard, FileText } from "lucide-react";
+import { Camera, Paperclip, Home, User, DollarSign, CreditCard, FileText, Edit, X } from "lucide-react";
 import type { Payment, Rental, Property, Tenant } from "@/types";
 
 interface ManagePaymentFormProps {
@@ -32,6 +32,8 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [attachments, setAttachments] = useState<string[]>([]);
   const [removeFees, setRemoveFees] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [isPaid, setIsPaid] = useState(false);
 
   const [formData, setFormData] = useState({
     payment_date: "",
@@ -51,14 +53,14 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
   const [interestRatePercentage, setInterestRatePercentage] = useState(0);
 
   useEffect(() => {
-    if (payment && rentalValue > 0) {
+    if (payment && rentalValue > 0 && isEditMode) {
       const values = calculateValues();
       setFormData(prev => ({
         ...prev,
         amount_to_pay: formatCurrency(values.valorAPagar.toFixed(2))
       }));
     }
-  }, [formData.payment_date, rentalValue, garageValue, lateFeePercentage, interestRatePercentage, removeFees]);
+  }, [formData.payment_date, rentalValue, garageValue, lateFeePercentage, interestRatePercentage, removeFees, isEditMode]);
 
   useEffect(() => {
     loadPaymentData();
@@ -113,6 +115,11 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       setRentalValue(paymentData.rentals.monthly_rent || 0);
       setGarageValue(paymentData.rentals.garage_value || 0);
 
+      // Verificar se o pagamento já está pago
+      const alreadyPaid = paymentData.status === "paid";
+      setIsPaid(alreadyPaid);
+      setIsEditMode(!alreadyPaid); // Se não está pago, começa em modo de edição
+
       if (paymentData.attachments && Array.isArray(paymentData.attachments)) {
         const attachmentStrings = paymentData.attachments
           .filter((att): att is string => typeof att === "string");
@@ -122,7 +129,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       setFormData({
         payment_date: paymentData.payment_date || new Date().toISOString().split("T")[0],
         payment_method: paymentData.payment_method || "pix",
-        amount_to_pay: formatCurrency((paymentData.expected_amount || 0).toFixed(2)),
+        amount_to_pay: formatCurrency((paymentData.paid_amount || paymentData.expected_amount || 0).toFixed(2)),
         notes: paymentData.notes || "",
       });
     } catch (error) {
@@ -244,6 +251,23 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     setAttachments(attachments.filter((_, i) => i !== index));
   };
 
+  const handleEnableEdit = () => {
+    setIsEditMode(true);
+    toast({
+      title: "Modo de Edição",
+      description: "Campos desbloqueados para edição.",
+    });
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditMode(false);
+    loadPaymentData(); // Recarregar dados originais
+    toast({
+      title: "Edição Cancelada",
+      description: "Alterações descartadas.",
+    });
+  };
+
   const handleSubmit = async () => {
     console.log("🚀 handleSubmit CHAMADO!");
 
@@ -259,7 +283,10 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
 
     try {
       console.log("💾 Salvando pagamento no banco...");
+      console.log("📋 Dados do formulário:", formData);
       setIsSubmitting(true);
+
+      const calculatedValues = calculateValues();
 
       const paymentData = {
         payment_date: formData.payment_date,
@@ -268,6 +295,8 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         notes: formData.notes,
         status: "paid",
         attachments: attachments.length > 0 ? attachments : null,
+        late_fee: removeFees ? 0 : calculatedValues.multa,
+        interest: removeFees ? 0 : calculatedValues.juros,
         updated_at: new Date().toISOString(),
       };
 
@@ -287,96 +316,96 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
 
       toast({
         title: "Sucesso",
-        description: "Pagamento registrado com sucesso!",
+        description: isPaid ? "Pagamento atualizado com sucesso!" : "Pagamento registrado com sucesso!",
       });
 
-      console.log("🎯 Preparando dados do recibo...");
-      const calculatedValues = calculateValues();
+      if (!isPaid && onSuccess) {
+        console.log("📞 Chamando callback onSuccess com dados completos...");
 
-      const paymentForReceipt: Payment = {
-        id: payment.id,
-        rentalId: payment.rental_id,
-        dueDate: payment.due_date,
-        expectedAmount: payment.expected_amount,
-        paidAmount: parseCurrency(formData.amount_to_pay),
-        paymentDate: formData.payment_date,
-        status: "paid",
-        paymentMethod: formData.payment_method,
-        notes: formData.notes,
-        referenceMonth: parseInt(payment.reference_month),
-        referenceYear: parseInt(payment.reference_year),
-        attachments: attachments,
-        lateFee: removeFees ? 0 : calculatedValues.multa,
-        interest: removeFees ? 0 : calculatedValues.juros,
-      };
+        const paymentForReceipt: Payment = {
+          id: payment.id,
+          rentalId: payment.rental_id,
+          dueDate: payment.due_date,
+          expectedAmount: payment.expected_amount,
+          paidAmount: parseCurrency(formData.amount_to_pay),
+          paymentDate: formData.payment_date,
+          status: "paid",
+          paymentMethod: formData.payment_method,
+          notes: formData.notes,
+          referenceMonth: parseInt(payment.reference_month),
+          referenceYear: parseInt(payment.reference_year),
+          attachments: attachments,
+          lateFee: removeFees ? 0 : calculatedValues.multa,
+          interest: removeFees ? 0 : calculatedValues.juros,
+        };
 
-      const rentalForReceipt: Rental = {
-        id: rental.id,
-        propertyId: rental.property_id,
-        tenantId: rental.tenant_id,
-        startDate: rental.start_date,
-        endDate: rental.end_date,
-        rentAmount: rental.monthly_rent,
-        monthlyRent: rental.monthly_rent,
-        garageValue: rental.garage_value,
-        value: rental.value,
-        paymentDay: rental.payment_day,
-        status: rental.is_active ? "active" : "terminated",
-        autoRenew: false,
-      };
+        const rentalForReceipt: Rental = {
+          id: rental.id,
+          propertyId: rental.property_id,
+          tenantId: rental.tenant_id,
+          startDate: rental.start_date,
+          endDate: rental.end_date,
+          rentAmount: rental.monthly_rent,
+          monthlyRent: rental.monthly_rent,
+          garageValue: rental.garage_value,
+          value: rental.value,
+          paymentDay: rental.payment_day,
+          status: rental.is_active ? "active" : "terminated",
+          autoRenew: false,
+        };
 
-      const propertyForReceipt: Property = {
-        id: property.id,
-        locationId: property.location_id,
-        location: location?.name || "",
-        address: location?.street || "",
-        number: location?.number || "",
-        complement: property.complement || "",
-        neighborhood: location?.neighborhood || "",
-        city: location?.city || "",
-        state: location?.state || "",
-        zipCode: location?.zip_code || "",
-        rooms: property.rooms || 0,
-        bathrooms: property.bathrooms || 0,
-        area: property.area || 0,
-        status: property.status || "available",
-        value: property.value,
-      };
+        const propertyForReceipt: Property = {
+          id: property.id,
+          locationId: property.location_id,
+          location: location?.name || "",
+          address: location?.street || "",
+          number: location?.number || "",
+          complement: property.complement || "",
+          neighborhood: location?.neighborhood || "",
+          city: location?.city || "",
+          state: location?.state || "",
+          zipCode: location?.zip_code || "",
+          rooms: property.rooms || 0,
+          bathrooms: property.bathrooms || 0,
+          area: property.area || 0,
+          status: property.status || "available",
+          value: property.value,
+        };
 
-      const tenantForReceipt: Tenant = {
-        id: tenant.id,
-        name: tenant.name,
-        email: tenant.email || "",
-        phone: tenant.phone || "",
-        documentType: tenant.document_type || "cpf",
-        document: tenant.document || "",
-        cpf: tenant.cpf || "",
-        rg: tenant.rg || "",
-        status: tenant.status || "active",
-        active: true,
-      };
+        const tenantForReceipt: Tenant = {
+          id: tenant.id,
+          name: tenant.name,
+          email: tenant.email || "",
+          phone: tenant.phone || "",
+          documentType: tenant.document_type || "cpf",
+          document: tenant.document || "",
+          cpf: tenant.cpf || "",
+          rg: tenant.rg || "",
+          status: tenant.status || "active",
+          active: true,
+        };
 
-      console.log("📦 Dados do recibo preparados:", {
-        payment: paymentForReceipt,
-        rental: rentalForReceipt,
-        property: propertyForReceipt,
-        tenant: tenantForReceipt,
-      });
+        console.log("📦 Dados sendo enviados para callback:", { paymentForReceipt, rentalForReceipt, propertyForReceipt, tenantForReceipt });
 
-      console.log("📞 Chamando callback onSuccess com dados completos...");
-      console.log("📦 Dados sendo enviados:", { paymentForReceipt, rentalForReceipt, propertyForReceipt, tenantForReceipt });
-
-      if (onSuccess) {
-        console.log("✅ onSuccess existe! Chamando agora...");
-        onSuccess({
-          payment: paymentForReceipt,
-          rental: rentalForReceipt,
-          property: propertyForReceipt,
-          tenant: tenantForReceipt,
-        });
-        console.log("✅ onSuccess foi chamado!");
-      } else {
-        console.log("❌ onSuccess NÃO existe!");
+        if (onSuccess) {
+          console.log("✅ onSuccess existe! Chamando agora...");
+          onSuccess({
+            payment: paymentForReceipt,
+            rental: rentalForReceipt,
+            property: propertyForReceipt,
+            tenant: tenantForReceipt,
+          });
+          console.log("✅ onSuccess foi chamado!");
+        } else {
+          console.log("❌ onSuccess NÃO existe!");
+        }
+      } else if (isPaid) {
+        // Se estava editando um pagamento já pago, apenas fecha
+        if (onClose) {
+          onClose();
+        } else {
+          router.push("/payments");
+        }
       }
 
     } catch (error) {
@@ -401,12 +430,15 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
   }
 
   const values = calculateValues();
+  const isReadOnly = isPaid && !isEditMode;
 
   return (
     <div className="space-y-6 pb-8">
       {!embedded && (
         <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold">Registro de Recebimento</h1>
+          <h1 className="text-2xl font-bold">
+            {isPaid && isEditMode ? "Edição do Recebimento" : isPaid ? "Detalhes do Recebimento" : "Registro de Recebimento"}
+          </h1>
         </div>
       )}
 
@@ -552,12 +584,13 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                 </div>
               )}
 
-              {(values.multa > 0 || values.juros > 0) && (
+              {(values.multa > 0 || values.juros > 0) && isEditMode && (
                 <div className="flex items-center space-x-2 py-2 border-t">
                   <Checkbox
                     id="remove-fees"
                     checked={removeFees}
                     onCheckedChange={(checked) => setRemoveFees(checked as boolean)}
+                    disabled={isReadOnly}
                   />
                   <label
                     htmlFor="remove-fees"
@@ -597,6 +630,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                   value={formData.payment_date}
                   onChange={(e) => setFormData({ ...formData, payment_date: e.target.value })}
                   required
+                  disabled={isReadOnly}
                 />
               </div>
 
@@ -607,6 +641,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                 <Select
                   value={formData.payment_method}
                   onValueChange={(value) => setFormData({ ...formData, payment_method: value })}
+                  disabled={isReadOnly}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -635,6 +670,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                     setFormData({ ...formData, amount_to_pay: formatted });
                   }}
                   required
+                  disabled={isReadOnly}
                 />
               </div>
             </div>
@@ -652,6 +688,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
             value={formData.notes}
             onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
             rows={3}
+            disabled={isReadOnly}
           />
         </CardContent>
       </Card>
@@ -661,40 +698,67 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           <CardTitle>Anexos</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={handleTakePhoto}>
-              <Camera className="h-4 w-4 mr-2" />
-              Tirar Foto
-            </Button>
-            <Button type="button" variant="outline" size="sm" onClick={handleAttachFile}>
-              <Paperclip className="h-4 w-4 mr-2" />
-              Anexar Arquivo
-            </Button>
-          </div>
+          {isEditMode && (
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={handleTakePhoto}>
+                <Camera className="h-4 w-4 mr-2" />
+                Tirar Foto
+              </Button>
+              <Button type="button" variant="outline" size="sm" onClick={handleAttachFile}>
+                <Paperclip className="h-4 w-4 mr-2" />
+                Anexar Arquivo
+              </Button>
+            </div>
+          )}
 
           {attachments.length > 0 && (
-            <AttachmentViewer attachments={attachments} onRemove={handleRemoveAttachment} />
+            <AttachmentViewer 
+              attachments={attachments} 
+              onRemove={isEditMode ? handleRemoveAttachment : undefined} 
+            />
           )}
         </CardContent>
       </Card>
 
       <div className="flex gap-4 justify-end pt-4">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => onClose ? onClose() : router.push("/payments")}
-          disabled={isSubmitting}
-        >
-          Cancelar
-        </Button>
-        <Button 
-          type="button" 
-          onClick={handleSubmit} 
-          disabled={isSubmitting} 
-          size="lg"
-        >
-          {isSubmitting ? "Salvando..." : "Confirmar Recebimento"}
-        </Button>
+        {isPaid && !isEditMode ? (
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onClose ? onClose() : router.push("/payments")}
+            >
+              <X className="mr-2 h-4 w-4" />
+              Fechar
+            </Button>
+            <Button 
+              type="button" 
+              onClick={handleEnableEdit}
+            >
+              <Edit className="mr-2 h-4 w-4" />
+              Editar
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={isPaid ? handleCancelEdit : (onClose ? onClose : () => router.push("/payments"))}
+              disabled={isSubmitting}
+            >
+              Cancelar
+            </Button>
+            <Button 
+              type="button" 
+              onClick={handleSubmit} 
+              disabled={isSubmitting} 
+              size="lg"
+            >
+              {isSubmitting ? "Salvando..." : isPaid ? "Salvar Alterações" : "Confirmar Recebimento"}
+            </Button>
+          </>
+        )}
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,6 +10,7 @@ import { formatCurrency } from "@/lib/masks";
 import { format, differenceInMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import Image from "next/image";
+import { supabase } from "@/integrations/supabase/client";
 
 interface PaymentReceiptProps {
   payment: Payment;
@@ -17,6 +18,7 @@ interface PaymentReceiptProps {
   property: Property;
   tenant: Tenant;
   onClose: () => void;
+  autoSavePdf?: boolean;
 }
 
 const numberToWords = (value: number): string => {
@@ -102,12 +104,21 @@ export function PaymentReceipt({
   property,
   tenant,
   onClose,
+  autoSavePdf = false,
 }: PaymentReceiptProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [pdfSaved, setPdfSaved] = useState(false);
 
   console.log("📄 PaymentReceipt renderizado com dados:", { payment, rental, property, tenant });
+
+  // Salvar PDF automaticamente ao montar o componente
+  useState(() => {
+    if (autoSavePdf && !pdfSaved) {
+      generateAndSavePDF();
+    }
+  });
 
   const totalAmount = payment.paidAmount || 0;
   const baseAmount = payment.expectedAmount || 0;
@@ -129,6 +140,76 @@ export function PaymentReceipt({
   
   const referenceDate = new Date(payment.referenceYear || 0, (payment.referenceMonth || 1) - 1, 1);
   const currentPaymentNumber = differenceInMonths(referenceDate, contractStartDate) + 1;
+
+  const generateAndSavePDF = async () => {
+    try {
+      setLoading(true);
+      console.log("📄 Gerando PDF do recibo automaticamente...");
+
+      // Usar a API de impressão do navegador para gerar PDF
+      const printWindow = window.open("", "_blank");
+      if (!printWindow) {
+        throw new Error("Não foi possível abrir janela de impressão");
+      }
+
+      // Clonar o conteúdo do recibo
+      const receiptContent = document.querySelector(".receipt-content");
+      if (!receiptContent) {
+        throw new Error("Conteúdo do recibo não encontrado");
+      }
+
+      // Criar HTML completo para impressão
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>Recibo de Pagamento</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 40px; }
+            .receipt-content { max-width: 800px; margin: 0 auto; }
+          </style>
+        </head>
+        <body>
+          ${receiptContent.innerHTML}
+        </body>
+        </html>
+      `;
+
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+
+      // Esperar um pouco para o conteúdo carregar
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Imprimir para PDF
+      printWindow.print();
+
+      // Fechar janela após impressão
+      setTimeout(() => {
+        printWindow.close();
+      }, 1000);
+
+      setPdfSaved(true);
+      
+      console.log("✅ PDF gerado com sucesso!");
+      
+      toast({
+        title: "PDF Gerado",
+        description: "Recibo salvo como PDF com sucesso!",
+      });
+
+    } catch (error) {
+      console.error("❌ Erro ao gerar PDF:", error);
+      toast({
+        title: "Erro ao gerar PDF",
+        description: "Não foi possível gerar o PDF automaticamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleDownloadPDF = () => {
     setLoading(true);
@@ -227,6 +308,12 @@ export function PaymentReceipt({
 
   console.log("✅ Renderizando Dialog do PaymentReceipt");
 
+  useEffect(() => {
+    if (autoSavePdf) {
+      handleDownloadPDF();
+    }
+  }, [autoSavePdf]);
+
   return (
     <Dialog open={true} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -238,7 +325,7 @@ export function PaymentReceipt({
         </DialogHeader>
 
         <div className="space-y-6 print:p-8">
-          <Card>
+          <Card className="receipt-content">
             <CardContent className="pt-6 space-y-6">
               <div className="text-center border-b pb-4">
                 <h2 className="text-2xl font-bold uppercase">Recibo de Aluguel</h2>
