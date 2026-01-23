@@ -579,7 +579,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                     Juros ({interestRatePercentage}%)
                   </span>
                   <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600 font-medium"}>
-                    + {formatCurrency(values.juros.toFixed(2))}
+                    + {formatCurrency(values.juros.toFixed(2))} ({values.diasAtraso} dias)
                   </span>
                 </div>
               )}

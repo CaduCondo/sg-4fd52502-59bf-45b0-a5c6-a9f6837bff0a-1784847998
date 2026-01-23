@@ -113,13 +113,6 @@ export function PaymentReceipt({
 
   console.log("📄 PaymentReceipt renderizado com dados:", { payment, rental, property, tenant });
 
-  // Salvar PDF automaticamente ao montar o componente
-  useState(() => {
-    if (autoSavePdf && !pdfSaved) {
-      generateAndSavePDF();
-    }
-  });
-
   const totalAmount = payment.paidAmount || 0;
   const baseAmount = payment.expectedAmount || 0;
   const lateFee = payment.lateFee || 0;
