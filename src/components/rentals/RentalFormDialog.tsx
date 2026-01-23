@@ -370,7 +370,7 @@ export function RentalFormDialog({
             </div>
 
             <div className="space-y-2">
-              <div className="flex items-center space-x-2 h-10">
+              <div className="flex items-center space-x-2">
                 <Checkbox
                   id="hasGarage"
                   checked={hasGarage}
@@ -396,7 +396,6 @@ export function RentalFormDialog({
             </div>
 
             <div className="space-y-2">
-              <Label className="invisible">Placeholder</Label>
               <div className="flex items-center space-x-2">
                 <Checkbox
                   id="hasPartnerBroker"
