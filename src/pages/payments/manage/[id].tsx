@@ -1,15 +1,63 @@
+import { useState } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { ManagePaymentForm } from "@/components/payments/ManagePaymentForm";
+import { PaymentReceipt } from "@/components/PaymentReceipt";
+import type { Payment, Rental, Property, Tenant } from "@/types";
 
 export default function ManagePaymentPage() {
   const router = useRouter();
   const { id } = router.query;
+  const [showReceipt, setShowReceipt] = useState(false);
+  const [receiptData, setReceiptData] = useState<{
+    payment: Payment;
+    rental: Rental;
+    property: Property;
+    tenant: Tenant;
+  } | null>(null);
 
   if (!id) return null;
+
+  const handlePaymentSuccess = (data: {
+    payment: Payment;
+    rental: Rental;
+    property: Property;
+    tenant: Tenant;
+  }) => {
+    console.log("📄 Página recebeu dados do pagamento, exibindo recibo...", data);
+    setReceiptData(data);
+    setShowReceipt(true);
+  };
+
+  const handleCloseReceipt = () => {
+    console.log("🔙 Fechando recibo e voltando para listagem...");
+    setShowReceipt(false);
+    setReceiptData(null);
+    router.push("/payments");
+  };
+
+  if (showReceipt && receiptData) {
+    console.log("✅ Renderizando recibo na página");
+    return (
+      <>
+        <Head>
+          <title>Recibo de Pagamento - Sistema de Locações</title>
+        </Head>
+        <Layout>
+          <PaymentReceipt
+            payment={receiptData.payment}
+            rental={receiptData.rental}
+            property={receiptData.property}
+            tenant={receiptData.tenant}
+            onClose={handleCloseReceipt}
+          />
+        </Layout>
+      </>
+    );
+  }
 
   return (
     <>
@@ -28,8 +76,8 @@ export default function ManagePaymentPage() {
           </div>
 
           <ManagePaymentForm 
-            paymentId={id as string} 
-            embedded={false}
+            paymentId={id as string}
+            onSuccess={handlePaymentSuccess}
           />
         </div>
       </Layout>

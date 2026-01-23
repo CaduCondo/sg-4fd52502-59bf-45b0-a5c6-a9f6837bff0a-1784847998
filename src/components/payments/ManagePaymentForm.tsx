@@ -10,36 +10,26 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { AttachmentViewer } from "@/components/AttachmentViewer";
-import { PaymentReceipt } from "@/components/PaymentReceipt";
 import { Camera, Paperclip, Home, User, DollarSign, CreditCard, FileText } from "lucide-react";
 import type { Payment, Rental, Property, Tenant } from "@/types";
 
 interface ManagePaymentFormProps {
   paymentId: string;
-  onClose?: () => void;
-  onSuccess?: () => void;
-  embedded?: boolean;
+  onSuccess?: (data: {
+    payment: Payment;
+    rental: Rental;
+    property: Property;
+    tenant: Tenant;
+  }) => void;
 }
 
-export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: ManagePaymentFormProps) {
+export function ManagePaymentForm({ paymentId, onSuccess }: ManagePaymentFormProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [attachments, setAttachments] = useState<string[]>([]);
   const [removeFees, setRemoveFees] = useState(false);
-  const [showReceipt, setShowReceipt] = useState(false);
-  const [receiptData, setReceiptData] = useState<{
-    payment: Payment;
-    rental: Rental;
-    property: Property;
-    tenant: Tenant;
-  } | null>(null);
-
-  useEffect(() => {
-    console.log("🔄 Estado showReceipt mudou:", showReceipt);
-    console.log("🔄 Estado receiptData mudou:", receiptData);
-  }, [showReceipt, receiptData]);
 
   const [formData, setFormData] = useState({
     payment_date: "",
@@ -298,11 +288,6 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
         description: "Pagamento registrado com sucesso!",
       });
 
-      console.log("📞 Chamando callback onSuccess...");
-      if (onSuccess) {
-        onSuccess();
-      }
-
       console.log("🎯 Preparando dados do recibo...");
       const calculatedValues = calculateValues();
 
@@ -376,18 +361,17 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
         tenant: tenantForReceipt,
       });
 
-      console.log("💾 Setando receiptData...");
-      setReceiptData({
-        payment: paymentForReceipt,
-        rental: rentalForReceipt,
-        property: propertyForReceipt,
-        tenant: tenantForReceipt,
-      });
+      console.log("📞 Chamando callback onSuccess...");
+      if (onSuccess) {
+        onSuccess({
+          payment: paymentForReceipt,
+          rental: rentalForReceipt,
+          property: propertyForReceipt,
+          tenant: tenantForReceipt,
+        });
+      }
 
-      console.log("🎬 Setando showReceipt para TRUE...");
-      setShowReceipt(true);
-
-      console.log("✅ Estados setados! Aguardando re-renderização...");
+      console.log("✅ Callback executado com sucesso!");
 
     } catch (error) {
       console.error("💥 Erro ao confirmar recebimento:", error);
@@ -402,32 +386,7 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
     }
   };
 
-  console.log("🔍 Estado atual na renderização:", { showReceipt, hasReceiptData: !!receiptData });
-
-  if (showReceipt && receiptData) {
-    console.log("📄 RENDERIZANDO RECIBO - showReceipt:", showReceipt, "receiptData:", !!receiptData);
-    return (
-      <PaymentReceipt
-        payment={receiptData.payment}
-        rental={receiptData.rental}
-        property={receiptData.property}
-        tenant={receiptData.tenant}
-        onClose={() => {
-          console.log("🔙 Fechando recibo...");
-          setShowReceipt(false);
-          setReceiptData(null);
-          if (onClose) {
-            onClose();
-          } else if (!embedded) {
-            router.push("/payments");
-          }
-        }}
-      />
-    );
-  }
-
   if (loading) {
-    console.log("⏳ RENDERIZANDO LOADING");
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -436,8 +395,6 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
   }
 
   const values = calculateValues();
-
-  console.log("📝 RENDERIZANDO FORMULÁRIO - showReceipt:", showReceipt, "receiptData:", !!receiptData);
 
   return (
     <div className="space-y-6 pb-8">
@@ -717,13 +674,7 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
         <Button
           type="button"
           variant="outline"
-          onClick={() => {
-            if (onClose) {
-              onClose();
-            } else {
-              router.push("/payments");
-            }
-          }}
+          onClick={() => router.push("/payments")}
           disabled={isSubmitting}
         >
           Cancelar
