@@ -107,6 +107,8 @@ export function PaymentReceipt({
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
 
+  console.log("📄 PaymentReceipt renderizado com dados:", { payment, rental, property, tenant });
+
   const totalAmount = payment.paidAmount || 0;
   const baseAmount = payment.expectedAmount || 0;
   const lateFee = payment.lateFee || 0;
@@ -222,6 +224,8 @@ export function PaymentReceipt({
   ].filter(Boolean);
 
   const fullAddress = addressParts.join(", ");
+
+  console.log("✅ Renderizando Dialog do PaymentReceipt");
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
