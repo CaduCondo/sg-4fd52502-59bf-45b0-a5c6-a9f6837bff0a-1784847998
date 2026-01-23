@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Home, User, Calendar, X } from "lucide-react";
+import { Home, User, Calendar, X, FileText } from "lucide-react";
 import { formatCurrency } from "@/lib/masks";
 import type { Payment, Property, Tenant } from "@/types";
 
@@ -15,6 +15,7 @@ interface PaymentCardProps {
   expectedAmount: number;
   onCardClick: (paymentId: string) => void;
   onCancelPayment?: (paymentId: string, e: React.MouseEvent) => void;
+  onViewReceipt?: (paymentId: string, e: React.MouseEvent) => void;
   getMonthName: (month: number) => string;
 }
 
@@ -28,6 +29,7 @@ export function PaymentCard({
   expectedAmount,
   onCardClick,
   onCancelPayment,
+  onViewReceipt,
   getMonthName,
 }: PaymentCardProps) {
   const getStatusBadge = (status: Payment["status"]) => {
@@ -149,6 +151,17 @@ export function PaymentCard({
 
           {isPaid && onCancelPayment && (
             <div className="pt-2">
+              {onViewReceipt && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full text-blue-600 hover:text-blue-700 hover:bg-blue-50 h-7 text-xs mb-2"
+                  onClick={(e) => onViewReceipt(payment.id, e)}
+                >
+                  <FileText className="h-3 w-3 mr-1" />
+                  Ver Recibo
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="sm"
@@ -230,15 +243,28 @@ export function PaymentCard({
             </div>
             
             {isPaid && onCancelPayment && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-red-600 hover:text-red-700 hover:bg-red-50 h-7 text-xs"
-                onClick={(e) => onCancelPayment(payment.id, e)}
-              >
-                <X className="h-3 w-3 mr-1" />
-                Cancelar
-              </Button>
+              <>
+                {onViewReceipt && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 h-7 text-xs"
+                    onClick={(e) => onViewReceipt(payment.id, e)}
+                  >
+                    <FileText className="h-3 w-3 mr-1" />
+                    Ver Recibo
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-red-600 hover:text-red-700 hover:bg-red-50 h-7 text-xs"
+                  onClick={(e) => onCancelPayment(payment.id, e)}
+                >
+                  <X className="h-3 w-3 mr-1" />
+                  Cancelar
+                </Button>
+              </>
             )}
           </div>
         </div>

@@ -18,7 +18,6 @@ interface PaymentReceiptProps {
   property: Property;
   tenant: Tenant;
   onClose: () => void;
-  autoSavePdf?: boolean;
 }
 
 const numberToWords = (value: number): string => {
@@ -104,12 +103,10 @@ export function PaymentReceipt({
   property,
   tenant,
   onClose,
-  autoSavePdf = false,
 }: PaymentReceiptProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [pdfSaved, setPdfSaved] = useState(false);
 
   console.log("📄 PaymentReceipt renderizado com dados:", { payment, rental, property, tenant });
 
@@ -133,76 +130,6 @@ export function PaymentReceipt({
   
   const referenceDate = new Date(payment.referenceYear || 0, (payment.referenceMonth || 1) - 1, 1);
   const currentPaymentNumber = differenceInMonths(referenceDate, contractStartDate) + 1;
-
-  const generateAndSavePDF = async () => {
-    try {
-      setLoading(true);
-      console.log("📄 Gerando PDF do recibo automaticamente...");
-
-      // Usar a API de impressão do navegador para gerar PDF
-      const printWindow = window.open("", "_blank");
-      if (!printWindow) {
-        throw new Error("Não foi possível abrir janela de impressão");
-      }
-
-      // Clonar o conteúdo do recibo
-      const receiptContent = document.querySelector(".receipt-content");
-      if (!receiptContent) {
-        throw new Error("Conteúdo do recibo não encontrado");
-      }
-
-      // Criar HTML completo para impressão
-      const htmlContent = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="UTF-8">
-          <title>Recibo de Pagamento</title>
-          <style>
-            body { font-family: Arial, sans-serif; padding: 40px; }
-            .receipt-content { max-width: 800px; margin: 0 auto; }
-          </style>
-        </head>
-        <body>
-          ${receiptContent.innerHTML}
-        </body>
-        </html>
-      `;
-
-      printWindow.document.write(htmlContent);
-      printWindow.document.close();
-
-      // Esperar um pouco para o conteúdo carregar
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      // Imprimir para PDF
-      printWindow.print();
-
-      // Fechar janela após impressão
-      setTimeout(() => {
-        printWindow.close();
-      }, 1000);
-
-      setPdfSaved(true);
-      
-      console.log("✅ PDF gerado com sucesso!");
-      
-      toast({
-        title: "PDF Gerado",
-        description: "Recibo salvo como PDF com sucesso!",
-      });
-
-    } catch (error) {
-      console.error("❌ Erro ao gerar PDF:", error);
-      toast({
-        title: "Erro ao gerar PDF",
-        description: "Não foi possível gerar o PDF automaticamente.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleDownloadPDF = () => {
     setLoading(true);
@@ -300,12 +227,6 @@ export function PaymentReceipt({
   const fullAddress = addressParts.join(", ");
 
   console.log("✅ Renderizando Dialog do PaymentReceipt");
-
-  useEffect(() => {
-    if (autoSavePdf) {
-      handleDownloadPDF();
-    }
-  }, [autoSavePdf]);
 
   return (
     <Dialog open={true} onOpenChange={onClose}>

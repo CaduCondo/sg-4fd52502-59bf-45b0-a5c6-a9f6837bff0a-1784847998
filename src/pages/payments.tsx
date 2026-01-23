@@ -15,6 +15,8 @@ import { PaymentCard } from "@/components/payments/PaymentCard";
 import { ManagePaymentForm } from "@/components/payments/ManagePaymentForm";
 import { PaymentReceipt } from "@/components/PaymentReceipt";
 import type { Payment, Rental, Property, Tenant } from "@/types";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Payments() {
   const router = useRouter();
@@ -89,6 +91,115 @@ export default function Payments() {
     setShowReceipt(false);
     setReceiptData(null);
     loadPayments();
+  };
+
+  const handleViewReceipt = async (paymentId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    try {
+      // Buscar dados completos do pagamento
+      const { data: paymentData, error: paymentError } = await supabase
+        .from("payments")
+        .select(`
+          *,
+          rentals!inner (
+            *,
+            properties!inner (
+              *,
+              locations!inner (*)
+            ),
+            tenants!inner (*)
+          )
+        `)
+        .eq("id", paymentId)
+        .single();
+
+      if (paymentError) throw paymentError;
+
+      const rental = paymentData.rentals;
+      const property = rental.properties;
+      const location = property.locations;
+      const tenant = rental.tenants;
+
+      // Preparar dados do recibo
+      const paymentForReceipt: Payment = {
+        id: paymentData.id,
+        rentalId: paymentData.rental_id,
+        dueDate: paymentData.due_date,
+        expectedAmount: paymentData.expected_amount,
+        paidAmount: paymentData.paid_amount,
+        paymentDate: paymentData.payment_date,
+        status: paymentData.status,
+        paymentMethod: paymentData.payment_method,
+        notes: paymentData.notes,
+        referenceMonth: parseInt(paymentData.reference_month),
+        referenceYear: parseInt(paymentData.reference_year),
+        attachments: paymentData.attachments || [],
+        lateFee: paymentData.late_fee || 0,
+        interest: paymentData.interest || 0,
+      };
+
+      const rentalForReceipt: Rental = {
+        id: rental.id,
+        propertyId: rental.property_id,
+        tenantId: rental.tenant_id,
+        startDate: rental.start_date,
+        endDate: rental.end_date,
+        rentAmount: rental.monthly_rent,
+        monthlyRent: rental.monthly_rent,
+        garageValue: rental.garage_value,
+        value: rental.value,
+        paymentDay: rental.payment_day,
+        status: rental.is_active ? "active" : "terminated",
+        autoRenew: false,
+      };
+
+      const propertyForReceipt: Property = {
+        id: property.id,
+        locationId: property.location_id,
+        location: location?.name || "",
+        address: location?.street || "",
+        number: location?.number || "",
+        complement: property.complement || "",
+        neighborhood: location?.neighborhood || "",
+        city: location?.city || "",
+        state: location?.state || "",
+        zipCode: location?.zip_code || "",
+        rooms: property.rooms || 0,
+        bathrooms: property.bathrooms || 0,
+        area: property.area || 0,
+        status: property.status || "available",
+        value: property.value,
+      };
+
+      const tenantForReceipt: Tenant = {
+        id: tenant.id,
+        name: tenant.name,
+        email: tenant.email || "",
+        phone: tenant.phone || "",
+        documentType: tenant.document_type || "cpf",
+        document: tenant.document || "",
+        cpf: tenant.cpf || "",
+        rg: tenant.rg || "",
+        status: tenant.status || "active",
+        active: true,
+      };
+
+      setReceiptData({
+        payment: paymentForReceipt,
+        rental: rentalForReceipt,
+        property: propertyForReceipt,
+        tenant: tenantForReceipt,
+      });
+      setShowReceipt(true);
+    } catch (error) {
+      console.error("Erro ao carregar dados do recibo:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar o recibo.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleCancelPaymentClick = async (paymentId: string, e: React.MouseEvent) => {
@@ -252,6 +363,7 @@ export default function Payments() {
                           installment={getPaymentInstallment(payment)}
                           expectedAmount={getExpectedAmount(payment)}
                           onCardClick={handleCardClick}
+                          onViewReceipt={handleViewReceipt}
                           getMonthName={getMonthName}
                         />
                       </FloatingCard>
@@ -296,6 +408,7 @@ export default function Payments() {
                           expectedAmount={getExpectedAmount(payment)}
                           onCardClick={handleCardClick}
                           onCancelPayment={handleCancelPaymentClick}
+                          onViewReceipt={handleViewReceipt}
                           getMonthName={getMonthName}
                         />
                       </FloatingCard>
@@ -330,7 +443,6 @@ export default function Payments() {
             property={receiptData.property}
             tenant={receiptData.tenant}
             onClose={handleCloseReceipt}
-            autoSavePdf={true}
           />
         )}
       </Layout>

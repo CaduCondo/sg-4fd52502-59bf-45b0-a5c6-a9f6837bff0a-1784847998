@@ -40,6 +40,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     payment_method: "pix",
     amount_to_pay: "",
     notes: "",
+    pix_code_type: "CP",
   });
 
   const [payment, setPayment] = useState<any>(null);
@@ -131,6 +132,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         payment_method: paymentData.payment_method || "pix",
         amount_to_pay: formatCurrency((paymentData.paid_amount || paymentData.expected_amount || 0).toFixed(2)),
         notes: paymentData.notes || "",
+        pix_code_type: paymentData.pix_code_type || "CP",
       });
     } catch (error) {
       console.error("Erro ao carregar dados do pagamento:", error);
@@ -191,6 +193,19 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
   const parseCurrency = (value: string): number => {
     const numericValue = value.replace(/[^\d,]/g, "").replace(",", ".");
     return parseFloat(numericValue) || 0;
+  };
+
+  const generatePixCode = (paymentDate: string, pixType: string): string => {
+    if (!paymentDate || !pixType) return "";
+    
+    const date = new Date(paymentDate);
+    const day = String(date.getDate()).padStart(2, "0");
+    
+    // Gerar 4 dígitos sequenciais (pode ser baseado em timestamp ou ID)
+    const timestamp = Date.now();
+    const sequence = String(timestamp).slice(-4);
+    
+    return `${day}${sequence}${pixType}`;
   };
 
   const handleFileUpload = async (file: File) => {
@@ -298,6 +313,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         late_fee: removeFees ? 0 : calculatedValues.multa,
         interest: removeFees ? 0 : calculatedValues.juros,
         updated_at: new Date().toISOString(),
+        pix_code_type: formData.pix_code_type,
       };
 
       console.log("📤 Dados a serem salvos:", paymentData);
@@ -313,6 +329,22 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       }
 
       console.log("✅ Pagamento salvo com sucesso no banco!");
+
+      // Gerar e salvar código PIX no rental se forma de pagamento for PIX
+      if (formData.payment_method === "pix" && formData.pix_code_type) {
+        const pixCode = generatePixCode(formData.payment_date, formData.pix_code_type);
+        
+        const { error: rentalError } = await supabase
+          .from("rentals")
+          .update({ pix_code: pixCode })
+          .eq("id", payment.rental_id);
+        
+        if (rentalError) {
+          console.error("❌ Erro ao salvar código PIX:", rentalError);
+        } else {
+          console.log("✅ Código PIX salvo:", pixCode);
+        }
+      }
 
       toast({
         title: "Sucesso",
@@ -652,9 +684,32 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                     <SelectItem value="transferencia">Transferência</SelectItem>
                     <SelectItem value="debito">Débito</SelectItem>
                     <SelectItem value="credito">Crédito</SelectItem>
+                    <SelectItem value="boleto">Boleto</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+
+              {formData.payment_method !== "dinheiro" && formData.payment_method !== "boleto" && (
+                <div>
+                  <Label htmlFor="pix_code_type">
+                    Código Pix <span className="text-red-500">*</span>
+                  </Label>
+                  <Select
+                    value={formData.pix_code_type}
+                    onValueChange={(value) => setFormData({ ...formData, pix_code_type: value })}
+                    disabled={isReadOnly}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="CP">CP</SelectItem>
+                      <SelectItem value="CD">CD</SelectItem>
+                      <SelectItem value="CE">CE</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               <div>
                 <Label htmlFor="amount_to_pay">
