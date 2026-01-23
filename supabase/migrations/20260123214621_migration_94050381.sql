@@ -1,0 +1,3 @@
+ALTER TABLE rentals 
+ADD COLUMN IF NOT EXISTS has_partner_broker BOOLEAN DEFAULT false,
+ADD COLUMN IF NOT EXISTS partner_broker_value NUMERIC(10,2) DEFAULT 0;

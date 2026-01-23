@@ -178,6 +178,8 @@ export interface Rental {
   referenceYear?: number;
   
   createdAt?: string;
+  hasPartnerBroker?: boolean;
+  partnerBrokerValue?: number;
 }
 
 export interface Payment {

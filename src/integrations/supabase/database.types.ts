@@ -309,9 +309,11 @@ export type Database = {
           end_date: string | null
           garage_value: number | null
           has_garage: boolean | null
+          has_partner_broker: boolean | null
           id: string
           is_active: boolean | null
           monthly_rent: number
+          partner_broker_value: number | null
           payment_day: number
           pix_code: string | null
           property_id: string
@@ -329,9 +331,11 @@ export type Database = {
           end_date?: string | null
           garage_value?: number | null
           has_garage?: boolean | null
+          has_partner_broker?: boolean | null
           id?: string
           is_active?: boolean | null
           monthly_rent: number
+          partner_broker_value?: number | null
           payment_day: number
           pix_code?: string | null
           property_id: string
@@ -349,9 +353,11 @@ export type Database = {
           end_date?: string | null
           garage_value?: number | null
           has_garage?: boolean | null
+          has_partner_broker?: boolean | null
           id?: string
           is_active?: boolean | null
           monthly_rent?: number
+          partner_broker_value?: number | null
           payment_day?: number
           pix_code?: string | null
           property_id?: string

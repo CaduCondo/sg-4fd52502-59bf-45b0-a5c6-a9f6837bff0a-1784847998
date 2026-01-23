@@ -165,7 +165,9 @@ export function RentalFormDialog({
         hasGarage,
         garageValue,
         attachments,
-        securityDeposit
+        securityDeposit,
+        false,
+        ""
       );
 
       if (rental) {
@@ -354,7 +356,7 @@ export function RentalFormDialog({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="securityDeposit">Valor Caução</Label>
               <Input
@@ -367,6 +369,7 @@ export function RentalFormDialog({
             </div>
 
             <div className="space-y-2">
+              <Label className="invisible">Placeholder</Label>
               <div className="flex items-center space-x-2">
                 <Checkbox
                   id="hasGarage"
@@ -392,6 +395,15 @@ export function RentalFormDialog({
                   disabled={!isEditing}
                 />
               )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="brokerPartner">Corretor Parceiro</Label>
+              <Input
+                id="brokerPartner"
+                placeholder="Nome do corretor"
+                disabled={!isEditing}
+              />
             </div>
           </div>
 
