@@ -22,7 +22,6 @@ import {
   FileText,
   Paperclip,
   Camera,
-  X,
 } from "lucide-react";
 import { formatCurrency, parseCurrency } from "@/lib/masks";
 import { AttachmentViewer } from "@/components/AttachmentViewer";
@@ -31,13 +30,15 @@ import { Checkbox } from "@/components/ui/checkbox";
 interface ManagePaymentFormProps {
   paymentId: string;
   onClose?: () => void;
+  onSuccess?: () => void;
+  embedded?: boolean;
 }
 
 interface Payment {
   id: string;
   rentalId: string;
   dueDate: string;
-  amount: number;
+  expectedAmount: number;
   status: string;
   paymentDate: string | null;
   paymentMethod: string | null;
@@ -69,6 +70,8 @@ interface TenantInfo {
   email: string;
   document: string;
   documentType: string;
+  cpf: string;
+  rg: string;
 }
 
 interface RentalInfo {
@@ -79,11 +82,12 @@ interface RentalInfo {
   totalValue: number;
 }
 
-export function ManagePaymentForm({ paymentId, onClose }: ManagePaymentFormProps) {
+export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: ManagePaymentFormProps) {
   const router = useRouter();
   const { toast } = useToast();
 
   const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [payment, setPayment] = useState<Payment | null>(null);
   const [propertyInfo, setPropertyInfo] = useState<PropertyInfo | null>(null);
   const [tenantInfo, setTenantInfo] = useState<TenantInfo | null>(null);
@@ -111,18 +115,6 @@ export function ManagePaymentForm({ paymentId, onClose }: ManagePaymentFormProps
     loadPaymentData();
     loadConfig();
   }, [paymentId]);
-
-  useEffect(() => {
-    const values = calculateValues();
-    const finalAmount = removeFees 
-      ? values.valorAluguel 
-      : values.valorTotal;
-    
-    setFormData(prev => ({
-      ...prev,
-      amount_to_pay: formatCurrency(finalAmount.toFixed(2))
-    }));
-  }, [formData.payment_date, rentalValue, garageValue, lateFeePercentage, interestRatePercentage, removeFees]);
 
   const loadConfig = async () => {
     try {
@@ -192,7 +184,9 @@ export function ManagePaymentForm({ paymentId, onClose }: ManagePaymentFormProps
               phone,
               email,
               document,
-              document_type
+              document_type,
+              cpf,
+              rg
             )
           )
         `
@@ -211,7 +205,7 @@ export function ManagePaymentForm({ paymentId, onClose }: ManagePaymentFormProps
         id: paymentData.id,
         rentalId: paymentData.rental_id,
         dueDate: paymentData.due_date,
-        amount: paymentData.amount,
+        expectedAmount: paymentData.expected_amount,
         status: paymentData.status,
         paymentDate: paymentData.payment_date,
         paymentMethod: paymentData.payment_method,
@@ -235,26 +229,28 @@ export function ManagePaymentForm({ paymentId, onClose }: ManagePaymentFormProps
       setPropertyInfo({
         locationName: location.name,
         complement: property.complement || "",
-        street: location.street,
-        number: location.number,
-        neighborhood: location.neighborhood,
+        street: location.street || "",
+        number: location.number || "",
+        neighborhood: location.neighborhood || "",
         city: location.city,
         state: location.state,
-        zipCode: location.zip_code,
-        rooms: property.rooms,
-        bathrooms: property.bathrooms,
-        area: property.area,
-        hasGarage: property.has_garage,
-        hasFurniture: property.has_furniture,
-        acceptsPets: property.accepts_pets,
+        zipCode: location.zip_code || "",
+        rooms: property.rooms || 0,
+        bathrooms: property.bathrooms || 0,
+        area: property.area || 0,
+        hasGarage: property.has_garage || false,
+        hasFurniture: property.has_furniture || false,
+        acceptsPets: property.accepts_pets || false,
       });
 
       setTenantInfo({
         name: tenant.name,
-        phone: tenant.phone,
-        email: tenant.email,
-        document: tenant.document,
-        documentType: tenant.document_type,
+        phone: tenant.phone || "",
+        email: tenant.email || "",
+        document: tenant.document || "",
+        documentType: tenant.document_type || "",
+        cpf: tenant.cpf || "",
+        rg: tenant.rg || "",
       });
 
       const rentalValue = Number(rental.monthly_rent || 0);
@@ -283,30 +279,43 @@ export function ManagePaymentForm({ paymentId, onClose }: ManagePaymentFormProps
   };
 
   const calculateValues = () => {
+    // Default zero values
+    const result = {
+      valorAluguel: 0,
+      multa: 0,
+      juros: 0,
+      valorTotal: 0,
+      diasAtraso: 0,
+      jurosDiario: 0,
+    };
+
+    if (!payment) return result;
+
     const valorAluguel = rentalValue + garageValue;
     let multa = 0;
     let juros = 0;
     let diasAtraso = 0;
-    let jurosDiario = 0;
 
-    if (payment && formData.payment_date) {
+    if (formData.payment_date) {
       const dueDate = new Date(payment.dueDate + "T12:00:00");
       const paymentDate = new Date(formData.payment_date + "T12:00:00");
 
       if (paymentDate > dueDate) {
+        // Calcular dias de atraso
         const diffTime = paymentDate.getTime() - dueDate.getTime();
         diasAtraso = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
+        // Multa (percentual fixo sobre valor do aluguel)
         multa = (valorAluguel * lateFeePercentage) / 100;
 
-        jurosDiario = interestRatePercentage / 30;
+        // Juros por dia
+        const jurosDiario = interestRatePercentage / 30;
         juros = (valorAluguel * jurosDiario * diasAtraso) / 100;
       }
     }
 
-    const valorTotal = removeFees 
-      ? valorAluguel 
-      : valorAluguel + multa + juros;
+    // Se checkbox marcado, remove multa/juros
+    const valorTotal = removeFees ? valorAluguel : valorAluguel + multa + juros;
 
     return {
       valorAluguel,
@@ -314,9 +323,32 @@ export function ManagePaymentForm({ paymentId, onClose }: ManagePaymentFormProps
       juros,
       valorTotal,
       diasAtraso,
-      jurosDiario,
+      jurosDiario: interestRatePercentage / 30,
     };
   };
+
+  // Safe to call anytime as it checks for payment existence inside
+  const values = calculateValues();
+
+  // Effect to update amount_to_pay
+  useEffect(() => {
+    if (!loading && payment) {
+      const currentValues = calculateValues();
+      setFormData((prev) => ({
+        ...prev,
+        amount_to_pay: formatCurrency(currentValues.valorTotal.toFixed(2)),
+      }));
+    }
+  }, [
+    formData.payment_date,
+    rentalValue,
+    garageValue,
+    lateFeePercentage,
+    interestRatePercentage,
+    removeFees,
+    loading,
+    payment
+  ]);
 
   const handleFileUpload = async (file: File) => {
     try {
@@ -324,6 +356,7 @@ export function ManagePaymentForm({ paymentId, onClose }: ManagePaymentFormProps
 
       const formData = new FormData();
       formData.append("file", file);
+      // O backend agora gera o nome, mas enviamos o original para extrair a extensão/base
       formData.append("fileName", file.name);
 
       const response = await fetch("/api/upload", {
@@ -403,40 +436,62 @@ export function ManagePaymentForm({ paymentId, onClose }: ManagePaymentFormProps
     }
 
     try {
-      const amountPaid = parseCurrency(formData.amount_to_pay);
+      setIsSubmitting(true);
 
-      const { error } = await supabase
+      // Preparar dados do pagamento
+      // Nota: paid_amount é a coluna correta para armazenar o valor efetivamente pago
+      const paymentData = {
+        payment_date: formData.payment_date,
+        payment_method: formData.payment_method,
+        paid_amount: parseCurrency(formData.amount_to_pay), 
+        notes: formData.notes,
+        status: "paid",
+        attachments: attachments.length > 0 ? attachments : null,
+        updated_at: new Date().toISOString(),
+      };
+
+      // Atualizar pagamento no banco
+      const { error: updateError } = await supabase
         .from("payments")
-        .update({
-          payment_date: formData.payment_date,
-          payment_method: formData.payment_method,
-          amount_paid: amountPaid,
-          status: "paid",
-          notes: formData.notes || null,
-          attachments: attachments,
-          updated_at: new Date().toISOString(),
-        })
+        .update(paymentData)
         .eq("id", paymentId);
 
-      if (error) throw error;
+      if (updateError) {
+        console.error("Erro ao atualizar pagamento:", updateError);
+        toast({
+          title: "Erro",
+          description: "Erro ao registrar pagamento. Tente novamente.",
+          variant: "destructive",
+        });
+        return;
+      }
 
       toast({
         title: "Sucesso",
         description: "Pagamento registrado com sucesso!",
       });
 
+      if (onSuccess) {
+        onSuccess();
+      }
+
       if (onClose) {
         onClose();
-      } else {
+      }
+
+      // Redirecionar apenas se não for embedded
+      if (!embedded) {
         router.push("/payments");
       }
     } catch (error) {
-      console.error("Erro ao salvar pagamento:", error);
+      console.error("Erro ao confirmar recebimento:", error);
       toast({
         title: "Erro",
-        description: "Erro ao salvar pagamento.",
+        description: "Erro inesperado ao registrar pagamento.",
         variant: "destructive",
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -459,8 +514,6 @@ export function ManagePaymentForm({ paymentId, onClose }: ManagePaymentFormProps
     );
   }
 
-  const values = calculateValues();
-
   return (
     <div className="space-y-6 pb-8">
       <div className="text-center mb-6">
@@ -469,80 +522,73 @@ export function ManagePaymentForm({ paymentId, onClose }: ManagePaymentFormProps
         </h1>
       </div>
 
+      {/* Informações do Imóvel e Locatário - Layout Compacto */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Informações do Imóvel */}
         <Card>
-          <CardHeader>
+          <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center gap-2">
               <Home className="h-5 w-5" />
               Informações do Imóvel
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-2 text-sm">
+          <CardContent className="space-y-2">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
               <div>
                 <span className="font-medium text-muted-foreground">Local:</span>
-                <p className="text-foreground">{propertyInfo.locationName}</p>
+                <p className="text-foreground">{propertyInfo.locationName || "Não informado"}</p>
               </div>
-              {propertyInfo.complement && (
-                <div>
-                  <span className="font-medium text-muted-foreground">Complemento:</span>
-                  <p className="text-foreground">{propertyInfo.complement}</p>
-                </div>
-              )}
               <div>
+                <span className="font-medium text-muted-foreground">Complemento:</span>
+                <p className="text-foreground">{propertyInfo.complement || "Não informado"}</p>
+              </div>
+              <div className="col-span-2">
                 <span className="font-medium text-muted-foreground">Endereço:</span>
                 <p className="text-foreground">
-                  {propertyInfo.street}, {propertyInfo.number} - {propertyInfo.neighborhood}
+                  {propertyInfo.street}, {propertyInfo.number}
                 </p>
-                <p className="text-foreground">
-                  {propertyInfo.city} - {propertyInfo.state}
-                </p>
-                <p className="text-foreground">CEP: {propertyInfo.zipCode}</p>
               </div>
-              <div className="grid grid-cols-2 gap-2 pt-2">
-                <div>
-                  <span className="font-medium text-muted-foreground">Quartos:</span>
-                  <p className="text-foreground">{propertyInfo.rooms}</p>
-                </div>
-                <div>
-                  <span className="font-medium text-muted-foreground">Banheiros:</span>
-                  <p className="text-foreground">{propertyInfo.bathrooms}</p>
-                </div>
-                <div>
-                  <span className="font-medium text-muted-foreground">Área:</span>
-                  <p className="text-foreground">{propertyInfo.area} m²</p>
-                </div>
+              <div>
+                <span className="font-medium text-muted-foreground">Cidade/UF:</span>
+                <p className="text-foreground">{propertyInfo.city} - {propertyInfo.state}</p>
+              </div>
+              <div>
+                <span className="font-medium text-muted-foreground">CEP:</span>
+                <p className="text-foreground">{propertyInfo.zipCode || "Não informado"}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
+        {/* Informações do Locatário */}
         <Card>
-          <CardHeader>
+          <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center gap-2">
               <User className="h-5 w-5" />
               Informações do Locatário
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-2 text-sm">
-              <div>
+          <CardContent className="space-y-2">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+              <div className="col-span-2">
                 <span className="font-medium text-muted-foreground">Nome:</span>
-                <p className="text-foreground">{tenantInfo.name}</p>
+                <p className="text-foreground">{tenantInfo.name || "Não informado"}</p>
               </div>
               <div>
-                <span className="font-medium text-muted-foreground">
-                  {tenantInfo.documentType === "cpf" ? "CPF" : "CNPJ"}:
-                </span>
-                <p className="text-foreground">{tenantInfo.document}</p>
+                <span className="font-medium text-muted-foreground">CPF:</span>
+                <p className="text-foreground">{tenantInfo.cpf || "Não informado"}</p>
+              </div>
+              <div>
+                <span className="font-medium text-muted-foreground">RG:</span>
+                <p className="text-foreground">{tenantInfo.rg || "Não informado"}</p>
               </div>
               <div>
                 <span className="font-medium text-muted-foreground">Telefone:</span>
-                <p className="text-foreground">{tenantInfo.phone}</p>
+                <p className="text-foreground">{tenantInfo.phone || "Não informado"}</p>
               </div>
               <div>
                 <span className="font-medium text-muted-foreground">Email:</span>
-                <p className="text-foreground">{tenantInfo.email}</p>
+                <p className="text-foreground truncate">{tenantInfo.email || "Não informado"}</p>
               </div>
             </div>
           </CardContent>
@@ -622,13 +668,26 @@ export function ManagePaymentForm({ paymentId, onClose }: ManagePaymentFormProps
                 </div>
               )}
 
+              {/* Juros (se houver) */}
               {values.juros > 0 && (
                 <div className="flex justify-between items-center py-2 border-b">
-                  <span className={`text-sm font-medium ${removeFees ? "line-through text-muted-foreground" : "text-red-600"}`}>
-                    Juros ({values.jurosDiario.toFixed(4)}% ao dia × {values.diasAtraso} dias)
+                  <span
+                    className={
+                      removeFees
+                        ? "line-through text-muted-foreground text-sm font-medium"
+                        : "text-sm font-medium text-red-600"
+                    }
+                  >
+                    Juros ({interestRatePercentage}% ao mês) × {values.diasAtraso} dias
                   </span>
-                  <span className={`text-sm font-semibold ${removeFees ? "line-through text-muted-foreground" : "text-red-600"}`}>
-                    + {formatCurrency(values.juros.toString())}
+                  <span
+                    className={
+                      removeFees
+                        ? "line-through text-muted-foreground text-sm font-semibold"
+                        : "text-sm font-semibold text-red-600"
+                    }
+                  >
+                    + {formatCurrency(values.juros.toFixed(2))}
                   </span>
                 </div>
               )}
@@ -799,11 +858,17 @@ export function ManagePaymentForm({ paymentId, onClose }: ManagePaymentFormProps
             }
           }}
           size="lg"
+          disabled={isSubmitting}
         >
           Cancelar
         </Button>
-        <Button type="button" onClick={handleSubmit} size="lg">
-          Confirmar Recebimento
+        <Button 
+          type="button" 
+          onClick={handleSubmit} 
+          size="lg"
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? "Salvando..." : "Confirmar Recebimento"}
         </Button>
       </div>
     </div>
