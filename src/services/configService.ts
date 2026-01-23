@@ -32,26 +32,20 @@ export const siteConfig = {
 };
 
 // Funções para gerenciar configurações dinâmicas do sistema (banco de dados)
-export const getConfig = async (): Promise<CompanyConfig | null> => {
-  try {
-    const { data, error } = await supabase
-      .from("configs")
-      .select("*")
-      .single();
+export async function getConfig(): Promise<CompanyConfig | null> {
+  const { data, error } = await supabase
+    .from("configs")
+    .select("*")
+    .limit(1)
+    .maybeSingle();
 
-    if (error) {
-      if (error.code === 'PGRST116') { // No rows found
-        return null;
-      }
-      throw error;
-    }
-
-    return data;
-  } catch (error) {
+  if (error) {
     console.error("Error fetching config:", error);
     throw error;
   }
-};
+
+  return data;
+}
 
 export const updateConfig = async (config: CompanyConfig): Promise<CompanyConfig> => {
   try {
