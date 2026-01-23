@@ -27,9 +27,13 @@ export default function ManagePaymentPage() {
     property: Property;
     tenant: Tenant;
   }) => {
-    console.log("📄 Página recebeu dados do pagamento, exibindo recibo...", data);
+    console.log("🎯 handlePaymentSuccess CHAMADO NA PÁGINA!");
+    console.log("📄 Página recebeu dados do pagamento:", data);
+    console.log("🔧 Setando receiptData...");
     setReceiptData(data);
+    console.log("🔧 Setando showReceipt para true...");
     setShowReceipt(true);
+    console.log("✅ Estados setados! Recibo deve aparecer agora!");
   };
 
   const handleCloseReceipt = () => {
@@ -39,8 +43,11 @@ export default function ManagePaymentPage() {
     router.push("/payments");
   };
 
+  console.log("🔍 Estado atual da página - showReceipt:", showReceipt, "hasReceiptData:", !!receiptData);
+
   if (showReceipt && receiptData) {
-    console.log("✅ Renderizando recibo na página");
+    console.log("✅ CONDIÇÃO SATISFEITA - Renderizando PaymentReceipt");
+    console.log("📊 showReceipt:", showReceipt, "receiptData:", !!receiptData);
     return (
       <>
         <Head>

@@ -363,17 +363,21 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         tenant: tenantForReceipt,
       });
 
-      console.log("📞 Chamando callback onSuccess...");
+      console.log("📞 Chamando callback onSuccess com dados completos...");
+      console.log("📦 Dados sendo enviados:", { paymentForReceipt, rentalForReceipt, propertyForReceipt, tenantForReceipt });
+
       if (onSuccess) {
+        console.log("✅ onSuccess existe! Chamando agora...");
         onSuccess({
           payment: paymentForReceipt,
           rental: rentalForReceipt,
           property: propertyForReceipt,
           tenant: tenantForReceipt,
         });
+        console.log("✅ onSuccess foi chamado!");
+      } else {
+        console.log("❌ onSuccess NÃO existe!");
       }
-
-      console.log("✅ Callback executado com sucesso!");
 
     } catch (error) {
       console.error("💥 Erro ao confirmar recebimento:", error);
