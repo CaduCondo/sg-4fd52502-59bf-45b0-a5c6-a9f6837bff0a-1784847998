@@ -22,10 +22,12 @@ import {
   FileText,
   Paperclip,
   Camera,
+  X
 } from "lucide-react";
 import { formatCurrency, parseCurrency } from "@/lib/masks";
 import { AttachmentViewer } from "@/components/AttachmentViewer";
 import { Checkbox } from "@/components/ui/checkbox";
+import { PaymentReceipt } from "@/components/PaymentReceipt";
 
 interface ManagePaymentFormProps {
   paymentId: string;
@@ -100,6 +102,10 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
   const [interestRatePercentage, setInterestRatePercentage] = useState(0);
 
   const [removeFees, setRemoveFees] = useState(false);
+  
+  // Estado para exibir o recibo após confirmação
+  const [showReceipt, setShowReceipt] = useState(false);
+  const [receiptData, setReceiptData] = useState<any>(null);
 
   const [formData, setFormData] = useState({
     payment_date: new Date().toISOString().split("T")[0],
@@ -310,11 +316,12 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
 
         // Juros por dia
         const jurosDiario = interestRatePercentage / 30;
-        juros = (valorAluguel * jurosDiario * diasAtraso) / 100;
+        juros = (valorAluguel * (jurosDiario / 100) * diasAtraso);
       }
     }
 
     // Se checkbox marcado, remove multa/juros
+    // O valor total deve refletir o valor que será pago/cobrado
     const valorTotal = removeFees ? valorAluguel : valorAluguel + multa + juros;
 
     return {
@@ -330,7 +337,7 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
   // Safe to call anytime as it checks for payment existence inside
   const values = calculateValues();
 
-  // Effect to update amount_to_pay
+  // Effect to update amount_to_pay when calculation params change
   useEffect(() => {
     if (!loading && payment) {
       const currentValues = calculateValues();
@@ -356,7 +363,6 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
 
       const formData = new FormData();
       formData.append("file", file);
-      // O backend agora gera o nome, mas enviamos o original para extrair a extensão/base
       formData.append("fileName", file.name);
 
       const response = await fetch("/api/upload", {
@@ -471,18 +477,67 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
         description: "Pagamento registrado com sucesso!",
       });
 
+      // ✅ Preparar dados do recibo
+      const calculatedValues = calculateValues();
+      setReceiptData({
+        payment: {
+          id: payment.id,
+          dueDate: payment.dueDate,
+          expectedAmount: payment.expectedAmount,
+          paidAmount: parseCurrency(formData.amount_to_pay),
+          paymentDate: formData.payment_date,
+          paymentMethod: formData.payment_method,
+          notes: formData.notes,
+          attachments: attachments,
+          status: "paid",
+          referenceMonth: new Date(payment.dueDate).getMonth() + 1,
+          referenceYear: new Date(payment.dueDate).getFullYear(),
+          lateFee: removeFees ? 0 : calculatedValues.multa,
+          interest: removeFees ? 0 : calculatedValues.juros,
+        },
+        rental: {
+          startDate: rentalInfo.startDate,
+          endDate: rentalInfo.endDate || "",
+          monthlyRent: rentalValue,
+          garageValue: garageValue,
+          value: rentalInfo.totalValue,
+        },
+        property: {
+          id: "",
+          location: propertyInfo.locationName,
+          address: propertyInfo.street,
+          number: propertyInfo.number,
+          complement: propertyInfo.complement,
+          neighborhood: propertyInfo.neighborhood,
+          city: propertyInfo.city,
+          state: propertyInfo.state,
+          zipCode: propertyInfo.zipCode,
+          rooms: propertyInfo.rooms,
+          bathrooms: propertyInfo.bathrooms,
+          area: propertyInfo.area,
+        },
+        tenant: {
+          id: "",
+          name: tenantInfo.name,
+          phone: tenantInfo.phone,
+          email: tenantInfo.email,
+          cpf: tenantInfo.cpf,
+          rg: tenantInfo.rg,
+          document: tenantInfo.document,
+          documentType: tenantInfo.documentType,
+        },
+      });
+
+      // ✅ Exibir recibo
+      setShowReceipt(true);
+
+      // Chamar callback de sucesso se existir (apenas para atualizar listas pai)
       if (onSuccess) {
         onSuccess();
       }
+      // Nota: NÃO chamamos onClose() aqui porque queremos mostrar o recibo.
+      // O recibo tem seu próprio botão de fechar que chamará onClose().
 
-      if (onClose) {
-        onClose();
-      }
-
-      // Redirecionar apenas se não for embedded
-      if (!embedded) {
-        router.push("/payments");
-      }
     } catch (error) {
       console.error("Erro ao confirmar recebimento:", error);
       toast({
@@ -514,6 +569,26 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
     );
   }
 
+  // ✅ Se recibo deve ser exibido, renderizar PaymentReceipt
+  if (showReceipt && receiptData) {
+    return (
+      <PaymentReceipt
+        payment={receiptData.payment}
+        rental={receiptData.rental}
+        property={receiptData.property}
+        tenant={receiptData.tenant}
+        onClose={() => {
+          setShowReceipt(false);
+          if (onClose) {
+            onClose();
+          } else if (!embedded) {
+            router.push("/payments");
+          }
+        }}
+      />
+    );
+  }
+
   return (
     <div className="space-y-6 pb-8">
       <div className="text-center mb-6">
@@ -533,28 +608,26 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-              <div>
-                <span className="font-medium text-muted-foreground">Local:</span>
-                <p className="text-foreground">{propertyInfo.locationName || "Não informado"}</p>
+            <div className="space-y-1 text-sm">
+              <div className="flex gap-2">
+                <span className="font-medium text-muted-foreground min-w-[80px]">Local:</span>
+                <p className="text-foreground flex-1">{propertyInfo.locationName || "Não informado"}</p>
               </div>
-              <div>
-                <span className="font-medium text-muted-foreground">Complemento:</span>
-                <p className="text-foreground">{propertyInfo.complement || "Não informado"}</p>
+              <div className="flex gap-2">
+                <span className="font-medium text-muted-foreground min-w-[80px]">Compl:</span>
+                <p className="text-foreground flex-1">{propertyInfo.complement || "Não informado"}</p>
               </div>
-              <div className="col-span-2">
-                <span className="font-medium text-muted-foreground">Endereço:</span>
-                <p className="text-foreground">
-                  {propertyInfo.street}, {propertyInfo.number}
-                </p>
+              <div className="flex gap-2">
+                <span className="font-medium text-muted-foreground min-w-[80px]">Endereço:</span>
+                <p className="text-foreground flex-1">{propertyInfo.street}, {propertyInfo.number}</p>
               </div>
-              <div>
-                <span className="font-medium text-muted-foreground">Cidade/UF:</span>
-                <p className="text-foreground">{propertyInfo.city} - {propertyInfo.state}</p>
+              <div className="flex gap-2">
+                <span className="font-medium text-muted-foreground min-w-[80px]">Cidade/UF:</span>
+                <p className="text-foreground flex-1">{propertyInfo.city} - {propertyInfo.state}</p>
               </div>
-              <div>
-                <span className="font-medium text-muted-foreground">CEP:</span>
-                <p className="text-foreground">{propertyInfo.zipCode || "Não informado"}</p>
+              <div className="flex gap-2">
+                <span className="font-medium text-muted-foreground min-w-[80px]">CEP:</span>
+                <p className="text-foreground flex-1">{propertyInfo.zipCode || "Não informado"}</p>
               </div>
             </div>
           </CardContent>
@@ -569,26 +642,26 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-              <div className="col-span-2">
-                <span className="font-medium text-muted-foreground">Nome:</span>
-                <p className="text-foreground">{tenantInfo.name || "Não informado"}</p>
+            <div className="space-y-1 text-sm">
+              <div className="flex gap-2">
+                <span className="font-medium text-muted-foreground min-w-[80px]">Nome:</span>
+                <p className="text-foreground flex-1">{tenantInfo.name || "Não informado"}</p>
               </div>
-              <div>
-                <span className="font-medium text-muted-foreground">CPF:</span>
-                <p className="text-foreground">{tenantInfo.cpf || "Não informado"}</p>
+              <div className="flex gap-2">
+                <span className="font-medium text-muted-foreground min-w-[80px]">CPF:</span>
+                <p className="text-foreground flex-1">{tenantInfo.cpf || "Não informado"}</p>
               </div>
-              <div>
-                <span className="font-medium text-muted-foreground">RG:</span>
-                <p className="text-foreground">{tenantInfo.rg || "Não informado"}</p>
+              <div className="flex gap-2">
+                <span className="font-medium text-muted-foreground min-w-[80px]">RG:</span>
+                <p className="text-foreground flex-1">{tenantInfo.rg || "Não informado"}</p>
               </div>
-              <div>
-                <span className="font-medium text-muted-foreground">Telefone:</span>
-                <p className="text-foreground">{tenantInfo.phone || "Não informado"}</p>
+              <div className="flex gap-2">
+                <span className="font-medium text-muted-foreground min-w-[80px]">Telefone:</span>
+                <p className="text-foreground flex-1">{tenantInfo.phone || "Não informado"}</p>
               </div>
-              <div>
-                <span className="font-medium text-muted-foreground">Email:</span>
-                <p className="text-foreground truncate">{tenantInfo.email || "Não informado"}</p>
+              <div className="flex gap-2">
+                <span className="font-medium text-muted-foreground min-w-[80px]">Email:</span>
+                <p className="text-foreground flex-1 truncate">{tenantInfo.email || "Não informado"}</p>
               </div>
             </div>
           </CardContent>
@@ -678,7 +751,7 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
                         : "text-sm font-medium text-red-600"
                     }
                   >
-                    Juros ({interestRatePercentage}% ao mês) × {values.diasAtraso} dias
+                    Juros ({interestRatePercentage}%)
                   </span>
                   <span
                     className={
