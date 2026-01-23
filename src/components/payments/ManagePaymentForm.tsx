@@ -8,9 +8,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Upload, Camera, Loader2 } from "lucide-react";
+import { Upload, Camera, Loader2, Building2, User } from "lucide-react";
 import { formatCurrency, parseCurrency } from "@/lib/masks";
 import { AttachmentViewer } from "@/components/AttachmentViewer";
+import { getConfig } from "@/services/configService";
 import type { Payment } from "@/types";
 
 interface ManagePaymentFormProps {
@@ -31,15 +32,18 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded = fa
   const [payment, setPayment] = useState<Payment | null>(null);
   const [propertyInfo, setPropertyInfo] = useState<any>(null);
   const [tenantInfo, setTenantInfo] = useState<any>(null);
+  const [rentalValue, setRentalValue] = useState(0);
+  const [garageValue, setGarageValue] = useState(0);
+
+  // Config data
+  const [lateFeePercentage, setLateFeePercentage] = useState(0);
+  const [interestRatePercentage, setInterestRatePercentage] = useState(0);
 
   // Form data
   const [formData, setFormData] = useState({
-    payment_date: "",
-    amount_paid: "",
+    payment_date: new Date().toISOString().split("T")[0],
     payment_method: "",
-    discount: "",
-    late_fee: "",
-    interest: "",
+    amount_to_pay: "",
     notes: "",
   });
 
@@ -48,8 +52,21 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded = fa
   useEffect(() => {
     if (paymentId) {
       loadPaymentData(paymentId);
+      loadConfig();
     }
   }, [paymentId]);
+
+  const loadConfig = async () => {
+    try {
+      const config = await getConfig();
+      if (config) {
+        setLateFeePercentage(config.late_fee_percentage || 0);
+        setInterestRatePercentage(config.interest_rate_percentage || 0);
+      }
+    } catch (error) {
+      console.error("Erro ao carregar configurações:", error);
+    }
+  };
 
   const loadPaymentData = async (id: string) => {
     try {
@@ -64,19 +81,37 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded = fa
             id,
             property_id,
             tenant_id,
+            rental_value,
+            garage_value,
             properties!inner (
               id,
-              location,
+              location_id,
               complement,
-              city,
-              state
+              property_identifier,
+              rooms,
+              bathrooms,
+              area,
+              has_garage,
+              has_furniture,
+              accepts_pets,
+              locations!inner (
+                id,
+                name,
+                street,
+                number,
+                neighborhood,
+                city,
+                state,
+                zip_code
+              )
             ),
             tenants!inner (
               id,
               name,
               phone,
               email,
-              document
+              document,
+              document_type
             )
           )
         `)
@@ -115,28 +150,40 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded = fa
 
       // Extrair informações relacionadas
       if (paymentData.rentals) {
-        // Supabase join types are complex but inferred correctly here
         const rental = Array.isArray(paymentData.rentals) ? paymentData.rentals[0] : paymentData.rentals;
+        
+        // Valores da locação
+        setRentalValue(rental.rental_value || 0);
+        setGarageValue(rental.garage_value || 0);
         
         if (rental.properties) {
           const property = Array.isArray(rental.properties) ? rental.properties[0] : rental.properties;
-          setPropertyInfo({
-            id: property.id,
-            address: property.location,
-            complement: property.complement,
-            city: property.city,
-            state: property.state
-          });
+          
+          if (property.locations) {
+            const location = Array.isArray(property.locations) ? property.locations[0] : property.locations;
+            
+            setPropertyInfo({
+              location: location.name || "",
+              street: location.street || "",
+              number: location.number || "",
+              neighborhood: location.neighborhood || "",
+              complement: property.complement || "",
+              city: location.city || "",
+              state: location.state || "",
+              zip_code: location.zip_code || "",
+            });
+          }
         }
-
+        
         if (rental.tenants) {
           const tenant = Array.isArray(rental.tenants) ? rental.tenants[0] : rental.tenants;
+          
           setTenantInfo({
-            id: tenant.id,
-            name: tenant.name,
-            phone: tenant.phone,
-            email: tenant.email,
-            document: tenant.document
+            name: tenant.name || "",
+            phone: tenant.phone || "",
+            email: tenant.email || "",
+            document: tenant.document || "",
+            document_type: tenant.document_type || "",
           });
         }
       }
@@ -146,11 +193,8 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded = fa
         payment_date: mappedPayment.paymentDate 
           ? mappedPayment.paymentDate.split("T")[0] 
           : new Date().toISOString().split("T")[0],
-        amount_paid: formatCurrency((mappedPayment.paidAmount || mappedPayment.expectedAmount || 0).toString()),
         payment_method: mappedPayment.paymentMethod || "",
-        discount: formatCurrency((mappedPayment.discountAmount || 0).toString()),
-        late_fee: formatCurrency((mappedPayment.penaltyAmount || 0).toString()),
-        interest: formatCurrency((mappedPayment.interestAmount || 0).toString()),
+        amount_to_pay: "",
         notes: mappedPayment.notes || "",
       });
 
@@ -212,19 +256,37 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded = fa
     setAttachments((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const calculateTotals = () => {
-    const amountPaid = parseCurrency(formData.amount_paid);
-    const discount = parseCurrency(formData.discount);
-    const lateFee = parseCurrency(formData.late_fee);
-    const interest = parseCurrency(formData.interest);
+  const calculateValues = () => {
+    if (!payment) return { valorAluguel: 0, multa: 0, juros: 0, valorTotal: 0 };
+
+    const valorAluguel = rentalValue + garageValue;
+    
+    // Calcular multa e juros se houver atraso
+    let multa = 0;
+    let juros = 0;
+
+    const dueDate = new Date(payment.dueDate + "T12:00:00");
+    const paymentDate = new Date(formData.payment_date + "T12:00:00");
+
+    if (paymentDate > dueDate) {
+      // Tem atraso
+      multa = (valorAluguel * lateFeePercentage) / 100;
+      
+      // Calcular juros proporcionais aos dias de atraso
+      const diffTime = Math.abs(paymentDate.getTime() - dueDate.getTime());
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      const diffMonths = diffDays / 30;
+      
+      juros = (valorAluguel * interestRatePercentage * diffMonths) / 100;
+    }
+
+    const valorTotal = valorAluguel + multa + juros;
 
     return {
-      amountPaid,
-      discount,
-      lateFee,
-      interest,
-      expectedAmount: payment?.expectedAmount || 0,
-      total: amountPaid
+      valorAluguel,
+      multa,
+      juros,
+      valorTotal
     };
   };
 
@@ -236,19 +298,19 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded = fa
       return;
     }
 
-    const totals = calculateTotals();
+    const values = calculateValues();
+    const amountToPay = parseCurrency(formData.amount_to_pay || formatCurrency(values.valorTotal.toString()));
 
     try {
       setIsSaving(true);
 
       const updateData = {
-        status: "paid",
+        status: "paid" as const,
         payment_date: formData.payment_date,
-        paid_amount: totals.amountPaid,
+        paid_amount: amountToPay,
         payment_method: formData.payment_method,
-        discount_amount: totals.discount,
-        late_fee: totals.lateFee,
-        interest: totals.interest,
+        late_fee: values.multa,
+        interest: values.juros,
         notes: formData.notes || null,
         attachments: attachments.map((att) => att.url),
       };
@@ -274,7 +336,17 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded = fa
     }
   };
 
-  const totals = calculateTotals();
+  const values = calculateValues();
+
+  // Atualizar campo "Valor a Pagar" automaticamente quando os valores mudarem
+  useEffect(() => {
+    if (values.valorTotal > 0 && !formData.amount_to_pay) {
+      setFormData(prev => ({
+        ...prev,
+        amount_to_pay: formatCurrency(values.valorTotal.toString())
+      }));
+    }
+  }, [values.valorTotal]);
 
   if (isLoading) {
     return (
@@ -294,65 +366,59 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded = fa
   }
 
   return (
-    <div className={embedded ? "space-y-6" : "space-y-6"}>
-      {/* Header com informações do pagamento */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span>Registrar Recebimento</span>
-            <div className="text-sm font-normal text-muted-foreground">
-              Parcela {payment.referenceMonth}/{payment.referenceYear}
-            </div>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <Label className="text-xs text-muted-foreground">Vencimento</Label>
-              <p className="text-sm font-medium">
-                {new Date(payment.dueDate + "T12:00:00").toLocaleDateString("pt-BR")}
-              </p>
-            </div>
-            <div>
-              <Label className="text-xs text-muted-foreground">Valor Esperado</Label>
-              <p className="text-sm font-medium">
-                {formatCurrency(payment.expectedAmount.toString())}
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Informações do Imóvel e Inquilino */}
-      <div className="grid gap-6 md:grid-cols-2">
+    <div className="space-y-6">
+      {/* Header - Informações em paralelo */}
+      <div className="grid gap-4 md:grid-cols-2">
+        {/* Informações do Imóvel */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Informações do Imóvel</CardTitle>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Building2 className="h-4 w-4" />
+              Informações do Imóvel
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
             <div>
-              <span className="text-muted-foreground">Endereço: </span>
-              <span className="font-medium">{propertyInfo?.address || "N/A"}</span>
+              <span className="text-muted-foreground">Local: </span>
+              <span className="font-medium">{propertyInfo?.location || "N/A"}</span>
             </div>
-            {propertyInfo?.complement && (
-              <div>
-                <span className="text-muted-foreground">Complemento: </span>
-                <span className="font-medium">{propertyInfo.complement}</span>
-              </div>
-            )}
             <div>
-              <span className="text-muted-foreground">Cidade: </span>
+              <span className="text-muted-foreground">Complemento: </span>
+              <span className="font-medium">{propertyInfo?.complement || "N/A"}</span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Endereço: </span>
               <span className="font-medium">
-                {propertyInfo?.city || "N/A"}
-                {propertyInfo?.state && ` - ${propertyInfo.state}`}
+                {propertyInfo?.street && propertyInfo?.number 
+                  ? `${propertyInfo.street}, ${propertyInfo.number}`
+                  : "N/A"}
+                {propertyInfo?.neighborhood && ` - ${propertyInfo.neighborhood}`}
               </span>
             </div>
+            <div>
+              <span className="text-muted-foreground">Cidade/Estado: </span>
+              <span className="font-medium">
+                {propertyInfo?.city && propertyInfo?.state 
+                  ? `${propertyInfo.city} - ${propertyInfo.state}`
+                  : "N/A"}
+              </span>
+            </div>
+            {propertyInfo?.zip_code && (
+              <div>
+                <span className="text-muted-foreground">CEP: </span>
+                <span className="font-medium">{propertyInfo.zip_code}</span>
+              </div>
+            )}
           </CardContent>
         </Card>
 
+        {/* Informações do Locatário */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Informações do Locatário</CardTitle>
+            <CardTitle className="text-base flex items-center gap-2">
+              <User className="h-4 w-4" />
+              Informações do Locatário
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
             <div>
@@ -361,8 +427,10 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded = fa
             </div>
             {tenantInfo?.document && (
               <div>
-                <span className="text-muted-foreground">CPF/CNPJ: </span>
-                <span className="font-medium">{tenantInfo.document}</span>
+                <span className="text-muted-foreground">
+                  {tenantInfo.document_type === "cnpj" ? "CNPJ" : "CPF"}: 
+                </span>
+                <span className="font-medium"> {tenantInfo.document}</span>
               </div>
             )}
             <div>
@@ -379,13 +447,18 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded = fa
         </Card>
       </div>
 
-      {/* Formulário de Pagamento */}
+      {/* Informações do Pagamento */}
       <Card>
         <CardHeader>
-          <CardTitle>Dados do Pagamento</CardTitle>
+          <CardTitle className="flex items-center justify-between">
+            <span>Informações do Pagamento</span>
+            <div className="text-sm font-normal text-muted-foreground">
+              Parcela {payment.referenceMonth}/{payment.referenceYear} - Vencimento: {new Date(payment.dueDate + "T12:00:00").toLocaleDateString("pt-BR")}
+            </div>
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-3">
             <div className="space-y-2">
               <Label htmlFor="payment_date">Data do Pagamento *</Label>
               <Input
@@ -408,188 +481,165 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded = fa
                   <SelectValue placeholder="Selecione" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="dinheiro">Dinheiro</SelectItem>
                   <SelectItem value="pix">PIX</SelectItem>
-                  <SelectItem value="transferencia">Transferência</SelectItem>
                   <SelectItem value="boleto">Boleto</SelectItem>
-                  <SelectItem value="cartao_credito">Cartão de Crédito</SelectItem>
-                  <SelectItem value="cartao_debito">Cartão de Débito</SelectItem>
+                  <SelectItem value="dinheiro">Dinheiro</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="amount_paid">Valor Pago *</Label>
+              <Label htmlFor="amount_to_pay">Valor a Pagar *</Label>
               <Input
-                id="amount_paid"
-                value={formData.amount_paid}
+                id="amount_to_pay"
+                value={formData.amount_to_pay}
                 onChange={(e) => {
                   const formatted = formatCurrency(e.target.value);
-                  setFormData({ ...formData, amount_paid: formatted });
+                  setFormData({ ...formData, amount_to_pay: formatted });
                 }}
                 placeholder="R$ 0,00"
                 required
               />
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="discount">Desconto</Label>
-              <Input
-                id="discount"
-                value={formData.discount}
-                onChange={(e) => {
-                  const formatted = formatCurrency(e.target.value);
-                  setFormData({ ...formData, discount: formatted });
-                }}
-                placeholder="R$ 0,00"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="late_fee">Multa</Label>
-              <Input
-                id="late_fee"
-                value={formData.late_fee}
-                onChange={(e) => {
-                  const formatted = formatCurrency(e.target.value);
-                  setFormData({ ...formData, late_fee: formatted });
-                }}
-                placeholder="R$ 0,00"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="interest">Juros</Label>
-              <Input
-                id="interest"
-                value={formData.interest}
-                onChange={(e) => {
-                  const formatted = formatCurrency(e.target.value);
-                  setFormData({ ...formData, interest: formatted });
-                }}
-                placeholder="R$ 0,00"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="notes">Observações</Label>
-            <Textarea
-              id="notes"
-              value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              rows={3}
-              placeholder="Adicione observações sobre o pagamento..."
-            />
-          </div>
-
-          {/* Resumo dos Valores */}
-          <Card className="bg-muted">
-            <CardContent className="pt-6">
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Valor Esperado:</span>
-                  <span className="font-medium">{formatCurrency(totals.expectedAmount.toString())}</span>
-                </div>
-                {totals.discount > 0 && (
-                  <div className="flex justify-between text-sm text-green-600">
-                    <span>Desconto:</span>
-                    <span className="font-medium">- {formatCurrency(totals.discount.toString())}</span>
-                  </div>
-                )}
-                {totals.lateFee > 0 && (
-                  <div className="flex justify-between text-sm text-red-600">
-                    <span>Multa:</span>
-                    <span className="font-medium">+ {formatCurrency(totals.lateFee.toString())}</span>
-                  </div>
-                )}
-                {totals.interest > 0 && (
-                  <div className="flex justify-between text-sm text-red-600">
-                    <span>Juros:</span>
-                    <span className="font-medium">+ {formatCurrency(totals.interest.toString())}</span>
-                  </div>
-                )}
-                <div className="flex justify-between text-lg font-bold pt-2 border-t">
-                  <span>Valor Pago:</span>
-                  <span className="text-primary">{formatCurrency(totals.amountPaid.toString())}</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Anexos */}
-          <div className="space-y-4">
-            <Label>Anexos (Comprovantes, Fotos)</Label>
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => document.getElementById("camera-input")?.click()}
-              >
-                <Camera className="mr-2 h-4 w-4" />
-                Tirar Foto
-              </Button>
-              <input
-                id="camera-input"
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={handleCameraCapture}
-                className="hidden"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => document.getElementById("file-input")?.click()}
-              >
-                <Upload className="mr-2 h-4 w-4" />
-                Anexar Arquivo
-              </Button>
-              <input
-                id="file-input"
-                type="file"
-                accept="image/*,.pdf"
-                multiple
-                onChange={handleFileUpload}
-                className="hidden"
-              />
-            </div>
-
-            <AttachmentViewer
-              attachments={attachments.map(a => a.url)}
-              onRemove={handleRemoveAttachment}
-            />
-          </div>
-
-          {/* Botões de Ação */}
-          <div className="flex gap-4 pt-4">
-            <Button 
-              onClick={handleSave} 
-              disabled={isSaving} 
-              className="flex-1"
-              size="lg"
-            >
-              {isSaving ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Salvando...
-                </>
-              ) : (
-                "Confirmar Recebimento"
-              )}
-            </Button>
-            {onClose ? (
-              <Button variant="outline" onClick={onClose} disabled={isSaving}>
-                Cancelar
-              </Button>
-            ) : (
-              <Button variant="outline" onClick={() => router.back()} disabled={isSaving}>
-                Cancelar
-              </Button>
-            )}
           </div>
         </CardContent>
       </Card>
+
+      {/* Formação de Valores */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Formação de Valores</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            <div className="flex justify-between items-center py-2 border-b">
+              <span className="text-sm font-medium">Valor Aluguel {garageValue > 0 && "+ Vaga"}</span>
+              <span className="text-sm font-semibold">{formatCurrency(values.valorAluguel.toString())}</span>
+            </div>
+            
+            {values.multa > 0 && (
+              <div className="flex justify-between items-center py-2 border-b">
+                <span className="text-sm font-medium text-red-600">
+                  Multa ({lateFeePercentage}%)
+                </span>
+                <span className="text-sm font-semibold text-red-600">
+                  {formatCurrency(values.multa.toString())}
+                </span>
+              </div>
+            )}
+            
+            {values.juros > 0 && (
+              <div className="flex justify-between items-center py-2 border-b">
+                <span className="text-sm font-medium text-red-600">
+                  Juros ({interestRatePercentage}% ao mês)
+                </span>
+                <span className="text-sm font-semibold text-red-600">
+                  {formatCurrency(values.juros.toString())}
+                </span>
+              </div>
+            )}
+            
+            <div className="flex justify-between items-center py-3 border-t-2">
+              <span className="text-base font-bold">Valor Total</span>
+              <span className="text-lg font-bold text-primary">
+                {formatCurrency(values.valorTotal.toString())}
+              </span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Observações */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Observações</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Textarea
+            id="notes"
+            value={formData.notes}
+            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+            rows={3}
+            placeholder="Adicione observações sobre o pagamento..."
+          />
+        </CardContent>
+      </Card>
+
+      {/* Anexos */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Anexos</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => document.getElementById("camera-input")?.click()}
+            >
+              <Camera className="mr-2 h-4 w-4" />
+              Tirar Foto
+            </Button>
+            <input
+              id="camera-input"
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={handleCameraCapture}
+              className="hidden"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => document.getElementById("file-input")?.click()}
+            >
+              <Upload className="mr-2 h-4 w-4" />
+              Anexar Arquivo
+            </Button>
+            <input
+              id="file-input"
+              type="file"
+              accept="image/*,.pdf"
+              multiple
+              onChange={handleFileUpload}
+              className="hidden"
+            />
+          </div>
+
+          <AttachmentViewer
+            attachments={attachments.map(a => a.url)}
+            onRemove={handleRemoveAttachment}
+          />
+        </CardContent>
+      </Card>
+
+      {/* Botões de Ação */}
+      <div className="flex gap-4">
+        <Button 
+          onClick={handleSave} 
+          disabled={isSaving} 
+          className="flex-1"
+          size="lg"
+        >
+          {isSaving ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Salvando...
+            </>
+          ) : (
+            "Confirmar Recebimento"
+          )}
+        </Button>
+        {onClose ? (
+          <Button variant="outline" onClick={onClose} disabled={isSaving} size="lg">
+            Cancelar
+          </Button>
+        ) : (
+          <Button variant="outline" onClick={() => router.back()} disabled={isSaving} size="lg">
+            Cancelar
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
