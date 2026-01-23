@@ -83,40 +83,31 @@ export function useRentalForm({
     const extension = file.name.split(".").pop();
     const fileName = `rental_${uuid}.${extension}`;
 
-    const reader = new FileReader();
+    const formData = new FormData();
+    formData.append("file", file, fileName);
 
     return new Promise<string>((resolve, reject) => {
-      reader.onloadend = () => {
-        const base64String = reader.result as string;
-
-        fetch("/api/upload", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            fileName,
-            fileData: base64String,
-          }),
-        })
-          .then(() => {
-            const url = `/uploads/${fileName}`;
-            setAttachments((prev) => [...prev, url]);
-            toast({
-              title: "Arquivo anexado",
-              description: `${file.name} foi anexado com sucesso.`,
-            });
-            resolve(url);
-          })
-          .catch(() => {
-            toast({
-              title: "Erro ao anexar arquivo",
-              description: "Não foi possível salvar o arquivo.",
-              variant: "destructive",
-            });
-            reject();
+      fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      })
+        .then(() => {
+          const url = `/uploads/${fileName}`;
+          setAttachments((prev) => [...prev, url]);
+          toast({
+            title: "Arquivo anexado",
+            description: `${file.name} foi anexado com sucesso.`,
           });
-      };
-
-      reader.readAsDataURL(file);
+          resolve(url);
+        })
+        .catch(() => {
+          toast({
+            title: "Erro ao anexar arquivo",
+            description: "Não foi possível salvar o arquivo.",
+            variant: "destructive",
+          });
+          reject();
+        });
     });
   };
 
