@@ -550,7 +550,7 @@ export default function Settings() {
                           id="interestRate" 
                           type="text"
                           value={interestRate}
-                          onChange={(e) => setInterestRate(applyPercentageMask(e.target.value, 3))}
+                          onChange={(e) => setInterestRate(applyPercentageMask(e.target.value))}
                           className="pr-8"
                           placeholder="0,000"
                         />
