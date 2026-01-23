@@ -554,7 +554,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
             <div>
               <span className="font-medium text-muted-foreground">Data Início:</span>
               <p className="text-foreground">
@@ -614,7 +614,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
               {values.juros > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600"}>
-                    Juros ({interestRatePercentage}% ao mês = {values.jurosDiario.toFixed(3)}% ao dia) - {values.diasAtraso} dias
+                    Juros ({values.jurosDiario.toFixed(3)}% ao dia) + {values.diasAtraso} dias
                   </span>
                   <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600 font-medium"}>
                     + {formatCurrency(values.juros.toFixed(2))}
