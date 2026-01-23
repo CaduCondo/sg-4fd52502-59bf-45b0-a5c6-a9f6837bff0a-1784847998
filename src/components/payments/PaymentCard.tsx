@@ -45,6 +45,11 @@ export function PaymentCard({
     }
   };
 
+  // Calcular valor restante para pagamentos parciais
+  const isPartial = payment.status === "partial";
+  const remainingAmount = isPartial ? expectedAmount - payment.paidAmount : expectedAmount;
+  const displayAmount = isPaid ? payment.paidAmount : remainingAmount;
+
   const getDueDateColor = (dueDate: string): { border: string; icon: string; amount: string } => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -133,14 +138,23 @@ export function PaymentCard({
 
           <div className="pt-2 border-t">
             <p className="text-[10px] text-muted-foreground mb-1">
-              {isPaid ? "Valor Pago" : "Valor Esperado"}
+              {isPaid ? "Valor Pago" : (isPartial ? "Valor Restante" : "Valor Esperado")}
             </p>
             <p className={`text-lg font-bold ${colors.amount}`}>
-              {isPaid ? formatCurrency(payment.paidAmount) : formatCurrency(expectedAmount)}
+              {formatCurrency(displayAmount)}
             </p>
           </div>
 
-          {!isPaid && payment.paidAmount > 0 && (
+          {isPartial && payment.paidAmount > 0 && (
+            <div className="pt-1 border-t">
+              <p className="text-[10px] text-muted-foreground mb-1">Valor Já Pago</p>
+              <p className="text-base font-semibold text-green-600">
+                {formatCurrency(payment.paidAmount)}
+              </p>
+            </div>
+          )}
+
+          {!isPaid && !isPartial && payment.paidAmount > 0 && (
             <div className="pt-1 border-t">
               <p className="text-[10px] text-muted-foreground mb-1">Valor Pago</p>
               <p className="text-base font-semibold text-yellow-600">
@@ -230,12 +244,17 @@ export function PaymentCard({
             
             <div className="text-right min-w-[100px]">
               <p className="text-xs text-muted-foreground">
-                {isPaid ? "Valor Pago" : "Valor Esperado"}
+                {isPaid ? "Valor Pago" : (isPartial ? "Valor Restante" : "Valor Esperado")}
               </p>
               <p className={`text-base font-bold ${colors.amount}`}>
-                {isPaid ? formatCurrency(payment.paidAmount) : formatCurrency(expectedAmount)}
+                {formatCurrency(displayAmount)}
               </p>
-              {!isPaid && payment.paidAmount > 0 && (
+              {isPartial && payment.paidAmount > 0 && (
+                <p className="text-xs text-green-600 font-semibold">
+                  Já pago: {formatCurrency(payment.paidAmount)}
+                </p>
+              )}
+              {!isPaid && !isPartial && payment.paidAmount > 0 && (
                 <p className="text-xs text-yellow-600 font-semibold">
                   Pago: {formatCurrency(payment.paidAmount)}
                 </p>
