@@ -356,6 +356,17 @@ export function RentalFormDialog({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
+              <Label htmlFor="securityDeposit">Valor Caução</Label>
+              <Input
+                id="securityDeposit"
+                value={securityDeposit}
+                onChange={(e) => setSecurityDeposit(applyRealMask(e.target.value))}
+                placeholder="R$ 0,00"
+                disabled={!isEditing}
+              />
+            </div>
+
+            <div className="space-y-2">
               <div className="flex items-center space-x-2">
                 <Checkbox
                   id="hasGarage"
@@ -381,17 +392,6 @@ export function RentalFormDialog({
                   disabled={!isEditing}
                 />
               )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="securityDeposit">Valor Caução</Label>
-              <Input
-                id="securityDeposit"
-                value={securityDeposit}
-                onChange={(e) => setSecurityDeposit(applyRealMask(e.target.value))}
-                placeholder="R$ 0,00"
-                disabled={!isEditing}
-              />
             </div>
           </div>
 
