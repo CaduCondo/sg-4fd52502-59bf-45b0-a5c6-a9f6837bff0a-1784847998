@@ -95,7 +95,6 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded = fa
         id: paymentData.id,
         rentalId: paymentData.rental_id,
         dueDate: paymentData.due_date,
-        amount: paymentData.expected_amount,
         status: paymentData.status as Payment["status"],
         expectedAmount: paymentData.expected_amount,
         paidAmount: paymentData.paid_amount || 0,
@@ -116,7 +115,7 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded = fa
 
       // Extrair informações relacionadas
       if (paymentData.rentals) {
-        // @ts-ignore - Supabase join types are complex
+        // @ts-expect-error - Supabase join types are complex
         const rental = Array.isArray(paymentData.rentals) ? paymentData.rentals[0] : paymentData.rentals;
         
         if (rental.properties) {
