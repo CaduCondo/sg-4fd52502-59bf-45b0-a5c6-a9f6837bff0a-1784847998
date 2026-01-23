@@ -1,0 +1,1 @@
+ALTER TABLE rentals ADD COLUMN IF NOT EXISTS security_deposit NUMERIC(10,2) DEFAULT 0;

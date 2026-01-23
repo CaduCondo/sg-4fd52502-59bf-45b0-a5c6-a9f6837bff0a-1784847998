@@ -285,17 +285,8 @@ export const applyPercentageMask = (value: string): string => {
 // Parse percentage string to float (handles Brazilian format: 2,125 -> 2.125)
 export const parsePercentageToFloat = (value: string): number => {
   if (!value) return 0;
-  
-  // Remove tudo exceto números e vírgula
-  let cleanValue = value.replace(/[^\d,]/g, "");
-  
-  // Replace comma (decimal separator) with dot
-  cleanValue = cleanValue.replace(/,/g, ".");
-  
-  // Parse to float
-  const numValue = parseFloat(cleanValue);
-  
-  return isNaN(numValue) ? 0 : numValue;
+  const cleanValue = value.replace(/[^\d,]/g, "").replace(",", ".");
+  return parseFloat(cleanValue) || 0;
 };
 
 // Format number to percentage with 3 decimal places (ex: 2.125 -> "2,125")

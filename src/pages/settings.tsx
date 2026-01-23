@@ -165,13 +165,14 @@ export default function Settings() {
 
   const handleConfigSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const updatedConfig = {
+      ...config,
+      admin_fee_percentage: parsePercentageToFloat(adminFee),
+      late_fee_percentage: parsePercentageToFloat(lateFee),
+      interest_rate_percentage: parsePercentageToFloat(interestRate),
+    };
     try {
-      await updateConfig({
-        ...config,
-        admin_fee_percentage: parsePercentageToFloat(adminFee),
-        late_fee_percentage: parsePercentageToFloat(lateFee),
-        interest_rate_percentage: parsePercentageToFloat(interestRate),
-      });
+      await updateConfig(updatedConfig);
       toast({ title: "Configurações salvas com sucesso!" });
     } catch (error) {
       console.error("Erro ao salvar config:", error);

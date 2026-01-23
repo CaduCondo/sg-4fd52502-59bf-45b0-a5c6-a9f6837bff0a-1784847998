@@ -315,6 +315,7 @@ export type Database = {
           payment_day: number
           pix_code: string | null
           property_id: string
+          security_deposit: number | null
           start_date: string
           tenant_id: string
           updated_at: string | null
@@ -334,6 +335,7 @@ export type Database = {
           payment_day: number
           pix_code?: string | null
           property_id: string
+          security_deposit?: number | null
           start_date: string
           tenant_id: string
           updated_at?: string | null
@@ -353,6 +355,7 @@ export type Database = {
           payment_day?: number
           pix_code?: string | null
           property_id?: string
+          security_deposit?: number | null
           start_date?: string
           tenant_id?: string
           updated_at?: string | null

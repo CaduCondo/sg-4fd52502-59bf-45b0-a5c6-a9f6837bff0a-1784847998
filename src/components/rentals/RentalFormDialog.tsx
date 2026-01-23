@@ -57,6 +57,8 @@ export function RentalFormDialog({
     location?: Location;
   } | null>(null);
 
+  const [securityDeposit, setSecurityDeposit] = useState("");
+
   const {
     isEditing,
     setIsEditing,
@@ -377,6 +379,17 @@ export function RentalFormDialog({
                 disabled={!isEditing}
               />
             )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="securityDeposit">Valor Caução</Label>
+            <Input
+              id="securityDeposit"
+              value={securityDeposit}
+              onChange={(e) => setSecurityDeposit(applyRealMask(e.target.value))}
+              placeholder="R$ 0,00"
+              disabled={!isEditing}
+            />
           </div>
 
           <div className="p-4 bg-emerald-50 dark:bg-emerald-950 rounded-lg border border-emerald-200 dark:border-emerald-800">
