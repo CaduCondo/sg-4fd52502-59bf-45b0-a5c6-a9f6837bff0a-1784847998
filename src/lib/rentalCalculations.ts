@@ -58,13 +58,18 @@ export function prepareRentalData(
   hasGarage: boolean,
   garageValue: string,
   attachments: string[],
-  securityDeposit: string
+  securityDeposit: string,
+  hasPartnerBroker: boolean,
+  partnerBrokerValue: string
 ) {
   const totalValue = calculateTotalRent(propertyValue, hasGarage, garageValue);
   const cleanGarageValue = hasGarage
     ? parseFloat(garageValue.replace(/[^\d,]/g, "").replace(",", ".") || "0")
     : 0;
   const cleanSecurityDeposit = parseFloat(securityDeposit.replace(/[^\d,]/g, "").replace(",", ".") || "0");
+  const cleanPartnerBrokerValue = hasPartnerBroker
+    ? parseFloat(partnerBrokerValue.replace(/[^\d,]/g, "").replace(",", ".") || "0")
+    : 0;
 
   return {
     property_id: propertyId,
@@ -77,6 +82,8 @@ export function prepareRentalData(
     has_garage: hasGarage,
     garage_value: hasGarage ? cleanGarageValue : null,
     security_deposit: cleanSecurityDeposit,
+    has_partner_broker: hasPartnerBroker,
+    partner_broker_value: hasPartnerBroker ? cleanPartnerBrokerValue : null,
     is_active: true,
     contract_attachments: attachments,
     attachments: attachments,
