@@ -292,21 +292,26 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
         description: "Pagamento registrado com sucesso!",
       });
 
+      // ✅ Chamar callback de sucesso ANTES de preparar recibo
+      if (onSuccess) {
+        onSuccess();
+      }
+
       // ✅ Preparar dados do recibo IMEDIATAMENTE após salvamento bem-sucedido
       const calculatedValues = calculateValues();
       
       const paymentForReceipt: Payment = {
         id: payment.id,
-        rentalId: payment.rentalId,
-        dueDate: payment.dueDate,
-        expectedAmount: payment.expectedAmount,
+        rentalId: payment.rental_id,
+        dueDate: payment.due_date,
+        expectedAmount: payment.expected_amount,
         paidAmount: parseCurrency(formData.amount_to_pay),
         paymentDate: formData.payment_date,
         status: "paid",
         paymentMethod: formData.payment_method,
         notes: formData.notes,
-        referenceMonth: parseInt(payment.referenceMonth),
-        referenceYear: parseInt(payment.referenceYear),
+        referenceMonth: parseInt(payment.reference_month),
+        referenceYear: parseInt(payment.reference_year),
         attachments: attachments,
         lateFee: removeFees ? 0 : calculatedValues.multa,
         interest: removeFees ? 0 : calculatedValues.juros,
@@ -314,22 +319,22 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
 
       const rentalForReceipt: Rental = {
         id: rental.id,
-        propertyId: rental.propertyId,
-        tenantId: rental.tenantId,
-        startDate: rental.startDate,
-        endDate: rental.endDate,
-        rentAmount: rental.monthlyRent,
-        monthlyRent: rental.monthlyRent,
-        garageValue: rental.garageValue,
+        propertyId: rental.property_id,
+        tenantId: rental.tenant_id,
+        startDate: rental.start_date,
+        endDate: rental.end_date,
+        rentAmount: rental.monthly_rent,
+        monthlyRent: rental.monthly_rent,
+        garageValue: rental.garage_value,
         value: rental.value,
-        paymentDay: rental.paymentDay,
-        status: rental.isActive ? "active" : "terminated",
+        paymentDay: rental.payment_day,
+        status: rental.is_active ? "active" : "terminated",
         autoRenew: false,
       };
 
       const propertyForReceipt: Property = {
         id: property.id,
-        locationId: property.locationId,
+        locationId: property.location_id,
         location: location?.name || "",
         address: location?.street || "",
         number: location?.number || "",
@@ -337,7 +342,7 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
         neighborhood: location?.neighborhood || "",
         city: location?.city || "",
         state: location?.state || "",
-        zipCode: location?.zipCode || "",
+        zipCode: location?.zip_code || "",
         rooms: property.rooms || 0,
         bathrooms: property.bathrooms || 0,
         area: property.area || 0,
@@ -350,7 +355,7 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
         name: tenant.name,
         email: tenant.email || "",
         phone: tenant.phone || "",
-        documentType: tenant.documentType || "cpf",
+        documentType: tenant.document_type || "cpf",
         document: tenant.document || "",
         cpf: tenant.cpf || "",
         rg: tenant.rg || "",
@@ -358,6 +363,7 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
         active: true,
       };
 
+      // ✅ Setar dados do recibo
       setReceiptData({
         payment: paymentForReceipt,
         rental: rentalForReceipt,
@@ -365,13 +371,8 @@ export function ManagePaymentForm({ paymentId, onClose, onSuccess, embedded }: M
         tenant: tenantForReceipt,
       });
 
-      // ✅ Exibir recibo IMEDIATAMENTE
+      // ✅ EXIBIR RECIBO IMEDIATAMENTE
       setShowReceipt(true);
-
-      // ✅ Chamar callback de sucesso (se existir)
-      if (onSuccess) {
-        onSuccess();
-      }
       
     } catch (error) {
       console.error("Erro ao confirmar recebimento:", error);
