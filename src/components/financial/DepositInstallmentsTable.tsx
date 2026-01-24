@@ -83,7 +83,7 @@ export function DepositInstallmentsTable({
 
   useEffect(() => {
     fetchData();
-  }, [statusFilter, allowedLocationIds]);
+  }, [statusFilter, JSON.stringify(allowedLocationIds)]);
 
   const fetchData = async () => {
     try {
