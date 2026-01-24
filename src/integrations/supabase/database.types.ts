@@ -101,6 +101,47 @@ export type Database = {
         }
         Relationships: []
       }
+      deposit_installments: {
+        Row: {
+          amount: number
+          created_at: string | null
+          id: string
+          installment_number: number
+          installment_total: number
+          pix_code: string | null
+          rental_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          id?: string
+          installment_number: number
+          installment_total: number
+          pix_code?: string | null
+          rental_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          id?: string
+          installment_number?: number
+          installment_total?: number
+          pix_code?: string | null
+          rental_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deposit_installments_rental_id_fkey"
+            columns: ["rental_id"]
+            isOneToOne: false
+            referencedRelation: "rentals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       locations: {
         Row: {
           city: string
@@ -306,6 +347,10 @@ export type Database = {
           contract_attachments: Json | null
           created_at: string | null
           deposit: string | null
+          deposit_installment_1: number | null
+          deposit_installment_2: number | null
+          deposit_installment_3: number | null
+          deposit_installments: number | null
           end_date: string | null
           garage_value: number | null
           has_garage: boolean | null
@@ -328,6 +373,10 @@ export type Database = {
           contract_attachments?: Json | null
           created_at?: string | null
           deposit?: string | null
+          deposit_installment_1?: number | null
+          deposit_installment_2?: number | null
+          deposit_installment_3?: number | null
+          deposit_installments?: number | null
           end_date?: string | null
           garage_value?: number | null
           has_garage?: boolean | null
@@ -350,6 +399,10 @@ export type Database = {
           contract_attachments?: Json | null
           created_at?: string | null
           deposit?: string | null
+          deposit_installment_1?: number | null
+          deposit_installment_2?: number | null
+          deposit_installment_3?: number | null
+          deposit_installments?: number | null
           end_date?: string | null
           garage_value?: number | null
           has_garage?: boolean | null

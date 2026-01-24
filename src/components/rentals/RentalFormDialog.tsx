@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Camera, Paperclip } from "lucide-react";
-import { applyRealMask, formatCurrency } from "@/lib/masks";
+import { applyRealMask, formatCurrency, parseCurrencyToNumber } from "@/lib/masks";
 import { create as createRental, update as updateRentalService } from "@/services/rentalService";
 import { update as updateProperty } from "@/services/propertyService";
 import { update as updateTenant } from "@/services/tenantService";
@@ -22,6 +22,7 @@ import { AttachmentViewer } from "@/components/AttachmentViewer";
 import { RentalContract } from "@/components/RentalContract";
 import { useRentalForm } from "@/hooks/useRentalForm";
 import { validateRentalForm, validateRentalValue, prepareRentalData } from "@/lib/rentalCalculations";
+import { supabase } from "@/integrations/supabase/client";
 
 interface RentalFormDialogProps {
   open: boolean;
@@ -56,6 +57,13 @@ export function RentalFormDialog({
     tenant: Tenant;
     location?: Location;
   } | null>(null);
+
+  // Estados do parcelamento do caução
+  const [isDepositInstallment, setIsDepositInstallment] = useState(false);
+  const [depositInstallmentCount, setDepositInstallmentCount] = useState<string>("");
+  const [depositInstallment1, setDepositInstallment1] = useState("");
+  const [depositInstallment2, setDepositInstallment2] = useState("");
+  const [depositInstallment3, setDepositInstallment3] = useState("");
 
   const {
     isEditing,
@@ -95,6 +103,22 @@ export function RentalFormDialog({
   useEffect(() => {
     loadLocations();
   }, []);
+
+  useEffect(() => {
+    if (open && rental) {
+      setIsDepositInstallment(rental.depositInstallments ? rental.depositInstallments > 1 : false);
+      setDepositInstallmentCount(rental.depositInstallments ? rental.depositInstallments.toString() : "");
+      setDepositInstallment1(rental.depositInstallment1 ? formatCurrency(rental.depositInstallment1) : "");
+      setDepositInstallment2(rental.depositInstallment2 ? formatCurrency(rental.depositInstallment2) : "");
+      setDepositInstallment3(rental.depositInstallment3 ? formatCurrency(rental.depositInstallment3) : "");
+    } else if (!open) {
+      setIsDepositInstallment(false);
+      setDepositInstallmentCount("");
+      setDepositInstallment1("");
+      setDepositInstallment2("");
+      setDepositInstallment3("");
+    }
+  }, [open, rental]);
 
   const loadLocations = async () => {
     try {
@@ -154,10 +178,43 @@ export function RentalFormDialog({
       return;
     }
 
+    // Validar caução parcelado
+    if (isDepositInstallment) {
+      if (!depositInstallmentCount) {
+        toast({
+          title: "Erro",
+          description: "Selecione a quantidade de parcelas do caução.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const count = parseInt(depositInstallmentCount);
+      if (count === 2) {
+        if (!depositInstallment1 || !depositInstallment2) {
+          toast({
+            title: "Erro",
+            description: "Preencha os valores das 2 parcelas do caução.",
+            variant: "destructive",
+          });
+          return;
+        }
+      } else if (count === 3) {
+        if (!depositInstallment1 || !depositInstallment2 || !depositInstallment3) {
+          toast({
+            title: "Erro",
+            description: "Preencha os valores das 3 parcelas do caução.",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+    }
+
     try {
       setLoading(true);
 
-      const rentalData = prepareRentalData(
+      const rentalData: any = prepareRentalData(
         selectedPropertyId,
         selectedTenantId,
         startDate,
@@ -171,6 +228,21 @@ export function RentalFormDialog({
         hasPartnerBroker
       );
 
+      // Adicionar dados de parcelamento do caução
+      if (isDepositInstallment && depositInstallmentCount) {
+        rentalData.depositInstallments = parseInt(depositInstallmentCount);
+        rentalData.depositInstallment1 = parseCurrencyToNumber(depositInstallment1);
+        if (parseInt(depositInstallmentCount) >= 2) {
+          rentalData.depositInstallment2 = parseCurrencyToNumber(depositInstallment2);
+        }
+        if (parseInt(depositInstallmentCount) === 3) {
+          rentalData.depositInstallment3 = parseCurrencyToNumber(depositInstallment3);
+        }
+      } else {
+        rentalData.depositInstallments = 1;
+        rentalData.depositInstallment1 = parseCurrencyToNumber(securityDeposit);
+      }
+
       if (rental) {
         const updatedRental = await updateRentalService(rental.id, rentalData);
         await updateFuturePayments(rental.id, totalValue);
@@ -178,6 +250,9 @@ export function RentalFormDialog({
         if (rental.paymentDay !== parseInt(paymentDay)) {
           await updateFuturePaymentsOnPaymentDayChange(rental.id, parseInt(paymentDay));
         }
+
+        // Atualizar parcelas do caução
+        await updateDepositInstallments(rental.id, rentalData);
 
         const selectedLocation = locations.find((loc) => loc.id === selectedProperty.locationId);
 
@@ -208,6 +283,9 @@ export function RentalFormDialog({
 
         await createPaymentsForRental(createdRental);
 
+        // Criar parcelas do caução
+        await createDepositInstallments(createdRental.id, rentalData);
+
         const selectedLocation = locations.find((loc) => loc.id === selectedProperty.locationId);
 
         setCreatedRentalData({
@@ -236,6 +314,37 @@ export function RentalFormDialog({
     } finally {
       setLoading(false);
     }
+  };
+
+  const createDepositInstallments = async (rentalId: string, rentalData: any) => {
+    const count = rentalData.depositInstallments || 1;
+    const installments = [];
+
+    for (let i = 1; i <= count; i++) {
+      const amount = rentalData[`depositInstallment${i}`] || 0;
+      installments.push({
+        rental_id: rentalId,
+        installment_number: i,
+        total_installments: count,
+        amount: amount,
+        pix_code: null,
+      });
+    }
+
+    const { error } = await supabase.from("deposit_installments").insert(installments);
+
+    if (error) {
+      console.error("Error creating deposit installments:", error);
+      throw error;
+    }
+  };
+
+  const updateDepositInstallments = async (rentalId: string, rentalData: any) => {
+    // Deletar parcelas antigas
+    await supabase.from("deposit_installments").delete().eq("rental_id", rentalId);
+
+    // Criar novas parcelas
+    await createDepositInstallments(rentalId, rentalData);
   };
 
   const getLocationName = (locationId: string) => {
@@ -357,7 +466,7 @@ export function RentalFormDialog({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <div className="flex items-center space-x-2">
                 <Checkbox
@@ -385,17 +494,6 @@ export function RentalFormDialog({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="securityDeposit">Valor Caução</Label>
-              <Input
-                id="securityDeposit"
-                value={securityDeposit}
-                onChange={(e) => setSecurityDeposit(applyRealMask(e.target.value))}
-                placeholder="R$ 0,00"
-                disabled={!isEditing}
-              />
-            </div>
-
-            <div className="space-y-2">
               <div className="flex items-center space-x-2">
                 <Checkbox
                   id="hasPartnerBroker"
@@ -408,6 +506,102 @@ export function RentalFormDialog({
                 </Label>
               </div>
             </div>
+          </div>
+
+          <div className="space-y-4 p-4 border rounded-lg">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="securityDeposit">Valor Caução</Label>
+                <Input
+                  id="securityDeposit"
+                  value={securityDeposit}
+                  onChange={(e) => setSecurityDeposit(applyRealMask(e.target.value))}
+                  placeholder="R$ 0,00"
+                  disabled={!isEditing}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="isDepositInstallment"
+                    checked={isDepositInstallment}
+                    onCheckedChange={(checked) => {
+                      setIsDepositInstallment(checked as boolean);
+                      if (!checked) {
+                        setDepositInstallmentCount("");
+                        setDepositInstallment1("");
+                        setDepositInstallment2("");
+                        setDepositInstallment3("");
+                      }
+                    }}
+                    disabled={!isEditing}
+                  />
+                  <Label htmlFor="isDepositInstallment" className="cursor-pointer">
+                    Caução Parcelado ?
+                  </Label>
+                </div>
+                {isDepositInstallment && (
+                  <Select
+                    value={depositInstallmentCount}
+                    onValueChange={(value) => {
+                      setDepositInstallmentCount(value);
+                      if (value === "2") {
+                        setDepositInstallment3("");
+                      }
+                    }}
+                    disabled={!isEditing}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a quantidade" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="2">2x</SelectItem>
+                      <SelectItem value="3">3x</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            </div>
+
+            {isDepositInstallment && depositInstallmentCount && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="depositInstallment1">1ª Parcela</Label>
+                  <Input
+                    id="depositInstallment1"
+                    value={depositInstallment1}
+                    onChange={(e) => setDepositInstallment1(applyRealMask(e.target.value))}
+                    placeholder="R$ 0,00"
+                    disabled={!isEditing}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="depositInstallment2">2ª Parcela</Label>
+                  <Input
+                    id="depositInstallment2"
+                    value={depositInstallment2}
+                    onChange={(e) => setDepositInstallment2(applyRealMask(e.target.value))}
+                    placeholder="R$ 0,00"
+                    disabled={!isEditing}
+                  />
+                </div>
+
+                {depositInstallmentCount === "3" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="depositInstallment3">3ª Parcela</Label>
+                    <Input
+                      id="depositInstallment3"
+                      value={depositInstallment3}
+                      onChange={(e) => setDepositInstallment3(applyRealMask(e.target.value))}
+                      placeholder="R$ 0,00"
+                      disabled={!isEditing}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="p-4 bg-emerald-50 dark:bg-emerald-950 rounded-lg border border-emerald-200 dark:border-emerald-800">

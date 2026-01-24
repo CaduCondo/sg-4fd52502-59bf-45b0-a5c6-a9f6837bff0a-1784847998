@@ -234,3 +234,32 @@ export interface Location {
 
 export type TenantStatus = "active" | "inactive" | "rented";
 export type RentalStatus = "active" | "completed" | "canceled";
+
+export interface DepositInstallment {
+  id: string;
+  rentalId: string;
+  installmentNumber: number;
+  dueDate: string;
+  amount: number;
+  status: "pending" | "paid" | "overdue" | "partial";
+  paidAmount?: number;
+  paymentDate?: string;
+  paymentMethod?: string;
+  paymentLocation?: string;
+  paymentCode?: string;
+  notes?: string;
+  referenceMonth: number;
+  referenceYear: number;
+  receiptUrl?: string;
+  attachments?: string[];
+  
+  // Fees & Discounts
+  penaltyAmount?: number;
+  interestAmount?: number;
+  discountAmount?: number;
+  lateFee?: number; // Alias
+  interest?: number; // Alias
+  
+  createdAt?: string;
+  updatedAt?: string;
+}
