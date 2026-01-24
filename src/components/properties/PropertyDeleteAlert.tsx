@@ -14,6 +14,8 @@ interface PropertyDeleteAlertProps {
   onOpenChange: (open: boolean) => void;
   onConfirm: () => void;
   onCancel: () => void;
+  title?: string;
+  description?: string;
 }
 
 export function PropertyDeleteAlert({
@@ -21,14 +23,16 @@ export function PropertyDeleteAlert({
   onOpenChange,
   onConfirm,
   onCancel,
+  title = "Excluir Imóvel",
+  description = "Tem certeza que deseja excluir este imóvel? Esta ação não pode ser desfeita e removerá permanentemente todos os dados associados.",
 }: PropertyDeleteAlertProps) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Excluir Imóvel</AlertDialogTitle>
+          <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>
-            Tem certeza que deseja excluir este imóvel? Esta ação não pode ser desfeita e removerá permanentemente todos os dados associados.
+            {description}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

@@ -15,6 +15,7 @@ interface TenantDeleteAlertProps {
   tenant: Tenant | null;
   onConfirm: () => void;
   onCancel: () => void;
+  message?: string;
 }
 
 export function TenantDeleteAlert({
@@ -22,6 +23,7 @@ export function TenantDeleteAlert({
   tenant,
   onConfirm,
   onCancel,
+  message,
 }: TenantDeleteAlertProps) {
   return (
     <AlertDialog open={open} onOpenChange={onCancel}>
@@ -29,7 +31,7 @@ export function TenantDeleteAlert({
         <AlertDialogHeader>
           <AlertDialogTitle>Excluir Inquilino</AlertDialogTitle>
           <AlertDialogDescription>
-            Tem certeza que deseja excluir o inquilino <strong>{tenant?.name}</strong>? Esta ação não pode ser desfeita e removerá permanentemente todos os dados associados.
+            {message || `Tem certeza que deseja excluir o inquilino ${tenant?.name ? <strong>{tenant.name}</strong> : "selecionado"}? Esta ação não pode ser desfeita e removerá permanentemente todos os dados associados.`}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
