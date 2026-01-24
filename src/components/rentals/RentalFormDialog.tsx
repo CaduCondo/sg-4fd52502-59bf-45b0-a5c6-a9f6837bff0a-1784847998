@@ -335,6 +335,7 @@ export function RentalFormDialog({
         rental_id: rentalId,
         installment_number: i,
         total_installments: count,
+        installment_total: count,
         amount: amount,
         pix_code: null,
       });

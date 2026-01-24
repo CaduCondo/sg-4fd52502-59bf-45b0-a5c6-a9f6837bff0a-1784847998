@@ -59,6 +59,7 @@ export function DepositInstallmentsTable() {
           id,
           installment_number,
           total_installments,
+          installment_total,
           amount,
           pix_code,
           rental:rentals (
@@ -83,7 +84,7 @@ export function DepositInstallmentsTable() {
       const formattedData = (data || []).map((item: any) => ({
         id: item.id,
         installment_number: item.installment_number,
-        total_installments: item.total_installments,
+        total_installments: item.total_installments || item.installment_total,
         amount: item.amount,
         pix_code: item.pix_code,
         rental: {
