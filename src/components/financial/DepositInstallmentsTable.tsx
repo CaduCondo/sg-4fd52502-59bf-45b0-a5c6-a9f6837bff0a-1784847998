@@ -374,11 +374,14 @@ export function DepositInstallmentsTable({
     }
     return sum;
   }, 0);
-  const adminFee = sortedData.reduce(
+  
+  // Calcular comissão total (soma apenas uma vez por rental)
+  const adminFee = uniqueRentals.reduce(
     (sum, item) =>
       sum + (item.partner_commission || 0) + (item.internal_commission || 0),
     0
   );
+  
   const netRevenue = totalReceived - adminFee;
 
   // Total da coluna Valor Parcela (soma todas as linhas)
@@ -447,7 +450,7 @@ export function DepositInstallmentsTable({
             </Card>
           </ScrollReveal>
 
-          {/* Card 3: Taxa de Administração */}
+          {/* Card 3: Comissão */}
           <ScrollReveal delay={0.4}>
             <Card className="border-purple-100 bg-purple-50/30 shadow-sm h-full">
               <CardContent className="p-6 space-y-4">
@@ -455,16 +458,13 @@ export function DepositInstallmentsTable({
                   <div className="p-2 bg-purple-100 rounded-lg">
                     <HeartHandshake className="h-5 w-5 text-purple-600" />
                   </div>
-                  <div className="flex flex-col">
-                    <span className="text-sm font-medium text-slate-600">Taxa de</span>
-                    <span className="text-sm font-medium text-slate-600">Administração</span>
-                  </div>
+                  <span className="text-sm font-medium text-slate-600">Comissão</span>
                 </div>
                 <div>
                   <div className="text-3xl font-bold text-purple-900">
                     {formatCurrency(adminFee)}
                   </div>
-                  <p className="text-xs text-purple-600 mt-1">Comissões totais</p>
+                  <p className="text-xs text-purple-600 mt-1">Soma das comissões parceiro + interno</p>
                 </div>
               </CardContent>
             </Card>
