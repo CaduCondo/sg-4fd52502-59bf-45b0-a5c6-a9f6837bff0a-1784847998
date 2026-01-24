@@ -466,48 +466,6 @@ export function RentalFormDialog({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="hasGarage"
-                  checked={hasGarage}
-                  onCheckedChange={(checked) => {
-                    setHasGarage(checked as boolean);
-                    if (!checked) {
-                      setGarageValue("");
-                    }
-                  }}
-                  disabled={!isEditing}
-                />
-                <Label htmlFor="hasGarage" className="cursor-pointer">
-                  Vaga Garagem ?
-                </Label>
-              </div>
-              <Input
-                id="garageValue"
-                value={garageValue}
-                onChange={(e) => setGarageValue(applyRealMask(e.target.value))}
-                placeholder="R$ 0,00"
-                disabled={!isEditing || !hasGarage}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="hasPartnerBroker"
-                  checked={hasPartnerBroker}
-                  onCheckedChange={(checked) => setHasPartnerBroker(checked as boolean)}
-                  disabled={!isEditing}
-                />
-                <Label htmlFor="hasPartnerBroker" className="cursor-pointer">
-                  Corretor Parceiro ?
-                </Label>
-              </div>
-            </div>
-          </div>
-
           <div className="space-y-4 p-4 border rounded-lg">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
