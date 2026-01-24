@@ -677,7 +677,20 @@ export function DepositInstallmentsTable({
                                   {item.rental?.has_partner_broker ? "Sim" : "Não"}
                                 </TableCell>
                                 <TableCell rowSpan={group.length} className="align-top">
-                                  {editingCommission?.id === item.id &&
+                                  {!item.rental?.has_partner_broker ? (
+                                    <div className="flex items-center gap-3">
+                                      <span className="text-slate-600 text-sm">-</span>
+                                      <Button
+                                        size="default"
+                                        variant="ghost"
+                                        disabled
+                                        className="h-9 w-9 p-0 opacity-30 cursor-not-allowed"
+                                        title="Sem corretor parceiro nesta locação"
+                                      >
+                                        <Edit2 className="h-5 w-5 text-slate-600" />
+                                      </Button>
+                                    </div>
+                                  ) : editingCommission?.id === item.id &&
                                   editingCommission?.field === "partner" ? (
                                     <div className="flex items-center gap-3">
                                       <Input
