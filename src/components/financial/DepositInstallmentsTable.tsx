@@ -674,10 +674,20 @@ export function DepositInstallmentsTable({
                                   {formatCurrency(item.rental?.security_deposit || 0)}
                                 </TableCell>
                                 <TableCell rowSpan={group.length} className="align-top text-slate-600">
-                                  {item.rental?.has_partner_broker ? "Sim" : "Não"}
-                                </TableCell>
-                                <TableCell rowSpan={group.length} className="align-top">
-                                  {editingCommission?.id === item.id &&
+                                  {!item.rental?.has_partner_broker ? (
+                                    <div className="flex items-center gap-3">
+                                      <span className="font-medium text-slate-500 text-sm ml-2">-</span>
+                                      <Button
+                                        size="default"
+                                        variant="ghost"
+                                        disabled
+                                        className="h-9 w-9 p-0 opacity-30 cursor-not-allowed"
+                                        title="Sem corretor parceiro nesta locação"
+                                      >
+                                        <Edit2 className="h-5 w-5 text-slate-400" />
+                                      </Button>
+                                    </div>
+                                  ) : editingCommission?.id === item.id &&
                                   editingCommission?.field === "partner" ? (
                                     <div className="flex items-center gap-3">
                                       <Input

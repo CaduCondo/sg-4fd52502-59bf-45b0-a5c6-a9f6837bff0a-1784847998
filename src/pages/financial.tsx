@@ -433,11 +433,11 @@ export default function Financial() {
         "Status": payment.status === "paid" ? "Pago" : 
                  payment.status === "pending" ? "Pendente" :
                  payment.status === "overdue" ? "Atrasado" : "Parcial",
+        "Valor Esperado": payment.expectedAmount,
+        "Valor Pago": payment.paidAmount || 0,
         "Código PIX": details.pixCode || "-",
         "Data Vencimento": format(new Date(payment.dueDate), "dd/MM/yyyy"),
         "Data Recebida": payment.paymentDate ? format(new Date(payment.paymentDate), "dd/MM/yyyy") : "-",
-        "Valor Esperado": payment.expectedAmount,
-        "Valor Pago": payment.paidAmount || 0,
       };
     });
 
@@ -452,11 +452,11 @@ export default function Financial() {
       { wch: 8 },  // Ano
       { wch: 12 }, // Mês
       { wch: 12 }, // Status
+      { wch: 15 }, // Valor Esperado
+      { wch: 15 }, // Valor Pago
       { wch: 20 }, // Código PIX
       { wch: 15 }, // Data Vencimento
       { wch: 15 }, // Data Recebida
-      { wch: 15 }, // Valor Esperado
-      { wch: 15 }, // Valor Pago
     ];
 
     // Create workbook
@@ -686,7 +686,6 @@ export default function Financial() {
                         <SortIcon field="status" />
                       </div>
                     </TableHead>
-                    <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Código PIX</TableHead>
                     <TableHead 
                       className="text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
                       onClick={() => handleSort("dueDate")}
@@ -723,6 +722,7 @@ export default function Financial() {
                         <SortIcon field="paidAmount" />
                       </div>
                     </TableHead>
+                    <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Código PIX</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -764,6 +764,12 @@ export default function Financial() {
                             </TableCell>
                             <TableCell>
                               {getStatusBadge(payment.status)}
+                            </TableCell>
+                            <TableCell className="text-right font-medium text-slate-900">
+                              {format(new Date(payment.dueDate), "dd/MM/yyyy")}
+                            </TableCell>
+                            <TableCell className="text-right font-bold text-green-600">
+                              {formatCurrency(payment.paidAmount || 0)}
                             </TableCell>
                             <TableCell>
                               {editingPixCode[details.rental?.id || ""] !== undefined ? (
@@ -832,20 +838,6 @@ export default function Financial() {
                                 </div>
                               )}
                             </TableCell>
-                            <TableCell className="text-slate-600">
-                              {format(new Date(payment.dueDate), "dd/MM/yyyy")}
-                            </TableCell>
-                            <TableCell className="text-slate-600">
-                              {payment.paymentDate 
-                                ? format(new Date(payment.paymentDate), "dd/MM/yyyy")
-                                : "-"}
-                            </TableCell>
-                            <TableCell className="text-right font-medium text-slate-900">
-                              {formatCurrency(payment.expectedAmount)}
-                            </TableCell>
-                            <TableCell className="text-right font-bold text-green-600">
-                              {formatCurrency(payment.paidAmount || 0)}
-                            </TableCell>
                           </TableRow>
                         );
                       })}
@@ -860,6 +852,7 @@ export default function Financial() {
                         <TableCell className="text-right text-green-700 text-lg">
                           {formatCurrency(sortedPayments.reduce((sum, p) => sum + (p.paidAmount || 0), 0))}
                         </TableCell>
+                        <TableCell></TableCell>
                       </TableRow>
                     </>
                   )}
