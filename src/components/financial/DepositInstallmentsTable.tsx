@@ -33,7 +33,7 @@ interface DepositInstallmentData {
   rental: {
     has_partner_broker: boolean;
     security_deposit: number;
-    status: string;
+    is_active: boolean;
     tenant: {
       name: string;
     };
@@ -79,7 +79,7 @@ export function DepositInstallmentsTable() {
           rental:rentals (
             has_partner_broker,
             security_deposit,
-            status,
+            is_active,
             tenant:tenants (
               name
             ),
@@ -104,7 +104,7 @@ export function DepositInstallmentsTable() {
         rental: {
           has_partner_broker: item.rental?.has_partner_broker,
           security_deposit: item.rental?.security_deposit,
-          status: item.rental?.status || "active",
+          is_active: item.rental?.is_active ?? true,
           tenant: {
             name: item.rental?.tenant?.name || "N/A"
           },
@@ -198,9 +198,12 @@ export function DepositInstallmentsTable() {
   const getFilteredAndSortedInstallments = () => {
     // Filter by status
     let filtered = installments;
-    if (statusFilter !== "all") {
-      filtered = installments.filter(item => item.rental.status === statusFilter);
+    if (statusFilter === "active") {
+      filtered = installments.filter(item => item.rental.is_active === true);
+    } else if (statusFilter === "inactive") {
+      filtered = installments.filter(item => item.rental.is_active === false);
     }
+    // statusFilter === "all" não filtra
 
     // Sort
     if (!sortField || !sortDirection) return filtered;
@@ -314,7 +317,6 @@ export function DepositInstallmentsTable() {
                   <SelectItem value="all">Todas</SelectItem>
                   <SelectItem value="active">Ativas</SelectItem>
                   <SelectItem value="inactive">Inativas</SelectItem>
-                  <SelectItem value="completed">Finalizadas</SelectItem>
                 </SelectContent>
               </Select>
             </div>
