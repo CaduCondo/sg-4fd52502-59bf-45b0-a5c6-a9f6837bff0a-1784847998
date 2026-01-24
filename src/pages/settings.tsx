@@ -322,7 +322,7 @@ export default function Settings() {
     setIsLocationDialogOpen(true);
   };
 
-  const handleDeleteLocation = async (locationId: string) => {
+  const handleDeleteLocation = async () => {
     if (!deleteLocationDialog.locationId) return;
 
     try {
@@ -641,10 +641,11 @@ export default function Settings() {
               onUpdateUser={handleUpdateUser}
               onDeleteUser={handleDeleteUser}
               onToggleStatus={handleToggleUserStatus}
-              onResetPassword={(userId) => {
+              onResetPassword={(userId: string) => {
                 // Find user name from users list or fetch it if needed, passing a placeholder for now or adjusting the interface
                 const user = users.find(u => u.id === userId);
                 openResetPasswordDialog(userId, user?.name || "Usuário");
+                return Promise.resolve();
               }}
             />
           </TabsContent>

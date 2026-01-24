@@ -15,11 +15,11 @@ interface PermissionsTabProps {
   locations: any[]; // Replace with correct Location type if available
   roleMenuPermissions: any[];
   isLoading: boolean;
-  onUpdateRoleMenuPermission: (role: string, menu: string, hasPermission: boolean) => Promise<void>;
-  onSaveLocationPermissions: (userId: string, locationIds: string[]) => Promise<void>;
-  onSaveFeeExemptions: (locationId: string) => Promise<void>; // Updated signature
-  getUserLocationPermissions: (userId: string) => string[];
-  getUserFeeExemptions: (locationId: string) => any[];
+  onUpdateRoleMenuPermission: (role: string, menu: string, hasPermission: boolean) => Promise<boolean>;
+  onSaveLocationPermissions: (userId: string, locationIds: string[]) => Promise<boolean>;
+  onSaveFeeExemptions: (userId: string, locationIds: string[]) => Promise<boolean>;
+  getUserLocationPermissions: (userId: string) => Promise<string[]>;
+  getUserFeeExemptions: (userId: string) => Promise<string[]>;
 }
 
 const roleLabels: Record<string, string> = {
