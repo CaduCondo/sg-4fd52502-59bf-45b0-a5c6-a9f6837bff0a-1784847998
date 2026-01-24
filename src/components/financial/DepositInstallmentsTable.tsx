@@ -603,10 +603,10 @@ export function DepositInstallmentsTable({
                       </div>
                     </TableHead>
                     <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                      Valor Pg Corretagem Parceiro
+                      Valor Pago
                     </TableHead>
                     <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                      Valor Pg Corretagem Interno
+                      Código PIX
                     </TableHead>
                     <TableHead
                       className="cursor-pointer hover:bg-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wider"
@@ -667,11 +667,21 @@ export function DepositInstallmentsTable({
                                 <TableCell rowSpan={group.length} className="align-top font-medium text-slate-900">
                                   {formatCurrency(item.rental?.security_deposit || 0)}
                                 </TableCell>
-                                <TableCell rowSpan={group.length} className="align-top text-slate-600">
-                                  {item.rental?.has_partner_broker ? "Sim" : "Não"}
-                                </TableCell>
                                 <TableCell rowSpan={group.length} className="align-top">
-                                  {editingCommission?.id === item.id &&
+                                  {!item.rental?.has_partner_broker ? (
+                                    <div className="flex items-center gap-3">
+                                      <span className="text-slate-400 text-sm">-</span>
+                                      <Button
+                                        size="default"
+                                        variant="ghost"
+                                        disabled
+                                        className="h-9 w-9 p-0 opacity-30 cursor-not-allowed"
+                                        title="Sem corretor parceiro nesta locação"
+                                      >
+                                        <Edit2 className="h-5 w-5 text-slate-400" />
+                                      </Button>
+                                    </div>
+                                  ) : editingCommission?.id === item.id &&
                                   editingCommission?.field === "partner" ? (
                                     <div className="flex items-center gap-3">
                                       <Input
