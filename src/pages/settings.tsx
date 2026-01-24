@@ -58,6 +58,7 @@ import { Location, CompanyConfig } from "@/types";
 // New modular components
 import { UsersTab } from "@/components/settings/UsersTab";
 import { PermissionsTab } from "@/components/settings/PermissionsTab";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 // Custom hooks
 import { useUsers } from "@/hooks/useUsers";
@@ -103,6 +104,27 @@ export default function Settings() {
     city: "",
     state: "",
     zip_code: "",
+  });
+
+  // Confirmation dialogs state
+  const [deleteLocationDialog, setDeleteLocationDialog] = useState<{
+    open: boolean;
+    locationId: string | null;
+    locationName: string;
+  }>({
+    open: false,
+    locationId: null,
+    locationName: "",
+  });
+
+  const [resetPasswordDialog, setResetPasswordDialog] = useState<{
+    open: boolean;
+    userId: string | null;
+    userName: string;
+  }>({
+    open: false,
+    userId: null,
+    userName: "",
   });
 
   // Use custom hooks for users and permissions
@@ -301,16 +323,25 @@ export default function Settings() {
   };
 
   const handleDeleteLocation = async (locationId: string) => {
-    if (!confirm("Tem certeza que deseja excluir este local?")) return;
+    if (!deleteLocationDialog.locationId) return;
 
     try {
-      await locationService.deleteLocation(locationId);
+      await locationService.deleteLocation(deleteLocationDialog.locationId);
       toast({ title: "Local excluído com sucesso!" });
+      setDeleteLocationDialog({ open: false, locationId: null, locationName: "" });
       loadLocations();
     } catch (error) {
       console.error("Erro ao excluir local:", error);
       toast({ title: "Erro ao excluir local", variant: "destructive" });
     }
+  };
+
+  const openDeleteLocationDialog = (locationId: string, locationName: string) => {
+    setDeleteLocationDialog({
+      open: true,
+      locationId,
+      locationName,
+    });
   };
 
   const filteredLocations = locations.filter((location) => {
@@ -322,20 +353,30 @@ export default function Settings() {
     );
   });
 
-  const handleResetPassword = async (userId: string) => {
-    if (!confirm("Deseja resetar a senha deste usuário para 'mudar123'?")) return;
+  const handleResetPassword = async () => {
+    if (!resetPasswordDialog.userId) return;
+    
     try {
       const { error } = await supabase
         .from("system_users")
         .update({ password: "mudar123" })
-        .eq("id", userId);
+        .eq("id", resetPasswordDialog.userId);
 
       if (error) throw error;
       toast({ title: "Senha resetada com sucesso!" });
+      setResetPasswordDialog({ open: false, userId: null, userName: "" });
     } catch (error) {
       console.error("Erro ao resetar senha:", error);
       toast({ title: "Erro ao resetar senha", variant: "destructive" });
     }
+  };
+
+  const openResetPasswordDialog = (userId: string, userName: string) => {
+    setResetPasswordDialog({
+      open: true,
+      userId,
+      userName,
+    });
   };
 
   return (
@@ -600,7 +641,7 @@ export default function Settings() {
               onUpdateUser={handleUpdateUser}
               onDeleteUser={handleDeleteUser}
               onToggleStatus={handleToggleUserStatus}
-              onResetPassword={handleResetPassword}
+              onResetPassword={openResetPasswordDialog}
             />
           </TabsContent>
 
@@ -701,7 +742,7 @@ export default function Settings() {
                             variant="outline"
                             size="sm"
                             className="gap-2 text-destructive hover:bg-destructive/10"
-                            onClick={() => handleDeleteLocation(location.id)}
+                            onClick={() => openDeleteLocationDialog(location.id, location.name)}
                           >
                             <Trash2 className="h-3 w-3" />
                             Excluir
@@ -885,6 +926,26 @@ export default function Settings() {
             </form>
           </DialogContent>
         </Dialog>
+
+        {/* Confirmation Dialogs */}
+        <ConfirmDialog
+          open={deleteLocationDialog.open}
+          onOpenChange={(open) => !open && setDeleteLocationDialog({ open: false, locationId: null, locationName: "" })}
+          onConfirm={handleDeleteLocation}
+          title="Excluir Local"
+          description={`Tem certeza que deseja excluir o local "${deleteLocationDialog.locationName}"? Esta ação não pode ser desfeita.`}
+          confirmText="Excluir Local"
+          variant="destructive"
+        />
+
+        <ConfirmDialog
+          open={resetPasswordDialog.open}
+          onOpenChange={(open) => !open && setResetPasswordDialog({ open: false, userId: null, userName: "" })}
+          onConfirm={handleResetPassword}
+          title="Resetar Senha"
+          description={`Tem certeza que deseja resetar a senha do usuário "${resetPasswordDialog.userName}" para "mudar123"?`}
+          confirmText="Resetar Senha"
+        />
       </div>
     </Layout>
   );

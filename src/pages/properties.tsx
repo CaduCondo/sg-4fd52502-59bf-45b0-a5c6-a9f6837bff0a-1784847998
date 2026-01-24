@@ -387,6 +387,8 @@ export default function PropertiesPage() {
           onOpenChange={setIsDeleteDialogOpen}
           onConfirm={handleDelete}
           onCancel={() => setPropertyToDelete(null)}
+          title="Excluir Imóvel"
+          description="Tem certeza de que deseja excluir este imóvel? Esta ação não pode ser desfeita."
         />
       </div>
     </Layout>

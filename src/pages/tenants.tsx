@@ -188,6 +188,7 @@ export default function TenantsPage() {
           tenant={tenantToDelete}
           onConfirm={handleConfirmDelete}
           onCancel={() => setTenantToDelete(null)}
+          message="Tem certeza de que deseja excluir este inquilino? Esta ação não pode ser desfeita."
         />
       </div>
     </Layout>
