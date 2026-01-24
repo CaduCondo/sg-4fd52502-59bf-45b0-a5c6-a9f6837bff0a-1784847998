@@ -384,6 +384,11 @@ export function DepositInstallmentsTable({
   // Total da coluna Valor Parcela
   const totalAmountColumn = sortedData.reduce((sum, item) => sum + item.amount, 0);
 
+  // Totais das novas colunas
+  const totalSecurityDeposit = sortedData.reduce((sum, item) => sum + (item.rental?.security_deposit || 0), 0);
+  const totalPartnerCommission = sortedData.reduce((sum, item) => sum + (item.partner_commission || 0), 0);
+  const totalInternalCommission = sortedData.reduce((sum, item) => sum + (item.internal_commission || 0), 0);
+
   if (loading) {
     return (
       <ScrollReveal delay={0.6}>
@@ -875,9 +880,14 @@ export function DepositInstallmentsTable({
 
                       {/* Linha de totais */}
                       <TableRow className="bg-slate-100 font-bold border-t-2 border-slate-300">
-                        <TableCell colSpan={9} className="text-right text-slate-900 uppercase tracking-wide">
+                        <TableCell colSpan={4} className="text-right text-slate-900 uppercase tracking-wide">
                           Total:
                         </TableCell>
+                        <TableCell className="text-slate-900 text-lg">{formatCurrency(totalSecurityDeposit)}</TableCell>
+                        <TableCell></TableCell>
+                        <TableCell className="text-slate-900 text-lg">{formatCurrency(totalPartnerCommission)}</TableCell>
+                        <TableCell className="text-slate-900 text-lg">{formatCurrency(totalInternalCommission)}</TableCell>
+                        <TableCell></TableCell>
                         <TableCell className="text-slate-900 text-lg">{formatCurrency(totalAmountColumn)}</TableCell>
                         <TableCell></TableCell>
                       </TableRow>
