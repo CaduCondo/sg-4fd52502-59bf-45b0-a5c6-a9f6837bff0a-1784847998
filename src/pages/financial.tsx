@@ -826,7 +826,10 @@ export default function Financial() {
         </ScrollReveal>
 
         {(user?.role === "admin" || user?.role === "financial") && (
-          <DepositInstallmentsTable />
+          <DepositInstallmentsTable 
+            userRole={user?.role || ""}
+            allowedLocationIds={allowedLocationIds}
+          />
         )}
       </div>
 
