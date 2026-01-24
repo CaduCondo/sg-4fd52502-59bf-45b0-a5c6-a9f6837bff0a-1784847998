@@ -110,6 +110,7 @@ export type Database = {
           installment_total: number
           pix_code: string | null
           rental_id: string
+          total_installments: number
           updated_at: string | null
         }
         Insert: {
@@ -120,6 +121,7 @@ export type Database = {
           installment_total: number
           pix_code?: string | null
           rental_id: string
+          total_installments?: number
           updated_at?: string | null
         }
         Update: {
@@ -130,6 +132,7 @@ export type Database = {
           installment_total?: number
           pix_code?: string | null
           rental_id?: string
+          total_installments?: number
           updated_at?: string | null
         }
         Relationships: [

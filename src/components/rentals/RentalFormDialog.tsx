@@ -58,7 +58,6 @@ export function RentalFormDialog({
     location?: Location;
   } | null>(null);
 
-  // Estados do parcelamento do caução
   const [isDepositInstallment, setIsDepositInstallment] = useState(false);
   const [depositInstallmentCount, setDepositInstallmentCount] = useState<string>("");
   const [depositInstallment1, setDepositInstallment1] = useState("");
@@ -178,7 +177,6 @@ export function RentalFormDialog({
       return;
     }
 
-    // Validar caução parcelado
     if (isDepositInstallment) {
       if (!depositInstallmentCount) {
         toast({
@@ -228,7 +226,6 @@ export function RentalFormDialog({
         hasPartnerBroker
       );
 
-      // Adicionar dados de parcelamento do caução
       if (isDepositInstallment && depositInstallmentCount) {
         rentalData.depositInstallments = parseInt(depositInstallmentCount);
         rentalData.depositInstallment1 = parseCurrencyToNumber(depositInstallment1);
@@ -251,7 +248,6 @@ export function RentalFormDialog({
           await updateFuturePaymentsOnPaymentDayChange(rental.id, parseInt(paymentDay));
         }
 
-        // Atualizar parcelas do caução
         await updateDepositInstallments(rental.id, rentalData);
 
         const selectedLocation = locations.find((loc) => loc.id === selectedProperty.locationId);
@@ -283,7 +279,6 @@ export function RentalFormDialog({
 
         await createPaymentsForRental(createdRental);
 
-        // Criar parcelas do caução
         await createDepositInstallments(createdRental.id, rentalData);
 
         const selectedLocation = locations.find((loc) => loc.id === selectedProperty.locationId);
@@ -340,10 +335,7 @@ export function RentalFormDialog({
   };
 
   const updateDepositInstallments = async (rentalId: string, rentalData: any) => {
-    // Deletar parcelas antigas
     await supabase.from("deposit_installments").delete().eq("rental_id", rentalId);
-
-    // Criar novas parcelas
     await createDepositInstallments(rentalId, rentalData);
   };
 
@@ -466,101 +458,140 @@ export function RentalFormDialog({
             </div>
           </div>
 
-          <div className="space-y-4 p-4 border rounded-lg">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="hasGarage"
+                checked={hasGarage}
+                onCheckedChange={(checked) => {
+                  setHasGarage(checked as boolean);
+                  if (!checked) {
+                    setGarageValue("");
+                  }
+                }}
+                disabled={!isEditing}
+              />
+              <Label htmlFor="hasGarage" className="cursor-pointer">
+                Vaga Garagem ?
+              </Label>
+            </div>
+
+            {hasGarage && (
+              <Input
+                value={garageValue}
+                onChange={(e) => setGarageValue(applyRealMask(e.target.value))}
+                placeholder="R$ 0,00"
+                className="w-32"
+                disabled={!isEditing}
+              />
+            )}
+
+            <div className="flex items-center space-x-2 ml-auto">
+              <Checkbox
+                id="hasPartnerBroker"
+                checked={hasPartnerBroker}
+                onCheckedChange={(checked) => setHasPartnerBroker(checked as boolean)}
+                disabled={!isEditing}
+              />
+              <Label htmlFor="hasPartnerBroker" className="cursor-pointer">
+                Corretor Parceiro ?
+              </Label>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="securityDeposit">Valor Caução</Label>
+              <Input
+                id="securityDeposit"
+                value={securityDeposit}
+                onChange={(e) => setSecurityDeposit(applyRealMask(e.target.value))}
+                placeholder="R$ 0,00"
+                disabled={!isEditing}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="isDepositInstallment"
+                  checked={isDepositInstallment}
+                  onCheckedChange={(checked) => {
+                    setIsDepositInstallment(checked as boolean);
+                    if (!checked) {
+                      setDepositInstallmentCount("");
+                      setDepositInstallment1("");
+                      setDepositInstallment2("");
+                      setDepositInstallment3("");
+                    }
+                  }}
+                  disabled={!isEditing}
+                />
+                <Label htmlFor="isDepositInstallment" className="cursor-pointer">
+                  Caução Parcelado ?
+                </Label>
+              </div>
+              {isDepositInstallment && (
+                <Select
+                  value={depositInstallmentCount}
+                  onValueChange={(value) => {
+                    setDepositInstallmentCount(value);
+                    if (value === "2") {
+                      setDepositInstallment3("");
+                    }
+                  }}
+                  disabled={!isEditing}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a quantidade" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="2">2x</SelectItem>
+                    <SelectItem value="3">3x</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+          </div>
+
+          {isDepositInstallment && depositInstallmentCount && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="securityDeposit">Valor Caução</Label>
+                <Label htmlFor="depositInstallment1">1ª Parcela</Label>
                 <Input
-                  id="securityDeposit"
-                  value={securityDeposit}
-                  onChange={(e) => setSecurityDeposit(applyRealMask(e.target.value))}
+                  id="depositInstallment1"
+                  value={depositInstallment1}
+                  onChange={(e) => setDepositInstallment1(applyRealMask(e.target.value))}
                   placeholder="R$ 0,00"
                   disabled={!isEditing}
                 />
               </div>
 
               <div className="space-y-2">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="isDepositInstallment"
-                    checked={isDepositInstallment}
-                    onCheckedChange={(checked) => {
-                      setIsDepositInstallment(checked as boolean);
-                      if (!checked) {
-                        setDepositInstallmentCount("");
-                        setDepositInstallment1("");
-                        setDepositInstallment2("");
-                        setDepositInstallment3("");
-                      }
-                    }}
+                <Label htmlFor="depositInstallment2">2ª Parcela</Label>
+                <Input
+                  id="depositInstallment2"
+                  value={depositInstallment2}
+                  onChange={(e) => setDepositInstallment2(applyRealMask(e.target.value))}
+                  placeholder="R$ 0,00"
+                  disabled={!isEditing}
+                />
+              </div>
+
+              {depositInstallmentCount === "3" && (
+                <div className="space-y-2">
+                  <Label htmlFor="depositInstallment3">3ª Parcela</Label>
+                  <Input
+                    id="depositInstallment3"
+                    value={depositInstallment3}
+                    onChange={(e) => setDepositInstallment3(applyRealMask(e.target.value))}
+                    placeholder="R$ 0,00"
                     disabled={!isEditing}
                   />
-                  <Label htmlFor="isDepositInstallment" className="cursor-pointer">
-                    Caução Parcelado ?
-                  </Label>
                 </div>
-                {isDepositInstallment && (
-                  <Select
-                    value={depositInstallmentCount}
-                    onValueChange={(value) => {
-                      setDepositInstallmentCount(value);
-                      if (value === "2") {
-                        setDepositInstallment3("");
-                      }
-                    }}
-                    disabled={!isEditing}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione a quantidade" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="2">2x</SelectItem>
-                      <SelectItem value="3">3x</SelectItem>
-                    </SelectContent>
-                  </Select>
-                )}
-              </div>
+              )}
             </div>
-
-            {isDepositInstallment && depositInstallmentCount && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="depositInstallment1">1ª Parcela</Label>
-                  <Input
-                    id="depositInstallment1"
-                    value={depositInstallment1}
-                    onChange={(e) => setDepositInstallment1(applyRealMask(e.target.value))}
-                    placeholder="R$ 0,00"
-                    disabled={!isEditing}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="depositInstallment2">2ª Parcela</Label>
-                  <Input
-                    id="depositInstallment2"
-                    value={depositInstallment2}
-                    onChange={(e) => setDepositInstallment2(applyRealMask(e.target.value))}
-                    placeholder="R$ 0,00"
-                    disabled={!isEditing}
-                  />
-                </div>
-
-                {depositInstallmentCount === "3" && (
-                  <div className="space-y-2">
-                    <Label htmlFor="depositInstallment3">3ª Parcela</Label>
-                    <Input
-                      id="depositInstallment3"
-                      value={depositInstallment3}
-                      onChange={(e) => setDepositInstallment3(applyRealMask(e.target.value))}
-                      placeholder="R$ 0,00"
-                      disabled={!isEditing}
-                    />
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+          )}
 
           <div className="p-4 bg-emerald-50 dark:bg-emerald-950 rounded-lg border border-emerald-200 dark:border-emerald-800">
             <div className="space-y-2">
