@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { FileText, Download, X } from "lucide-react";
 import type { Rental, Property, Tenant, Location } from "@/types";
 import { formatCurrency } from "@/lib/masks";
+import { formatDateLocal } from "@/lib/rentalCalculations";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -127,7 +128,7 @@ export function RentalContract({
                     <span className="text-muted-foreground">Data de Início:</span>
                     <p className="font-medium">
                       {rental.startDate
-                        ? format(new Date(rental.startDate + "T00:00:00"), "dd/MM/yyyy", {
+                        ? format(formatDateLocal(rental.startDate), "dd/MM/yyyy", {
                             locale: ptBR,
                           })
                         : "N/A"}
@@ -137,7 +138,7 @@ export function RentalContract({
                     <span className="text-muted-foreground">Data de Término:</span>
                     <p className="font-medium">
                       {rental.endDate
-                        ? format(new Date(rental.endDate + "T00:00:00"), "dd/MM/yyyy", {
+                        ? format(formatDateLocal(rental.endDate), "dd/MM/yyyy", {
                             locale: ptBR,
                           })
                         : "Indeterminado"}

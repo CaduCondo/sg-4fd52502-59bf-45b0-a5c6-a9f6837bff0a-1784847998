@@ -1,6 +1,16 @@
 import { Property } from "@/types";
 
 /**
+ * Formata uma data string (YYYY-MM-DD) para exibição sem problemas de timezone
+ * Adiciona T00:00:00 para forçar interpretação como hora local
+ */
+export function formatDateLocal(dateString: string): Date {
+  if (!dateString) return new Date();
+  // Adiciona T00:00:00 para forçar interpretação como local, não UTC
+  return new Date(dateString + "T00:00:00");
+}
+
+/**
  * Calcula o valor total da locação incluindo aluguel base e garagem
  */
 export function calculateTotalRent(

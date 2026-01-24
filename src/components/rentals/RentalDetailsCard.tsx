@@ -3,6 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, User, Calendar, DollarSign } from "lucide-react";
 import { formatCurrency } from "@/lib/masks";
+import { formatDateLocal } from "@/lib/rentalCalculations";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 interface RentalDetailsCardProps {
   rental: Rental;
@@ -11,10 +14,6 @@ interface RentalDetailsCardProps {
 }
 
 export function RentalDetailsCard({ rental, property, tenant }: RentalDetailsCardProps) {
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString("pt-BR");
-  };
-
   const getStatusBadge = (status: string) => {
     const variants: Record<string, "default" | "secondary" | "destructive"> = {
       active: "default",
@@ -93,16 +92,20 @@ export function RentalDetailsCard({ rental, property, tenant }: RentalDetailsCar
           <div className="ml-6 space-y-1">
             <p className="text-sm">
               <span className="text-muted-foreground">Início:</span>{" "}
-              {formatDate(rental.startDate)}
+              {rental.startDate
+                ? format(formatDateLocal(rental.startDate), "dd/MM/yyyy", { locale: ptBR })
+                : "N/A"}
             </p>
             <p className="text-sm">
               <span className="text-muted-foreground">Término:</span>{" "}
-              {formatDate(rental.endDate || "")}
+              {rental.endDate
+                ? format(formatDateLocal(rental.endDate), "dd/MM/yyyy", { locale: ptBR })
+                : "Indeterminado"}
             </p>
             {rental.status === "terminated" && rental.endDate && (
               <p className="text-sm">
                 <span className="text-muted-foreground">Encerrado em:</span>{" "}
-                {formatDate(rental.endDate)}
+                {format(formatDateLocal(rental.endDate), "dd/MM/yyyy", { locale: ptBR })}
               </p>
             )}
           </div>
