@@ -366,6 +366,9 @@ export function DepositInstallmentsTable({
     return acc;
   }, {} as Record<string, DepositInstallmentData[]>);
 
+  // Totais das colunas mescladas - somar apenas uma vez por rental_id
+  const uniqueRentals = Object.values(groupedByRental).map(group => group[0]);
+
   // Calcular totais para os cards (apenas admin)
   const totalExpected = sortedData.reduce((sum, item) => sum + item.amount, 0);
   const totalReceived = sortedData.reduce((sum, item) => {
@@ -387,8 +390,6 @@ export function DepositInstallmentsTable({
   // Total da coluna Valor Parcela (soma todas as linhas)
   const totalAmountColumn = sortedData.reduce((sum, item) => sum + item.amount, 0);
 
-  // Totais das colunas mescladas - somar apenas uma vez por rental_id
-  const uniqueRentals = Object.values(groupedByRental).map(group => group[0]);
   const totalSecurityDeposit = uniqueRentals.reduce((sum, item) => sum + (item.rental?.security_deposit || 0), 0);
   const totalPartnerCommission = uniqueRentals.reduce((sum, item) => sum + (item.partner_commission || 0), 0);
   const totalInternalCommission = uniqueRentals.reduce((sum, item) => sum + (item.internal_commission || 0), 0);
