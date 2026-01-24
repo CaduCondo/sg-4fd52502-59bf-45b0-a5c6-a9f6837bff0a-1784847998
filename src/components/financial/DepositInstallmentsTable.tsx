@@ -47,12 +47,15 @@ interface DepositInstallmentData {
   pix_code: string | null;
   partner_commission: number;
   internal_commission: number;
+  rental_id: string;
   rental: {
     has_partner_broker: boolean;
     security_deposit: number;
     is_active: boolean;
     property_id: string;
     location_id: string;
+    rental_amount: number;
+    parking_spot_amount: number | null;
     tenant: {
       name: string;
     };
@@ -65,7 +68,7 @@ interface DepositInstallmentData {
   };
 }
 
-type SortField = "local" | "complement" | "tenant" | "installment" | "securityDeposit" | "hasPartner" | "amount" | "partnerCommission" | "internalCommission";
+type SortField = "local" | "complement" | "tenant" | "rentalAmount" | "installment" | "securityDeposit" | "hasPartner" | "amount" | "partnerCommission" | "internalCommission";
 type SortDirection = "asc" | "desc" | null;
 
 export function DepositInstallmentsTable() {
@@ -102,11 +105,14 @@ export function DepositInstallmentsTable() {
           pix_code,
           partner_commission,
           internal_commission,
+          rental_id,
           rental:rentals (
             has_partner_broker,
             security_deposit,
             is_active,
             property_id,
+            rental_amount,
+            parking_spot_amount,
             tenant:tenants (
               name
             ),
@@ -131,12 +137,15 @@ export function DepositInstallmentsTable() {
         pix_code: item.pix_code,
         partner_commission: item.partner_commission || 0,
         internal_commission: item.internal_commission || 0,
+        rental_id: item.rental_id,
         rental: {
           has_partner_broker: item.rental?.has_partner_broker,
           security_deposit: item.rental?.security_deposit,
           is_active: item.rental?.is_active ?? true,
           property_id: item.rental?.property_id,
           location_id: item.rental?.property?.location_id,
+          rental_amount: item.rental?.rental_amount || 0,
+          parking_spot_amount: item.rental?.parking_spot_amount || 0,
           tenant: {
             name: item.rental?.tenant?.name || "N/A"
           },
@@ -314,16 +323,13 @@ export function DepositInstallmentsTable() {
   };
 
   const getFilteredAndSortedInstallments = () => {
-    // Filter by status
     let filtered = installments;
     if (statusFilter === "active") {
       filtered = installments.filter(item => item.rental.is_active === true);
     } else if (statusFilter === "inactive") {
       filtered = installments.filter(item => item.rental.is_active === false);
     }
-    // statusFilter === "all" não filtra
 
-    // Sort
     if (!sortField || !sortDirection) return filtered;
 
     return [...filtered].sort((a, b) => {
@@ -342,6 +348,10 @@ export function DepositInstallmentsTable() {
         case "tenant":
           aValue = a.rental.tenant.name;
           bValue = b.rental.tenant.name;
+          break;
+        case "rentalAmount":
+          aValue = a.rental.rental_amount + (a.rental.parking_spot_amount || 0);
+          bValue = b.rental.rental_amount + (b.rental.parking_spot_amount || 0);
           break;
         case "installment":
           aValue = a.installment_number;
@@ -388,6 +398,7 @@ export function DepositInstallmentsTable() {
       "Local": item.rental.property.location.name,
       "Complemento": item.rental.property.complement || "-",
       "Inquilino": item.rental.tenant.name,
+      "Valor Aluguel": item.rental.rental_amount + (item.rental.parking_spot_amount || 0),
       "Valor Total Caução": item.rental.security_deposit || 0,
       "Corretor Parceiro": item.rental.has_partner_broker ? "Sim" : "Não",
       "Valor Pg Corretagem Parceiro": item.partner_commission,
@@ -403,6 +414,7 @@ export function DepositInstallmentsTable() {
       { wch: 20 },
       { wch: 15 },
       { wch: 20 },
+      { wch: 15 },
       { wch: 18 },
       { wch: 18 },
       { wch: 25 },
@@ -427,12 +439,10 @@ export function DepositInstallmentsTable() {
   const sortedData = getFilteredAndSortedInstallments();
 
   const calculateDepositKPIs = () => {
-    // Valor Bruto Esperado = soma de todos os valores de parcela
     const totalExpected = sortedData.reduce((sum, item) => {
       return sum + item.amount;
     }, 0);
 
-    // Valor Bruto Recebido = soma dos valores de parcela apenas quando PIX está preenchido
     const totalReceived = sortedData.reduce((sum, item) => {
       if (item.pix_code && item.pix_code.trim() !== "") {
         return sum + item.amount;
@@ -440,12 +450,10 @@ export function DepositInstallmentsTable() {
       return sum;
     }, 0);
 
-    // Taxa de Administração = soma das comissões (parceiro + interno)
     const adminFee = sortedData.reduce((sum, item) => {
       return sum + (item.partner_commission || 0) + (item.internal_commission || 0);
     }, 0);
 
-    // Receita Líquida = Valor Bruto Recebido - Taxa de Administração
     const netRevenue = totalReceived - adminFee;
 
     return {
@@ -458,16 +466,23 @@ export function DepositInstallmentsTable() {
 
   const depositKPIs = calculateDepositKPIs();
 
+  // Agrupar por rental_id para mesclar células
+  const groupedByRental = sortedData.reduce((acc, item) => {
+    if (!acc[item.rental_id]) {
+      acc[item.rental_id] = [];
+    }
+    acc[item.rental_id].push(item);
+    return acc;
+  }, {} as Record<string, DepositInstallmentData[]>);
+
   if (loading) {
     return <div className="p-4 text-center">Carregando cauções...</div>;
   }
 
   return (
     <div className="space-y-6">
-      {/* KPI Cards - Apenas para Admin */}
       {user?.role === "admin" && (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          {/* Card 1: Valor Bruto Esperado */}
           <ScrollReveal delay={0.2}>
             <Card className="border-blue-100 bg-blue-50/30 shadow-sm h-full">
               <CardContent className="p-6 space-y-4">
@@ -487,7 +502,6 @@ export function DepositInstallmentsTable() {
             </Card>
           </ScrollReveal>
 
-          {/* Card 2: Valor Bruto Recebido */}
           <ScrollReveal delay={0.3}>
             <Card className="border-green-100 bg-green-50/30 shadow-sm h-full">
               <CardContent className="p-6 space-y-4">
@@ -507,7 +521,6 @@ export function DepositInstallmentsTable() {
             </Card>
           </ScrollReveal>
 
-          {/* Card 3: Taxa de Administração */}
           <ScrollReveal delay={0.4}>
             <Card className="border-purple-100 bg-purple-50/30 shadow-sm h-full">
               <CardContent className="p-6 space-y-4">
@@ -530,7 +543,6 @@ export function DepositInstallmentsTable() {
             </Card>
           </ScrollReveal>
 
-          {/* Card 4: Receita Líquida */}
           <ScrollReveal delay={0.5}>
             <Card className="border-indigo-100 bg-indigo-50/30 shadow-sm h-full">
               <CardContent className="p-6 space-y-4">
@@ -552,7 +564,6 @@ export function DepositInstallmentsTable() {
         </div>
       )}
 
-      {/* Tabela */}
       <Card className="border-slate-200 shadow-sm overflow-hidden">
         <CardHeader className="border-b border-slate-100 bg-white pb-4">
           <div className="flex items-center justify-between">
@@ -627,6 +638,15 @@ export function DepositInstallmentsTable() {
                   </TableHead>
                   <TableHead 
                     className="text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
+                    onClick={() => handleSort("rentalAmount")}
+                  >
+                    <div className="flex items-center">
+                      Valor Aluguel
+                      <SortIcon field="rentalAmount" />
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
                     onClick={() => handleSort("securityDeposit")}
                   >
                     <div className="flex items-center">
@@ -687,149 +707,157 @@ export function DepositInstallmentsTable() {
               <TableBody>
                 {sortedData.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={10} className="text-center h-24 text-slate-500">
+                    <TableCell colSpan={11} className="text-center h-24 text-slate-500">
                       Nenhum registro de caução parcelado encontrado.
                     </TableCell>
                   </TableRow>
                 ) : (
                   <>
-                    {sortedData.map((item) => (
-                      <TableRow key={item.id} className="hover:bg-slate-50 transition-colors">
-                        <TableCell className="font-medium text-slate-900">
-                          {item.rental.property.location.name}
-                        </TableCell>
-                        <TableCell className="text-slate-600">
-                          {item.rental.property.complement || "-"}
-                        </TableCell>
-                        <TableCell className="text-slate-600">
-                          {item.rental.tenant.name}
-                        </TableCell>
-                        <TableCell className="font-medium text-slate-900">
-                          {formatCurrency(item.rental.security_deposit || 0)}
-                        </TableCell>
-                        <TableCell>
-                          {item.rental.has_partner_broker ? (
-                            <Badge className="bg-green-100 text-green-700 hover:bg-green-200 border-green-200">Sim</Badge>
-                          ) : (
-                            <Badge variant="outline">Não</Badge>
+                    {Object.values(groupedByRental).map((group) =>
+                      group.map((item, index) => (
+                        <TableRow key={item.id} className="hover:bg-slate-50 transition-colors">
+                          {index === 0 && (
+                            <>
+                              <TableCell rowSpan={group.length} className="font-medium text-slate-900 align-top">
+                                {item.rental.property.location.name}
+                              </TableCell>
+                              <TableCell rowSpan={group.length} className="text-slate-600 align-top">
+                                {item.rental.property.complement || "-"}
+                              </TableCell>
+                              <TableCell rowSpan={group.length} className="text-slate-600 align-top">
+                                {item.rental.tenant.name}
+                              </TableCell>
+                              <TableCell rowSpan={group.length} className="font-medium text-slate-900 align-top">
+                                {formatCurrency(item.rental.rental_amount + (item.rental.parking_spot_amount || 0))}
+                              </TableCell>
+                              <TableCell rowSpan={group.length} className="font-medium text-slate-900 align-top">
+                                {formatCurrency(item.rental.security_deposit || 0)}
+                              </TableCell>
+                              <TableCell rowSpan={group.length} className="align-top">
+                                {item.rental.has_partner_broker ? (
+                                  <Badge className="bg-green-100 text-green-700 hover:bg-green-200 border-green-200">Sim</Badge>
+                                ) : (
+                                  <Badge variant="outline">Não</Badge>
+                                )}
+                              </TableCell>
+                              <TableCell rowSpan={group.length} className="align-top">
+                                {editingPartnerCommissionId === item.id ? (
+                                  <div className="flex items-center gap-2">
+                                    <Input
+                                      type="number"
+                                      step="0.01"
+                                      value={editPartnerCommission}
+                                      onChange={(e) => setEditPartnerCommission(e.target.value)}
+                                      className="h-8 w-32"
+                                      placeholder="0.00"
+                                    />
+                                    <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={() => savePartnerCommission(item.id)}>
+                                      <Check className="h-4 w-4" />
+                                    </Button>
+                                    <Button size="icon" variant="ghost" className="h-8 w-8 text-red-600" onClick={cancelEditingPartnerCommission}>
+                                      <X className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-2 group">
+                                    <span className="text-slate-900 font-medium">
+                                      {formatCurrency(item.partner_commission)}
+                                    </span>
+                                    <Button 
+                                      size="icon" 
+                                      variant="ghost" 
+                                      className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50" 
+                                      onClick={() => startEditingPartnerCommission(item.id, item.partner_commission)}
+                                    >
+                                      <Edit2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                )}
+                              </TableCell>
+                              <TableCell rowSpan={group.length} className="align-top">
+                                {editingInternalCommissionId === item.id ? (
+                                  <div className="flex items-center gap-2">
+                                    <Input
+                                      type="number"
+                                      step="0.01"
+                                      value={editInternalCommission}
+                                      onChange={(e) => setEditInternalCommission(e.target.value)}
+                                      className="h-8 w-32"
+                                      placeholder="0.00"
+                                    />
+                                    <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={() => saveInternalCommission(item.id)}>
+                                      <Check className="h-4 w-4" />
+                                    </Button>
+                                    <Button size="icon" variant="ghost" className="h-8 w-8 text-red-600" onClick={cancelEditingInternalCommission}>
+                                      <X className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-2 group">
+                                    <span className="text-slate-900 font-medium">
+                                      {formatCurrency(item.internal_commission)}
+                                    </span>
+                                    <Button 
+                                      size="icon" 
+                                      variant="ghost" 
+                                      className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50" 
+                                      onClick={() => startEditingInternalCommission(item.id, item.internal_commission)}
+                                    >
+                                      <Edit2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                )}
+                              </TableCell>
+                            </>
                           )}
-                        </TableCell>
-                        <TableCell>
-                          {editingPartnerCommissionId === item.id ? (
-                            <div className="flex items-center gap-2">
-                              <Input
-                                type="number"
-                                step="0.01"
-                                value={editPartnerCommission}
-                                onChange={(e) => setEditPartnerCommission(e.target.value)}
-                                className="h-8 w-32"
-                                placeholder="0.00"
-                              />
-                              <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={() => savePartnerCommission(item.id)}>
-                                <Check className="h-4 w-4" />
-                              </Button>
-                              <Button size="icon" variant="ghost" className="h-8 w-8 text-red-600" onClick={cancelEditingPartnerCommission}>
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-2 group">
-                              <span className="text-slate-900 font-medium">
-                                {formatCurrency(item.partner_commission)}
-                              </span>
-                              <Button 
-                                size="icon" 
-                                variant="ghost" 
-                                className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50" 
-                                onClick={() => startEditingPartnerCommission(item.id, item.partner_commission)}
-                              >
-                                <Edit2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {editingInternalCommissionId === item.id ? (
-                            <div className="flex items-center gap-2">
-                              <Input
-                                type="number"
-                                step="0.01"
-                                value={editInternalCommission}
-                                onChange={(e) => setEditInternalCommission(e.target.value)}
-                                className="h-8 w-32"
-                                placeholder="0.00"
-                              />
-                              <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={() => saveInternalCommission(item.id)}>
-                                <Check className="h-4 w-4" />
-                              </Button>
-                              <Button size="icon" variant="ghost" className="h-8 w-8 text-red-600" onClick={cancelEditingInternalCommission}>
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-2 group">
-                              <span className="text-slate-900 font-medium">
-                                {formatCurrency(item.internal_commission)}
-                              </span>
-                              <Button 
-                                size="icon" 
-                                variant="ghost" 
-                                className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50" 
-                                onClick={() => startEditingInternalCommission(item.id, item.internal_commission)}
-                              >
-                                <Edit2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">
-                            {item.installment_number}/{item.total_installments}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right font-bold text-green-600">
-                          {formatCurrency(item.amount)}
-                        </TableCell>
-                        <TableCell>
-                          {editingPixId === item.id ? (
-                            <div className="flex items-center gap-2">
-                              <Input
-                                value={editPixCode}
-                                onChange={(e) => setEditPixCode(e.target.value)}
-                                className="h-8 w-40"
-                                placeholder="Chave PIX"
-                              />
-                              <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={() => savePixCode(item.id)}>
-                                <Check className="h-4 w-4" />
-                              </Button>
-                              <Button size="icon" variant="ghost" className="h-8 w-8 text-red-600" onClick={cancelEditingPix}>
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-2 group">
-                              <Input
-                                value={item.pix_code || ""}
-                                readOnly
-                                placeholder="Sem código"
-                                className="h-8 text-xs bg-slate-50"
-                              />
-                              <Button 
-                                size="icon" 
-                                variant="ghost" 
-                                className="h-8 w-8 text-purple-600 hover:text-purple-700 hover:bg-purple-50" 
-                                onClick={() => startEditingPix(item.id, item.pix_code)}
-                              >
-                                <Edit2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {/* Linha de Totais */}
+                          <TableCell>
+                            <Badge variant="outline">
+                              {item.installment_number}/{item.total_installments}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right font-bold text-green-600">
+                            {formatCurrency(item.amount)}
+                          </TableCell>
+                          <TableCell>
+                            {editingPixId === item.id ? (
+                              <div className="flex items-center gap-2">
+                                <Input
+                                  value={editPixCode}
+                                  onChange={(e) => setEditPixCode(e.target.value)}
+                                  className="h-8 w-40"
+                                  placeholder="Chave PIX"
+                                />
+                                <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={() => savePixCode(item.id)}>
+                                  <Check className="h-4 w-4" />
+                                </Button>
+                                <Button size="icon" variant="ghost" className="h-8 w-8 text-red-600" onClick={cancelEditingPix}>
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2 group">
+                                <Input
+                                  value={item.pix_code || ""}
+                                  readOnly
+                                  placeholder="Sem código"
+                                  className="h-8 text-xs bg-slate-50"
+                                />
+                                <Button 
+                                  size="icon" 
+                                  variant="ghost" 
+                                  className="h-8 w-8 text-purple-600 hover:text-purple-700 hover:bg-purple-50" 
+                                  onClick={() => startEditingPix(item.id, item.pix_code)}
+                                >
+                                  <Edit2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
                     <TableRow className="bg-slate-100 font-bold border-t-2 border-slate-300">
-                      <TableCell colSpan={8} className="text-right text-slate-900 uppercase tracking-wide">
+                      <TableCell colSpan={9} className="text-right text-slate-900 uppercase tracking-wide">
                         Total:
                       </TableCell>
                       <TableCell className="text-right text-green-700 text-lg">
