@@ -381,13 +381,14 @@ export function DepositInstallmentsTable({
   );
   const netRevenue = totalReceived - adminFee;
 
-  // Total da coluna Valor Parcela
+  // Total da coluna Valor Parcela (soma todas as linhas)
   const totalAmountColumn = sortedData.reduce((sum, item) => sum + item.amount, 0);
 
-  // Totais das novas colunas
-  const totalSecurityDeposit = sortedData.reduce((sum, item) => sum + (item.rental?.security_deposit || 0), 0);
-  const totalPartnerCommission = sortedData.reduce((sum, item) => sum + (item.partner_commission || 0), 0);
-  const totalInternalCommission = sortedData.reduce((sum, item) => sum + (item.internal_commission || 0), 0);
+  // Totais das colunas mescladas - somar apenas uma vez por rental_id
+  const uniqueRentals = Object.values(groupedByRental).map(group => group[0]);
+  const totalSecurityDeposit = uniqueRentals.reduce((sum, item) => sum + (item.rental?.security_deposit || 0), 0);
+  const totalPartnerCommission = uniqueRentals.reduce((sum, item) => sum + (item.partner_commission || 0), 0);
+  const totalInternalCommission = uniqueRentals.reduce((sum, item) => sum + (item.internal_commission || 0), 0);
 
   if (loading) {
     return (

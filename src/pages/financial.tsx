@@ -851,7 +851,7 @@ export default function Financial() {
                       })}
                       {/* Linha de Totais */}
                       <TableRow className="bg-slate-100 font-bold border-t-2 border-slate-300">
-                        <TableCell colSpan={10} className="text-right text-slate-900 uppercase tracking-wide">
+                        <TableCell colSpan={9} className="text-right text-slate-900 uppercase tracking-wide">
                           Total:
                         </TableCell>
                         <TableCell className="text-right text-slate-900 text-lg">
