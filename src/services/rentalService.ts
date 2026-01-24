@@ -23,6 +23,7 @@ function mapRentalToDB(rental: any) {
     auto_renew: rental.autoRenew,
     security_deposit: rental.securityDeposit,
     has_partner_broker: rental.hasPartnerBroker,
+    partner_broker_value: rental.partnerBrokerValue,
     deposit_installments: rental.depositInstallments,
     deposit_installment_1: rental.depositInstallment1,
     deposit_installment_2: rental.depositInstallment2,
@@ -35,6 +36,20 @@ function mapRentalToDB(rental: any) {
       delete dbRental[key];
     }
   });
+
+  // Validação de campos obrigatórios
+  if (!dbRental.property_id) {
+    throw new Error("property_id is required");
+  }
+  if (!dbRental.tenant_id) {
+    throw new Error("tenant_id is required");
+  }
+  if (!dbRental.start_date) {
+    throw new Error("start_date is required");
+  }
+  if (!dbRental.payment_day) {
+    throw new Error("payment_day is required");
+  }
 
   return dbRental;
 }

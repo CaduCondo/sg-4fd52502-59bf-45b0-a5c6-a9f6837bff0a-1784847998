@@ -137,6 +137,13 @@ export function RentalFormDialog({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Log para debug
+    console.log("=== DEBUG RENTAL FORM ===");
+    console.log("selectedPropertyId:", selectedPropertyId);
+    console.log("selectedTenantId:", selectedTenantId);
+    console.log("startDate:", startDate);
+    console.log("paymentDay:", paymentDay);
+
     const validation = validateRentalForm({
       propertyId: selectedPropertyId,
       tenantId: selectedTenantId,
@@ -226,6 +233,9 @@ export function RentalFormDialog({
         hasPartnerBroker
       );
 
+      // Log dos dados preparados
+      console.log("rentalData (camelCase):", rentalData);
+
       if (isDepositInstallment && depositInstallmentCount) {
         rentalData.depositInstallments = parseInt(depositInstallmentCount);
         rentalData.depositInstallment1 = parseCurrencyToNumber(depositInstallment1);
@@ -239,6 +249,8 @@ export function RentalFormDialog({
         rentalData.depositInstallments = 1;
         rentalData.depositInstallment1 = parseCurrencyToNumber(securityDeposit);
       }
+
+      console.log("rentalData final:", rentalData);
 
       if (rental) {
         const updatedRental = await updateRentalService(rental.id, rentalData);
@@ -267,6 +279,8 @@ export function RentalFormDialog({
         setShowContract(true);
       } else {
         const createdRental = await createRental(rentalData);
+        console.log("createdRental:", createdRental);
+
         await updateProperty(selectedPropertyId, { status: "occupied" });
 
         const tenant = availableTenants.find((t) => t.id === selectedTenantId);

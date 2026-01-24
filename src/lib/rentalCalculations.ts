@@ -47,6 +47,7 @@ export function validateRentalValue(totalValue: number): { isValid: boolean; err
 
 /**
  * Prepara os dados da locação para envio ao backend
+ * RETORNA EM CAMELCASE - A conversão para snake_case é feita no rentalService.ts
  */
 export function prepareRentalData(
   propertyId: string,
@@ -67,21 +68,22 @@ export function prepareRentalData(
     : 0;
   const cleanSecurityDeposit = parseFloat(securityDeposit.replace(/[^\d,]/g, "").replace(",", ".") || "0");
 
+  // RETORNA EM CAMELCASE
   return {
-    property_id: propertyId,
-    tenant_id: tenantId,
-    start_date: startDate,
-    end_date: endDate || null,
-    payment_day: parseInt(paymentDay),
-    monthly_rent: propertyValue,
+    propertyId: propertyId,
+    tenantId: tenantId,
+    startDate: startDate,
+    endDate: endDate || null,
+    paymentDay: parseInt(paymentDay),
+    monthlyRent: propertyValue,
     value: totalValue,
-    has_garage: hasGarage,
-    garage_value: hasGarage ? cleanGarageValue : null,
-    security_deposit: cleanSecurityDeposit,
-    has_partner_broker: hasPartnerBroker,
-    partner_broker_value: null,
-    is_active: true,
-    contract_attachments: attachments,
+    hasGarage: hasGarage,
+    garageValue: hasGarage ? cleanGarageValue : null,
+    securityDeposit: cleanSecurityDeposit,
+    hasPartnerBroker: hasPartnerBroker,
+    partnerBrokerValue: null,
+    isActive: true,
+    contractAttachments: attachments,
     attachments: attachments,
   };
 }
