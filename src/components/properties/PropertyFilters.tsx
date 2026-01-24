@@ -68,14 +68,17 @@ export function PropertyFilters({
                   .map((location) => (
                     <div
                       key={location.id}
-                      className="flex items-center space-x-2 rounded-sm px-2 py-1.5 hover:bg-accent cursor-pointer"
-                      onClick={() => handleLocationToggle(location.id)}
+                      className="flex items-center space-x-2 rounded-sm px-2 py-1.5 hover:bg-accent"
                     >
                       <Checkbox
+                        id={`location-${location.id}`}
                         checked={selectedLocations.includes(location.id)}
                         onCheckedChange={() => handleLocationToggle(location.id)}
                       />
-                      <label className="flex-1 text-sm cursor-pointer">
+                      <label 
+                        htmlFor={`location-${location.id}`}
+                        className="flex-1 text-sm cursor-pointer"
+                      >
                         {location.name}
                       </label>
                     </div>
