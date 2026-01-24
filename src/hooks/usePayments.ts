@@ -9,6 +9,7 @@ import {
 import { getAll as getAllRentals } from "@/services/rentalService";
 import { propertyService, tenantService } from "@/services";
 import { supabase } from "@/integrations/supabase/client";
+import { differenceInMonths } from "date-fns";
 
 export function usePayments() {
   const { toast } = useToast();
@@ -131,15 +132,15 @@ export function usePayments() {
     const rental = rentals.find(r => r.id === payment.rentalId);
     if (!rental) return "";
     
-    const startDate = new Date(rental.startDate);
-    const dueDate = new Date(payment.dueDate);
+    // Usar mesmo cálculo da página Financeiro
+    const contractStartDate = new Date(rental.startDate + "T00:00:00");
+    const contractEndDate = new Date(rental.endDate + "T00:00:00");
+    const totalMonths = differenceInMonths(contractEndDate, contractStartDate) + 1;
     
-    const monthsDiff = (dueDate.getFullYear() - startDate.getFullYear()) * 12 + 
-                       (dueDate.getMonth() - startDate.getMonth()) + 1;
+    const referenceDate = new Date(payment.referenceYear || 0, (payment.referenceMonth || 1) - 1, 1);
+    const currentPaymentNumber = differenceInMonths(referenceDate, contractStartDate) + 1;
     
-    const totalMonths = rental.durationMonths || 0;
-    
-    return `${monthsDiff}/${totalMonths}`;
+    return `${currentPaymentNumber}/${totalMonths}`;
   };
 
   const getPaymentById = async (id: string): Promise<Payment | null> => {
