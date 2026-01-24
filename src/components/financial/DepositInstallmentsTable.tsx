@@ -15,6 +15,14 @@ import { Download, Printer, ArrowUpDown, ArrowUp, ArrowDown, Edit2, Check, X, Ba
 import * as XLSX from "xlsx";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 
 interface DepositInstallmentData {
   id: string;
@@ -451,32 +459,24 @@ export function DepositInstallmentsTable({
               <CardTitle className="text-base font-medium text-slate-700">
                 Detalhamento dos Cauções
               </CardTitle>
-              <div className="flex flex-wrap gap-2">
-                <div className="flex gap-2">
-                  <Button
-                    variant={statusFilter === "active" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setStatusFilter("active")}
-                    className={statusFilter === "active" ? "" : "text-slate-600 hover:text-slate-900"}
+              <div className="flex flex-wrap gap-4 items-end">
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="status-filter" className="text-sm font-medium text-slate-700">
+                    Status Locação
+                  </Label>
+                  <Select
+                    value={statusFilter}
+                    onValueChange={(value: "active" | "inactive" | "all") => setStatusFilter(value)}
                   >
-                    Ativas
-                  </Button>
-                  <Button
-                    variant={statusFilter === "inactive" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setStatusFilter("inactive")}
-                    className={statusFilter === "inactive" ? "" : "text-slate-600 hover:text-slate-900"}
-                  >
-                    Inativas
-                  </Button>
-                  <Button
-                    variant={statusFilter === "all" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setStatusFilter("all")}
-                    className={statusFilter === "all" ? "" : "text-slate-600 hover:text-slate-900"}
-                  >
-                    Todas
-                  </Button>
+                    <SelectTrigger id="status-filter" className="w-[180px]">
+                      <SelectValue placeholder="Selecione o status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Ativos</SelectItem>
+                      <SelectItem value="inactive">Inativos</SelectItem>
+                      <SelectItem value="all">Todos</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="flex gap-2">
                   <Button 
