@@ -686,6 +686,7 @@ export default function Financial() {
                         <SortIcon field="status" />
                       </div>
                     </TableHead>
+                    <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Código PIX</TableHead>
                     <TableHead 
                       className="text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
                       onClick={() => handleSort("dueDate")}
@@ -722,7 +723,6 @@ export default function Financial() {
                         <SortIcon field="paidAmount" />
                       </div>
                     </TableHead>
-                    <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Código PIX</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -764,20 +764,6 @@ export default function Financial() {
                             </TableCell>
                             <TableCell>
                               {getStatusBadge(payment.status)}
-                            </TableCell>
-                            <TableCell className="text-slate-600">
-                              {format(new Date(payment.dueDate), "dd/MM/yyyy")}
-                            </TableCell>
-                            <TableCell className="text-slate-600">
-                              {payment.paymentDate 
-                                ? format(new Date(payment.paymentDate), "dd/MM/yyyy")
-                                : "-"}
-                            </TableCell>
-                            <TableCell className="text-right font-medium text-slate-900">
-                              {formatCurrency(payment.expectedAmount)}
-                            </TableCell>
-                            <TableCell className="text-right font-bold text-green-600">
-                              {formatCurrency(payment.paidAmount || 0)}
                             </TableCell>
                             <TableCell>
                               {editingPixCode[details.rental?.id || ""] !== undefined ? (
@@ -845,6 +831,20 @@ export default function Financial() {
                                   </Button>
                                 </div>
                               )}
+                            </TableCell>
+                            <TableCell className="text-slate-600">
+                              {format(new Date(payment.dueDate), "dd/MM/yyyy")}
+                            </TableCell>
+                            <TableCell className="text-slate-600">
+                              {payment.paymentDate 
+                                ? format(new Date(payment.paymentDate), "dd/MM/yyyy")
+                                : "-"}
+                            </TableCell>
+                            <TableCell className="text-right font-medium text-slate-900">
+                              {formatCurrency(payment.expectedAmount)}
+                            </TableCell>
+                            <TableCell className="text-right font-bold text-green-600">
+                              {formatCurrency(payment.paidAmount || 0)}
                             </TableCell>
                           </TableRow>
                         );

@@ -11,7 +11,6 @@ import { getAll as getAllProperties, update as updateProperty } from "@/services
 import { getAll as getAllTenants, update as updateTenant } from "@/services/tenantService";
 import { getAll as getAllLocations } from "@/services/locationService";
 import { RentalFormDialog } from "@/components/rentals/RentalFormDialog";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
 import type { Rental, Property, Tenant, Location } from "@/types";
 import { formatCurrency } from "@/lib/masks";
 import {
@@ -37,14 +36,6 @@ export default function RentalsPage() {
   const [isViewMode, setIsViewMode] = useState(false);
   const [rentalToDelete, setRentalToDelete] = useState<Rental | null>(null);
   const [showInactive, setShowInactive] = useState(false);
-
-  const [endContractDialog, setEndContractDialog] = useState<{
-    open: boolean;
-    rental: Rental | null;
-  }>({
-    open: false,
-    rental: null,
-  });
 
   const loadData = async () => {
     try {
@@ -102,17 +93,15 @@ export default function RentalsPage() {
   };
 
   const handleEndContract = async (rental: Rental) => {
-    if (!endContractDialog.rental) return;
-
     try {
-      await terminateContract(endContractDialog.rental.id);
+      await terminateContract(rental.id);
       
       // Update property and tenant status
-      if (endContractDialog.rental.propertyId) {
-        await updateProperty(endContractDialog.rental.propertyId, { status: "available" });
+      if (rental.propertyId) {
+        await updateProperty(rental.propertyId, { status: "available" });
       }
-      if (endContractDialog.rental.tenantId) {
-        await updateTenant(endContractDialog.rental.tenantId, { status: "active" });
+      if (rental.tenantId) {
+        await updateTenant(rental.tenantId, { status: "active" });
       }
 
       toast({
@@ -120,7 +109,6 @@ export default function RentalsPage() {
         description: "Contrato encerrado com sucesso!",
       });
       
-      setEndContractDialog({ open: false, rental: null });
       loadData();
     } catch (error) {
       console.error("Error ending contract:", error);
@@ -130,13 +118,6 @@ export default function RentalsPage() {
         variant: "destructive",
       });
     }
-  };
-
-  const openEndContractDialog = (rental: Rental) => {
-    setEndContractDialog({
-      open: true,
-      rental,
-    });
   };
 
   const handleDeleteRental = async () => {
@@ -313,7 +294,8 @@ export default function RentalsPage() {
                                 className="bg-yellow-500 hover:bg-yellow-600 text-white border-yellow-500"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  openEndContractDialog(rental);
+                                  const confirmEnd = confirm("Tem certeza que deseja encerrar este contrato?");
+                                  if (confirmEnd) handleEndContract(rental);
                                 }}
                               >
                                 <XCircle className="h-4 w-4" />
@@ -446,16 +428,6 @@ export default function RentalsPage() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-
-        <ConfirmDialog
-          open={endContractDialog.open}
-          onOpenChange={(open) => !open && setEndContractDialog({ open: false, rental: null })}
-          onConfirm={() => handleEndContract(endContractDialog.rental!)}
-          title="Encerrar Contrato"
-          description={`Tem certeza que deseja encerrar este contrato de locação? O imóvel e o inquilino ficarão disponíveis novamente.`}
-          confirmText="Encerrar Contrato"
-          variant="warning"
-        />
       </Layout>
     </>
   );

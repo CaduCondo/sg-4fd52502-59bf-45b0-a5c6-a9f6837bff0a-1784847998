@@ -1,21 +1,11 @@
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { AlertCircle } from "lucide-react";
 
 interface PropertyDeleteAlertProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirm: () => void;
   onCancel: () => void;
-  title?: string;
-  description?: string;
 }
 
 export function PropertyDeleteAlert({
@@ -23,25 +13,23 @@ export function PropertyDeleteAlert({
   onOpenChange,
   onConfirm,
   onCancel,
-  title = "Excluir Imóvel",
-  description = "Tem certeza que deseja excluir este imóvel? Esta ação não pode ser desfeita e removerá permanentemente todos os dados associados.",
 }: PropertyDeleteAlertProps) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>{title}</AlertDialogTitle>
+          <AlertDialogTitle className="flex items-center gap-2 text-red-600">
+            <AlertCircle className="h-5 w-5" />
+            Confirmar Exclusão
+          </AlertDialogTitle>
           <AlertDialogDescription>
-            {description}
+            Tem certeza que deseja excluir este imóvel? Esta ação não pode ser desfeita e removerá todos os dados associados.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel onClick={onCancel}>Cancelar</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={onConfirm}
-            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-          >
-            Excluir Imóvel
+          <AlertDialogAction onClick={onConfirm} className="bg-red-600 hover:bg-red-700">
+            Sim, Excluir
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

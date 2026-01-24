@@ -58,7 +58,6 @@ import { Location, CompanyConfig } from "@/types";
 // New modular components
 import { UsersTab } from "@/components/settings/UsersTab";
 import { PermissionsTab } from "@/components/settings/PermissionsTab";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 // Custom hooks
 import { useUsers } from "@/hooks/useUsers";
@@ -104,27 +103,6 @@ export default function Settings() {
     city: "",
     state: "",
     zip_code: "",
-  });
-
-  // Confirmation dialogs state
-  const [deleteLocationDialog, setDeleteLocationDialog] = useState<{
-    open: boolean;
-    locationId: string | null;
-    locationName: string;
-  }>({
-    open: false,
-    locationId: null,
-    locationName: "",
-  });
-
-  const [resetPasswordDialog, setResetPasswordDialog] = useState<{
-    open: boolean;
-    userId: string | null;
-    userName: string;
-  }>({
-    open: false,
-    userId: null,
-    userName: "",
   });
 
   // Use custom hooks for users and permissions
@@ -322,26 +300,17 @@ export default function Settings() {
     setIsLocationDialogOpen(true);
   };
 
-  const handleDeleteLocation = async () => {
-    if (!deleteLocationDialog.locationId) return;
+  const handleDeleteLocation = async (locationId: string) => {
+    if (!confirm("Tem certeza que deseja excluir este local?")) return;
 
     try {
-      await locationService.deleteLocation(deleteLocationDialog.locationId);
+      await locationService.deleteLocation(locationId);
       toast({ title: "Local excluído com sucesso!" });
-      setDeleteLocationDialog({ open: false, locationId: null, locationName: "" });
       loadLocations();
     } catch (error) {
       console.error("Erro ao excluir local:", error);
       toast({ title: "Erro ao excluir local", variant: "destructive" });
     }
-  };
-
-  const openDeleteLocationDialog = (locationId: string, locationName: string) => {
-    setDeleteLocationDialog({
-      open: true,
-      locationId,
-      locationName,
-    });
   };
 
   const filteredLocations = locations.filter((location) => {
@@ -353,30 +322,20 @@ export default function Settings() {
     );
   });
 
-  const handleResetPassword = async () => {
-    if (!resetPasswordDialog.userId) return;
-    
+  const handleResetPassword = async (userId: string) => {
+    if (!confirm("Deseja resetar a senha deste usuário para 'mudar123'?")) return;
     try {
       const { error } = await supabase
         .from("system_users")
         .update({ password: "mudar123" })
-        .eq("id", resetPasswordDialog.userId);
+        .eq("id", userId);
 
       if (error) throw error;
       toast({ title: "Senha resetada com sucesso!" });
-      setResetPasswordDialog({ open: false, userId: null, userName: "" });
     } catch (error) {
       console.error("Erro ao resetar senha:", error);
       toast({ title: "Erro ao resetar senha", variant: "destructive" });
     }
-  };
-
-  const openResetPasswordDialog = (userId: string, userName: string) => {
-    setResetPasswordDialog({
-      open: true,
-      userId,
-      userName,
-    });
   };
 
   return (
@@ -641,12 +600,7 @@ export default function Settings() {
               onUpdateUser={handleUpdateUser}
               onDeleteUser={handleDeleteUser}
               onToggleStatus={handleToggleUserStatus}
-              onResetPassword={(userId: string) => {
-                // Find user name from users list or fetch it if needed, passing a placeholder for now or adjusting the interface
-                const user = users.find(u => u.id === userId);
-                openResetPasswordDialog(userId, user?.name || "Usuário");
-                return Promise.resolve();
-              }}
+              onResetPassword={handleResetPassword}
             />
           </TabsContent>
 
@@ -747,7 +701,7 @@ export default function Settings() {
                             variant="outline"
                             size="sm"
                             className="gap-2 text-destructive hover:bg-destructive/10"
-                            onClick={() => openDeleteLocationDialog(location.id, location.name)}
+                            onClick={() => handleDeleteLocation(location.id)}
                           >
                             <Trash2 className="h-3 w-3" />
                             Excluir
@@ -862,6 +816,47 @@ export default function Settings() {
                 </div>
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="locationState">Estado <span className="text-red-500">*</span></Label>
+                <Select
+                  value={locationForm.state}
+                  onValueChange={(value) => setLocationForm({ ...locationForm, state: value })}
+                >
+                  <SelectTrigger id="locationState">
+                    <SelectValue placeholder="Selecione o estado" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="AC">Acre</SelectItem>
+                    <SelectItem value="AL">Alagoas</SelectItem>
+                    <SelectItem value="AP">Amapá</SelectItem>
+                    <SelectItem value="AM">Amazonas</SelectItem>
+                    <SelectItem value="BA">Bahia</SelectItem>
+                    <SelectItem value="CE">Ceará</SelectItem>
+                    <SelectItem value="DF">Distrito Federal</SelectItem>
+                    <SelectItem value="ES">Espírito Santo</SelectItem>
+                    <SelectItem value="GO">Goiás</SelectItem>
+                    <SelectItem value="MA">Maranhão</SelectItem>
+                    <SelectItem value="MT">Mato Grosso</SelectItem>
+                    <SelectItem value="MS">Mato Grosso do Sul</SelectItem>
+                    <SelectItem value="MG">Minas Gerais</SelectItem>
+                    <SelectItem value="PA">Pará</SelectItem>
+                    <SelectItem value="PB">Paraíba</SelectItem>
+                    <SelectItem value="PR">Paraná</SelectItem>
+                    <SelectItem value="PE">Pernambuco</SelectItem>
+                    <SelectItem value="PI">Piauí</SelectItem>
+                    <SelectItem value="RJ">Rio de Janeiro</SelectItem>
+                    <SelectItem value="RN">Rio Grande do Norte</SelectItem>
+                    <SelectItem value="RS">Rio Grande do Sul</SelectItem>
+                    <SelectItem value="RO">Rondônia</SelectItem>
+                    <SelectItem value="RR">Roraima</SelectItem>
+                    <SelectItem value="SC">Santa Catarina</SelectItem>
+                    <SelectItem value="SP">São Paulo</SelectItem>
+                    <SelectItem value="SE">Sergipe</SelectItem>
+                    <SelectItem value="TO">Tocantins</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="flex justify-end gap-2 pt-4">
                 <Button
                   type="button"
@@ -890,26 +885,6 @@ export default function Settings() {
             </form>
           </DialogContent>
         </Dialog>
-
-        {/* Confirmation Dialogs */}
-        <ConfirmDialog
-          open={deleteLocationDialog.open}
-          onOpenChange={(open) => !open && setDeleteLocationDialog({ open: false, locationId: null, locationName: "" })}
-          onConfirm={handleDeleteLocation}
-          title="Excluir Local"
-          description={`Tem certeza que deseja excluir o local "${deleteLocationDialog.locationName}"? Esta ação não pode ser desfeita.`}
-          confirmText="Excluir Local"
-          variant="destructive"
-        />
-
-        <ConfirmDialog
-          open={resetPasswordDialog.open}
-          onOpenChange={(open) => !open && setResetPasswordDialog({ open: false, userId: null, userName: "" })}
-          onConfirm={handleResetPassword}
-          title="Resetar Senha"
-          description={`Tem certeza que deseja resetar a senha do usuário "${resetPasswordDialog.userName}" para "mudar123"?`}
-          confirmText="Resetar Senha"
-        />
       </div>
     </Layout>
   );

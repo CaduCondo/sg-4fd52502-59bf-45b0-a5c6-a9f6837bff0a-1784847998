@@ -11,11 +11,11 @@ import { RoleMenuPermission } from "@/hooks/usePermissions";
 import { FeeExemptionDialog } from "./FeeExemptionDialog";
 
 interface PermissionsTabProps {
-  users: any[]; // Replace with correct User type if available
-  locations: any[]; // Replace with correct Location type if available
-  roleMenuPermissions: any[];
+  users: SystemUser[];
+  locations: Location[];
+  roleMenuPermissions: RoleMenuPermission[];
   isLoading: boolean;
-  onUpdateRoleMenuPermission: (role: string, menu: string, hasPermission: boolean) => Promise<boolean>;
+  onUpdateRoleMenuPermission: (role: string, menuItem: string, hasAccess: boolean) => Promise<boolean>;
   onSaveLocationPermissions: (userId: string, locationIds: string[]) => Promise<boolean>;
   onSaveFeeExemptions: (userId: string, locationIds: string[]) => Promise<boolean>;
   getUserLocationPermissions: (userId: string) => Promise<string[]>;

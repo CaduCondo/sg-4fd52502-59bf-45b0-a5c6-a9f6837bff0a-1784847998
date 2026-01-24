@@ -603,10 +603,10 @@ export function DepositInstallmentsTable({
                       </div>
                     </TableHead>
                     <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                      Valor Pago
+                      Valor Pg Corretagem Parceiro
                     </TableHead>
                     <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                      Código PIX
+                      Valor Pg Corretagem Interno
                     </TableHead>
                     <TableHead
                       className="cursor-pointer hover:bg-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wider"
@@ -626,9 +626,15 @@ export function DepositInstallmentsTable({
                         <SortIcon field="amount" />
                       </div>
                     </TableHead>
-                    <TableHead>Valor Pago</TableHead>
-                    <TableHead>Código PIX</TableHead>
-                    <TableHead>Comissão</TableHead>
+                    <TableHead
+                      className="cursor-pointer hover:bg-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wider"
+                      onClick={() => handleSort("pixCode")}
+                    >
+                      <div className="flex items-center">
+                        Código PIX
+                        <SortIcon field="pixCode" />
+                      </div>
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -667,21 +673,11 @@ export function DepositInstallmentsTable({
                                 <TableCell rowSpan={group.length} className="align-top font-medium text-slate-900">
                                   {formatCurrency(item.rental?.security_deposit || 0)}
                                 </TableCell>
+                                <TableCell rowSpan={group.length} className="align-top text-slate-600">
+                                  {item.rental?.has_partner_broker ? "Sim" : "Não"}
+                                </TableCell>
                                 <TableCell rowSpan={group.length} className="align-top">
-                                  {!item.rental?.has_partner_broker ? (
-                                    <div className="flex items-center gap-3">
-                                      <span className="text-slate-400 text-sm">-</span>
-                                      <Button
-                                        size="default"
-                                        variant="ghost"
-                                        disabled
-                                        className="h-9 w-9 p-0 opacity-30 cursor-not-allowed"
-                                        title="Sem corretor parceiro nesta locação"
-                                      >
-                                        <Edit2 className="h-5 w-5 text-slate-400" />
-                                      </Button>
-                                    </div>
-                                  ) : editingCommission?.id === item.id &&
+                                  {editingCommission?.id === item.id &&
                                   editingCommission?.field === "partner" ? (
                                     <div className="flex items-center gap-3">
                                       <Input
@@ -823,44 +819,61 @@ export function DepositInstallmentsTable({
                               {formatCurrency(item.amount)}
                             </TableCell>
                             <TableCell>
-                              {/* Valor Pago - Campo vazio/placeholder se necessário, ou remover se não existir nessa tabela */}
-                              {/* Esta tabela é de parcelas de caução, geralmente não tem 'valor pago' editável da mesma forma que aluguel, mas vamos manter a estrutura visual se for o caso. 
-                                  Pelo código original, parecia ser apenas exibição ou controle de comissão. 
-                                  Vou restaurar para exibir o status de pagamento se houver ou apenas manter alinhamento.
-                                  Na verdade, a coluna 'Valor Pago' não existia no original antes do erro. 
-                                  Vou assumir que Valor Pago = Valor Parcela se tiver pix_code preenchido (logica do totalReceived).
-                              */}
-                              {item.pix_code ? (
-                                <span className="text-green-600 font-medium">{formatCurrency(item.amount)}</span>
-                              ) : (
-                                <span className="text-muted-foreground">-</span>
-                              )}
-                            </TableCell>
-                            <TableCell>
                               {editingPixCode?.id === item.id ? (
-                                <Input
-                                  type="text"
-                                  value={editingPixCode.value}
-                                  onChange={(e) => setEditingPixCode({ ...editingPixCode, value: e.target.value })}
-                                  onBlur={() => handleEditPixCode(item.id, editingPixCode.value)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter") handleEditPixCode(item.id, editingPixCode.value);
-                                    if (e.key === "Escape") setEditingPixCode(null);
-                                  }}
-                                  className="w-64"
-                                  autoFocus
-                                />
+                                <div className="flex items-center gap-3">
+                                  <Input
+                                    value={editingPixCode.value}
+                                    onChange={(e) =>
+                                      setEditingPixCode({
+                                        ...editingPixCode,
+                                        value: e.target.value,
+                                      })
+                                    }
+                                    placeholder="Digite o código PIX"
+                                    className="h-10 text-sm min-w-[250px] border-2 border-blue-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+                                    autoFocus
+                                  />
+                                  <Button
+                                    size="default"
+                                    variant="ghost"
+                                    onClick={() =>
+                                      handleEditPixCode(item.id, editingPixCode.value)
+                                    }
+                                    className="h-10 w-10 p-0 hover:bg-green-100 transition-colors"
+                                    title="Salvar código PIX"
+                                  >
+                                    <Check className="h-5 w-5 text-green-600" />
+                                  </Button>
+                                  <Button
+                                    size="default"
+                                    variant="ghost"
+                                    onClick={() => setEditingPixCode(null)}
+                                    className="h-10 w-10 p-0 hover:bg-red-100 transition-colors"
+                                    title="Cancelar edição"
+                                  >
+                                    <X className="h-5 w-5 text-red-600" />
+                                  </Button>
+                                </div>
                               ) : (
-                                <button
-                                  onClick={() => setEditingPixCode({ id: item.id, value: item.pix_code || "" })}
-                                  className="text-left hover:bg-accent/50 px-2 py-1 rounded transition-colors w-full"
-                                >
-                                  {item.pix_code ? (
-                                    <span className="font-mono text-xs">{item.pix_code}</span>
-                                  ) : (
-                                    <span className="text-muted-foreground italic">Clique para adicionar</span>
-                                  )}
-                                </button>
+                                <div className="flex items-center gap-3">
+                                  <span className="max-w-xs truncate text-slate-600 text-sm">
+                                    {item.pix_code || "-"}
+                                  </span>
+                                  <Button
+                                    size="default"
+                                    variant="ghost"
+                                    onClick={() =>
+                                      setEditingPixCode({
+                                        id: item.id,
+                                        value: item.pix_code || "",
+                                      })
+                                    }
+                                    className="h-9 w-9 p-0 hover:bg-slate-100 transition-colors"
+                                    title="Editar código PIX"
+                                  >
+                                    <Edit2 className="h-5 w-5 text-slate-600" />
+                                  </Button>
+                                </div>
                               )}
                             </TableCell>
                           </TableRow>
