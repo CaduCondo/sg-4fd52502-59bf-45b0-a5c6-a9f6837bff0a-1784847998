@@ -45,6 +45,8 @@ interface DepositInstallmentData {
   total_installments: number;
   amount: number;
   pix_code: string | null;
+  partner_commission: number;
+  internal_commission: number;
   rental: {
     has_partner_broker: boolean;
     security_deposit: number;
@@ -63,7 +65,7 @@ interface DepositInstallmentData {
   };
 }
 
-type SortField = "local" | "complement" | "tenant" | "installment" | "securityDeposit" | "hasPartner" | "amount";
+type SortField = "local" | "complement" | "tenant" | "installment" | "securityDeposit" | "hasPartner" | "amount" | "partnerCommission" | "internalCommission";
 type SortDirection = "asc" | "desc" | null;
 
 export function DepositInstallmentsTable() {
@@ -71,13 +73,15 @@ export function DepositInstallmentsTable() {
   const { user } = useAuth();
   const [installments, setInstallments] = useState<DepositInstallmentData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingPixId, setEditingPixId] = useState<string | null>(null);
   const [editPixCode, setEditPixCode] = useState("");
+  const [editingPartnerCommissionId, setEditingPartnerCommissionId] = useState<string | null>(null);
+  const [editPartnerCommission, setEditPartnerCommission] = useState("");
+  const [editingInternalCommissionId, setEditingInternalCommissionId] = useState<string | null>(null);
+  const [editInternalCommission, setEditInternalCommission] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("active");
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
-  const [config, setConfig] = useState<any>(null);
-  const [exemptLocationIds, setExemptLocationIds] = useState<string[]>([]);
 
   useEffect(() => {
     fetchInstallments();
@@ -96,6 +100,8 @@ export function DepositInstallmentsTable() {
           installment_total,
           amount,
           pix_code,
+          partner_commission,
+          internal_commission,
           rental:rentals (
             has_partner_broker,
             security_deposit,
@@ -123,6 +129,8 @@ export function DepositInstallmentsTable() {
         total_installments: item.total_installments || item.installment_total,
         amount: item.amount,
         pix_code: item.pix_code,
+        partner_commission: item.partner_commission || 0,
+        internal_commission: item.internal_commission || 0,
         rental: {
           has_partner_broker: item.rental?.has_partner_broker,
           security_deposit: item.rental?.security_deposit,
@@ -142,23 +150,6 @@ export function DepositInstallmentsTable() {
       }));
 
       setInstallments(formattedData);
-
-      // Buscar configurações e isenções para cálculo de taxa
-      if (user) {
-        const { data: configData } = await supabase
-          .from("configs")
-          .select("*")
-          .maybeSingle();
-        
-        setConfig(configData);
-
-        const { data: exemptions } = await supabase
-          .from("user_fee_exemptions")
-          .select("location_id")
-          .eq("user_id", user.id);
-        
-        setExemptLocationIds(exemptions?.map(e => e.location_id) || []);
-      }
     } catch (error) {
       console.error("Erro ao buscar parcelas do caução:", error);
     } finally {
@@ -166,13 +157,13 @@ export function DepositInstallmentsTable() {
     }
   };
 
-  const startEditing = (id: string, currentCode: string | null) => {
-    setEditingId(id);
+  const startEditingPix = (id: string, currentCode: string | null) => {
+    setEditingPixId(id);
     setEditPixCode(currentCode || "");
   };
 
-  const cancelEditing = () => {
-    setEditingId(null);
+  const cancelEditingPix = () => {
+    setEditingPixId(null);
     setEditPixCode("");
   };
 
@@ -196,12 +187,98 @@ export function DepositInstallmentsTable() {
         description: "Código PIX atualizado.",
       });
       
-      setEditingId(null);
+      setEditingPixId(null);
     } catch (error) {
       console.error("Erro ao salvar PIX:", error);
       toast({
         title: "Erro",
         description: "Não foi possível atualizar o código PIX.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const startEditingPartnerCommission = (id: string, currentValue: number) => {
+    setEditingPartnerCommissionId(id);
+    setEditPartnerCommission(currentValue.toString());
+  };
+
+  const cancelEditingPartnerCommission = () => {
+    setEditingPartnerCommissionId(null);
+    setEditPartnerCommission("");
+  };
+
+  const savePartnerCommission = async (id: string) => {
+    try {
+      const value = parseFloat(editPartnerCommission) || 0;
+      
+      const { error } = await supabase
+        .from("deposit_installments")
+        .update({ partner_commission: value })
+        .eq("id", id);
+
+      if (error) throw error;
+
+      setInstallments((prev) =>
+        prev.map((item) =>
+          item.id === id ? { ...item, partner_commission: value } : item
+        )
+      );
+
+      toast({
+        title: "Sucesso",
+        description: "Valor da corretagem parceiro atualizado.",
+      });
+      
+      setEditingPartnerCommissionId(null);
+    } catch (error) {
+      console.error("Erro ao salvar corretagem parceiro:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar o valor.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const startEditingInternalCommission = (id: string, currentValue: number) => {
+    setEditingInternalCommissionId(id);
+    setEditInternalCommission(currentValue.toString());
+  };
+
+  const cancelEditingInternalCommission = () => {
+    setEditingInternalCommissionId(null);
+    setEditInternalCommission("");
+  };
+
+  const saveInternalCommission = async (id: string) => {
+    try {
+      const value = parseFloat(editInternalCommission) || 0;
+      
+      const { error } = await supabase
+        .from("deposit_installments")
+        .update({ internal_commission: value })
+        .eq("id", id);
+
+      if (error) throw error;
+
+      setInstallments((prev) =>
+        prev.map((item) =>
+          item.id === id ? { ...item, internal_commission: value } : item
+        )
+      );
+
+      toast({
+        title: "Sucesso",
+        description: "Valor da corretagem interno atualizado.",
+      });
+      
+      setEditingInternalCommissionId(null);
+    } catch (error) {
+      console.error("Erro ao salvar corretagem interno:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar o valor.",
         variant: "destructive",
       });
     }
@@ -282,6 +359,14 @@ export function DepositInstallmentsTable() {
           aValue = a.amount;
           bValue = b.amount;
           break;
+        case "partnerCommission":
+          aValue = a.partner_commission;
+          bValue = b.partner_commission;
+          break;
+        case "internalCommission":
+          aValue = a.internal_commission;
+          bValue = b.internal_commission;
+          break;
         default:
           return 0;
       }
@@ -303,11 +388,13 @@ export function DepositInstallmentsTable() {
       "Local": item.rental.property.location.name,
       "Complemento": item.rental.property.complement || "-",
       "Inquilino": item.rental.tenant.name,
-      "Parcela": `${item.installment_number}/${item.total_installments}`,
-      "Código PIX": item.pix_code || "-",
       "Valor Total Caução": item.rental.security_deposit || 0,
       "Corretor Parceiro": item.rental.has_partner_broker ? "Sim" : "Não",
+      "Valor Pg Corretagem Parceiro": item.partner_commission,
+      "Valor Pg Corretagem Interno": item.internal_commission,
+      "Parcela": `${item.installment_number}/${item.total_installments}`,
       "Valor Parcela": item.amount,
+      "Código PIX": item.pix_code || "-",
     }));
 
     const ws = XLSX.utils.json_to_sheet(excelData);
@@ -316,11 +403,13 @@ export function DepositInstallmentsTable() {
       { wch: 20 },
       { wch: 15 },
       { wch: 20 },
+      { wch: 18 },
+      { wch: 18 },
+      { wch: 25 },
+      { wch: 25 },
       { wch: 10 },
-      { wch: 20 },
-      { wch: 18 },
-      { wch: 18 },
       { wch: 15 },
+      { wch: 20 },
     ];
 
     const wb = XLSX.utils.book_new();
@@ -338,27 +427,25 @@ export function DepositInstallmentsTable() {
   const sortedData = getFilteredAndSortedInstallments();
 
   const calculateDepositKPIs = () => {
-    // Total esperado = soma de todos os cauções (security_deposit)
+    // Valor Bruto Esperado = soma de todos os valores de parcela
     const totalExpected = sortedData.reduce((sum, item) => {
-      return sum + (item.rental.security_deposit || 0);
-    }, 0);
-
-    // Total recebido = soma de todas as parcelas
-    const totalReceived = sortedData.reduce((sum, item) => {
       return sum + item.amount;
     }, 0);
 
-    // Taxa adm considerando isenções
-    const adminFee = sortedData.reduce((sum, item) => {
-      // Verificar se location está isento
-      if (exemptLocationIds.includes(item.rental.location_id)) {
-        return sum;
+    // Valor Bruto Recebido = soma dos valores de parcela apenas quando PIX está preenchido
+    const totalReceived = sortedData.reduce((sum, item) => {
+      if (item.pix_code && item.pix_code.trim() !== "") {
+        return sum + item.amount;
       }
-      
-      const feeRate = config ? (config.admin_fee_percentage || 0) / 100 : 0.05;
-      return sum + (item.amount * feeRate);
+      return sum;
     }, 0);
 
+    // Taxa de Administração = soma das comissões (parceiro + interno)
+    const adminFee = sortedData.reduce((sum, item) => {
+      return sum + (item.partner_commission || 0) + (item.internal_commission || 0);
+    }, 0);
+
+    // Receita Líquida = Valor Bruto Recebido - Taxa de Administração
     const netRevenue = totalReceived - adminFee;
 
     return {
@@ -394,7 +481,7 @@ export function DepositInstallmentsTable() {
                   <div className="text-3xl font-bold text-slate-900">
                     {formatCurrency(depositKPIs.totalExpected)}
                   </div>
-                  <p className="text-xs text-blue-500 mt-1">Total de cauções</p>
+                  <p className="text-xs text-blue-500 mt-1">Soma de todas as parcelas</p>
                 </div>
               </CardContent>
             </Card>
@@ -414,7 +501,7 @@ export function DepositInstallmentsTable() {
                   <div className="text-3xl font-bold text-slate-900">
                     {formatCurrency(depositKPIs.totalReceived)}
                   </div>
-                  <p className="text-xs text-green-600 mt-1">Parcelas recebidas</p>
+                  <p className="text-xs text-green-600 mt-1">Parcelas com PIX preenchido</p>
                 </div>
               </CardContent>
             </Card>
@@ -437,7 +524,7 @@ export function DepositInstallmentsTable() {
                   <div className="text-3xl font-bold text-purple-900">
                     {formatCurrency(depositKPIs.adminFee)}
                   </div>
-                  <p className="text-xs text-purple-600 mt-1">5% da receita</p>
+                  <p className="text-xs text-purple-600 mt-1">Soma das corretagens</p>
                 </div>
               </CardContent>
             </Card>
@@ -457,7 +544,7 @@ export function DepositInstallmentsTable() {
                   <div className="text-3xl font-bold text-indigo-900">
                     {formatCurrency(depositKPIs.netRevenue)}
                   </div>
-                  <p className="text-xs text-indigo-600 mt-1">Receita após taxa administrativa</p>
+                  <p className="text-xs text-indigo-600 mt-1">Recebido menos taxas</p>
                 </div>
               </CardContent>
             </Card>
@@ -507,7 +594,7 @@ export function DepositInstallmentsTable() {
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="rounded-md">
+          <div className="rounded-md overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow className="bg-slate-50/50 hover:bg-slate-50/50">
@@ -540,18 +627,6 @@ export function DepositInstallmentsTable() {
                   </TableHead>
                   <TableHead 
                     className="text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
-                    onClick={() => handleSort("installment")}
-                  >
-                    <div className="flex items-center">
-                      Parcela
-                      <SortIcon field="installment" />
-                    </div>
-                  </TableHead>
-                  <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                    Código PIX
-                  </TableHead>
-                  <TableHead 
-                    className="text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
                     onClick={() => handleSort("securityDeposit")}
                   >
                     <div className="flex items-center">
@@ -569,6 +644,33 @@ export function DepositInstallmentsTable() {
                     </div>
                   </TableHead>
                   <TableHead 
+                    className="text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
+                    onClick={() => handleSort("partnerCommission")}
+                  >
+                    <div className="flex items-center">
+                      Valor Pg Corretagem Parceiro
+                      <SortIcon field="partnerCommission" />
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
+                    onClick={() => handleSort("internalCommission")}
+                  >
+                    <div className="flex items-center">
+                      Valor Pg Corretagem Interno
+                      <SortIcon field="internalCommission" />
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
+                    onClick={() => handleSort("installment")}
+                  >
+                    <div className="flex items-center">
+                      Parcela
+                      <SortIcon field="installment" />
+                    </div>
+                  </TableHead>
+                  <TableHead 
                     className="text-xs font-semibold text-slate-500 uppercase tracking-wider text-right cursor-pointer hover:bg-slate-100"
                     onClick={() => handleSort("amount")}
                   >
@@ -577,12 +679,15 @@ export function DepositInstallmentsTable() {
                       <SortIcon field="amount" />
                     </div>
                   </TableHead>
+                  <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    Código PIX
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {sortedData.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center h-24 text-slate-500">
+                    <TableCell colSpan={10} className="text-center h-24 text-slate-500">
                       Nenhum registro de caução parcelado encontrado.
                     </TableCell>
                   </TableRow>
@@ -599,13 +704,94 @@ export function DepositInstallmentsTable() {
                         <TableCell className="text-slate-600">
                           {item.rental.tenant.name}
                         </TableCell>
+                        <TableCell className="font-medium text-slate-900">
+                          {formatCurrency(item.rental.security_deposit || 0)}
+                        </TableCell>
+                        <TableCell>
+                          {item.rental.has_partner_broker ? (
+                            <Badge className="bg-green-100 text-green-700 hover:bg-green-200 border-green-200">Sim</Badge>
+                          ) : (
+                            <Badge variant="outline">Não</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {editingPartnerCommissionId === item.id ? (
+                            <div className="flex items-center gap-2">
+                              <Input
+                                type="number"
+                                step="0.01"
+                                value={editPartnerCommission}
+                                onChange={(e) => setEditPartnerCommission(e.target.value)}
+                                className="h-8 w-32"
+                                placeholder="0.00"
+                              />
+                              <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={() => savePartnerCommission(item.id)}>
+                                <Check className="h-4 w-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-8 w-8 text-red-600" onClick={cancelEditingPartnerCommission}>
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2 group">
+                              <span className="text-slate-900 font-medium">
+                                {formatCurrency(item.partner_commission)}
+                              </span>
+                              <Button 
+                                size="icon" 
+                                variant="ghost" 
+                                className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50" 
+                                onClick={() => startEditingPartnerCommission(item.id, item.partner_commission)}
+                              >
+                                <Edit2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {editingInternalCommissionId === item.id ? (
+                            <div className="flex items-center gap-2">
+                              <Input
+                                type="number"
+                                step="0.01"
+                                value={editInternalCommission}
+                                onChange={(e) => setEditInternalCommission(e.target.value)}
+                                className="h-8 w-32"
+                                placeholder="0.00"
+                              />
+                              <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={() => saveInternalCommission(item.id)}>
+                                <Check className="h-4 w-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-8 w-8 text-red-600" onClick={cancelEditingInternalCommission}>
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2 group">
+                              <span className="text-slate-900 font-medium">
+                                {formatCurrency(item.internal_commission)}
+                              </span>
+                              <Button 
+                                size="icon" 
+                                variant="ghost" 
+                                className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50" 
+                                onClick={() => startEditingInternalCommission(item.id, item.internal_commission)}
+                              >
+                                <Edit2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          )}
+                        </TableCell>
                         <TableCell>
                           <Badge variant="outline">
                             {item.installment_number}/{item.total_installments}
                           </Badge>
                         </TableCell>
+                        <TableCell className="text-right font-bold text-green-600">
+                          {formatCurrency(item.amount)}
+                        </TableCell>
                         <TableCell>
-                          {editingId === item.id ? (
+                          {editingPixId === item.id ? (
                             <div className="flex items-center gap-2">
                               <Input
                                 value={editPixCode}
@@ -616,7 +802,7 @@ export function DepositInstallmentsTable() {
                               <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={() => savePixCode(item.id)}>
                                 <Check className="h-4 w-4" />
                               </Button>
-                              <Button size="icon" variant="ghost" className="h-8 w-8 text-red-600" onClick={cancelEditing}>
+                              <Button size="icon" variant="ghost" className="h-8 w-8 text-red-600" onClick={cancelEditingPix}>
                                 <X className="h-4 w-4" />
                               </Button>
                             </div>
@@ -632,36 +818,24 @@ export function DepositInstallmentsTable() {
                                 size="icon" 
                                 variant="ghost" 
                                 className="h-8 w-8 text-purple-600 hover:text-purple-700 hover:bg-purple-50" 
-                                onClick={() => startEditing(item.id, item.pix_code)}
+                                onClick={() => startEditingPix(item.id, item.pix_code)}
                               >
                                 <Edit2 className="h-4 w-4" />
                               </Button>
                             </div>
                           )}
                         </TableCell>
-                        <TableCell className="font-medium text-slate-900">
-                          {formatCurrency(item.rental.security_deposit || 0)}
-                        </TableCell>
-                        <TableCell>
-                          {item.rental.has_partner_broker ? (
-                            <Badge className="bg-green-100 text-green-700 hover:bg-green-200 border-green-200">Sim</Badge>
-                          ) : (
-                            <Badge variant="outline">Não</Badge>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right font-bold text-green-600">
-                          {formatCurrency(item.amount)}
-                        </TableCell>
                       </TableRow>
                     ))}
                     {/* Linha de Totais */}
                     <TableRow className="bg-slate-100 font-bold border-t-2 border-slate-300">
-                      <TableCell colSpan={7} className="text-right text-slate-900 uppercase tracking-wide">
+                      <TableCell colSpan={8} className="text-right text-slate-900 uppercase tracking-wide">
                         Total:
                       </TableCell>
                       <TableCell className="text-right text-green-700 text-lg">
-                        {formatCurrency(depositKPIs.totalReceived)}
+                        {formatCurrency(depositKPIs.totalExpected)}
                       </TableCell>
+                      <TableCell></TableCell>
                     </TableRow>
                   </>
                 )}

@@ -108,6 +108,8 @@ export type Database = {
           id: string
           installment_number: number
           installment_total: number
+          internal_commission: number | null
+          partner_commission: number | null
           pix_code: string | null
           rental_id: string
           total_installments: number
@@ -119,6 +121,8 @@ export type Database = {
           id?: string
           installment_number: number
           installment_total: number
+          internal_commission?: number | null
+          partner_commission?: number | null
           pix_code?: string | null
           rental_id: string
           total_installments?: number
@@ -130,6 +134,8 @@ export type Database = {
           id?: string
           installment_number?: number
           installment_total?: number
+          internal_commission?: number | null
+          partner_commission?: number | null
           pix_code?: string | null
           rental_id?: string
           total_installments?: number
