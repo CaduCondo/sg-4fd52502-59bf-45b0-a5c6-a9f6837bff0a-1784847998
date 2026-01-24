@@ -32,7 +32,10 @@ import {
   FileSpreadsheet,
   ArrowUpDown,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  Edit2,
+  Check,
+  X
 } from "lucide-react";
 import { Payment, Property, Rental, Tenant, User } from "@/types";
 import { format, differenceInMonths } from "date-fns";
@@ -192,18 +195,19 @@ export default function Financial() {
 
   const handleSavePixCode = async (rentalId: string) => {
     const newPixCode = editingPixCode[rentalId];
-    if (!newPixCode) return;
+    if (newPixCode === undefined) return;
 
     setSavingPixCode(rentalId);
     try {
-      const rental = rentals.find(r => r.id === rentalId);
-      if (!rental) return;
+      const { error } = await supabase
+        .from("rentals")
+        .update({ pix_code: newPixCode })
+        .eq("id", rentalId);
 
-      const updatedRental = { ...rental, pixCode: newPixCode };
-      await updateRental(rentalId, updatedRental);
+      if (error) throw error;
 
       // Update local state
-      setRentals(rentals.map(r => r.id === rentalId ? updatedRental : r));
+      setRentals(rentals.map(r => r.id === rentalId ? { ...r, pixCode: newPixCode } : r));
       
       // Clear editing state
       const newEditingState = { ...editingPixCode };
@@ -683,7 +687,6 @@ export default function Financial() {
                       </div>
                     </TableHead>
                     <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Código PIX</TableHead>
-                    <TableHead className="w-[50px]"></TableHead>
                     <TableHead 
                       className="text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
                       onClick={() => handleSort("dueDate")}
@@ -763,30 +766,65 @@ export default function Financial() {
                               {getStatusBadge(payment.status)}
                             </TableCell>
                             <TableCell>
-                              <Input
-                                value={editingPixCode[details.rental?.id || ""] ?? details.pixCode}
-                                onChange={(e) => {
-                                  if (details.rental?.id) {
-                                    setEditingPixCode({
-                                      ...editingPixCode,
-                                      [details.rental.id]: e.target.value
-                                    });
-                                  }
-                                }}
-                                placeholder="Código PIX"
-                                className="h-8 text-xs"
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="h-8 w-8 text-purple-600 hover:text-purple-700 hover:bg-purple-50"
-                                onClick={() => details.rental?.id && handleSavePixCode(details.rental.id)}
-                                disabled={savingPixCode === details.rental?.id}
-                              >
-                                <Save className="h-4 w-4" />
-                              </Button>
+                              {editingPixCode[details.rental?.id || ""] !== undefined ? (
+                                <div className="flex items-center gap-2">
+                                  <Input
+                                    value={editingPixCode[details.rental?.id || ""]}
+                                    onChange={(e) => {
+                                      if (details.rental?.id) {
+                                        setEditingPixCode({
+                                          ...editingPixCode,
+                                          [details.rental.id]: e.target.value
+                                        });
+                                      }
+                                    }}
+                                    placeholder="Código PIX"
+                                    className="h-8 text-xs"
+                                    autoFocus
+                                  />
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => details.rental?.id && handleSavePixCode(details.rental.id)}
+                                    disabled={savingPixCode === details.rental?.id}
+                                  >
+                                    <Check className="h-4 w-4 text-green-600" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => {
+                                      if (details.rental?.id) {
+                                        const newEditingState = { ...editingPixCode };
+                                        delete newEditingState[details.rental.id];
+                                        setEditingPixCode(newEditingState);
+                                      }
+                                    }}
+                                  >
+                                    <X className="h-4 w-4 text-red-600" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-slate-600 max-w-xs truncate">
+                                    {details.pixCode || "-"}
+                                  </span>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => {
+                                      if (details.rental?.id) {
+                                        setEditingPixCode({
+                                          ...editingPixCode,
+                                          [details.rental.id]: details.pixCode || ""
+                                        });
+                                      }
+                                    }}
+                                  >
+                                    <Edit2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              )}
                             </TableCell>
                             <TableCell className="text-slate-600">
                               {format(new Date(payment.dueDate), "dd/MM/yyyy")}

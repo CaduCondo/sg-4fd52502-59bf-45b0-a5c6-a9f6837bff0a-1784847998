@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 
 interface DepositInstallmentData {
   id: string;
@@ -83,6 +84,10 @@ export function DepositInstallmentsTable({
   const [editingCommission, setEditingCommission] = useState<{
     id: string;
     field: "partner" | "internal";
+    value: string;
+  } | null>(null);
+  const [editingPixCode, setEditingPixCode] = useState<{
+    id: string;
     value: string;
   } | null>(null);
   const { toast } = useToast();
@@ -268,6 +273,35 @@ export function DepositInstallmentsTable({
       toast({
         title: "Erro",
         description: "Não foi possível atualizar a comissão.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleEditPixCode = async (id: string, value: string) => {
+    try {
+      const item = data.find(d => d.id === id);
+      if (!item) return;
+
+      const { error } = await supabase
+        .from("deposit_installments")
+        .update({ pix_code: value })
+        .eq("id", id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Sucesso",
+        description: "Código PIX atualizado com sucesso!",
+      });
+
+      fetchData();
+      setEditingPixCode(null);
+    } catch (error) {
+      console.error("Erro ao atualizar código PIX:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar o código PIX.",
         variant: "destructive",
       });
     }
@@ -638,17 +672,18 @@ export function DepositInstallmentsTable({
                                   {editingCommission?.id === item.id &&
                                   editingCommission?.field === "partner" ? (
                                     <div className="flex items-center gap-2">
-                                      <input
-                                        type="number"
-                                        step="0.01"
-                                        className="w-24 px-2 py-1 border rounded text-sm"
+                                      <Input
+                                        type="text"
+                                        className="w-32 h-8 text-xs"
                                         value={editingCommission.value}
-                                        onChange={(e) =>
+                                        onChange={(e) => {
+                                          const value = e.target.value.replace(/[^\d.,]/g, '');
                                           setEditingCommission({
                                             ...editingCommission,
-                                            value: e.target.value,
-                                          })
-                                        }
+                                            value: value,
+                                          });
+                                        }}
+                                        placeholder="0,00"
                                         autoFocus
                                       />
                                       <Button
@@ -697,17 +732,18 @@ export function DepositInstallmentsTable({
                                   {editingCommission?.id === item.id &&
                                   editingCommission?.field === "internal" ? (
                                     <div className="flex items-center gap-2">
-                                      <input
-                                        type="number"
-                                        step="0.01"
-                                        className="w-24 px-2 py-1 border rounded text-sm"
+                                      <Input
+                                        type="text"
+                                        className="w-32 h-8 text-xs"
                                         value={editingCommission.value}
-                                        onChange={(e) =>
+                                        onChange={(e) => {
+                                          const value = e.target.value.replace(/[^\d.,]/g, '');
                                           setEditingCommission({
                                             ...editingCommission,
-                                            value: e.target.value,
-                                          })
-                                        }
+                                            value: value,
+                                          });
+                                        }}
+                                        placeholder="0,00"
                                         autoFocus
                                       />
                                       <Button
@@ -762,8 +798,57 @@ export function DepositInstallmentsTable({
                             <TableCell className="font-medium text-slate-900">
                               {formatCurrency(item.amount)}
                             </TableCell>
-                            <TableCell className="max-w-xs truncate text-slate-600">
-                              {item.pix_code || "-"}
+                            <TableCell>
+                              {editingPixCode?.id === item.id ? (
+                                <div className="flex items-center gap-2">
+                                  <Input
+                                    value={editingPixCode.value}
+                                    onChange={(e) =>
+                                      setEditingPixCode({
+                                        ...editingPixCode,
+                                        value: e.target.value,
+                                      })
+                                    }
+                                    placeholder="Código PIX"
+                                    className="h-8 text-xs min-w-[200px]"
+                                    autoFocus
+                                  />
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() =>
+                                      handleEditPixCode(item.id, editingPixCode.value)
+                                    }
+                                  >
+                                    <Check className="h-4 w-4 text-green-600" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => setEditingPixCode(null)}
+                                  >
+                                    <X className="h-4 w-4 text-red-600" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <span className="max-w-xs truncate text-slate-600">
+                                    {item.pix_code || "-"}
+                                  </span>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() =>
+                                      setEditingPixCode({
+                                        id: item.id,
+                                        value: item.pix_code || "",
+                                      })
+                                    }
+                                  >
+                                    <Edit2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              )}
                             </TableCell>
                           </TableRow>
                         ))
