@@ -11,6 +11,9 @@ import { TenantFormDialog } from "@/components/tenants/TenantFormDialog";
 import { TenantDeleteAlert } from "@/components/tenants/TenantDeleteAlert";
 import { Tenant } from "@/types";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Eye, Pencil, Trash2 } from "lucide-react";
 
 export default function TenantsPage() {
   const router = useRouter();
@@ -62,13 +65,15 @@ export default function TenantsPage() {
     setIsDialogOpen(true);
   };
 
-  const handleEditTenant = (tenant: Tenant) => {
+  const handleEditTenant = (tenant: Tenant, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     setSelectedTenant(tenant);
     setIsViewMode(false);
     setIsDialogOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     const tenant = tenants.find(t => t.id === id);
     if (tenant) {
       setTenantToDelete(tenant);
@@ -88,6 +93,32 @@ export default function TenantsPage() {
     } else {
       return await createTenant(data);
     }
+  };
+
+  const getStatusBadge = (status: string) => {
+    const statusConfig = {
+      active: { label: "Ativo", variant: "default" as const },
+      inactive: { label: "Inativo", variant: "secondary" as const },
+      rented: { label: "Locado", variant: "default" as const },
+      locatario: { label: "Locatário", variant: "default" as const },
+    };
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.active;
+    return <Badge variant={config.variant}>{config.label}</Badge>;
+  };
+
+  const formatDocument = (tenant: Tenant) => {
+    if (tenant.documentType === "cpf" && tenant.cpf) {
+      return tenant.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+    }
+    if (tenant.documentType === "cnpj" && tenant.document) {
+      return tenant.document.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
+    }
+    return tenant.document || tenant.cpf || "-";
+  };
+
+  const formatPhone = (phone?: string) => {
+    if (!phone) return "-";
+    return phone.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
   };
 
   if (isLoading) {
@@ -147,7 +178,7 @@ export default function TenantsPage() {
           onSearchChange={setSearchTerm}
           statusFilter={statusFilter}
           onStatusFilterChange={setStatusFilter}
-          sortBy={sortBy as "alphabetical" | "recent"} // Cast explícito ou garantir tipagem compatível
+          sortBy={sortBy as "alphabetical" | "recent"}
           onSortChange={(value) => setSortBy(value as "alphabetical" | "recent")}
         />
 
@@ -161,8 +192,8 @@ export default function TenantsPage() {
               Criar Primeiro Inquilino
             </Button>
           </div>
-        ) : (
-          <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" : "space-y-3"}>
+        ) : viewMode === "grid" ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {tenants.map((tenant) => (
               <TenantCard
                 key={tenant.id}
@@ -172,6 +203,64 @@ export default function TenantsPage() {
                 viewMode={viewMode}
               />
             ))}
+          </div>
+        ) : (
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nome</TableHead>
+                  <TableHead>Documento</TableHead>
+                  <TableHead>Telefone</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {tenants.map((tenant) => (
+                  <TableRow
+                    key={tenant.id}
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => handleViewTenant(tenant)}
+                  >
+                    <TableCell className="font-medium">{tenant.name}</TableCell>
+                    <TableCell>{formatDocument(tenant)}</TableCell>
+                    <TableCell>{formatPhone(tenant.phone)}</TableCell>
+                    <TableCell>{tenant.email || "-"}</TableCell>
+                    <TableCell>{getStatusBadge(tenant.status)}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleViewTenant(tenant);
+                          }}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => handleEditTenant(tenant, e)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => handleDelete(tenant.id, e)}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
         )}
 

@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, AlertCircle, LayoutGrid, List } from "lucide-react";
+import { CheckCircle, AlertCircle, LayoutGrid, List, Eye, XCircle } from "lucide-react";
 import { usePayments } from "@/hooks/usePayments";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
 import { FloatingCard } from "@/components/animations/FloatingCard";
@@ -14,9 +14,12 @@ import { PaymentFilters } from "@/components/payments/PaymentFilters";
 import { PaymentCard } from "@/components/payments/PaymentCard";
 import { ManagePaymentForm } from "@/components/payments/ManagePaymentForm";
 import { PaymentReceipt } from "@/components/PaymentReceipt";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { Payment, Rental, Property, Tenant } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 export default function Payments() {
   const router = useRouter();
@@ -75,11 +78,9 @@ export default function Payments() {
   }) => {
     console.log("🎯 handlePaymentSuccess CHAMADO! Dados recebidos:", data);
     
-    // Fechar o dialog de gerenciamento
     setIsDialogOpen(false);
     setSelectedPaymentId(null);
     
-    // Configurar dados do recibo
     console.log("📋 Setando dados do recibo...");
     setReceiptData(data);
     setShowReceipt(true);
@@ -98,7 +99,6 @@ export default function Payments() {
     e.stopPropagation();
     
     try {
-      // Buscar dados completos do pagamento
       const { data: paymentData, error: paymentError } = await supabase
         .from("payments")
         .select(`
@@ -122,7 +122,6 @@ export default function Payments() {
       const location = property.locations;
       const tenant = rental.tenants;
 
-      // Preparar dados do recibo
       const paymentForReceipt: Payment = {
         id: paymentData.id,
         rentalId: paymentData.rental_id,
@@ -272,6 +271,28 @@ export default function Payments() {
 
   const hasActiveFilters = selectedMonth !== "all" || selectedYear !== "all";
 
+  const getStatusBadge = (status: string) => {
+    const statusConfig = {
+      paid: { label: "Pago", variant: "default" as const, className: "bg-green-500" },
+      pending: { label: "Pendente", variant: "secondary" as const },
+      overdue: { label: "Atrasado", variant: "destructive" as const },
+      partial: { label: "Parcial", variant: "outline" as const },
+    };
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
+    return <Badge variant={config.variant} className={config.className}>{config.label}</Badge>;
+  };
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(value);
+  };
+
+  const formatDate = (dateString: string) => {
+    return format(new Date(dateString + "T00:00:00"), "dd/MM/yyyy", { locale: ptBR });
+  };
+
   return (
     <>
       <Head>
@@ -351,8 +372,8 @@ export default function Payments() {
                       </CardContent>
                     </Card>
                   </ScrollReveal>
-                ) : (
-                  <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" : "space-y-3"}>
+                ) : viewMode === "grid" ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {unpaidPayments.map((payment, index) => (
                       <FloatingCard key={payment.id} delay={0.1 * (index + 3)}>
                         <PaymentCard
@@ -369,6 +390,56 @@ export default function Payments() {
                         />
                       </FloatingCard>
                     ))}
+                  </div>
+                ) : (
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Imóvel</TableHead>
+                          <TableHead>Inquilino</TableHead>
+                          <TableHead>Vencimento</TableHead>
+                          <TableHead>Valor Esperado</TableHead>
+                          <TableHead>Valor Pago</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Ações</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {unpaidPayments.map((payment) => {
+                          const property = getPropertyInfo(payment.rentalId);
+                          const tenant = getTenantInfo(payment.rentalId);
+                          return (
+                            <TableRow
+                              key={payment.id}
+                              className="cursor-pointer hover:bg-muted/50"
+                              onClick={() => handleCardClick(payment.id)}
+                            >
+                              <TableCell className="font-medium">
+                                {property ? `${property.location} - ${property.complement}` : "-"}
+                              </TableCell>
+                              <TableCell>{tenant?.name || "-"}</TableCell>
+                              <TableCell>{formatDate(payment.dueDate)}</TableCell>
+                              <TableCell>{formatCurrency(payment.expectedAmount)}</TableCell>
+                              <TableCell>{payment.paidAmount ? formatCurrency(payment.paidAmount) : "-"}</TableCell>
+                              <TableCell>{getStatusBadge(payment.status)}</TableCell>
+                              <TableCell className="text-right">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleCardClick(payment.id);
+                                  }}
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
                   </div>
                 )}
               </div>
@@ -395,8 +466,8 @@ export default function Payments() {
                       </CardContent>
                     </Card>
                   </ScrollReveal>
-                ) : (
-                  <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" : "space-y-3"}>
+                ) : viewMode === "grid" ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {paidPayments.map((payment, index) => (
                       <FloatingCard key={payment.id} delay={0.1 * (index + 5)}>
                         <PaymentCard
@@ -414,6 +485,62 @@ export default function Payments() {
                         />
                       </FloatingCard>
                     ))}
+                  </div>
+                ) : (
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Imóvel</TableHead>
+                          <TableHead>Inquilino</TableHead>
+                          <TableHead>Vencimento</TableHead>
+                          <TableHead>Valor Esperado</TableHead>
+                          <TableHead>Valor Pago</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Ações</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {paidPayments.map((payment) => {
+                          const property = getPropertyInfo(payment.rentalId);
+                          const tenant = getTenantInfo(payment.rentalId);
+                          return (
+                            <TableRow
+                              key={payment.id}
+                              className="cursor-pointer hover:bg-muted/50"
+                              onClick={() => handleCardClick(payment.id)}
+                            >
+                              <TableCell className="font-medium">
+                                {property ? `${property.location} - ${property.complement}` : "-"}
+                              </TableCell>
+                              <TableCell>{tenant?.name || "-"}</TableCell>
+                              <TableCell>{formatDate(payment.dueDate)}</TableCell>
+                              <TableCell>{formatCurrency(payment.expectedAmount)}</TableCell>
+                              <TableCell>{formatCurrency(payment.paidAmount || 0)}</TableCell>
+                              <TableCell>{getStatusBadge(payment.status)}</TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex justify-end gap-2">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={(e) => handleViewReceipt(payment.id, e)}
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={(e) => handleCancelPaymentClick(payment.id, e)}
+                                  >
+                                    <XCircle className="h-4 w-4 text-destructive" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
                   </div>
                 )}
               </div>
@@ -436,7 +563,6 @@ export default function Payments() {
           </DialogContent>
         </Dialog>
 
-        {/* Dialog do Recibo */}
         {showReceipt && receiptData && (
           <PaymentReceipt
             payment={receiptData.payment}
