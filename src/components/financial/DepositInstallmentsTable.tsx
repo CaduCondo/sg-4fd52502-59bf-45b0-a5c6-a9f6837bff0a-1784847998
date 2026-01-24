@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { applyMoneyMask, parseCurrencyToFloat } from "@/lib/masks";
 
 interface DepositInstallmentData {
   id: string;
@@ -250,7 +251,7 @@ export function DepositInstallmentsTable({
     value: string
   ) => {
     try {
-      const numericValue = parseFloat(value) || 0;
+      const numericValue = parseCurrencyToFloat(value);
       const updateField =
         field === "partner" ? "partner_commission" : "internal_commission";
 
@@ -677,13 +678,13 @@ export function DepositInstallmentsTable({
                                         className="w-40 h-10 text-sm border-2 border-blue-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
                                         value={editingCommission.value}
                                         onChange={(e) => {
-                                          const value = e.target.value.replace(/[^\d.,]/g, '');
+                                          const formatted = applyMoneyMask(e.target.value);
                                           setEditingCommission({
                                             ...editingCommission,
-                                            value: value,
+                                            value: formatted,
                                           });
                                         }}
-                                        placeholder="Digite o valor"
+                                        placeholder="0,00"
                                         autoFocus
                                       />
                                       <Button
@@ -723,7 +724,7 @@ export function DepositInstallmentsTable({
                                           setEditingCommission({
                                             id: item.id,
                                             field: "partner",
-                                            value: (item.partner_commission || 0).toString(),
+                                            value: applyMoneyMask((item.partner_commission || 0).toString()),
                                           })
                                         }
                                         className="h-9 w-9 p-0 hover:bg-slate-100 transition-colors"
@@ -743,13 +744,13 @@ export function DepositInstallmentsTable({
                                         className="w-40 h-10 text-sm border-2 border-blue-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
                                         value={editingCommission.value}
                                         onChange={(e) => {
-                                          const value = e.target.value.replace(/[^\d.,]/g, '');
+                                          const formatted = applyMoneyMask(e.target.value);
                                           setEditingCommission({
                                             ...editingCommission,
-                                            value: value,
+                                            value: formatted,
                                           });
                                         }}
-                                        placeholder="Digite o valor"
+                                        placeholder="0,00"
                                         autoFocus
                                       />
                                       <Button
@@ -789,7 +790,7 @@ export function DepositInstallmentsTable({
                                           setEditingCommission({
                                             id: item.id,
                                             field: "internal",
-                                            value: (item.internal_commission || 0).toString(),
+                                            value: applyMoneyMask((item.internal_commission || 0).toString()),
                                           })
                                         }
                                         className="h-9 w-9 p-0 hover:bg-slate-100 transition-colors"
