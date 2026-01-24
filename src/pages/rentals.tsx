@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Home, Plus, User, ChevronDown, ChevronUp, Trash2, XCircle } from "lucide-react";
+import { Home, Plus, User, ChevronDown, ChevronUp, Trash2, XCircle, Grid3x3, List } from "lucide-react";
 import { getAll as getAllRentals, remove as deleteRental, terminateContract } from "@/services/rentalService";
 import { getAll as getAllProperties, update as updateProperty } from "@/services/propertyService";
 import { getAll as getAllTenants, update as updateTenant } from "@/services/tenantService";
@@ -23,6 +23,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export default function RentalsPage() {
   const { toast } = useToast();
@@ -36,6 +37,7 @@ export default function RentalsPage() {
   const [isViewMode, setIsViewMode] = useState(false);
   const [rentalToDelete, setRentalToDelete] = useState<Rental | null>(null);
   const [showInactive, setShowInactive] = useState(false);
+  const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
 
   const loadData = async () => {
     try {
@@ -166,6 +168,24 @@ export default function RentalsPage() {
               <p className="text-muted-foreground">Gerencie os contratos de locação</p>
             </div>
             <div className="flex gap-3">
+              <div className="flex border rounded-lg overflow-hidden">
+                <Button
+                  variant={viewMode === "grid" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setViewMode("grid")}
+                  className="rounded-none"
+                >
+                  <Grid3x3 className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={viewMode === "table" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setViewMode("table")}
+                  className="rounded-none"
+                >
+                  <List className="h-4 w-4" />
+                </Button>
+              </div>
               <Button onClick={handleCreateNew}>
                 <Plus className="mr-2 h-4 w-4" />
                 Nova Locação
@@ -244,79 +264,153 @@ export default function RentalsPage() {
                 <CardTitle className="text-lg">Locações Ativas</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {activeRentals.map((rental) => {
-                    const property = getPropertyByRental(rental);
-                    const location = property ? locations.find((loc) => loc.id === property.locationId) : null;
-                    const tenant = tenants.find((t) => t.id === rental.tenantId);
+                {viewMode === "grid" ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {activeRentals.map((rental) => {
+                      const property = getPropertyByRental(rental);
+                      const location = property ? locations.find((loc) => loc.id === property.locationId) : null;
+                      const tenant = tenants.find((t) => t.id === rental.tenantId);
 
-                    return (
-                      <Card
-                        key={rental.id}
-                        className="hover:shadow-lg transition-shadow cursor-pointer"
-                        onClick={() => handleViewRental(rental)}
-                      >
-                        <CardContent className="p-4">
-                          <div className="flex items-start justify-between mb-3">
-                            <h3 className="text-lg font-semibold text-blue-600">
-                              {location?.name || "Local não encontrado"}
-                            </h3>
-                            <Badge className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 text-xs font-medium rounded-md">
-                              Ativa
-                            </Badge>
-                          </div>
+                      return (
+                        <Card
+                          key={rental.id}
+                          className="hover:shadow-lg transition-shadow cursor-pointer"
+                          onClick={() => handleViewRental(rental)}
+                        >
+                          <CardContent className="p-4">
+                            <div className="flex items-start justify-between mb-3">
+                              <h3 className="text-lg font-semibold text-blue-600">
+                                {location?.name || "Local não encontrado"}
+                              </h3>
+                              <Badge className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 text-xs font-medium rounded-md">
+                                Ativa
+                              </Badge>
+                            </div>
 
-                          {property?.complement && (
-                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                              {property.complement}
-                            </p>
-                          )}
+                            {property?.complement && (
+                              <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                                {property.complement}
+                              </p>
+                            )}
 
-                          <div className="mb-3">
-                            <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Inquilino:</p>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">{tenant?.name || "-"}</p>
-                          </div>
+                            <div className="mb-3">
+                              <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Inquilino:</p>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">{tenant?.name || "-"}</p>
+                            </div>
 
-                          <div className="flex items-end justify-between">
-                            <div>
-                              <p className="text-sm text-gray-600 dark:text-gray-400">Valor</p>
-                              <p className="text-2xl font-bold text-emerald-600">
+                            <div className="flex items-end justify-between">
+                              <div>
+                                <p className="text-sm text-gray-600 dark:text-gray-400">Valor</p>
+                                <p className="text-2xl font-bold text-emerald-600">
+                                  {formatCurrency(rental.value)}
+                                </p>
+                                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                  Início: {formatDate(rental.startDate)}
+                                </p>
+                              </div>
+                              <div className="flex flex-col gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="bg-yellow-500 hover:bg-yellow-600 text-white border-yellow-500"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const confirmEnd = confirm("Tem certeza que deseja encerrar este contrato?");
+                                    if (confirmEnd) handleEndContract(rental);
+                                  }}
+                                >
+                                  <XCircle className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setRentalToDelete(rental);
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="rounded-md border bg-white">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Local</TableHead>
+                          <TableHead>Complemento</TableHead>
+                          <TableHead>Inquilino</TableHead>
+                          <TableHead>Valor</TableHead>
+                          <TableHead>Data Início</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Ações</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {activeRentals.map((rental) => {
+                          const property = getPropertyByRental(rental);
+                          const location = property ? locations.find((loc) => loc.id === property.locationId) : null;
+                          const tenant = tenants.find((t) => t.id === rental.tenantId);
+
+                          return (
+                            <TableRow
+                              key={rental.id}
+                              className="cursor-pointer"
+                              onClick={() => handleViewRental(rental)}
+                            >
+                              <TableCell className="font-medium text-blue-600">
+                                {location?.name || "Local não encontrado"}
+                              </TableCell>
+                              <TableCell>{property?.complement || "-"}</TableCell>
+                              <TableCell>{tenant?.name || "-"}</TableCell>
+                              <TableCell className="font-bold text-emerald-600">
                                 {formatCurrency(rental.value)}
-                              </p>
-                              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                                Início: {formatDate(rental.startDate)}
-                              </p>
-                            </div>
-                            <div className="flex flex-col gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="bg-yellow-500 hover:bg-yellow-600 text-white border-yellow-500"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const confirmEnd = confirm("Tem certeza que deseja encerrar este contrato?");
-                                  if (confirmEnd) handleEndContract(rental);
-                                }}
-                              >
-                                <XCircle className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setRentalToDelete(rental);
-                                }}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </div>
+                              </TableCell>
+                              <TableCell>{formatDate(rental.startDate)}</TableCell>
+                              <TableCell>
+                                <Badge className="bg-green-500 hover:bg-green-600 text-white">
+                                  Ativa
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex justify-end gap-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="bg-yellow-500 hover:bg-yellow-600 text-white border-yellow-500"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const confirmEnd = confirm("Tem certeza que deseja encerrar este contrato?");
+                                      if (confirmEnd) handleEndContract(rental);
+                                    }}
+                                  >
+                                    <XCircle className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setRentalToDelete(rental);
+                                    }}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
@@ -334,50 +428,93 @@ export default function RentalsPage() {
               </CardHeader>
               {showInactive && (
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {inactiveRentals.map((rental) => {
-                      const property = getPropertyByRental(rental);
-                      const location = property ? locations.find((loc) => loc.id === property.locationId) : null;
-                      const tenant = tenants.find((t) => t.id === rental.tenantId);
+                  {viewMode === "grid" ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {inactiveRentals.map((rental) => {
+                        const property = getPropertyByRental(rental);
+                        const location = property ? locations.find((loc) => loc.id === property.locationId) : null;
+                        const tenant = tenants.find((t) => t.id === rental.tenantId);
 
-                      return (
-                        <Card key={rental.id} className="opacity-75">
-                          <CardContent className="p-4">
-                            <div className="flex items-start justify-between mb-3">
-                              <h3 className="text-lg font-semibold text-blue-600">
-                                {location?.name || "Local não encontrado"}
-                              </h3>
-                              <Badge className="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 text-xs font-medium rounded-md">
-                                Inativa
-                              </Badge>
-                            </div>
+                        return (
+                          <Card key={rental.id} className="opacity-75">
+                            <CardContent className="p-4">
+                              <div className="flex items-start justify-between mb-3">
+                                <h3 className="text-lg font-semibold text-blue-600">
+                                  {location?.name || "Local não encontrado"}
+                                </h3>
+                                <Badge className="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 text-xs font-medium rounded-md">
+                                  Inativa
+                                </Badge>
+                              </div>
 
-                            {property?.complement && (
-                              <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                                {property.complement}
+                              {property?.complement && (
+                                <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                                  {property.complement}
+                                </p>
+                              )}
+
+                              <div className="mb-3">
+                                <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Inquilino:</p>
+                                <p className="text-sm text-gray-600 dark:text-gray-400">{tenant?.name || "-"}</p>
+                              </div>
+
+                              <div className="mb-3">
+                                <p className="text-sm text-gray-600 dark:text-gray-400">Valor</p>
+                                <p className="text-2xl font-bold text-gray-600">
+                                  {formatCurrency(rental.value)}
+                                </p>
+                              </div>
+
+                              <p className="text-sm text-gray-600 dark:text-gray-400">
+                                Término: {formatDate(rental.endDate)}
                               </p>
-                            )}
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="rounded-md border bg-white">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Local</TableHead>
+                            <TableHead>Complemento</TableHead>
+                            <TableHead>Inquilino</TableHead>
+                            <TableHead>Valor</TableHead>
+                            <TableHead>Data Término</TableHead>
+                            <TableHead>Status</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {inactiveRentals.map((rental) => {
+                            const property = getPropertyByRental(rental);
+                            const location = property ? locations.find((loc) => loc.id === property.locationId) : null;
+                            const tenant = tenants.find((t) => t.id === rental.tenantId);
 
-                            <div className="mb-3">
-                              <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Inquilino:</p>
-                              <p className="text-sm text-gray-600 dark:text-gray-400">{tenant?.name || "-"}</p>
-                            </div>
-
-                            <div className="mb-3">
-                              <p className="text-sm text-gray-600 dark:text-gray-400">Valor</p>
-                              <p className="text-2xl font-bold text-gray-600">
-                                {formatCurrency(rental.value)}
-                              </p>
-                            </div>
-
-                            <p className="text-sm text-gray-600 dark:text-gray-400">
-                              Término: {formatDate(rental.endDate)}
-                            </p>
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
-                  </div>
+                            return (
+                              <TableRow key={rental.id} className="opacity-75">
+                                <TableCell className="font-medium text-blue-600">
+                                  {location?.name || "Local não encontrado"}
+                                </TableCell>
+                                <TableCell>{property?.complement || "-"}</TableCell>
+                                <TableCell>{tenant?.name || "-"}</TableCell>
+                                <TableCell className="font-bold text-gray-600">
+                                  {formatCurrency(rental.value)}
+                                </TableCell>
+                                <TableCell>{formatDate(rental.endDate)}</TableCell>
+                                <TableCell>
+                                  <Badge className="bg-gray-500 hover:bg-gray-600 text-white">
+                                    Inativa
+                                  </Badge>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
                 </CardContent>
               )}
             </Card>
