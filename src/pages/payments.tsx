@@ -42,7 +42,6 @@ export default function Payments() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
-  // Estados para o recibo
   const [showReceipt, setShowReceipt] = useState(false);
   const [receiptData, setReceiptData] = useState<{
     payment: Payment;
@@ -293,6 +292,20 @@ export default function Payments() {
     return format(new Date(dateString + "T00:00:00"), "dd/MM/yyyy", { locale: ptBR });
   };
 
+  const getPaymentRowClassName = (payment: Payment) => {
+    const baseClasses = "cursor-pointer hover:bg-muted/50 transition-colors";
+    if (payment.status === "paid") {
+      return `${baseClasses} bg-green-50 dark:bg-green-950/20`;
+    }
+    if (payment.status === "overdue") {
+      return `${baseClasses} bg-red-50 dark:bg-red-950/20`;
+    }
+    if (payment.status === "partial") {
+      return `${baseClasses} bg-yellow-50 dark:bg-yellow-950/20`;
+    }
+    return `${baseClasses} bg-white dark:bg-gray-950`;
+  };
+
   return (
     <>
       <Head>
@@ -412,7 +425,7 @@ export default function Payments() {
                           return (
                             <TableRow
                               key={payment.id}
-                              className={`cursor-pointer hover:bg-muted/50 ${payment.status === "paid" ? "bg-green-50" : payment.status === "overdue" ? "bg-red-50" : payment.status === "partial" ? "bg-yellow-50" : "bg-white"}`}
+                              className={getPaymentRowClassName(payment)}
                               onClick={() => handleCardClick(payment.id)}
                             >
                               <TableCell className="font-medium">
@@ -507,7 +520,7 @@ export default function Payments() {
                           return (
                             <TableRow
                               key={payment.id}
-                              className={`cursor-pointer hover:bg-muted/50 ${payment.status === "paid" ? "bg-green-50" : payment.status === "overdue" ? "bg-red-50" : payment.status === "partial" ? "bg-yellow-50" : "bg-white"}`}
+                              className={getPaymentRowClassName(payment)}
                               onClick={() => handleCardClick(payment.id)}
                             >
                               <TableCell className="font-medium">

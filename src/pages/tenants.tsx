@@ -121,6 +121,14 @@ export default function TenantsPage() {
     return phone.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
   };
 
+  const getRowClassName = (tenant: Tenant) => {
+    const baseClasses = "cursor-pointer hover:bg-muted/50 transition-colors";
+    if (tenant.status === "active" || tenant.status === "locatario") {
+      return `${baseClasses} bg-green-50 dark:bg-green-950/20`;
+    }
+    return `${baseClasses} bg-gray-100 dark:bg-gray-800`;
+  };
+
   if (isLoading) {
     return (
       <Layout>
@@ -221,7 +229,7 @@ export default function TenantsPage() {
                 {tenants.map((tenant) => (
                   <TableRow
                     key={tenant.id}
-                    className={`cursor-pointer hover:bg-muted/50 ${tenant.status === "active" || tenant.status === "locatario" ? "bg-green-50" : "bg-gray-100"}`}
+                    className={getRowClassName(tenant)}
                     onClick={() => handleViewTenant(tenant)}
                   >
                     <TableCell className="font-medium">{tenant.name}</TableCell>
