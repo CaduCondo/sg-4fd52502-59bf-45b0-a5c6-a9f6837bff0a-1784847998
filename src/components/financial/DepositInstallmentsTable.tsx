@@ -671,10 +671,10 @@ export function DepositInstallmentsTable({
                                 <TableCell rowSpan={group.length} className="align-top">
                                   {editingCommission?.id === item.id &&
                                   editingCommission?.field === "partner" ? (
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-3">
                                       <Input
                                         type="text"
-                                        className="w-32 h-8 text-xs"
+                                        className="w-40 h-10 text-sm border-2 border-blue-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
                                         value={editingCommission.value}
                                         onChange={(e) => {
                                           const value = e.target.value.replace(/[^\d.,]/g, '');
@@ -683,11 +683,11 @@ export function DepositInstallmentsTable({
                                             value: value,
                                           });
                                         }}
-                                        placeholder="0,00"
+                                        placeholder="Digite o valor"
                                         autoFocus
                                       />
                                       <Button
-                                        size="sm"
+                                        size="default"
                                         variant="ghost"
                                         onClick={() =>
                                           handleEditCommission(
@@ -696,24 +696,28 @@ export function DepositInstallmentsTable({
                                             editingCommission.value
                                           )
                                         }
+                                        className="h-10 w-10 p-0 hover:bg-green-100 transition-colors"
+                                        title="Salvar comissão"
                                       >
-                                        <Check className="h-4 w-4 text-green-600" />
+                                        <Check className="h-5 w-5 text-green-600" />
                                       </Button>
                                       <Button
-                                        size="sm"
+                                        size="default"
                                         variant="ghost"
                                         onClick={() => setEditingCommission(null)}
+                                        className="h-10 w-10 p-0 hover:bg-red-100 transition-colors"
+                                        title="Cancelar edição"
                                       >
-                                        <X className="h-4 w-4 text-red-600" />
+                                        <X className="h-5 w-5 text-red-600" />
                                       </Button>
                                     </div>
                                   ) : (
-                                    <div className="flex items-center gap-2">
-                                      <span className="font-medium text-slate-900">
+                                    <div className="flex items-center gap-3">
+                                      <span className="font-medium text-slate-900 text-sm">
                                         {formatCurrency(item.partner_commission || 0)}
                                       </span>
                                       <Button
-                                        size="sm"
+                                        size="default"
                                         variant="ghost"
                                         onClick={() =>
                                           setEditingCommission({
@@ -722,8 +726,10 @@ export function DepositInstallmentsTable({
                                             value: (item.partner_commission || 0).toString(),
                                           })
                                         }
+                                        className="h-9 w-9 p-0 hover:bg-slate-100 transition-colors"
+                                        title="Editar comissão parceiro"
                                       >
-                                        <Edit2 className="h-4 w-4" />
+                                        <Edit2 className="h-5 w-5 text-slate-600" />
                                       </Button>
                                     </div>
                                   )}
@@ -731,10 +737,10 @@ export function DepositInstallmentsTable({
                                 <TableCell rowSpan={group.length} className="align-top">
                                   {editingCommission?.id === item.id &&
                                   editingCommission?.field === "internal" ? (
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-3">
                                       <Input
                                         type="text"
-                                        className="w-32 h-8 text-xs"
+                                        className="w-40 h-10 text-sm border-2 border-blue-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
                                         value={editingCommission.value}
                                         onChange={(e) => {
                                           const value = e.target.value.replace(/[^\d.,]/g, '');
@@ -743,11 +749,11 @@ export function DepositInstallmentsTable({
                                             value: value,
                                           });
                                         }}
-                                        placeholder="0,00"
+                                        placeholder="Digite o valor"
                                         autoFocus
                                       />
                                       <Button
-                                        size="sm"
+                                        size="default"
                                         variant="ghost"
                                         onClick={() =>
                                           handleEditCommission(
@@ -756,24 +762,28 @@ export function DepositInstallmentsTable({
                                             editingCommission.value
                                           )
                                         }
+                                        className="h-10 w-10 p-0 hover:bg-green-100 transition-colors"
+                                        title="Salvar comissão"
                                       >
-                                        <Check className="h-4 w-4 text-green-600" />
+                                        <Check className="h-5 w-5 text-green-600" />
                                       </Button>
                                       <Button
-                                        size="sm"
+                                        size="default"
                                         variant="ghost"
                                         onClick={() => setEditingCommission(null)}
+                                        className="h-10 w-10 p-0 hover:bg-red-100 transition-colors"
+                                        title="Cancelar edição"
                                       >
-                                        <X className="h-4 w-4 text-red-600" />
+                                        <X className="h-5 w-5 text-red-600" />
                                       </Button>
                                     </div>
                                   ) : (
-                                    <div className="flex items-center gap-2">
-                                      <span className="font-medium text-slate-900">
+                                    <div className="flex items-center gap-3">
+                                      <span className="font-medium text-slate-900 text-sm">
                                         {formatCurrency(item.internal_commission || 0)}
                                       </span>
                                       <Button
-                                        size="sm"
+                                        size="default"
                                         variant="ghost"
                                         onClick={() =>
                                           setEditingCommission({
@@ -782,8 +792,10 @@ export function DepositInstallmentsTable({
                                             value: (item.internal_commission || 0).toString(),
                                           })
                                         }
+                                        className="h-9 w-9 p-0 hover:bg-slate-100 transition-colors"
+                                        title="Editar comissão interno"
                                       >
-                                        <Edit2 className="h-4 w-4" />
+                                        <Edit2 className="h-5 w-5 text-slate-600" />
                                       </Button>
                                     </div>
                                   )}
@@ -800,7 +812,7 @@ export function DepositInstallmentsTable({
                             </TableCell>
                             <TableCell>
                               {editingPixCode?.id === item.id ? (
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-3">
                                   <Input
                                     value={editingPixCode.value}
                                     onChange={(e) =>
@@ -809,34 +821,38 @@ export function DepositInstallmentsTable({
                                         value: e.target.value,
                                       })
                                     }
-                                    placeholder="Código PIX"
-                                    className="h-8 text-xs min-w-[200px]"
+                                    placeholder="Digite o código PIX"
+                                    className="h-10 text-sm min-w-[250px] border-2 border-blue-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
                                     autoFocus
                                   />
                                   <Button
-                                    size="sm"
+                                    size="default"
                                     variant="ghost"
                                     onClick={() =>
                                       handleEditPixCode(item.id, editingPixCode.value)
                                     }
+                                    className="h-10 w-10 p-0 hover:bg-green-100 transition-colors"
+                                    title="Salvar código PIX"
                                   >
-                                    <Check className="h-4 w-4 text-green-600" />
+                                    <Check className="h-5 w-5 text-green-600" />
                                   </Button>
                                   <Button
-                                    size="sm"
+                                    size="default"
                                     variant="ghost"
                                     onClick={() => setEditingPixCode(null)}
+                                    className="h-10 w-10 p-0 hover:bg-red-100 transition-colors"
+                                    title="Cancelar edição"
                                   >
-                                    <X className="h-4 w-4 text-red-600" />
+                                    <X className="h-5 w-5 text-red-600" />
                                   </Button>
                                 </div>
                               ) : (
-                                <div className="flex items-center gap-2">
-                                  <span className="max-w-xs truncate text-slate-600">
+                                <div className="flex items-center gap-3">
+                                  <span className="max-w-xs truncate text-slate-600 text-sm">
                                     {item.pix_code || "-"}
                                   </span>
                                   <Button
-                                    size="sm"
+                                    size="default"
                                     variant="ghost"
                                     onClick={() =>
                                       setEditingPixCode({
@@ -844,8 +860,10 @@ export function DepositInstallmentsTable({
                                         value: item.pix_code || "",
                                       })
                                     }
+                                    className="h-9 w-9 p-0 hover:bg-slate-100 transition-colors"
+                                    title="Editar código PIX"
                                   >
-                                    <Edit2 className="h-4 w-4" />
+                                    <Edit2 className="h-5 w-5 text-slate-600" />
                                   </Button>
                                 </div>
                               )}
