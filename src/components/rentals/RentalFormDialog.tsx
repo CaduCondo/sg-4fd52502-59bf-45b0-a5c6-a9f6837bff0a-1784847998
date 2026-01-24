@@ -340,16 +340,38 @@ export function RentalFormDialog({
       });
     }
 
-    const { error } = await supabase.from("deposit_installments").insert(installments);
+    console.log("=== DEBUG CREATE DEPOSIT INSTALLMENTS ===");
+    console.log("rentalId:", rentalId);
+    console.log("installments:", installments);
+    console.log("count:", count);
+
+    const { data, error } = await supabase.from("deposit_installments").insert(installments).select();
 
     if (error) {
       console.error("Error creating deposit installments:", error);
+      console.error("Error details:", {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+      });
       throw error;
     }
+
+    console.log("Deposit installments created successfully:", data);
   };
 
   const updateDepositInstallments = async (rentalId: string, rentalData: any) => {
-    await supabase.from("deposit_installments").delete().eq("rental_id", rentalId);
+    console.log("=== DEBUG UPDATE DEPOSIT INSTALLMENTS ===");
+    console.log("rentalId:", rentalId);
+    console.log("rentalData:", rentalData);
+
+    const { error: deleteError } = await supabase.from("deposit_installments").delete().eq("rental_id", rentalId);
+    
+    if (deleteError) {
+      console.error("Error deleting old deposit installments:", deleteError);
+    }
+
     await createDepositInstallments(rentalId, rentalData);
   };
 
