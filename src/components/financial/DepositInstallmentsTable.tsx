@@ -11,9 +11,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency } from "@/lib/masks";
 import { Button } from "@/components/ui/button";
-import { Download, Printer, ArrowUpDown, Edit2, Check, X } from "lucide-react";
+import { Download, Printer, ArrowUpDown, Edit2, Check, X, BarChart3, DollarSign, HeartHandshake, Target } from "lucide-react";
 import * as XLSX from "xlsx";
 import { useToast } from "@/hooks/use-toast";
+import { ScrollReveal } from "@/components/animations/ScrollReveal";
 
 interface DepositInstallmentData {
   id: string;
@@ -342,7 +343,7 @@ export function DepositInstallmentsTable({
 
   if (loading) {
     return (
-      <Card>
+      <Card className="border-slate-200 shadow-sm">
         <CardContent className="p-6">
           <p className="text-center text-muted-foreground">Carregando...</p>
         </CardContent>
@@ -354,366 +355,424 @@ export function DepositInstallmentsTable({
     <div className="space-y-6">
       {/* Cards de totais - apenas para admin */}
       {isAdmin && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Valor Bruto Esperado
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold">{formatCurrency(totalExpected)}</p>
-            </CardContent>
-          </Card>
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          {/* Card 1: Valor Bruto Esperado */}
+          <ScrollReveal delay={0.2}>
+            <Card className="border-blue-100 bg-blue-50/30 shadow-sm h-full">
+              <CardContent className="p-6 space-y-4">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-blue-100 rounded-lg">
+                    <BarChart3 className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <span className="text-sm font-medium text-slate-600">Valor Bruto Esperado</span>
+                </div>
+                <div>
+                  <div className="text-3xl font-bold text-slate-900">
+                    {formatCurrency(totalExpected)}
+                  </div>
+                  <p className="text-xs text-blue-500 mt-1">Soma de todos os recebimentos</p>
+                </div>
+              </CardContent>
+            </Card>
+          </ScrollReveal>
 
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Valor Bruto Recebido
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-green-600">
-                {formatCurrency(totalReceived)}
-              </p>
-            </CardContent>
-          </Card>
+          {/* Card 2: Valor Bruto Recebido */}
+          <ScrollReveal delay={0.3}>
+            <Card className="border-green-100 bg-green-50/30 shadow-sm h-full">
+              <CardContent className="p-6 space-y-4">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-green-100 rounded-lg">
+                    <DollarSign className="h-5 w-5 text-green-600" />
+                  </div>
+                  <span className="text-sm font-medium text-slate-600">Valor Bruto Recebido</span>
+                </div>
+                <div>
+                  <div className="text-3xl font-bold text-slate-900">
+                    {formatCurrency(totalReceived)}
+                  </div>
+                  <p className="text-xs text-green-600 mt-1">Todos os pagamentos recebidos</p>
+                </div>
+              </CardContent>
+            </Card>
+          </ScrollReveal>
 
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Taxa de Administração
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-orange-600">
-                {formatCurrency(adminFee)}
-              </p>
-            </CardContent>
-          </Card>
+          {/* Card 3: Taxa de Administração */}
+          <ScrollReveal delay={0.4}>
+            <Card className="border-purple-100 bg-purple-50/30 shadow-sm h-full">
+              <CardContent className="p-6 space-y-4">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-purple-100 rounded-lg">
+                    <HeartHandshake className="h-5 w-5 text-purple-600" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium text-slate-600">Taxa de</span>
+                    <span className="text-sm font-medium text-slate-600">Administração</span>
+                  </div>
+                </div>
+                <div>
+                  <div className="text-3xl font-bold text-purple-900">
+                    {formatCurrency(adminFee)}
+                  </div>
+                  <p className="text-xs text-purple-600 mt-1">Comissões totais</p>
+                </div>
+              </CardContent>
+            </Card>
+          </ScrollReveal>
 
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Receita Líquida
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-blue-600">
-                {formatCurrency(netRevenue)}
-              </p>
-            </CardContent>
-          </Card>
+          {/* Card 4: Receita Líquida */}
+          <ScrollReveal delay={0.5}>
+            <Card className="border-indigo-100 bg-indigo-50/30 shadow-sm h-full">
+              <CardContent className="p-6 space-y-4">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-indigo-100 rounded-lg">
+                    <Target className="h-5 w-5 text-indigo-600" />
+                  </div>
+                  <span className="text-sm font-medium text-slate-600">Receita Líquida</span>
+                </div>
+                <div>
+                  <div className="text-3xl font-bold text-indigo-900">
+                    {formatCurrency(netRevenue)}
+                  </div>
+                  <p className="text-xs text-indigo-600 mt-1">Receita após taxa administrativa</p>
+                </div>
+              </CardContent>
+            </Card>
+          </ScrollReveal>
         </div>
       )}
 
       {/* Tabela */}
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <CardTitle>Detalhamento dos Cauções</CardTitle>
-            <div className="flex flex-wrap gap-2">
-              <div className="flex gap-2">
-                <Button
-                  variant={statusFilter === "active" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setStatusFilter("active")}
-                >
-                  Ativas
-                </Button>
-                <Button
-                  variant={statusFilter === "inactive" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setStatusFilter("inactive")}
-                >
-                  Inativas
-                </Button>
-                <Button
-                  variant={statusFilter === "all" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setStatusFilter("all")}
-                >
-                  Todas
-                </Button>
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={exportToExcel}>
-                  <Download className="h-4 w-4 mr-2" />
-                  Exportar Excel
-                </Button>
-                <Button variant="outline" size="sm" onClick={handlePrint}>
-                  <Printer className="h-4 w-4 mr-2" />
-                  Imprimir
-                </Button>
+      <ScrollReveal delay={0.6}>
+        <Card className="border-slate-200 shadow-sm overflow-hidden">
+          <CardHeader className="border-b border-slate-100 bg-white pb-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <CardTitle className="text-base font-medium text-slate-700">
+                Detalhamento dos Cauções
+              </CardTitle>
+              <div className="flex flex-wrap gap-2">
+                <div className="flex gap-2">
+                  <Button
+                    variant={statusFilter === "active" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setStatusFilter("active")}
+                    className={statusFilter === "active" ? "" : "text-slate-600 hover:text-slate-900"}
+                  >
+                    Ativas
+                  </Button>
+                  <Button
+                    variant={statusFilter === "inactive" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setStatusFilter("inactive")}
+                    className={statusFilter === "inactive" ? "" : "text-slate-600 hover:text-slate-900"}
+                  >
+                    Inativas
+                  </Button>
+                  <Button
+                    variant={statusFilter === "all" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setStatusFilter("all")}
+                    className={statusFilter === "all" ? "" : "text-slate-600 hover:text-slate-900"}
+                  >
+                    Todas
+                  </Button>
+                </div>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handlePrint}
+                    className="text-slate-600 hover:text-slate-900"
+                  >
+                    <Printer className="h-4 w-4 mr-2" />
+                    Imprimir
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={exportToExcel}
+                    className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Exportar Excel
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => handleSort("location")}
-                  >
-                    <div className="flex items-center">
-                      Local
-                      <SortIcon field="location" />
-                    </div>
-                  </TableHead>
-                  <TableHead
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => handleSort("complement")}
-                  >
-                    <div className="flex items-center">
-                      Complemento
-                      <SortIcon field="complement" />
-                    </div>
-                  </TableHead>
-                  <TableHead
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => handleSort("tenant")}
-                  >
-                    <div className="flex items-center">
-                      Inquilino
-                      <SortIcon field="tenant" />
-                    </div>
-                  </TableHead>
-                  <TableHead
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => handleSort("rentalAmount")}
-                  >
-                    <div className="flex items-center">
-                      Valor Aluguel
-                      <SortIcon field="rentalAmount" />
-                    </div>
-                  </TableHead>
-                  <TableHead
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => handleSort("securityDeposit")}
-                  >
-                    <div className="flex items-center">
-                      Valor Total Caução
-                      <SortIcon field="securityDeposit" />
-                    </div>
-                  </TableHead>
-                  <TableHead
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => handleSort("hasPartner")}
-                  >
-                    <div className="flex items-center">
-                      Corretor Parceiro?
-                      <SortIcon field="hasPartner" />
-                    </div>
-                  </TableHead>
-                  <TableHead>Valor Pg Corretagem Parceiro</TableHead>
-                  <TableHead>Valor Pg Corretagem Interno</TableHead>
-                  <TableHead
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => handleSort("installment")}
-                  >
-                    <div className="flex items-center">
-                      Parcela
-                      <SortIcon field="installment" />
-                    </div>
-                  </TableHead>
-                  <TableHead
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => handleSort("amount")}
-                  >
-                    <div className="flex items-center">
-                      Valor Parcela
-                      <SortIcon field="amount" />
-                    </div>
-                  </TableHead>
-                  <TableHead
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => handleSort("pixCode")}
-                  >
-                    <div className="flex items-center">
-                      Código PIX
-                      <SortIcon field="pixCode" />
-                    </div>
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {Object.values(groupedByRental).map((group) =>
-                  group.map((item, index) => (
-                    <TableRow key={item.id}>
-                      {/* Colunas mescladas - renderizadas apenas na primeira linha do grupo */}
-                      {index === 0 && (
-                        <>
-                          <TableCell
-                            rowSpan={group.length}
-                            className="align-top font-medium"
-                          >
-                            {item.rental?.property?.location?.name || "-"}
-                          </TableCell>
-                          <TableCell rowSpan={group.length} className="align-top">
-                            {item.rental?.property?.complement || "-"}
-                          </TableCell>
-                          <TableCell rowSpan={group.length} className="align-top">
-                            {item.rental?.tenant?.name || "-"}
-                          </TableCell>
-                          <TableCell rowSpan={group.length} className="align-top">
-                            {formatCurrency(
-                              (item.rental?.monthly_rent || 0) +
-                                (item.rental?.garage_value || 0)
-                            )}
-                          </TableCell>
-                          <TableCell rowSpan={group.length} className="align-top">
-                            {formatCurrency(item.rental?.security_deposit || 0)}
-                          </TableCell>
-                          <TableCell rowSpan={group.length} className="align-top">
-                            {item.rental?.has_partner_broker ? "Sim" : "Não"}
-                          </TableCell>
-                          <TableCell rowSpan={group.length} className="align-top">
-                            {editingCommission?.id === item.id &&
-                            editingCommission?.field === "partner" ? (
-                              <div className="flex items-center gap-2">
-                                <input
-                                  type="number"
-                                  step="0.01"
-                                  className="w-24 px-2 py-1 border rounded"
-                                  value={editingCommission.value}
-                                  onChange={(e) =>
-                                    setEditingCommission({
-                                      ...editingCommission,
-                                      value: e.target.value,
-                                    })
-                                  }
-                                  autoFocus
-                                />
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() =>
-                                    handleEditCommission(
-                                      item.id,
-                                      "partner",
-                                      editingCommission.value
-                                    )
-                                  }
-                                >
-                                  <Check className="h-4 w-4 text-green-600" />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => setEditingCommission(null)}
-                                >
-                                  <X className="h-4 w-4 text-red-600" />
-                                </Button>
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-2">
-                                <span>{formatCurrency(item.partner_commission || 0)}</span>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() =>
-                                    setEditingCommission({
-                                      id: item.id,
-                                      field: "partner",
-                                      value: (item.partner_commission || 0).toString(),
-                                    })
-                                  }
-                                >
-                                  <Edit2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            )}
-                          </TableCell>
-                          <TableCell rowSpan={group.length} className="align-top">
-                            {editingCommission?.id === item.id &&
-                            editingCommission?.field === "internal" ? (
-                              <div className="flex items-center gap-2">
-                                <input
-                                  type="number"
-                                  step="0.01"
-                                  className="w-24 px-2 py-1 border rounded"
-                                  value={editingCommission.value}
-                                  onChange={(e) =>
-                                    setEditingCommission({
-                                      ...editingCommission,
-                                      value: e.target.value,
-                                    })
-                                  }
-                                  autoFocus
-                                />
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() =>
-                                    handleEditCommission(
-                                      item.id,
-                                      "internal",
-                                      editingCommission.value
-                                    )
-                                  }
-                                >
-                                  <Check className="h-4 w-4 text-green-600" />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => setEditingCommission(null)}
-                                >
-                                  <X className="h-4 w-4 text-red-600" />
-                                </Button>
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-2">
-                                <span>
-                                  {formatCurrency(item.internal_commission || 0)}
-                                </span>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() =>
-                                    setEditingCommission({
-                                      id: item.id,
-                                      field: "internal",
-                                      value: (item.internal_commission || 0).toString(),
-                                    })
-                                  }
-                                >
-                                  <Edit2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            )}
-                          </TableCell>
-                        </>
-                      )}
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-slate-50/50 hover:bg-slate-50/50">
+                    <TableHead
+                      className="cursor-pointer hover:bg-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wider"
+                      onClick={() => handleSort("location")}
+                    >
+                      <div className="flex items-center">
+                        Local
+                        <SortIcon field="location" />
+                      </div>
+                    </TableHead>
+                    <TableHead
+                      className="cursor-pointer hover:bg-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wider"
+                      onClick={() => handleSort("complement")}
+                    >
+                      <div className="flex items-center">
+                        Complemento
+                        <SortIcon field="complement" />
+                      </div>
+                    </TableHead>
+                    <TableHead
+                      className="cursor-pointer hover:bg-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wider"
+                      onClick={() => handleSort("tenant")}
+                    >
+                      <div className="flex items-center">
+                        Inquilino
+                        <SortIcon field="tenant" />
+                      </div>
+                    </TableHead>
+                    <TableHead
+                      className="cursor-pointer hover:bg-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wider"
+                      onClick={() => handleSort("rentalAmount")}
+                    >
+                      <div className="flex items-center">
+                        Valor Aluguel
+                        <SortIcon field="rentalAmount" />
+                      </div>
+                    </TableHead>
+                    <TableHead
+                      className="cursor-pointer hover:bg-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wider"
+                      onClick={() => handleSort("securityDeposit")}
+                    >
+                      <div className="flex items-center">
+                        Valor Total Caução
+                        <SortIcon field="securityDeposit" />
+                      </div>
+                    </TableHead>
+                    <TableHead
+                      className="cursor-pointer hover:bg-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wider"
+                      onClick={() => handleSort("hasPartner")}
+                    >
+                      <div className="flex items-center">
+                        Corretor Parceiro?
+                        <SortIcon field="hasPartner" />
+                      </div>
+                    </TableHead>
+                    <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                      Valor Pg Corretagem Parceiro
+                    </TableHead>
+                    <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                      Valor Pg Corretagem Interno
+                    </TableHead>
+                    <TableHead
+                      className="cursor-pointer hover:bg-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wider"
+                      onClick={() => handleSort("installment")}
+                    >
+                      <div className="flex items-center">
+                        Parcela
+                        <SortIcon field="installment" />
+                      </div>
+                    </TableHead>
+                    <TableHead
+                      className="cursor-pointer hover:bg-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wider"
+                      onClick={() => handleSort("amount")}
+                    >
+                      <div className="flex items-center">
+                        Valor Parcela
+                        <SortIcon field="amount" />
+                      </div>
+                    </TableHead>
+                    <TableHead
+                      className="cursor-pointer hover:bg-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wider"
+                      onClick={() => handleSort("pixCode")}
+                    >
+                      <div className="flex items-center">
+                        Código PIX
+                        <SortIcon field="pixCode" />
+                      </div>
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {Object.values(groupedByRental).map((group) =>
+                    group.map((item, index) => (
+                      <TableRow key={item.id} className="hover:bg-slate-50 transition-colors">
+                        {/* Colunas mescladas - renderizadas apenas na primeira linha do grupo */}
+                        {index === 0 && (
+                          <>
+                            <TableCell
+                              rowSpan={group.length}
+                              className="align-top font-medium text-slate-900"
+                            >
+                              {item.rental?.property?.location?.name || "-"}
+                            </TableCell>
+                            <TableCell rowSpan={group.length} className="align-top text-slate-600">
+                              {item.rental?.property?.complement || "-"}
+                            </TableCell>
+                            <TableCell rowSpan={group.length} className="align-top text-slate-600">
+                              {item.rental?.tenant?.name || "-"}
+                            </TableCell>
+                            <TableCell rowSpan={group.length} className="align-top font-medium text-slate-900">
+                              {formatCurrency(
+                                (item.rental?.monthly_rent || 0) +
+                                  (item.rental?.garage_value || 0)
+                              )}
+                            </TableCell>
+                            <TableCell rowSpan={group.length} className="align-top font-medium text-slate-900">
+                              {formatCurrency(item.rental?.security_deposit || 0)}
+                            </TableCell>
+                            <TableCell rowSpan={group.length} className="align-top text-slate-600">
+                              {item.rental?.has_partner_broker ? "Sim" : "Não"}
+                            </TableCell>
+                            <TableCell rowSpan={group.length} className="align-top">
+                              {editingCommission?.id === item.id &&
+                              editingCommission?.field === "partner" ? (
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    className="w-24 px-2 py-1 border rounded text-sm"
+                                    value={editingCommission.value}
+                                    onChange={(e) =>
+                                      setEditingCommission({
+                                        ...editingCommission,
+                                        value: e.target.value,
+                                      })
+                                    }
+                                    autoFocus
+                                  />
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() =>
+                                      handleEditCommission(
+                                        item.id,
+                                        "partner",
+                                        editingCommission.value
+                                      )
+                                    }
+                                  >
+                                    <Check className="h-4 w-4 text-green-600" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => setEditingCommission(null)}
+                                  >
+                                    <X className="h-4 w-4 text-red-600" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium text-slate-900">
+                                    {formatCurrency(item.partner_commission || 0)}
+                                  </span>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() =>
+                                      setEditingCommission({
+                                        id: item.id,
+                                        field: "partner",
+                                        value: (item.partner_commission || 0).toString(),
+                                      })
+                                    }
+                                  >
+                                    <Edit2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              )}
+                            </TableCell>
+                            <TableCell rowSpan={group.length} className="align-top">
+                              {editingCommission?.id === item.id &&
+                              editingCommission?.field === "internal" ? (
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    className="w-24 px-2 py-1 border rounded text-sm"
+                                    value={editingCommission.value}
+                                    onChange={(e) =>
+                                      setEditingCommission({
+                                        ...editingCommission,
+                                        value: e.target.value,
+                                      })
+                                    }
+                                    autoFocus
+                                  />
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() =>
+                                      handleEditCommission(
+                                        item.id,
+                                        "internal",
+                                        editingCommission.value
+                                      )
+                                    }
+                                  >
+                                    <Check className="h-4 w-4 text-green-600" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => setEditingCommission(null)}
+                                  >
+                                    <X className="h-4 w-4 text-red-600" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium text-slate-900">
+                                    {formatCurrency(item.internal_commission || 0)}
+                                  </span>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() =>
+                                      setEditingCommission({
+                                        id: item.id,
+                                        field: "internal",
+                                        value: (item.internal_commission || 0).toString(),
+                                      })
+                                    }
+                                  >
+                                    <Edit2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              )}
+                            </TableCell>
+                          </>
+                        )}
 
-                      {/* Colunas individuais - renderizadas em todas as linhas */}
-                      <TableCell>
-                        {item.installment_number}/{item.total_installments}
-                      </TableCell>
-                      <TableCell>{formatCurrency(item.amount)}</TableCell>
-                      <TableCell className="max-w-xs truncate">
-                        {item.pix_code || "-"}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
+                        {/* Colunas individuais - renderizadas em todas as linhas */}
+                        <TableCell className="font-medium text-slate-900">
+                          {item.installment_number}/{item.total_installments}
+                        </TableCell>
+                        <TableCell className="font-medium text-slate-900">
+                          {formatCurrency(item.amount)}
+                        </TableCell>
+                        <TableCell className="max-w-xs truncate text-slate-600">
+                          {item.pix_code || "-"}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
 
-                {/* Linha de totais */}
-                <TableRow className="font-bold bg-muted/50">
-                  <TableCell colSpan={9} className="text-right">
-                    Total:
-                  </TableCell>
-                  <TableCell>{formatCurrency(totalAmountColumn)}</TableCell>
-                  <TableCell></TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+                  {/* Linha de totais */}
+                  <TableRow className="bg-slate-100 font-bold border-t-2 border-slate-300">
+                    <TableCell colSpan={9} className="text-right text-slate-900 uppercase tracking-wide">
+                      Total:
+                    </TableCell>
+                    <TableCell className="text-slate-900 text-lg">{formatCurrency(totalAmountColumn)}</TableCell>
+                    <TableCell></TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      </ScrollReveal>
     </div>
   );
 }
