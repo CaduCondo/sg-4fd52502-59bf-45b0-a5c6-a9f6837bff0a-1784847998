@@ -274,9 +274,9 @@ export default function Payments() {
   const getStatusBadge = (status: string) => {
     const statusConfig = {
       paid: { label: "Pago", variant: "default" as const, className: "bg-green-500" },
-      pending: { label: "Pendente", variant: "secondary" as const },
-      overdue: { label: "Atrasado", variant: "destructive" as const },
-      partial: { label: "Parcial", variant: "outline" as const },
+      pending: { label: "Pendente", variant: "secondary" as const, className: "" },
+      overdue: { label: "Atrasado", variant: "destructive" as const, className: "" },
+      partial: { label: "Parcial", variant: "outline" as const, className: "" },
     };
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
     return <Badge variant={config.variant} className={config.className}>{config.label}</Badge>;
@@ -412,7 +412,7 @@ export default function Payments() {
                           return (
                             <TableRow
                               key={payment.id}
-                              className="cursor-pointer hover:bg-muted/50"
+                              className={`cursor-pointer hover:bg-muted/50 ${payment.status === "paid" ? "bg-green-50" : payment.status === "overdue" ? "bg-red-50" : payment.status === "partial" ? "bg-yellow-50" : "bg-white"}`}
                               onClick={() => handleCardClick(payment.id)}
                             >
                               <TableCell className="font-medium">
@@ -507,7 +507,7 @@ export default function Payments() {
                           return (
                             <TableRow
                               key={payment.id}
-                              className="cursor-pointer hover:bg-muted/50"
+                              className={`cursor-pointer hover:bg-muted/50 ${payment.status === "paid" ? "bg-green-50" : payment.status === "overdue" ? "bg-red-50" : payment.status === "partial" ? "bg-yellow-50" : "bg-white"}`}
                               onClick={() => handleCardClick(payment.id)}
                             >
                               <TableCell className="font-medium">

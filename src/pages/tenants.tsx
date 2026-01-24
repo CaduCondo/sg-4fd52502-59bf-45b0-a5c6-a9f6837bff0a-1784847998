@@ -221,7 +221,7 @@ export default function TenantsPage() {
                 {tenants.map((tenant) => (
                   <TableRow
                     key={tenant.id}
-                    className="cursor-pointer hover:bg-muted/50"
+                    className={`cursor-pointer hover:bg-muted/50 ${tenant.status === "active" || tenant.status === "locatario" ? "bg-green-50" : "bg-gray-100"}`}
                     onClick={() => handleViewTenant(tenant)}
                   >
                     <TableCell className="font-medium">{tenant.name}</TableCell>
