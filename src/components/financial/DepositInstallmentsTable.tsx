@@ -146,7 +146,7 @@ export function DepositInstallmentsTable() {
       // Buscar configurações e isenções para cálculo de taxa
       if (user) {
         const { data: configData } = await supabase
-          .from("config")
+          .from("configs")
           .select("*")
           .single();
         

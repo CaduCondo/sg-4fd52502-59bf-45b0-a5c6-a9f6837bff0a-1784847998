@@ -825,7 +825,7 @@ export default function Financial() {
           </Card>
         </ScrollReveal>
 
-        {user?.role === "admin" && (
+        {(user?.role === "admin" || user?.role === "financial") && (
           <DepositInstallmentsTable />
         )}
       </div>
