@@ -455,7 +455,7 @@ export function RentalFormDialog({
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="startDate">Data Início *</Label>
+              <Label htmlFor="startDate">Data Início Contrato *</Label>
               <Input
                 id="startDate"
                 type="date"
@@ -467,7 +467,7 @@ export function RentalFormDialog({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="endDate">Data Término</Label>
+              <Label htmlFor="endDate">Data Fim Contrato</Label>
               <Input
                 id="endDate"
                 type="date"
