@@ -45,6 +45,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { getConfig } from "@/services/configService";
 import { supabase } from "@/integrations/supabase/client";
+import { ManagePaymentForm } from "@/components/payments/ManagePaymentForm";
+import { DepositInstallmentsTable } from "@/components/financial/DepositInstallmentsTable";
 
 export default function Financial() {
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -507,6 +509,10 @@ export default function Financial() {
             </CardContent>
           </Card>
         </ScrollReveal>
+
+        {user?.role === "admin" && (
+          <DepositInstallmentsTable />
+        )}
       </div>
     </Layout>
   );

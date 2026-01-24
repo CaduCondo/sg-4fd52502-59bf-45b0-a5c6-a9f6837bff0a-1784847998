@@ -153,6 +153,12 @@ export interface Rental {
   iptuFee?: number;
   installments?: number;
   
+  // Deposit Installments
+  depositInstallments?: number;
+  depositInstallment1?: number;
+  depositInstallment2?: number;
+  depositInstallment3?: number;
+  
   // Status & Config
   status: "pending" | "active" | "completed" | "paid" | "overdue" | "terminated";
   isActive?: boolean;
