@@ -111,28 +111,68 @@ export default function Financial() {
 
       setConfig(configData);
 
-      // Buscar isenções do usuário logado
+      // Buscar permissões de locais do usuário logado
+      let allowedLocations: string[] = [];
       if (user) {
+        // Buscar isenções de taxa
         const { data: exemptions } = await supabase
           .from("user_fee_exemptions")
           .select("location_id")
           .eq("user_id", user.id);
         
-        const ids = exemptions?.map(e => e.location_id) || [];
-        setExemptLocationIds(ids);
+        const exemptIds = exemptions?.map(e => e.location_id) || [];
+        setExemptLocationIds(exemptIds);
+
+        // Buscar permissões de local (para usuários financeiros)
+        if (user.role === "financial") {
+          const { data: permissions } = await supabase
+            .from("user_location_permissions")
+            .select("location_id")
+            .eq("user_id", user.id);
+          
+          allowedLocations = permissions?.map(p => p.location_id) || [];
+          setAllowedLocationIds(allowedLocations);
+        } else {
+          // Admin e outros veem tudo
+          setAllowedLocationIds([]);
+        }
       }
 
-      setProperties(propertiesData);
-      setRentals(rentalsData);
+      // Filtrar properties por permissões de local (apenas para usuários financeiros)
+      let filteredProperties = propertiesData;
+      if (user?.role === "financial" && allowedLocations.length > 0) {
+        filteredProperties = propertiesData.filter(p => 
+          allowedLocations.includes(p.locationId)
+        );
+      }
+
+      // Filtrar rentals que usam properties permitidas
+      const allowedPropertyIds = filteredProperties.map(p => p.id);
+      let filteredRentals = rentalsData;
+      if (user?.role === "financial" && allowedLocations.length > 0) {
+        filteredRentals = rentalsData.filter(r => 
+          allowedPropertyIds.includes(r.propertyId)
+        );
+      }
+
+      setProperties(filteredProperties);
+      setRentals(filteredRentals);
       setTenants(tenantsData);
 
-      // Filtrar pagamentos pelo mês/ano selecionado
+      // Filtrar pagamentos pelo mês/ano selecionado E por rentals permitidos
+      const allowedRentalIds = filteredRentals.map(r => r.id);
       const filteredPayments = paymentsData.filter((payment) => {
         const dueDate = new Date(payment.dueDate);
-        return (
+        const matchesDate = 
           dueDate.getMonth() === parseInt(selectedMonth) &&
-          dueDate.getFullYear() === parseInt(selectedYear)
-        );
+          dueDate.getFullYear() === parseInt(selectedYear);
+        
+        const matchesPermission = 
+          user?.role !== "financial" || 
+          allowedLocations.length === 0 ||
+          allowedRentalIds.includes(payment.rentalId);
+
+        return matchesDate && matchesPermission;
       });
       
       setPayments(filteredPayments);
