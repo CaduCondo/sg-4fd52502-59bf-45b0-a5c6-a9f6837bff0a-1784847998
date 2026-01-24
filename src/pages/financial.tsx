@@ -27,7 +27,12 @@ import {
   FileText, 
   Save,
   QrCode,
-  TrendingUp
+  TrendingUp,
+  Printer,
+  FileSpreadsheet,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown
 } from "lucide-react";
 import { Payment, Property, Rental, Tenant, User } from "@/types";
 import { format, differenceInMonths } from "date-fns";
@@ -47,6 +52,10 @@ import { getConfig } from "@/services/configService";
 import { supabase } from "@/integrations/supabase/client";
 import { ManagePaymentForm } from "@/components/payments/ManagePaymentForm";
 import { DepositInstallmentsTable } from "@/components/financial/DepositInstallmentsTable";
+import * as XLSX from "xlsx";
+
+type SortField = "paymentNumber" | "local" | "complement" | "status" | "dueDate" | "paymentDate" | "expectedAmount" | "paidAmount";
+type SortDirection = "asc" | "desc" | null;
 
 export default function Financial() {
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -67,6 +76,10 @@ export default function Financial() {
   // PIX Code editing state
   const [editingPixCode, setEditingPixCode] = useState<{ [key: string]: string }>({});
   const [savingPixCode, setSavingPixCode] = useState<string | null>(null);
+
+  // Sorting state
+  const [sortField, setSortField] = useState<SortField | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>(null);
 
   const router = useRouter();
   const { user } = useAuth();
@@ -156,9 +169,18 @@ export default function Financial() {
       const newEditingState = { ...editingPixCode };
       delete newEditingState[rentalId];
       setEditingPixCode(newEditingState);
+
+      toast({
+        title: "Sucesso!",
+        description: "Código PIX atualizado com sucesso.",
+      });
     } catch (error) {
       console.error("Error saving PIX code:", error);
-      alert("Erro ao salvar código PIX");
+      toast({
+        title: "Erro",
+        description: "Erro ao salvar código PIX",
+        variant: "destructive",
+      });
     } finally {
       setSavingPixCode(null);
     }
@@ -257,6 +279,159 @@ export default function Financial() {
       currency: "BRL",
     });
   };
+
+  // Sorting function
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      // Toggle direction
+      if (sortDirection === "asc") {
+        setSortDirection("desc");
+      } else if (sortDirection === "desc") {
+        setSortDirection(null);
+        setSortField(null);
+      } else {
+        setSortDirection("asc");
+      }
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
+    }
+  };
+
+  // Get sorted payments
+  const getSortedPayments = () => {
+    if (!sortField || !sortDirection) return filteredPayments;
+
+    return [...filteredPayments].sort((a, b) => {
+      let aValue: any;
+      let bValue: any;
+
+      switch (sortField) {
+        case "paymentNumber":
+          const rentalA = rentals.find(r => r.id === a.rentalId);
+          const rentalB = rentals.find(r => r.id === b.rentalId);
+          aValue = calculatePaymentNumber(a, rentalA);
+          bValue = calculatePaymentNumber(b, rentalB);
+          break;
+        case "local":
+          aValue = getPaymentDetails(a).local;
+          bValue = getPaymentDetails(b).local;
+          break;
+        case "complement":
+          aValue = getPaymentDetails(a).complemento;
+          bValue = getPaymentDetails(b).complemento;
+          break;
+        case "status":
+          aValue = a.status;
+          bValue = b.status;
+          break;
+        case "dueDate":
+          aValue = new Date(a.dueDate).getTime();
+          bValue = new Date(b.dueDate).getTime();
+          break;
+        case "paymentDate":
+          aValue = a.paymentDate ? new Date(a.paymentDate).getTime() : 0;
+          bValue = b.paymentDate ? new Date(b.paymentDate).getTime() : 0;
+          break;
+        case "expectedAmount":
+          aValue = a.expectedAmount;
+          bValue = b.expectedAmount;
+          break;
+        case "paidAmount":
+          aValue = a.paidAmount || 0;
+          bValue = b.paidAmount || 0;
+          break;
+        default:
+          return 0;
+      }
+
+      if (aValue < bValue) return sortDirection === "asc" ? -1 : 1;
+      if (aValue > bValue) return sortDirection === "asc" ? 1 : -1;
+      return 0;
+    });
+  };
+
+  // Sort icon component
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="h-4 w-4 ml-1 text-slate-400" />;
+    }
+    if (sortDirection === "asc") {
+      return <ArrowUp className="h-4 w-4 ml-1 text-blue-600" />;
+    }
+    if (sortDirection === "desc") {
+      return <ArrowDown className="h-4 w-4 ml-1 text-blue-600" />;
+    }
+    return <ArrowUpDown className="h-4 w-4 ml-1 text-slate-400" />;
+  };
+
+  // Print function
+  const handlePrint = () => {
+    window.print();
+  };
+
+  // Export to Excel function
+  const handleExportExcel = () => {
+    const sortedPayments = getSortedPayments();
+    const monthName = months[parseInt(selectedMonth)].label;
+
+    // Prepare data for Excel
+    const excelData = sortedPayments.map(payment => {
+      const details = getPaymentDetails(payment);
+      const paymentNumber = calculatePaymentNumber(payment, details.rental);
+      
+      return {
+        "Nº": paymentNumber,
+        "Local": details.local,
+        "Complemento": details.complemento,
+        "Ano": selectedYear,
+        "Mês": monthName,
+        "Status": payment.status === "paid" ? "Pago" : 
+                 payment.status === "pending" ? "Pendente" :
+                 payment.status === "overdue" ? "Atrasado" : "Parcial",
+        "Código PIX": details.pixCode || "-",
+        "Data Vencimento": format(new Date(payment.dueDate), "dd/MM/yyyy"),
+        "Data Recebida": payment.paymentDate ? format(new Date(payment.paymentDate), "dd/MM/yyyy") : "-",
+        "Valor Esperado": payment.expectedAmount,
+        "Valor Pago": payment.paidAmount || 0,
+      };
+    });
+
+    // Create worksheet
+    const ws = XLSX.utils.json_to_sheet(excelData);
+    
+    // Set column widths
+    ws["!cols"] = [
+      { wch: 8 },  // Nº
+      { wch: 20 }, // Local
+      { wch: 15 }, // Complemento
+      { wch: 8 },  // Ano
+      { wch: 12 }, // Mês
+      { wch: 12 }, // Status
+      { wch: 20 }, // Código PIX
+      { wch: 15 }, // Data Vencimento
+      { wch: 15 }, // Data Recebida
+      { wch: 15 }, // Valor Esperado
+      { wch: 15 }, // Valor Pago
+    ];
+
+    // Create workbook
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, `${monthName} ${selectedYear}`);
+
+    // Generate file name
+    const fileName = `Financeiro_${monthName}_${selectedYear}.xlsx`;
+
+    // Save file
+    XLSX.writeFile(wb, fileName);
+
+    toast({
+      title: "Sucesso!",
+      description: "Planilha exportada com sucesso.",
+    });
+  };
+
+  const sortedPayments = getSortedPayments();
 
   return (
     <Layout>
@@ -396,29 +571,115 @@ export default function Financial() {
         <ScrollReveal delay={0.6}>
           <Card className="border-slate-200 shadow-sm overflow-hidden">
             <CardHeader className="border-b border-slate-100 bg-white pb-4">
-              <div className="flex items-center gap-2">
-                <FileText className="h-5 w-5 text-slate-400" />
-                <CardTitle className="text-base font-medium text-slate-700">
-                  Detalhamento de Locações - {months[parseInt(selectedMonth)].label} {selectedYear}
-                </CardTitle>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-slate-400" />
+                  <CardTitle className="text-base font-medium text-slate-700">
+                    Detalhamento de Locações - {months[parseInt(selectedMonth)].label} {selectedYear}
+                  </CardTitle>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handlePrint}
+                    className="text-slate-600 hover:text-slate-900"
+                  >
+                    <Printer className="h-4 w-4 mr-2" />
+                    Imprimir
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleExportExcel}
+                    className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                  >
+                    <FileSpreadsheet className="h-4 w-4 mr-2" />
+                    Exportar Excel
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent className="p-0">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-slate-50/50 hover:bg-slate-50/50">
-                    <TableHead className="w-[80px] text-xs font-semibold text-slate-500 uppercase tracking-wider">Nº</TableHead>
-                    <TableHead className="w-[150px] text-xs font-semibold text-slate-500 uppercase tracking-wider">Local</TableHead>
-                    <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Complemento</TableHead>
+                    <TableHead 
+                      className="w-[80px] text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
+                      onClick={() => handleSort("paymentNumber")}
+                    >
+                      <div className="flex items-center">
+                        Nº
+                        <SortIcon field="paymentNumber" />
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="w-[150px] text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
+                      onClick={() => handleSort("local")}
+                    >
+                      <div className="flex items-center">
+                        Local
+                        <SortIcon field="local" />
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
+                      onClick={() => handleSort("complement")}
+                    >
+                      <div className="flex items-center">
+                        Complemento
+                        <SortIcon field="complement" />
+                      </div>
+                    </TableHead>
                     <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Ano</TableHead>
                     <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Mês</TableHead>
-                    <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</TableHead>
+                    <TableHead 
+                      className="text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
+                      onClick={() => handleSort("status")}
+                    >
+                      <div className="flex items-center">
+                        Status
+                        <SortIcon field="status" />
+                      </div>
+                    </TableHead>
                     <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Código PIX</TableHead>
                     <TableHead className="w-[50px]"></TableHead>
-                    <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Data Vencimento</TableHead>
-                    <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Data Recebida</TableHead>
-                    <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Valor Esperado</TableHead>
-                    <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Valor Pago</TableHead>
+                    <TableHead 
+                      className="text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
+                      onClick={() => handleSort("dueDate")}
+                    >
+                      <div className="flex items-center">
+                        Data Vencimento
+                        <SortIcon field="dueDate" />
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
+                      onClick={() => handleSort("paymentDate")}
+                    >
+                      <div className="flex items-center">
+                        Data Recebida
+                        <SortIcon field="paymentDate" />
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="text-xs font-semibold text-slate-500 uppercase tracking-wider text-right cursor-pointer hover:bg-slate-100"
+                      onClick={() => handleSort("expectedAmount")}
+                    >
+                      <div className="flex items-center justify-end">
+                        Valor Esperado
+                        <SortIcon field="expectedAmount" />
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="text-xs font-semibold text-slate-500 uppercase tracking-wider text-right cursor-pointer hover:bg-slate-100"
+                      onClick={() => handleSort("paidAmount")}
+                    >
+                      <div className="flex items-center justify-end">
+                        Valor Pago
+                        <SortIcon field="paidAmount" />
+                      </div>
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -428,14 +689,14 @@ export default function Financial() {
                         Carregando...
                       </TableCell>
                     </TableRow>
-                  ) : filteredPayments.length === 0 ? (
+                  ) : sortedPayments.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={12} className="h-24 text-center text-slate-500">
                         Nenhum registro encontrado para este período.
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredPayments.map((payment) => {
+                    sortedPayments.map((payment) => {
                       const details = getPaymentDetails(payment);
                       const monthName = months[parseInt(selectedMonth)].label;
                       const paymentNumber = calculatePaymentNumber(payment, details.rental);
@@ -514,6 +775,29 @@ export default function Financial() {
           <DepositInstallmentsTable />
         )}
       </div>
+
+      {/* Print styles */}
+      <style jsx global>{`
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+          .print-area,
+          .print-area * {
+            visibility: visible;
+          }
+          .print-area {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+          }
+          button,
+          .no-print {
+            display: none !important;
+          }
+        }
+      `}</style>
     </Layout>
   );
 }
