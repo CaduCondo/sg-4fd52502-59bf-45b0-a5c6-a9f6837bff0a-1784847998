@@ -609,7 +609,7 @@ export default function Financial() {
                       onClick={() => handleSort("paymentNumber")}
                     >
                       <div className="flex items-center">
-                        Nº
+                        Parcela
                         <SortIcon field="paymentNumber" />
                       </div>
                     </TableHead>
