@@ -70,6 +70,7 @@ export default function Financial() {
   const [exemptLocationIds, setExemptLocationIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [config, setConfig] = useState<any>(null);
+  const [depositInstallments, setDepositInstallments] = useState<any[]>([]);
 
   // Date State
   const now = new Date();
@@ -140,6 +141,32 @@ export default function Financial() {
           setAllowedLocationIds([]);
         }
       }
+
+      // Buscar deposit_installments com rentals para calcular comissões
+      const { data: installmentsData } = await supabase
+        .from("deposit_installments")
+        .select(`
+          *,
+          rental:rentals!deposit_installments_rental_id_fkey (
+            id,
+            property_id
+          )
+        `)
+        .order("installment_number", { ascending: true });
+
+      // Filtrar installments por permissões de local
+      let filteredInstallments = installmentsData || [];
+      if (user?.role === "financial" && allowedLocations.length > 0) {
+        const allowedPropertyIds = propertiesData
+          .filter(p => allowedLocations.includes(p.locationId))
+          .map(p => p.id);
+        
+        filteredInstallments = filteredInstallments.filter(inst => 
+          inst.rental && allowedPropertyIds.includes(inst.rental.property_id)
+        );
+      }
+
+      setDepositInstallments(filteredInstallments);
 
       // Filtrar properties por permissões de local (apenas para usuários financeiros)
       let filteredProperties = propertiesData;
@@ -263,22 +290,22 @@ export default function Financial() {
     .filter((p) => p.status === "paid" || p.status === "partial")
     .reduce((sum, p) => sum + (p.paidAmount || 0), 0);
 
-  // Calcular taxa adm considerando isenções
-  const adminFee = filteredPayments
-    .filter((p) => p.status === "paid" || p.status === "partial")
-    .reduce((sum, p) => {
-      const rental = rentals.find(r => r.id === p.rentalId);
-      const property = properties.find(prop => prop.id === rental?.propertyId);
-      
-      if (property && exemptLocationIds.includes(property.locationId)) {
-        return sum;
-      }
-      
-      const feeRate = config ? (config.admin_fee_percentage || 0) / 100 : 0.05;
-      return sum + ((p.paidAmount || 0) * feeRate);
-    }, 0);
+  // Calcular comissões da tabela de cauções (soma apenas uma vez por rental)
+  const groupedByRental = depositInstallments.reduce((acc, item) => {
+    if (!acc[item.rental_id]) acc[item.rental_id] = [];
+    acc[item.rental_id].push(item);
+    return acc;
+  }, {} as Record<string, any[]>);
+
+  const uniqueRentals = Object.values(groupedByRental).map(group => group[0]);
   
-  const netRevenue = totalReceived - adminFee;
+  const totalCommission = uniqueRentals.reduce((sum, item) => {
+    const partnerCommission = item.partner_commission || 0;
+    const internalCommission = item.internal_commission || 0;
+    return sum + partnerCommission + internalCommission;
+  }, 0);
+  
+  const netRevenue = totalReceived - totalCommission;
 
   const getStatusBadge = (status: string) => {
     const badges = {
@@ -567,7 +594,7 @@ export default function Financial() {
             </Card>
           </ScrollReveal>
 
-          {/* Card 3: Taxa de Administração */}
+          {/* Card 3: Comissão */}
           <ScrollReveal delay={0.4}>
             <Card className="border-purple-100 bg-purple-50/30 shadow-sm h-full">
               <CardContent className="p-6 space-y-4">
@@ -575,16 +602,13 @@ export default function Financial() {
                   <div className="p-2 bg-purple-100 rounded-lg">
                     <HeartHandshake className="h-5 w-5 text-purple-600" />
                   </div>
-                  <div className="flex flex-col">
-                    <span className="text-sm font-medium text-slate-600">Taxa de</span>
-                    <span className="text-sm font-medium text-slate-600">Administração</span>
-                  </div>
+                  <span className="text-sm font-medium text-slate-600">Comissão</span>
                 </div>
                 <div>
-                  <div className="text-3xl font-bold text-purple-900">
-                    {formatCurrency(adminFee)}
+                  <div className="text-3xl font-bold text-slate-900">
+                    {formatCurrency(totalCommission)}
                   </div>
-                  <p className="text-xs text-purple-600 mt-1">5% da receita</p>
+                  <p className="text-xs text-purple-600 mt-1">Soma das comissões parceiro + interno</p>
                 </div>
               </CardContent>
             </Card>
