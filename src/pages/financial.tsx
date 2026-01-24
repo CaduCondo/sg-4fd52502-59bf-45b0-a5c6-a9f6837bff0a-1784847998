@@ -736,74 +736,88 @@ export default function Financial() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    sortedPayments.map((payment) => {
-                      const details = getPaymentDetails(payment);
-                      const monthName = months[parseInt(selectedMonth)].label;
-                      const paymentNumber = calculatePaymentNumber(payment, details.rental);
-                      
-                      return (
-                        <TableRow key={payment.id} className="hover:bg-slate-50 transition-colors">
-                          <TableCell className="font-medium text-slate-900">
-                            {paymentNumber}
-                          </TableCell>
-                          <TableCell className="font-medium text-slate-900">
-                            {details.local}
-                          </TableCell>
-                          <TableCell className="text-slate-600">
-                            {details.complemento}
-                          </TableCell>
-                          <TableCell className="text-slate-600">
-                            {selectedYear}
-                          </TableCell>
-                          <TableCell className="text-slate-600">
-                            {monthName}
-                          </TableCell>
-                          <TableCell>
-                            {getStatusBadge(payment.status)}
-                          </TableCell>
-                          <TableCell>
-                            <Input
-                              value={editingPixCode[details.rental?.id || ""] ?? details.pixCode}
-                              onChange={(e) => {
-                                if (details.rental?.id) {
-                                  setEditingPixCode({
-                                    ...editingPixCode,
-                                    [details.rental.id]: e.target.value
-                                  });
-                                }
-                              }}
-                              placeholder="Código PIX"
-                              className="h-8 text-xs"
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="h-8 w-8 text-purple-600 hover:text-purple-700 hover:bg-purple-50"
-                              onClick={() => details.rental?.id && handleSavePixCode(details.rental.id)}
-                              disabled={savingPixCode === details.rental?.id}
-                            >
-                              <Save className="h-4 w-4" />
-                            </Button>
-                          </TableCell>
-                          <TableCell className="text-slate-600">
-                            {format(new Date(payment.dueDate), "dd/MM/yyyy")}
-                          </TableCell>
-                          <TableCell className="text-slate-600">
-                            {payment.paymentDate 
-                              ? format(new Date(payment.paymentDate), "dd/MM/yyyy")
-                              : "-"}
-                          </TableCell>
-                          <TableCell className="text-right font-medium text-slate-900">
-                            {formatCurrency(payment.expectedAmount)}
-                          </TableCell>
-                          <TableCell className="text-right font-bold text-green-600">
-                            {formatCurrency(payment.paidAmount || 0)}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
+                    <>
+                      {sortedPayments.map((payment) => {
+                        const details = getPaymentDetails(payment);
+                        const monthName = months[parseInt(selectedMonth)].label;
+                        const paymentNumber = calculatePaymentNumber(payment, details.rental);
+                        
+                        return (
+                          <TableRow key={payment.id} className="hover:bg-slate-50 transition-colors">
+                            <TableCell className="font-medium text-slate-900">
+                              {paymentNumber}
+                            </TableCell>
+                            <TableCell className="font-medium text-slate-900">
+                              {details.local}
+                            </TableCell>
+                            <TableCell className="text-slate-600">
+                              {details.complemento}
+                            </TableCell>
+                            <TableCell className="text-slate-600">
+                              {selectedYear}
+                            </TableCell>
+                            <TableCell className="text-slate-600">
+                              {monthName}
+                            </TableCell>
+                            <TableCell>
+                              {getStatusBadge(payment.status)}
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                value={editingPixCode[details.rental?.id || ""] ?? details.pixCode}
+                                onChange={(e) => {
+                                  if (details.rental?.id) {
+                                    setEditingPixCode({
+                                      ...editingPixCode,
+                                      [details.rental.id]: e.target.value
+                                    });
+                                  }
+                                }}
+                                placeholder="Código PIX"
+                                className="h-8 text-xs"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-8 w-8 text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                                onClick={() => details.rental?.id && handleSavePixCode(details.rental.id)}
+                                disabled={savingPixCode === details.rental?.id}
+                              >
+                                <Save className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                            <TableCell className="text-slate-600">
+                              {format(new Date(payment.dueDate), "dd/MM/yyyy")}
+                            </TableCell>
+                            <TableCell className="text-slate-600">
+                              {payment.paymentDate 
+                                ? format(new Date(payment.paymentDate), "dd/MM/yyyy")
+                                : "-"}
+                            </TableCell>
+                            <TableCell className="text-right font-medium text-slate-900">
+                              {formatCurrency(payment.expectedAmount)}
+                            </TableCell>
+                            <TableCell className="text-right font-bold text-green-600">
+                              {formatCurrency(payment.paidAmount || 0)}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                      {/* Linha de Totais */}
+                      <TableRow className="bg-slate-100 font-bold border-t-2 border-slate-300">
+                        <TableCell colSpan={10} className="text-right text-slate-900 uppercase tracking-wide">
+                          Total:
+                        </TableCell>
+                        <TableCell className="text-right text-slate-900 text-lg">
+                          {formatCurrency(sortedPayments.reduce((sum, p) => sum + p.expectedAmount, 0))}
+                        </TableCell>
+                        <TableCell className="text-right text-green-700 text-lg">
+                          {formatCurrency(sortedPayments.reduce((sum, p) => sum + (p.paidAmount || 0), 0))}
+                        </TableCell>
+                      </TableRow>
+                    </>
                   )}
                 </TableBody>
               </Table>
