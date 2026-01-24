@@ -148,7 +148,7 @@ export function DepositInstallmentsTable() {
         const { data: configData } = await supabase
           .from("configs")
           .select("*")
-          .single();
+          .maybeSingle();
         
         setConfig(configData);
 
