@@ -34,6 +34,7 @@ export function useDashboardData(selectedMonth: number | null, selectedYear: num
   const [filteredPayments, setFilteredPayments] = useState<Payment[]>([]);
   const [dueSoonPayments, setDueSoonPayments] = useState<Payment[]>([]);
   const [exemptLocationIds, setExemptLocationIds] = useState<string[]>([]);
+  const [userLocationIds, setUserLocationIds] = useState<string[]>([]);
   const [stats, setStats] = useState<Stats>({
     totalProperties: 0,
     availableProperties: 0,
@@ -52,11 +53,11 @@ export function useDashboardData(selectedMonth: number | null, selectedYear: num
 
   useEffect(() => {
     if (user) {
-      loadExemptions();
+      loadUserPermissions();
     }
   }, [user]);
 
-  const loadExemptions = async () => {
+  const loadUserPermissions = async () => {
     if (!user) return;
     try {
       const { data: exemptions } = await supabase
