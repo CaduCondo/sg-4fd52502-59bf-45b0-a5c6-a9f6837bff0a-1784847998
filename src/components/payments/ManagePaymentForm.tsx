@@ -147,7 +147,16 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
   };
 
   const calculateValues = () => {
-    const valorAluguel = Math.round((rentalValue + garageValue) * 100) / 100;
+    // Usar o expected_amount do pagamento (que contém valor proporcional se for 1ª parcela)
+    // Se não existir, calcular o valor integral
+    const valorIntegral = Math.round((rentalValue + garageValue) * 100) / 100;
+    const valorAluguel = payment?.expected_amount 
+      ? Math.round(payment.expected_amount * 100) / 100 
+      : valorIntegral;
+    
+    // Detectar se é proporcional comparando com o valor integral
+    const isProportional = payment?.expected_amount && Math.abs(valorAluguel - valorIntegral) > 0.01;
+    
     let multa = 0;
     let juros = 0;
     let diasAtraso = 0;
@@ -184,6 +193,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       valorRestante: Math.round(valorRestante * 100) / 100,
       diasAtraso,
       jurosDiario: interestRatePercentage,
+      isProportional,
     };
   };
 
@@ -622,7 +632,12 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           <CardContent>
             <div className="space-y-3">
               <div className="flex justify-between text-sm">
-                <span>Valor Aluguel {garageValue > 0 && "+ Vaga"}</span>
+                <span>
+                  Valor Aluguel {garageValue > 0 && "+ Vaga"}
+                  {values.isProportional && (
+                    <span className="text-blue-600 font-medium ml-2">(Proporcional)</span>
+                  )}
+                </span>
                 <span className="font-medium">{formatCurrency(values.valorAluguel.toFixed(2))}</span>
               </div>
 
