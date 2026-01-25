@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/lib/masks";
+import { calculateProportionalRent, calculateDaysBetweenDates, shouldUseProportionalRent } from "@/lib/rentalCalculations";
 import type { Rental, Property, Tenant, Location } from "@/types";
 
 interface UseRentalFormProps {
@@ -30,8 +31,45 @@ export function useRentalForm({
   const [hasPartnerBroker, setHasPartnerBroker] = useState(false);
   const [securityDeposit, setSecurityDeposit] = useState("");
   const [attachments, setAttachments] = useState<string[]>([]);
+  
+  // Estado para valor proporcional
+  const [proportionalRentInfo, setProportionalRentInfo] = useState<{
+    isProportional: boolean;
+    days: number;
+    firstRentValue: number;
+  }>({
+    isProportional: false,
+    days: 30,
+    firstRentValue: 0,
+  });
 
   const initializedRef = useRef(false);
+
+  // Calcular valor proporcional quando startDate, paymentDay ou property mudarem
+  useEffect(() => {
+    if (startDate && paymentDay && selectedPropertyId) {
+      const selectedProperty = properties.find(p => p.id === selectedPropertyId);
+      if (selectedProperty) {
+        const propertyValue = selectedProperty.value || 0;
+        const garage = hasGarage
+          ? parseFloat(garageValue.replace(/[^\d,]/g, "").replace(",", ".") || "0")
+          : 0;
+        const totalMonthlyRent = propertyValue + garage;
+        
+        const isProportional = shouldUseProportionalRent(startDate, parseInt(paymentDay));
+        const days = calculateDaysBetweenDates(startDate, parseInt(paymentDay));
+        const firstRentValue = isProportional 
+          ? calculateProportionalRent(totalMonthlyRent, startDate, parseInt(paymentDay))
+          : totalMonthlyRent;
+        
+        setProportionalRentInfo({
+          isProportional,
+          days,
+          firstRentValue,
+        });
+      }
+    }
+  }, [startDate, paymentDay, selectedPropertyId, properties, hasGarage, garageValue]);
 
   // Inicializar formulário quando o modal abrir
   useEffect(() => {
@@ -76,6 +114,11 @@ export function useRentalForm({
     setHasPartnerBroker(false);
     setSecurityDeposit("");
     setAttachments([]);
+    setProportionalRentInfo({
+      isProportional: false,
+      days: 30,
+      firstRentValue: 0,
+    });
   };
 
   const handleFileUpload = async (file: File) => {
@@ -156,6 +199,7 @@ export function useRentalForm({
     setSecurityDeposit,
     attachments,
     setAttachments,
+    proportionalRentInfo,
 
     // Funções
     resetForm,

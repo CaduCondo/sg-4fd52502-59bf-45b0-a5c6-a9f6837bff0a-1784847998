@@ -86,6 +86,7 @@ export function RentalFormDialog({
     securityDeposit,
     setSecurityDeposit,
     attachments,
+    proportionalRentInfo,
     resetForm,
     handleFileUpload,
     removeAttachment,
@@ -654,6 +655,40 @@ export function RentalFormDialog({
               </div>
             </div>
           </div>
+
+          {proportionalRentInfo.isProportional && startDate && paymentDay && (
+            <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="font-semibold text-blue-900 dark:text-blue-100">
+                    📅 Primeira Parcela Proporcional
+                  </span>
+                </div>
+                <div className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
+                  <p>
+                    <strong>Data Início:</strong> {new Date(startDate + "T00:00:00").toLocaleDateString("pt-BR")}
+                  </p>
+                  <p>
+                    <strong>Dia Vencimento:</strong> {paymentDay}
+                  </p>
+                  <p>
+                    <strong>Dias a Cobrar:</strong> {proportionalRentInfo.days} dias
+                  </p>
+                </div>
+                <div className="flex justify-between items-center pt-2 border-t border-blue-200 dark:border-blue-800">
+                  <span className="font-bold text-blue-900 dark:text-blue-100">
+                    Valor 1ª Parcela:
+                  </span>
+                  <span className="text-xl font-bold text-blue-600 dark:text-blue-400">
+                    {formatCurrency(proportionalRentInfo.firstRentValue)}
+                  </span>
+                </div>
+                <p className="text-xs text-blue-600 dark:text-blue-400 italic mt-2">
+                  * Cálculo: (R$ {formatCurrency(calculateTotal())} ÷ 30 dias) × {proportionalRentInfo.days} dias
+                </p>
+              </div>
+            </div>
+          )}
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">

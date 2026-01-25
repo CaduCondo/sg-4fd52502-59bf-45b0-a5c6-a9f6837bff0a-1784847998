@@ -11,6 +11,69 @@ export function formatDateLocal(dateString: string): Date {
 }
 
 /**
+ * Calcula a diferença de dias entre a data de início do contrato e a data de vencimento
+ * Retorna o número de dias que devem ser cobrados no primeiro aluguel
+ */
+export function calculateDaysBetweenDates(startDate: string, paymentDay: number): number {
+  if (!startDate || !paymentDay) return 0;
+
+  const start = formatDateLocal(startDate);
+  const startDay = start.getDate();
+  
+  // Se o dia de início for igual ao dia de pagamento, não há proporcionalidade
+  if (startDay === paymentDay) return 30;
+
+  // Calcular a data de vencimento (primeiro dia de pagamento)
+  const paymentDate = new Date(start);
+  
+  // Se o dia de pagamento já passou no mês atual, vai para o próximo mês
+  if (startDay > paymentDay) {
+    paymentDate.setMonth(paymentDate.getMonth() + 1);
+  }
+  
+  paymentDate.setDate(paymentDay);
+
+  // Calcular diferença em dias
+  const diffTime = paymentDate.getTime() - start.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  return diffDays;
+}
+
+/**
+ * Calcula o valor proporcional do primeiro aluguel
+ * Fórmula: (valor_mensal / 30) × número_de_dias
+ */
+export function calculateProportionalRent(
+  monthlyRent: number,
+  startDate: string,
+  paymentDay: number
+): number {
+  const days = calculateDaysBetweenDates(startDate, paymentDay);
+  
+  // Se for 30 dias, retorna o valor integral
+  if (days === 30) return monthlyRent;
+  
+  // Calcula o valor proporcional
+  const dailyRate = monthlyRent / 30;
+  const proportionalValue = dailyRate * days;
+  
+  return Math.round(proportionalValue * 100) / 100; // Arredonda para 2 casas decimais
+}
+
+/**
+ * Verifica se a primeira parcela deve ser proporcional
+ */
+export function shouldUseProportionalRent(startDate: string, paymentDay: number): boolean {
+  if (!startDate || !paymentDay) return false;
+  
+  const start = formatDateLocal(startDate);
+  const startDay = start.getDate();
+  
+  return startDay !== paymentDay;
+}
+
+/**
  * Calcula o valor total da locação incluindo aluguel base e garagem
  */
 export function calculateTotalRent(
