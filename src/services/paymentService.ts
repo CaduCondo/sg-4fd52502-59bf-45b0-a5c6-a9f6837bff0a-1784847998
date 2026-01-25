@@ -300,11 +300,18 @@ export async function createPaymentsForRental(rental: any): Promise<void> {
   let firstPaymentDays = 30;
 
   if (isProportional) {
+    const startDateStr = startDate.toISOString().split('T')[0];
+    
     firstPaymentDays = calculateDaysBetweenDates(
-      startDate.toISOString().split('T')[0],
+      startDateStr,
       paymentDay
     );
-    firstPaymentValue = calculateProportionalRent(monthlyValue, firstPaymentDays);
+    
+    firstPaymentValue = calculateProportionalRent(
+      monthlyValue, 
+      startDateStr,
+      paymentDay
+    );
     
     console.log("🔄 Primeira parcela PROPORCIONAL:", {
       dias: firstPaymentDays,
