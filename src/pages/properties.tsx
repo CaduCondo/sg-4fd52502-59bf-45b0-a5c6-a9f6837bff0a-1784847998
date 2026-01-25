@@ -279,6 +279,7 @@ export default function PropertiesPage() {
               setSortOrder={setSortOrder}
               viewMode={viewMode}
               setViewMode={setViewMode}
+              totalCount={filteredProperties.length}
             />
           </CardContent>
         </Card>

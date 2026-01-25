@@ -198,7 +198,7 @@ export default function RentalsPage() {
               <CardHeader className="pb-2">
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Home className="h-4 w-4" />
-                  Imóveis Vagos
+                  Imóveis Vagos ({vacantProperties.length})
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -235,7 +235,7 @@ export default function RentalsPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <User className="h-5 w-5" />
-                  Inquilinos Disponíveis
+                  Inquilinos Disponíveis ({availableTenants.length})
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -261,7 +261,7 @@ export default function RentalsPage() {
           {activeRentals.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Locações Ativas</CardTitle>
+                <CardTitle className="text-lg">Locações Ativas ({activeRentals.length})</CardTitle>
               </CardHeader>
               <CardContent>
                 {viewMode === "grid" ? (

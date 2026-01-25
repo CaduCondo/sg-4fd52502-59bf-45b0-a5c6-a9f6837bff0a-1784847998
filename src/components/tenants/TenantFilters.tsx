@@ -10,6 +10,7 @@ interface TenantFiltersProps {
   onStatusFilterChange: (value: string) => void;
   sortBy: "alphabetical" | "recent";
   onSortChange: (value: "alphabetical" | "recent") => void;
+  totalCount: number;
 }
 
 export function TenantFilters({
@@ -19,9 +20,13 @@ export function TenantFilters({
   onStatusFilterChange,
   sortBy,
   onSortChange,
+  totalCount,
 }: TenantFiltersProps) {
   return (
     <div className="space-y-4">
+      <div className="text-sm text-muted-foreground font-medium">
+        {totalCount} {totalCount === 1 ? "inquilino encontrado" : "inquilinos encontrados"}
+      </div>
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />

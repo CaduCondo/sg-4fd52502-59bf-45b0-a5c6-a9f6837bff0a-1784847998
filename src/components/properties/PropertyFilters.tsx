@@ -19,6 +19,7 @@ interface PropertyFiltersProps {
   setSortOrder: (order: "alphabetical" | "price-asc" | "price-desc") => void;
   viewMode: "grid" | "table";
   setViewMode: (mode: "grid" | "table") => void;
+  totalCount: number;
 }
 
 export function PropertyFilters({
@@ -34,9 +35,15 @@ export function PropertyFilters({
   setSortOrder,
   viewMode,
   setViewMode,
+  totalCount,
 }: PropertyFiltersProps) {
   return (
     <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <div className="text-sm text-muted-foreground font-medium">
+          {totalCount} {totalCount === 1 ? "imóvel encontrado" : "imóveis encontrados"}
+        </div>
+      </div>
       <div className="flex items-center justify-between">
         <div className="flex gap-2 flex-1 max-w-2xl">
           <div className="relative flex-1">

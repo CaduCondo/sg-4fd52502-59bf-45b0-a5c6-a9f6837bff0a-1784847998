@@ -188,6 +188,7 @@ export default function TenantsPage() {
           onStatusFilterChange={setStatusFilter}
           sortBy={sortBy as "alphabetical" | "recent"}
           onSortChange={(value) => setSortBy(value as "alphabetical" | "recent")}
+          totalCount={tenants.length}
         />
 
         {tenants.length === 0 ? (
