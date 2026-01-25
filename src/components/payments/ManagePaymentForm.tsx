@@ -58,7 +58,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       const values = calculateValues();
       setFormData(prev => ({
         ...prev,
-        amount_to_pay: formatCurrency(values.valorRestante.toFixed(2))
+        amount_to_pay: formatCurrency(values.valorAPagar.toFixed(2))
       }));
     }
   }, [formData.payment_date, rentalValue, garageValue, lateFeePercentage, interestRatePercentage, removeFees, isEditMode]);
@@ -127,10 +127,11 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         setAttachments(attachmentStrings);
       }
 
+      const values = calculateValues();
       setFormData({
         payment_date: paymentData.payment_date || new Date().toISOString().split("T")[0],
         payment_method: paymentData.payment_method || "pix",
-        amount_to_pay: formatCurrency((paymentData.paid_amount || paymentData.expected_amount || 0).toFixed(2)),
+        amount_to_pay: formatCurrency(values.valorAPagar.toFixed(2)),
         notes: paymentData.notes || "",
         pix_code_type: (paymentData as any).pix_code_type || "CP",
       });
