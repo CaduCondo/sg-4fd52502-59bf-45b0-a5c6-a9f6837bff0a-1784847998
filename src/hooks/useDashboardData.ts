@@ -6,6 +6,7 @@ import { getAll as getAllPayments } from "@/services/paymentService";
 import { getConfig } from "@/services/configService";
 import type { Property, Tenant, Rental, Payment } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
+import { getAll as getLocationPermissions } from "@/services/locationPermissionService";
 
 interface Stats {
   totalProperties: number;
@@ -60,15 +61,25 @@ export function useDashboardData(selectedMonth: number | null, selectedYear: num
   const loadUserPermissions = async () => {
     if (!user) return;
     try {
+      // Carrega isenções de taxa
       const { data: exemptions } = await supabase
         .from("user_fee_exemptions")
         .select("location_id")
         .eq("user_id", user.id);
       
-      const ids = exemptions?.map(e => e.location_id) || [];
-      setExemptLocationIds(ids);
+      const exemptIds = exemptions?.map(e => e.location_id) || [];
+      setExemptLocationIds(exemptIds);
+
+      // Carrega permissões de local
+      const { data: permissions } = await supabase
+        .from("user_location_permissions")
+        .select("location_id")
+        .eq("user_id", user.id);
+      
+      const permittedIds = permissions?.map(p => p.location_id) || [];
+      setUserLocationIds(permittedIds);
     } catch (error) {
-      console.error("Error loading exemptions:", error);
+      console.error("Error loading permissions:", error);
     }
   };
 
