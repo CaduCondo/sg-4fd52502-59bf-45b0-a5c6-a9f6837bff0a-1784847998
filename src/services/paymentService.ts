@@ -6,6 +6,11 @@ import {
   deleteSingle
 } from "@/lib/supabaseHelpers";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  calculateDaysBetweenDates,
+  calculateProportionalRent,
+  shouldUseProportionalRent
+} from "@/lib/rentalCalculations";
 
 const TABLE = "payments";
 
@@ -275,19 +280,47 @@ export async function createPaymentsForRental(rental: any): Promise<void> {
     ? new Date(rental.endDate || rental.end_date) 
     : new Date(startDate.getFullYear() + 1, startDate.getMonth(), startDate.getDate());
   const paymentDay = rental.paymentDay || rental.payment_day;
-  
-  const yearsDiff = endDate.getFullYear() - startDate.getFullYear();
-  const monthsDiff = endDate.getMonth() - startDate.getMonth();
-  const totalMonths = (yearsDiff * 12) + monthsDiff + 1;
+  const monthlyValue = rental.value || rental.monthly_rent;
 
   console.log("Dados processados:", {
     rentalId: rental.id,
     startDate: startDate.toISOString().split('T')[0],
     endDate: endDate.toISOString().split('T')[0],
     paymentDay,
-    totalMonths,
-    value: rental.value || rental.monthly_rent
+    monthlyValue
   });
+
+  // Verificar se a primeira parcela deve ser proporcional
+  const isProportional = shouldUseProportionalRent(
+    startDate.toISOString().split('T')[0],
+    paymentDay
+  );
+
+  let firstPaymentValue = monthlyValue;
+  let firstPaymentDays = 30;
+
+  if (isProportional) {
+    firstPaymentDays = calculateDaysBetweenDates(
+      startDate.toISOString().split('T')[0],
+      paymentDay
+    );
+    firstPaymentValue = calculateProportionalRent(monthlyValue, firstPaymentDays);
+    
+    console.log("🔄 Primeira parcela PROPORCIONAL:", {
+      dias: firstPaymentDays,
+      valorMensal: monthlyValue,
+      valorProporcional: firstPaymentValue,
+      calculo: `(${monthlyValue} / 30) × ${firstPaymentDays} = ${firstPaymentValue}`
+    });
+  } else {
+    console.log("✅ Primeira parcela INTEGRAL (30 dias):", {
+      valorMensal: monthlyValue
+    });
+  }
+
+  const yearsDiff = endDate.getFullYear() - startDate.getFullYear();
+  const monthsDiff = endDate.getMonth() - startDate.getMonth();
+  const totalMonths = (yearsDiff * 12) + monthsDiff + 1;
 
   const payments = [];
 
@@ -300,10 +333,14 @@ export async function createPaymentsForRental(rental: any): Promise<void> {
       dueDate = new Date(referenceDate.getFullYear(), referenceDate.getMonth() + 1, 0);
     }
 
+    // Primeira parcela: usar valor proporcional se aplicável
+    // Demais parcelas: usar valor integral
+    const expectedAmount = (i === 0 && isProportional) ? firstPaymentValue : monthlyValue;
+
     payments.push({
       rental_id: rental.id,
       due_date: dueDate.toISOString().split('T')[0],
-      expected_amount: rental.value || rental.monthly_rent,
+      expected_amount: expectedAmount,
       status: 'pending',
       reference_month: (referenceDate.getMonth() + 1),
       reference_year: referenceDate.getFullYear(),
@@ -322,6 +359,10 @@ export async function createPaymentsForRental(rental: any): Promise<void> {
     throw error;
   }
 
-  console.log(`✅ Sucesso! Criados ${data?.length || 0} pagamentos:`, data);
+  console.log(`✅ Sucesso! Criados ${data?.length || 0} pagamentos`);
+  if (isProportional) {
+    console.log(`   - 1ª parcela proporcional: R$ ${firstPaymentValue.toFixed(2)} (${firstPaymentDays} dias)`);
+    console.log(`   - Demais parcelas: R$ ${monthlyValue.toFixed(2)} (valor integral)`);
+  }
   console.log("=== FIM createPaymentsForRental ===");
 }
