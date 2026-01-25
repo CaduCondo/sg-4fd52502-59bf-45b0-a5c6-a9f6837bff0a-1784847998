@@ -162,8 +162,15 @@ export interface Rental {
   // Deposit Payment Info
   depositPaymentDate?: string;
   depositPixCode?: string;
+  
+  depositInstallment1PaymentDate?: string;
+  depositInstallment1PixCode?: string;
+  
   depositInstallment2PaymentDate?: string;
+  depositInstallment2PixCode?: string;
+  
   depositInstallment3PaymentDate?: string;
+  depositInstallment3PixCode?: string;
   
   // Status & Config
   status: "pending" | "active" | "completed" | "paid" | "overdue" | "terminated";

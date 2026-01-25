@@ -58,21 +58,24 @@ export function RentalFormDialog({
     location?: Location;
   } | null>(null);
 
+  // Estados para Caução
   const [isDepositInstallment, setIsDepositInstallment] = useState(false);
   const [depositInstallmentCount, setDepositInstallmentCount] = useState<string>("");
+  
+  // Valores
   const [depositInstallment1, setDepositInstallment1] = useState("");
   const [depositInstallment2, setDepositInstallment2] = useState("");
   const [depositInstallment3, setDepositInstallment3] = useState("");
-  const [depositInstallment1PaymentDate, setDepositInstallment1PaymentDate] = useState("");
+  
+  // Datas de Pagamento
+  const [depositPaymentDate, setDepositPaymentDate] = useState(""); // Usado para a 1ª parcela ou caução único
   const [depositInstallment2PaymentDate, setDepositInstallment2PaymentDate] = useState("");
   const [depositInstallment3PaymentDate, setDepositInstallment3PaymentDate] = useState("");
-  const [depositInstallment1PixCode, setDepositInstallment1PixCode] = useState("");
+  
+  // Códigos PIX
+  const [depositPixCode, setDepositPixCode] = useState(""); // Usado para a 1ª parcela ou caução único
   const [depositInstallment2PixCode, setDepositInstallment2PixCode] = useState("");
   const [depositInstallment3PixCode, setDepositInstallment3PixCode] = useState("");
-
-  // Novos estados para data de pagamento caução e código PIX
-  const [depositPaymentDate, setDepositPaymentDate] = useState("");
-  const [depositPixCode, setDepositPixCode] = useState("");
 
   const {
     isEditing,
@@ -118,29 +121,35 @@ export function RentalFormDialog({
     if (open && rental) {
       setIsDepositInstallment(rental.depositInstallments ? rental.depositInstallments > 1 : false);
       setDepositInstallmentCount(rental.depositInstallments ? rental.depositInstallments.toString() : "");
+      
+      // Valores
       setDepositInstallment1(rental.depositInstallment1 ? formatCurrency(rental.depositInstallment1) : "");
       setDepositInstallment2(rental.depositInstallment2 ? formatCurrency(rental.depositInstallment2) : "");
       setDepositInstallment3(rental.depositInstallment3 ? formatCurrency(rental.depositInstallment3) : "");
-      setDepositPaymentDate(rental.depositPaymentDate || "");
-      setDepositPixCode(rental.depositPixCode || "");
-      setDepositInstallment1PaymentDate(rental.depositInstallment1PaymentDate || "");
+      
+      // Datas
+      // Mapeia depositPaymentDate ou depositInstallment1PaymentDate para o campo principal
+      setDepositPaymentDate(rental.depositPaymentDate || rental.depositInstallment1PaymentDate || "");
       setDepositInstallment2PaymentDate(rental.depositInstallment2PaymentDate || "");
       setDepositInstallment3PaymentDate(rental.depositInstallment3PaymentDate || "");
-      setDepositInstallment1PixCode(rental.depositInstallment1PixCode || "");
+      
+      // PIX
+      // Mapeia depositPixCode ou depositInstallment1PixCode para o campo principal
+      setDepositPixCode(rental.depositPixCode || rental.depositInstallment1PixCode || "");
       setDepositInstallment2PixCode(rental.depositInstallment2PixCode || "");
       setDepositInstallment3PixCode(rental.depositInstallment3PixCode || "");
+
     } else if (!open) {
+      // Reset manual dos campos locais
       setIsDepositInstallment(false);
       setDepositInstallmentCount("");
       setDepositInstallment1("");
       setDepositInstallment2("");
       setDepositInstallment3("");
       setDepositPaymentDate("");
-      setDepositPixCode("");
-      setDepositInstallment1PaymentDate("");
       setDepositInstallment2PaymentDate("");
       setDepositInstallment3PaymentDate("");
-      setDepositInstallment1PixCode("");
+      setDepositPixCode("");
       setDepositInstallment2PixCode("");
       setDepositInstallment3PixCode("");
     }
@@ -214,21 +223,26 @@ export function RentalFormDialog({
         return;
       }
 
+      // Validar campos de parcelas
+      // Nota: A 1ª parcela usa o valor do campo "securityDeposit" (Valor Caução) principal
+      // ou depositInstallment1 se quisermos separar logicamente, mas visualmente é o mesmo input.
+      // Neste layout, usaremos os campos específicos de parcela para validação se estiver parcelado.
+      
       const count = parseInt(depositInstallmentCount);
       if (count === 2) {
-        if (!depositInstallment1 || !depositInstallment2) {
+        if (!depositInstallment2) {
           toast({
             title: "Erro",
-            description: "Preencha os valores das 2 parcelas do caução.",
+            description: "Preencha o valor da 2ª parcela.",
             variant: "destructive",
           });
           return;
         }
       } else if (count === 3) {
-        if (!depositInstallment1 || !depositInstallment2 || !depositInstallment3) {
+        if (!depositInstallment2 || !depositInstallment3) {
           toast({
             title: "Erro",
-            description: "Preencha os valores das 3 parcelas do caução.",
+            description: "Preencha os valores da 2ª e 3ª parcelas.",
             variant: "destructive",
           });
           return;
@@ -253,30 +267,39 @@ export function RentalFormDialog({
         hasPartnerBroker
       );
 
-      // Adiciona informações de pagamento do caução
-      rentalData.depositPaymentDate = depositPaymentDate || null;
-      rentalData.depositPixCode = depositPixCode || null;
-
+      // Configuração dos dados de caução
       if (isDepositInstallment && depositInstallmentCount) {
         rentalData.depositInstallments = parseInt(depositInstallmentCount);
-        rentalData.depositInstallment1 = parseCurrencyToNumber(depositInstallment1);
-        rentalData.depositInstallment1PaymentDate = depositInstallment1PaymentDate || null;
-        rentalData.depositInstallment1PixCode = depositInstallment1PixCode || null;
+        
+        // 1ª Parcela (usa os campos principais)
+        rentalData.depositInstallment1 = parseCurrencyToNumber(securityDeposit); 
+        rentalData.depositInstallment1PaymentDate = depositPaymentDate || null;
+        rentalData.depositInstallment1PixCode = depositPixCode || null;
+        
+        // Dados principais de caução também recebem a info da 1ª parcela
+        rentalData.depositPaymentDate = depositPaymentDate || null;
+        rentalData.depositPixCode = depositPixCode || null;
+
         if (parseInt(depositInstallmentCount) >= 2) {
           rentalData.depositInstallment2 = parseCurrencyToNumber(depositInstallment2);
           rentalData.depositInstallment2PaymentDate = depositInstallment2PaymentDate || null;
           rentalData.depositInstallment2PixCode = depositInstallment2PixCode || null;
         }
+        
         if (parseInt(depositInstallmentCount) === 3) {
           rentalData.depositInstallment3 = parseCurrencyToNumber(depositInstallment3);
           rentalData.depositInstallment3PaymentDate = depositInstallment3PaymentDate || null;
           rentalData.depositInstallment3PixCode = depositInstallment3PixCode || null;
         }
       } else {
+        // Não parcelado
         rentalData.depositInstallments = 1;
         rentalData.depositInstallment1 = parseCurrencyToNumber(securityDeposit);
         rentalData.depositInstallment1PaymentDate = depositPaymentDate || null;
         rentalData.depositInstallment1PixCode = depositPixCode || null;
+        
+        rentalData.depositPaymentDate = depositPaymentDate || null;
+        rentalData.depositPixCode = depositPixCode || null;
       }
 
       if (rental) {
@@ -356,9 +379,19 @@ export function RentalFormDialog({
     const installments = [];
 
     for (let i = 1; i <= count; i++) {
-      const amount = rentalData[`depositInstallment${i}`] || 0;
-      const paymentDate = rentalData[`depositInstallment${i}PaymentDate`] || null;
-      const pixCode = rentalData[`depositInstallment${i}PixCode`] || null;
+      let amount = 0;
+      let paymentDate = null;
+      let pixCode = null;
+
+      if (i === 1) {
+        amount = rentalData.depositInstallment1;
+        paymentDate = rentalData.depositInstallment1PaymentDate;
+        pixCode = rentalData.depositInstallment1PixCode;
+      } else {
+        amount = rentalData[`depositInstallment${i}`] || 0;
+        paymentDate = rentalData[`depositInstallment${i}PaymentDate`] || null;
+        pixCode = rentalData[`depositInstallment${i}PixCode`] || null;
+      }
       
       installments.push({
         rental_id: rentalId,
@@ -400,7 +433,7 @@ export function RentalFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {rental && isViewMode && !isEditing
@@ -549,26 +582,36 @@ export function RentalFormDialog({
             </div>
           </div>
 
-          <div className="space-y-4">
+          {/* SEÇÃO CAUÇÃO - Layout reestruturado conforme solicitação */}
+          <div className="space-y-4 p-4 border rounded-md bg-muted/20">
+            <h3 className="font-semibold text-sm text-muted-foreground mb-2">Informações da Caução</h3>
+            
+            {/* LINHA 1: Valor Caução | Data Pagamento | Código PIX */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="securityDeposit">Valor Caução</Label>
+                <Label htmlFor="securityDeposit">Valor Caução (1ª Parcela) *</Label>
                 <Input
                   id="securityDeposit"
                   value={securityDeposit}
-                  onChange={(e) => setSecurityDeposit(applyRealMask(e.target.value))}
+                  onChange={(e) => {
+                    setSecurityDeposit(applyRealMask(e.target.value));
+                    setDepositInstallment1(applyRealMask(e.target.value));
+                  }}
                   placeholder="R$ 0,00"
                   disabled={!isEditing}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="depositPaymentDate">Data Pagamento Caução</Label>
+                <Label htmlFor="depositPaymentDate">Data Pagamento *</Label>
                 <Input
                   id="depositPaymentDate"
                   type="date"
                   value={depositPaymentDate}
-                  onChange={(e) => setDepositPaymentDate(e.target.value)}
+                  onChange={(e) => {
+                    setDepositPaymentDate(e.target.value);
+                    setDepositInstallment1PaymentDate(e.target.value);
+                  }}
                   disabled={!isEditing}
                 />
               </div>
@@ -578,14 +621,18 @@ export function RentalFormDialog({
                 <Input
                   id="depositPixCode"
                   value={depositPixCode}
-                  onChange={(e) => setDepositPixCode(e.target.value)}
-                  placeholder="Digite o código PIX"
+                  onChange={(e) => {
+                    setDepositPixCode(e.target.value);
+                    setDepositInstallment1PixCode(e.target.value);
+                  }}
+                  placeholder="Código PIX"
                   disabled={!isEditing}
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* LINHA 2: Checkbox Parcelado + Combo Quantidade (ao lado) */}
+            <div className="flex items-center gap-4 mt-4">
               <div className="flex items-center space-x-2">
                 <Checkbox
                   id="isDepositInstallment"
@@ -594,26 +641,23 @@ export function RentalFormDialog({
                     setIsDepositInstallment(checked as boolean);
                     if (!checked) {
                       setDepositInstallmentCount("");
-                      setDepositInstallment1("");
                       setDepositInstallment2("");
                       setDepositInstallment3("");
-                      setDepositInstallment1PaymentDate("");
                       setDepositInstallment2PaymentDate("");
                       setDepositInstallment3PaymentDate("");
-                      setDepositInstallment1PixCode("");
                       setDepositInstallment2PixCode("");
                       setDepositInstallment3PixCode("");
                     }
                   }}
                   disabled={!isEditing}
                 />
-                <Label htmlFor="isDepositInstallment" className="cursor-pointer">
+                <Label htmlFor="isDepositInstallment" className="cursor-pointer font-medium">
                   Caução Parcelado ?
                 </Label>
               </div>
 
               {isDepositInstallment && (
-                <div className="space-y-2">
+                <div className="w-40">
                   <Select
                     value={depositInstallmentCount}
                     onValueChange={(value) => {
@@ -626,58 +670,25 @@ export function RentalFormDialog({
                     }}
                     disabled={!isEditing}
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione a quantidade" />
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="2">2x</SelectItem>
-                      <SelectItem value="3">3x</SelectItem>
+                      <SelectItem value="2">2 parcelas</SelectItem>
+                      <SelectItem value="3">3 parcelas</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               )}
             </div>
 
+            {/* LINHAS SEGUINTES: 2ª e 3ª Parcelas */}
             {isDepositInstallment && depositInstallmentCount && (
-              <div className="space-y-4">
+              <div className="space-y-4 mt-4 pt-4 border-t">
+                {/* 2ª PARCELA */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="depositInstallment1">1ª Parcela</Label>
-                    <Input
-                      id="depositInstallment1"
-                      value={depositInstallment1}
-                      onChange={(e) => setDepositInstallment1(applyRealMask(e.target.value))}
-                      placeholder="R$ 0,00"
-                      disabled={!isEditing}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="depositInstallment1PaymentDate">Data Pag. 1ª</Label>
-                    <Input
-                      id="depositInstallment1PaymentDate"
-                      type="date"
-                      value={depositInstallment1PaymentDate}
-                      onChange={(e) => setDepositInstallment1PaymentDate(e.target.value)}
-                      disabled={!isEditing}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="depositInstallment1PixCode">Código PIX 1ª</Label>
-                    <Input
-                      id="depositInstallment1PixCode"
-                      value={depositInstallment1PixCode}
-                      onChange={(e) => setDepositInstallment1PixCode(e.target.value)}
-                      placeholder="Código PIX"
-                      disabled={!isEditing}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="depositInstallment2">2ª Parcela</Label>
+                    <Label htmlFor="depositInstallment2">Valor 2ª Parcela</Label>
                     <Input
                       id="depositInstallment2"
                       value={depositInstallment2}
@@ -710,10 +721,11 @@ export function RentalFormDialog({
                   </div>
                 </div>
 
+                {/* 3ª PARCELA */}
                 {depositInstallmentCount === "3" && (
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="depositInstallment3">3ª Parcela</Label>
+                      <Label htmlFor="depositInstallment3">Valor 3ª Parcela</Label>
                       <Input
                         id="depositInstallment3"
                         value={depositInstallment3}
