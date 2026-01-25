@@ -130,6 +130,12 @@ export function useProperties(): UsePropertiesReturn {
       throw new Error("Local selecionado inválido. Por favor, selecione novamente.");
     }
 
+    console.log("=== CREATE PROPERTY DEBUG ===");
+    console.log("1. formData.monthly_rent (raw):", formData.monthly_rent);
+    
+    const parsedValue = parseCurrencyToFloat(formData.monthly_rent);
+    console.log("2. parseCurrencyToFloat result:", parsedValue);
+
     const propertyData = {
       locationId: formData.location_id,
       location: selectedLocation?.name,
@@ -137,7 +143,8 @@ export function useProperties(): UsePropertiesReturn {
       complement: formData.complement,
       rooms: Number(formData.rooms) || 0,
       bathrooms: Number(formData.bathrooms) || 0,
-      monthlyRent: parseCurrencyToFloat(formData.monthly_rent),
+      monthlyRent: parsedValue,
+      value: parsedValue,
       description: formData.description,
       images: formData.images,
       hasFurniture: formData.hasFurniture,
@@ -145,6 +152,10 @@ export function useProperties(): UsePropertiesReturn {
       area: formData.area ? parseFloat(formData.area.replace(",", ".")) : 0,
       hasGarage: formData.hasGarage,
     };
+
+    console.log("3. propertyData sent to service:", propertyData);
+    console.log("   - monthlyRent:", propertyData.monthlyRent);
+    console.log("   - value:", propertyData.value);
 
     await propertyService.create(propertyData);
     await loadData();
@@ -161,12 +172,19 @@ export function useProperties(): UsePropertiesReturn {
       throw new Error("Local selecionado inválido. Por favor, selecione novamente.");
     }
 
+    console.log("=== UPDATE PROPERTY DEBUG ===");
+    console.log("1. formData.monthly_rent (raw):", formData.monthly_rent);
+    
+    const parsedValue = parseCurrencyToFloat(formData.monthly_rent);
+    console.log("2. parseCurrencyToFloat result:", parsedValue);
+
     const propertyData = {
       locationId: formData.location_id,
       location: selectedLocation.name,
       propertyIdentifier: formData.property_identifier || "Apartamento",
       complement: formData.complement || undefined,
-      value: parseCurrencyToFloat(formData.monthly_rent),
+      value: parsedValue,
+      monthlyRent: parsedValue,
       status: formData.status as "available" | "occupied" | "unavailable",
       description: formData.description,
       rooms: formData.rooms ? parseInt(formData.rooms) : undefined,
@@ -177,6 +195,10 @@ export function useProperties(): UsePropertiesReturn {
       area: formData.area ? parseFloat(formData.area.replace(",", ".")) : 0,
       hasGarage: formData.hasGarage,
     };
+
+    console.log("3. propertyData sent to service:", propertyData);
+    console.log("   - value:", propertyData.value);
+    console.log("   - monthlyRent:", propertyData.monthlyRent);
 
     await propertyService.update(id, propertyData);
     await loadData();
