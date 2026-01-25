@@ -6,7 +6,6 @@ import { getAll as getAllPayments } from "@/services/paymentService";
 import { getConfig } from "@/services/configService";
 import type { Property, Tenant, Rental, Payment } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
-import { getAll as getLocationPermissions } from "@/services/locationPermissionService";
 
 interface Stats {
   totalProperties: number;
@@ -52,43 +51,46 @@ export function useDashboardData(selectedMonth: number | null, selectedYear: num
     overduePayments: 0,
   });
 
-  useEffect(() => {
-    if (user) {
-      loadUserPermissions();
-    }
-  }, [user]);
-
-  const loadUserPermissions = async () => {
-    if (!user) return;
-    try {
-      // Carrega isenções de taxa
-      const { data: exemptions } = await supabase
-        .from("user_fee_exemptions")
-        .select("location_id")
-        .eq("user_id", user.id);
-      
-      const exemptIds = exemptions?.map(e => e.location_id) || [];
-      setExemptLocationIds(exemptIds);
-
-      // Carrega permissões de local
-      const { data: permissions } = await supabase
-        .from("user_location_permissions")
-        .select("location_id")
-        .eq("user_id", user.id);
-      
-      const permittedIds = permissions?.map(p => p.location_id) || [];
-      setUserLocationIds(permittedIds);
-    } catch (error) {
-      console.error("Error loading permissions:", error);
-    }
-  };
-
   const loadData = async () => {
-    if (!selectedMonth || !selectedYear) return;
+    if (!selectedMonth || !selectedYear || !user) return;
 
     try {
       setIsLoading(true);
 
+      // 1. Identificar Role do Usuário e Permissões de Local
+      const { data: userData } = await supabase
+        .from("system_users")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+      
+      const userRole = userData?.role || "unknown";
+      const isRestricted = userRole !== "admin" && userRole !== "owner";
+      let allowedLocationIds: string[] = [];
+
+      // Carregar isenções (sempre necessário para cálculo de taxas)
+      const { data: exemptions } = await supabase
+        .from("user_fee_exemptions")
+        .select("location_id")
+        .eq("user_id", user.id);
+      const exemptIds = exemptions?.map(e => e.location_id) || [];
+      setExemptLocationIds(exemptIds);
+
+      // Se restrito, buscar locais permitidos
+      if (isRestricted) {
+        const { data: permissions } = await supabase
+          .from("user_location_permissions")
+          .select("location_id")
+          .eq("user_id", user.id)
+          .eq("can_view", true); // CRUCIAL: Apenas onde tem permissão de ver
+        
+        allowedLocationIds = permissions?.map(p => p.location_id) || [];
+        setUserLocationIds(allowedLocationIds); // Para debug se necessário
+      } else {
+        setUserLocationIds([]); // Admin vê tudo (array vazio aqui significa sem filtro na logica visual, mas na logica de dados trataremos diferente)
+      }
+
+      // 2. Carregar Dados Brutos
       const { data: rentalsDataRaw } = await supabase
         .from("rentals")
         .select("*")
@@ -120,12 +122,33 @@ export function useDashboardData(selectedMonth: number | null, selectedYear: num
         setAdminFeePercentage(configData.admin_fee_percentage);
       }
 
-      setProperties(propertiesData);
-      setTenants(tenantsData);
-      setRentals(mappedRentals);
-      setPayments(paymentsData);
+      // 3. APLICAR FILTROS DE PERMISSÃO
+      let finalProperties = propertiesData;
+      let finalRentals = mappedRentals;
+      let finalPayments = paymentsData;
+
+      if (isRestricted) {
+        // Filtra propriedades pelos locais permitidos
+        finalProperties = propertiesData.filter(p => allowedLocationIds.includes(p.locationId));
+        
+        // Filtra aluguéis baseados nas propriedades visíveis
+        const visiblePropertyIds = finalProperties.map(p => p.id);
+        finalRentals = mappedRentals.filter(r => visiblePropertyIds.includes(r.propertyId));
+
+        // Filtra pagamentos baseados nos aluguéis visíveis
+        const visibleRentalIds = finalRentals.map(r => r.id);
+        finalPayments = paymentsData.filter(p => visibleRentalIds.includes(p.rentalId));
+      }
+
+      // 4. Atualizar Estado com Dados FILTRADOS
+      setProperties(finalProperties);
+      setTenants(tenantsData); // Tenants não filtramos estritamente aqui, mas o uso deles nas stats será via rentals filtrados
+      setRentals(finalRentals);
+      setPayments(finalPayments);
       
-      calculateStats(propertiesData, mappedRentals, paymentsData, tenantsData);
+      // 5. Calcular Estatísticas
+      calculateStats(finalProperties, finalRentals, finalPayments, tenantsData, exemptIds); // Passamos exemptIds diretamente
+      
     } catch (error) {
       console.error("Erro ao carregar dados do dashboard:", error);
     } finally {
@@ -137,9 +160,13 @@ export function useDashboardData(selectedMonth: number | null, selectedYear: num
     props: Property[],
     rents: Rental[],
     pays: Payment[],
-    tens: Tenant[]
+    tens: Tenant[],
+    currentExemptIds?: string[] // Novo parâmetro opcional
   ) => {
     if (!selectedMonth || !selectedYear) return;
+
+    // Usa o parâmetro se fornecido, senão usa o estado (fallback)
+    const activeExemptIds = currentExemptIds || exemptLocationIds;
 
     const periodPayments = pays.filter((payment) => {
       const dueDate = new Date(payment.dueDate);
@@ -174,7 +201,8 @@ export function useDashboardData(selectedMonth: number | null, selectedYear: num
       const rental = rents.find(r => r.id === p.rentalId);
       const property = props.find(prop => prop.id === rental?.propertyId);
       
-      if (property && exemptLocationIds.includes(property.locationId)) {
+      // Usa activeExemptIds em vez do estado direto
+      if (property && activeExemptIds.includes(property.locationId)) {
         return sum;
       }
       
