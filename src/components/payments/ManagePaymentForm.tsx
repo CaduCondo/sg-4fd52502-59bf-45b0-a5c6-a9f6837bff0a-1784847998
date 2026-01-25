@@ -58,16 +58,16 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     loadConfig();
   }, [paymentId]);
 
-  // Sincronizar amount_to_pay quando os dados estiverem carregados
+  // Sincronizar amount_to_pay quando os dados estiverem carregados OU quando removeFees/data mudarem
   useEffect(() => {
-    if (payment && rentalValue > 0 && !loading) {
+    if (payment && rentalValue > 0 && !loading && isEditMode) {
       const values = calculateValues();
       setFormData(prev => ({
         ...prev,
         amount_to_pay: formatCurrency(values.valorAPagar.toFixed(2))
       }));
     }
-  }, [payment, rentalValue, garageValue, loading]);
+  }, [payment, rentalValue, garageValue, loading, formData.payment_date, lateFeePercentage, interestRatePercentage, removeFees, isEditMode]);
 
   const loadConfig = async () => {
     try {
