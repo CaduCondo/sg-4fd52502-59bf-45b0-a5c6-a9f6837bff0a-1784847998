@@ -54,19 +54,20 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
   const [interestRatePercentage, setInterestRatePercentage] = useState(0);
 
   useEffect(() => {
-    if (payment && rentalValue > 0 && isEditMode) {
+    loadPaymentData();
+    loadConfig();
+  }, [paymentId]);
+
+  // Sincronizar amount_to_pay quando os dados estiverem carregados
+  useEffect(() => {
+    if (payment && rentalValue > 0 && !loading) {
       const values = calculateValues();
       setFormData(prev => ({
         ...prev,
         amount_to_pay: formatCurrency(values.valorAPagar.toFixed(2))
       }));
     }
-  }, [formData.payment_date, rentalValue, garageValue, lateFeePercentage, interestRatePercentage, removeFees, isEditMode]);
-
-  useEffect(() => {
-    loadPaymentData();
-    loadConfig();
-  }, [paymentId]);
+  }, [payment, rentalValue, garageValue, loading]);
 
   const loadConfig = async () => {
     try {
@@ -127,11 +128,10 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         setAttachments(attachmentStrings);
       }
 
-      const values = calculateValues();
       setFormData({
         payment_date: paymentData.payment_date || new Date().toISOString().split("T")[0],
         payment_method: paymentData.payment_method || "pix",
-        amount_to_pay: formatCurrency(values.valorAPagar.toFixed(2)),
+        amount_to_pay: "", // Será preenchido pelo useEffect
         notes: paymentData.notes || "",
         pix_code_type: (paymentData as any).pix_code_type || "CP",
       });
