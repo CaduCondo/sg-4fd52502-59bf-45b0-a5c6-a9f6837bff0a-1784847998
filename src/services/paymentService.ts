@@ -373,3 +373,144 @@ export async function createPaymentsForRental(rental: any): Promise<void> {
   }
   console.log("=== FIM createPaymentsForRental ===");
 }
+
+// Nova função: Migração para corrigir parcelas proporcionais de contratos existentes
+export async function migrateProportionalFirstPayments(): Promise<{
+  success: boolean;
+  processed: number;
+  updated: number;
+  errors: string[];
+}> {
+  console.log("=== INICIO MIGRAÇÃO PARCELAS PROPORCIONAIS ===");
+  
+  const result = {
+    success: true,
+    processed: 0,
+    updated: 0,
+    errors: [] as string[]
+  };
+
+  try {
+    // 1. Buscar todas as locações ativas
+    const { data: rentals, error: rentalsError } = await supabase
+      .from("rentals")
+      .select("*")
+      .eq("is_active", true);
+
+    if (rentalsError) {
+      console.error("Erro ao buscar locações:", rentalsError);
+      throw rentalsError;
+    }
+
+    if (!rentals || rentals.length === 0) {
+      console.log("⚠️ Nenhuma locação ativa encontrada");
+      return result;
+    }
+
+    console.log(`📋 Encontradas ${rentals.length} locações ativas`);
+
+    // 2. Para cada locação, verificar e corrigir primeira parcela
+    for (const rental of rentals) {
+      result.processed++;
+      
+      try {
+        const startDate = rental.start_date;
+        const paymentDay = rental.payment_day;
+        const monthlyValue = rental.value || rental.monthly_rent || 0;
+
+        console.log(`\n🔍 Processando locação ID: ${rental.id}`);
+        console.log(`   - Data início: ${startDate}`);
+        console.log(`   - Dia vencimento: ${paymentDay}`);
+        console.log(`   - Valor mensal: R$ ${monthlyValue}`);
+
+        // Verificar se deve usar valor proporcional
+        const isProportional = shouldUseProportionalRent(startDate, paymentDay);
+
+        if (!isProportional) {
+          console.log(`   ✅ Primeira parcela já é integral (não precisa correção)`);
+          continue;
+        }
+
+        // Calcular valor proporcional correto
+        const days = calculateDaysBetweenDates(startDate, paymentDay);
+        const proportionalValue = calculateProportionalRent(
+          monthlyValue,
+          startDate,
+          paymentDay
+        );
+
+        console.log(`   🔄 Deve ser proporcional:`);
+        console.log(`      - Dias: ${days}`);
+        console.log(`      - Valor correto: R$ ${proportionalValue.toFixed(2)}`);
+
+        // Buscar a primeira parcela desta locação
+        const { data: payments, error: paymentsError } = await supabase
+          .from("payments")
+          .select("*")
+          .eq("rental_id", rental.id)
+          .order("due_date", { ascending: true })
+          .limit(1);
+
+        if (paymentsError) {
+          console.error(`   ❌ Erro ao buscar pagamentos:`, paymentsError);
+          result.errors.push(`Locação ${rental.id}: ${paymentsError.message}`);
+          continue;
+        }
+
+        if (!payments || payments.length === 0) {
+          console.log(`   ⚠️ Nenhum pagamento encontrado`);
+          continue;
+        }
+
+        const firstPayment = payments[0];
+        const currentValue = firstPayment.expected_amount;
+
+        console.log(`   📊 Primeira parcela atual: R$ ${currentValue}`);
+
+        // Verificar se precisa atualizar
+        if (Math.abs(currentValue - proportionalValue) < 0.01) {
+          console.log(`   ✅ Valor já está correto (diferença < R$ 0,01)`);
+          continue;
+        }
+
+        // Atualizar o valor da primeira parcela
+        const { error: updateError } = await supabase
+          .from("payments")
+          .update({ expected_amount: proportionalValue })
+          .eq("id", firstPayment.id);
+
+        if (updateError) {
+          console.error(`   ❌ Erro ao atualizar pagamento:`, updateError);
+          result.errors.push(`Pagamento ${firstPayment.id}: ${updateError.message}`);
+          continue;
+        }
+
+        result.updated++;
+        console.log(`   ✅ ATUALIZADO! R$ ${currentValue.toFixed(2)} → R$ ${proportionalValue.toFixed(2)}`);
+
+      } catch (error: any) {
+        console.error(`   ❌ Erro ao processar locação ${rental.id}:`, error);
+        result.errors.push(`Locação ${rental.id}: ${error.message}`);
+      }
+    }
+
+    console.log("\n=== RESUMO DA MIGRAÇÃO ===");
+    console.log(`✅ Processadas: ${result.processed} locações`);
+    console.log(`✅ Atualizadas: ${result.updated} primeiras parcelas`);
+    console.log(`❌ Erros: ${result.errors.length}`);
+    
+    if (result.errors.length > 0) {
+      console.log("\n📋 Detalhes dos erros:");
+      result.errors.forEach(err => console.log(`   - ${err}`));
+    }
+
+    console.log("=== FIM MIGRAÇÃO ===");
+
+  } catch (error: any) {
+    console.error("❌ Erro crítico na migração:", error);
+    result.success = false;
+    result.errors.push(`Erro crítico: ${error.message}`);
+  }
+
+  return result;
+}
