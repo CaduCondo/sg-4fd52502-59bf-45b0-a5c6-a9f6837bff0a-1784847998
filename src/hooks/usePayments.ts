@@ -132,15 +132,17 @@ export function usePayments() {
     const rental = rentals.find(r => r.id === payment.rentalId);
     if (!rental) return "";
     
-    // Usar mesmo cálculo da página Financeiro
-    const contractStartDate = new Date(rental.startDate + "T00:00:00");
-    const contractEndDate = new Date(rental.endDate + "T00:00:00");
-    const totalMonths = differenceInMonths(contractEndDate, contractStartDate) + 1;
+    // Buscar todos os pagamentos desta locação
+    const rentalPayments = payments
+      .filter(p => p.rentalId === payment.rentalId)
+      .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
     
-    const referenceDate = new Date(payment.referenceYear || 0, (payment.referenceMonth || 1) - 1, 1);
-    const currentPaymentNumber = differenceInMonths(referenceDate, contractStartDate) + 1;
+    const totalPayments = rentalPayments.length;
     
-    return `${currentPaymentNumber}/${totalMonths}`;
+    // Encontrar a posição do pagamento atual
+    const currentPosition = rentalPayments.findIndex(p => p.id === payment.id) + 1;
+    
+    return `${currentPosition}/${totalPayments}`;
   };
 
   const getPaymentById = async (id: string): Promise<Payment | null> => {
