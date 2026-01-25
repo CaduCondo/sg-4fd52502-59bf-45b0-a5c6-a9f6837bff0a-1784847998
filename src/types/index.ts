@@ -159,6 +159,12 @@ export interface Rental {
   depositInstallment2?: number;
   depositInstallment3?: number;
   
+  // Deposit Payment Info
+  depositPaymentDate?: string;
+  depositPixCode?: string;
+  depositInstallment2PaymentDate?: string;
+  depositInstallment3PaymentDate?: string;
+  
   // Status & Config
   status: "pending" | "active" | "completed" | "paid" | "overdue" | "terminated";
   isActive?: boolean;

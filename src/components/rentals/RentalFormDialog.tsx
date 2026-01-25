@@ -63,6 +63,12 @@ export function RentalFormDialog({
   const [depositInstallment1, setDepositInstallment1] = useState("");
   const [depositInstallment2, setDepositInstallment2] = useState("");
   const [depositInstallment3, setDepositInstallment3] = useState("");
+  const [depositInstallment1PaymentDate, setDepositInstallment1PaymentDate] = useState("");
+  const [depositInstallment2PaymentDate, setDepositInstallment2PaymentDate] = useState("");
+  const [depositInstallment3PaymentDate, setDepositInstallment3PaymentDate] = useState("");
+  const [depositInstallment1PixCode, setDepositInstallment1PixCode] = useState("");
+  const [depositInstallment2PixCode, setDepositInstallment2PixCode] = useState("");
+  const [depositInstallment3PixCode, setDepositInstallment3PixCode] = useState("");
 
   const {
     isEditing,
