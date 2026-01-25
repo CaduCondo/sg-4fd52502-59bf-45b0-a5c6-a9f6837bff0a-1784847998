@@ -589,7 +589,9 @@ export function RentalFormDialog({
             {/* LINHA 1: Valor Caução | Data Pagamento | Código PIX */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="securityDeposit">Valor Caução (1ª Parcela) *</Label>
+                <Label htmlFor="securityDeposit">
+                  {isDepositInstallment ? "Valor Caução (1ª Parcela)" : "Valor Caução (À vista)"} *
+                </Label>
                 <Input
                   id="securityDeposit"
                   value={securityDeposit}
@@ -643,8 +645,6 @@ export function RentalFormDialog({
                       setDepositInstallment3("");
                       setDepositInstallment2PaymentDate("");
                       setDepositInstallment3PaymentDate("");
-                      setDepositInstallment2PixCode("");
-                      setDepositInstallment3PixCode("");
                     }
                   }}
                   disabled={!isEditing}
@@ -663,7 +663,6 @@ export function RentalFormDialog({
                       if (value === "2") {
                         setDepositInstallment3("");
                         setDepositInstallment3PaymentDate("");
-                        setDepositInstallment3PixCode("");
                       }
                     }}
                     disabled={!isEditing}
@@ -680,13 +679,13 @@ export function RentalFormDialog({
               )}
             </div>
 
-            {/* LINHAS SEGUINTES: 2ª e 3ª Parcelas */}
+            {/* LINHAS SEGUINTES: 2ª e 3ª Parcelas (SEM PIX) */}
             {isDepositInstallment && depositInstallmentCount && (
               <div className="space-y-4 mt-4 pt-4 border-t">
-                {/* 2ª PARCELA */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* 2ª PARCELA - APENAS VALOR E DATA */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="depositInstallment2">Valor 2ª Parcela</Label>
+                    <Label htmlFor="depositInstallment2">Valor Caução (2ª Parcela)</Label>
                     <Input
                       id="depositInstallment2"
                       value={depositInstallment2}
@@ -697,7 +696,7 @@ export function RentalFormDialog({
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="depositInstallment2PaymentDate">Data Pag. 2ª</Label>
+                    <Label htmlFor="depositInstallment2PaymentDate">Data Pagamento</Label>
                     <Input
                       id="depositInstallment2PaymentDate"
                       type="date"
@@ -706,24 +705,13 @@ export function RentalFormDialog({
                       disabled={!isEditing}
                     />
                   </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="depositInstallment2PixCode">Código PIX 2ª</Label>
-                    <Input
-                      id="depositInstallment2PixCode"
-                      value={depositInstallment2PixCode}
-                      onChange={(e) => setDepositInstallment2PixCode(e.target.value)}
-                      placeholder="Código PIX"
-                      disabled={!isEditing}
-                    />
-                  </div>
                 </div>
 
-                {/* 3ª PARCELA */}
+                {/* 3ª PARCELA - APENAS VALOR E DATA */}
                 {depositInstallmentCount === "3" && (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="depositInstallment3">Valor 3ª Parcela</Label>
+                      <Label htmlFor="depositInstallment3">Valor Caução (3ª Parcela)</Label>
                       <Input
                         id="depositInstallment3"
                         value={depositInstallment3}
@@ -734,23 +722,12 @@ export function RentalFormDialog({
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="depositInstallment3PaymentDate">Data Pag. 3ª</Label>
+                      <Label htmlFor="depositInstallment3PaymentDate">Data Pagamento</Label>
                       <Input
                         id="depositInstallment3PaymentDate"
                         type="date"
                         value={depositInstallment3PaymentDate}
                         onChange={(e) => setDepositInstallment3PaymentDate(e.target.value)}
-                        disabled={!isEditing}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="depositInstallment3PixCode">Código PIX 3ª</Label>
-                      <Input
-                        id="depositInstallment3PixCode"
-                        value={depositInstallment3PixCode}
-                        onChange={(e) => setDepositInstallment3PixCode(e.target.value)}
-                        placeholder="Código PIX"
                         disabled={!isEditing}
                       />
                     </div>

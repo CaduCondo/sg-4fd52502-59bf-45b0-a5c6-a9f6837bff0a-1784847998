@@ -110,6 +110,7 @@ export type Database = {
           installment_total: number
           internal_commission: number | null
           partner_commission: number | null
+          payment_date: string | null
           pix_code: string | null
           rental_id: string
           total_installments: number
@@ -123,6 +124,7 @@ export type Database = {
           installment_total: number
           internal_commission?: number | null
           partner_commission?: number | null
+          payment_date?: string | null
           pix_code?: string | null
           rental_id: string
           total_installments?: number
@@ -136,6 +138,7 @@ export type Database = {
           installment_total?: number
           internal_commission?: number | null
           partner_commission?: number | null
+          payment_date?: string | null
           pix_code?: string | null
           rental_id?: string
           total_installments?: number
@@ -358,8 +361,14 @@ export type Database = {
           deposit: string | null
           deposit_installment_1: number | null
           deposit_installment_2: number | null
+          deposit_installment_2_payment_date: string | null
+          deposit_installment_2_pix_code: string | null
           deposit_installment_3: number | null
+          deposit_installment_3_payment_date: string | null
+          deposit_installment_3_pix_code: string | null
           deposit_installments: number | null
+          deposit_payment_date: string | null
+          deposit_pix_code: string | null
           end_date: string | null
           garage_value: number | null
           has_garage: boolean | null
@@ -384,8 +393,14 @@ export type Database = {
           deposit?: string | null
           deposit_installment_1?: number | null
           deposit_installment_2?: number | null
+          deposit_installment_2_payment_date?: string | null
+          deposit_installment_2_pix_code?: string | null
           deposit_installment_3?: number | null
+          deposit_installment_3_payment_date?: string | null
+          deposit_installment_3_pix_code?: string | null
           deposit_installments?: number | null
+          deposit_payment_date?: string | null
+          deposit_pix_code?: string | null
           end_date?: string | null
           garage_value?: number | null
           has_garage?: boolean | null
@@ -410,8 +425,14 @@ export type Database = {
           deposit?: string | null
           deposit_installment_1?: number | null
           deposit_installment_2?: number | null
+          deposit_installment_2_payment_date?: string | null
+          deposit_installment_2_pix_code?: string | null
           deposit_installment_3?: number | null
+          deposit_installment_3_payment_date?: string | null
+          deposit_installment_3_pix_code?: string | null
           deposit_installments?: number | null
+          deposit_payment_date?: string | null
+          deposit_pix_code?: string | null
           end_date?: string | null
           garage_value?: number | null
           has_garage?: boolean | null
