@@ -137,7 +137,7 @@ export function useProperties(): UsePropertiesReturn {
       complement: formData.complement,
       rooms: Number(formData.rooms) || 0,
       bathrooms: Number(formData.bathrooms) || 0,
-      monthlyRent: parseFloat(formData.monthly_rent.replace(/[^\d,]/g, "").replace(",", ".")) || 0,
+      monthlyRent: parseCurrencyToFloat(formData.monthly_rent),
       description: formData.description,
       images: formData.images,
       hasFurniture: formData.hasFurniture,
