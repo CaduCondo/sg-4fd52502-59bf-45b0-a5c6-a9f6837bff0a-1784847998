@@ -428,6 +428,7 @@ export default function Financial() {
         "Nº": paymentNumber,
         "Local": details.local,
         "Complemento": details.complemento,
+        "Inquilino": details.tenantName,
         "Ano": selectedYear,
         "Mês": monthName,
         "Status": payment.status === "paid" ? "Pago" : 
@@ -449,6 +450,7 @@ export default function Financial() {
       { wch: 8 },  // Nº
       { wch: 20 }, // Local
       { wch: 15 }, // Complemento
+      { wch: 15 }, // Inquilino
       { wch: 8 },  // Ano
       { wch: 12 }, // Mês
       { wch: 12 }, // Status
@@ -675,6 +677,7 @@ export default function Financial() {
                         <SortIcon field="complement" />
                       </div>
                     </TableHead>
+                    <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Inquilino</TableHead>
                     <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Ano</TableHead>
                     <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Mês</TableHead>
                     <TableHead 
@@ -755,6 +758,9 @@ export default function Financial() {
                             </TableCell>
                             <TableCell className="text-slate-600">
                               {details.complemento}
+                            </TableCell>
+                            <TableCell className="text-slate-600">
+                              {details.tenantName}
                             </TableCell>
                             <TableCell className="text-slate-600">
                               {selectedYear}
@@ -851,7 +857,7 @@ export default function Financial() {
                       })}
                       {/* Linha de Totais */}
                       <TableRow className="bg-slate-100 font-bold border-t-2 border-slate-300">
-                        <TableCell colSpan={8} className="text-right text-slate-900 uppercase tracking-wide">
+                        <TableCell colSpan={9} className="text-right text-slate-900 uppercase tracking-wide">
                           Total:
                         </TableCell>
                         <TableCell className="text-right text-slate-900 text-lg">
