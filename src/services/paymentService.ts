@@ -279,8 +279,10 @@ export async function createPaymentsForRental(rental: any): Promise<void> {
   const endDate = rental.endDate || rental.end_date 
     ? new Date(rental.endDate || rental.end_date) 
     : new Date(startDate.getFullYear() + 1, startDate.getMonth(), startDate.getDate());
-  const paymentDay = rental.paymentDay || rental.payment_day;
-  const monthlyValue = rental.value || rental.monthly_rent;
+  
+  // GARANTIR TIPAGEM NÚMÉRICA
+  const paymentDay = Number(rental.paymentDay || rental.payment_day);
+  const monthlyValue = Number(rental.value || rental.monthly_rent);
 
   console.log("Dados processados:", {
     rentalId: rental.id,
@@ -298,32 +300,24 @@ export async function createPaymentsForRental(rental: any): Promise<void> {
     paymentDay
   );
 
-  let currentMonth = 0;
   let referenceDate = new Date(startDate);
 
-  // ETAPA 2: Criar primeira parcela (proporcional ou integral)
+  // --- LÓGICA DA PRIMEIRA PARCELA PROPORCIONAL ---
   if (isFirstProportional) {
     const startDateStr = startDate.toISOString().split('T')[0];
     const firstPaymentDays = calculateDaysBetweenDates(startDateStr, paymentDay);
     const firstPaymentValue = calculateProportionalRent(monthlyValue, startDateStr, paymentDay);
     
-    // Data de vencimento da primeira parcela
-    let firstDueDate = new Date(
-      startDate.getFullYear(),
-      startDate.getMonth(),
-      paymentDay
-    );
+    // Vencimento da primeira parcela
+    let firstDueDate = new Date(startDate.getFullYear(), startDate.getMonth(), paymentDay);
     
-    // Se o dia de pagamento já passou no mês de início, vencimento é no próximo mês
-    if (firstDueDate <= startDate) {
-      firstDueDate = new Date(
-        startDate.getFullYear(),
-        startDate.getMonth() + 1,
-        paymentDay
-      );
+    // Se o dia de pagamento já passou ou é muito próximo, joga para o próximo mês
+    // Mas para cálculo proporcional de entrada, geralmente cobra-se no primeiro vencimento útil
+    if (firstDueDate < startDate) {
+      firstDueDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, paymentDay);
     }
     
-    // Ajustar se o dia não existe no mês
+    // Ajuste de dias inexistentes (ex: 30 de fev)
     if (firstDueDate.getMonth() !== (startDate.getMonth() + (firstDueDate > new Date(startDate.getFullYear(), startDate.getMonth() + 1, 1) ? 1 : 0)) % 12) {
       firstDueDate = new Date(firstDueDate.getFullYear(), firstDueDate.getMonth() + 1, 0);
     }
@@ -337,37 +331,43 @@ export async function createPaymentsForRental(rental: any): Promise<void> {
       reference_year: startDate.getFullYear(),
     });
 
-    console.log(`🔄 Primeira parcela PROPORCIONAL:`, {
-      dias: firstPaymentDays,
-      valorMensal: monthlyValue,
-      valorProporcional: firstPaymentValue,
-      vencimento: firstDueDate.toISOString().split('T')[0],
-      calculo: `(${monthlyValue} / 30) × ${firstPaymentDays} = ${firstPaymentValue}`
-    });
+    console.log(`🔄 Primeira parcela PROPORCIONAL: R$ ${firstPaymentValue} (${firstPaymentDays} dias)`);
 
-    // Avançar para o próximo mês após a primeira parcela proporcional
+    // Avançar data de referência para o início do próximo mês "cheio" a ser cobrado
+    // Se cobramos proporcional de Jan, o próximo cheio é Fev
     referenceDate = new Date(firstDueDate.getFullYear(), firstDueDate.getMonth() + 1, 1);
-    currentMonth = 1;
+  } else {
+    // Se não é proporcional, ajusta a data para começar a cobrar parcelas cheias
+    // Depende se é pagamento antecipado ou vencido, mas assumindo padrão:
+    // Próximo dia de vencimento após startDate
+    let firstDueDate = new Date(startDate.getFullYear(), startDate.getMonth(), paymentDay);
+    if (firstDueDate < startDate) {
+        firstDueDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, paymentDay);
+    }
+    referenceDate = new Date(firstDueDate.getFullYear(), firstDueDate.getMonth(), 1); 
   }
 
-  // ETAPA 3: Criar parcelas integrais até o mês final
-  while (referenceDate <= endDate) {
+  // --- LÓGICA DAS PARCELAS MENSAIS (INTEGRAIS) ---
+  // Vamos iterar criando parcelas enquanto o vencimento estiver antes do fim do contrato
+  while (true) {
     const paymentMonth = referenceDate.getMonth();
     const paymentYear = referenceDate.getFullYear();
     
     let dueDate = new Date(paymentYear, paymentMonth, paymentDay);
     
-    // Ajustar se o dia não existe no mês (ex: dia 31 em fevereiro)
+    // Ajuste dias inexistentes
     if (dueDate.getMonth() !== paymentMonth) {
-      dueDate = new Date(paymentYear, paymentMonth + 1, 0); // Último dia do mês
+        dueDate = new Date(paymentYear, paymentMonth + 1, 0);
     }
 
-    // Parar se a data de vencimento ultrapassar muito a data final do contrato
-    // (mais de 1 mês após o fim)
-    if (dueDate > new Date(endDate.getFullYear(), endDate.getMonth() + 1, endDate.getDate())) {
-      break;
+    // CRITÉRIO DE PARADA:
+    // Se a data de vencimento desta parcela integral for APÓS a data final do contrato
+    // então não criamos ela como integral. Paramos o loop e verificamos resíduo depois.
+    if (dueDate > endDate) {
+        break;
     }
 
+    // Adiciona parcela integral
     payments.push({
       rental_id: rental.id,
       due_date: dueDate.toISOString().split('T')[0],
@@ -377,53 +377,65 @@ export async function createPaymentsForRental(rental: any): Promise<void> {
       reference_year: paymentYear,
     });
 
-    console.log(`✅ Criando parcela ${currentMonth + 1} (integral): R$ ${monthlyValue.toFixed(2)} - Vencimento: ${dueDate.toISOString().split('T')[0]}`);
+    console.log(`✅ Parcela Integral: R$ ${monthlyValue} - Vencimento: ${dueDate.toISOString().split('T')[0]}`);
 
-    // Avançar para o próximo mês
+    // Avança 1 mês
     referenceDate = new Date(paymentYear, paymentMonth + 1, 1);
-    currentMonth++;
   }
 
-  // ETAPA 4: Verificar se última parcela precisa ser proporcional
-  const lastPayment = payments[payments.length - 1];
-  const lastDueDate = lastPayment ? new Date(lastPayment.due_date) : null;
+  // --- LÓGICA DA ÚLTIMA PARCELA PROPORCIONAL (RESÍDUO) ---
+  // Verificamos se sobrou um período entre o último vencimento e a data final do contrato
+  // O último pagamento cobriu até quando? Assumindo que paga o mês corrente ou anterior...
+  // A lógica simplificada é: se o contrato não termina no dia do vencimento, há dias a cobrar
+  // Ex: Vencimento dia 10. Fim contrato dia 20. Sobraram 10 dias.
   
-  // Se o contrato termina antes do último vencimento, criar parcela proporcional final
-  if (lastDueDate && endDate < lastDueDate) {
-    const endDateStr = endDate.toISOString().split('T')[0];
+  // Se não houve pagamentos, algo está estranho, mas vamos checar a data do último
+  const lastPayment = payments.length > 0 ? payments[payments.length - 1] : null;
+  
+  if (lastPayment) {
+    const lastDueDate = new Date(lastPayment.due_date);
     
-    // Calcular dias desde o último vencimento até o fim do contrato
-    const lastPaymentStartDate = new Date(lastDueDate.getFullYear(), lastDueDate.getMonth(), 1);
-    const lastPaymentDays = calculateDaysBetweenDates(
-      lastPaymentStartDate.toISOString().split('T')[0],
-      endDateStr
-    );
-    
-    const lastPaymentValue = (monthlyValue / 30) * lastPaymentDays;
+    // Se o contrato termina DEPOIS do último vencimento, temos dias a cobrar
+    // Ex: Vencimento dia 10/09. Fim 20/09. Sobraram 10 dias.
+    if (endDate > lastDueDate) {
+        // Quantos dias sobram?
+        // Vamos considerar do dia seguinte ao último vencimento até o fim do contrato
+        // Ex: Ultimo vencimento 10/09. Fim 20/09. Cobrar 11/09 a 20/09 (10 dias).
+        // ATENÇÃO: Essa lógica depende do modelo de cobrança (mês vencido vs a vencer).
+        // Assumindo modelo simples de dias corridos:
+        
+        const diffTime = Math.abs(endDate.getTime() - lastDueDate.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+        
+        // Se a diferença for pequena (ex: 1 dia devido a fuso), ignoramos. Se for > 1 dia, cobramos.
+        // Se a diferença for quase um mês, deveria ter caído no loop while anterior.
+        // Então aqui pegamos apenas o "quebrado" final (< 30 dias geralmente).
+        
+        if (diffDays > 0) {
+            const residualValue = (monthlyValue / 30) * diffDays;
+            
+            // Data do vencimento residual: No dia do fim do contrato ou próximo vencimento?
+            // Geralmente cobra-se no encerramento.
+            const residualDueDate = endDate;
 
-    // Vencimento é na data de encerramento
-    payments.push({
-      rental_id: rental.id,
-      due_date: endDateStr,
-      expected_amount: Math.round(lastPaymentValue * 100) / 100,
-      status: 'pending',
-      reference_month: endDate.getMonth() + 1,
-      reference_year: endDate.getFullYear(),
-    });
+            payments.push({
+                rental_id: rental.id,
+                due_date: residualDueDate.toISOString().split('T')[0],
+                expected_amount: Math.round(residualValue * 100) / 100,
+                status: 'pending',
+                reference_month: endDate.getMonth() + 1,
+                reference_year: endDate.getFullYear(),
+            });
 
-    console.log(`🔄 Última parcela PROPORCIONAL:`, {
-      dias: lastPaymentDays,
-      valorMensal: monthlyValue,
-      valorProporcional: Math.round(lastPaymentValue * 100) / 100,
-      vencimento: endDateStr,
-      calculo: `(${monthlyValue} / 30) × ${lastPaymentDays} = ${Math.round(lastPaymentValue * 100) / 100}`
-    });
+            console.log(`🔄 Última parcela PROPORCIONAL (Resíduo): R$ ${residualValue.toFixed(2)} (${diffDays} dias)`);
+        }
+    }
   }
 
-  console.log(`Preparando para criar ${payments.length} pagamentos`);
+  console.log(`Preparando para criar ${payments.length} pagamentos no total`);
 
   const { data, error } = await supabase
-    .from(TABLE)
+    .from("payments")
     .insert(payments)
     .select();
 
