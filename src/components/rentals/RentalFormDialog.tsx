@@ -70,6 +70,10 @@ export function RentalFormDialog({
   const [depositInstallment2PixCode, setDepositInstallment2PixCode] = useState("");
   const [depositInstallment3PixCode, setDepositInstallment3PixCode] = useState("");
 
+  // Novos estados para data de pagamento caução e código PIX
+  const [depositPaymentDate, setDepositPaymentDate] = useState("");
+  const [depositPixCode, setDepositPixCode] = useState("");
+
   const {
     isEditing,
     setIsEditing,
@@ -117,12 +121,28 @@ export function RentalFormDialog({
       setDepositInstallment1(rental.depositInstallment1 ? formatCurrency(rental.depositInstallment1) : "");
       setDepositInstallment2(rental.depositInstallment2 ? formatCurrency(rental.depositInstallment2) : "");
       setDepositInstallment3(rental.depositInstallment3 ? formatCurrency(rental.depositInstallment3) : "");
+      setDepositPaymentDate(rental.depositPaymentDate || "");
+      setDepositPixCode(rental.depositPixCode || "");
+      setDepositInstallment1PaymentDate(rental.depositInstallment1PaymentDate || "");
+      setDepositInstallment2PaymentDate(rental.depositInstallment2PaymentDate || "");
+      setDepositInstallment3PaymentDate(rental.depositInstallment3PaymentDate || "");
+      setDepositInstallment1PixCode(rental.depositInstallment1PixCode || "");
+      setDepositInstallment2PixCode(rental.depositInstallment2PixCode || "");
+      setDepositInstallment3PixCode(rental.depositInstallment3PixCode || "");
     } else if (!open) {
       setIsDepositInstallment(false);
       setDepositInstallmentCount("");
       setDepositInstallment1("");
       setDepositInstallment2("");
       setDepositInstallment3("");
+      setDepositPaymentDate("");
+      setDepositPixCode("");
+      setDepositInstallment1PaymentDate("");
+      setDepositInstallment2PaymentDate("");
+      setDepositInstallment3PaymentDate("");
+      setDepositInstallment1PixCode("");
+      setDepositInstallment2PixCode("");
+      setDepositInstallment3PixCode("");
     }
   }, [open, rental]);
 
@@ -143,13 +163,6 @@ export function RentalFormDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    // Log para debug
-    console.log("=== DEBUG RENTAL FORM ===");
-    console.log("selectedPropertyId:", selectedPropertyId);
-    console.log("selectedTenantId:", selectedTenantId);
-    console.log("startDate:", startDate);
-    console.log("paymentDay:", paymentDay);
 
     const validation = validateRentalForm({
       propertyId: selectedPropertyId,
@@ -240,24 +253,31 @@ export function RentalFormDialog({
         hasPartnerBroker
       );
 
-      // Log dos dados preparados
-      console.log("rentalData (camelCase):", rentalData);
+      // Adiciona informações de pagamento do caução
+      rentalData.depositPaymentDate = depositPaymentDate || null;
+      rentalData.depositPixCode = depositPixCode || null;
 
       if (isDepositInstallment && depositInstallmentCount) {
         rentalData.depositInstallments = parseInt(depositInstallmentCount);
         rentalData.depositInstallment1 = parseCurrencyToNumber(depositInstallment1);
+        rentalData.depositInstallment1PaymentDate = depositInstallment1PaymentDate || null;
+        rentalData.depositInstallment1PixCode = depositInstallment1PixCode || null;
         if (parseInt(depositInstallmentCount) >= 2) {
           rentalData.depositInstallment2 = parseCurrencyToNumber(depositInstallment2);
+          rentalData.depositInstallment2PaymentDate = depositInstallment2PaymentDate || null;
+          rentalData.depositInstallment2PixCode = depositInstallment2PixCode || null;
         }
         if (parseInt(depositInstallmentCount) === 3) {
           rentalData.depositInstallment3 = parseCurrencyToNumber(depositInstallment3);
+          rentalData.depositInstallment3PaymentDate = depositInstallment3PaymentDate || null;
+          rentalData.depositInstallment3PixCode = depositInstallment3PixCode || null;
         }
       } else {
         rentalData.depositInstallments = 1;
         rentalData.depositInstallment1 = parseCurrencyToNumber(securityDeposit);
+        rentalData.depositInstallment1PaymentDate = depositPaymentDate || null;
+        rentalData.depositInstallment1PixCode = depositPixCode || null;
       }
-
-      console.log("rentalData final:", rentalData);
 
       if (rental) {
         const updatedRental = await updateRentalService(rental.id, rentalData);
@@ -286,7 +306,6 @@ export function RentalFormDialog({
         setShowContract(true);
       } else {
         const createdRental = await createRental(rentalData);
-        console.log("createdRental:", createdRental);
 
         await updateProperty(selectedPropertyId, { status: "occupied" });
 
@@ -338,42 +357,29 @@ export function RentalFormDialog({
 
     for (let i = 1; i <= count; i++) {
       const amount = rentalData[`depositInstallment${i}`] || 0;
+      const paymentDate = rentalData[`depositInstallment${i}PaymentDate`] || null;
+      const pixCode = rentalData[`depositInstallment${i}PixCode`] || null;
+      
       installments.push({
         rental_id: rentalId,
         installment_number: i,
         total_installments: count,
         installment_total: count,
         amount: amount,
-        pix_code: null,
+        payment_date: paymentDate,
+        pix_code: pixCode,
       });
     }
-
-    console.log("=== DEBUG CREATE DEPOSIT INSTALLMENTS ===");
-    console.log("rentalId:", rentalId);
-    console.log("installments:", installments);
-    console.log("count:", count);
 
     const { data, error } = await supabase.from("deposit_installments").insert(installments).select();
 
     if (error) {
       console.error("Error creating deposit installments:", error);
-      console.error("Error details:", {
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
-        code: error.code,
-      });
       throw error;
     }
-
-    console.log("Deposit installments created successfully:", data);
   };
 
   const updateDepositInstallments = async (rentalId: string, rentalData: any) => {
-    console.log("=== DEBUG UPDATE DEPOSIT INSTALLMENTS ===");
-    console.log("rentalId:", rentalId);
-    console.log("rentalData:", rentalData);
-
     const { error: deleteError } = await supabase.from("deposit_installments").delete().eq("rental_id", rentalId);
     
     if (deleteError) {
@@ -543,19 +549,43 @@ export function RentalFormDialog({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="securityDeposit">Valor Caução</Label>
-              <Input
-                id="securityDeposit"
-                value={securityDeposit}
-                onChange={(e) => setSecurityDeposit(applyRealMask(e.target.value))}
-                placeholder="R$ 0,00"
-                disabled={!isEditing}
-              />
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="securityDeposit">Valor Caução</Label>
+                <Input
+                  id="securityDeposit"
+                  value={securityDeposit}
+                  onChange={(e) => setSecurityDeposit(applyRealMask(e.target.value))}
+                  placeholder="R$ 0,00"
+                  disabled={!isEditing}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="depositPaymentDate">Data Pagamento Caução</Label>
+                <Input
+                  id="depositPaymentDate"
+                  type="date"
+                  value={depositPaymentDate}
+                  onChange={(e) => setDepositPaymentDate(e.target.value)}
+                  disabled={!isEditing}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="depositPixCode">Código PIX</Label>
+                <Input
+                  id="depositPixCode"
+                  value={depositPixCode}
+                  onChange={(e) => setDepositPixCode(e.target.value)}
+                  placeholder="Digite o código PIX"
+                  disabled={!isEditing}
+                />
+              </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="flex items-center space-x-2">
                 <Checkbox
                   id="isDepositInstallment"
@@ -567,6 +597,12 @@ export function RentalFormDialog({
                       setDepositInstallment1("");
                       setDepositInstallment2("");
                       setDepositInstallment3("");
+                      setDepositInstallment1PaymentDate("");
+                      setDepositInstallment2PaymentDate("");
+                      setDepositInstallment3PaymentDate("");
+                      setDepositInstallment1PixCode("");
+                      setDepositInstallment2PixCode("");
+                      setDepositInstallment3PixCode("");
                     }
                   }}
                   disabled={!isEditing}
@@ -575,67 +611,144 @@ export function RentalFormDialog({
                   Caução Parcelado ?
                 </Label>
               </div>
+
               {isDepositInstallment && (
-                <Select
-                  value={depositInstallmentCount}
-                  onValueChange={(value) => {
-                    setDepositInstallmentCount(value);
-                    if (value === "2") {
-                      setDepositInstallment3("");
-                    }
-                  }}
-                  disabled={!isEditing}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione a quantidade" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="2">2x</SelectItem>
-                    <SelectItem value="3">3x</SelectItem>
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
-          </div>
-
-          {isDepositInstallment && depositInstallmentCount && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="depositInstallment1">1ª Parcela</Label>
-                <Input
-                  id="depositInstallment1"
-                  value={depositInstallment1}
-                  onChange={(e) => setDepositInstallment1(applyRealMask(e.target.value))}
-                  placeholder="R$ 0,00"
-                  disabled={!isEditing}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="depositInstallment2">2ª Parcela</Label>
-                <Input
-                  id="depositInstallment2"
-                  value={depositInstallment2}
-                  onChange={(e) => setDepositInstallment2(applyRealMask(e.target.value))}
-                  placeholder="R$ 0,00"
-                  disabled={!isEditing}
-                />
-              </div>
-
-              {depositInstallmentCount === "3" && (
                 <div className="space-y-2">
-                  <Label htmlFor="depositInstallment3">3ª Parcela</Label>
-                  <Input
-                    id="depositInstallment3"
-                    value={depositInstallment3}
-                    onChange={(e) => setDepositInstallment3(applyRealMask(e.target.value))}
-                    placeholder="R$ 0,00"
+                  <Select
+                    value={depositInstallmentCount}
+                    onValueChange={(value) => {
+                      setDepositInstallmentCount(value);
+                      if (value === "2") {
+                        setDepositInstallment3("");
+                        setDepositInstallment3PaymentDate("");
+                        setDepositInstallment3PixCode("");
+                      }
+                    }}
                     disabled={!isEditing}
-                  />
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a quantidade" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="2">2x</SelectItem>
+                      <SelectItem value="3">3x</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
             </div>
-          )}
+
+            {isDepositInstallment && depositInstallmentCount && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="depositInstallment1">1ª Parcela</Label>
+                    <Input
+                      id="depositInstallment1"
+                      value={depositInstallment1}
+                      onChange={(e) => setDepositInstallment1(applyRealMask(e.target.value))}
+                      placeholder="R$ 0,00"
+                      disabled={!isEditing}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="depositInstallment1PaymentDate">Data Pag. 1ª</Label>
+                    <Input
+                      id="depositInstallment1PaymentDate"
+                      type="date"
+                      value={depositInstallment1PaymentDate}
+                      onChange={(e) => setDepositInstallment1PaymentDate(e.target.value)}
+                      disabled={!isEditing}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="depositInstallment1PixCode">Código PIX 1ª</Label>
+                    <Input
+                      id="depositInstallment1PixCode"
+                      value={depositInstallment1PixCode}
+                      onChange={(e) => setDepositInstallment1PixCode(e.target.value)}
+                      placeholder="Código PIX"
+                      disabled={!isEditing}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="depositInstallment2">2ª Parcela</Label>
+                    <Input
+                      id="depositInstallment2"
+                      value={depositInstallment2}
+                      onChange={(e) => setDepositInstallment2(applyRealMask(e.target.value))}
+                      placeholder="R$ 0,00"
+                      disabled={!isEditing}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="depositInstallment2PaymentDate">Data Pag. 2ª</Label>
+                    <Input
+                      id="depositInstallment2PaymentDate"
+                      type="date"
+                      value={depositInstallment2PaymentDate}
+                      onChange={(e) => setDepositInstallment2PaymentDate(e.target.value)}
+                      disabled={!isEditing}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="depositInstallment2PixCode">Código PIX 2ª</Label>
+                    <Input
+                      id="depositInstallment2PixCode"
+                      value={depositInstallment2PixCode}
+                      onChange={(e) => setDepositInstallment2PixCode(e.target.value)}
+                      placeholder="Código PIX"
+                      disabled={!isEditing}
+                    />
+                  </div>
+                </div>
+
+                {depositInstallmentCount === "3" && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="depositInstallment3">3ª Parcela</Label>
+                      <Input
+                        id="depositInstallment3"
+                        value={depositInstallment3}
+                        onChange={(e) => setDepositInstallment3(applyRealMask(e.target.value))}
+                        placeholder="R$ 0,00"
+                        disabled={!isEditing}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="depositInstallment3PaymentDate">Data Pag. 3ª</Label>
+                      <Input
+                        id="depositInstallment3PaymentDate"
+                        type="date"
+                        value={depositInstallment3PaymentDate}
+                        onChange={(e) => setDepositInstallment3PaymentDate(e.target.value)}
+                        disabled={!isEditing}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="depositInstallment3PixCode">Código PIX 3ª</Label>
+                      <Input
+                        id="depositInstallment3PixCode"
+                        value={depositInstallment3PixCode}
+                        onChange={(e) => setDepositInstallment3PixCode(e.target.value)}
+                        placeholder="Código PIX"
+                        disabled={!isEditing}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
           <div className="p-4 bg-emerald-50 dark:bg-emerald-950 rounded-lg border border-emerald-200 dark:border-emerald-800">
             <div className="space-y-2">
