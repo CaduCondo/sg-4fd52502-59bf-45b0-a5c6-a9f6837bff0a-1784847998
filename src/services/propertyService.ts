@@ -165,13 +165,20 @@ export const propertyService = {
   async create(property: Partial<Property>): Promise<Property> {
     console.log("Creating property with area:", property.area);
     
+    console.log("=== PROPERTY SERVICE CREATE DEBUG ===");
+    console.log("1. property.monthlyRent received:", property.monthlyRent);
+    console.log("2. property.value received:", property.value);
+    
+    const rentValue = property.monthlyRent || property.value || 0;
+    console.log("3. Final rentValue to save:", rentValue);
+    
     const insertData = {
       location_id: property.locationId,
       property_identifier: property.propertyIdentifier || "Apartamento",
       complement: property.complement,
       rooms: property.rooms || 0,
       bathrooms: property.bathrooms || 0,
-      value: property.monthlyRent || property.value || 0,
+      value: rentValue,
       status: property.status || "available",
       description: property.description,
       images: property.images || [],
@@ -181,7 +188,8 @@ export const propertyService = {
       has_garage: property.hasGarage || false,
     };
     
-    console.log("Insert data:", insertData);
+    console.log("4. insertData being sent to Supabase:", insertData);
+    console.log("   - insertData.value:", insertData.value);
 
     const { data, error } = await supabase
       .from("properties")
@@ -200,7 +208,8 @@ export const propertyService = {
       throw error;
     }
     
-    console.log("Property created with data:", data);
+    console.log("5. Property created successfully!");
+    console.log("   - Saved data.value:", data.value);
     
     const result: Property = {
       id: data.id,
@@ -232,13 +241,20 @@ export const propertyService = {
   async update(id: string, property: Partial<Property>): Promise<Property> {
     console.log("Updating property with area:", property.area);
     
+    console.log("=== PROPERTY SERVICE UPDATE DEBUG ===");
+    console.log("1. property.value received:", property.value);
+    console.log("2. property.monthlyRent received:", property.monthlyRent);
+    
+    const rentValue = property.value || property.monthlyRent || 0;
+    console.log("3. Final rentValue to save:", rentValue);
+    
     const updateData = {
       location_id: property.locationId,
       property_identifier: property.propertyIdentifier,
       complement: property.complement,
       rooms: property.rooms,
       bathrooms: property.bathrooms,
-      value: property.value || property.monthly_rent,
+      value: rentValue,
       status: property.status,
       description: property.description,
       images: property.images,
@@ -248,7 +264,8 @@ export const propertyService = {
       has_garage: property.hasGarage,
     };
     
-    console.log("Update data:", updateData);
+    console.log("4. updateData being sent to Supabase:", updateData);
+    console.log("   - updateData.value:", updateData.value);
 
     const { data, error } = await supabase
       .from("properties")
@@ -268,7 +285,8 @@ export const propertyService = {
       throw error;
     }
     
-    console.log("Property updated with data:", data);
+    console.log("5. Property updated successfully!");
+    console.log("   - Saved data.value:", data.value);
     
     const result: Property = {
       id: data.id,
