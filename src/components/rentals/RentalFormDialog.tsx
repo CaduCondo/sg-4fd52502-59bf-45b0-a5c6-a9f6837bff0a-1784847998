@@ -610,7 +610,6 @@ export function RentalFormDialog({
                   value={depositPaymentDate}
                   onChange={(e) => {
                     setDepositPaymentDate(e.target.value);
-                    setDepositInstallment1PaymentDate(e.target.value);
                   }}
                   disabled={!isEditing}
                 />
@@ -623,7 +622,6 @@ export function RentalFormDialog({
                   value={depositPixCode}
                   onChange={(e) => {
                     setDepositPixCode(e.target.value);
-                    setDepositInstallment1PixCode(e.target.value);
                   }}
                   placeholder="Código PIX"
                   disabled={!isEditing}
