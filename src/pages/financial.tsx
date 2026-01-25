@@ -876,7 +876,7 @@ export default function Financial() {
           </Card>
         </ScrollReveal>
 
-        {(user?.role === "admin" || user?.role === "financial") && (
+        {(user?.role === "admin") && (
           <DepositInstallmentsTable 
             userRole={user?.role || ""}
             allowedLocationIds={allowedLocationIds}
