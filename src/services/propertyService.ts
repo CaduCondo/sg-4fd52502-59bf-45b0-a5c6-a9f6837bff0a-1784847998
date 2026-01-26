@@ -2,21 +2,20 @@ import { supabase } from "@/integrations/supabase/client";
 import { Property } from "@/types";
 import { Tables } from "@/integrations/supabase/types";
 
-type PropertyRow = Tables<"properties"> & {
-  locations?: Tables<"locations"> | null;
-};
+type PropertyRow = Tables<"properties">;
+type LocationRow = Tables<"locations">;
 
-function mapPropertyFromDB(row: PropertyRow): Property {
+function mapPropertyFromDB(row: PropertyRow, location?: LocationRow | null): Property {
   return {
     id: row.id,
     locationId: row.location_id,
-    location: row.locations?.name,
-    address: row.locations?.street || undefined,
-    number: row.locations?.number || undefined,
-    neighborhood: row.locations?.neighborhood || undefined,
-    city: row.locations?.city || undefined,
-    state: row.locations?.state || undefined,
-    zipCode: row.locations?.zip_code || undefined,
+    location: location?.name,
+    address: location?.street || undefined,
+    number: location?.number || undefined,
+    neighborhood: location?.neighborhood || undefined,
+    city: location?.city || undefined,
+    state: location?.state || undefined,
+    zipCode: location?.zip_code || undefined,
     complement: row.complement || undefined,
     value: row.value || 0,
     status: (row.status as "available" | "occupied" | "unavailable") || "available",
@@ -52,23 +51,50 @@ export async function createProperty(property: Partial<Property>) {
       accepts_pets: property.acceptsPets || false,
       has_garage: property.hasGarage || false,
     })
-    .select("*, locations(*)")
+    .select("*")
     .single();
 
   if (error) throw error;
-  return mapPropertyFromDB(data);
+
+  // Fetch location separately
+  const { data: location } = await supabase
+    .from("locations")
+    .select("*")
+    .eq("id", data.location_id)
+    .single();
+
+  return mapPropertyFromDB(data, location);
 }
 
 export const create = createProperty;
 
 export async function getAll() {
-  const { data, error } = await supabase
+  // Query 1: Fetch all properties (simple, fast)
+  const { data: properties, error: propertiesError } = await supabase
     .from("properties")
-    .select("*, locations(*)")
+    .select("*")
     .order("created_at", { ascending: false });
 
-  if (error) throw error;
-  return data.map(mapPropertyFromDB);
+  if (propertiesError) throw propertiesError;
+
+  if (!properties || properties.length === 0) {
+    return [];
+  }
+
+  // Query 2: Fetch locations for these properties (batch fetch)
+  const locationIds = [...new Set(properties.map(p => p.location_id))];
+  const { data: locations, error: locationsError } = await supabase
+    .from("locations")
+    .select("*")
+    .in("id", locationIds);
+
+  if (locationsError) throw locationsError;
+
+  // Create lookup map for fast access
+  const locationsMap = new Map(locations?.map(loc => [loc.id, loc]) || []);
+
+  // Merge properties with their locations
+  return properties.map(prop => mapPropertyFromDB(prop, locationsMap.get(prop.location_id)));
 }
 
 export const list = getAll;
@@ -76,12 +102,20 @@ export const list = getAll;
 export async function getById(id: string) {
   const { data, error } = await supabase
     .from("properties")
-    .select("*, locations(*)")
+    .select("*")
     .eq("id", id)
     .single();
 
   if (error) throw error;
-  return mapPropertyFromDB(data);
+
+  // Fetch location separately
+  const { data: location } = await supabase
+    .from("locations")
+    .select("*")
+    .eq("id", data.location_id)
+    .single();
+
+  return mapPropertyFromDB(data, location);
 }
 
 export async function update(id: string, property: Partial<Property>) {
@@ -104,11 +138,19 @@ export async function update(id: string, property: Partial<Property>) {
     .from("properties")
     .update(updateData)
     .eq("id", id)
-    .select("*, locations(*)")
+    .select("*")
     .single();
 
   if (error) throw error;
-  return mapPropertyFromDB(data);
+
+  // Fetch location separately
+  const { data: location } = await supabase
+    .from("locations")
+    .select("*")
+    .eq("id", data.location_id)
+    .single();
+
+  return mapPropertyFromDB(data, location);
 }
 
 export const updateProperty = update;
@@ -126,40 +168,74 @@ export const deleteProperty = remove;
 
 export const propertyService = {
   async getAll(): Promise<Property[]> {
-    const { data, error } = await supabase
+    console.log("=== PROPERTY SERVICE: getAll (optimized) ===");
+    
+    // Query 1: Fetch properties only (no JOIN)
+    const { data: properties, error: propertiesError } = await supabase
       .from("properties")
-      .select(`
-        *,
-        locations!properties_location_id_fkey (
-          id,
-          name
-        )
-      `)
+      .select("*")
       .order("created_at", { ascending: false });
 
-    if (error) throw error;
+    if (propertiesError) {
+      console.error("Error fetching properties:", propertiesError);
+      throw propertiesError;
+    }
 
-    return (data || []).map((property) => ({
-      id: property.id,
-      locationId: property.location_id,
-      location: property.locations?.name || "",
-      propertyIdentifier: property.property_identifier || "",
-      complement: property.complement || "",
-      rooms: property.rooms || 0,
-      bathrooms: property.bathrooms || 0,
-      value: property.value || 0,
-      monthly_rent: property.value || 0,
-      status: (property.status as "available" | "occupied" | "unavailable") || "available",
-      description: property.description || "",
-      images: Array.isArray(property.images) ? property.images as string[] : [],
-      hasFurniture: property.has_furniture || false,
-      has_furniture: property.has_furniture || false,
-      acceptsPets: property.accepts_pets || false,
-      accepts_pets: property.accepts_pets || false,
-      area: property.area || 0,
-      hasGarage: property.has_garage || false,
-      createdAt: property.created_at,
-    }));
+    if (!properties || properties.length === 0) {
+      console.log("No properties found");
+      return [];
+    }
+
+    console.log(`Fetched ${properties.length} properties`);
+
+    // Query 2: Fetch locations separately (batch fetch for efficiency)
+    const locationIds = [...new Set(properties.map(p => p.location_id))];
+    console.log(`Fetching ${locationIds.length} unique locations`);
+
+    const { data: locations, error: locationsError } = await supabase
+      .from("locations")
+      .select("*")
+      .in("id", locationIds);
+
+    if (locationsError) {
+      console.error("Error fetching locations:", locationsError);
+      throw locationsError;
+    }
+
+    console.log(`Fetched ${locations?.length || 0} locations`);
+
+    // Create lookup map for O(1) access
+    const locationsMap = new Map(locations?.map(loc => [loc.id, loc]) || []);
+
+    // Merge data in frontend
+    const result = properties.map((property) => {
+      const location = locationsMap.get(property.location_id);
+      
+      return {
+        id: property.id,
+        locationId: property.location_id,
+        location: location?.name || "",
+        propertyIdentifier: property.property_identifier || "",
+        complement: property.complement || "",
+        rooms: property.rooms || 0,
+        bathrooms: property.bathrooms || 0,
+        value: property.value || 0,
+        monthly_rent: property.value || 0,
+        status: (property.status as "available" | "occupied" | "unavailable") || "available",
+        description: property.description || "",
+        images: Array.isArray(property.images) ? property.images as string[] : [],
+        hasFurniture: property.has_furniture || false,
+        has_furniture: property.has_furniture || false,
+        acceptsPets: property.accepts_pets || false,
+        accepts_pets: property.accepts_pets || false,
+        area: property.area || 0,
+        hasGarage: property.has_garage || false,
+        createdAt: property.created_at,
+      };
+    });
+
+    console.log("Properties merged with locations successfully");
+    return result;
   },
 
   async create(property: Partial<Property>): Promise<Property> {
@@ -194,13 +270,7 @@ export const propertyService = {
     const { data, error } = await supabase
       .from("properties")
       .insert(insertData)
-      .select(`
-        *,
-        locations!properties_location_id_fkey (
-          id,
-          name
-        )
-      `)
+      .select("*")
       .single();
 
     if (error) {
@@ -211,10 +281,17 @@ export const propertyService = {
     console.log("5. Property created successfully!");
     console.log("   - Saved data.value:", data.value);
     
+    // Fetch location separately
+    const { data: location } = await supabase
+      .from("locations")
+      .select("*")
+      .eq("id", data.location_id)
+      .single();
+    
     const result: Property = {
       id: data.id,
       locationId: data.location_id,
-      location: data.locations?.name || "",
+      location: location?.name || "",
       propertyIdentifier: data.property_identifier || "",
       complement: data.complement || "",
       rooms: data.rooms || 0,
@@ -271,13 +348,7 @@ export const propertyService = {
       .from("properties")
       .update(updateData)
       .eq("id", id)
-      .select(`
-        *,
-        locations!properties_location_id_fkey (
-          id,
-          name
-        )
-      `)
+      .select("*")
       .single();
 
     if (error) {
@@ -288,10 +359,17 @@ export const propertyService = {
     console.log("5. Property updated successfully!");
     console.log("   - Saved data.value:", data.value);
     
+    // Fetch location separately
+    const { data: location } = await supabase
+      .from("locations")
+      .select("*")
+      .eq("id", data.location_id)
+      .single();
+    
     const result: Property = {
       id: data.id,
       locationId: data.location_id,
-      location: data.locations?.name || "",
+      location: location?.name || "",
       propertyIdentifier: data.property_identifier || "",
       complement: data.complement || "",
       rooms: data.rooms || 0,
