@@ -136,8 +136,6 @@ export function RentalFormDialog({
       // PIX
       // Mapeia depositPixCode ou depositInstallment1PixCode para o campo principal
       setDepositPixCode(rental.depositPixCode || rental.depositInstallment1PixCode || "");
-      setDepositInstallment2PixCode(rental.depositInstallment2PixCode || "");
-      setDepositInstallment3PixCode(rental.depositInstallment3PixCode || "");
 
     } else if (!open) {
       // Reset manual dos campos locais
@@ -150,8 +148,6 @@ export function RentalFormDialog({
       setDepositInstallment2PaymentDate("");
       setDepositInstallment3PaymentDate("");
       setDepositPixCode("");
-      setDepositInstallment2PixCode("");
-      setDepositInstallment3PixCode("");
     }
   }, [open, rental]);
 
