@@ -32,26 +32,26 @@ export function RentalFormDialog({
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [showContract, setShowContract] = useState(false);
-  const [contractData, setContractData] = useState<any>(null);
+  const [contractData, setContractData] = useState<{ rental: Rental; property: Property; tenant: Tenant } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Form fields
-  const [propertyId, setPropertyId] = useState((rental?.propertyId || rental?.property_id) || "");
-  const [tenantId, setTenantId] = useState((rental?.tenantId || rental?.tenant_id) || "");
-  const [startDate, setStartDate] = useState((rental?.startDate || rental?.start_date) || "");
-  const [endDate, setEndDate] = useState((rental?.endDate || rental?.end_date) || "");
-  const [monthlyRent, setMonthlyRent] = useState((rental?.monthlyRent || rental?.monthly_rent) ? applyCurrencyMask(((rental?.monthlyRent || rental?.monthly_rent) as number).toString()) : "");
-  const [paymentDay, setPaymentDay] = useState((rental?.paymentDay || rental?.payment_day)?.toString() || "");
-  const [securityDeposit, setSecurityDeposit] = useState((rental?.securityDeposit || rental?.security_deposit) ? applyCurrencyMask(((rental?.securityDeposit || rental?.security_deposit) as number).toString()) : "");
+  // Form fields - Using (rental as any) for snake_case properties to avoid TS errors
+  const [propertyId, setPropertyId] = useState((rental?.propertyId || (rental as any)?.property_id) || "");
+  const [tenantId, setTenantId] = useState((rental?.tenantId || (rental as any)?.tenant_id) || "");
+  const [startDate, setStartDate] = useState((rental?.startDate || (rental as any)?.start_date) || "");
+  const [endDate, setEndDate] = useState((rental?.endDate || (rental as any)?.end_date) || "");
+  const [monthlyRent, setMonthlyRent] = useState((rental?.monthlyRent || (rental as any)?.monthly_rent) ? applyCurrencyMask(((rental?.monthlyRent || (rental as any)?.monthly_rent) as number).toString()) : "");
+  const [paymentDay, setPaymentDay] = useState((rental?.paymentDay || (rental as any)?.payment_day)?.toString() || "");
+  const [securityDeposit, setSecurityDeposit] = useState((rental?.securityDeposit || (rental as any)?.security_deposit) ? applyCurrencyMask(((rental?.securityDeposit || (rental as any)?.security_deposit) as number).toString()) : "");
   const [commissionValue, setCommissionValue] = useState((rental as any)?.commission_value ? applyCurrencyMask(((rental as any).commission_value as number).toString()) : "");
-  const [hasPartnerBroker, setHasPartnerBroker] = useState((rental?.hasPartnerBroker || rental?.has_partner_broker) || false);
-  const [partnerBrokerValue, setPartnerBrokerValue] = useState((rental?.partnerBrokerValue || rental?.partner_broker_value) ? applyPercentageMask(((rental?.partnerBrokerValue || rental?.partner_broker_value) as number).toString()) : "");
+  const [hasPartnerBroker, setHasPartnerBroker] = useState((rental?.hasPartnerBroker || (rental as any)?.has_partner_broker) || false);
+  const [partnerBrokerValue, setPartnerBrokerValue] = useState((rental?.partnerBrokerValue || (rental as any)?.partner_broker_value) ? applyPercentageMask(((rental?.partnerBrokerValue || (rental as any)?.partner_broker_value) as number).toString()) : "");
   const [waterValue, setWaterValue] = useState((rental as any)?.water_value ? applyCurrencyMask(((rental as any).water_value as number).toString()) : "");
   const [electricityValue, setElectricityValue] = useState((rental as any)?.electricity_value ? applyCurrencyMask(((rental as any).electricity_value as number).toString()) : "");
   const [gasValue, setGasValue] = useState((rental as any)?.gas_value ? applyCurrencyMask(((rental as any).gas_value as number).toString()) : "");
-  const [waterResponsibility, setWaterResponsibility] = useState<"landlord" | "tenant">((rental?.waterResponsibility || rental?.water_responsibility) || "tenant");
-  const [electricityResponsibility, setElectricityResponsibility] = useState<"landlord" | "tenant">((rental?.electricityResponsibility || rental?.electricity_responsibility) || "tenant");
-  const [gasResponsibility, setGasResponsibility] = useState<"landlord" | "tenant">((rental?.gasResponsibility || rental?.gas_responsibility) || "tenant");
+  const [waterResponsibility, setWaterResponsibility] = useState<"landlord" | "tenant">((rental?.waterResponsibility || (rental as any)?.water_responsibility) || "tenant");
+  const [electricityResponsibility, setElectricityResponsibility] = useState<"landlord" | "tenant">((rental?.electricityResponsibility || (rental as any)?.electricity_responsibility) || "tenant");
+  const [gasResponsibility, setGasResponsibility] = useState<"landlord" | "tenant">((rental?.gasResponsibility || (rental as any)?.gas_responsibility) || "tenant");
   
   // Deposit installment fields
   const [isDepositInstallment, setIsDepositInstallment] = useState((rental as any)?.is_deposit_installment || false);
@@ -75,22 +75,22 @@ export function RentalFormDialog({
 
   useEffect(() => {
     if (rental) {
-      setPropertyId((rental?.propertyId || rental?.property_id) || "");
-      setTenantId((rental?.tenantId || rental?.tenant_id) || "");
-      setStartDate((rental?.startDate || rental?.start_date) || "");
-      setEndDate((rental?.endDate || rental?.end_date) || "");
-      setMonthlyRent((rental?.monthlyRent || rental?.monthly_rent) ? applyCurrencyMask(((rental?.monthlyRent || rental?.monthly_rent) as number).toString()) : "");
-      setPaymentDay((rental?.paymentDay || rental?.payment_day)?.toString() || "");
-      setSecurityDeposit((rental?.securityDeposit || rental?.security_deposit) ? applyCurrencyMask(((rental?.securityDeposit || rental?.security_deposit) as number).toString()) : "");
+      setPropertyId((rental?.propertyId || (rental as any)?.property_id) || "");
+      setTenantId((rental?.tenantId || (rental as any)?.tenant_id) || "");
+      setStartDate((rental?.startDate || (rental as any)?.start_date) || "");
+      setEndDate((rental?.endDate || (rental as any)?.end_date) || "");
+      setMonthlyRent((rental?.monthlyRent || (rental as any)?.monthly_rent) ? applyCurrencyMask(((rental?.monthlyRent || (rental as any)?.monthly_rent) as number).toString()) : "");
+      setPaymentDay((rental?.paymentDay || (rental as any)?.payment_day)?.toString() || "");
+      setSecurityDeposit((rental?.securityDeposit || (rental as any)?.security_deposit) ? applyCurrencyMask(((rental?.securityDeposit || (rental as any)?.security_deposit) as number).toString()) : "");
       setCommissionValue((rental as any)?.commission_value ? applyCurrencyMask(((rental as any).commission_value as number).toString()) : "");
-      setHasPartnerBroker((rental?.hasPartnerBroker || rental?.has_partner_broker) || false);
-      setPartnerBrokerValue((rental?.partnerBrokerValue || rental?.partner_broker_value) ? applyPercentageMask(((rental?.partnerBrokerValue || rental?.partner_broker_value) as number).toString()) : "");
+      setHasPartnerBroker((rental?.hasPartnerBroker || (rental as any)?.has_partner_broker) || false);
+      setPartnerBrokerValue((rental?.partnerBrokerValue || (rental as any)?.partner_broker_value) ? applyPercentageMask(((rental?.partnerBrokerValue || (rental as any)?.partner_broker_value) as number).toString()) : "");
       setWaterValue((rental as any)?.water_value ? applyCurrencyMask(((rental as any).water_value as number).toString()) : "");
       setElectricityValue((rental as any)?.electricity_value ? applyCurrencyMask(((rental as any).electricity_value as number).toString()) : "");
       setGasValue((rental as any)?.gas_value ? applyCurrencyMask(((rental as any).gas_value as number).toString()) : "");
-      setWaterResponsibility((rental?.waterResponsibility || rental?.water_responsibility) || "tenant");
-      setElectricityResponsibility((rental?.electricityResponsibility || rental?.electricity_responsibility) || "tenant");
-      setGasResponsibility((rental?.gasResponsibility || rental?.gas_responsibility) || "tenant");
+      setWaterResponsibility((rental?.waterResponsibility || (rental as any)?.water_responsibility) || "tenant");
+      setElectricityResponsibility((rental?.electricityResponsibility || (rental as any)?.electricity_responsibility) || "tenant");
+      setGasResponsibility((rental?.gasResponsibility || (rental as any)?.gas_responsibility) || "tenant");
       setIsDepositInstallment((rental as any)?.is_deposit_installment || false);
       setDepositInstallmentCount((rental as any)?.deposit_installment_count || 2);
       setDepositPaymentDate((rental?.depositPaymentDate || (rental as any)?.deposit_payment_date) || "");
@@ -186,6 +186,16 @@ export function RentalFormDialog({
     setAttachments(attachments.filter((_, i) => i !== index));
   };
 
+  const calculateTotalDeposit = () => {
+    if (!isDepositInstallment) return null;
+    
+    let total = parseCurrencyToNumber(securityDeposit);
+    if (depositInstallment2) total += parseCurrencyToNumber(depositInstallment2);
+    if (depositInstallmentCount === 3 && depositInstallment3) total += parseCurrencyToNumber(depositInstallment3);
+    
+    return total;
+  };
+
   const handleSubmit = async () => {
     if (!validateForm()) {
       toast({
@@ -255,12 +265,19 @@ export function RentalFormDialog({
         const tenant = tenants.find((t) => t.id === tenantId);
 
         if (property && tenant) {
+          // Explicitly creating a full object that matches what RentalContract needs
+          // Note: we're passing property and tenant separately to the component,
+          // but saving them in state for the render condition
+          const rentalWithRelations = {
+            ...newRental,
+            property,
+            tenant,
+          } as Rental;
+
           setContractData({
-            rental: {
-              ...newRental,
-              property,
-              tenant,
-            },
+            rental: rentalWithRelations,
+            property,
+            tenant
           });
           setShowContract(true);
           return;
@@ -530,6 +547,19 @@ export function RentalFormDialog({
                     </div>
                   </div>
                 )}
+
+                {/* Total Deposit Display */}
+                <div className="mt-4 p-4 bg-muted rounded-lg border border-border">
+                  <div className="flex justify-between items-center">
+                    <span className="font-semibold text-lg">Valor Total Caução:</span>
+                    <span className="font-bold text-xl text-primary">
+                      {calculateTotalDeposit()?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    </span>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    * Soma de todas as parcelas do caução
+                  </p>
+                </div>
               </>
             )}
           </div>
@@ -687,6 +717,8 @@ export function RentalFormDialog({
       {showContract && contractData && (
         <RentalContract
           rental={contractData.rental}
+          property={contractData.property}
+          tenant={contractData.tenant}
           onClose={() => {
             setShowContract(false);
             onOpenChange(false);
