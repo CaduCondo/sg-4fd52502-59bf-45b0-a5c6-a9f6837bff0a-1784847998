@@ -1,284 +1,277 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-import { AttachmentViewer } from "@/components/AttachmentViewer";
-import type { Rental, Property, Tenant } from "@/types";
-import { applyCurrencyMask, parseCurrencyToNumber, applyPercentageMask, parsePercentageToNumber } from "@/lib/masks";
+import { create as createRental, update as updateRentalService } from "@/services/rentalService";
+import { update as updateProperty } from "@/services/propertyService";
+import { update as updateTenant } from "@/services/tenantService";
+import { getAll as getAllLocations } from "@/services/locationService";
+import {
+  createPaymentsForRental,
+  updateFuturePayments,
+  updateFuturePaymentsOnPaymentDayChange,
+} from "@/services/paymentService";
+import type { Property, Tenant, Location, Rental } from "@/types";
 import { RentalContract } from "@/components/RentalContract";
+import { supabase } from "@/integrations/supabase/client";
+import { parseCurrencyToNumber } from "@/lib/masks";
+
+// Hooks & Components
+import { useRentalFormState } from "./hooks/useRentalFormState";
+import { BasicInfoSection } from "./form/BasicInfoSection";
+import { RentSection } from "./form/RentSection";
+import { DepositSection } from "./form/DepositSection";
+import { CommissionSection } from "./form/CommissionSection";
+import { UtilitiesSection } from "./form/UtilitiesSection";
+import { AttachmentsSection } from "./form/AttachmentsSection";
+import { useDepositCalculations } from "./hooks/useDepositCalculations";
 
 interface RentalFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  rental?: Rental;
+  availableProperties: Property[];
+  availableTenants: Tenant[];
   properties?: Property[];
   tenants?: Tenant[];
   onSuccess: () => void;
+  rental?: Rental | null;
+  isViewMode?: boolean;
 }
 
 export function RentalFormDialog({
   open,
   onOpenChange,
-  rental,
+  availableProperties,
+  availableTenants,
   properties = [],
   tenants = [],
   onSuccess,
+  rental = null,
+  isViewMode = false,
 }: RentalFormDialogProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [locations, setLocations] = useState<Location[]>([]);
   const [showContract, setShowContract] = useState(false);
-  const [contractData, setContractData] = useState<any>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Form fields
-  const [propertyId, setPropertyId] = useState((rental?.propertyId || rental?.property_id) || "");
-  const [tenantId, setTenantId] = useState((rental?.tenantId || rental?.tenant_id) || "");
-  const [startDate, setStartDate] = useState((rental?.startDate || rental?.start_date) || "");
-  const [endDate, setEndDate] = useState((rental?.endDate || rental?.end_date) || "");
-  const [monthlyRent, setMonthlyRent] = useState((rental?.monthlyRent || rental?.monthly_rent) ? applyCurrencyMask(((rental?.monthlyRent || rental?.monthly_rent) as number).toString()) : "");
-  const [paymentDay, setPaymentDay] = useState((rental?.paymentDay || rental?.payment_day)?.toString() || "");
-  const [securityDeposit, setSecurityDeposit] = useState((rental?.securityDeposit || rental?.security_deposit) ? applyCurrencyMask(((rental?.securityDeposit || rental?.security_deposit) as number).toString()) : "");
-  const [commissionValue, setCommissionValue] = useState((rental as any)?.commission_value ? applyCurrencyMask(((rental as any).commission_value as number).toString()) : "");
-  const [hasPartnerBroker, setHasPartnerBroker] = useState((rental?.hasPartnerBroker || rental?.has_partner_broker) || false);
-  const [partnerBrokerValue, setPartnerBrokerValue] = useState((rental?.partnerBrokerValue || rental?.partner_broker_value) ? applyPercentageMask(((rental?.partnerBrokerValue || rental?.partner_broker_value) as number).toString()) : "");
-  const [waterValue, setWaterValue] = useState((rental as any)?.water_value ? applyCurrencyMask(((rental as any).water_value as number).toString()) : "");
-  const [electricityValue, setElectricityValue] = useState((rental as any)?.electricity_value ? applyCurrencyMask(((rental as any).electricity_value as number).toString()) : "");
-  const [gasValue, setGasValue] = useState((rental as any)?.gas_value ? applyCurrencyMask(((rental as any).gas_value as number).toString()) : "");
-  const [waterResponsibility, setWaterResponsibility] = useState<"landlord" | "tenant">((rental?.waterResponsibility || rental?.water_responsibility) || "tenant");
-  const [electricityResponsibility, setElectricityResponsibility] = useState<"landlord" | "tenant">((rental?.electricityResponsibility || rental?.electricity_responsibility) || "tenant");
-  const [gasResponsibility, setGasResponsibility] = useState<"landlord" | "tenant">((rental?.gasResponsibility || rental?.gas_responsibility) || "tenant");
+  const [isEditing, setIsEditing] = useState(false);
+  const [attachments, setAttachments] = useState<string[]>([]);
   
-  // Deposit installment fields
-  const [isDepositInstallment, setIsDepositInstallment] = useState((rental as any)?.is_deposit_installment || false);
-  const [depositInstallmentCount, setDepositInstallmentCount] = useState<number>((rental as any)?.deposit_installment_count || 2);
-  const [depositPaymentDate, setDepositPaymentDate] = useState((rental?.depositPaymentDate || (rental as any)?.deposit_payment_date) || "");
-  const [depositPixCode, setDepositPixCode] = useState((rental?.depositPixCode || (rental as any)?.deposit_pix_code) || "");
-  const [depositInstallment2, setDepositInstallment2] = useState((rental?.depositInstallment2 || (rental as any)?.deposit_installment_2) ? applyCurrencyMask(((rental?.depositInstallment2 || (rental as any)?.deposit_installment_2) as number).toString()) : "");
-  const [depositPaymentDate2, setDepositPaymentDate2] = useState((rental as any)?.deposit_payment_date_2 || "");
-  const [depositPixCode2, setDepositPixCode2] = useState((rental as any)?.deposit_pix_code_2 || "");
-  const [depositInstallment3, setDepositInstallment3] = useState((rental?.depositInstallment3 || (rental as any)?.deposit_installment_3) ? applyCurrencyMask(((rental?.depositInstallment3 || (rental as any)?.deposit_installment_3) as number).toString()) : "");
-  const [depositPaymentDate3, setDepositPaymentDate3] = useState((rental as any)?.deposit_payment_date_3 || "");
-  const [depositPixCode3, setDepositPixCode3] = useState((rental as any)?.deposit_pix_code_3 || "");
+  const [createdRentalData, setCreatedRentalData] = useState<{
+    rental: Rental;
+    property: Property;
+    tenant: Tenant;
+    location?: Location;
+  } | null>(null);
 
-  const [attachments, setAttachments] = useState<Array<{ url: string; name: string; type: string }>>(
-    Array.isArray(rental?.attachments) 
-      ? rental.attachments 
-      : []
-  );
-
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const { formData, errors, handleFieldChange, resetForm, validateForm } = useRentalFormState(rental || undefined);
+  
+  // Calculate total for display
+  const { totalDeposit } = useDepositCalculations({
+    securityDeposit: formData.securityDeposit || "",
+    isDepositInstallment: formData.isDepositInstallment || false,
+    depositInstallmentCount: formData.depositInstallmentCount || "",
+    depositInstallment2: formData.depositInstallment2 || "",
+    depositInstallment3: formData.depositInstallment3 || "",
+  });
 
   useEffect(() => {
-    if (rental) {
-      setPropertyId((rental?.propertyId || rental?.property_id) || "");
-      setTenantId((rental?.tenantId || rental?.tenant_id) || "");
-      setStartDate((rental?.startDate || rental?.start_date) || "");
-      setEndDate((rental?.endDate || rental?.end_date) || "");
-      setMonthlyRent((rental?.monthlyRent || rental?.monthly_rent) ? applyCurrencyMask(((rental?.monthlyRent || rental?.monthly_rent) as number).toString()) : "");
-      setPaymentDay((rental?.paymentDay || rental?.payment_day)?.toString() || "");
-      setSecurityDeposit((rental?.securityDeposit || rental?.security_deposit) ? applyCurrencyMask(((rental?.securityDeposit || rental?.security_deposit) as number).toString()) : "");
-      setCommissionValue((rental as any)?.commission_value ? applyCurrencyMask(((rental as any).commission_value as number).toString()) : "");
-      setHasPartnerBroker((rental?.hasPartnerBroker || rental?.has_partner_broker) || false);
-      setPartnerBrokerValue((rental?.partnerBrokerValue || rental?.partner_broker_value) ? applyPercentageMask(((rental?.partnerBrokerValue || rental?.partner_broker_value) as number).toString()) : "");
-      setWaterValue((rental as any)?.water_value ? applyCurrencyMask(((rental as any).water_value as number).toString()) : "");
-      setElectricityValue((rental as any)?.electricity_value ? applyCurrencyMask(((rental as any).electricity_value as number).toString()) : "");
-      setGasValue((rental as any)?.gas_value ? applyCurrencyMask(((rental as any).gas_value as number).toString()) : "");
-      setWaterResponsibility((rental?.waterResponsibility || rental?.water_responsibility) || "tenant");
-      setElectricityResponsibility((rental?.electricityResponsibility || rental?.electricity_responsibility) || "tenant");
-      setGasResponsibility((rental?.gasResponsibility || rental?.gas_responsibility) || "tenant");
-      setIsDepositInstallment((rental as any)?.is_deposit_installment || false);
-      setDepositInstallmentCount((rental as any)?.deposit_installment_count || 2);
-      setDepositPaymentDate((rental?.depositPaymentDate || (rental as any)?.deposit_payment_date) || "");
-      setDepositPixCode((rental?.depositPixCode || (rental as any)?.deposit_pix_code) || "");
-      setDepositInstallment2((rental?.depositInstallment2 || (rental as any)?.deposit_installment_2) ? applyCurrencyMask(((rental?.depositInstallment2 || (rental as any)?.deposit_installment_2) as number).toString()) : "");
-      setDepositPaymentDate2((rental as any)?.deposit_payment_date_2 || "");
-      setDepositPixCode2((rental as any)?.deposit_pix_code_2 || "");
-      setDepositInstallment3((rental?.depositInstallment3 || (rental as any)?.deposit_installment_3) ? applyCurrencyMask(((rental?.depositInstallment3 || (rental as any)?.deposit_installment_3) as number).toString()) : "");
-      setDepositPaymentDate3((rental as any)?.deposit_payment_date_3 || "");
-      setDepositPixCode3((rental as any)?.deposit_pix_code_3 || "");
-      setAttachments(Array.isArray(rental?.attachments) ? rental.attachments : []);
-    }
-  }, [rental]);
+    loadLocations();
+  }, []);
 
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-
-    if (!propertyId) newErrors.propertyId = "Selecione um imóvel";
-    if (!tenantId) newErrors.tenantId = "Selecione um inquilino";
-    if (!startDate) newErrors.startDate = "Data de início é obrigatória";
-    if (!endDate) newErrors.endDate = "Data de término é obrigatória";
-    if (!monthlyRent) newErrors.monthlyRent = "Valor do aluguel é obrigatório";
-    if (!paymentDay) newErrors.paymentDay = "Dia de pagamento é obrigatório";
-    if (!securityDeposit) newErrors.securityDeposit = "Valor da caução é obrigatório";
-
-    if (startDate && endDate && new Date(startDate) >= new Date(endDate)) {
-      newErrors.endDate = "Data de término deve ser posterior à data de início";
-    }
-
-    if (isDepositInstallment) {
-      if (!depositPaymentDate) newErrors.depositPaymentDate = "Data de pagamento da 1ª parcela é obrigatória";
-      if (!depositInstallment2) newErrors.depositInstallment2 = "Valor da 2ª parcela é obrigatório";
-      if (!depositPaymentDate2) newErrors.depositPaymentDate2 = "Data de pagamento da 2ª parcela é obrigatória";
-      
-      if (depositInstallmentCount === 3) {
-        if (!depositInstallment3) newErrors.depositInstallment3 = "Valor da 3ª parcela é obrigatório";
-        if (!depositPaymentDate3) newErrors.depositPaymentDate3 = "Data de pagamento da 3ª parcela é obrigatória";
+  useEffect(() => {
+    if (open) {
+      if (rental) {
+        setIsEditing(false); // Start in view mode if rental exists
+        setAttachments(rental.attachments || []);
+      } else {
+        setIsEditing(true); // Start in edit mode if new rental
+        setAttachments([]);
       }
+    } else {
+      resetForm();
     }
+  }, [open, rental, resetForm]);
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+  const loadLocations = async () => {
+    try {
+      const locationsData = await getAllLocations();
+      setLocations(locationsData);
+    } catch (error) {
+      console.error("Error loading locations:", error);
+    }
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    setLoading(true);
+  const handleAttachmentUpload = async (file: File) => {
     try {
-      const newAttachments: Array<{ url: string; name: string; type: string }> = [];
+      const fileExt = file.name.split(".").pop();
+      const fileName = `rental_${crypto.randomUUID()}.${fileExt}`;
+      const { error: uploadError } = await supabase.storage.from("uploads").upload(fileName, file);
 
-      for (const file of Array.from(files)) {
-        const formData = new FormData();
-        formData.append("file", file);
+      if (uploadError) throw uploadError;
 
-        const response = await fetch("/api/upload", {
-          method: "POST",
-          body: formData,
-        });
-
-        if (!response.ok) throw new Error("Erro ao fazer upload do arquivo");
-
-        const data = await response.json();
-        newAttachments.push({
-          url: data.url,
-          name: file.name,
-          type: file.type,
-        });
-      }
-
-      setAttachments([...attachments, ...newAttachments]);
+      const { data: publicUrlData } = supabase.storage.from("uploads").getPublicUrl(fileName);
+      setAttachments((prev) => [...prev, publicUrlData.publicUrl]);
+      
       toast({
         title: "Sucesso",
-        description: "Arquivos enviados com sucesso",
+        description: "Arquivo anexado com sucesso.",
       });
     } catch (error) {
-      console.error("Error uploading files:", error);
+      console.error("Error uploading file:", error);
       toast({
         title: "Erro",
-        description: "Erro ao enviar arquivos",
+        description: "Erro ao fazer upload do arquivo.",
         variant: "destructive",
       });
-    } finally {
-      setLoading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
     }
   };
 
   const removeAttachment = (index: number) => {
-    setAttachments(attachments.filter((_, i) => i !== index));
+    setAttachments((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
     if (!validateForm()) {
       toast({
-        title: "Erro de validação",
-        description: "Por favor, preencha todos os campos obrigatórios",
+        title: "Erro",
+        description: "Verifique os campos obrigatórios.",
         variant: "destructive",
       });
       return;
     }
 
-    setLoading(true);
+    const propertiesToUse = rental ? properties : availableProperties;
+    const tenantsToUse = rental ? tenants : availableTenants;
+    
+    const selectedProperty = propertiesToUse.find((p) => p.id === formData.propertyId);
+    const selectedTenant = tenantsToUse.find((t) => t.id === formData.tenantId);
+
+    if (!selectedProperty || !selectedTenant) {
+      toast({
+        title: "Erro",
+        description: "Imóvel ou inquilino não encontrado.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
-      const rentalData = {
-        property_id: propertyId,
-        tenant_id: tenantId,
-        start_date: startDate,
-        end_date: endDate,
-        monthly_rent: parseCurrencyToNumber(monthlyRent),
-        payment_day: parseInt(paymentDay),
-        security_deposit: parseCurrencyToNumber(securityDeposit),
-        commission_value: commissionValue ? parseCurrencyToNumber(commissionValue) : null,
-        has_partner_broker: hasPartnerBroker,
-        partner_broker_value: hasPartnerBroker && partnerBrokerValue ? parsePercentageToNumber(partnerBrokerValue) : null,
-        water_value: waterValue ? parseCurrencyToNumber(waterValue) : null,
-        electricity_value: electricityValue ? parseCurrencyToNumber(electricityValue) : null,
-        gas_value: gasValue ? parseCurrencyToNumber(gasValue) : null,
-        water_responsibility: waterResponsibility,
-        electricity_responsibility: electricityResponsibility,
-        gas_responsibility: gasResponsibility,
-        is_deposit_installment: isDepositInstallment,
-        deposit_installment_count: isDepositInstallment ? depositInstallmentCount : null,
-        deposit_payment_date: isDepositInstallment ? depositPaymentDate : null,
-        deposit_pix_code: isDepositInstallment ? depositPixCode : null,
-        deposit_installment_2: isDepositInstallment ? parseCurrencyToNumber(depositInstallment2) : null,
-        deposit_payment_date_2: isDepositInstallment ? depositPaymentDate2 : null,
-        deposit_pix_code_2: isDepositInstallment ? depositPixCode2 : null,
-        deposit_installment_3: isDepositInstallment && depositInstallmentCount === 3 ? parseCurrencyToNumber(depositInstallment3) : null,
-        deposit_payment_date_3: isDepositInstallment && depositInstallmentCount === 3 ? depositPaymentDate3 : null,
-        deposit_pix_code_3: isDepositInstallment && depositInstallmentCount === 3 ? depositPixCode3 : null,
-        attachments,
-        status: "active",
+      setLoading(true);
+
+      const rentalData: any = {
+        propertyId: formData.propertyId,
+        tenantId: formData.tenantId,
+        startDate: formData.startDate,
+        endDate: formData.endDate || null,
+        paymentDay: parseInt(formData.paymentDay || "1"),
+        rentAmount: parseCurrencyToNumber(formData.rentAmount || "0"),
+        attachments: attachments,
+        
+        // Deposit
+        securityDeposit: parseCurrencyToNumber(formData.securityDeposit || "0"),
+        depositInstallments: formData.isDepositInstallment && formData.depositInstallmentCount ? parseInt(formData.depositInstallmentCount) : 1,
+        
+        // 1st Installment (Main fields)
+        depositInstallment1: parseCurrencyToNumber(formData.securityDeposit || "0"),
+        depositPaymentDate: formData.depositPaymentDate || null,
+        depositPixCode: formData.depositPixCode || null,
+        
+        // Commissions & Utilities
+        agencyCommissionPercentage: parseCurrencyToNumber(formData.agencyCommissionPercentage || "0"),
+        realEstateAgentCommissionPercentage: parseCurrencyToNumber(formData.realEstateAgentCommissionPercentage || "0"),
+        water: parseCurrencyToNumber(formData.water || "0"),
+        electricity: parseCurrencyToNumber(formData.electricity || "0"),
+        gas: parseCurrencyToNumber(formData.gas || "0"),
+        waterResponsibility: formData.waterResponsibility,
+        electricityResponsibility: formData.electricityResponsibility,
+        gasResponsibility: formData.gasResponsibility,
       };
 
-      if (rental?.id) {
-        const { error } = await supabase
-          .from("rentals")
-          .update(rentalData)
-          .eq("id", rental.id);
-
-        if (error) throw error;
-
-        toast({
-          title: "Sucesso",
-          description: "Locação atualizada com sucesso",
-        });
-      } else {
-        const { data: newRental, error } = await supabase
-          .from("rentals")
-          .insert([rentalData])
-          .select()
-          .single();
-
-        if (error) throw error;
-
-        // Prepare contract data
-        const property = properties.find((p) => p.id === propertyId);
-        const tenant = tenants.find((t) => t.id === tenantId);
-
-        if (property && tenant) {
-          setContractData({
-            rental: {
-              ...newRental,
-              property,
-              tenant,
-            },
-          });
-          setShowContract(true);
-          return;
+      // Handle additional installments
+      if (formData.isDepositInstallment && formData.depositInstallmentCount) {
+        const count = parseInt(formData.depositInstallmentCount);
+        
+        if (count >= 2) {
+          rentalData.depositInstallment2 = parseCurrencyToNumber(formData.depositInstallment2 || "0");
+          rentalData.depositInstallment2PaymentDate = formData.depositInstallment2PaymentDate || null;
+          rentalData.depositInstallment2PixCode = null; // Add field if needed in UI
         }
-
-        toast({
-          title: "Sucesso",
-          description: "Locação criada com sucesso",
-        });
+        
+        if (count === 3) {
+          rentalData.depositInstallment3 = parseCurrencyToNumber(formData.depositInstallment3 || "0");
+          rentalData.depositInstallment3PaymentDate = formData.depositInstallment3PaymentDate || null;
+          rentalData.depositInstallment3PixCode = null; // Add field if needed in UI
+        }
       }
 
-      onOpenChange(false);
-      onSuccess();
+      if (rental) {
+        // Update existing rental
+        const updatedRental = await updateRentalService(rental.id, rentalData);
+        await updateFuturePayments(rental.id, rentalData.rentAmount);
+
+        if (rental.paymentDay !== rentalData.paymentDay) {
+          await updateFuturePaymentsOnPaymentDayChange(rental.id, rentalData.paymentDay);
+        }
+
+        await updateDepositInstallments(rental.id, rentalData);
+
+        const selectedLocation = locations.find((loc) => loc.id === selectedProperty.locationId);
+
+        setCreatedRentalData({
+          rental: { ...rental, ...updatedRental },
+          property: selectedProperty,
+          tenant: selectedTenant,
+          location: selectedLocation,
+        });
+
+        toast({
+          title: "Sucesso!",
+          description: "Locação atualizada com sucesso.",
+        });
+
+        setShowContract(true);
+      } else {
+        // Create new rental
+        const createdRental = await createRental(rentalData);
+
+        await updateProperty(selectedProperty.id, { status: "occupied" });
+
+        const tenant = availableTenants.find((t) => t.id === selectedTenant.id);
+        if (tenant) {
+          await updateTenant(selectedTenant.id, {
+            ...tenant,
+            status: "rented",
+          });
+        }
+
+        await createPaymentsForRental(createdRental);
+        await createDepositInstallments(createdRental.id, rentalData);
+
+        const selectedLocation = locations.find((loc) => loc.id === selectedProperty.locationId);
+
+        setCreatedRentalData({
+          rental: createdRental,
+          property: selectedProperty,
+          tenant: selectedTenant,
+          location: selectedLocation,
+        });
+
+        toast({
+          title: "Sucesso!",
+          description: "Locação criada com sucesso.",
+        });
+
+        setShowContract(true);
+      }
     } catch (error) {
       console.error("Error saving rental:", error);
       toast({
         title: "Erro",
-        description: "Erro ao salvar locação",
+        description: rental
+          ? "Não foi possível atualizar a locação."
+          : "Não foi possível criar a locação.",
         variant: "destructive",
       });
     } finally {
@@ -286,409 +279,186 @@ export function RentalFormDialog({
     }
   };
 
-  const isEditing = !!rental?.id;
+  const createDepositInstallments = async (rentalId: string, rentalData: any) => {
+    const count = rentalData.depositInstallments || 1;
+    const installments = [];
+
+    for (let i = 1; i <= count; i++) {
+      let amount = 0;
+      let paymentDate = null;
+      let pixCode = null;
+
+      if (i === 1) {
+        amount = rentalData.depositInstallment1;
+        paymentDate = rentalData.depositPaymentDate;
+        pixCode = rentalData.depositPixCode;
+      } else if (i === 2) {
+        amount = rentalData.depositInstallment2 || 0;
+        paymentDate = rentalData.depositInstallment2PaymentDate || null;
+      } else if (i === 3) {
+        amount = rentalData.depositInstallment3 || 0;
+        paymentDate = rentalData.depositInstallment3PaymentDate || null;
+      }
+      
+      installments.push({
+        rental_id: rentalId,
+        installment_number: i,
+        total_installments: count,
+        installment_total: count,
+        amount: amount,
+        payment_date: paymentDate,
+        pix_code: pixCode,
+      });
+    }
+
+    const { error } = await supabase.from("deposit_installments").insert(installments);
+
+    if (error) {
+      console.error("Error creating deposit installments:", error);
+      throw error;
+    }
+  };
+
+  const updateDepositInstallments = async (rentalId: string, rentalData: any) => {
+    const { error: deleteError } = await supabase.from("deposit_installments").delete().eq("rental_id", rentalId);
+    
+    if (deleteError) {
+      console.error("Error deleting old deposit installments:", deleteError);
+    }
+
+    await createDepositInstallments(rentalId, rentalData);
+  };
+
+  const propertiesToDisplay = rental ? properties : availableProperties;
+  const tenantsToDisplay = rental ? tenants : availableTenants;
+  
+  // Determine if form is interactive
+  const isFormDisabled = !isEditing;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{isEditing ? "Editar Locação" : "Nova Locação"}</DialogTitle>
+          <DialogTitle>
+            {rental && isViewMode && !isEditing
+              ? "Visualização da Locação"
+              : rental && isEditing
+              ? "Edição da Locação"
+              : "Nova Locação"}
+          </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6">
-          {/* Basic Information */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Informações Básicas</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="property">Imóvel *</Label>
-                <Select value={propertyId} onValueChange={setPropertyId}>
-                  <SelectTrigger className={errors.propertyId ? "border-red-500" : ""}>
-                    <SelectValue placeholder="Selecione o imóvel" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {properties.map((property) => (
-                      <SelectItem key={property.id} value={property.id}>
-                        {property.description}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {errors.propertyId && <p className="text-sm text-red-500">{errors.propertyId}</p>}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="tenant">Inquilino *</Label>
-                <Select value={tenantId} onValueChange={setTenantId}>
-                  <SelectTrigger className={errors.tenantId ? "border-red-500" : ""}>
-                    <SelectValue placeholder="Selecione o inquilino" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {tenants.map((tenant) => (
-                      <SelectItem key={tenant.id} value={tenant.id}>
-                        {tenant.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {errors.tenantId && <p className="text-sm text-red-500">{errors.tenantId}</p>}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="startDate">Data de Início *</Label>
-                <Input
-                  id="startDate"
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className={errors.startDate ? "border-red-500" : ""}
-                />
-                {errors.startDate && <p className="text-sm text-red-500">{errors.startDate}</p>}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="endDate">Data de Término *</Label>
-                <Input
-                  id="endDate"
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className={errors.endDate ? "border-red-500" : ""}
-                />
-                {errors.endDate && <p className="text-sm text-red-500">{errors.endDate}</p>}
-              </div>
-            </div>
-          </div>
-
-          {/* Rent Information */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Informações de Aluguel</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="monthlyRent">Valor do Aluguel *</Label>
-                <Input
-                  id="monthlyRent"
-                  value={monthlyRent}
-                  onChange={(e) => setMonthlyRent(applyCurrencyMask(e.target.value))}
-                  placeholder="R$ 0,00"
-                  className={errors.monthlyRent ? "border-red-500" : ""}
-                />
-                {errors.monthlyRent && <p className="text-sm text-red-500">{errors.monthlyRent}</p>}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="paymentDay">Dia de Pagamento *</Label>
-                <Input
-                  id="paymentDay"
-                  type="number"
-                  min="1"
-                  max="31"
-                  value={paymentDay}
-                  onChange={(e) => setPaymentDay(e.target.value)}
-                  placeholder="Ex: 10"
-                  className={errors.paymentDay ? "border-red-500" : ""}
-                />
-                {errors.paymentDay && <p className="text-sm text-red-500">{errors.paymentDay}</p>}
-              </div>
-            </div>
-          </div>
-
-          {/* Deposit Information */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Informações de Caução</h3>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="securityDeposit">Valor Caução (1ª Parcela) *</Label>
-                <Input
-                  id="securityDeposit"
-                  value={securityDeposit}
-                  onChange={(e) => setSecurityDeposit(applyCurrencyMask(e.target.value))}
-                  placeholder="R$ 0,00"
-                  className={errors.securityDeposit ? "border-red-500" : ""}
-                />
-                {errors.securityDeposit && <p className="text-sm text-red-500">{errors.securityDeposit}</p>}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="depositPaymentDate">Data Pagamento</Label>
-                <Input
-                  id="depositPaymentDate"
-                  type="date"
-                  value={depositPaymentDate}
-                  onChange={(e) => setDepositPaymentDate(e.target.value)}
-                  className={errors.depositPaymentDate ? "border-red-500" : ""}
-                />
-                {errors.depositPaymentDate && <p className="text-sm text-red-500">{errors.depositPaymentDate}</p>}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="depositPixCode">Código PIX</Label>
-                <Input
-                  id="depositPixCode"
-                  value={depositPixCode}
-                  onChange={(e) => setDepositPixCode(e.target.value)}
-                  placeholder="Código PIX"
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="isDepositInstallment"
-                checked={isDepositInstallment}
-                onCheckedChange={(checked) => setIsDepositInstallment(checked as boolean)}
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className={`space-y-6 ${isFormDisabled ? "pointer-events-none opacity-90" : ""}`}>
+            <BasicInfoSection 
+              formData={formData} 
+              onFieldChange={handleFieldChange} 
+              properties={propertiesToDisplay} 
+              tenants={tenantsToDisplay}
+              errors={errors}
+            />
+            
+            <RentSection 
+              formData={formData} 
+              onFieldChange={handleFieldChange}
+              errors={errors}
+            />
+            
+            <DepositSection 
+              formData={formData} 
+              onFieldChange={handleFieldChange}
+              errors={errors}
+            />
+            
+            <CommissionSection 
+              formData={formData} 
+              onFieldChange={handleFieldChange}
+            />
+            
+            <UtilitiesSection 
+              formData={formData} 
+              onFieldChange={handleFieldChange}
+            />
+            
+            <div className={isFormDisabled ? "pointer-events-none" : ""}>
+              <AttachmentsSection 
+                attachments={attachments}
+                onUpload={handleAttachmentUpload}
+                onRemove={removeAttachment}
+                isEditing={isEditing}
               />
-              <Label htmlFor="isDepositInstallment">Caução Parcelado</Label>
-              {isDepositInstallment && (
-                <Select
-                  value={depositInstallmentCount.toString()}
-                  onValueChange={(value) => setDepositInstallmentCount(parseInt(value))}
-                >
-                  <SelectTrigger className="w-[120px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="2">2 parcelas</SelectItem>
-                    <SelectItem value="3">3 parcelas</SelectItem>
-                  </SelectContent>
-                </Select>
-              )}
             </div>
+          </div>
 
-            {isDepositInstallment && (
+          <DialogFooter>
+            {isViewMode && !isEditing ? (
               <>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="depositInstallment2">Valor Caução (2ª Parcela) *</Label>
-                    <Input
-                      id="depositInstallment2"
-                      value={depositInstallment2}
-                      onChange={(e) => setDepositInstallment2(applyCurrencyMask(e.target.value))}
-                      placeholder="R$ 0,00"
-                      className={errors.depositInstallment2 ? "border-red-500" : ""}
-                    />
-                    {errors.depositInstallment2 && <p className="text-sm text-red-500">{errors.depositInstallment2}</p>}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="depositPaymentDate2">Data Pagamento *</Label>
-                    <Input
-                      id="depositPaymentDate2"
-                      type="date"
-                      value={depositPaymentDate2}
-                      onChange={(e) => setDepositPaymentDate2(e.target.value)}
-                      className={errors.depositPaymentDate2 ? "border-red-500" : ""}
-                    />
-                    {errors.depositPaymentDate2 && <p className="text-sm text-red-500">{errors.depositPaymentDate2}</p>}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="depositPixCode2">Código PIX</Label>
-                    <Input
-                      id="depositPixCode2"
-                      value={depositPixCode2}
-                      onChange={(e) => setDepositPixCode2(e.target.value)}
-                      placeholder="Código PIX"
-                    />
-                  </div>
-                </div>
-
-                {depositInstallmentCount === 3 && (
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="depositInstallment3">Valor Caução (3ª Parcela) *</Label>
-                      <Input
-                        id="depositInstallment3"
-                        value={depositInstallment3}
-                        onChange={(e) => setDepositInstallment3(applyCurrencyMask(e.target.value))}
-                        placeholder="R$ 0,00"
-                        className={errors.depositInstallment3 ? "border-red-500" : ""}
-                      />
-                      {errors.depositInstallment3 && <p className="text-sm text-red-500">{errors.depositInstallment3}</p>}
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="depositPaymentDate3">Data Pagamento *</Label>
-                      <Input
-                        id="depositPaymentDate3"
-                        type="date"
-                        value={depositPaymentDate3}
-                        onChange={(e) => setDepositPaymentDate3(e.target.value)}
-                        className={errors.depositPaymentDate3 ? "border-red-500" : ""}
-                      />
-                      {errors.depositPaymentDate3 && <p className="text-sm text-red-500">{errors.depositPaymentDate3}</p>}
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="depositPixCode3">Código PIX</Label>
-                      <Input
-                        id="depositPixCode3"
-                        value={depositPixCode3}
-                        onChange={(e) => setDepositPixCode3(e.target.value)}
-                        placeholder="Código PIX"
-                      />
-                    </div>
-                  </div>
-                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    resetForm();
+                    onOpenChange(false);
+                  }}
+                  disabled={loading}
+                >
+                  Fechar
+                </Button>
+                <Button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsEditing(true);
+                  }}
+                >
+                  Editar
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    if (rental && isViewMode) {
+                      setIsEditing(false);
+                      // Reset form to original values
+                      resetForm();
+                    } else {
+                      resetForm();
+                      onOpenChange(false);
+                    }
+                  }}
+                  disabled={loading}
+                >
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={loading}>
+                  {loading
+                    ? rental
+                      ? "Atualizando..."
+                      : "Criando..."
+                    : rental
+                    ? "Atualizar Locação"
+                    : "Criar Locação"}
+                </Button>
               </>
             )}
-          </div>
-
-          {/* Commission */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Comissão</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="commissionValue">Valor Comissão Imobiliária</Label>
-                <Input
-                  id="commissionValue"
-                  value={commissionValue}
-                  onChange={(e) => setCommissionValue(applyCurrencyMask(e.target.value))}
-                  placeholder="R$ 0,00"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center space-x-2 mb-2">
-                  <Checkbox
-                    id="hasPartnerBroker"
-                    checked={hasPartnerBroker}
-                    onCheckedChange={(checked) => setHasPartnerBroker(checked as boolean)}
-                  />
-                  <Label htmlFor="hasPartnerBroker">Corretor Parceiro</Label>
-                </div>
-                {hasPartnerBroker && (
-                  <Input
-                    id="partnerBrokerValue"
-                    value={partnerBrokerValue}
-                    onChange={(e) => setPartnerBrokerValue(applyPercentageMask(e.target.value))}
-                    placeholder="0,00%"
-                  />
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Utilities */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Contas</h3>
-            <div className="space-y-4">
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="waterValue">Valor Água</Label>
-                  <Input
-                    id="waterValue"
-                    value={waterValue}
-                    onChange={(e) => setWaterValue(applyCurrencyMask(e.target.value))}
-                    placeholder="R$ 0,00"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Responsável Água</Label>
-                  <Select value={waterResponsibility} onValueChange={(value: "landlord" | "tenant") => setWaterResponsibility(value)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="landlord">Proprietário</SelectItem>
-                      <SelectItem value="tenant">Inquilino</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="electricityValue">Valor Luz</Label>
-                  <Input
-                    id="electricityValue"
-                    value={electricityValue}
-                    onChange={(e) => setElectricityValue(applyCurrencyMask(e.target.value))}
-                    placeholder="R$ 0,00"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Responsável Luz</Label>
-                  <Select value={electricityResponsibility} onValueChange={(value: "landlord" | "tenant") => setElectricityResponsibility(value)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="landlord">Proprietário</SelectItem>
-                      <SelectItem value="tenant">Inquilino</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="gasValue">Valor Gás</Label>
-                  <Input
-                    id="gasValue"
-                    value={gasValue}
-                    onChange={(e) => setGasValue(applyCurrencyMask(e.target.value))}
-                    placeholder="R$ 0,00"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Responsável Gás</Label>
-                  <Select value={gasResponsibility} onValueChange={(value: "landlord" | "tenant") => setGasResponsibility(value)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="landlord">Proprietário</SelectItem>
-                      <SelectItem value="tenant">Inquilino</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Attachments */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Anexos</h3>
-            <div className="space-y-2">
-              <input
-                ref={fileInputRef}
-                type="file"
-                multiple
-                onChange={handleFileUpload}
-                className="hidden"
-                id="file-upload"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={loading}
-              >
-                Adicionar Arquivos
-              </Button>
-              {attachments.length > 0 && (
-                <AttachmentViewer attachments={attachments} onRemove={removeAttachment} />
-              )}
-            </div>
-          </div>
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
-            Cancelar
-          </Button>
-          <Button onClick={handleSubmit} disabled={loading}>
-            {loading ? "Salvando..." : isEditing ? "Atualizar" : "Criar"}
-          </Button>
-        </DialogFooter>
+          </DialogFooter>
+        </form>
       </DialogContent>
 
-      {showContract && contractData && (
+      {showContract && createdRentalData && (
         <RentalContract
-          rental={contractData.rental}
+          rental={createdRentalData.rental}
+          property={createdRentalData.property}
+          tenant={createdRentalData.tenant}
+          location={createdRentalData.location}
           onClose={() => {
             setShowContract(false);
+            setCreatedRentalData(null);
+            resetForm();
             onOpenChange(false);
             onSuccess();
           }}

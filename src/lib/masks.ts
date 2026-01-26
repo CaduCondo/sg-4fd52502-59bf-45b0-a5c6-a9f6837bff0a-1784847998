@@ -298,10 +298,3 @@ export const formatPercentage = (value: number): string => {
     maximumFractionDigits: 3,
   });
 };
-
-// Parse percentage to number (for form submission)
-export const parsePercentageToNumber = (value: string): number => {
-  if (!value) return 0;
-  const cleanValue = value.replace(/[^\d,]/g, "").replace(",", ".");
-  return parseFloat(cleanValue) || 0;
-};

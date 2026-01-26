@@ -540,10 +540,13 @@ export default function RentalsPage() {
         <RentalFormDialog
           open={isRentalDialogOpen}
           onOpenChange={setIsRentalDialogOpen}
+          availableProperties={availableProperties}
+          availableTenants={availableTenants}
           properties={properties}
           tenants={tenants}
           onSuccess={loadData}
-          rental={selectedRental || undefined}
+          rental={selectedRental}
+          isViewMode={isViewMode}
         />
 
         <AlertDialog open={!!rentalToDelete} onOpenChange={() => setRentalToDelete(null)}>
