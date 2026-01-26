@@ -35,6 +35,17 @@ export function RentalFormDialog({
   const [contractData, setContractData] = useState<{ rental: Rental; property: Property; tenant: Tenant } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Helper to parse attachments
+  const parseAttachments = (attachments: any[] | null): Array<{ url: string; name: string; type: string }> => {
+    if (!attachments || !Array.isArray(tattachments)) return [];
+    return attachments.map(item => {
+      if (typeof item === 'string') {
+        return { url: item, name: item.split('/').pop() || 'Arquivo', type: 'application/octet-stream' };
+      }
+      return item;
+    });
+  };
+
   // Form fields - Using (rental as any) for snake_case properties to avoid TS errors
   const [propertyId, setPropertyId] = useState((rental?.propertyId || (rental as any)?.property_id) || "");
   const [tenantId, setTenantId] = useState((rental?.tenantId || (rental as any)?.tenant_id) || "");
@@ -66,9 +77,7 @@ export function RentalFormDialog({
   const [depositPixCode3, setDepositPixCode3] = useState((rental as any)?.deposit_pix_code_3 || "");
 
   const [attachments, setAttachments] = useState<Array<{ url: string; name: string; type: string }>>(
-    Array.isArray(rental?.attachments) 
-      ? rental.attachments 
-      : []
+    parseAttachments(rental?.attachments as any)
   );
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -101,7 +110,7 @@ export function RentalFormDialog({
       setDepositInstallment3((rental?.depositInstallment3 || (rental as any)?.deposit_installment_3) ? applyCurrencyMask(((rental?.depositInstallment3 || (rental as any)?.deposit_installment_3) as number).toString()) : "");
       setDepositPaymentDate3((rental as any)?.deposit_payment_date_3 || "");
       setDepositPixCode3((rental as any)?.deposit_pix_code_3 || "");
-      setAttachments(Array.isArray(rental?.attachments) ? rental.attachments : []);
+      setAttachments(parseAttachments(rental?.attachments as any));
     }
   }, [rental]);
 
@@ -208,12 +217,15 @@ export function RentalFormDialog({
 
     setLoading(true);
     try {
+      const rentValue = parseCurrencyToNumber(monthlyRent);
+      
       const rentalData = {
         property_id: propertyId,
         tenant_id: tenantId,
         start_date: startDate,
         end_date: endDate,
-        monthly_rent: parseCurrencyToNumber(monthlyRent),
+        monthly_rent: rentValue,
+        value: rentValue, // Required field matching monthly_rent
         payment_day: parseInt(paymentDay),
         security_deposit: parseCurrencyToNumber(securityDeposit),
         commission_value: commissionValue ? parseCurrencyToNumber(commissionValue) : null,
@@ -235,7 +247,7 @@ export function RentalFormDialog({
         deposit_installment_3: isDepositInstallment && depositInstallmentCount === 3 ? parseCurrencyToNumber(depositInstallment3) : null,
         deposit_payment_date_3: isDepositInstallment && depositInstallmentCount === 3 ? depositPaymentDate3 : null,
         deposit_pix_code_3: isDepositInstallment && depositInstallmentCount === 3 ? depositPixCode3 : null,
-        attachments,
+        attachments: attachments.map(a => a.url), // Save only URLs as string[]
         status: "active",
       };
 
@@ -266,13 +278,28 @@ export function RentalFormDialog({
 
         if (property && tenant) {
           // Explicitly creating a full object that matches what RentalContract needs
-          // Note: we're passing property and tenant separately to the component,
-          // but saving them in state for the render condition
-          const rentalWithRelations = {
-            ...newRental,
+          const rentalWithRelations: Rental = {
+            id: newRental.id,
+            propertyId: newRental.property_id,
+            tenantId: newRental.tenant_id,
+            startDate: newRental.start_date,
+            endDate: newRental.end_date,
+            rentAmount: newRental.monthly_rent,
+            monthlyRent: newRental.monthly_rent,
+            value: newRental.value,
+            paymentDay: newRental.payment_day,
+            status: newRental.status as any,
+            autoRenew: false, // Default
+            securityDeposit: newRental.security_deposit,
+            
+            // Map other fields as needed for the contract...
+            hasPartnerBroker: newRental.has_partner_broker,
+            partnerBrokerValue: newRental.partner_broker_value,
+            
             property,
             tenant,
-          } as Rental;
+            attachments: newRental.attachments as string[] || [],
+          };
 
           setContractData({
             rental: rentalWithRelations,
