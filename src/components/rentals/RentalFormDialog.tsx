@@ -35,17 +35,6 @@ export function RentalFormDialog({
   const [contractData, setContractData] = useState<{ rental: Rental; property: Property; tenant: Tenant } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Helper to parse attachments
-  const parseAttachments = (attachments: any[] | null): Array<{ url: string; name: string; type: string }> => {
-    if (!attachments || !Array.isArray(tattachments)) return [];
-    return attachments.map(item => {
-      if (typeof item === 'string') {
-        return { url: item, name: item.split('/').pop() || 'Arquivo', type: 'application/octet-stream' };
-      }
-      return item;
-    });
-  };
-
   // Form fields - Using (rental as any) for snake_case properties to avoid TS errors
   const [propertyId, setPropertyId] = useState((rental?.propertyId || (rental as any)?.property_id) || "");
   const [tenantId, setTenantId] = useState((rental?.tenantId || (rental as any)?.tenant_id) || "");
@@ -76,8 +65,8 @@ export function RentalFormDialog({
   const [depositPaymentDate3, setDepositPaymentDate3] = useState((rental as any)?.deposit_payment_date_3 || "");
   const [depositPixCode3, setDepositPixCode3] = useState((rental as any)?.deposit_pix_code_3 || "");
 
-  const [attachments, setAttachments] = useState<Array<{ url: string; name: string; type: string }>>(
-    parseAttachments(rental?.attachments as any)
+  const [attachments, setAttachments] = useState<string[]>(
+    Array.isArray(rental?.attachments) ? (rental.attachments as string[]) : []
   );
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -110,7 +99,7 @@ export function RentalFormDialog({
       setDepositInstallment3((rental?.depositInstallment3 || (rental as any)?.deposit_installment_3) ? applyCurrencyMask(((rental?.depositInstallment3 || (rental as any)?.deposit_installment_3) as number).toString()) : "");
       setDepositPaymentDate3((rental as any)?.deposit_payment_date_3 || "");
       setDepositPixCode3((rental as any)?.deposit_pix_code_3 || "");
-      setAttachments(parseAttachments(rental?.attachments as any));
+      setAttachments(Array.isArray(rental?.attachments) ? (rental.attachments as string[]) : []);
     }
   }, [rental]);
 
@@ -150,7 +139,7 @@ export function RentalFormDialog({
 
     setLoading(true);
     try {
-      const newAttachments: Array<{ url: string; name: string; type: string }> = [];
+      const newAttachments: string[] = [];
 
       for (const file of Array.from(files)) {
         const formData = new FormData();
@@ -164,11 +153,7 @@ export function RentalFormDialog({
         if (!response.ok) throw new Error("Erro ao fazer upload do arquivo");
 
         const data = await response.json();
-        newAttachments.push({
-          url: data.url,
-          name: file.name,
-          type: file.type,
-        });
+        newAttachments.push(data.url);
       }
 
       setAttachments([...attachments, ...newAttachments]);
@@ -247,7 +232,7 @@ export function RentalFormDialog({
         deposit_installment_3: isDepositInstallment && depositInstallmentCount === 3 ? parseCurrencyToNumber(depositInstallment3) : null,
         deposit_payment_date_3: isDepositInstallment && depositInstallmentCount === 3 ? depositPaymentDate3 : null,
         deposit_pix_code_3: isDepositInstallment && depositInstallmentCount === 3 ? depositPixCode3 : null,
-        attachments: attachments.map(a => a.url), // Save only URLs as string[]
+        attachments: attachments,
         status: "active",
       };
 
@@ -288,7 +273,7 @@ export function RentalFormDialog({
             monthlyRent: newRental.monthly_rent,
             value: newRental.value,
             paymentDay: newRental.payment_day,
-            status: newRental.status as any,
+            status: (newRental as any).status || "active",
             autoRenew: false, // Default
             securityDeposit: newRental.security_deposit,
             
@@ -298,7 +283,8 @@ export function RentalFormDialog({
             
             property,
             tenant,
-            attachments: newRental.attachments as string[] || [],
+            attachments: (newRental.attachments as string[]) || [],
+            contractAttachments: [],
           };
 
           setContractData({
