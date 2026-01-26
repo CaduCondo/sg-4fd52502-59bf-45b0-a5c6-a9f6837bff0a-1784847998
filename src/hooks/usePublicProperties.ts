@@ -35,7 +35,7 @@ export function usePublicProperties() {
   const [sortBy, setSortBy] = useState<SortOption>("newest");
   const [isLoading, setIsLoading] = useState(true);
 
-  // Definir funções de busca
+  // Fetch locations
   const fetchLocations = async () => {
     const { data } = await supabase
       .from("locations")
@@ -48,63 +48,96 @@ export function usePublicProperties() {
     }
   };
 
+  // Fetch properties with optimized queries (NO JOIN)
   const fetchProperties = async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
+      console.log("=== FETCHING PUBLIC PROPERTIES (OPTIMIZED) ===");
+      
+      // Query 1: Fetch properties only (simple, fast)
+      const { data: propertiesData, error: propertiesError } = await supabase
         .from("properties")
-        .select(`
-          *,
-          locations!inner(
-            id,
-            name,
-            city,
-            state,
-            neighborhood
-          )
-        `)
+        .select("*")
         .eq("status", "available")
-        .eq("locations.is_active", true)
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
+      if (propertiesError) throw propertiesError;
 
-      const mappedProperties: PublicProperty[] = (data || []).map((item: any) => ({
-        id: item.id,
-        propertyIdentifier: item.property_identifier || "",
-        description: item.description || "",
-        rooms: item.rooms || 0,
-        bathrooms: item.bathrooms || 0,
-        area: item.area || 0,
-        hasGarage: item.has_garage || false,
-        garageValue: item.garage_value || 0,
-        value: item.value || 0,
-        images: Array.isArray(item.images) ? item.images : [],
-        hasFurniture: item.has_furniture || false,
-        acceptsPets: item.accepts_pets || false,
-        status: item.status || "available",
-        locationId: item.location_id,
-        locationName: item.locations?.name || "",
-        locationCity: item.locations?.city || "",
-        locationState: item.locations?.state || "",
-        locationNeighborhood: item.locations?.neighborhood || "",
-        createdAt: item.created_at,
-      }));
+      if (!propertiesData || propertiesData.length === 0) {
+        console.log("No properties found");
+        setProperties([]);
+        setIsLoading(false);
+        return;
+      }
 
+      console.log(`Fetched ${propertiesData.length} properties`);
+
+      // Query 2: Fetch locations separately (batch fetch for efficiency)
+      const locationIds = [...new Set(propertiesData.map(p => p.location_id))];
+      console.log(`Fetching ${locationIds.length} unique locations`);
+
+      const { data: locationsData, error: locationsError } = await supabase
+        .from("locations")
+        .select("id, name, city, state, neighborhood, is_active")
+        .in("id", locationIds)
+        .eq("is_active", true);
+
+      if (locationsError) throw locationsError;
+
+      console.log(`Fetched ${locationsData?.length || 0} active locations`);
+
+      // Create lookup map for O(1) access
+      const locationsMap = new Map(locationsData?.map(loc => [loc.id, loc]) || []);
+
+      // Merge data in frontend - only include properties with active locations
+      const mappedProperties: PublicProperty[] = propertiesData
+        .filter(item => {
+          const location = locationsMap.get(item.location_id);
+          return location && location.is_active === true;
+        })
+        .map((item) => {
+          const location = locationsMap.get(item.location_id);
+          
+          return {
+            id: item.id,
+            propertyIdentifier: item.property_identifier || "",
+            description: item.description || "",
+            rooms: item.rooms || 0,
+            bathrooms: item.bathrooms || 0,
+            area: item.area || 0,
+            hasGarage: item.has_garage || false,
+            garageValue: item.garage_value || 0,
+            value: item.value || 0,
+            images: Array.isArray(item.images) ? item.images : [],
+            hasFurniture: item.has_furniture || false,
+            acceptsPets: item.accepts_pets || false,
+            status: item.status || "available",
+            locationId: item.location_id,
+            locationName: location?.name || "",
+            locationCity: location?.city || "",
+            locationState: location?.state || "",
+            locationNeighborhood: location?.neighborhood || "",
+            createdAt: item.created_at,
+          };
+        });
+
+      console.log(`Mapped ${mappedProperties.length} properties with active locations`);
       setProperties(mappedProperties);
     } catch (error) {
       console.error("Error loading properties:", error);
+      setProperties([]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Carregar dados ao montar
+  // Load data on mount
   useEffect(() => {
     fetchProperties();
     fetchLocations();
   }, []);
 
+  // Filter and sort properties
   const filteredProperties = properties.filter((property) => {
     const matchesLocation =
       selectedLocation === "all" || property.locationId === selectedLocation;
