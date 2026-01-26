@@ -28,13 +28,13 @@ function mapRentalToDB(rental: any) {
     deposit_installment_1: rental.depositInstallment1,
     deposit_installment_2: rental.depositInstallment2,
     deposit_installment_3: rental.depositInstallment3,
+    // ✅ CORRETO: 1ª parcela usa deposit_payment_date e deposit_pix_code
     deposit_payment_date: rental.depositPaymentDate,
     deposit_pix_code: rental.depositPixCode,
-    deposit_installment_1_payment_date: rental.depositInstallment1PaymentDate,
+    // ✅ CORRETO: 2ª e 3ª parcelas têm colunas específicas
     deposit_installment_2_payment_date: rental.depositInstallment2PaymentDate,
-    deposit_installment_3_payment_date: rental.depositInstallment3PaymentDate,
-    deposit_installment_1_pix_code: rental.depositInstallment1PixCode,
     deposit_installment_2_pix_code: rental.depositInstallment2PixCode,
+    deposit_installment_3_payment_date: rental.depositInstallment3PaymentDate,
     deposit_installment_3_pix_code: rental.depositInstallment3PixCode,
   };
 
@@ -165,13 +165,13 @@ function mapRentalFromDB(data: any): Rental {
     depositInstallment1: data.deposit_installment_1,
     depositInstallment2: data.deposit_installment_2,
     depositInstallment3: data.deposit_installment_3,
+    // ✅ CORRETO: 1ª parcela usa deposit_payment_date e deposit_pix_code
     depositPaymentDate: data.deposit_payment_date,
     depositPixCode: data.deposit_pix_code,
-    depositInstallment1PaymentDate: data.deposit_installment_1_payment_date,
+    // ✅ CORRETO: 2ª e 3ª parcelas têm campos específicos
     depositInstallment2PaymentDate: data.deposit_installment_2_payment_date,
-    depositInstallment3PaymentDate: data.deposit_installment_3_payment_date,
-    depositInstallment1PixCode: data.deposit_installment_1_pix_code,
     depositInstallment2PixCode: data.deposit_installment_2_pix_code,
+    depositInstallment3PaymentDate: data.deposit_installment_3_payment_date,
     depositInstallment3PixCode: data.deposit_installment_3_pix_code,
   };
 }

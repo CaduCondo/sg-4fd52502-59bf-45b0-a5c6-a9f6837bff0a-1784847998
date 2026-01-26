@@ -127,16 +127,13 @@ export function RentalFormDialog({
       setDepositInstallment2(rental.depositInstallment2 ? formatCurrency(rental.depositInstallment2) : "");
       setDepositInstallment3(rental.depositInstallment3 ? formatCurrency(rental.depositInstallment3) : "");
       
-      // Datas
-      // Mapeia depositPaymentDate ou depositInstallment1PaymentDate para o campo principal
-      setDepositPaymentDate(rental.depositPaymentDate || rental.depositInstallment1PaymentDate || "");
+      // ✅ CORRETO: 1ª parcela usa depositPaymentDate e depositPixCode
+      setDepositPaymentDate(rental.depositPaymentDate || "");
       setDepositInstallment2PaymentDate(rental.depositInstallment2PaymentDate || "");
       setDepositInstallment3PaymentDate(rental.depositInstallment3PaymentDate || "");
       
       // PIX
-      // Mapeia depositPixCode ou depositInstallment1PixCode para o campo principal
-      setDepositPixCode(rental.depositPixCode || rental.depositInstallment1PixCode || "");
-
+      setDepositPixCode(rental.depositPixCode || "");
     } else if (!open) {
       // Reset manual dos campos locais
       setIsDepositInstallment(false);
@@ -267,12 +264,8 @@ export function RentalFormDialog({
       if (isDepositInstallment && depositInstallmentCount) {
         rentalData.depositInstallments = parseInt(depositInstallmentCount);
         
-        // 1ª Parcela (usa os campos principais)
+        // ✅ 1ª Parcela usa os campos PRINCIPAIS: depositPaymentDate e depositPixCode
         rentalData.depositInstallment1 = parseCurrencyToNumber(securityDeposit); 
-        rentalData.depositInstallment1PaymentDate = depositPaymentDate || null;
-        rentalData.depositInstallment1PixCode = depositPixCode || null;
-        
-        // Dados principais de caução também recebem a info da 1ª parcela
         rentalData.depositPaymentDate = depositPaymentDate || null;
         rentalData.depositPixCode = depositPixCode || null;
 
@@ -288,12 +281,9 @@ export function RentalFormDialog({
           rentalData.depositInstallment3PixCode = depositInstallment3PixCode || null;
         }
       } else {
-        // Não parcelado
+        // Não parcelado - usa os campos principais
         rentalData.depositInstallments = 1;
         rentalData.depositInstallment1 = parseCurrencyToNumber(securityDeposit);
-        rentalData.depositInstallment1PaymentDate = depositPaymentDate || null;
-        rentalData.depositInstallment1PixCode = depositPixCode || null;
-        
         rentalData.depositPaymentDate = depositPaymentDate || null;
         rentalData.depositPixCode = depositPixCode || null;
       }
@@ -381,12 +371,17 @@ export function RentalFormDialog({
 
       if (i === 1) {
         amount = rentalData.depositInstallment1;
-        paymentDate = rentalData.depositInstallment1PaymentDate;
-        pixCode = rentalData.depositInstallment1PixCode;
-      } else {
-        amount = rentalData[`depositInstallment${i}`] || 0;
-        paymentDate = rentalData[`depositInstallment${i}PaymentDate`] || null;
-        pixCode = rentalData[`depositInstallment${i}PixCode`] || null;
+        // ✅ CORRETO: 1ª parcela usa depositPaymentDate e depositPixCode
+        paymentDate = rentalData.depositPaymentDate;
+        pixCode = rentalData.depositPixCode;
+      } else if (i === 2) {
+        amount = rentalData.depositInstallment2 || 0;
+        paymentDate = rentalData.depositInstallment2PaymentDate || null;
+        pixCode = rentalData.depositInstallment2PixCode || null;
+      } else if (i === 3) {
+        amount = rentalData.depositInstallment3 || 0;
+        paymentDate = rentalData.depositInstallment3PaymentDate || null;
+        pixCode = rentalData.depositInstallment3PixCode || null;
       }
       
       installments.push({
@@ -416,6 +411,27 @@ export function RentalFormDialog({
     }
 
     await createDepositInstallments(rentalId, rentalData);
+  };
+
+  // ✅ Função para calcular o valor total da caução
+  const calculateTotalDeposit = () => {
+    let total = 0;
+    
+    if (securityDeposit) {
+      total += parseCurrencyToNumber(securityDeposit);
+    }
+    
+    if (isDepositInstallment && depositInstallmentCount) {
+      if (parseInt(depositInstallmentCount) >= 2 && depositInstallment2) {
+        total += parseCurrencyToNumber(depositInstallment2);
+      }
+      
+      if (parseInt(depositInstallmentCount) === 3 && depositInstallment3) {
+        total += parseCurrencyToNumber(depositInstallment3);
+      }
+    }
+    
+    return total;
   };
 
   const getLocationName = (locationId: string) => {
@@ -727,6 +743,23 @@ export function RentalFormDialog({
                         disabled={!isEditing}
                       />
                     </div>
+                  </div>
+                )}
+
+                {/* VALOR TOTAL DA CAUÇÃO - Exibido quando parcelado */}
+                {isDepositInstallment && depositInstallmentCount && (
+                  <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <div className="flex justify-between items-center">
+                      <span className="font-bold text-blue-900 dark:text-blue-100">
+                        Valor Total Caução:
+                      </span>
+                      <span className="text-xl font-bold text-blue-600 dark:text-blue-400">
+                        {formatCurrency(calculateTotalDeposit())}
+                      </span>
+                    </div>
+                    <p className="text-xs text-blue-600 dark:text-blue-400 italic mt-2">
+                      * Soma de todas as parcelas do caução
+                    </p>
                   </div>
                 )}
               </div>
