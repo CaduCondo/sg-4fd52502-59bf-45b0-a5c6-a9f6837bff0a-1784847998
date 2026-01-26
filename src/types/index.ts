@@ -199,6 +199,16 @@ export interface Rental {
   createdAt?: string;
   hasPartnerBroker?: boolean;
   partnerBrokerValue?: number;
+  
+  // Commission & Utilities
+  agencyCommissionPercentage?: number;
+  realEstateAgentCommissionPercentage?: number;
+  water?: number;
+  electricity?: number;
+  gas?: number;
+  waterResponsibility?: "landlord" | "tenant";
+  electricityResponsibility?: "landlord" | "tenant";
+  gasResponsibility?: "landlord" | "tenant";
 }
 
 export interface Payment {
