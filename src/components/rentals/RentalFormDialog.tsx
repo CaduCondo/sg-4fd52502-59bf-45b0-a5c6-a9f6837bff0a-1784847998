@@ -587,8 +587,8 @@ export function RentalFormDialog({
             <h3 className="font-semibold text-sm text-muted-foreground mb-2">Informações da Caução</h3>
             
             {/* LINHA 1: Valor Caução | Data Pagamento | Código PIX */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+              <div className="space-y-2 md:col-span-5">
                 <Label htmlFor="securityDeposit">
                   {isDepositInstallment ? "Valor Caução (1ª Parcela)" : "Valor Caução (À vista)"} *
                 </Label>
@@ -604,7 +604,7 @@ export function RentalFormDialog({
                 />
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-2 md:col-span-4">
                 <Label htmlFor="depositPaymentDate">Data Pagamento *</Label>
                 <Input
                   id="depositPaymentDate"
@@ -617,7 +617,7 @@ export function RentalFormDialog({
                 />
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-2 md:col-span-3">
                 <Label htmlFor="depositPixCode">Código PIX</Label>
                 <Input
                   id="depositPixCode"
@@ -679,12 +679,12 @@ export function RentalFormDialog({
               )}
             </div>
 
-            {/* LINHAS SEGUINTES: 2ª e 3ª Parcelas (SEM PIX) */}
+            {/* LINHAS SEGUINTES: 2ª e 3ª Parcelas - ALINHADAS COM A LINHA 1 */}
             {isDepositInstallment && depositInstallmentCount && (
               <div className="space-y-4 mt-4 pt-4 border-t">
-                {/* 2ª PARCELA - APENAS VALOR E DATA */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
+                {/* 2ª PARCELA - Alinhada com colunas da LINHA 1 */}
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                  <div className="space-y-2 md:col-span-5">
                     <Label htmlFor="depositInstallment2">Valor Caução (2ª Parcela)</Label>
                     <Input
                       id="depositInstallment2"
@@ -695,7 +695,7 @@ export function RentalFormDialog({
                     />
                   </div>
 
-                  <div className="space-y-2">
+                  <div className="space-y-2 md:col-span-4">
                     <Label htmlFor="depositInstallment2PaymentDate">Data Pagamento</Label>
                     <Input
                       id="depositInstallment2PaymentDate"
@@ -707,10 +707,10 @@ export function RentalFormDialog({
                   </div>
                 </div>
 
-                {/* 3ª PARCELA - APENAS VALOR E DATA */}
+                {/* 3ª PARCELA - Alinhada com colunas da LINHA 1 */}
                 {depositInstallmentCount === "3" && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                    <div className="space-y-2 md:col-span-5">
                       <Label htmlFor="depositInstallment3">Valor Caução (3ª Parcela)</Label>
                       <Input
                         id="depositInstallment3"
@@ -721,7 +721,7 @@ export function RentalFormDialog({
                       />
                     </div>
 
-                    <div className="space-y-2">
+                    <div className="space-y-2 md:col-span-4">
                       <Label htmlFor="depositInstallment3PaymentDate">Data Pagamento</Label>
                       <Input
                         id="depositInstallment3PaymentDate"
