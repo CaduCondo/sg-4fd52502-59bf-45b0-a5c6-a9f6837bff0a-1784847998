@@ -59,9 +59,10 @@ export default async function handler(
         locations:location_id (
           id,
           name,
-          address,
-          phone,
-          email
+          address:street,
+          neighborhood,
+          city,
+          state
         )
       `)
       .eq("tenant_id", tenantId)
@@ -76,12 +77,17 @@ export default async function handler(
     const transformedProperties = properties?.map((prop: any) => {
       const location = Array.isArray(prop.locations) ? prop.locations[0] : prop.locations;
       
+      // Montar endereço completo
+      const fullAddress = location ? 
+        `${location.address || ''}, ${location.neighborhood || ''} - ${location.city || ''}/${location.state || ''}` : 
+        null;
+      
       return {
         ...prop,
         location_name: location?.name || null,
-        location_address: location?.address || null,
-        location_phone: location?.phone || null,
-        location_email: location?.email || null,
+        location_address: fullAddress,
+        location_phone: null, // Campo não existe na tabela locations
+        location_email: null, // Campo não existe na tabela locations
       };
     }) || [];
 

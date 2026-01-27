@@ -34,18 +34,13 @@ export function usePublicProperties(): UsePublicPropertiesReturn {
   }, []);
 
   const fetchProperties = async () => {
-    console.log("=== FETCHING PUBLIC PROPERTIES VIA NEXT.JS API ROUTE ===");
+    console.log("=== FETCHING PUBLIC PROPERTIES VIA NEXT.JS API ===");
     setIsLoading(true);
     setError(null);
 
     try {
-      // Usar Next.js API Route em vez de Edge Function
-      const response = await fetch("/api/properties/available", {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
+      // Usar a rota PÚBLICA /api/properties/available em vez de /api/properties
+      const response = await fetch("/api/properties/available");
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
