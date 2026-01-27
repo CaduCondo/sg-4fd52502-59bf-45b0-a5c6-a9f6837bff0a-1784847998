@@ -16,22 +16,9 @@ export default async function handler(
   }
 
   try {
-    // Buscar tenant_id e user_id dos headers
-    const tenantId = req.headers["x-tenant-id"] as string;
-    const userId = req.headers["x-user-id"] as string;
+    console.log("🔍 Fetching all properties...");
 
-    console.log("🔍 Incoming Headers:", JSON.stringify(req.headers));
-    console.log(`👤 Auth Check - Tenant: ${tenantId}, User: ${userId}`);
-
-    if (!tenantId || !userId) {
-      console.error("❌ Missing auth headers");
-      return res.status(401).json({ 
-        error: "Unauthorized", 
-        message: "Tenant or user not found in headers" 
-      });
-    }
-
-    // 1. Buscar properties primeiro (Query Simples)
+    // 1. Buscar properties primeiro (Query Simples - SEM tenant_id)
     const { data: properties, error: propError } = await supabase
       .from("properties")
       .select(`
@@ -51,10 +38,8 @@ export default async function handler(
         accepts_pets,
         location_id,
         created_at,
-        updated_at,
-        tenant_id
+        updated_at
       `)
-      .eq("tenant_id", tenantId)
       .order("created_at", { ascending: false });
 
     if (propError) {
@@ -105,7 +90,7 @@ export default async function handler(
         // Campos reais mapeados:
         status: prop.status,
         value: prop.value,
-        bedrooms: prop.rooms, // rooms -> bedrooms
+        bedrooms: prop.rooms, // rooms -> bedrooms (compatibilidade frontend)
         bathrooms: prop.bathrooms,
         area: prop.area,
         address: fullAddress,
@@ -134,8 +119,8 @@ export default async function handler(
         notes: null,
         location_name: location?.name || null,
         location_address: fullAddress,
-        location_phone: null,
-        location_email: null
+        location_phone: null, // Não existe em locations
+        location_email: null  // Não existe em locations
       };
     });
 

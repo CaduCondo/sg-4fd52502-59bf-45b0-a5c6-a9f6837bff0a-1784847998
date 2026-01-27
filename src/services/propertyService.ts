@@ -61,36 +61,18 @@ const mapDatabaseProperty = (item: any): Property => {
 
 /**
  * Buscar todos os imóveis (com dados de location)
+ * USA NEXT.JS API ROUTE (sem tenant_id - não existe na tabela properties)
  */
 export const getAll = async (): Promise<Property[]> => {
   try {
     console.log("=== FETCHING PROPERTIES VIA NEXT.JS API ROUTE ===");
 
-    // Buscar informações de autenticação
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      throw new Error("User not authenticated");
-    }
-
-    // Buscar tenant_id do usuário
-    const { data: systemUser } = await supabase
-      .from("system_users")
-      .select("tenant_id")
-      .eq("auth_user_id", user.id)
-      .single();
-
-    if (!systemUser?.tenant_id) {
-      throw new Error("Tenant not found for user");
-    }
-
-    // Usar Next.js API Route com headers de autenticação
+    // Usar Next.js API Route SEM headers de autenticação
+    // (A API não precisa de tenant_id porque properties não tem essa coluna)
     const response = await fetch("/api/properties", {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
-        "x-tenant-id": systemUser.tenant_id,
-        "x-user-id": user.id,
       },
     });
 
@@ -118,19 +100,7 @@ export const getById = async (id: string): Promise<Property | null> => {
   console.log(`=== FETCHING PROPERTY BY ID: ${id} ===`);
 
   try {
-    // Tenta buscar via RPC primeiro filtrando pelo ID (reusa a lógica otimizada)
-    // A RPC espera parâmetros opcionais, então podemos chamar assim
-    const { data, error } = await supabase.rpc("get_properties_with_locations");
-    
-    if (!error && data) {
-       const found = data.find((p: any) => p.id === id);
-       if (found) return mapDatabaseProperty(found);
-    }
-    
-    // Fallback: Query direta simples se RPC falhar ou não achar (embora RPC traga tudo, filtrar em memória é rápido para 34 itens)
-    // Para 34 itens, filtrar em memória a RPC é mais rápido que fazer outra request complexa
-    
-    // Se precisarmos de fallback para query direta:
+    // Query direta simples COM JOIN para pegar dados de location
     const { data: propertyData, error: propertyError } = await supabase
       .from("properties")
       .select(`
