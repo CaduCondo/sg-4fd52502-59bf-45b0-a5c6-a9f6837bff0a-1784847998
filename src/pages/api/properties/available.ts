@@ -51,7 +51,7 @@ export default async function handler(
           zip_code
         )
       `)
-      .eq("status", "disponível")
+      .eq("status", "available")
       .order("created_at", { ascending: false });
 
     if (error) {
