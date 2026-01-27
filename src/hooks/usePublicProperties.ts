@@ -34,74 +34,34 @@ export function usePublicProperties(): UsePublicPropertiesReturn {
   }, []);
 
   const fetchProperties = async () => {
-    console.log("=== FETCHING PUBLIC PROPERTIES VIA EDGE FUNCTION (get-available-properties) ===");
+    console.log("=== FETCHING PUBLIC PROPERTIES VIA NEXT.JS API ROUTE ===");
     setIsLoading(true);
     setError(null);
 
     try {
-      // Usar Edge Function em vez de RPC (bypassa PostgREST)
-      const { data, error: edgeFunctionError } = await supabase.functions.invoke('get-available-properties', {
-        method: 'GET',
+      // Usar Next.js API Route em vez de Edge Function
+      const response = await fetch("/api/properties/available", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
       });
 
-      if (edgeFunctionError) {
-        console.error("Edge Function Error:", edgeFunctionError);
-        throw edgeFunctionError;
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
       }
 
-      if (!data || !Array.isArray(data)) {
-        console.warn("No properties returned from Edge Function");
-        setProperties([]);
-        setLocations([]);
-        return;
-      }
+      const result = await response.json();
+      const fetchedProperties = result.data || [];
 
-      console.log(`✅ Fetched ${data.length} available properties via Edge Function`);
+      console.log(`✅ Fetched ${fetchedProperties.length} available properties via Next.js API Route`);
 
-      // Mapear dados para o formato Property
-      const mappedProperties: Property[] = data.map((item: any) => ({
-        id: item.id,
-        locationId: item.location_id,
-        location: item.location_name || "",
-        complement: item.complement,
-        description: item.description,
-        rooms: item.rooms,
-        bathrooms: item.bathrooms,
-        area: item.area,
-        hasGarage: item.has_garage,
-        value: item.value,
-        garageValue: item.garage_value,
-        status: item.status as "available" | "occupied" | "unavailable",
-        propertyIdentifier: item.property_identifier,
-        images: Array.isArray(item.images) ? (item.images as string[]) : [],
-        hasFurniture: item.has_furniture || false,
-        acceptsPets: item.accepts_pets || false,
-        createdAt: item.created_at,
-        updatedAt: item.updated_at,
-        
-        // Location data flat
-        address: undefined,
-        number: undefined,
-        neighborhood: item.location_neighborhood,
-        city: item.location_city,
-        state: item.location_state,
-        zipCode: undefined,
-      }));
-
-      setProperties(mappedProperties);
-
-      // Extrair locations (bairros/cidades) únicas para os filtros
-      const uniqueLocations = Array.from(new Set(
-        mappedProperties
-          .map(p => p.neighborhood || p.city)
-          .filter(Boolean) as string[]
-      )).sort();
-      
-      setLocations(uniqueLocations);
-
-    } catch (err) {
-      console.error("Error fetching properties:", err);
-      setError(err instanceof Error ? err.message : "Erro ao carregar imóveis");
+      setProperties(fetchedProperties);
+      setFilteredProperties(fetchedProperties);
+    } catch (err: any) {
+      console.error("Error fetching public properties:", err);
+      setError(err.message || "Erro ao carregar imóveis");
     } finally {
       setIsLoading(false);
     }

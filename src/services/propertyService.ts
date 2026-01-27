@@ -63,30 +63,28 @@ const mapDatabaseProperty = (item: any): Property => {
  * Buscar todos os imóveis (com dados de location)
  */
 export const getAll = async (): Promise<Property[]> => {
-  console.log("=== FETCHING PROPERTIES VIA EDGE FUNCTION (get-properties) ===");
-
   try {
-    // Usar Edge Function em vez de RPC (bypassa PostgREST)
-    const { data, error } = await supabase.functions.invoke('get-properties', {
-      method: 'GET',
+    console.log("=== FETCHING PROPERTIES VIA NEXT.JS API ROUTE ===");
+
+    // Usar Next.js API Route em vez de Edge Function
+    const response = await fetch("/api/properties", {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
     });
 
-    if (error) {
-      console.error("Edge Function Error:", error);
-      throw error;
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
     }
 
-    if (!data || !Array.isArray(data)) {
-      console.warn("No properties returned from Edge Function");
-      return [];
-    }
+    const result = await response.json();
+    const properties = result.data || [];
 
-    console.log(`✅ Fetched ${data.length} properties via Edge Function`);
+    console.log(`✅ Fetched ${properties.length} properties via Next.js API Route`);
 
-    // Mapear dados do banco para interface Property
-    const mappedProperties = data.map(mapDatabaseProperty);
-
-    return mappedProperties;
+    return properties;
   } catch (error) {
     console.error("Error fetching properties:", error);
     throw error;
