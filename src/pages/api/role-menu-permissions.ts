@@ -1,37 +1,41 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { query } from "@/lib/db";
+import { createClient } from "@supabase/supabase-js";
+
+// Criar cliente Supabase server-side
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  // CORS headers
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
-  }
-
   if (req.method !== "GET") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
-    console.log("🚀 Fetching role menu permissions via Next.js API Route");
+    console.log("🔍 Fetching role menu permissions...");
 
-    const sql = `
-      SELECT *
-      FROM role_menu_permissions
-      ORDER BY role ASC
-    `;
+    // Query usando Supabase Client
+    const { data: permissions, error } = await supabase
+      .from("role_menu_permissions")
+      .select("*")
+      .order("role", { ascending: true })
+      .order("menu", { ascending: true });
 
-    const rows = await query(sql);
+    if (error) {
+      console.error("❌ Supabase error:", error);
+      throw error;
+    }
 
-    console.log(`✅ Fetched ${rows.length} role menu permissions`);
+    console.log(`✅ Found ${permissions?.length || 0} role menu permissions`);
 
-    return res.status(200).json(rows);
+    return res.status(200).json({
+      permissions: permissions || [],
+      count: permissions?.length || 0,
+    });
   } catch (error: any) {
     console.error("❌ Error fetching role menu permissions:", error);
     return res.status(500).json({

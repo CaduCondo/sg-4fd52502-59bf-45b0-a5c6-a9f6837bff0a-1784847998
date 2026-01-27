@@ -1,5 +1,11 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { query } from "@/lib/db";
+import { createClient } from "@supabase/supabase-js";
+
+// Criar cliente Supabase server-side
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 export default async function handler(
   req: NextApiRequest,
@@ -10,52 +16,65 @@ export default async function handler(
   }
 
   try {
-    console.log("🔍 Fetching available properties (public route)...");
+    console.log("🔍 Fetching available properties (public route via Supabase Client)...");
 
-    // Query PÚBLICA - não precisa verificar tenant/user
-    // Apenas busca imóveis disponíveis e ativos
-    const sql = `
-      SELECT 
-        p.id,
-        p.title,
-        p.description,
-        p.property_type,
-        p.status,
-        p.value,
-        p.bedrooms,
-        p.bathrooms,
-        p.area,
-        p.address,
-        p.neighborhood,
-        p.city,
-        p.state,
-        p.zip_code,
-        p.images,
-        p.features,
-        p.owner_name,
-        p.owner_phone,
-        p.owner_email,
-        p.notes,
-        p.location_id,
-        p.created_at,
-        p.updated_at,
-        l.name as location_name,
-        l.address as location_address,
-        l.phone as location_phone,
-        l.email as location_email
-      FROM properties p
-      LEFT JOIN locations l ON p.location_id = l.id
-      WHERE p.status = 'disponível'
-      ORDER BY p.created_at DESC;
-    `;
+    // Query usando Supabase Client (usa HTTP/REST, não TCP direto)
+    const { data: properties, error } = await supabase
+      .from("properties")
+      .select(`
+        id,
+        title,
+        description,
+        property_type,
+        status,
+        value,
+        bedrooms,
+        bathrooms,
+        area,
+        address,
+        neighborhood,
+        city,
+        state,
+        zip_code,
+        images,
+        features,
+        owner_name,
+        owner_phone,
+        owner_email,
+        notes,
+        location_id,
+        created_at,
+        updated_at,
+        locations:location_id (
+          id,
+          name,
+          address,
+          phone,
+          email
+        )
+      `)
+      .eq("status", "disponível")
+      .order("created_at", { ascending: false });
 
-    const properties = await query(sql);
+    if (error) {
+      console.error("❌ Supabase error:", error);
+      throw error;
+    }
 
-    console.log(`✅ Found ${properties.length} available properties`);
+    // Transformar dados para manter compatibilidade com formato anterior
+    const transformedProperties = properties?.map(prop => ({
+      ...prop,
+      location_name: prop.locations?.name || null,
+      location_address: prop.locations?.address || null,
+      location_phone: prop.locations?.phone || null,
+      location_email: prop.locations?.email || null,
+    })) || [];
+
+    console.log(`✅ Found ${transformedProperties.length} available properties`);
 
     return res.status(200).json({
-      properties,
-      count: properties.length,
+      properties: transformedProperties,
+      count: transformedProperties.length,
     });
   } catch (error: any) {
     console.error("❌ Error fetching available properties:", error);

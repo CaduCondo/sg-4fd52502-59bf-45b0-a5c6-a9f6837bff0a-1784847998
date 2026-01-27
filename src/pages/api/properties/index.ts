@@ -1,87 +1,91 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { query } from "@/lib/db";
+import { createClient } from "@supabase/supabase-js";
+
+// Criar cliente Supabase server-side
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  // CORS headers
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
-  }
-
   if (req.method !== "GET") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
-    console.log("🚀 Fetching all properties via Next.js API Route");
+    // Buscar tenant_id e user_id dos headers (enviados pelo frontend)
+    const tenantId = req.headers["x-tenant-id"] as string;
+    const userId = req.headers["x-user-id"] as string;
 
-    const sql = `
-      SELECT 
-        p.id,
-        p.status,
-        p.description,
-        p.property_identifier,
-        p.complement,
-        p.rooms,
-        p.bathrooms,
-        p.area,
-        p.has_garage,
-        p.garage_value,
-        p.value,
-        p.has_furniture,
-        p.accepts_pets,
-        p.created_at,
-        p.images,
-        l.id as location_id,
-        l.name as location_name,
-        l.neighborhood,
-        l.city,
-        l.state
-      FROM properties p
-      LEFT JOIN locations l ON p.location_id = l.id
-      ORDER BY p.created_at DESC
-      LIMIT 100
-    `;
+    if (!tenantId || !userId) {
+      return res.status(401).json({ 
+        error: "Unauthorized", 
+        message: "Tenant or user not found" 
+      });
+    }
 
-    const rows = await query(sql);
+    console.log(`🔍 Fetching properties for tenant: ${tenantId}, user: ${userId}`);
 
-    // Mapear para o formato esperado pelo frontend
-    const properties = rows.map((row: any) => ({
-      id: row.id,
-      status: row.status,
-      description: row.description,
-      property_identifier: row.property_identifier,
-      complement: row.complement,
-      rooms: row.rooms,
-      bathrooms: row.bathrooms,
-      area: row.area,
-      has_garage: row.has_garage,
-      garage_value: row.garage_value,
-      value: row.value,
-      has_furniture: row.has_furniture,
-      accepts_pets: row.accepts_pets,
-      created_at: row.created_at,
-      images: row.images,
-      location: row.location_id ? {
-        id: row.location_id,
-        name: row.location_name,
-        neighborhood: row.neighborhood,
-        city: row.city,
-        state: row.state,
-      } : null,
-    }));
+    // Query usando Supabase Client
+    const { data: properties, error } = await supabase
+      .from("properties")
+      .select(`
+        id,
+        title,
+        description,
+        property_type,
+        status,
+        value,
+        bedrooms,
+        bathrooms,
+        area,
+        address,
+        neighborhood,
+        city,
+        state,
+        zip_code,
+        images,
+        features,
+        owner_name,
+        owner_phone,
+        owner_email,
+        notes,
+        location_id,
+        created_at,
+        updated_at,
+        locations:location_id (
+          id,
+          name,
+          address,
+          phone,
+          email
+        )
+      `)
+      .eq("tenant_id", tenantId)
+      .order("created_at", { ascending: false });
 
-    console.log(`✅ Fetched ${properties.length} properties`);
+    if (error) {
+      console.error("❌ Supabase error:", error);
+      throw error;
+    }
+
+    // Transformar dados
+    const transformedProperties = properties?.map(prop => ({
+      ...prop,
+      location_name: prop.locations?.name || null,
+      location_address: prop.locations?.address || null,
+      location_phone: prop.locations?.phone || null,
+      location_email: prop.locations?.email || null,
+    })) || [];
+
+    console.log(`✅ Found ${transformedProperties.length} properties`);
 
     return res.status(200).json({
-      data: properties,
-      count: properties.length,
+      properties: transformedProperties,
+      count: transformedProperties.length,
     });
   } catch (error: any) {
     console.error("❌ Error fetching properties:", error);
