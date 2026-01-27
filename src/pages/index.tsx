@@ -28,6 +28,14 @@ export default function PublicHome() {
 
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
+  // Transform string[] locations to the format expected by LocationFilter
+  const formattedLocations = locations.map(loc => ({
+    id: loc,
+    name: loc,
+    city: "",
+    neighborhood: ""
+  }));
+
   return (
     <>
       <Head>
@@ -83,7 +91,7 @@ export default function PublicHome() {
           <div className="container mx-auto px-4 py-6">
             <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
               <LocationFilter
-                locations={locations}
+                locations={formattedLocations as any}
                 selectedLocation={selectedLocation}
                 onLocationChange={setSelectedLocation} />
 

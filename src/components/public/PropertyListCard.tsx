@@ -66,7 +66,7 @@ export function PropertyListCard({ property }: PropertyListCardProps) {
                   <div className="flex items-center gap-2 text-slate-600 mb-3">
                     <MapPin className="h-4 w-4 flex-shrink-0" />
                     <span className="text-sm">
-                      {property.locationCity} - {property.locationState}
+                      {property.city} - {property.state}
                     </span>
                   </div>
                 </div>

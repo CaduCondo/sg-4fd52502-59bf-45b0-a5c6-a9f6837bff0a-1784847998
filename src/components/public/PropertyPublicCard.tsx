@@ -84,7 +84,7 @@ export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
             <h3 className="text-2xl font-bold text-slate-900">{displayTitle}</h3>
             <p className="flex items-center gap-1 text-sm text-slate-600">
               <MapPin className="h-4 w-4" />
-              {property.locationCity} - {property.locationState}
+              {property.city} - {property.state}
             </p>
 
             {/* Características principais */}
@@ -143,7 +143,7 @@ export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
               {displayTitle}
             </DialogTitle>
             <DialogDescription className="text-base">
-              {property.locationCity} - {property.locationState}
+              {property.city} - {property.state}
             </DialogDescription>
           </DialogHeader>
 
