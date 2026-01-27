@@ -62,13 +62,17 @@ export default async function handler(
     }
 
     // Transformar dados para manter compatibilidade com formato anterior
-    const transformedProperties = properties?.map(prop => ({
-      ...prop,
-      location_name: prop.locations?.name || null,
-      location_address: prop.locations?.address || null,
-      location_phone: prop.locations?.phone || null,
-      location_email: prop.locations?.email || null,
-    })) || [];
+    const transformedProperties = properties?.map((prop: any) => {
+      const location = Array.isArray(prop.locations) ? prop.locations[0] : prop.locations;
+      
+      return {
+        ...prop,
+        location_name: location?.name || null,
+        location_address: location?.address || null,
+        location_phone: location?.phone || null,
+        location_email: location?.email || null,
+      };
+    }) || [];
 
     console.log(`✅ Found ${transformedProperties.length} available properties`);
 
