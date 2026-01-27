@@ -739,45 +739,76 @@ export type Database = {
           location_name: string
           location_neighborhood: string
           location_state: string
-          monthly_rent: number
           property_identifier: string
           rooms: number
           status: string
-          type: string
-          value: number
-        }[]
-      }
-      get_properties_with_locations: {
-        Args: { p_location_id?: string; p_status?: string }
-        Returns: {
-          accepts_pets: boolean
-          area: number
-          bathrooms: number
-          complement: string
-          created_at: string
-          description: string
-          garage_value: number
-          has_furniture: boolean
-          has_garage: boolean
-          id: string
-          images: Json
-          location_city: string
-          location_id: string
-          location_name: string
-          location_neighborhood: string
-          location_number: string
-          location_state: string
-          location_street: string
-          location_zip_code: string
-          monthly_rent: number
-          property_identifier: string
-          rooms: number
-          status: string
-          type: string
           updated_at: string
           value: number
         }[]
       }
+      get_properties_with_locations:
+        | {
+            Args: never
+            Returns: {
+              accepts_pets: boolean
+              area: number
+              bathrooms: number
+              complement: string
+              created_at: string
+              description: string
+              garage_value: number
+              has_furniture: boolean
+              has_garage: boolean
+              id: string
+              images: Json
+              location_city: string
+              location_complement: string
+              location_id: string
+              location_is_active: boolean
+              location_name: string
+              location_neighborhood: string
+              location_number: string
+              location_state: string
+              location_street: string
+              location_zip_code: string
+              property_identifier: string
+              rooms: number
+              status: string
+              updated_at: string
+              value: number
+            }[]
+          }
+        | {
+            Args: { p_location_id?: string; p_status?: string }
+            Returns: {
+              accepts_pets: boolean
+              area: number
+              bathrooms: number
+              complement: string
+              created_at: string
+              description: string
+              garage_value: number
+              has_furniture: boolean
+              has_garage: boolean
+              id: string
+              images: Json
+              location_city: string
+              location_id: string
+              location_name: string
+              location_neighborhood: string
+              location_number: string
+              location_state: string
+              location_street: string
+              location_zip_code: string
+              monthly_rent: number
+              property_identifier: string
+              rooms: number
+              status: string
+              type: string
+              updated_at: string
+              value: number
+            }[]
+          }
       get_system_user_id: { Args: never; Returns: string }
       hash_password: { Args: { plain_password: string }; Returns: string }
       migrate_system_user_to_auth: {

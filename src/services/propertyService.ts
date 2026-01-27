@@ -1,37 +1,61 @@
 import { supabase } from "@/integrations/supabase/client";
 import { Property } from "@/types";
 
-// Função helper para mapear retorno do banco para interface Property
+/**
+ * Helper para mapear dados do banco (snake_case) para interface Property (camelCase)
+ * IMPORTANTE: Mapeia apenas campos que REALMENTE EXISTEM no banco de dados
+ */
 const mapDatabaseProperty = (item: any): Property => {
   return {
+    // IDs
     id: item.id,
     locationId: item.location_id,
-    location: item.location_name || item.location?.name || "", // Suporta retorno RPC ou Join
+    
+    // Location name (from JOIN or RPC)
+    location: item.location_name || "",
+    
+    // Property details (CAMPOS REAIS DO BANCO)
     complement: item.complement,
     description: item.description,
-    type: item.type,
-    rooms: item.rooms,
-    bedrooms: item.rooms, // Alias
+    propertyIdentifier: item.property_identifier,
+    
+    // Numeric fields (CAMPOS REAIS DO BANCO)
+    rooms: item.rooms, // Total de cômodos (não é "bedrooms")
     bathrooms: item.bathrooms,
     area: item.area,
-    hasGarage: item.has_garage,
-    value: item.value,
-    monthlyRent: item.monthly_rent,
+    
+    // Financial (CAMPOS REAIS DO BANCO)
+    value: item.value, // Valor principal do imóvel
     garageValue: item.garage_value,
-    status: item.status as "available" | "occupied" | "unavailable",
-    propertyIdentifier: item.property_identifier,
-    images: Array.isArray(item.images) ? (item.images as string[]) : [],
+    
+    // Booleans (CAMPOS REAIS DO BANCO)
+    hasGarage: item.has_garage || false,
     hasFurniture: item.has_furniture || false,
     acceptsPets: item.accepts_pets || false,
+    
+    // Status
+    status: item.status as "available" | "occupied" | "unavailable",
+    
+    // Images
+    images: Array.isArray(item.images) ? (item.images as string[]) : [],
+    
+    // Timestamps
     createdAt: item.created_at,
     updatedAt: item.updated_at,
-    // Location details mapped to standard fields
-    address: item.location_street || item.location?.street,
-    number: item.location_number || item.location?.number,
-    neighborhood: item.location_neighborhood || item.location?.neighborhood,
-    city: item.location_city || item.location?.city,
-    state: item.location_state || item.location?.state,
-    zipCode: item.location_zip_code || item.location?.zip_code,
+    
+    // Location details (from JOIN)
+    address: item.location_street,
+    number: item.location_number,
+    neighborhood: item.location_neighborhood,
+    city: item.location_city,
+    state: item.location_state,
+    zipCode: item.location_zip_code,
+    
+    // CAMPOS LEGADOS (para compatibilidade com código antigo)
+    // Estes NÃO existem no banco, mas o código antigo pode esperar eles
+    bedrooms: item.rooms, // Alias para 'rooms' (compatibilidade)
+    monthlyRent: item.value, // Alias para 'value' (compatibilidade)
+    type: undefined, // Não existe no banco
   };
 };
 
@@ -121,18 +145,18 @@ export const getById = async (id: string): Promise<Property | null> => {
 export const create = async (property: Partial<Property>): Promise<Property> => {
   console.log("=== CREATING PROPERTY ===");
   
+  // Mapear apenas campos que REALMENTE EXISTEM no banco
   const propertyData = {
     location_id: property.locationId,
     property_identifier: property.propertyIdentifier || "Apartamento",
     complement: property.complement,
     description: property.description,
-    type: property.type,
-    rooms: property.rooms,
+    // CAMPOS REAIS DO BANCO:
+    rooms: property.rooms, // NÃO usar 'bedrooms'
     bathrooms: property.bathrooms,
     area: property.area,
     has_garage: property.hasGarage,
-    value: property.value,
-    monthly_rent: property.monthlyRent || property.value,
+    value: property.value, // NÃO usar 'monthlyRent'
     garage_value: property.garageValue,
     status: property.status || "available",
     images: property.images || [],
@@ -151,6 +175,7 @@ export const create = async (property: Partial<Property>): Promise<Property> => 
     throw error;
   }
 
+  console.log("✅ Property created successfully");
   return mapDatabaseProperty(data);
 };
 
@@ -160,18 +185,18 @@ export const create = async (property: Partial<Property>): Promise<Property> => 
 export const update = async (id: string, property: Partial<Property>): Promise<Property> => {
   console.log("=== UPDATING PROPERTY ===");
 
+  // Mapear apenas campos que REALMENTE EXISTEM no banco
   const propertyData = {
     location_id: property.locationId,
     property_identifier: property.propertyIdentifier,
     complement: property.complement,
     description: property.description,
-    type: property.type,
-    rooms: property.rooms,
+    // CAMPOS REAIS DO BANCO:
+    rooms: property.rooms, // NÃO usar 'bedrooms'
     bathrooms: property.bathrooms,
     area: property.area,
     has_garage: property.hasGarage,
-    value: property.value,
-    monthly_rent: property.monthlyRent || property.value,
+    value: property.value, // NÃO usar 'monthlyRent'
     garage_value: property.garageValue,
     status: property.status,
     images: property.images,
@@ -191,6 +216,7 @@ export const update = async (id: string, property: Partial<Property>): Promise<P
     throw error;
   }
 
+  console.log("✅ Property updated successfully");
   return mapDatabaseProperty(data);
 };
 

@@ -78,9 +78,7 @@ export interface Property {
 
   // Details
   description?: string; // DB field
-  type?: string; // DB field
-  rooms?: number; // DB field
-  bedrooms?: number; // Alias for rooms
+  rooms?: number; // DB field - Total de cômodos (não confundir com quartos)
   bathrooms?: number; // DB field
   area?: number; // DB field
   hasGarage?: boolean; // Mapped from has_garage
@@ -91,8 +89,7 @@ export interface Property {
   acceptsPets?: boolean; // Aceita pets
   
   // Financial
-  value?: number;
-  monthlyRent?: number; // Mapped from monthly_rent
+  value?: number; // DB field - Valor do imóvel/aluguel
   garageValue?: number; // Mapped from garage_value
 
   // Status & Metadata
@@ -103,12 +100,17 @@ export interface Property {
   
   // Database snake_case fallbacks (optional, for raw data)
   location_id?: string;
-  monthly_rent?: number;
   has_garage?: boolean;
   garage_value?: number;
   property_identifier?: string;
   has_furniture?: boolean;
   accepts_pets?: boolean;
+  
+  // DEPRECATED/LEGACY FIELDS (mantidos para compatibilidade, mas NÃO existem no banco)
+  // Estes campos eram usados no código antigo mas não existem na tabela properties
+  type?: string; // DEPRECATED - Não existe no banco
+  bedrooms?: number; // DEPRECATED - Use 'rooms' ao invés
+  monthlyRent?: number; // DEPRECATED - Use 'value' ao invés
 }
 
 export interface Tenant {
