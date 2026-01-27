@@ -34,36 +34,42 @@ export function usePublicProperties(): UsePublicPropertiesReturn {
   }, []);
 
   const fetchProperties = async () => {
-    console.log("=== FETCHING PUBLIC PROPERTIES VIA RPC (get_available_properties) ===");
+    console.log("=== FETCHING PUBLIC PROPERTIES VIA EDGE FUNCTION (get-available-properties) ===");
     setIsLoading(true);
     setError(null);
 
     try {
-      // Usar RPC function otimizada
-      const { data, error: rpcError } = await supabase.rpc("get_available_properties");
+      // Usar Edge Function em vez de RPC (bypassa PostgREST)
+      const { data, error: edgeFunctionError } = await supabase.functions.invoke('get-available-properties', {
+        method: 'GET',
+      });
 
-      if (rpcError) {
-        console.error("RPC Error:", rpcError);
-        throw rpcError;
+      if (edgeFunctionError) {
+        console.error("Edge Function Error:", edgeFunctionError);
+        throw edgeFunctionError;
       }
 
-      console.log(`✅ Fetched ${data?.length || 0} available properties via RPC`);
+      if (!data || !Array.isArray(data)) {
+        console.warn("No properties returned from Edge Function");
+        setProperties([]);
+        setLocations([]);
+        return;
+      }
+
+      console.log(`✅ Fetched ${data.length} available properties via Edge Function`);
 
       // Mapear dados para o formato Property
-      const mappedProperties: Property[] = (data || []).map((item: any) => ({
+      const mappedProperties: Property[] = data.map((item: any) => ({
         id: item.id,
         locationId: item.location_id,
         location: item.location_name || "",
         complement: item.complement,
         description: item.description,
-        type: item.type,
         rooms: item.rooms,
-        bedrooms: item.rooms,
         bathrooms: item.bathrooms,
         area: item.area,
         hasGarage: item.has_garage,
         value: item.value,
-        monthlyRent: item.monthly_rent,
         garageValue: item.garage_value,
         status: item.status as "available" | "occupied" | "unavailable",
         propertyIdentifier: item.property_identifier,
@@ -71,10 +77,10 @@ export function usePublicProperties(): UsePublicPropertiesReturn {
         hasFurniture: item.has_furniture || false,
         acceptsPets: item.accepts_pets || false,
         createdAt: item.created_at,
-        updatedAt: item.updated_at, // Nota: a RPC get_available_properties pode não retornar updated_at explicitamente na definition, verificar se necessário
+        updatedAt: item.updated_at,
         
         // Location data flat
-        address: undefined, // RPC pública não retorna rua
+        address: undefined,
         number: undefined,
         neighborhood: item.location_neighborhood,
         city: item.location_city,
@@ -87,7 +93,7 @@ export function usePublicProperties(): UsePublicPropertiesReturn {
       // Extrair locations (bairros/cidades) únicas para os filtros
       const uniqueLocations = Array.from(new Set(
         mappedProperties
-          .map(p => p.neighborhood || p.city) // Prefere bairro, fallback cidade
+          .map(p => p.neighborhood || p.city)
           .filter(Boolean) as string[]
       )).sort();
       

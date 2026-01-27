@@ -60,26 +60,35 @@ const mapDatabaseProperty = (item: any): Property => {
 };
 
 /**
- * Buscar todos os imóveis usando RPC otimizada
- * Bypassa PostgREST que está causando timeout
+ * Buscar todos os imóveis (com dados de location)
  */
 export const getAll = async (): Promise<Property[]> => {
-  console.log("=== FETCHING ALL PROPERTIES VIA RPC (get_properties_with_locations) ===");
-  
+  console.log("=== FETCHING PROPERTIES VIA EDGE FUNCTION (get-properties) ===");
+
   try {
-    // Chama a função RPC criada no banco
-    const { data, error } = await supabase.rpc("get_properties_with_locations");
+    // Usar Edge Function em vez de RPC (bypassa PostgREST)
+    const { data, error } = await supabase.functions.invoke('get-properties', {
+      method: 'GET',
+    });
 
     if (error) {
-      console.error("RPC Error:", error);
+      console.error("Edge Function Error:", error);
       throw error;
     }
 
-    console.log(`✅ Fetched ${data?.length || 0} properties via RPC`);
+    if (!data || !Array.isArray(data)) {
+      console.warn("No properties returned from Edge Function");
+      return [];
+    }
 
-    return (data || []).map(mapDatabaseProperty);
+    console.log(`✅ Fetched ${data.length} properties via Edge Function`);
+
+    // Mapear dados do banco para interface Property
+    const mappedProperties = data.map(mapDatabaseProperty);
+
+    return mappedProperties;
   } catch (error) {
-    console.error("Error fetching properties via RPC:", error);
+    console.error("Error fetching properties:", error);
     throw error;
   }
 };
