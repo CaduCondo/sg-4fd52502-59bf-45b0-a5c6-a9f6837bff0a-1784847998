@@ -161,7 +161,7 @@ export default function PropertiesPage() {
       complement: property.complement || "",
       rooms: String(property.rooms || ""),
       bathrooms: String(property.bathrooms || ""),
-      monthly_rent: formatCurrency(property.value || property.monthly_rent || 0),
+      monthly_rent: formatCurrency(property.value || 0),
       description: property.description || "",
       status: property.status || "available",
       images: property.images || [],
@@ -343,7 +343,7 @@ export default function PropertiesPage() {
                           </div>
                         ) : "-"}
                       </TableCell>
-                      <TableCell>{formatCurrency(property.value || property.monthly_rent || 0)}</TableCell>
+                      <TableCell>{formatCurrency(property.value || 0)}</TableCell>
                       <TableCell>{getStatusBadge(property.status)}</TableCell>
                       <TableCell className="text-right">
                         <Button

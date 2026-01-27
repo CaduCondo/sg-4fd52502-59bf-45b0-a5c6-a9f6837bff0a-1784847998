@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Bed, Bath, Trash2, Camera } from "lucide-react";
+import { Bed, Bath, Trash2, Camera, DollarSign } from "lucide-react";
 import { formatCurrency } from "@/lib/masks";
 import type { Property } from "@/types";
 
@@ -79,11 +79,14 @@ export function PropertyCard({ property, onCardClick, onDeleteClick }: PropertyC
           )}
 
           <div className="flex items-center justify-between pt-3 mt-2 border-t">
-            <div>
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">Aluguel</p>
-              <p className="text-xl font-bold text-primary">
-                {formatCurrency(property.value || property.monthly_rent || 0)}
-              </p>
+            <div className="flex items-center gap-2 text-slate-600">
+              <DollarSign className="w-4 h-4 text-primary" />
+              <span className="font-medium">
+                {property.value?.toLocaleString("pt-BR", {
+                  style: "currency",
+                  currency: "BRL",
+                })}
+              </span>
             </div>
             <Button
               variant="destructive"
