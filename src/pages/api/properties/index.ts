@@ -16,21 +16,23 @@ export default async function handler(
   }
 
   try {
-    // Buscar tenant_id e user_id dos headers (enviados pelo frontend)
+    // Buscar tenant_id e user_id dos headers
     const tenantId = req.headers["x-tenant-id"] as string;
     const userId = req.headers["x-user-id"] as string;
 
+    console.log("🔍 Incoming Headers:", JSON.stringify(req.headers));
+    console.log(`👤 Auth Check - Tenant: ${tenantId}, User: ${userId}`);
+
     if (!tenantId || !userId) {
+      console.error("❌ Missing auth headers");
       return res.status(401).json({ 
         error: "Unauthorized", 
-        message: "Tenant or user not found" 
+        message: "Tenant or user not found in headers" 
       });
     }
 
-    console.log(`🔍 Fetching properties for tenant: ${tenantId}, user: ${userId}`);
-
-    // Query usando Supabase Client
-    const { data: properties, error } = await supabase
+    // 1. Buscar properties primeiro (Query Simples)
+    const { data: properties, error: propError } = await supabase
       .from("properties")
       .select(`
         id,
@@ -50,41 +52,60 @@ export default async function handler(
         location_id,
         created_at,
         updated_at,
-        locations:location_id (
-          id,
-          name,
-          street,
-          number,
-          complement,
-          neighborhood,
-          city,
-          state,
-          zip_code
-        )
+        tenant_id
       `)
       .eq("tenant_id", tenantId)
       .order("created_at", { ascending: false });
 
-    if (error) {
-      console.error("❌ Supabase error:", error);
-      throw error;
+    if (propError) {
+      console.error("❌ Error fetching properties:", propError);
+      throw propError;
     }
 
-    // Transformar dados
-    const transformedProperties = properties?.map((prop: any) => {
-      const location = Array.isArray(prop.locations) ? prop.locations[0] : prop.locations;
+    if (!properties || properties.length === 0) {
+      return res.status(200).json({ properties: [], count: 0 });
+    }
+
+    // 2. Buscar locations relacionadas (em lote)
+    const locationIds = [...new Set(properties.map(p => p.location_id).filter(Boolean))];
+    
+    const locationsMap: Record<string, any> = {};
+    
+    if (locationIds.length > 0) {
+      const { data: locations, error: locError } = await supabase
+        .from("locations")
+        .select("id, name, street, number, complement, neighborhood, city, state, zip_code")
+        .in("id", locationIds);
+        
+      if (locError) {
+        console.error("❌ Error fetching locations:", locError);
+      } else {
+        // Criar mapa para acesso rápido
+        locations?.forEach(loc => {
+          locationsMap[loc.id] = loc;
+        });
+      }
+    }
+
+    // 3. Combinar dados em memória
+    const transformedProperties = properties.map((prop) => {
+      const location = prop.location_id ? locationsMap[prop.location_id] : null;
       
-      // Montar endereço completo do location
+      // Montar endereço completo
       const fullAddress = location ? 
         `${location.street || ''}, ${location.number || ''} ${location.complement || ''} - ${location.neighborhood || ''}, ${location.city || ''}/${location.state || ''}` : 
         prop.complement || null;
       
       return {
         id: prop.id,
-        type: null,
+        // Campos que não existem no banco, mas o frontend espera:
+        type: "Apartamento", // Valor padrão já que não tem coluna type
+        title: prop.property_identifier, // Usar identificador como título
+        
+        // Campos reais mapeados:
         status: prop.status,
         value: prop.value,
-        bedrooms: prop.rooms, // rooms → bedrooms (compatibilidade)
+        bedrooms: prop.rooms, // rooms -> bedrooms
         bathrooms: prop.bathrooms,
         area: prop.area,
         address: fullAddress,
@@ -92,7 +113,7 @@ export default async function handler(
         city: location?.city || null,
         state: location?.state || null,
         zip_code: location?.zip_code || null,
-        images: prop.images,
+        images: prop.images || [],
         features: {
           has_garage: prop.has_garage,
           garage_value: prop.garage_value,
@@ -102,8 +123,11 @@ export default async function handler(
         location_id: prop.location_id,
         created_at: prop.created_at,
         updated_at: prop.updated_at,
-        title: null,
         description: prop.description,
+        property_identifier: prop.property_identifier,
+        complement: prop.complement,
+        
+        // Campos nulos (não existem no banco)
         owner_name: null,
         owner_phone: null,
         owner_email: null,
@@ -111,22 +135,20 @@ export default async function handler(
         location_name: location?.name || null,
         location_address: fullAddress,
         location_phone: null,
-        location_email: null,
-        property_identifier: prop.property_identifier,
-        complement: prop.complement,
+        location_email: null
       };
-    }) || [];
+    });
 
-    console.log(`✅ Found ${transformedProperties.length} properties`);
+    console.log(`✅ Successfully returned ${transformedProperties.length} properties`);
 
     return res.status(200).json({
       properties: transformedProperties,
       count: transformedProperties.length,
     });
   } catch (error: any) {
-    console.error("❌ Error fetching properties:", error);
+    console.error("❌ Server Error:", error);
     return res.status(500).json({
-      error: "Failed to fetch properties",
+      error: "Internal Server Error",
       message: error.message,
     });
   }
