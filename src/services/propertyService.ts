@@ -66,11 +66,31 @@ export const getAll = async (): Promise<Property[]> => {
   try {
     console.log("=== FETCHING PROPERTIES VIA NEXT.JS API ROUTE ===");
 
-    // Usar Next.js API Route em vez de Edge Function
+    // Buscar informações de autenticação
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      throw new Error("User not authenticated");
+    }
+
+    // Buscar tenant_id do usuário
+    const { data: systemUser } = await supabase
+      .from("system_users")
+      .select("tenant_id")
+      .eq("auth_user_id", user.id)
+      .single();
+
+    if (!systemUser?.tenant_id) {
+      throw new Error("Tenant not found for user");
+    }
+
+    // Usar Next.js API Route com headers de autenticação
     const response = await fetch("/api/properties", {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
+        "x-tenant-id": systemUser.tenant_id,
+        "x-user-id": user.id,
       },
     });
 
@@ -80,7 +100,7 @@ export const getAll = async (): Promise<Property[]> => {
     }
 
     const result = await response.json();
-    const properties = result.data || [];
+    const properties = result.properties || [];
 
     console.log(`✅ Fetched ${properties.length} properties via Next.js API Route`);
 

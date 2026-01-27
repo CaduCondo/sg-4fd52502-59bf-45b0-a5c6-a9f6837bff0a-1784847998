@@ -1,12 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { createClient } from "@supabase/supabase-js";
 
-// Criar cliente Supabase server-side
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-const supabase = createClient(supabaseUrl, supabaseKey);
-
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
@@ -16,104 +10,111 @@ export default async function handler(
   }
 
   try {
-    console.log("🔍 Fetching available properties (public route via Supabase Client)...");
+    console.log("🔍 [API] Fetching available properties...");
 
-    // Query usando Supabase Client (usa HTTP/REST, não TCP direto)
+    // Criar cliente Supabase (usa service_role para bypass RLS se necessário)
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+
+    // Query SIMPLIFICADA - sem JOIN para evitar timeout
     const { data: properties, error } = await supabase
       .from("properties")
       .select(`
         id,
-        status,
-        description,
         property_identifier,
-        complement,
+        description,
+        status,
         rooms,
         bathrooms,
         area,
+        value,
         has_garage,
         garage_value,
-        value,
-        images,
         has_furniture,
         accepts_pets,
+        images,
+        complement,
         location_id,
         created_at,
-        updated_at,
-        locations:location_id (
-          id,
-          name,
-          street,
-          number,
-          complement,
-          neighborhood,
-          city,
-          state,
-          zip_code
-        )
+        updated_at
       `)
       .eq("status", "available")
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(50); // Limitar para evitar timeout
 
     if (error) {
-      console.error("❌ Supabase error:", error);
-      throw error;
+      console.error("❌ [API] Supabase error:", error);
+      return res.status(500).json({
+        error: "Database query failed",
+        message: error.message,
+      });
     }
 
-    // Transformar dados para manter compatibilidade com formato anterior
-    const transformedProperties = properties?.map((prop: any) => {
-      const location = Array.isArray(prop.locations) ? prop.locations[0] : prop.locations;
-      
-      // Montar endereço completo do location
-      const fullAddress = location ? 
-        `${location.street || ''}, ${location.number || ''} ${location.complement || ''} - ${location.neighborhood || ''}, ${location.city || ''}/${location.state || ''}` : 
-        prop.complement || null;
-      
+    if (!properties || properties.length === 0) {
+      console.log("⚠️ [API] No available properties found");
+      return res.status(200).json({ properties: [] });
+    }
+
+    console.log(`✅ [API] Found ${properties.length} available properties`);
+
+    // Buscar locations separadamente (mais rápido que JOIN)
+    const locationIds = [...new Set(properties.map((p) => p.location_id).filter(Boolean))];
+    
+    let locationsMap: Record<string, any> = {};
+    
+    if (locationIds.length > 0) {
+      const { data: locations } = await supabase
+        .from("locations")
+        .select("id, name, street, number, complement, neighborhood, city, state, zip_code")
+        .in("id", locationIds);
+
+      if (locations) {
+        locationsMap = locations.reduce((acc, loc) => {
+          acc[loc.id] = loc;
+          return acc;
+        }, {} as Record<string, any>);
+      }
+    }
+
+    // Transformar dados
+    const transformedProperties = properties.map((prop: any) => {
+      const location = locationsMap[prop.location_id];
+      const fullAddress = location
+        ? `${location.street}, ${location.number}${location.complement ? ` - ${location.complement}` : ""} - ${location.neighborhood}, ${location.city}/${location.state}`
+        : "Endereço não informado";
+
       return {
         id: prop.id,
-        type: null, // Campo não existe
+        description: prop.description || "",
         status: prop.status,
-        value: prop.value,
-        bedrooms: prop.rooms, // rooms → bedrooms (compatibilidade)
-        bathrooms: prop.bathrooms,
-        area: prop.area,
-        address: fullAddress, // Endereço completo montado
-        neighborhood: location?.neighborhood || null,
-        city: location?.city || null,
-        state: location?.state || null,
-        zip_code: location?.zip_code || null,
-        images: prop.images,
-        features: {
-          has_garage: prop.has_garage,
-          garage_value: prop.garage_value,
-          has_furniture: prop.has_furniture,
-          accepts_pets: prop.accepts_pets,
-        },
-        location_id: prop.location_id,
+        rooms: prop.rooms || 0,
+        bathrooms: prop.bathrooms || 0,
+        area: prop.area || 0,
+        value: prop.value || 0,
+        has_garage: prop.has_garage || false,
+        garage_value: prop.garage_value || 0,
+        has_furniture: prop.has_furniture || false,
+        accepts_pets: prop.accepts_pets || false,
+        images: prop.images || [],
         created_at: prop.created_at,
         updated_at: prop.updated_at,
-        title: null,
-        description: prop.description,
-        owner_name: null,
-        owner_phone: null,
-        owner_email: null,
-        notes: null,
-        location_name: location?.name || null,
-        location_address: fullAddress,
-        location_phone: null,
-        location_email: null,
+        location_id: prop.location_id,
+        location_name: location?.name || "Localização não informada",
+        address: fullAddress,
+        neighborhood: location?.neighborhood || "",
+        city: location?.city || "",
+        state: location?.state || "",
+        zip_code: location?.zip_code || "",
         property_identifier: prop.property_identifier,
         complement: prop.complement,
       };
-    }) || [];
-
-    console.log(`✅ Found ${transformedProperties.length} available properties`);
-
-    return res.status(200).json({
-      properties: transformedProperties,
-      count: transformedProperties.length,
     });
+
+    return res.status(200).json({ properties: transformedProperties });
   } catch (error: any) {
-    console.error("❌ Error fetching available properties:", error);
+    console.error("❌ [API] Unexpected error:", error);
     return res.status(500).json({
       error: "Failed to fetch available properties",
       message: error.message,
