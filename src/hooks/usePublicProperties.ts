@@ -58,7 +58,7 @@ export function usePublicProperties(): UsePublicPropertiesReturn {
       console.log(`✅ Fetched ${fetchedProperties.length} available properties via Next.js API Route`);
 
       setProperties(fetchedProperties);
-      setFilteredProperties(fetchedProperties);
+      // setFilteredProperties removido pois é derivado
     } catch (err: any) {
       console.error("Error fetching public properties:", err);
       setError(err.message || "Erro ao carregar imóveis");

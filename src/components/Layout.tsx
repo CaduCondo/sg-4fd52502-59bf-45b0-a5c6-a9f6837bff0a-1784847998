@@ -49,7 +49,8 @@ import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/contexts/AuthContext";
 import { hasPermission } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
-import { getRoleMenuPermissions } from "@/services/roleMenuPermissionService";
+import { roleMenuPermissionService } from "@/services/roleMenuPermissionService";
+import { RoleMenuPermission } from "@/types";
 
 interface LayoutProps {
   children: ReactNode;
@@ -79,7 +80,7 @@ export function Layout({ children }: LayoutProps) {
 
   const loadPermissions = async () => {
     try {
-      const perms = await getRoleMenuPermissions();
+      const perms = await roleMenuPermissionService.getAll();
       setPermissions(perms);
     } catch (error) {
       console.error("Error loading permissions:", error);

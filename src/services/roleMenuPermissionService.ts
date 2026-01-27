@@ -1,54 +1,34 @@
-import { supabase } from "@/integrations/supabase/client";
+import { RoleMenuPermission } from "@/types";
 
-export interface RoleMenuPermission {
-  id?: string;
-  role: string;
-  menu_item: string;
-  can_access: boolean;
-  created_at?: string;
-  updated_at?: string;
-}
-
-export async function getRoleMenuPermissions(role?: string): Promise<RoleMenuPermission[]> {
-  let query = supabase
-    .from("role_menu_permissions")
-    .select("*");
+export const roleMenuPermissionService = {
+  async getAll(): Promise<RoleMenuPermission[]> {
+    console.log("=== FETCHING ROLE PERMISSIONS VIA NEXT.JS API ROUTE ===");
     
-  if (role) {
-    query = query.eq("role", role);
-  } else {
-    query = query.order("role", { ascending: true });
+    try {
+      const response = await fetch("/api/role-menu-permissions", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log(`✅ Fetched ${data.length} role permissions`);
+      return data;
+    } catch (error) {
+      console.error("Error fetching role menu permissions:", error);
+      // Fallback para array vazio para não quebrar a UI
+      return [];
+    }
+  },
+
+  async getByRole(role: string): Promise<RoleMenuPermission[]> {
+    // Filtragem no cliente para evitar muitas requisições, já que a lista é pequena
+    const all = await this.getAll();
+    return all.filter(p => p.role === role);
   }
-
-  const { data, error } = await query;
-
-  if (error) throw error;
-  return data || [];
-}
-
-export async function updateRoleMenuPermission(permission: Partial<RoleMenuPermission> & { role: string; menu_item: string }): Promise<RoleMenuPermission> {
-  // Ensure we only send valid fields to Supabase
-  const payload = {
-    role: permission.role,
-    menu_item: permission.menu_item,
-    can_access: permission.can_access,
-  };
-
-  const { data, error } = await supabase
-    .from("role_menu_permissions")
-    .upsert(payload, { onConflict: "role,menu_item" })
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
-}
-
-export async function remove(id: string): Promise<void> {
-  const { error } = await supabase
-    .from("role_menu_permissions")
-    .delete()
-    .eq("id", id);
-
-  if (error) throw error;
-}
+};
