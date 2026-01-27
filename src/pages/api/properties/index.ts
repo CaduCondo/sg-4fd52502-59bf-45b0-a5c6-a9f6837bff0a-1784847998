@@ -34,19 +34,19 @@ export default async function handler(
       .from("properties")
       .select(`
         id,
-        type,
         status,
-        value,
-        bedrooms,
+        description,
+        property_identifier,
+        complement,
+        rooms,
         bathrooms,
         area,
-        address,
-        neighborhood,
-        city,
-        state,
-        zip_code,
+        has_garage,
+        garage_value,
+        value,
         images,
-        features,
+        has_furniture,
+        accepts_pets,
         location_id,
         created_at,
         updated_at,
@@ -54,9 +54,12 @@ export default async function handler(
           id,
           name,
           street,
+          number,
+          complement,
           neighborhood,
           city,
-          state
+          state,
+          zip_code
         )
       `)
       .eq("tenant_id", tenantId)
@@ -71,15 +74,36 @@ export default async function handler(
     const transformedProperties = properties?.map((prop: any) => {
       const location = Array.isArray(prop.locations) ? prop.locations[0] : prop.locations;
       
-      // Montar endereço completo
+      // Montar endereço completo do location
       const fullAddress = location ? 
-        `${location.street || ''}, ${location.neighborhood || ''} - ${location.city || ''}/${location.state || ''}` : 
-        null;
+        `${location.street || ''}, ${location.number || ''} ${location.complement || ''} - ${location.neighborhood || ''}, ${location.city || ''}/${location.state || ''}` : 
+        prop.complement || null;
       
       return {
-        ...prop,
+        id: prop.id,
+        type: null,
+        status: prop.status,
+        value: prop.value,
+        bedrooms: prop.rooms, // rooms → bedrooms (compatibilidade)
+        bathrooms: prop.bathrooms,
+        area: prop.area,
+        address: fullAddress,
+        neighborhood: location?.neighborhood || null,
+        city: location?.city || null,
+        state: location?.state || null,
+        zip_code: location?.zip_code || null,
+        images: prop.images,
+        features: {
+          has_garage: prop.has_garage,
+          garage_value: prop.garage_value,
+          has_furniture: prop.has_furniture,
+          accepts_pets: prop.accepts_pets,
+        },
+        location_id: prop.location_id,
+        created_at: prop.created_at,
+        updated_at: prop.updated_at,
         title: null,
-        description: null,
+        description: prop.description,
         owner_name: null,
         owner_phone: null,
         owner_email: null,
@@ -88,6 +112,8 @@ export default async function handler(
         location_address: fullAddress,
         location_phone: null,
         location_email: null,
+        property_identifier: prop.property_identifier,
+        complement: prop.complement,
       };
     }) || [];
 
