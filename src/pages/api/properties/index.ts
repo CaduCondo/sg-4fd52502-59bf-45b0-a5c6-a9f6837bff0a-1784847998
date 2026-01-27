@@ -34,8 +34,6 @@ export default async function handler(
       .from("properties")
       .select(`
         id,
-        title,
-        description,
         property_type,
         status,
         value,
@@ -49,17 +47,13 @@ export default async function handler(
         zip_code,
         images,
         features,
-        owner_name,
-        owner_phone,
-        owner_email,
-        notes,
         location_id,
         created_at,
         updated_at,
         locations:location_id (
           id,
           name,
-          address:street,
+          street,
           neighborhood,
           city,
           state
@@ -79,15 +73,21 @@ export default async function handler(
       
       // Montar endereço completo
       const fullAddress = location ? 
-        `${location.address || ''}, ${location.neighborhood || ''} - ${location.city || ''}/${location.state || ''}` : 
+        `${location.street || ''}, ${location.neighborhood || ''} - ${location.city || ''}/${location.state || ''}` : 
         null;
       
       return {
         ...prop,
+        title: null,
+        description: null,
+        owner_name: null,
+        owner_phone: null,
+        owner_email: null,
+        notes: null,
         location_name: location?.name || null,
         location_address: fullAddress,
-        location_phone: null, // Campo não existe na tabela locations
-        location_email: null, // Campo não existe na tabela locations
+        location_phone: null,
+        location_email: null,
       };
     }) || [];
 
