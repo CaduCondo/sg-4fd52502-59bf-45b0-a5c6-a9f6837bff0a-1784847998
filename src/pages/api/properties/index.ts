@@ -34,7 +34,7 @@ export default async function handler(
       .from("properties")
       .select(`
         id,
-        property_type,
+        type,
         status,
         value,
         bedrooms,
