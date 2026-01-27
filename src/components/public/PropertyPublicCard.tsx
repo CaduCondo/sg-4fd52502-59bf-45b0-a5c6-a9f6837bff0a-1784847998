@@ -58,7 +58,7 @@ export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
     setShowDetails(true);
   };
 
-  const displayTitle = property.locationNeighborhood || property.propertyIdentifier || "Imóvel";
+  const displayTitle = property.neighborhood || property.propertyIdentifier || "Imóvel";
 
   return (
     <>
