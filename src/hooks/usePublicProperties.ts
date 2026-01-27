@@ -1,182 +1,131 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import type { Property } from "@/types";
 
-export type SortOption = "newest" | "price-asc" | "price-desc" | "area-desc";
-
-export interface PublicProperty {
-  id: string;
-  propertyIdentifier: string;
-  description: string;
-  rooms: number;
-  bathrooms: number;
-  area: number;
-  hasGarage: boolean;
-  garageValue: number;
-  value: number;
-  images: string[];
-  hasFurniture: boolean;
-  acceptsPets: boolean;
-  status: string;
-  locationId: string;
-  locationName: string;
-  locationCity: string;
-  locationState: string;
-  locationNeighborhood: string;
-  createdAt: string;
+interface UsePublicPropertiesReturn {
+  properties: Property[];
+  isLoading: boolean;
+  error: string | null;
+  selectedCity: string;
+  setSelectedCity: (city: string) => void;
+  selectedLocation: string;
+  setSelectedLocation: (location: string) => void;
+  searchTerm: string;
+  setSearchTerm: (term: string) => void;
+  sortBy: "newest" | "price-asc" | "price-desc" | "area-desc";
+  setSortBy: (sort: "newest" | "price-asc" | "price-desc" | "area-desc") => void;
 }
 
-export function usePublicProperties() {
-  const [properties, setProperties] = useState<PublicProperty[]>([]);
-  const [locations, setLocations] = useState<
-    Array<{ id: string; name: string; city: string; neighborhood: string }>
-  >([]);
-  const [selectedLocation, setSelectedLocation] = useState("all");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [sortBy, setSortBy] = useState<SortOption>("newest");
+export function usePublicProperties(): UsePublicPropertiesReturn {
+  const [properties, setProperties] = useState<Property[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedCity, setSelectedCity] = useState<string>("");
+  const [selectedLocation, setSelectedLocation] = useState<string>("");
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [sortBy, setSortBy] = useState<"newest" | "price-asc" | "price-desc" | "area-desc">("newest");
 
-  // Fetch locations
-  const fetchLocations = async () => {
-    const { data } = await supabase
-      .from("locations")
-      .select("id, name, city, neighborhood")
-      .eq("is_active", true)
-      .order("name");
+  useEffect(() => {
+    fetchProperties();
+  }, []);
 
-    if (data) {
-      setLocations(data);
-    }
-  };
-
-  // Fetch properties with optimized queries (NO JOIN)
   const fetchProperties = async () => {
+    console.log("=== FETCHING PUBLIC PROPERTIES VIA RPC ===");
     setIsLoading(true);
+    setError(null);
+
     try {
-      console.log("=== FETCHING PUBLIC PROPERTIES (OPTIMIZED) ===");
-      
-      // Query 1: Fetch properties only (simple, fast)
-      const { data: propertiesData, error: propertiesError } = await supabase
-        .from("properties")
-        .select("*")
-        .eq("status", "available")
-        .order("created_at", { ascending: false });
+      // Usar RPC function otimizada que bypassa PostgREST problemático
+      const { data, error: rpcError } = await supabase.rpc("get_available_properties");
 
-      if (propertiesError) throw propertiesError;
-
-      if (!propertiesData || propertiesData.length === 0) {
-        console.log("No properties found");
-        setProperties([]);
-        setIsLoading(false);
-        return;
+      if (rpcError) {
+        console.error("RPC Error:", rpcError);
+        throw rpcError;
       }
 
-      console.log(`Fetched ${propertiesData.length} properties`);
+      console.log(`✅ Fetched ${data?.length || 0} available properties via RPC`);
 
-      // Query 2: Fetch locations separately (batch fetch for efficiency)
-      const locationIds = [...new Set(propertiesData.map(p => p.location_id))];
-      console.log(`Fetching ${locationIds.length} unique locations`);
+      // Mapear dados para o formato Property
+      const mappedProperties: Property[] = (data || []).map((item: any) => ({
+        id: item.id,
+        locationId: item.location_id,
+        location: item.location_name,
+        complement: item.complement,
+        description: item.description,
+        type: item.type,
+        rooms: item.rooms,
+        bedrooms: item.rooms,
+        bathrooms: item.bathrooms,
+        area: item.area,
+        hasGarage: item.has_garage,
+        value: item.value,
+        monthlyRent: item.monthly_rent,
+        garageValue: item.garage_value,
+        status: item.status as "available" | "occupied" | "unavailable",
+        propertyIdentifier: item.property_identifier,
+        images: Array.isArray(item.images) ? (item.images as string[]) : [],
+        hasFurniture: item.has_furniture || false,
+        acceptsPets: item.accepts_pets || false,
+        createdAt: item.created_at,
+        updatedAt: item.updated_at,
+        // Location data
+        address: item.location_street,
+        number: item.location_number,
+        neighborhood: item.location_neighborhood,
+        city: item.location_city,
+        state: item.location_state,
+        zipCode: item.location_zip_code,
+      }));
 
-      const { data: locationsData, error: locationsError } = await supabase
-        .from("locations")
-        .select("id, name, city, state, neighborhood, is_active")
-        .in("id", locationIds)
-        .eq("is_active", true);
-
-      if (locationsError) throw locationsError;
-
-      console.log(`Fetched ${locationsData?.length || 0} active locations`);
-
-      // Create lookup map for O(1) access
-      const locationsMap = new Map(locationsData?.map(loc => [loc.id, loc]) || []);
-
-      // Merge data in frontend - only include properties with active locations
-      const mappedProperties: PublicProperty[] = propertiesData
-        .filter(item => {
-          const location = locationsMap.get(item.location_id);
-          return location && location.is_active === true;
-        })
-        .map((item) => {
-          const location = locationsMap.get(item.location_id);
-          
-          return {
-            id: item.id,
-            propertyIdentifier: item.property_identifier || "",
-            description: item.description || "",
-            rooms: item.rooms || 0,
-            bathrooms: item.bathrooms || 0,
-            area: item.area || 0,
-            hasGarage: item.has_garage || false,
-            garageValue: item.garage_value || 0,
-            value: item.value || 0,
-            images: Array.isArray(item.images) ? (item.images as string[]) : [],
-            hasFurniture: item.has_furniture || false,
-            acceptsPets: item.accepts_pets || false,
-            status: item.status || "available",
-            locationId: item.location_id,
-            locationName: location?.name || "",
-            locationCity: location?.city || "",
-            locationState: location?.state || "",
-            locationNeighborhood: location?.neighborhood || "",
-            createdAt: item.created_at,
-          };
-        });
-
-      console.log(`Mapped ${mappedProperties.length} properties with active locations`);
       setProperties(mappedProperties);
-    } catch (error) {
-      console.error("Error loading properties:", error);
-      setProperties([]);
+    } catch (err) {
+      console.error("Error fetching properties:", err);
+      setError(err instanceof Error ? err.message : "Erro ao carregar imóveis");
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Load data on mount
-  useEffect(() => {
-    fetchProperties();
-    fetchLocations();
-  }, []);
-
-  // Filter and sort properties
+  // Filtrar properties baseado nos filtros selecionados
   const filteredProperties = properties.filter((property) => {
-    const matchesLocation =
-      selectedLocation === "all" || property.locationId === selectedLocation;
-    
-    const matchesSearch =
-      searchTerm === "" ||
-      property.propertyIdentifier?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      property.locationName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      property.locationCity?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      property.locationNeighborhood?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const matchesCity = !selectedCity || property.city === selectedCity;
+    const matchesLocation = !selectedLocation || property.locationId === selectedLocation;
+    const matchesSearch = !searchTerm || 
+      property.location?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      property.neighborhood?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      property.city?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       property.description?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    return matchesLocation && matchesSearch;
-  }).sort((a, b) => {
-    const totalA = a.value + (a.garageValue || 0);
-    const totalB = b.value + (b.garageValue || 0);
+    return matchesCity && matchesLocation && matchesSearch;
+  });
 
+  // Ordenar properties
+  const sortedProperties = [...filteredProperties].sort((a, b) => {
     switch (sortBy) {
+      case "newest":
+        return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
       case "price-asc":
-        return totalA - totalB;
+        return (a.value || 0) - (b.value || 0);
       case "price-desc":
-        return totalB - totalA;
+        return (b.value || 0) - (a.value || 0);
       case "area-desc":
         return (b.area || 0) - (a.area || 0);
-      case "newest":
       default:
-        return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+        return 0;
     }
   });
 
   return {
-    properties: filteredProperties,
-    locations,
+    properties: sortedProperties,
+    isLoading,
+    error,
+    selectedCity,
+    setSelectedCity,
     selectedLocation,
     setSelectedLocation,
     searchTerm,
     setSearchTerm,
     sortBy,
     setSortBy,
-    isLoading,
   };
 }
