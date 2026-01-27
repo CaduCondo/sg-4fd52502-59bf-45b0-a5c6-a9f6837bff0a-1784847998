@@ -23,7 +23,7 @@ export default async function handler(
       .from("role_menu_permissions")
       .select("*")
       .order("role", { ascending: true })
-      .order("menu", { ascending: true });
+      .order("menu_item", { ascending: true });
 
     if (error) {
       console.error("❌ Supabase error:", error);
