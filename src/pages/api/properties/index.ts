@@ -16,9 +16,10 @@ export default async function handler(
   }
 
   try {
-    console.log("🔍 Fetching all properties...");
+    console.log("🔍 [API] Fetching all properties with optimized query...");
 
-    // 1. Buscar properties primeiro (Query Simples - SEM tenant_id)
+    // Query otimizada: 1 única query com LEFT JOIN
+    // Usa índice idx_properties_status_created_at para ordenação rápida
     const { data: properties, error: propError } = await supabase
       .from("properties")
       .select(`
@@ -36,61 +37,53 @@ export default async function handler(
         images,
         has_furniture,
         accepts_pets,
-        location_id,
         created_at,
-        updated_at
+        updated_at,
+        locations:location_id (
+          id,
+          name,
+          street,
+          number,
+          complement,
+          neighborhood,
+          city,
+          state,
+          zip_code
+        )
       `)
       .order("created_at", { ascending: false });
 
     if (propError) {
-      console.error("❌ Error fetching properties:", propError);
+      console.error("❌ [API] Error fetching properties:", propError);
       throw propError;
     }
 
     if (!properties || properties.length === 0) {
+      console.log("ℹ️ [API] No properties found");
       return res.status(200).json({ properties: [], count: 0 });
     }
 
-    // 2. Buscar locations relacionadas (em lote)
-    const locationIds = [...new Set(properties.map(p => p.location_id).filter(Boolean))];
-    
-    const locationsMap: Record<string, any> = {};
-    
-    if (locationIds.length > 0) {
-      const { data: locations, error: locError } = await supabase
-        .from("locations")
-        .select("id, name, street, number, complement, neighborhood, city, state, zip_code")
-        .in("id", locationIds);
-        
-      if (locError) {
-        console.error("❌ Error fetching locations:", locError);
-      } else {
-        // Criar mapa para acesso rápido
-        locations?.forEach(loc => {
-          locationsMap[loc.id] = loc;
-        });
-      }
-    }
+    console.log(`✅ [API] Found ${properties.length} properties, transforming data...`);
 
-    // 3. Combinar dados em memória
+    // Transformar dados para o formato esperado pelo frontend
     const transformedProperties = properties.map((prop) => {
-      const location = prop.location_id ? locationsMap[prop.location_id] : null;
+      const location = prop.locations;
       
       // Montar endereço completo
       const fullAddress = location ? 
-        `${location.street || ''}, ${location.number || ''} ${location.complement || ''} - ${location.neighborhood || ''}, ${location.city || ''}/${location.state || ''}` : 
+        `${location.street || ''}, ${location.number || ''} ${location.complement || ''} - ${location.neighborhood || ''}, ${location.city || ''}/${location.state || ''}`.trim() : 
         prop.complement || null;
       
       return {
         id: prop.id,
-        // Campos que não existem no banco, mas o frontend espera:
-        type: "Apartamento", // Valor padrão já que não tem coluna type
-        title: prop.property_identifier, // Usar identificador como título
+        // Campos com valores padrão (não existem no banco)
+        type: "Apartamento",
+        title: prop.property_identifier || "Imóvel sem identificação",
         
-        // Campos reais mapeados:
+        // Campos reais mapeados
         status: prop.status,
         value: prop.value,
-        bedrooms: prop.rooms, // rooms -> bedrooms (compatibilidade frontend)
+        bedrooms: prop.rooms, // rooms -> bedrooms
         bathrooms: prop.bathrooms,
         area: prop.area,
         address: fullAddress,
@@ -98,14 +91,14 @@ export default async function handler(
         city: location?.city || null,
         state: location?.state || null,
         zip_code: location?.zip_code || null,
-        images: prop.images || [],
+        images: Array.isArray(prop.images) ? prop.images : [],
         features: {
-          has_garage: prop.has_garage,
-          garage_value: prop.garage_value,
-          has_furniture: prop.has_furniture,
-          accepts_pets: prop.accepts_pets,
+          has_garage: prop.has_garage || false,
+          garage_value: prop.garage_value || null,
+          has_furniture: prop.has_furniture || false,
+          accepts_pets: prop.accepts_pets || false,
         },
-        location_id: prop.location_id,
+        location_id: location?.id || null,
         created_at: prop.created_at,
         updated_at: prop.updated_at,
         description: prop.description,
@@ -119,22 +112,23 @@ export default async function handler(
         notes: null,
         location_name: location?.name || null,
         location_address: fullAddress,
-        location_phone: null, // Não existe em locations
-        location_email: null  // Não existe em locations
+        location_phone: null,
+        location_email: null
       };
     });
 
-    console.log(`✅ Successfully returned ${transformedProperties.length} properties`);
+    console.log(`✅ [API] Successfully transformed and returning ${transformedProperties.length} properties`);
 
     return res.status(200).json({
       properties: transformedProperties,
       count: transformedProperties.length,
     });
   } catch (error: any) {
-    console.error("❌ Server Error:", error);
+    console.error("❌ [API] Server Error:", error);
     return res.status(500).json({
       error: "Internal Server Error",
       message: error.message,
+      details: error.details || null,
     });
   }
 }
