@@ -67,7 +67,9 @@ export default async function handler(
 
     // Transformar dados para o formato esperado pelo frontend
     const transformedProperties = properties.map((prop) => {
-      const location = prop.locations;
+      // Supabase retorna array para joins por padrão, pegamos o primeiro item
+      const locationData = prop.locations;
+      const location = Array.isArray(locationData) ? locationData[0] : locationData;
       
       // Montar endereço completo
       const fullAddress = location ? 
