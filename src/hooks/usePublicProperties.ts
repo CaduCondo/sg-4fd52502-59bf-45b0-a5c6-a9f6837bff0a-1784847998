@@ -2,8 +2,11 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Property } from "@/types";
 
+export type PublicProperty = Property;
+
 interface UsePublicPropertiesReturn {
   properties: Property[];
+  locations: string[]; // Cidades/Bairros únicos para filtro
   isLoading: boolean;
   error: string | null;
   selectedCity: string;
@@ -18,6 +21,7 @@ interface UsePublicPropertiesReturn {
 
 export function usePublicProperties(): UsePublicPropertiesReturn {
   const [properties, setProperties] = useState<Property[]>([]);
+  const [locations, setLocations] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedCity, setSelectedCity] = useState<string>("");
@@ -30,12 +34,12 @@ export function usePublicProperties(): UsePublicPropertiesReturn {
   }, []);
 
   const fetchProperties = async () => {
-    console.log("=== FETCHING PUBLIC PROPERTIES VIA RPC ===");
+    console.log("=== FETCHING PUBLIC PROPERTIES VIA RPC (get_available_properties) ===");
     setIsLoading(true);
     setError(null);
 
     try {
-      // Usar RPC function otimizada que bypassa PostgREST problemático
+      // Usar RPC function otimizada
       const { data, error: rpcError } = await supabase.rpc("get_available_properties");
 
       if (rpcError) {
@@ -49,7 +53,7 @@ export function usePublicProperties(): UsePublicPropertiesReturn {
       const mappedProperties: Property[] = (data || []).map((item: any) => ({
         id: item.id,
         locationId: item.location_id,
-        location: item.location_name,
+        location: item.location_name || "",
         complement: item.complement,
         description: item.description,
         type: item.type,
@@ -67,17 +71,28 @@ export function usePublicProperties(): UsePublicPropertiesReturn {
         hasFurniture: item.has_furniture || false,
         acceptsPets: item.accepts_pets || false,
         createdAt: item.created_at,
-        updatedAt: item.updated_at,
-        // Location data
-        address: item.location_street,
-        number: item.location_number,
+        updatedAt: item.updated_at, // Nota: a RPC get_available_properties pode não retornar updated_at explicitamente na definition, verificar se necessário
+        
+        // Location data flat
+        address: undefined, // RPC pública não retorna rua
+        number: undefined,
         neighborhood: item.location_neighborhood,
         city: item.location_city,
         state: item.location_state,
-        zipCode: item.location_zip_code,
+        zipCode: undefined,
       }));
 
       setProperties(mappedProperties);
+
+      // Extrair locations (bairros/cidades) únicas para os filtros
+      const uniqueLocations = Array.from(new Set(
+        mappedProperties
+          .map(p => p.neighborhood || p.city) // Prefere bairro, fallback cidade
+          .filter(Boolean) as string[]
+      )).sort();
+      
+      setLocations(uniqueLocations);
+
     } catch (err) {
       console.error("Error fetching properties:", err);
       setError(err instanceof Error ? err.message : "Erro ao carregar imóveis");
@@ -89,7 +104,11 @@ export function usePublicProperties(): UsePublicPropertiesReturn {
   // Filtrar properties baseado nos filtros selecionados
   const filteredProperties = properties.filter((property) => {
     const matchesCity = !selectedCity || property.city === selectedCity;
+    // O filtro "selectedLocation" aqui geralmente se refere ao Location ID (prédio) ou Bairro? 
+    // Na implementação anterior parecia ser ID. Mas na Home pública geralmente é Bairro.
+    // O hook anterior usava locationId. Vamos manter consistente.
     const matchesLocation = !selectedLocation || property.locationId === selectedLocation;
+    
     const matchesSearch = !searchTerm || 
       property.location?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       property.neighborhood?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -117,6 +136,7 @@ export function usePublicProperties(): UsePublicPropertiesReturn {
 
   return {
     properties: sortedProperties,
+    locations, // Lista de strings para dropdown de filtro
     isLoading,
     error,
     selectedCity,

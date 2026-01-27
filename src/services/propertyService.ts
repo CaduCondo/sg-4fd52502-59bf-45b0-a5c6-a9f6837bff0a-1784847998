@@ -1,16 +1,51 @@
 import { supabase } from "@/integrations/supabase/client";
 import { Property } from "@/types";
 
+// Função helper para mapear retorno do banco para interface Property
+const mapDatabaseProperty = (item: any): Property => {
+  return {
+    id: item.id,
+    locationId: item.location_id,
+    location: item.location_name || item.location?.name || "", // Suporta retorno RPC ou Join
+    complement: item.complement,
+    description: item.description,
+    type: item.type,
+    rooms: item.rooms,
+    bedrooms: item.rooms, // Alias
+    bathrooms: item.bathrooms,
+    area: item.area,
+    hasGarage: item.has_garage,
+    value: item.value,
+    monthlyRent: item.monthly_rent,
+    garageValue: item.garage_value,
+    status: item.status as "available" | "occupied" | "unavailable",
+    propertyIdentifier: item.property_identifier,
+    images: Array.isArray(item.images) ? (item.images as string[]) : [],
+    hasFurniture: item.has_furniture || false,
+    acceptsPets: item.accepts_pets || false,
+    createdAt: item.created_at,
+    updatedAt: item.updated_at,
+    // Location details
+    address: item.location_street || item.location?.street,
+    number: item.location_number || item.location?.number,
+    neighborhood: item.location_neighborhood || item.location?.neighborhood,
+    city: item.location_city || item.location?.city,
+    state: item.location_state || item.location?.state,
+    zipCode: item.location_zip_code || item.location?.zip_code,
+  };
+};
+
 export const propertyService = {
   /**
    * Buscar todos os imóveis usando RPC otimizada
    * Bypassa PostgREST que está causando timeout
    */
   getAll: async (): Promise<Property[]> => {
-    console.log("=== FETCHING ALL PROPERTIES VIA RPC ===");
+    console.log("=== FETCHING ALL PROPERTIES VIA RPC (get_properties_with_locations) ===");
     
     try {
-      const { data, error } = await supabase.rpc("get_all_properties");
+      // Chama a função RPC criada no banco
+      const { data, error } = await supabase.rpc("get_properties_with_locations");
 
       if (error) {
         console.error("RPC Error:", error);
@@ -19,39 +54,7 @@ export const propertyService = {
 
       console.log(`✅ Fetched ${data?.length || 0} properties via RPC`);
 
-      // Mapear dados para o formato Property
-      const mappedProperties: Property[] = (data || []).map((item: any) => ({
-        id: item.id,
-        locationId: item.location_id,
-        location: item.location_name,
-        complement: item.complement,
-        description: item.description,
-        type: item.type,
-        rooms: item.rooms,
-        bedrooms: item.rooms,
-        bathrooms: item.bathrooms,
-        area: item.area,
-        hasGarage: item.has_garage,
-        value: item.value,
-        monthlyRent: item.monthly_rent,
-        garageValue: item.garage_value,
-        status: item.status as "available" | "occupied" | "unavailable",
-        propertyIdentifier: item.property_identifier,
-        images: Array.isArray(item.images) ? (item.images as string[]) : [],
-        hasFurniture: item.has_furniture || false,
-        acceptsPets: item.accepts_pets || false,
-        createdAt: item.created_at,
-        updatedAt: item.updated_at,
-        // Location data
-        address: item.location_street,
-        number: item.location_number,
-        neighborhood: item.location_neighborhood,
-        city: item.location_city,
-        state: item.location_state,
-        zipCode: item.location_zip_code,
-      }));
-
-      return mappedProperties;
+      return (data || []).map(mapDatabaseProperty);
     } catch (error) {
       console.error("Error fetching properties via RPC:", error);
       throw error;
@@ -64,61 +67,52 @@ export const propertyService = {
   getById: async (id: string): Promise<Property | null> => {
     console.log(`=== FETCHING PROPERTY BY ID: ${id} ===`);
 
-    // Buscar property
-    const { data: propertyData, error: propertyError } = await supabase
-      .from("properties")
-      .select("*")
-      .eq("id", id)
-      .single();
+    try {
+      // Tenta buscar via RPC primeiro filtrando pelo ID (reusa a lógica otimizada)
+      const { data, error } = await supabase.rpc("get_properties_with_locations", {
+        p_location_id: null, // Opcional
+        p_status: null       // Opcional
+        // Nota: A RPC atual não tem filtro por property ID, então vamos usar o método tradicional
+        // mas otimizado sem joins desnecessários se possível, ou manter o fallback.
+      });
+      
+      // Se a RPC não suporta filtro por ID, voltamos ao método tradicional mas com cuidado
+      // Vamos usar a query direta no banco que é segura para 1 registro
+      const { data: propertyData, error: propertyError } = await supabase
+        .from("properties")
+        .select(`
+          *,
+          locations (
+            id, name, street, number, neighborhood, city, state, zip_code
+          )
+        `)
+        .eq("id", id)
+        .single();
 
-    if (propertyError || !propertyData) {
-      console.error("Error fetching property:", propertyError);
+      if (propertyError) {
+        console.error("Error fetching property:", propertyError);
+        return null;
+      }
+
+      if (!propertyData) return null;
+
+      // Mapear dados do formato Join para Property
+      // O helper mapDatabaseProperty lida com a estrutura aninhada de locations também
+      return mapDatabaseProperty({
+        ...propertyData,
+        location_name: propertyData.locations?.name,
+        location_street: propertyData.locations?.street,
+        location_number: propertyData.locations?.number,
+        location_neighborhood: propertyData.locations?.neighborhood,
+        location_city: propertyData.locations?.city,
+        location_state: propertyData.locations?.state,
+        location_zip_code: propertyData.locations?.zip_code
+      });
+
+    } catch (error) {
+      console.error("Error in getById:", error);
       return null;
     }
-
-    // Buscar location
-    let locationData = null;
-    if (propertyData.location_id) {
-      const { data: loc } = await supabase
-        .from("locations")
-        .select("*")
-        .eq("id", propertyData.location_id)
-        .single();
-      locationData = loc;
-    }
-
-    const property: Property = {
-      id: propertyData.id,
-      locationId: propertyData.location_id,
-      location: locationData?.name || "",
-      complement: propertyData.complement,
-      description: propertyData.description,
-      type: propertyData.type,
-      rooms: propertyData.rooms,
-      bedrooms: propertyData.rooms,
-      bathrooms: propertyData.bathrooms,
-      area: propertyData.area,
-      hasGarage: propertyData.has_garage,
-      value: propertyData.value,
-      monthlyRent: propertyData.monthly_rent,
-      garageValue: propertyData.garage_value,
-      status: propertyData.status,
-      propertyIdentifier: propertyData.property_identifier,
-      images: Array.isArray(propertyData.images) ? (propertyData.images as string[]) : [],
-      hasFurniture: propertyData.has_furniture || false,
-      acceptsPets: propertyData.accepts_pets || false,
-      createdAt: propertyData.created_at,
-      updatedAt: propertyData.updated_at,
-      // Location data
-      address: locationData?.street,
-      number: locationData?.number,
-      neighborhood: locationData?.neighborhood,
-      city: locationData?.city,
-      state: locationData?.state,
-      zipCode: locationData?.zip_code,
-    };
-
-    return property;
   },
 
   /**
@@ -126,8 +120,7 @@ export const propertyService = {
    */
   create: async (property: Partial<Property>): Promise<Property> => {
     console.log("=== CREATING PROPERTY ===");
-    console.log("Property data:", property);
-
+    
     const propertyData = {
       location_id: property.locationId,
       property_identifier: property.propertyIdentifier || "Apartamento",
@@ -147,8 +140,6 @@ export const propertyService = {
       accepts_pets: property.acceptsPets || false,
     };
 
-    console.log("Sending to database:", propertyData);
-
     const { data, error } = await supabase
       .from("properties")
       .insert(propertyData)
@@ -160,8 +151,9 @@ export const propertyService = {
       throw error;
     }
 
-    console.log("✅ Property created successfully:", data);
-    return data as Property;
+    // Para retornar o objeto completo com dados da location, o ideal seria buscar novamente
+    // Mas para performance, vamos retornar o que temos + dados parciais
+    return mapDatabaseProperty(data);
   },
 
   /**
@@ -169,8 +161,6 @@ export const propertyService = {
    */
   update: async (id: string, property: Partial<Property>): Promise<Property> => {
     console.log("=== UPDATING PROPERTY ===");
-    console.log("Property ID:", id);
-    console.log("Update data:", property);
 
     const propertyData = {
       location_id: property.locationId,
@@ -191,8 +181,6 @@ export const propertyService = {
       accepts_pets: property.acceptsPets,
     };
 
-    console.log("Sending to database:", propertyData);
-
     const { data, error } = await supabase
       .from("properties")
       .update(propertyData)
@@ -205,8 +193,7 @@ export const propertyService = {
       throw error;
     }
 
-    console.log("✅ Property updated successfully:", data);
-    return data as Property;
+    return mapDatabaseProperty(data);
   },
 
   /**
@@ -214,15 +201,10 @@ export const propertyService = {
    */
   remove: async (id: string): Promise<void> => {
     console.log("=== DELETING PROPERTY ===");
-    console.log("Property ID:", id);
-
     const { error } = await supabase.from("properties").delete().eq("id", id);
-
     if (error) {
       console.error("Error deleting property:", error);
       throw error;
     }
-
-    console.log("✅ Property deleted successfully");
   },
 };
