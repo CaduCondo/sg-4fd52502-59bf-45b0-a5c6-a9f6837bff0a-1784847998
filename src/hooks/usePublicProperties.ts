@@ -108,7 +108,7 @@ export function usePublicProperties() {
             hasGarage: item.has_garage || false,
             garageValue: item.garage_value || 0,
             value: item.value || 0,
-            images: Array.isArray(item.images) ? item.images : [],
+            images: Array.isArray(item.images) ? (item.images as string[]) : [],
             hasFurniture: item.has_furniture || false,
             acceptsPets: item.accepts_pets || false,
             status: item.status || "available",
