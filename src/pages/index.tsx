@@ -50,7 +50,7 @@ export default function PublicHomePage() {
       city: prop?.locationDetails?.city || "",
       neighborhood: prop?.locationDetails?.neighborhood || "",
     };
-  });
+  }).filter(loc => loc.id && loc.id.trim() !== ""); // Filter out empty IDs
 
   return (
     <>

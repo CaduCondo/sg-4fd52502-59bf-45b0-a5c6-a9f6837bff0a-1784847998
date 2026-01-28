@@ -18,6 +18,9 @@ export function LocationFilter({
   selectedLocation,
   onLocationChange,
 }: LocationFilterProps) {
+  // Filter out locations with empty IDs to prevent Select error
+  const validLocations = locations.filter(loc => loc.id && loc.id.trim() !== "");
+
   return (
     <div className="flex items-center gap-2">
       <MapPin className="h-4 w-4 text-slate-500" />
@@ -27,7 +30,7 @@ export function LocationFilter({
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">Todos os locais</SelectItem>
-          {locations.map((location) => (
+          {validLocations.map((location) => (
             <SelectItem key={location.id} value={location.id}>
               {location.city} - {location.neighborhood}
             </SelectItem>
