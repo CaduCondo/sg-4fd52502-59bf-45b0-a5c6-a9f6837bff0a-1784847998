@@ -81,13 +81,18 @@ export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
 
         <CardContent className="space-y-4 p-6">
           <div>
+            {/* Título principal */}
             <h3 className="text-2xl font-bold text-slate-900">{displayTitle}</h3>
-            <p className="flex items-center gap-1 text-sm text-slate-600">
+            
+            {/* Localização (cidade - estado) */}
+            <p className="flex items-center gap-1 text-sm text-slate-600 mt-1">
               <MapPin className="h-4 w-4" />
               {property.city} - {property.state}
             </p>
-            {property.complement && (
-              <p className="text-sm text-slate-500 mt-1">
+            
+            {/* COMPLEMENTO - SEMPRE RENDERIZA SE EXISTIR */}
+            {property.complement && property.complement.trim() !== "" && (
+              <p className="text-sm text-slate-500 mt-1 italic">
                 {property.complement}
               </p>
             )}
@@ -149,6 +154,11 @@ export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
             </DialogTitle>
             <DialogDescription className="text-base">
               {property.city} - {property.state}
+              {property.complement && (
+                <span className="block mt-1 text-slate-600 italic">
+                  {property.complement}
+                </span>
+              )}
             </DialogDescription>
           </DialogHeader>
 
