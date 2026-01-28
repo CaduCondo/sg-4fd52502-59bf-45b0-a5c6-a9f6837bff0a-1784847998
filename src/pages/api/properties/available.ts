@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 /**
  * API Route: /api/properties/available
- * Otimizada para listar apenas imóveis disponíveis (públicos)
+ * ULTRA-OTIMIZADA: Query minimalista para evitar timeouts
  */
 export default async function handler(
   req: NextApiRequest,
@@ -23,95 +23,146 @@ export default async function handler(
   }
 
   try {
-    console.log("=== API /properties/available: Fetching data (OPTIMIZED) ===");
+    console.log("=== API /properties/available: Starting ULTRA-FAST query ===");
 
-    // Query otimizada - apenas status 'available'
-    const { data, error } = await supabase
+    // STEP 1: Get properties ONLY (no JOINs) - ULTRA FAST
+    const { data: properties, error: propError } = await supabase
       .from("properties")
-      .select(`
-        id,
-        location_id,
-        property_identifier,
-        complement,
-        description,
-        rooms,
-        bathrooms,
-        area,
-        has_garage,
-        value,
-        garage_value,
-        status,
-        images,
-        has_furniture,
-        accepts_pets,
-        created_at,
-        updated_at,
-        locations!properties_location_id_fkey (
-          id,
-          name,
-          street,
-          number,
-          neighborhood,
-          city,
-          state,
-          zip_code
-        )
-      `)
+      .select("id, location_id, property_identifier, complement, description, rooms, bathrooms, area, has_garage, value, garage_value, status, images, has_furniture, accepts_pets, created_at, updated_at")
       .eq("status", "available")
       .order("created_at", { ascending: false })
-      .limit(200);
+      .limit(50); // Reduced from 200 to 50
 
-    if (error) {
-      console.error("❌ Database error:", error);
+    if (propError) {
+      console.error("❌ Properties query error:", propError);
       return res.status(500).json({ 
         error: "Database error", 
-        message: error.message,
-        hint: "Check if idx_properties_status index exists"
+        message: propError.message 
       });
     }
 
-    // Transform data
-    const properties = (data || []).map((item: any) => ({
-      id: item.id,
-      locationId: item.location_id,
-      location: item.locations?.name || "",
-      complement: item.complement,
-      description: item.description,
-      propertyIdentifier: item.property_identifier,
-      rooms: item.rooms,
-      bathrooms: item.bathrooms,
-      area: item.area,
-      value: item.value,
-      garageValue: item.garage_value,
-      hasGarage: item.has_garage || false,
-      hasFurniture: item.has_furniture || false,
-      acceptsPets: item.accepts_pets || false,
-      status: item.status,
-      images: Array.isArray(item.images) ? item.images : [],
-      createdAt: item.created_at,
-      updatedAt: item.updated_at,
-      address: item.locations?.street,
-      number: item.locations?.number,
-      neighborhood: item.locations?.neighborhood,
-      city: item.locations?.city,
-      state: item.locations?.state,
-      zipCode: item.locations?.zip_code,
-      bedrooms: item.rooms,
-      monthlyRent: item.value,
-    }));
+    if (!properties || properties.length === 0) {
+      console.log("✅ No available properties found");
+      return res.status(200).json([]);
+    }
 
-    console.log(`✅ API /properties/available: Returning ${properties.length} available properties`);
+    console.log(`✅ Found ${properties.length} properties, fetching locations...`);
 
-    // Cache headers (30 minutes - mais curto para dados públicos)
-    res.setHeader("Cache-Control", "public, s-maxage=1800, stale-while-revalidate=3600");
+    // STEP 2: Get unique location_ids
+    const locationIds = [...new Set(properties.map(p => p.location_id).filter(Boolean))];
+    
+    if (locationIds.length === 0) {
+      console.log("⚠️ No locations to fetch, returning properties without location data");
+      return res.status(200).json(properties.map(item => ({
+        id: item.id,
+        locationId: item.location_id,
+        location: "",
+        complement: item.complement,
+        description: item.description,
+        propertyIdentifier: item.property_identifier,
+        rooms: item.rooms,
+        bathrooms: item.bathrooms,
+        area: item.area,
+        value: item.value,
+        garageValue: item.garage_value,
+        hasGarage: item.has_garage || false,
+        hasFurniture: item.has_furniture || false,
+        acceptsPets: item.accepts_pets || false,
+        status: item.status,
+        images: Array.isArray(item.images) ? item.images : [],
+        createdAt: item.created_at,
+        updatedAt: item.updated_at,
+        bedrooms: item.rooms,
+        monthlyRent: item.value,
+      })));
+    }
 
-    return res.status(200).json(properties);
+    // STEP 3: Fetch locations separately (FAST - only IDs we need)
+    const { data: locations, error: locError } = await supabase
+      .from("locations")
+      .select("id, name, street, number, neighborhood, city, state, zip_code")
+      .in("id", locationIds);
+
+    if (locError) {
+      console.error("❌ Locations query error:", locError);
+      // Return properties without location data rather than failing
+      return res.status(200).json(properties.map(item => ({
+        id: item.id,
+        locationId: item.location_id,
+        location: "",
+        complement: item.complement,
+        description: item.description,
+        propertyIdentifier: item.property_identifier,
+        rooms: item.rooms,
+        bathrooms: item.bathrooms,
+        area: item.area,
+        value: item.value,
+        garageValue: item.garage_value,
+        hasGarage: item.has_garage || false,
+        hasFurniture: item.has_furniture || false,
+        acceptsPets: item.accepts_pets || false,
+        status: item.status,
+        images: Array.isArray(item.images) ? item.images : [],
+        createdAt: item.created_at,
+        updatedAt: item.updated_at,
+        bedrooms: item.rooms,
+        monthlyRent: item.value,
+      })));
+    }
+
+    // STEP 4: Create location lookup map
+    const locationMap = new Map();
+    if (locations) {
+      locations.forEach(loc => {
+        locationMap.set(loc.id, loc);
+      });
+    }
+
+    // STEP 5: Merge data
+    const result = properties.map((item: any) => {
+      const location = locationMap.get(item.location_id);
+      
+      return {
+        id: item.id,
+        locationId: item.location_id,
+        location: location?.name || "",
+        complement: item.complement,
+        description: item.description,
+        propertyIdentifier: item.property_identifier,
+        rooms: item.rooms,
+        bathrooms: item.bathrooms,
+        area: item.area,
+        value: item.value,
+        garageValue: item.garage_value,
+        hasGarage: item.has_garage || false,
+        hasFurniture: item.has_furniture || false,
+        acceptsPets: item.accepts_pets || false,
+        status: item.status,
+        images: Array.isArray(item.images) ? item.images : [],
+        createdAt: item.created_at,
+        updatedAt: item.updated_at,
+        address: location?.street || "",
+        number: location?.number || "",
+        neighborhood: location?.neighborhood || "",
+        city: location?.city || "",
+        state: location?.state || "",
+        zipCode: location?.zip_code || "",
+        bedrooms: item.rooms,
+        monthlyRent: item.value,
+      };
+    });
+
+    console.log(`✅ API /properties/available: Returning ${result.length} properties with location data`);
+
+    // Short cache (5 minutes)
+    res.setHeader("Cache-Control", "public, s-maxage=300, stale-while-revalidate=600");
+
+    return res.status(200).json(result);
   } catch (error: any) {
     console.error("❌ Unexpected error:", error);
     return res.status(500).json({ 
       error: "Internal server error",
-      message: error?.message || "Unknown error",
-      hint: "This might be a timeout. Check database performance."
+      message: error?.message || "Unknown error"
     });
   }
 }
