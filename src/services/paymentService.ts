@@ -56,9 +56,6 @@ function mapPaymentToDB(data: Partial<Payment>): any {
   if (data.interestAmount) dbData.interest_amount = data.interestAmount;
   if (data.discountAmount) dbData.discount_amount = data.discountAmount;
 
-  // Cleanup camelCase keys if needed, but Supabase ignores unknown columns mostly
-  // Removing strictly to be clean would require omitting keys
-  
   return dbData;
 }
 
@@ -76,7 +73,6 @@ export async function getAll(): Promise<Payment[]> {
   return (data || []).map(mapPaymentFromDB);
 }
 
-// Alias
 export const getAllPayments = getAll;
 
 export async function getPaymentById(id: string): Promise<Payment> {
@@ -92,7 +88,6 @@ export async function getPaymentById(id: string): Promise<Payment> {
   return mapPaymentFromDB(data);
 }
 
-// Alias
 export const getById = getPaymentById;
 
 export async function createPayment(data: Partial<Payment>): Promise<Payment> {
@@ -101,7 +96,6 @@ export async function createPayment(data: Partial<Payment>): Promise<Payment> {
   return mapPaymentFromDB(result);
 }
 
-// Alias
 export const create = createPayment;
 
 export async function updatePayment(id: string, payment: Partial<Payment>): Promise<Payment> {
@@ -133,14 +127,12 @@ export async function updatePayment(id: string, payment: Partial<Payment>): Prom
   return mapPaymentFromDB(data);
 }
 
-// Alias
 export const update = updatePayment;
 
 export async function deletePayment(id: string): Promise<void> {
   return deleteSingle(TABLE, id);
 }
 
-// Alias
 export const remove = deletePayment;
 
 export async function getPaymentsByRentalId(rentalId: string): Promise<Payment[]> {
@@ -153,7 +145,6 @@ export async function getPaymentsByRentalId(rentalId: string): Promise<Payment[]
   return (data || []).map(mapPaymentFromDB);
 }
 
-// Alias
 export const getByRentalId = getPaymentsByRentalId;
 
 export async function deletePendingPaymentsByRentalId(rentalId: string): Promise<void> {
@@ -166,7 +157,6 @@ export async function deletePendingPaymentsByRentalId(rentalId: string): Promise
   if (error) throw error;
 }
 
-// Alias
 export const deletePendingByRentalId = deletePendingPaymentsByRentalId;
 
 export async function deleteFuturePaymentsByRentalId(rentalId: string): Promise<void> {
@@ -182,7 +172,6 @@ export async function deleteFuturePaymentsByRentalId(rentalId: string): Promise<
   if (error) throw error;
 }
 
-// Alias
 export const deleteFutureByRentalId = deleteFuturePaymentsByRentalId;
 
 export async function updateOverdueStatus(): Promise<void> {
@@ -197,7 +186,6 @@ export async function updateOverdueStatus(): Promise<void> {
   if (error) console.error("Erro ao atualizar status de pagamentos atrasados:", error);
 }
 
-// Métodos complexos de atualização em lote
 export async function updateFuturePaymentsOnRentalValueChange(
   rentalId: string, 
   newAmount: number
@@ -271,8 +259,12 @@ export async function updateFuturePayments(rentalId: string, newValue: number): 
   console.log(`✅ Atualizados ${payments.length} pagamentos não pagos`);
 }
 
+/**
+ * FUNÇÃO CORRIGIDA - Cria parcelas de pagamento para uma locação
+ * FIX: Evita duplicação de parcelas no mesmo mês
+ */
 export async function createPaymentsForRental(rental: any): Promise<void> {
-  console.log("=== INICIO createPaymentsForRental ===");
+  console.log("=== INICIO createPaymentsForRental (VERSÃO CORRIGIDA) ===");
   console.log("Rental recebido:", rental);
   
   const startDate = new Date(rental.startDate || rental.start_date);
@@ -280,7 +272,6 @@ export async function createPaymentsForRental(rental: any): Promise<void> {
     ? new Date(rental.endDate || rental.end_date) 
     : new Date(startDate.getFullYear() + 1, startDate.getMonth(), startDate.getDate());
   
-  // GARANTIR TIPAGEM NÚMÉRICA
   const paymentDay = Number(rental.paymentDay || rental.payment_day);
   const monthlyValue = Number(rental.value || rental.monthly_rent);
 
@@ -293,33 +284,36 @@ export async function createPaymentsForRental(rental: any): Promise<void> {
   });
 
   const payments = [];
-
+  const startDateStr = startDate.toISOString().split('T')[0];
+  
   // ETAPA 1: Verificar se primeira parcela é proporcional
-  const isFirstProportional = shouldUseProportionalRent(
-    startDate.toISOString().split('T')[0],
-    paymentDay
-  );
+  const isFirstProportional = shouldUseProportionalRent(startDateStr, paymentDay);
 
-  let referenceDate = new Date(startDate);
+  // Data de referência para começar a iterar
+  let currentMonth = startDate.getMonth();
+  let currentYear = startDate.getFullYear();
 
-  // --- LÓGICA DA PRIMEIRA PARCELA PROPORCIONAL ---
+  // ETAPA 2: Primeira parcela (proporcional ou integral)
   if (isFirstProportional) {
-    const startDateStr = startDate.toISOString().split('T')[0];
     const firstPaymentDays = calculateDaysBetweenDates(startDateStr, paymentDay);
     const firstPaymentValue = calculateProportionalRent(monthlyValue, startDateStr, paymentDay);
     
-    // Vencimento da primeira parcela
-    let firstDueDate = new Date(startDate.getFullYear(), startDate.getMonth(), paymentDay);
+    // Vencimento da primeira parcela proporcional
+    let firstDueDate = new Date(currentYear, currentMonth, paymentDay);
     
-    // Se o dia de pagamento já passou ou é muito próximo, joga para o próximo mês
-    // Mas para cálculo proporcional de entrada, geralmente cobra-se no primeiro vencimento útil
-    if (firstDueDate < startDate) {
-      firstDueDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, paymentDay);
+    // Se o dia de pagamento já passou no mês atual, vai para próximo mês
+    if (firstDueDate <= startDate) {
+      currentMonth++;
+      if (currentMonth > 11) {
+        currentMonth = 0;
+        currentYear++;
+      }
+      firstDueDate = new Date(currentYear, currentMonth, paymentDay);
     }
     
-    // Ajuste de dias inexistentes (ex: 30 de fev)
-    if (firstDueDate.getMonth() !== (startDate.getMonth() + (firstDueDate > new Date(startDate.getFullYear(), startDate.getMonth() + 1, 1) ? 1 : 0)) % 12) {
-      firstDueDate = new Date(firstDueDate.getFullYear(), firstDueDate.getMonth() + 1, 0);
+    // Ajuste para dias inexistentes
+    if (firstDueDate.getMonth() !== currentMonth) {
+      firstDueDate = new Date(currentYear, currentMonth + 1, 0);
     }
 
     payments.push({
@@ -327,120 +321,78 @@ export async function createPaymentsForRental(rental: any): Promise<void> {
       due_date: firstDueDate.toISOString().split('T')[0],
       expected_amount: firstPaymentValue,
       status: 'pending',
-      reference_month: startDate.getMonth() + 1,
-      reference_year: startDate.getFullYear(),
+      reference_month: currentMonth + 1,
+      reference_year: currentYear,
     });
 
-    console.log(`🔄 Primeira parcela PROPORCIONAL: R$ ${firstPaymentValue} (${firstPaymentDays} dias)`);
+    console.log(`🔄 Primeira parcela PROPORCIONAL: R$ ${firstPaymentValue.toFixed(2)} (${firstPaymentDays} dias) - Venc: ${firstDueDate.toISOString().split('T')[0]}`);
 
-    // Avançar data de referência para o início do próximo mês "cheio" a ser cobrado
-    // Se cobramos proporcional de Jan, o próximo cheio é Fev
-    referenceDate = new Date(firstDueDate.getFullYear(), firstDueDate.getMonth() + 1, 1);
-  } else {
-    // Se não é proporcional, ajusta a data para começar a cobrar parcelas cheias
-    // Depende se é pagamento antecipado ou vencido, mas assumindo padrão:
-    // Próximo dia de vencimento após startDate
-    let firstDueDate = new Date(startDate.getFullYear(), startDate.getMonth(), paymentDay);
-    if (firstDueDate < startDate) {
-        firstDueDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, paymentDay);
+    // Avançar para próximo mês
+    currentMonth++;
+    if (currentMonth > 11) {
+      currentMonth = 0;
+      currentYear++;
     }
-    referenceDate = new Date(firstDueDate.getFullYear(), firstDueDate.getMonth(), 1); 
+  } else {
+    // Se não é proporcional, começar do mês da data de início
+    const firstDueDate = new Date(currentYear, currentMonth, paymentDay);
+    
+    // Se o vencimento for antes da data de início, vai para próximo mês
+    if (firstDueDate < startDate) {
+      currentMonth++;
+      if (currentMonth > 11) {
+        currentMonth = 0;
+        currentYear++;
+      }
+    }
   }
 
-  // --- LÓGICA DAS PARCELAS MENSAIS (INTEGRAIS) ---
-  // Vamos iterar criando parcelas enquanto o vencimento estiver antes do fim do contrato
+  // ETAPA 3: Parcelas mensais integrais
+  // Iterar até chegar na data final do contrato
   while (true) {
-    const paymentMonth = referenceDate.getMonth();
-    const paymentYear = referenceDate.getFullYear();
+    // Criar vencimento para o mês atual
+    let dueDate = new Date(currentYear, currentMonth, paymentDay);
     
-    let dueDate = new Date(paymentYear, paymentMonth, paymentDay);
-    
-    // Ajuste dias inexistentes
-    if (dueDate.getMonth() !== paymentMonth) {
-        dueDate = new Date(paymentYear, paymentMonth + 1, 0);
+    // Ajuste para dias inexistentes (ex: 31 de fev vira 28/29)
+    if (dueDate.getMonth() !== currentMonth) {
+      dueDate = new Date(currentYear, currentMonth + 1, 0);
     }
 
-    // CRITÉRIO DE PARADA:
-    // Se a data de vencimento desta parcela integral for APÓS a data final do contrato
-    // então não criamos ela como integral. Paramos o loop e verificamos resíduo depois.
+    // PARAR se ultrapassar data final do contrato
     if (dueDate > endDate) {
-        break;
+      break;
     }
 
-    // Adiciona parcela integral
+    // Adicionar parcela integral
     payments.push({
       rental_id: rental.id,
       due_date: dueDate.toISOString().split('T')[0],
       expected_amount: monthlyValue,
       status: 'pending',
-      reference_month: paymentMonth + 1,
-      reference_year: paymentYear,
+      reference_month: currentMonth + 1,
+      reference_year: currentYear,
     });
 
-    console.log(`✅ Parcela Integral: R$ ${monthlyValue} - Vencimento: ${dueDate.toISOString().split('T')[0]}`);
+    console.log(`✅ Parcela ${payments.length}: R$ ${monthlyValue.toFixed(2)} - Venc: ${dueDate.toISOString().split('T')[0]} (Ref: ${currentMonth + 1}/${currentYear})`);
 
-    // Avança 1 mês
-    referenceDate = new Date(paymentYear, paymentMonth + 1, 1);
-  }
-
-  // --- LÓGICA DA ÚLTIMA PARCELA PROPORCIONAL (RESÍDUO) ---
-  // Verificamos se sobrou um período entre o último vencimento e a data final do contrato
-  // O último pagamento cobriu até quando? Assumindo que paga o mês corrente ou anterior...
-  // A lógica simplificada é: se o contrato não termina no dia do vencimento, há dias a cobrar
-  // Ex: Vencimento dia 10. Fim contrato dia 20. Sobraram 10 dias.
-  
-  // Se não houve pagamentos, algo está estranho, mas vamos checar a data do último
-  const lastPayment = payments.length > 0 ? payments[payments.length - 1] : null;
-  
-  if (lastPayment) {
-    const lastDueDate = new Date(lastPayment.due_date);
-    
-    // Se o contrato termina DEPOIS do último vencimento, temos dias a cobrar
-    // Ex: Vencimento dia 10/09. Fim 20/09. Sobraram 10 dias.
-    if (endDate > lastDueDate) {
-        // Quantos dias sobram?
-        // Vamos considerar do dia seguinte ao último vencimento até o fim do contrato
-        // Ex: Ultimo vencimento 10/09. Fim 20/09. Cobrar 11/09 a 20/09 (10 dias).
-        // ATENÇÃO: Essa lógica depende do modelo de cobrança (mês vencido vs a vencer).
-        // Assumindo modelo simples de dias corridos:
-        
-        const diffTime = Math.abs(endDate.getTime() - lastDueDate.getTime());
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-        
-        // Se a diferença for pequena (ex: 1 dia devido a fuso), ignoramos. Se for > 1 dia, cobramos.
-        // Se a diferença for quase um mês, deveria ter caído no loop while anterior.
-        // Então aqui pegamos apenas o "quebrado" final (< 30 dias geralmente).
-        
-        if (diffDays > 0) {
-            const residualValue = (monthlyValue / 30) * diffDays;
-            
-            // Data do vencimento residual: No dia do fim do contrato ou próximo vencimento?
-            // Geralmente cobra-se no encerramento.
-            const residualDueDate = endDate;
-
-            payments.push({
-                rental_id: rental.id,
-                due_date: residualDueDate.toISOString().split('T')[0],
-                expected_amount: Math.round(residualValue * 100) / 100,
-                status: 'pending',
-                reference_month: endDate.getMonth() + 1,
-                reference_year: endDate.getFullYear(),
-            });
-
-            console.log(`🔄 Última parcela PROPORCIONAL (Resíduo): R$ ${residualValue.toFixed(2)} (${diffDays} dias)`);
-        }
+    // Avançar 1 mês
+    currentMonth++;
+    if (currentMonth > 11) {
+      currentMonth = 0;
+      currentYear++;
     }
   }
 
-  console.log(`Preparando para criar ${payments.length} pagamentos no total`);
+  console.log(`📊 Total de parcelas criadas: ${payments.length}`);
 
+  // Inserir todas as parcelas no banco
   const { data, error } = await supabase
     .from("payments")
     .insert(payments)
     .select();
 
   if (error) {
-    console.error("ERRO ao criar pagamentos:", error);
+    console.error("❌ ERRO ao criar pagamentos:", error);
     throw error;
   }
 
@@ -465,7 +417,6 @@ export async function migrateProportionalFirstPayments(): Promise<{
   };
 
   try {
-    // 1. Buscar todas as locações ativas
     const { data: rentals, error: rentalsError } = await supabase
       .from("rentals")
       .select("*")
@@ -483,7 +434,6 @@ export async function migrateProportionalFirstPayments(): Promise<{
 
     console.log(`📋 Encontradas ${rentals.length} locações ativas`);
 
-    // 2. Para cada locação, verificar e corrigir primeira parcela
     for (const rental of rentals) {
       result.processed++;
       
@@ -493,31 +443,17 @@ export async function migrateProportionalFirstPayments(): Promise<{
         const monthlyValue = rental.value || rental.monthly_rent || 0;
 
         console.log(`\n🔍 Processando locação ID: ${rental.id}`);
-        console.log(`   - Data início: ${startDate}`);
-        console.log(`   - Dia vencimento: ${paymentDay}`);
-        console.log(`   - Valor mensal: R$ ${monthlyValue}`);
 
-        // Verificar se deve usar valor proporcional
         const isProportional = shouldUseProportionalRent(startDate, paymentDay);
 
         if (!isProportional) {
-          console.log(`   ✅ Primeira parcela já é integral (não precisa correção)`);
+          console.log(`   ✅ Primeira parcela já é integral`);
           continue;
         }
 
-        // Calcular valor proporcional correto
         const days = calculateDaysBetweenDates(startDate, paymentDay);
-        const proportionalValue = calculateProportionalRent(
-          monthlyValue,
-          startDate,
-          paymentDay
-        );
+        const proportionalValue = calculateProportionalRent(monthlyValue, startDate, paymentDay);
 
-        console.log(`   🔄 Deve ser proporcional:`);
-        console.log(`      - Dias: ${days}`);
-        console.log(`      - Valor correto: R$ ${proportionalValue.toFixed(2)}`);
-
-        // Buscar a primeira parcela desta locação
         const { data: payments, error: paymentsError } = await supabase
           .from("payments")
           .select("*")
@@ -526,7 +462,6 @@ export async function migrateProportionalFirstPayments(): Promise<{
           .limit(1);
 
         if (paymentsError) {
-          console.error(`   ❌ Erro ao buscar pagamentos:`, paymentsError);
           result.errors.push(`Locação ${rental.id}: ${paymentsError.message}`);
           continue;
         }
@@ -539,22 +474,17 @@ export async function migrateProportionalFirstPayments(): Promise<{
         const firstPayment = payments[0];
         const currentValue = firstPayment.expected_amount;
 
-        console.log(`   📊 Primeira parcela atual: R$ ${currentValue}`);
-
-        // Verificar se precisa atualizar
         if (Math.abs(currentValue - proportionalValue) < 0.01) {
-          console.log(`   ✅ Valor já está correto (diferença < R$ 0,01)`);
+          console.log(`   ✅ Valor já está correto`);
           continue;
         }
 
-        // Atualizar o valor da primeira parcela
         const { error: updateError } = await supabase
           .from("payments")
           .update({ expected_amount: proportionalValue })
           .eq("id", firstPayment.id);
 
         if (updateError) {
-          console.error(`   ❌ Erro ao atualizar pagamento:`, updateError);
           result.errors.push(`Pagamento ${firstPayment.id}: ${updateError.message}`);
           continue;
         }
@@ -563,7 +493,6 @@ export async function migrateProportionalFirstPayments(): Promise<{
         console.log(`   ✅ ATUALIZADO! R$ ${currentValue.toFixed(2)} → R$ ${proportionalValue.toFixed(2)}`);
 
       } catch (error: any) {
-        console.error(`   ❌ Erro ao processar locação ${rental.id}:`, error);
         result.errors.push(`Locação ${rental.id}: ${error.message}`);
       }
     }
@@ -572,16 +501,8 @@ export async function migrateProportionalFirstPayments(): Promise<{
     console.log(`✅ Processadas: ${result.processed} locações`);
     console.log(`✅ Atualizadas: ${result.updated} primeiras parcelas`);
     console.log(`❌ Erros: ${result.errors.length}`);
-    
-    if (result.errors.length > 0) {
-      console.log("\n📋 Detalhes dos erros:");
-      result.errors.forEach(err => console.log(`   - ${err}`));
-    }
-
-    console.log("=== FIM MIGRAÇÃO ===");
 
   } catch (error: any) {
-    console.error("❌ Erro crítico na migração:", error);
     result.success = false;
     result.errors.push(`Erro crítico: ${error.message}`);
   }
