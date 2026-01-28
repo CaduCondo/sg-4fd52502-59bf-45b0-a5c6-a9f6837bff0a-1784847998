@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { cacheService } from "@/services/cacheService";
 
 export type Period = "week" | "month" | "year";
 
@@ -18,6 +17,8 @@ export interface DashboardMetrics {
   overdueAmount: number;
   paidPayments: number;
   paidAmount: number;
+  pendingPayments: number;
+  pendingAmount: number;
   occupancyRate: number;
 }
 
@@ -26,8 +27,6 @@ export interface ChartData {
   paymentsByStatus: Array<{ status: string; count: number; amount: number }>;
   propertiesByStatus: Array<{ status: string; count: number }>;
 }
-
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutos (mais frequente para dashboard)
 
 export function useDashboardData(period: Period = "month") {
   const { toast } = useToast();
@@ -44,6 +43,8 @@ export function useDashboardData(period: Period = "month") {
     overdueAmount: 0,
     paidPayments: 0,
     paidAmount: 0,
+    pendingPayments: 0,
+    pendingAmount: 0,
     occupancyRate: 0,
   });
   const [chartData, setChartData] = useState<ChartData>({
@@ -58,21 +59,10 @@ export function useDashboardData(period: Period = "month") {
   }, [period]);
 
   async function loadDashboardData() {
-    const cacheKey = `dashboard_${period}`;
-    
-    // Tentar cache primeiro
-    const cached = cacheService.get<{ metrics: DashboardMetrics; chartData: ChartData }>(cacheKey);
-    if (cached) {
-      setMetrics(cached.metrics);
-      setChartData(cached.chartData);
-      setLoading(false);
-      return;
-    }
-
     setLoading(true);
 
     try {
-      // Executar todas as queries em paralelo para ser mais rápido
+      // Executar todas as queries em paralelo
       const [
         propertiesResult,
         tenantsResult,
@@ -101,9 +91,6 @@ export function useDashboardData(period: Period = "month") {
       setMetrics(newMetrics);
       setChartData(newChartData);
 
-      // Cachear resultado
-      cacheService.set(cacheKey, { metrics: newMetrics, chartData: newChartData }, CACHE_TTL);
-
     } catch (error: any) {
       console.error("Erro ao carregar dados do dashboard:", error);
       
@@ -129,7 +116,6 @@ export function useDashboardData(period: Period = "month") {
     const availableProperties = properties?.filter((p) => p.status === "available").length || 0;
     const occupiedProperties = properties?.filter((p) => p.status === "rented").length || 0;
 
-    // Agrupar por status em vez de tipo
     const statusCount = properties?.reduce((acc, p) => {
       const statusLabel = p.status === "available" ? "Disponível" : 
                          p.status === "rented" ? "Alugado" : 
@@ -152,7 +138,6 @@ export function useDashboardData(period: Period = "month") {
       availableProperties,
       occupiedProperties,
       occupancyRate,
-      propertiesByType: propertiesByStatus,
       propertiesByStatus,
     };
   }
@@ -218,7 +203,6 @@ export function useDashboardData(period: Period = "month") {
 
     if (error) throw error;
 
-    // Métricas de pagamentos
     const overduePayments = payments?.filter((p) => p.status === "overdue").length || 0;
     const overdueAmount = payments
       ?.filter((p) => p.status === "overdue")
@@ -229,10 +213,13 @@ export function useDashboardData(period: Period = "month") {
       ?.filter((p) => p.status === "paid")
       .reduce((sum, p) => sum + (p.paid_amount || 0), 0) || 0;
 
-    // Receita por mês (últimos 6 meses)
+    const pendingPayments = payments?.filter((p) => p.status === "pending").length || 0;
+    const pendingAmount = payments
+      ?.filter((p) => p.status === "pending")
+      .reduce((sum, p) => sum + (p.expected_amount || 0), 0) || 0;
+
     const revenueByMonth = generateRevenueByMonth(payments || []);
 
-    // Pagamentos por status
     const paymentsByStatus = [
       {
         status: "paid",
@@ -241,10 +228,8 @@ export function useDashboardData(period: Period = "month") {
       },
       {
         status: "pending",
-        count: payments?.filter((p) => p.status === "pending").length || 0,
-        amount: payments
-          ?.filter((p) => p.status === "pending")
-          .reduce((sum, p) => sum + (p.expected_amount || 0), 0) || 0,
+        count: pendingPayments,
+        amount: pendingAmount,
       },
       {
         status: "overdue",
@@ -266,6 +251,8 @@ export function useDashboardData(period: Period = "month") {
         overdueAmount,
         paidPayments,
         paidAmount,
+        pendingPayments,
+        pendingAmount,
       },
       revenueByMonth,
       paymentsByStatus,

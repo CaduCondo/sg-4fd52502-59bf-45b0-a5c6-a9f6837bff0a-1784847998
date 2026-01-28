@@ -1,9 +1,6 @@
 import { useState, useEffect } from "react";
 import { Property } from "@/types";
-import { cacheService } from "@/services/cacheService";
 import { SortOption } from "@/components/public/SortSelector";
-
-const CACHE_TTL = 60 * 60 * 1000; // 1 hora
 
 interface Filters {
   location?: string;
@@ -20,16 +17,6 @@ export function usePublicProperties(filters: Filters = {}) {
   }, [filters.location, filters.sort]);
 
   async function loadProperties() {
-    const cacheKey = `public_properties_${filters.location || "all"}_${filters.sort || "newest"}`;
-    
-    // Tentar cache primeiro
-    const cached = cacheService.get<Property[]>(cacheKey);
-    if (cached) {
-      setProperties(cached);
-      setLoading(false);
-      return;
-    }
-
     setLoading(true);
     setError(null);
 
@@ -66,9 +53,9 @@ export function usePublicProperties(filters: Filters = {}) {
 
       const data = await response.json();
       
-      // Mapear campos do banco para frontend - COMPLETO
-      const mappedProperties: Property[] = data.map((prop: any) => {
-        // Extrair dados da localização
+      // Mapear campos do banco para frontend
+      const mappedProperties: Property[] = (data || []).map((prop: any) => {
+        // Extrair dados da localização (se existir)
         const locationData = prop.locations || {};
         const city = locationData.city || "";
         const state = locationData.state || "";
@@ -83,7 +70,7 @@ export function usePublicProperties(filters: Filters = {}) {
           // Informações do imóvel
           type: prop.property_type || "Outros",
           propertyIdentifier: prop.property_identifier || "",
-          rooms: prop.bedrooms || 0, // bedrooms → rooms
+          rooms: prop.bedrooms || 0,
           bedrooms: prop.bedrooms || 0,
           bathrooms: prop.bathrooms || 0,
           area: prop.area || 0,
@@ -125,20 +112,10 @@ export function usePublicProperties(filters: Filters = {}) {
       });
 
       setProperties(mappedProperties);
-      
-      // Cachear resultado
-      cacheService.set(cacheKey, mappedProperties, CACHE_TTL);
 
     } catch (err: any) {
       console.error("Erro ao carregar imóveis públicos:", err);
       setError(err.message || "Erro ao carregar imóveis");
-      
-      // Tentar usar cache expirado como fallback
-      const staleCache = cacheService.get<Property[]>(cacheKey, true);
-      if (staleCache) {
-        setProperties(staleCache);
-        setError(null); // Limpa erro se conseguiu fallback
-      }
     } finally {
       setLoading(false);
     }
