@@ -4,7 +4,6 @@ import { cacheService } from "./cacheService";
 
 /**
  * Helper para mapear dados do banco (snake_case) para interface Property (camelCase)
- * IMPORTANTE: Mapeia apenas campos que REALMENTE EXISTEM no banco de dados
  */
 const mapDatabaseProperty = (item: any): Property => {
   return {
@@ -12,24 +11,24 @@ const mapDatabaseProperty = (item: any): Property => {
     id: item.id,
     locationId: item.location_id,
     
-    // Location name (from JOIN or RPC)
+    // Location name
     location: item.location_name || "",
     
-    // Property details (CAMPOS REAIS DO BANCO)
+    // Property details
     complement: item.complement,
     description: item.description,
     propertyIdentifier: item.property_identifier,
     
-    // Numeric fields (CAMPOS REAIS DO BANCO)
-    rooms: item.rooms, // Total de cômodos (não é "bedrooms")
+    // Numeric fields
+    rooms: item.rooms,
     bathrooms: item.bathrooms,
     area: item.area,
     
-    // Financial (CAMPOS REAIS DO BANCO)
-    value: item.value, // Valor principal do imóvel
+    // Financial
+    value: item.value,
     garageValue: item.garage_value,
     
-    // Booleans (CAMPOS REAIS DO BANCO)
+    // Booleans
     hasGarage: item.has_garage || false,
     hasFurniture: item.has_furniture || false,
     acceptsPets: item.accepts_pets || false,
@@ -52,42 +51,77 @@ const mapDatabaseProperty = (item: any): Property => {
     state: item.location_state,
     zipCode: item.location_zip_code,
     
-    // CAMPOS LEGADOS (para compatibilidade com código antigo)
-    // Estes NÃO existem no banco, mas o código antigo pode esperar eles
-    bedrooms: item.rooms, // Alias para 'rooms' (compatibilidade)
-    monthlyRent: item.value, // Alias para 'value' (compatibilidade)
-    type: undefined, // Não existe no banco
+    // Legacy compatibility
+    bedrooms: item.rooms,
+    monthlyRent: item.value,
+    type: undefined,
   };
 };
 
 /**
- * Buscar todos os imóveis (com dados de location)
- * USA NEXT.JS API ROUTE (sem tenant_id - não existe na tabela properties)
- * COM CACHE FALLBACK para modo offline
+ * Buscar todos os imóveis - OPTIMIZED VERSION
+ * - Cache de 1 hora
+ * - Query otimizada
+ * - Fallback para cache em caso de erro
  */
 export const getAll = async (): Promise<Property[]> => {
   const CACHE_KEY = "properties_all";
-  const CACHE_TTL = 1000 * 60 * 5; // 5 minutes
+  const CACHE_TTL = 1000 * 60 * 60; // 1 hour (cache agressivo)
 
   try {
-    console.log("=== FETCHING PROPERTIES VIA NEXT.JS API ROUTE ===");
+    console.log("=== FETCHING PROPERTIES (OPTIMIZED) ===");
 
-    // Usar Next.js API Route SEM headers de autenticação
-    const response = await fetch("/api/properties", {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
+    // Usar RPC otimizada ou query direta com índices
+    const { data, error } = await supabase
+      .from("properties")
+      .select(`
+        id,
+        location_id,
+        property_identifier,
+        complement,
+        description,
+        rooms,
+        bathrooms,
+        area,
+        has_garage,
+        value,
+        garage_value,
+        status,
+        images,
+        has_furniture,
+        accepts_pets,
+        created_at,
+        updated_at,
+        locations!properties_location_id_fkey (
+          id,
+          name,
+          street,
+          number,
+          neighborhood,
+          city,
+          state,
+          zip_code
+        )
+      `)
+      .order("created_at", { ascending: false })
+      .limit(500); // Limite razoável
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
+    if (error) throw error;
 
-    const result = await response.json();
-    const properties = result.properties || [];
+    const properties = (data || []).map((item) =>
+      mapDatabaseProperty({
+        ...item,
+        location_name: item.locations?.name,
+        location_street: item.locations?.street,
+        location_number: item.locations?.number,
+        location_neighborhood: item.locations?.neighborhood,
+        location_city: item.locations?.city,
+        location_state: item.locations?.state,
+        location_zip_code: item.locations?.zip_code,
+      })
+    );
 
-    console.log(`✅ Fetched ${properties.length} properties via Next.js API Route`);
+    console.log(`✅ Fetched ${properties.length} properties (optimized query)`);
 
     // Cache successful data
     cacheService.set(CACHE_KEY, properties, CACHE_TTL);
@@ -109,32 +143,50 @@ export const getAll = async (): Promise<Property[]> => {
 };
 
 /**
- * Buscar imóvel por ID
- * COM CACHE FALLBACK
+ * Buscar imóvel por ID - OPTIMIZED VERSION
  */
 export const getById = async (id: string): Promise<Property | null> => {
   const CACHE_KEY = `property_${id}`;
-  const CACHE_TTL = 1000 * 60 * 5; // 5 minutes
+  const CACHE_TTL = 1000 * 60 * 30; // 30 minutes
 
-  console.log(`=== FETCHING PROPERTY BY ID: ${id} ===`);
+  console.log(`=== FETCHING PROPERTY BY ID: ${id} (OPTIMIZED) ===`);
 
   try {
-    // Query direta simples COM JOIN para pegar dados de location
     const { data: propertyData, error: propertyError } = await supabase
       .from("properties")
       .select(`
-        *,
-        locations (
-          id, name, street, number, neighborhood, city, state, zip_code
+        id,
+        location_id,
+        property_identifier,
+        complement,
+        description,
+        rooms,
+        bathrooms,
+        area,
+        has_garage,
+        value,
+        garage_value,
+        status,
+        images,
+        has_furniture,
+        accepts_pets,
+        created_at,
+        updated_at,
+        locations!properties_location_id_fkey (
+          id,
+          name,
+          street,
+          number,
+          neighborhood,
+          city,
+          state,
+          zip_code
         )
       `)
       .eq("id", id)
       .single();
 
-    if (propertyError) {
-      throw propertyError;
-    }
-
+    if (propertyError) throw propertyError;
     if (!propertyData) return null;
 
     const property = mapDatabaseProperty({
@@ -145,7 +197,7 @@ export const getById = async (id: string): Promise<Property | null> => {
       location_neighborhood: propertyData.locations?.neighborhood,
       location_city: propertyData.locations?.city,
       location_state: propertyData.locations?.state,
-      location_zip_code: propertyData.locations?.zip_code
+      location_zip_code: propertyData.locations?.zip_code,
     });
 
     // Cache successful data
@@ -172,19 +224,17 @@ export const getById = async (id: string): Promise<Property | null> => {
  */
 export const create = async (property: Partial<Property>): Promise<Property> => {
   console.log("=== CREATING PROPERTY ===");
-  
-  // Mapear apenas campos que REALMENTE EXISTEM no banco
+
   const propertyData = {
     location_id: property.locationId,
     property_identifier: property.propertyIdentifier || "Apartamento",
     complement: property.complement,
     description: property.description,
-    // CAMPOS REAIS DO BANCO:
-    rooms: property.rooms, // NÃO usar 'bedrooms'
+    rooms: property.rooms,
     bathrooms: property.bathrooms,
     area: property.area,
     has_garage: property.hasGarage,
-    value: property.value, // NÃO usar 'monthlyRent'
+    value: property.value,
     garage_value: property.garageValue,
     status: property.status || "available",
     images: property.images || [],
@@ -203,6 +253,9 @@ export const create = async (property: Partial<Property>): Promise<Property> => 
     throw error;
   }
 
+  // Invalidate cache
+  cacheService.remove("properties_all");
+
   console.log("✅ Property created successfully");
   return mapDatabaseProperty(data);
 };
@@ -213,18 +266,16 @@ export const create = async (property: Partial<Property>): Promise<Property> => 
 export const update = async (id: string, property: Partial<Property>): Promise<Property> => {
   console.log("=== UPDATING PROPERTY ===");
 
-  // Mapear apenas campos que REALMENTE EXISTEM no banco
   const propertyData = {
     location_id: property.locationId,
     property_identifier: property.propertyIdentifier,
     complement: property.complement,
     description: property.description,
-    // CAMPOS REAIS DO BANCO:
-    rooms: property.rooms, // NÃO usar 'bedrooms'
+    rooms: property.rooms,
     bathrooms: property.bathrooms,
     area: property.area,
     has_garage: property.hasGarage,
-    value: property.value, // NÃO usar 'monthlyRent'
+    value: property.value,
     garage_value: property.garageValue,
     status: property.status,
     images: property.images,
@@ -244,6 +295,10 @@ export const update = async (id: string, property: Partial<Property>): Promise<P
     throw error;
   }
 
+  // Invalidate cache
+  cacheService.remove("properties_all");
+  cacheService.remove(`property_${id}`);
+
   console.log("✅ Property updated successfully");
   return mapDatabaseProperty(data);
 };
@@ -258,4 +313,8 @@ export const remove = async (id: string): Promise<void> => {
     console.error("Error deleting property:", error);
     throw error;
   }
+
+  // Invalidate cache
+  cacheService.remove("properties_all");
+  cacheService.remove(`property_${id}`);
 };
