@@ -34,7 +34,6 @@ export function usePublicProperties(filters: Filters = {}) {
     setError(null);
 
     try {
-      // Mapear SortOption para parâmetros de API
       const params = new URLSearchParams();
       if (filters.location) params.append("location", filters.location);
       
@@ -59,8 +58,6 @@ export function usePublicProperties(filters: Filters = {}) {
           break;
       }
 
-      // Usar a rota genérica otimizada em vez de available direta se precisarmos de mais flexibilidade
-      // Mas por enquanto, available.ts parece ser o endpoint correto
       const response = await fetch(`/api/properties/available?${params.toString()}`);
       
       if (!response.ok) {
@@ -69,32 +66,63 @@ export function usePublicProperties(filters: Filters = {}) {
 
       const data = await response.json();
       
-      // Mapear campos do banco para frontend
-      const mappedProperties: Property[] = data.map((prop: any) => ({
-        id: prop.id,
-        locationId: prop.location_id,
-        complement: prop.complement,
-        type: prop.type || "Outros", // Fallback se não existir
-        bedrooms: prop.bedrooms || 0,
-        bathrooms: prop.bathrooms || 0,
-        area: prop.area || 0,
-        value: prop.value || 0,
-        description: prop.description || "",
-        status: prop.status,
-        images: Array.isArray(prop.images) ? prop.images : [],
-        createdAt: prop.created_at,
-        // Campos relacionados
-        location: prop.locations?.name || "Localização não informada", // String para compatibilidade
-        locationDetails: prop.locations ? {
-          id: prop.locations.id,
-          name: prop.locations.name || "",
-          address: prop.locations.address || "",
-          city: prop.locations.city || "",
-          state: prop.locations.state || "",
-          zipCode: prop.locations.zip_code || "",
-          neighborhood: prop.locations.neighborhood || "",
-        } : undefined,
-      }));
+      // Mapear campos do banco para frontend - COMPLETO
+      const mappedProperties: Property[] = data.map((prop: any) => {
+        // Extrair dados da localização
+        const locationData = prop.locations || {};
+        const city = locationData.city || "";
+        const state = locationData.state || "";
+        const neighborhood = locationData.neighborhood || "";
+        const locationName = locationData.name || "";
+
+        return {
+          id: prop.id,
+          locationId: prop.location_id,
+          complement: prop.complement || "",
+          
+          // Informações do imóvel
+          type: prop.property_type || "Outros",
+          propertyIdentifier: prop.property_identifier || "",
+          rooms: prop.bedrooms || 0, // bedrooms → rooms
+          bedrooms: prop.bedrooms || 0,
+          bathrooms: prop.bathrooms || 0,
+          area: prop.area || 0,
+          
+          // Valores
+          value: prop.value || 0,
+          garageValue: prop.garage_value || 0,
+          
+          // Características
+          hasGarage: prop.has_garage || false,
+          hasFurniture: prop.has_furniture || false,
+          acceptsPets: prop.accepts_pets || false,
+          
+          // Textos
+          description: prop.description || "",
+          status: prop.status,
+          images: Array.isArray(prop.images) ? prop.images : [],
+          createdAt: prop.created_at,
+          
+          // Localização (string para compatibilidade)
+          location: locationName || `${city} - ${state}`,
+          
+          // Localização (campos individuais)
+          city: city,
+          state: state,
+          neighborhood: neighborhood,
+          
+          // Localização (objeto completo)
+          locationDetails: locationData.id ? {
+            id: locationData.id,
+            name: locationName,
+            address: locationData.address || "",
+            city: city,
+            state: state,
+            zipCode: locationData.zip_code || "",
+            neighborhood: neighborhood,
+          } : undefined,
+        };
+      });
 
       setProperties(mappedProperties);
       
@@ -109,6 +137,7 @@ export function usePublicProperties(filters: Filters = {}) {
       const staleCache = cacheService.get<Property[]>(cacheKey, true);
       if (staleCache) {
         setProperties(staleCache);
+        setError(null); // Limpa erro se conseguiu fallback
       }
     } finally {
       setLoading(false);
