@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { Property } from "@/types";
 import { cacheService } from "@/services/cacheService";
+import { SortOption } from "@/components/public/SortSelector";
 
-const CACHE_TTL = 60 * 60 * 1000; // 1 hora (imóveis públicos mudam pouco)
+const CACHE_TTL = 60 * 60 * 1000; // 1 hora
 
 interface Filters {
   location?: string;
-  sort?: "asc" | "desc";
+  sort?: SortOption;
 }
 
 export function usePublicProperties(filters: Filters = {}) {
@@ -19,7 +20,7 @@ export function usePublicProperties(filters: Filters = {}) {
   }, [filters.location, filters.sort]);
 
   async function loadProperties() {
-    const cacheKey = `public_properties_${filters.location || "all"}_${filters.sort || "desc"}`;
+    const cacheKey = `public_properties_${filters.location || "all"}_${filters.sort || "newest"}`;
     
     // Tentar cache primeiro
     const cached = cacheService.get<Property[]>(cacheKey);
@@ -33,11 +34,33 @@ export function usePublicProperties(filters: Filters = {}) {
     setError(null);
 
     try {
-      // Usar API otimizada em vez de query direta
+      // Mapear SortOption para parâmetros de API
       const params = new URLSearchParams();
       if (filters.location) params.append("location", filters.location);
-      if (filters.sort) params.append("sort", filters.sort);
+      
+      // Lógica de ordenação
+      switch (filters.sort) {
+        case "price-asc":
+          params.append("sort", "value");
+          params.append("order", "asc");
+          break;
+        case "price-desc":
+          params.append("sort", "value");
+          params.append("order", "desc");
+          break;
+        case "area-desc":
+          params.append("sort", "area");
+          params.append("order", "desc");
+          break;
+        case "newest":
+        default:
+          params.append("sort", "created_at");
+          params.append("order", "desc");
+          break;
+      }
 
+      // Usar a rota genérica otimizada em vez de available direta se precisarmos de mais flexibilidade
+      // Mas por enquanto, available.ts parece ser o endpoint correto
       const response = await fetch(`/api/properties/available?${params.toString()}`);
       
       if (!response.ok) {
@@ -51,23 +74,25 @@ export function usePublicProperties(filters: Filters = {}) {
         id: prop.id,
         locationId: prop.location_id,
         complement: prop.complement,
-        type: prop.type,
-        bedrooms: prop.bedrooms,
-        bathrooms: prop.bathrooms,
-        area: prop.area,
-        value: prop.value,
-        description: prop.description,
+        type: prop.type || "Outros", // Fallback se não existir
+        bedrooms: prop.bedrooms || 0,
+        bathrooms: prop.bathrooms || 0,
+        area: prop.area || 0,
+        value: prop.value || 0,
+        description: prop.description || "",
         status: prop.status,
-        images: prop.images || [],
+        images: Array.isArray(prop.images) ? prop.images : [],
         createdAt: prop.created_at,
         // Campos relacionados
-        location: prop.locations ? {
+        location: prop.locations?.name || "Localização não informada", // String para compatibilidade
+        locationDetails: prop.locations ? {
           id: prop.locations.id,
-          name: prop.locations.name,
-          address: prop.locations.address,
-          city: prop.locations.city,
-          state: prop.locations.state,
-          zipCode: prop.locations.zip_code,
+          name: prop.locations.name || "",
+          address: prop.locations.address || "",
+          city: prop.locations.city || "",
+          state: prop.locations.state || "",
+          zipCode: prop.locations.zip_code || "",
+          neighborhood: prop.locations.neighborhood || "",
         } : undefined,
       }));
 

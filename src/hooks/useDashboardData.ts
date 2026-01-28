@@ -5,7 +5,7 @@ import { cacheService } from "@/services/cacheService";
 
 export type Period = "week" | "month" | "year";
 
-interface DashboardMetrics {
+export interface DashboardMetrics {
   totalProperties: number;
   availableProperties: number;
   occupiedProperties: number;
@@ -21,10 +21,10 @@ interface DashboardMetrics {
   occupancyRate: number;
 }
 
-interface ChartData {
+export interface ChartData {
   revenueByMonth: Array<{ month: string; value: number }>;
   paymentsByStatus: Array<{ status: string; count: number; amount: number }>;
-  propertiesByType: Array<{ type: string; count: number }>;
+  propertiesByStatus: Array<{ status: string; count: number }>;
 }
 
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutos (mais frequente para dashboard)
@@ -49,7 +49,7 @@ export function useDashboardData(period: Period = "month") {
   const [chartData, setChartData] = useState<ChartData>({
     revenueByMonth: [],
     paymentsByStatus: [],
-    propertiesByType: [],
+    propertiesByStatus: [],
   });
   const [loading, setLoading] = useState(true);
 
@@ -95,7 +95,7 @@ export function useDashboardData(period: Period = "month") {
       const newChartData: ChartData = {
         revenueByMonth: paymentsResult.revenueByMonth,
         paymentsByStatus: paymentsResult.paymentsByStatus,
-        propertiesByType: propertiesResult.propertiesByType,
+        propertiesByStatus: propertiesResult.propertiesByStatus,
       };
 
       setMetrics(newMetrics);
@@ -120,7 +120,7 @@ export function useDashboardData(period: Period = "month") {
   async function fetchPropertiesMetrics() {
     const { data: properties, error } = await supabase
       .from("properties")
-      .select("status, type")
+      .select("status")
       .limit(1000);
 
     if (error) throw error;
@@ -129,14 +129,17 @@ export function useDashboardData(period: Period = "month") {
     const availableProperties = properties?.filter((p) => p.status === "available").length || 0;
     const occupiedProperties = properties?.filter((p) => p.status === "rented").length || 0;
 
-    // Agrupar por tipo
-    const typeCount = properties?.reduce((acc, p) => {
-      acc[p.type] = (acc[p.type] || 0) + 1;
+    // Agrupar por status em vez de tipo
+    const statusCount = properties?.reduce((acc, p) => {
+      const statusLabel = p.status === "available" ? "Disponível" : 
+                         p.status === "rented" ? "Alugado" : 
+                         p.status === "maintenance" ? "Manutenção" : p.status;
+      acc[statusLabel] = (acc[statusLabel] || 0) + 1;
       return acc;
     }, {} as Record<string, number>) || {};
 
-    const propertiesByType = Object.entries(typeCount).map(([type, count]) => ({
-      type,
+    const propertiesByStatus = Object.entries(statusCount).map(([status, count]) => ({
+      status,
       count,
     }));
 
@@ -149,20 +152,21 @@ export function useDashboardData(period: Period = "month") {
       availableProperties,
       occupiedProperties,
       occupancyRate,
-      propertiesByType,
+      propertiesByType: propertiesByStatus,
+      propertiesByStatus,
     };
   }
 
   async function fetchTenantsMetrics() {
     const { data: tenants, error } = await supabase
       .from("tenants")
-      .select("is_active")
+      .select("status")
       .limit(1000);
 
     if (error) throw error;
 
     const totalTenants = tenants?.length || 0;
-    const activeTenants = tenants?.filter((t) => t.is_active).length || 0;
+    const activeTenants = tenants?.filter((t) => t.status === "active").length || 0;
     const inactiveTenants = totalTenants - activeTenants;
 
     return {

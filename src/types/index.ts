@@ -98,6 +98,17 @@ export interface Property {
   createdAt?: string;
   updatedAt?: string;
   
+  // Detalhes da localização (objeto completo para UI rica)
+  locationDetails?: {
+    id: string;
+    name: string;
+    city: string;
+    state: string;
+    neighborhood?: string;
+    address?: string;
+    zipCode?: string;
+  };
+
   // Database snake_case fallbacks (optional, for raw data)
   location_id?: string;
   has_garage?: boolean;

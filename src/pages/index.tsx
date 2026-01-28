@@ -8,6 +8,7 @@ import { WhatsAppButton } from "@/components/public/WhatsAppButton";
 import { ViewModeToggle } from "@/components/public/ViewModeToggle";
 import { SortSelector } from "@/components/public/SortSelector";
 import { usePublicProperties } from "@/hooks/usePublicProperties";
+import { SortOption } from "@/components/public/SortSelector";
 import { Input } from "@/components/ui/input";
 import { Search, Home, Building2, Phone, Mail, MapPin } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -17,7 +18,7 @@ export default function PublicHomePage() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [selectedLocation, setSelectedLocation] = useState<string>("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortBy, setSortBy] = useState<"asc" | "desc">("desc");
+  const [sortBy, setSortBy] = useState<SortOption>("newest");
   
   const { properties, loading, error } = usePublicProperties({
     location: selectedLocation,
@@ -31,21 +32,23 @@ export default function PublicHomePage() {
     return (
       prop.complement?.toLowerCase().includes(search) ||
       prop.description?.toLowerCase().includes(search) ||
-      prop.location?.city?.toLowerCase().includes(search) ||
-      prop.location?.neighborhood?.toLowerCase().includes(search)
+      prop.locationDetails?.city?.toLowerCase().includes(search) ||
+      prop.locationDetails?.neighborhood?.toLowerCase().includes(search) ||
+      prop.location?.toLowerCase().includes(search) ||
+      prop.type?.toLowerCase().includes(search)
     );
   });
 
   // Extract unique locations for filter
   const uniqueLocations = Array.from(
-    new Set(properties.map((p) => p.location?.name).filter(Boolean))
+    new Set(properties.map((p) => p.location).filter(Boolean))
   ).map((name) => {
-    const prop = properties.find((p) => p.location?.name === name);
+    const prop = properties.find((p) => p.location === name);
     return {
       id: prop?.locationId || "",
       name: name || "",
-      city: prop?.location?.city || "",
-      neighborhood: prop?.location?.neighborhood || "",
+      city: prop?.locationDetails?.city || "",
+      neighborhood: prop?.locationDetails?.neighborhood || "",
     };
   });
 
