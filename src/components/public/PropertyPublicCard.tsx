@@ -86,6 +86,11 @@ export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
               <MapPin className="h-4 w-4" />
               {property.city} - {property.state}
             </p>
+            {property.complement && (
+              <p className="text-sm text-slate-500 mt-1">
+                {property.complement}
+              </p>
+            )}
 
             {/* Características principais */}
             <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600 py-2">
