@@ -1,112 +1,99 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import type { Property } from "@/types";
+import { Property } from "@/types";
+import { cacheService } from "@/services/cacheService";
 
-export type PublicProperty = Property;
+const CACHE_TTL = 60 * 60 * 1000; // 1 hora (imóveis públicos mudam pouco)
 
-interface UsePublicPropertiesReturn {
-  properties: Property[];
-  locations: string[]; // Cidades/Bairros únicos para filtro
-  isLoading: boolean;
-  error: string | null;
-  selectedCity: string;
-  setSelectedCity: (city: string) => void;
-  selectedLocation: string;
-  setSelectedLocation: (location: string) => void;
-  searchTerm: string;
-  setSearchTerm: (term: string) => void;
-  sortBy: "newest" | "price-asc" | "price-desc" | "area-desc";
-  setSortBy: (sort: "newest" | "price-asc" | "price-desc" | "area-desc") => void;
+interface Filters {
+  location?: string;
+  sort?: "asc" | "desc";
 }
 
-export function usePublicProperties(): UsePublicPropertiesReturn {
+export function usePublicProperties(filters: Filters = {}) {
   const [properties, setProperties] = useState<Property[]>([]);
-  const [locations, setLocations] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedCity, setSelectedCity] = useState<string>("");
-  const [selectedLocation, setSelectedLocation] = useState<string>("");
-  const [searchTerm, setSearchTerm] = useState<string>("");
-  const [sortBy, setSortBy] = useState<"newest" | "price-asc" | "price-desc" | "area-desc">("newest");
 
   useEffect(() => {
-    fetchProperties();
-  }, []);
+    loadProperties();
+  }, [filters.location, filters.sort]);
 
-  const fetchProperties = async () => {
-    console.log("=== FETCHING PUBLIC PROPERTIES VIA NEXT.JS API ===");
-    setIsLoading(true);
+  async function loadProperties() {
+    const cacheKey = `public_properties_${filters.location || "all"}_${filters.sort || "desc"}`;
+    
+    // Tentar cache primeiro
+    const cached = cacheService.get<Property[]>(cacheKey);
+    if (cached) {
+      setProperties(cached);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
     setError(null);
 
     try {
-      // Usar a rota PÚBLICA /api/properties/available em vez de /api/properties
-      const response = await fetch("/api/properties/available");
+      // Usar API otimizada em vez de query direta
+      const params = new URLSearchParams();
+      if (filters.location) params.append("location", filters.location);
+      if (filters.sort) params.append("sort", filters.sort);
 
+      const response = await fetch(`/api/properties/available?${params.toString()}`);
+      
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        throw new Error("Erro ao carregar imóveis disponíveis");
       }
 
-      const result = await response.json();
-      const fetchedProperties = result.data || [];
+      const data = await response.json();
+      
+      // Mapear campos do banco para frontend
+      const mappedProperties: Property[] = data.map((prop: any) => ({
+        id: prop.id,
+        locationId: prop.location_id,
+        complement: prop.complement,
+        type: prop.type,
+        bedrooms: prop.bedrooms,
+        bathrooms: prop.bathrooms,
+        area: prop.area,
+        value: prop.value,
+        description: prop.description,
+        status: prop.status,
+        images: prop.images || [],
+        createdAt: prop.created_at,
+        // Campos relacionados
+        location: prop.locations ? {
+          id: prop.locations.id,
+          name: prop.locations.name,
+          address: prop.locations.address,
+          city: prop.locations.city,
+          state: prop.locations.state,
+          zipCode: prop.locations.zip_code,
+        } : undefined,
+      }));
 
-      console.log(`✅ Fetched ${fetchedProperties.length} available properties via Next.js API Route`);
+      setProperties(mappedProperties);
+      
+      // Cachear resultado
+      cacheService.set(cacheKey, mappedProperties, CACHE_TTL);
 
-      setProperties(fetchedProperties);
-      // setFilteredProperties removido pois é derivado
     } catch (err: any) {
-      console.error("Error fetching public properties:", err);
+      console.error("Erro ao carregar imóveis públicos:", err);
       setError(err.message || "Erro ao carregar imóveis");
+      
+      // Tentar usar cache expirado como fallback
+      const staleCache = cacheService.get<Property[]>(cacheKey, true);
+      if (staleCache) {
+        setProperties(staleCache);
+      }
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
-  };
-
-  // Filtrar properties baseado nos filtros selecionados
-  const filteredProperties = properties.filter((property) => {
-    const matchesCity = !selectedCity || property.city === selectedCity;
-    // O filtro "selectedLocation" aqui geralmente se refere ao Location ID (prédio) ou Bairro? 
-    // Na implementação anterior parecia ser ID. Mas na Home pública geralmente é Bairro.
-    // O hook anterior usava locationId. Vamos manter consistente.
-    const matchesLocation = !selectedLocation || property.locationId === selectedLocation;
-    
-    const matchesSearch = !searchTerm || 
-      property.location?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      property.neighborhood?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      property.city?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      property.description?.toLowerCase().includes(searchTerm.toLowerCase());
-
-    return matchesCity && matchesLocation && matchesSearch;
-  });
-
-  // Ordenar properties
-  const sortedProperties = [...filteredProperties].sort((a, b) => {
-    switch (sortBy) {
-      case "newest":
-        return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
-      case "price-asc":
-        return (a.value || 0) - (b.value || 0);
-      case "price-desc":
-        return (b.value || 0) - (a.value || 0);
-      case "area-desc":
-        return (b.area || 0) - (a.area || 0);
-      default:
-        return 0;
-    }
-  });
+  }
 
   return {
-    properties: sortedProperties,
-    locations, // Lista de strings para dropdown de filtro
-    isLoading,
+    properties,
+    loading,
     error,
-    selectedCity,
-    setSelectedCity,
-    selectedLocation,
-    setSelectedLocation,
-    searchTerm,
-    setSearchTerm,
-    sortBy,
-    setSortBy,
+    refresh: loadProperties,
   };
 }

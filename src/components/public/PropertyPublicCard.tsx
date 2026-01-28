@@ -29,10 +29,10 @@ import {
 } from "lucide-react";
 import { InterestFormDialog } from "./InterestFormDialog";
 import { ShareButtons } from "./ShareButtons";
-import { PublicProperty } from "@/hooks/usePublicProperties";
+import { Property } from "@/types";
 
 interface PropertyPublicCardProps {
-  property: PublicProperty;
+  property: Property;
 }
 
 export function PropertyPublicCard({ property }: PropertyPublicCardProps) {

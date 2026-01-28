@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Head from "next/head";
 import { PublicHeader } from "@/components/public/PublicHeader";
 import { LocationFilter } from "@/components/public/LocationFilter";
@@ -6,44 +6,54 @@ import { PropertyPublicCard } from "@/components/public/PropertyPublicCard";
 import { PropertyListCard } from "@/components/public/PropertyListCard";
 import { WhatsAppButton } from "@/components/public/WhatsAppButton";
 import { ViewModeToggle } from "@/components/public/ViewModeToggle";
-import { SortSelector, SortOption } from "@/components/public/SortSelector";
+import { SortSelector } from "@/components/public/SortSelector";
 import { usePublicProperties } from "@/hooks/usePublicProperties";
 import { Input } from "@/components/ui/input";
-import { Search, Home, Building2, Phone, Mail, MapPin, Facebook, Instagram, Linkedin } from "lucide-react";
+import { Search, Home, Building2, Phone, Mail, MapPin } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { siteConfig } from "@/services/configService";
 
-export default function PublicHome() {
-  const {
-    properties,
-    locations,
-    selectedLocation,
-    setSelectedLocation,
-    searchTerm,
-    setSearchTerm,
-    sortBy,
-    setSortBy,
-    isLoading
-  } = usePublicProperties();
-
+export default function PublicHomePage() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [selectedLocation, setSelectedLocation] = useState<string>("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortBy, setSortBy] = useState<"asc" | "desc">("desc");
+  
+  const { properties, loading, error } = usePublicProperties({
+    location: selectedLocation,
+    sort: sortBy,
+  });
 
-  // Transform string[] locations to the format expected by LocationFilter
-  const formattedLocations = locations.map(loc => ({
-    id: loc,
-    name: loc,
-    city: "",
-    neighborhood: ""
-  }));
+  // Filter properties by search term
+  const filteredProperties = properties.filter((prop) => {
+    if (!searchTerm) return true;
+    const search = searchTerm.toLowerCase();
+    return (
+      prop.complement?.toLowerCase().includes(search) ||
+      prop.description?.toLowerCase().includes(search) ||
+      prop.location?.city?.toLowerCase().includes(search) ||
+      prop.location?.neighborhood?.toLowerCase().includes(search)
+    );
+  });
+
+  // Extract unique locations for filter
+  const uniqueLocations = Array.from(
+    new Set(properties.map((p) => p.location?.name).filter(Boolean))
+  ).map((name) => {
+    const prop = properties.find((p) => p.location?.name === name);
+    return {
+      id: prop?.locationId || "",
+      name: name || "",
+      city: prop?.location?.city || "",
+      neighborhood: prop?.location?.neighborhood || "",
+    };
+  });
 
   return (
     <>
       <Head>
         <title>{siteConfig.name} - Encontre seu novo lar</title>
-        <meta
-          name="description"
-          content={siteConfig.description} />
-
+        <meta name="description" content={siteConfig.description} />
         <meta property="og:title" content={`${siteConfig.name} - Encontre seu novo lar`} />
         <meta property="og:description" content={siteConfig.description} />
         <meta property="og:type" content="website" />
@@ -79,8 +89,8 @@ export default function PublicHome() {
                   placeholder="Buscar por bairro, cidade ou nome do imóvel..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-12 pr-4 py-6 text-lg rounded-full shadow-2xl border-0" />
-
+                  className="pl-12 pr-4 py-6 text-lg rounded-full shadow-2xl border-0"
+                />
               </div>
             </div>
           </div>
@@ -91,10 +101,10 @@ export default function PublicHome() {
           <div className="container mx-auto px-4 py-6">
             <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
               <LocationFilter
-                locations={formattedLocations as any}
+                locations={uniqueLocations}
                 selectedLocation={selectedLocation}
-                onLocationChange={setSelectedLocation} />
-
+                onLocationChange={setSelectedLocation}
+              />
               
               <div className="flex gap-3 items-center">
                 <SortSelector sortBy={sortBy} onSortChange={setSortBy} />
@@ -107,19 +117,19 @@ export default function PublicHome() {
         {/* Properties Grid/List */}
         <section className="py-12">
           <div className="container mx-auto px-4">
-            {isLoading ?
-            <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" : "space-y-6"}>
-                {[...Array(6)].map((_, i) =>
-              <div key={i} className="space-y-4">
+            {loading ? (
+              <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" : "space-y-6"}>
+                {[...Array(6)].map((_, i) => (
+                  <div key={i} className="space-y-4">
                     <Skeleton className="aspect-[4/3] w-full rounded-lg" />
                     <Skeleton className="h-6 w-3/4" />
                     <Skeleton className="h-4 w-1/2" />
                     <Skeleton className="h-10 w-full" />
                   </div>
-              )}
-              </div> :
-            properties.length === 0 ?
-            <div className="text-center py-20">
+                ))}
+              </div>
+            ) : filteredProperties.length === 0 ? (
+              <div className="text-center py-20">
                 <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-slate-100 mb-6">
                   <Home className="h-10 w-10 text-slate-400" />
                 </div>
@@ -129,9 +139,9 @@ export default function PublicHome() {
                 <p className="text-slate-600">
                   Tente ajustar os filtros ou fazer uma nova busca
                 </p>
-              </div> :
-
-            <>
+              </div>
+            ) : (
+              <>
                 <div className="flex items-center justify-between mb-8">
                   <h2 className="font-display text-3xl font-bold text-slate-900">
                     Imóveis Disponíveis
@@ -139,27 +149,27 @@ export default function PublicHome() {
                   <div className="flex items-center gap-2 text-slate-600">
                     <Building2 className="h-5 w-5" />
                     <span className="font-medium">
-                      {properties.length}{" "}
-                      {properties.length === 1 ? "imóvel" : "imóveis"}
+                      {filteredProperties.length}{" "}
+                      {filteredProperties.length === 1 ? "imóvel" : "imóveis"}
                     </span>
                   </div>
                 </div>
 
-                {viewMode === "grid" ?
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {properties.map((property) =>
-                <PropertyPublicCard key={property.id} property={property} />
-                )}
-                  </div> :
-
-              <div className="space-y-6">
-                    {properties.map((property) =>
-                <PropertyListCard key={property.id} property={property} />
-                )}
+                {viewMode === "grid" ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    {filteredProperties.map((property) => (
+                      <PropertyPublicCard key={property.id} property={property} />
+                    ))}
                   </div>
-              }
+                ) : (
+                  <div className="space-y-6">
+                    {filteredProperties.map((property) => (
+                      <PropertyListCard key={property.id} property={property} />
+                    ))}
+                  </div>
+                )}
               </>
-            }
+            )}
           </div>
         </section>
 
@@ -171,8 +181,8 @@ export default function PublicHome() {
               <div>
                 <div className="flex items-center gap-2 mb-4">
                   <Building2 className="h-8 w-8 text-blue-600" />
-                  <span className="font-display text-2xl font-bold text-white">D'Uvo Enterprise Corporation
-
+                  <span className="font-display text-2xl font-bold text-white">
+                    {siteConfig.name}
                   </span>
                 </div>
                 <p className="text-slate-400 mb-4">
@@ -188,15 +198,15 @@ export default function PublicHome() {
                 <div className="space-y-3">
                   <a
                     href={`tel:${siteConfig.contact.phone}`}
-                    className="flex items-center gap-3 text-slate-300 hover:text-white transition-colors">
-
+                    className="flex items-center gap-3 text-slate-300 hover:text-white transition-colors"
+                  >
                     <Phone className="h-5 w-5 text-blue-400" />
                     {siteConfig.contact.phone}
                   </a>
                   <a
                     href={`mailto:${siteConfig.contact.email}`}
-                    className="flex items-center gap-3 text-slate-300 hover:text-white transition-colors">
-
+                    className="flex items-center gap-3 text-slate-300 hover:text-white transition-colors"
+                  >
                     <Mail className="h-5 w-5 text-blue-400" />
                     {siteConfig.contact.email}
                   </a>
@@ -220,6 +230,6 @@ export default function PublicHome() {
         {/* WhatsApp Floating Button */}
         <WhatsAppButton />
       </div>
-    </>);
-
+    </>
+  );
 }

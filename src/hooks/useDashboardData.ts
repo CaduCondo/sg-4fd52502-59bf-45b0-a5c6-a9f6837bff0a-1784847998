@@ -1,260 +1,298 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { getAll as getAllProperties } from "@/services/propertyService";
-import { getAll as getAllTenants } from "@/services/tenantService";
-import { getAll as getAllPayments } from "@/services/paymentService";
-import { getConfig } from "@/services/configService";
-import type { Property, Tenant, Rental, Payment } from "@/types";
-import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
+import { cacheService } from "@/services/cacheService";
 
-interface Stats {
+export type Period = "week" | "month" | "year";
+
+interface DashboardMetrics {
   totalProperties: number;
   availableProperties: number;
   occupiedProperties: number;
-  unavailableProperties: number;
-  activeRentals: number;
   totalTenants: number;
+  activeTenants: number;
+  inactiveTenants: number;
+  activeRentals: number;
   monthlyRevenue: number;
-  adminFee: number;
-  netRevenue: number;
-  expectedValue: number;
-  paidPayments: number;
-  pendingPayments: number;
   overduePayments: number;
+  overdueAmount: number;
+  paidPayments: number;
+  paidAmount: number;
+  occupancyRate: number;
 }
 
-export function useDashboardData(selectedMonth: number | null, selectedYear: number | null) {
-  const { user } = useAuth();
-  const [isLoading, setIsLoading] = useState(true);
-  const [properties, setProperties] = useState<any[]>([]);
-  const [tenants, setTenants] = useState<any[]>([]);
-  const [rentals, setRentals] = useState<any[]>([]);
-  const [payments, setPayments] = useState<any[]>([]);
-  const [adminFeePercentage, setAdminFeePercentage] = useState(5);
-  const [filteredPayments, setFilteredPayments] = useState<Payment[]>([]);
-  const [dueSoonPayments, setDueSoonPayments] = useState<Payment[]>([]);
-  const [exemptLocationIds, setExemptLocationIds] = useState<string[]>([]);
-  const [userLocationIds, setUserLocationIds] = useState<string[]>([]);
-  const [stats, setStats] = useState<Stats>({
+interface ChartData {
+  revenueByMonth: Array<{ month: string; value: number }>;
+  paymentsByStatus: Array<{ status: string; count: number; amount: number }>;
+  propertiesByType: Array<{ type: string; count: number }>;
+}
+
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutos (mais frequente para dashboard)
+
+export function useDashboardData(period: Period = "month") {
+  const { toast } = useToast();
+  const [metrics, setMetrics] = useState<DashboardMetrics>({
     totalProperties: 0,
     availableProperties: 0,
     occupiedProperties: 0,
-    unavailableProperties: 0,
-    activeRentals: 0,
     totalTenants: 0,
+    activeTenants: 0,
+    inactiveTenants: 0,
+    activeRentals: 0,
     monthlyRevenue: 0,
-    adminFee: 0,
-    netRevenue: 0,
-    expectedValue: 0,
-    paidPayments: 0,
-    pendingPayments: 0,
     overduePayments: 0,
+    overdueAmount: 0,
+    paidPayments: 0,
+    paidAmount: 0,
+    occupancyRate: 0,
   });
+  const [chartData, setChartData] = useState<ChartData>({
+    revenueByMonth: [],
+    paymentsByStatus: [],
+    propertiesByType: [],
+  });
+  const [loading, setLoading] = useState(true);
 
-  const loadData = async () => {
-    if (!selectedMonth || !selectedYear || !user) return;
+  useEffect(() => {
+    loadDashboardData();
+  }, [period]);
+
+  async function loadDashboardData() {
+    const cacheKey = `dashboard_${period}`;
+    
+    // Tentar cache primeiro
+    const cached = cacheService.get<{ metrics: DashboardMetrics; chartData: ChartData }>(cacheKey);
+    if (cached) {
+      setMetrics(cached.metrics);
+      setChartData(cached.chartData);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
 
     try {
-      setIsLoading(true);
-
-      // 1. Identificar Role do Usuário e Permissões de Local
-      const { data: userData } = await supabase
-        .from("system_users")
-        .select("role")
-        .eq("id", user.id)
-        .single();
-      
-      const userRole = userData?.role || "unknown";
-      const isRestricted = userRole !== "admin" && userRole !== "owner";
-      let allowedLocationIds: string[] = [];
-
-      // Carregar isenções (sempre necessário para cálculo de taxas)
-      const { data: exemptions } = await supabase
-        .from("user_fee_exemptions")
-        .select("location_id")
-        .eq("user_id", user.id);
-      const exemptIds = exemptions?.map(e => e.location_id) || [];
-      setExemptLocationIds(exemptIds);
-
-      // Se restrito, buscar locais permitidos
-      if (isRestricted) {
-        const { data: permissions } = await supabase
-          .from("user_location_permissions")
-          .select("location_id")
-          .eq("user_id", user.id)
-          .eq("can_view", true); // CRUCIAL: Apenas onde tem permissão de ver
-        
-        allowedLocationIds = permissions?.map(p => p.location_id) || [];
-        setUserLocationIds(allowedLocationIds); // Para debug se necessário
-      } else {
-        setUserLocationIds([]); // Admin vê tudo (array vazio aqui significa sem filtro na logica visual, mas na logica de dados trataremos diferente)
-      }
-
-      // 2. Carregar Dados Brutos
-      const { data: rentalsDataRaw } = await supabase
-        .from("rentals")
-        .select("*")
-        .eq("is_active", true);
-
-      const mappedRentals: any[] = (rentalsDataRaw || []).map((r: any) => ({
-        ...r,
-        propertyId: r.property_id,
-        tenantId: r.tenant_id,
-        startDate: r.start_date,
-        endDate: r.end_date,
-        rentAmount: r.rent_amount || r.value,
-        isActive: r.is_active,
-        depositAmount: r.deposit,
-        paymentDay: r.payment_day,
-        autoRenew: r.auto_renew,
-        hasGarage: r.has_garage,
-        garageValue: r.garage_value
-      }));
-
-      const [propertiesData, tenantsData, paymentsData, configData] = await Promise.all([
-        getAllProperties(),
-        getAllTenants(),
-        getAllPayments(),
-        getConfig()
+      // Executar todas as queries em paralelo para ser mais rápido
+      const [
+        propertiesResult,
+        tenantsResult,
+        rentalsResult,
+        paymentsResult,
+      ] = await Promise.all([
+        fetchPropertiesMetrics(),
+        fetchTenantsMetrics(),
+        fetchRentalsMetrics(),
+        fetchPaymentsMetrics(period),
       ]);
 
-      if (configData) {
-        setAdminFeePercentage(configData.admin_fee_percentage);
-      }
+      const newMetrics: DashboardMetrics = {
+        ...propertiesResult,
+        ...tenantsResult,
+        ...rentalsResult,
+        ...paymentsResult.metrics,
+      };
 
-      // 3. APLICAR FILTROS DE PERMISSÃO
-      let finalProperties = propertiesData;
-      let finalRentals = mappedRentals;
-      let finalPayments = paymentsData;
+      const newChartData: ChartData = {
+        revenueByMonth: paymentsResult.revenueByMonth,
+        paymentsByStatus: paymentsResult.paymentsByStatus,
+        propertiesByType: propertiesResult.propertiesByType,
+      };
 
-      if (isRestricted) {
-        // Filtra propriedades pelos locais permitidos
-        finalProperties = propertiesData.filter(p => allowedLocationIds.includes(p.locationId));
-        
-        // Filtra aluguéis baseados nas propriedades visíveis
-        const visiblePropertyIds = finalProperties.map(p => p.id);
-        finalRentals = mappedRentals.filter(r => visiblePropertyIds.includes(r.propertyId));
+      setMetrics(newMetrics);
+      setChartData(newChartData);
 
-        // Filtra pagamentos baseados nos aluguéis visíveis
-        const visibleRentalIds = finalRentals.map(r => r.id);
-        finalPayments = paymentsData.filter(p => visibleRentalIds.includes(p.rentalId));
-      }
+      // Cachear resultado
+      cacheService.set(cacheKey, { metrics: newMetrics, chartData: newChartData }, CACHE_TTL);
 
-      // 4. Atualizar Estado com Dados FILTRADOS
-      setProperties(finalProperties);
-      setTenants(tenantsData); // Tenants não filtramos estritamente aqui, mas o uso deles nas stats será via rentals filtrados
-      setRentals(finalRentals);
-      setPayments(finalPayments);
-      
-      // 5. Calcular Estatísticas
-      calculateStats(finalProperties, finalRentals, finalPayments, tenantsData, exemptIds); // Passamos exemptIds diretamente
-      
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao carregar dados do dashboard:", error);
+      
+      toast({
+        title: "Erro ao carregar dashboard",
+        description: error.message || "Tente novamente mais tarde.",
+        variant: "destructive",
+      });
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
-  };
+  }
 
-  const calculateStats = (
-    props: Property[],
-    rents: Rental[],
-    pays: Payment[],
-    tens: Tenant[],
-    currentExemptIds?: string[] // Novo parâmetro opcional
-  ) => {
-    if (!selectedMonth || !selectedYear) return;
+  async function fetchPropertiesMetrics() {
+    const { data: properties, error } = await supabase
+      .from("properties")
+      .select("status, type")
+      .limit(1000);
 
-    // Usa o parâmetro se fornecido, senão usa o estado (fallback)
-    const activeExemptIds = currentExemptIds || exemptLocationIds;
+    if (error) throw error;
 
-    const periodPayments = pays.filter((payment) => {
-      const dueDate = new Date(payment.dueDate);
-      return (
-        dueDate.getMonth() === (selectedMonth - 1) &&
-        dueDate.getFullYear() === selectedYear
-      );
-    });
+    const totalProperties = properties?.length || 0;
+    const availableProperties = properties?.filter((p) => p.status === "available").length || 0;
+    const occupiedProperties = properties?.filter((p) => p.status === "rented").length || 0;
 
-    const activeRentalsInPeriod = rents.filter((rental) => rental.isActive);
+    // Agrupar por tipo
+    const typeCount = properties?.reduce((acc, p) => {
+      acc[p.type] = (acc[p.type] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>) || {};
 
+    const propertiesByType = Object.entries(typeCount).map(([type, count]) => ({
+      type,
+      count,
+    }));
+
+    const occupancyRate = totalProperties > 0
+      ? Math.round((occupiedProperties / totalProperties) * 100)
+      : 0;
+
+    return {
+      totalProperties,
+      availableProperties,
+      occupiedProperties,
+      occupancyRate,
+      propertiesByType,
+    };
+  }
+
+  async function fetchTenantsMetrics() {
+    const { data: tenants, error } = await supabase
+      .from("tenants")
+      .select("is_active")
+      .limit(1000);
+
+    if (error) throw error;
+
+    const totalTenants = tenants?.length || 0;
+    const activeTenants = tenants?.filter((t) => t.is_active).length || 0;
+    const inactiveTenants = totalTenants - activeTenants;
+
+    return {
+      totalTenants,
+      activeTenants,
+      inactiveTenants,
+    };
+  }
+
+  async function fetchRentalsMetrics() {
+    const { data: rentals, error } = await supabase
+      .from("rentals")
+      .select("value")
+      .eq("is_active", true)
+      .limit(1000);
+
+    if (error) throw error;
+
+    const activeRentals = rentals?.length || 0;
+    const monthlyRevenue = rentals?.reduce((sum, r) => sum + (r.value || 0), 0) || 0;
+
+    return {
+      activeRentals,
+      monthlyRevenue,
+    };
+  }
+
+  async function fetchPaymentsMetrics(period: Period) {
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    let startDate: Date;
 
-    const overdueCount = periodPayments.filter(p => {
-      if (p.status !== "pending" && p.status !== "partial") return false;
-      const dueDate = new Date(p.dueDate);
-      dueDate.setHours(0, 0, 0, 0);
-      return dueDate < today;
-    }).length;
+    switch (period) {
+      case "week":
+        startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 7);
+        break;
+      case "month":
+        startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+        break;
+      case "year":
+        startDate = new Date(today.getFullYear(), 0, 1);
+        break;
+    }
 
-    const paidCount = periodPayments.filter(p => p.status === "paid").length;
-    const pendingCount = periodPayments.filter(p => p.status === "pending").length;
+    const { data: payments, error } = await supabase
+      .from("payments")
+      .select("status, expected_amount, paid_amount, due_date, payment_date")
+      .gte("due_date", startDate.toISOString().split("T")[0])
+      .limit(5000);
 
-    const expected = periodPayments.reduce((sum, p) => sum + (p.expectedAmount || 0), 0);
+    if (error) throw error;
 
-    const paidPaymentsList = periodPayments.filter((p) => p.status === "paid" || p.status === "partial");
-    const revenue = paidPaymentsList.reduce((sum, p) => sum + (p.paidAmount || 0), 0);
+    // Métricas de pagamentos
+    const overduePayments = payments?.filter((p) => p.status === "overdue").length || 0;
+    const overdueAmount = payments
+      ?.filter((p) => p.status === "overdue")
+      .reduce((sum, p) => sum + (p.expected_amount || 0), 0) || 0;
 
-    const feeRate = (adminFeePercentage || 0) / 100;
-    const adminFee = paidPaymentsList.reduce((sum, p) => {
-      const rental = rents.find(r => r.id === p.rentalId);
-      const property = props.find(prop => prop.id === rental?.propertyId);
-      
-      // Usa activeExemptIds em vez do estado direto
-      if (property && activeExemptIds.includes(property.locationId)) {
-        return sum;
-      }
-      
-      return sum + ((p.paidAmount || 0) * feeRate);
-    }, 0);
+    const paidPayments = payments?.filter((p) => p.status === "paid").length || 0;
+    const paidAmount = payments
+      ?.filter((p) => p.status === "paid")
+      .reduce((sum, p) => sum + (p.paid_amount || 0), 0) || 0;
 
-    const net = revenue - adminFee;
+    // Receita por mês (últimos 6 meses)
+    const revenueByMonth = generateRevenueByMonth(payments || []);
 
-    const dueSoon = pays
-      .filter(p => {
-        if (p.status === "paid") return false;
-        const dueDate = new Date(p.dueDate);
-        dueDate.setHours(0, 0, 0, 0);
-        const diffTime = dueDate.getTime() - today.getTime();
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        return diffDays >= -30 && diffDays <= 30;
-      })
-      .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
-      .slice(0, 5);
+    // Pagamentos por status
+    const paymentsByStatus = [
+      {
+        status: "paid",
+        count: paidPayments,
+        amount: paidAmount,
+      },
+      {
+        status: "pending",
+        count: payments?.filter((p) => p.status === "pending").length || 0,
+        amount: payments
+          ?.filter((p) => p.status === "pending")
+          .reduce((sum, p) => sum + (p.expected_amount || 0), 0) || 0,
+      },
+      {
+        status: "overdue",
+        count: overduePayments,
+        amount: overdueAmount,
+      },
+      {
+        status: "partial",
+        count: payments?.filter((p) => p.status === "partial").length || 0,
+        amount: payments
+          ?.filter((p) => p.status === "partial")
+          .reduce((sum, p) => sum + (p.expected_amount || 0) - (p.paid_amount || 0), 0) || 0,
+      },
+    ];
 
-    const activeTenants = tens.filter(t => t.status === "active" || t.status === "rented");
+    return {
+      metrics: {
+        overduePayments,
+        overdueAmount,
+        paidPayments,
+        paidAmount,
+      },
+      revenueByMonth,
+      paymentsByStatus,
+    };
+  }
 
-    setFilteredPayments(periodPayments);
-    setDueSoonPayments(dueSoon);
-    
-    setStats({
-      totalProperties: props.length,
-      availableProperties: props.filter((p) => p.status === "available").length,
-      occupiedProperties: props.filter((p) => p.status === "occupied").length,
-      unavailableProperties: props.filter((p) => p.status === "unavailable").length,
-      activeRentals: activeRentalsInPeriod.length,
-      totalTenants: activeTenants.length,
-      monthlyRevenue: revenue,
-      adminFee: adminFee,
-      netRevenue: net,
-      expectedValue: expected,
-      paidPayments: paidCount,
-      pendingPayments: pendingCount,
-      overduePayments: overdueCount,
-    });
-  };
+  function generateRevenueByMonth(payments: any[]) {
+    const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+    const today = new Date();
+    const data = [];
+
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
+      const month = monthNames[date.getMonth()];
+      const year = date.getFullYear();
+      const monthKey = `${year}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+
+      const value = payments
+        .filter((p) => p.status === "paid" && p.payment_date?.startsWith(monthKey))
+        .reduce((sum, p) => sum + (p.paid_amount || 0), 0);
+
+      data.push({ month: `${month}/${year}`, value });
+    }
+
+    return data;
+  }
 
   return {
-    isLoading,
-    properties,
-    tenants,
-    rentals,
-    payments,
-    adminFeePercentage,
-    filteredPayments,
-    dueSoonPayments,
-    stats,
-    loadData
+    metrics,
+    chartData,
+    loading,
+    refresh: loadDashboardData,
   };
 }

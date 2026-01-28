@@ -12,13 +12,13 @@ import {
   Building2,
   Heart,
 } from "lucide-react";
-import { PublicProperty } from "@/hooks/usePublicProperties";
+import { Property } from "@/types";
 import { formatCurrency } from "@/lib/masks";
 import { ShareButtons } from "./ShareButtons";
 import { InterestFormDialog } from "./InterestFormDialog";
 
 interface PropertyListCardProps {
-  property: PublicProperty;
+  property: Property;
 }
 
 export function PropertyListCard({ property }: PropertyListCardProps) {

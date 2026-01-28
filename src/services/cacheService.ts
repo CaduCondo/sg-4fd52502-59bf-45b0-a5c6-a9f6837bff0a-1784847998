@@ -19,6 +19,27 @@ class CacheService {
   private readonly DEFAULT_TTL = 1000 * 60 * 60; // 1 hour
 
   /**
+   * Check if localStorage is available
+   */
+  private isAvailable(): boolean {
+    try {
+      const test = "__storage_test__";
+      localStorage.setItem(test, test);
+      localStorage.removeItem(test);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Get cache key with prefix
+   */
+  private getKey(key: string): string {
+    return `${this.STORAGE_KEY}_${key}`;
+  }
+
+  /**
    * Set data in cache (memory + localStorage)
    */
   set<T>(key: string, data: T, ttl: number = this.DEFAULT_TTL): void {
@@ -33,9 +54,11 @@ class CacheService {
 
     // localStorage cache (with error handling)
     try {
-      const store = this.getLocalStore();
-      store[key] = entry;
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(store));
+      if (this.isAvailable()) {
+        const store = this.getLocalStore();
+        store[key] = entry;
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(store));
+      }
     } catch (error) {
       console.warn("Failed to write to localStorage:", error);
     }
@@ -44,27 +67,39 @@ class CacheService {
   /**
    * Get data from cache (memory first, then localStorage)
    */
-  get<T>(key: string): T | null {
+  get<T>(key: string, allowStale: boolean = false): T | null {
     // Try memory cache first
-    const memoryEntry = this.memoryCache.get(key);
-    if (memoryEntry && this.isValid(memoryEntry)) {
-      return memoryEntry.data as T;
+    const memEntry = this.memoryCache.get(key);
+    if (memEntry) {
+      if (this.isValid(memEntry) || allowStale) {
+        return memEntry.data as T;
+      }
+      this.memoryCache.delete(key);
     }
 
-    // Try localStorage cache
+    // Try localStorage
+    if (!this.isAvailable()) return null;
+
     try {
       const store = this.getLocalStore();
       const entry = store[key];
-      if (entry && this.isValid(entry)) {
+
+      if (!entry) return null;
+
+      if (this.isValid(entry) || allowStale) {
         // Restore to memory cache
         this.memoryCache.set(key, entry);
         return entry.data as T;
       }
-    } catch (error) {
-      console.warn("Failed to read from localStorage:", error);
-    }
 
-    return null;
+      // Expired and stale not allowed
+      delete store[key];
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(store));
+      return null;
+    } catch (error) {
+      console.error("Cache get error:", error);
+      return null;
+    }
   }
 
   /**
@@ -81,9 +116,11 @@ class CacheService {
     this.memoryCache.delete(key);
 
     try {
-      const store = this.getLocalStore();
-      delete store[key];
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(store));
+      if (this.isAvailable()) {
+        const store = this.getLocalStore();
+        delete store[key];
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(store));
+      }
     } catch (error) {
       console.warn("Failed to remove from localStorage:", error);
     }
@@ -95,7 +132,9 @@ class CacheService {
   clear(): void {
     this.memoryCache.clear();
     try {
-      localStorage.removeItem(this.STORAGE_KEY);
+      if (this.isAvailable()) {
+        localStorage.removeItem(this.STORAGE_KEY);
+      }
     } catch (error) {
       console.warn("Failed to clear localStorage:", error);
     }
@@ -107,12 +146,15 @@ class CacheService {
   keys(): string[] {
     const memoryKeys = Array.from(this.memoryCache.keys());
     try {
-      const store = this.getLocalStore();
-      const localKeys = Object.keys(store);
-      return Array.from(new Set([...memoryKeys, ...localKeys]));
+      if (this.isAvailable()) {
+        const store = this.getLocalStore();
+        const localKeys = Object.keys(store);
+        return Array.from(new Set([...memoryKeys, ...localKeys]));
+      }
     } catch {
       return memoryKeys;
     }
+    return memoryKeys;
   }
 
   /**
@@ -128,11 +170,14 @@ class CacheService {
    */
   private getLocalStore(): CacheStore {
     try {
-      const stored = localStorage.getItem(this.STORAGE_KEY);
-      return stored ? JSON.parse(stored) : {};
+      if (this.isAvailable()) {
+        const stored = localStorage.getItem(this.STORAGE_KEY);
+        return stored ? JSON.parse(stored) : {};
+      }
     } catch {
       return {};
     }
+    return {};
   }
 
   /**
@@ -148,14 +193,16 @@ class CacheService {
 
     // Clean localStorage cache
     try {
-      const store = this.getLocalStore();
-      const cleaned: CacheStore = {};
-      for (const [key, entry] of Object.entries(store)) {
-        if (this.isValid(entry)) {
-          cleaned[key] = entry;
+      if (this.isAvailable()) {
+        const store = this.getLocalStore();
+        const cleaned: CacheStore = {};
+        for (const [key, entry] of Object.entries(store)) {
+          if (this.isValid(entry)) {
+            cleaned[key] = entry;
+          }
         }
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(cleaned));
       }
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(cleaned));
     } catch (error) {
       console.warn("Failed to cleanup localStorage:", error);
     }
