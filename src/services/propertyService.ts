@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { Property } from "@/types";
+import { cacheService } from "./cacheService";
 
 /**
  * Helper para mapear dados do banco (snake_case) para interface Property (camelCase)
@@ -62,13 +63,16 @@ const mapDatabaseProperty = (item: any): Property => {
 /**
  * Buscar todos os imóveis (com dados de location)
  * USA NEXT.JS API ROUTE (sem tenant_id - não existe na tabela properties)
+ * COM CACHE FALLBACK para modo offline
  */
 export const getAll = async (): Promise<Property[]> => {
+  const CACHE_KEY = "properties_all";
+  const CACHE_TTL = 1000 * 60 * 5; // 5 minutes
+
   try {
     console.log("=== FETCHING PROPERTIES VIA NEXT.JS API ROUTE ===");
 
     // Usar Next.js API Route SEM headers de autenticação
-    // (A API não precisa de tenant_id porque properties não tem essa coluna)
     const response = await fetch("/api/properties", {
       method: "GET",
       headers: {
@@ -77,8 +81,7 @@ export const getAll = async (): Promise<Property[]> => {
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
 
     const result = await response.json();
@@ -86,17 +89,33 @@ export const getAll = async (): Promise<Property[]> => {
 
     console.log(`✅ Fetched ${properties.length} properties via Next.js API Route`);
 
+    // Cache successful data
+    cacheService.set(CACHE_KEY, properties, CACHE_TTL);
+
     return properties;
   } catch (error) {
-    console.error("Error fetching properties:", error);
+    console.error("❌ Error fetching properties, trying cache fallback:", error);
+
+    // Try to get from cache
+    const cachedData = cacheService.get<Property[]>(CACHE_KEY);
+    if (cachedData) {
+      console.log(`✅ Using cached properties (${cachedData.length} items)`);
+      return cachedData;
+    }
+
+    console.error("❌ No cached data available");
     throw error;
   }
 };
 
 /**
  * Buscar imóvel por ID
+ * COM CACHE FALLBACK
  */
 export const getById = async (id: string): Promise<Property | null> => {
+  const CACHE_KEY = `property_${id}`;
+  const CACHE_TTL = 1000 * 60 * 5; // 5 minutes
+
   console.log(`=== FETCHING PROPERTY BY ID: ${id} ===`);
 
   try {
@@ -113,13 +132,12 @@ export const getById = async (id: string): Promise<Property | null> => {
       .single();
 
     if (propertyError) {
-      console.error("Error fetching property:", propertyError);
-      return null;
+      throw propertyError;
     }
 
     if (!propertyData) return null;
 
-    return mapDatabaseProperty({
+    const property = mapDatabaseProperty({
       ...propertyData,
       location_name: propertyData.locations?.name,
       location_street: propertyData.locations?.street,
@@ -130,8 +148,21 @@ export const getById = async (id: string): Promise<Property | null> => {
       location_zip_code: propertyData.locations?.zip_code
     });
 
+    // Cache successful data
+    cacheService.set(CACHE_KEY, property, CACHE_TTL);
+
+    return property;
   } catch (error) {
-    console.error("Error in getById:", error);
+    console.error("❌ Error fetching property, trying cache fallback:", error);
+
+    // Try to get from cache
+    const cachedData = cacheService.get<Property>(CACHE_KEY);
+    if (cachedData) {
+      console.log(`✅ Using cached property`);
+      return cachedData;
+    }
+
+    console.error("❌ No cached data available");
     return null;
   }
 };

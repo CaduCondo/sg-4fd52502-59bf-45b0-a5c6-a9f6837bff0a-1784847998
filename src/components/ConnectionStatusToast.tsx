@@ -12,26 +12,16 @@ export function ConnectionStatusToast() {
 
     if (isOffline) {
       toastId = toast({
-        title: (
-          <div className="flex items-center gap-2">
-            <WifiOff className="h-4 w-4 text-destructive" />
-            <span>Servidor offline</span>
-          </div>
-        ),
-        description: `Usando dados salvos localmente. Tentando reconectar... (tentativa ${retryCount + 1})`,
+        title: "Servidor offline",
+        description: `Usando dados locais. Tentando reconectar... (${retryCount + 1})`,
         variant: "destructive",
         duration: Infinity,
       });
     } else if (isOnline && retryCount > 0) {
       // Was offline, now online
       toast({
-        title: (
-          <div className="flex items-center gap-2">
-            <Wifi className="h-4 w-4 text-green-500" />
-            <span>Conectado!</span>
-          </div>
-        ),
-        description: "Servidor online. Sincronizando dados...",
+        title: "Conectado!",
+        description: "Sincronizando dados...",
         variant: "default",
         duration: 3000,
       });
@@ -48,12 +38,8 @@ export function ConnectionStatusToast() {
   useEffect(() => {
     if (status === "checking" && retryCount === 0) {
       const toastId = toast({
-        title: (
-          <div className="flex items-center gap-2">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <span>Conectando ao servidor...</span>
-          </div>
-        ),
+        title: "Conectando...",
+        description: "Verificando status do servidor",
         duration: 2000,
       });
 

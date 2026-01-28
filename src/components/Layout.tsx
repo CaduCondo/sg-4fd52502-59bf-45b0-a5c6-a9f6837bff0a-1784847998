@@ -51,6 +51,7 @@ import { hasPermission } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 import { roleMenuPermissionService } from "@/services/roleMenuPermissionService";
 import { RoleMenuPermission } from "@/types";
+import { ConnectionStatusToast } from "./ConnectionStatusToast";
 
 interface LayoutProps {
   children: ReactNode;
@@ -489,6 +490,9 @@ export function Layout({ children }: LayoutProps) {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Connection Status Monitor */}
+      <ConnectionStatusToast />
     </div>
   );
 }
