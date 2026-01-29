@@ -81,24 +81,28 @@ export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
 
         <CardContent className="space-y-4 p-6">
           <div>
-            {/* Título principal */}
-            <h3 className="text-2xl font-bold text-slate-900">{displayTitle}</h3>
+            {/* Título principal com ícone de ping */}
+            <div className="flex items-start gap-2">
+              <MapPin className="h-5 w-5 text-blue-600 mt-1 flex-shrink-0" />
+              <div className="flex-1">
+                <h3 className="text-2xl font-bold text-slate-900">{displayTitle}</h3>
+                
+                {/* Complemento logo abaixo do título */}
+                {property.complement && property.complement.trim() !== "" && (
+                  <p className="text-sm text-slate-600 mt-1">
+                    {property.complement}
+                  </p>
+                )}
+              </div>
+            </div>
             
-            {/* Localização (cidade - estado) */}
-            <p className="flex items-center gap-1 text-sm text-slate-600 mt-1">
-              <MapPin className="h-4 w-4" />
+            {/* Localização (cidade - estado) - agora mais discreta */}
+            <p className="text-xs text-slate-500 mt-2">
               {property.city} - {property.state}
             </p>
-            
-            {/* COMPLEMENTO - SEMPRE RENDERIZA SE EXISTIR */}
-            {property.complement && property.complement.trim() !== "" && (
-              <p className="text-sm text-slate-500 mt-1 italic">
-                {property.complement}
-              </p>
-            )}
 
             {/* Características principais */}
-            <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600 py-2">
+            <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600 py-3 mt-3 border-t">
               {property.rooms > 0 && (
                 <div className="flex items-center gap-1">
                   <Bed className="h-4 w-4" />
@@ -126,7 +130,7 @@ export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
             </div>
 
             {/* Valor do aluguel */}
-            <div className="pt-2 border-t">
+            <div className="pt-3 border-t">
               <p className="text-2xl font-bold text-blue-600">
                 R$ {totalMonthly.toLocaleString("pt-BR", {
                   minimumFractionDigits: 2,
