@@ -1,159 +1,137 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Property } from "@/types";
-import { SortOption } from "@/components/public/SortSelector";
+import { supabase } from "@/integrations/supabase/client";
 
-interface Filters {
+interface UsePublicPropertiesProps {
   location?: string;
-  sort?: SortOption;
+  sort?: string;
 }
 
-// Cache simples em memória para evitar requests desnecessárias
-const cache = new Map<string, { data: Property[]; timestamp: number }>();
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
-
-export function usePublicProperties(filters: Filters = {}) {
+export function usePublicProperties(props?: UsePublicPropertiesProps) {
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const isFirstLoad = useRef(true);
-  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     loadProperties();
-    
-    return () => {
-      // Limpar timeout ao desmontar
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-      }
-    };
-  }, [filters.location, filters.sort]);
+  }, []); // Executa apenas uma vez na montagem
 
-  async function loadProperties() {
-    // Criar chave de cache baseada nos filtros
-    const cacheKey = JSON.stringify(filters);
-    
-    // Verificar cache primeiro
-    const cached = cache.get(cacheKey);
-    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-      setProperties(cached.data);
-      setLoading(false);
-      return;
-    }
-
-    // Só mostrar loading se for primeira carga ou não tiver cache
-    if (isFirstLoad.current || !cached) {
-      setLoading(true);
-    }
-    setError(null);
-
+  const loadProperties = async () => {
     try {
-      const params = new URLSearchParams();
-      if (filters.location) params.append("location", filters.location);
-      
-      // Lógica de ordenação
-      switch (filters.sort) {
-        case "price-asc":
-          params.append("sort", "value");
-          params.append("order", "asc");
-          break;
-        case "price-desc":
-          params.append("sort", "value");
-          params.append("order", "desc");
-          break;
-        case "area-desc":
-          params.append("sort", "area");
-          params.append("order", "desc");
-          break;
-        case "newest":
-        default:
-          params.append("sort", "created_at");
-          params.append("order", "desc");
-          break;
+      setLoading(true);
+      setError(null);
+
+      console.log("[Hook] Buscando imóveis disponíveis...");
+
+      // Query DIRETA e SIMPLES ao Supabase
+      // Trazendo apenas o necessário para evitar timeouts e erros
+      const { data, error: queryError } = await supabase
+        .from("properties")
+        .select(`
+          *,
+          locations (
+            id,
+            name,
+            street,
+            number,
+            neighborhood,
+            city,
+            state,
+            zip_code
+          )
+        `)
+        .eq("status", "available")
+        .order("created_at", { ascending: false });
+
+      if (queryError) {
+        console.error("[Hook] Erro no Supabase:", queryError);
+        throw new Error(queryError.message);
       }
 
-      const response = await fetch(`/api/properties/available?${params.toString()}`);
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || "Erro ao carregar imóveis disponíveis");
+      if (!data) {
+        setProperties([]);
+        return;
       }
 
-      const data = await response.json();
-      
-      // Mapear campos do banco para frontend
-      const mappedProperties: Property[] = (data || []).map((prop: any) => {
-        const locationData = prop.locations || {};
-        const city = locationData.city || "";
-        const state = locationData.state || "";
-        const neighborhood = locationData.neighborhood || "";
-        const locationName = locationData.name || "";
+      // Mapeamento ROBUSTO para satisfazer a interface Property
+      const mappedProperties: Property[] = data.map((item: any) => {
+        // Garantir que locations é um objeto (pode vir array se o join for 1:N mal configurado, ou objeto se 1:1)
+        const loc = Array.isArray(item.locations) ? item.locations[0] : item.locations;
 
         return {
-          id: prop.id,
-          locationId: prop.location_id,
-          complement: prop.complement || "",
+          id: item.id,
+          // Campos obrigatórios da interface Property (camelCase)
+          locationId: item.location_id,
+          location: loc?.name || "Localização não definida",
+          complement: item.complement || "",
           
-          // USAR rooms ao invés de bedrooms (campo correto no banco)
-          type: "Apartamento", // Tipo padrão já que property_type não existe
-          propertyIdentifier: prop.property_identifier || "",
-          rooms: prop.rooms || 0,
-          bedrooms: prop.rooms || 0, // Mapear rooms para bedrooms para compatibilidade
-          bathrooms: prop.bathrooms || 0,
-          area: prop.area || 0,
+          // Campos de endereço mapeados de locations
+          address: loc?.street || "",
+          number: loc?.number || "",
+          neighborhood: loc?.neighborhood || "",
+          city: loc?.city || "",
+          state: loc?.state || "",
+          zipCode: loc?.zip_code || "",
+
+          // Campos do imóvel
+          description: item.description || "",
+          rooms: item.rooms || 0,
+          bedrooms: item.rooms || 0, // Fallback de compatibilidade
+          bathrooms: item.bathrooms || 0,
+          area: item.area || 0,
+          hasGarage: item.has_garage || false,
           
-          value: prop.value || 0,
-          garageValue: prop.garage_value || 0,
+          // Novos campos
+          images: item.images || [],
+          hasFurniture: item.has_furniture || false,
+          acceptsPets: item.accepts_pets || false,
           
-          hasGarage: prop.has_garage || false,
-          hasFurniture: prop.has_furniture || false,
-          acceptsPets: prop.accepts_pets || false,
+          // Financeiro
+          value: item.value || 0,
+          garageValue: item.garage_value || 0,
+
+          // Status & Metadata
+          status: item.status,
+          propertyIdentifier: item.property_identifier || "",
+          createdAt: item.created_at,
+          updatedAt: item.updated_at,
           
-          description: prop.description || "",
-          status: prop.status,
-          images: Array.isArray(prop.images) ? prop.images : [],
-          createdAt: prop.created_at,
-          
-          location: locationName || `${city} - ${state}`,
-          
-          city: city,
-          state: state,
-          neighborhood: neighborhood,
-          
-          locationDetails: locationData.id ? {
-            id: locationData.id,
-            name: locationName,
-            address: `${locationData.street || ""} ${locationData.number || ""}`.trim(),
-            city: city,
-            state: state,
-            zipCode: locationData.zip_code || "",
-            neighborhood: neighborhood,
+          // Objeto detalhado de localização
+          locationDetails: loc ? {
+            id: loc.id,
+            name: loc.name,
+            city: loc.city,
+            state: loc.state,
+            neighborhood: loc.neighborhood,
+            address: loc.street,
+            zipCode: loc.zip_code
           } : undefined,
+
+          // Campos snake_case (opcionais, mas mantidos se a interface pedir)
+          location_id: item.location_id,
+          has_garage: item.has_garage,
+          garage_value: item.garage_value,
+          property_identifier: item.property_identifier,
+          has_furniture: item.has_furniture,
+          accepts_pets: item.accepts_pets,
+          
+          // Valores padrão
+          type: "Apartamento"
         };
       });
 
+      console.log(`[Hook] Sucesso! ${mappedProperties.length} imóveis carregados.`);
       setProperties(mappedProperties);
-      
-      // Atualizar cache
-      cache.set(cacheKey, {
-        data: mappedProperties,
-        timestamp: Date.now(),
-      });
-
-      isFirstLoad.current = false;
 
     } catch (err: any) {
-      console.error("Erro ao carregar imóveis públicos:", err);
-      setError(err.message || "Erro ao carregar imóveis");
-      
-      // Se tiver cache antigo, usar ele
-      if (cached) {
-        setProperties(cached.data);
-      }
+      console.error("[Hook] Erro fatal:", err);
+      setError(err.message || "Erro ao carregar imóveis.");
+      // Não limpa properties se tiver erro, para não piscar tela vazia se já tiver dados (opcional)
+      // setProperties([]); 
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   return {
     properties,
