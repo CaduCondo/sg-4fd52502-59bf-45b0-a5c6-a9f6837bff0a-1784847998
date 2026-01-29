@@ -58,7 +58,7 @@ export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
     setShowDetails(true);
   };
 
-  const displayTitle = property.neighborhood || property.propertyIdentifier || "Imóvel";
+  const displayTitle = property.location || property.propertyIdentifier || "Localização não informada";
 
   return (
     <>
@@ -81,7 +81,7 @@ export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
 
         <CardContent className="space-y-4 p-6">
           <div>
-            {/* Título principal com ícone de ping */}
+            {/* Título principal com nome da localização */}
             <div className="flex items-start gap-2">
               <MapPin className="h-5 w-5 text-blue-600 mt-1 flex-shrink-0" />
               <div className="flex-1">
@@ -95,11 +95,6 @@ export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
                 )}
               </div>
             </div>
-            
-            {/* Localização (cidade - estado) - agora mais discreta */}
-            <p className="text-xs text-slate-500 mt-2">
-              {property.city} - {property.state}
-            </p>
 
             {/* Características principais */}
             <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600 py-3 mt-3 border-t">
@@ -157,9 +152,8 @@ export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
               {displayTitle}
             </DialogTitle>
             <DialogDescription className="text-base">
-              {property.city} - {property.state}
-              {property.complement && (
-                <span className="block mt-1 text-slate-600 italic">
+              {property.complement && property.complement.trim() !== "" && (
+                <span className="block text-slate-600 italic">
                   {property.complement}
                 </span>
               )}
