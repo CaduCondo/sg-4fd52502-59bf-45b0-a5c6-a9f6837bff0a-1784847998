@@ -104,43 +104,85 @@ export type Database = {
       deposit_installments: {
         Row: {
           amount: number
+          attachments: string[] | null
           created_at: string | null
+          discount_amount: number | null
+          due_date: string | null
           id: string
           installment_number: number
           installment_total: number
+          interest_amount: number | null
           internal_commission: number | null
+          notes: string | null
+          paid_amount: number | null
           partner_commission: number | null
+          payment_code: string | null
           payment_date: string | null
+          payment_location: string | null
+          payment_method: string | null
+          penalty_amount: number | null
           pix_code: string | null
+          receipt_url: string | null
+          reference_month: number | null
+          reference_year: number | null
           rental_id: string
+          status: string | null
           total_installments: number
           updated_at: string | null
         }
         Insert: {
           amount: number
+          attachments?: string[] | null
           created_at?: string | null
+          discount_amount?: number | null
+          due_date?: string | null
           id?: string
           installment_number: number
           installment_total: number
+          interest_amount?: number | null
           internal_commission?: number | null
+          notes?: string | null
+          paid_amount?: number | null
           partner_commission?: number | null
+          payment_code?: string | null
           payment_date?: string | null
+          payment_location?: string | null
+          payment_method?: string | null
+          penalty_amount?: number | null
           pix_code?: string | null
+          receipt_url?: string | null
+          reference_month?: number | null
+          reference_year?: number | null
           rental_id: string
+          status?: string | null
           total_installments?: number
           updated_at?: string | null
         }
         Update: {
           amount?: number
+          attachments?: string[] | null
           created_at?: string | null
+          discount_amount?: number | null
+          due_date?: string | null
           id?: string
           installment_number?: number
           installment_total?: number
+          interest_amount?: number | null
           internal_commission?: number | null
+          notes?: string | null
+          paid_amount?: number | null
           partner_commission?: number | null
+          payment_code?: string | null
           payment_date?: string | null
+          payment_location?: string | null
+          payment_method?: string | null
+          penalty_amount?: number | null
           pix_code?: string | null
+          receipt_url?: string | null
+          reference_month?: number | null
+          reference_year?: number | null
           rental_id?: string
+          status?: string | null
           total_installments?: number
           updated_at?: string | null
         }
