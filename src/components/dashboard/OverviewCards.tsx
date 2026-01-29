@@ -1,169 +1,179 @@
-import { useRouter } from "next/router";
-import { MetricCard } from "./MetricCard";
-import { 
-  Building2, 
-  Home, 
-  Users, 
-  AlertCircle, 
-  Calendar, 
-  DollarSign, 
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Building2,
+  Home,
+  Construction,
+  Users,
+  FileCheck,
+  AlertCircle,
   CheckCircle,
+  DollarSign,
   TrendingUp,
-  Key,
-  UserCheck,
-  Percent,
-  Clock
+  TrendingDown,
 } from "lucide-react";
-import { formatCurrency } from "@/lib/masks";
-import { DashboardMetrics } from "@/hooks/useDashboardData";
-import { Skeleton } from "@/components/ui/skeleton";
 
-interface OverviewCardsProps {
-  metrics: DashboardMetrics;
-  loading: boolean;
+interface MetricCardProps {
+  title: string;
+  value: string | number;
+  subtitle: string;
+  icon: React.ReactNode;
+  colorClass: string;
+  iconBgClass: string;
 }
 
-export function OverviewCards({ metrics, loading }: OverviewCardsProps) {
-  const router = useRouter();
+function MetricCard({ title, value, subtitle, icon, colorClass, iconBgClass }: MetricCardProps) {
+  return (
+    <Card className={`border-l-4 ${colorClass} hover:shadow-lg transition-shadow`}>
+      <CardContent className="p-6">
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-2">
+              <h3 className="text-sm font-medium text-slate-600">{title}</h3>
+              <div className={`p-1.5 rounded-lg ${iconBgClass}`}>
+                {icon}
+              </div>
+            </div>
+            <p className="text-3xl font-bold text-slate-900 mb-1">{value}</p>
+            <p className="text-sm text-slate-500">{subtitle}</p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
-  if (loading) {
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {[...Array(12)].map((_, i) => (
-          <Skeleton key={i} className="h-32 w-full" />
-        ))}
-      </div>
-    );
-  }
+interface OverviewCardsProps {
+  data: {
+    totalProperties: number;
+    availableProperties: number;
+    unavailableProperties: number;
+    totalTenants: number;
+    activeContracts: number;
+    overduePayments: number;
+    completedPayments: number;
+    expectedAmount: number;
+    grossRevenue: number;
+    netRevenue: number;
+  };
+}
 
-  const cards = [
-    {
-      title: "Total de Imóveis",
-      value: metrics.totalProperties,
-      subtitle: "Imóveis cadastrados",
-      icon: Building2,
-      borderColor: "border-l-slate-500",
-      iconColor: "text-slate-500",
-      onClick: () => router.push("/properties"),
-      delay: 0.05
-    },
-    {
-      title: "Imóveis Disponíveis",
-      value: metrics.availableProperties,
-      subtitle: "Prontos para locação",
-      icon: Home,
-      borderColor: "border-l-green-500",
-      iconColor: "text-green-500",
-      onClick: () => router.push("/properties?filter=available"),
-      delay: 0.1
-    },
-    {
-      title: "Imóveis Ocupados",
-      value: metrics.occupiedProperties,
-      subtitle: "Com contratos ativos",
-      icon: Key,
-      borderColor: "border-l-blue-500",
-      iconColor: "text-blue-500",
-      onClick: () => router.push("/properties?filter=rented"),
-      delay: 0.15
-    },
-    {
-      title: "Taxa de Ocupação",
-      value: `${metrics.occupancyRate}%`,
-      subtitle: `${metrics.occupiedProperties} de ${metrics.totalProperties} ocupados`,
-      icon: Percent,
-      borderColor: "border-l-purple-500",
-      iconColor: "text-purple-500",
-      onClick: () => router.push("/properties"),
-      delay: 0.2
-    },
-    {
-      title: "Total de Inquilinos",
-      value: metrics.totalTenants,
-      subtitle: "Inquilinos cadastrados",
-      icon: Users,
-      borderColor: "border-l-indigo-500",
-      iconColor: "text-indigo-500",
-      onClick: () => router.push("/tenants"),
-      delay: 0.25
-    },
-    {
-      title: "Inquilinos Ativos",
-      value: metrics.activeTenants,
-      subtitle: "Com contratos vigentes",
-      icon: UserCheck,
-      borderColor: "border-l-cyan-500",
-      iconColor: "text-cyan-500",
-      onClick: () => router.push("/tenants?filter=active"),
-      delay: 0.3
-    },
-    {
-      title: "Locações Ativas",
-      value: metrics.activeRentals,
-      subtitle: "Contratos vigentes",
-      icon: Calendar,
-      borderColor: "border-l-orange-500",
-      iconColor: "text-orange-500",
-      onClick: () => router.push("/rentals"),
-      delay: 0.35
-    },
-    {
-      title: "Receita Mensal Total",
-      value: formatCurrency(metrics.monthlyRevenue),
-      subtitle: "Soma de todos os aluguéis ativos",
-      icon: TrendingUp,
-      borderColor: "border-l-emerald-600",
-      iconColor: "text-emerald-600",
-      onClick: () => router.push("/financial"),
-      delay: 0.4
-    },
-    {
-      title: "Recebido (Período)",
-      value: formatCurrency(metrics.paidAmount),
-      subtitle: `${metrics.paidPayments} pagamentos confirmados`,
-      icon: CheckCircle,
-      borderColor: "border-l-emerald-500",
-      iconColor: "text-emerald-500",
-      onClick: () => router.push("/payments?filter=paid"),
-      delay: 0.45
-    },
-    {
-      title: "Pendente (Período)",
-      value: formatCurrency(metrics.overdueAmount),
-      subtitle: `${metrics.overduePayments} pagamentos em atraso`,
-      icon: Clock,
-      borderColor: "border-l-amber-500",
-      iconColor: "text-amber-500",
-      onClick: () => router.push("/payments?filter=pending"),
-      delay: 0.5
-    },
-    {
-      title: "Em Atraso",
-      value: formatCurrency(metrics.overdueAmount),
-      subtitle: `${metrics.overduePayments} pagamentos vencidos`,
-      icon: AlertCircle,
-      borderColor: "border-l-red-500",
-      iconColor: "text-red-500",
-      onClick: () => router.push("/payments?filter=overdue"),
-      delay: 0.55
-    },
-    {
-      title: "Total Pago",
-      value: formatCurrency(metrics.paidAmount),
-      subtitle: "Receita confirmada no período",
-      icon: DollarSign,
-      borderColor: "border-l-green-600",
-      iconColor: "text-green-600",
-      onClick: () => router.push("/financial"),
-      delay: 0.6
-    }
-  ];
+export function OverviewCards({ data }: OverviewCardsProps) {
+  const formatCurrency = (value: number) => {
+    return value.toLocaleString("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    });
+  };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-      {cards.map((card, index) => (
-        <MetricCard key={index} {...card} />
-      ))}
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-slate-900">Visão Geral</h2>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        {/* Total de Imóveis */}
+        <MetricCard
+          title="Total de Imóveis"
+          value={data.totalProperties}
+          subtitle="Cadastrados e Ocupados"
+          icon={<Building2 className="h-4 w-4 text-blue-600" />}
+          colorClass="border-l-blue-500"
+          iconBgClass="bg-blue-50"
+        />
+
+        {/* Imóveis Disponíveis */}
+        <MetricCard
+          title="Imóveis Disponíveis"
+          value={data.availableProperties}
+          subtitle="Prontos para locação"
+          icon={<Home className="h-4 w-4 text-green-600" />}
+          colorClass="border-l-green-500"
+          iconBgClass="bg-green-50"
+        />
+
+        {/* Imóveis Indisponíveis */}
+        <MetricCard
+          title="Imóveis Indisponíveis"
+          value={data.unavailableProperties}
+          subtitle="Construindo/Reformando"
+          icon={<Construction className="h-4 w-4 text-orange-600" />}
+          colorClass="border-l-orange-500"
+          iconBgClass="bg-orange-50"
+        />
+
+        {/* Total de Inquilinos */}
+        <MetricCard
+          title="Total de Inquilinos"
+          value={data.totalTenants}
+          subtitle="Ativos e locadores"
+          icon={<Users className="h-4 w-4 text-purple-600" />}
+          colorClass="border-l-purple-500"
+          iconBgClass="bg-purple-50"
+        />
+
+        {/* Contratos Ativos */}
+        <MetricCard
+          title="Contratos Ativos"
+          value={data.activeContracts}
+          subtitle="Locações vigentes"
+          icon={<FileCheck className="h-4 w-4 text-indigo-600" />}
+          colorClass="border-l-indigo-500"
+          iconBgClass="bg-indigo-50"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        {/* Recebimentos Atrasados */}
+        <MetricCard
+          title="Recebimentos Atrasados"
+          value={data.overduePayments}
+          subtitle="Pagamentos em atraso"
+          icon={<AlertCircle className="h-4 w-4 text-red-600" />}
+          colorClass="border-l-red-500"
+          iconBgClass="bg-red-50"
+        />
+
+        {/* Recebimentos Realizados */}
+        <MetricCard
+          title="Recebimentos Realizados"
+          value={data.completedPayments}
+          subtitle="Pagos no mês"
+          icon={<CheckCircle className="h-4 w-4 text-green-600" />}
+          colorClass="border-l-green-500"
+          iconBgClass="bg-green-50"
+        />
+
+        {/* Valor Esperado */}
+        <MetricCard
+          title="Valor Esperado"
+          value={formatCurrency(data.expectedAmount)}
+          subtitle="Total previsto"
+          icon={<DollarSign className="h-4 w-4 text-blue-600" />}
+          colorClass="border-l-blue-500"
+          iconBgClass="bg-blue-50"
+        />
+
+        {/* Receita Bruta */}
+        <MetricCard
+          title="Receita Bruta"
+          value={formatCurrency(data.grossRevenue)}
+          subtitle="Total recebido"
+          icon={<TrendingUp className="h-4 w-4 text-green-600" />}
+          colorClass="border-l-green-500"
+          iconBgClass="bg-green-50"
+        />
+
+        {/* Receita Líquida */}
+        <MetricCard
+          title="Receita Líquida"
+          value={formatCurrency(data.netRevenue)}
+          subtitle="Após taxas"
+          icon={<TrendingDown className="h-4 w-4 text-purple-600" />}
+          colorClass="border-l-purple-500"
+          iconBgClass="bg-purple-50"
+        />
+      </div>
     </div>
   );
 }

@@ -2,101 +2,165 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
-export type Period = "week" | "month" | "year";
-
-export interface DashboardMetrics {
+export interface DashboardData {
   totalProperties: number;
   availableProperties: number;
-  occupiedProperties: number;
+  unavailableProperties: number;
+  rentedProperties: number;
   totalTenants: number;
-  activeTenants: number;
-  inactiveTenants: number;
-  activeRentals: number;
-  monthlyRevenue: number;
+  activeContracts: number;
   overduePayments: number;
-  overdueAmount: number;
+  completedPayments: number;
+  expectedAmount: number;
+  receivedAmount: number;
+  grossRevenue: number;
+  netRevenue: number;
+  adminFee: number;
   paidPayments: number;
-  paidAmount: number;
   pendingPayments: number;
-  pendingAmount: number;
+  dueTodayPayments: number;
   occupancyRate: number;
 }
 
-export interface ChartData {
-  revenueByMonth: Array<{ month: string; value: number }>;
-  paymentsByStatus: Array<{ status: string; count: number; amount: number }>;
-  propertiesByStatus: Array<{ status: string; count: number }>;
-}
+const DEFAULT_DATA: DashboardData = {
+  totalProperties: 0,
+  availableProperties: 0,
+  unavailableProperties: 0,
+  rentedProperties: 0,
+  totalTenants: 0,
+  activeContracts: 0,
+  overduePayments: 0,
+  completedPayments: 0,
+  expectedAmount: 0,
+  receivedAmount: 0,
+  grossRevenue: 0,
+  netRevenue: 0,
+  adminFee: 0,
+  paidPayments: 0,
+  pendingPayments: 0,
+  dueTodayPayments: 0,
+  occupancyRate: 0,
+};
 
-export function useDashboardData(period: Period = "month") {
+export function useDashboardData(month: number, year: number) {
   const { toast } = useToast();
-  const [metrics, setMetrics] = useState<DashboardMetrics>({
-    totalProperties: 0,
-    availableProperties: 0,
-    occupiedProperties: 0,
-    totalTenants: 0,
-    activeTenants: 0,
-    inactiveTenants: 0,
-    activeRentals: 0,
-    monthlyRevenue: 0,
-    overduePayments: 0,
-    overdueAmount: 0,
-    paidPayments: 0,
-    paidAmount: 0,
-    pendingPayments: 0,
-    pendingAmount: 0,
-    occupancyRate: 0,
-  });
-  const [chartData, setChartData] = useState<ChartData>({
-    revenueByMonth: [],
-    paymentsByStatus: [],
-    propertiesByStatus: [],
-  });
+  const [dashboardData, setDashboardData] = useState<DashboardData>(DEFAULT_DATA);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadDashboardData();
-  }, [period]);
+  }, [month, year]);
 
   async function loadDashboardData() {
     setLoading(true);
+    setError(null);
 
     try {
-      // Executar todas as queries em paralelo
-      const [
-        propertiesResult,
-        tenantsResult,
-        rentalsResult,
-        paymentsResult,
-      ] = await Promise.all([
-        fetchPropertiesMetrics(),
-        fetchTenantsMetrics(),
-        fetchRentalsMetrics(),
-        fetchPaymentsMetrics(period),
-      ]);
+      // 1. Buscar métricas de imóveis
+      const { data: properties, error: propError } = await supabase
+        .from("properties")
+        .select("status");
 
-      const newMetrics: DashboardMetrics = {
-        ...propertiesResult,
-        ...tenantsResult,
-        ...rentalsResult,
-        ...paymentsResult.metrics,
-      };
+      if (propError) throw propError;
 
-      const newChartData: ChartData = {
-        revenueByMonth: paymentsResult.revenueByMonth,
-        paymentsByStatus: paymentsResult.paymentsByStatus,
-        propertiesByStatus: propertiesResult.propertiesByStatus,
-      };
-
-      setMetrics(newMetrics);
-      setChartData(newChartData);
-
-    } catch (error: any) {
-      console.error("Erro ao carregar dados do dashboard:", error);
+      const totalProperties = properties?.length || 0;
+      const availableProperties = properties?.filter(p => p.status === "available").length || 0;
+      const rentedProperties = properties?.filter(p => p.status === "rented").length || 0;
+      const unavailableProperties = properties?.filter(p => p.status !== "available" && p.status !== "rented").length || 0;
       
+      const occupancyRate = totalProperties > 0 
+        ? (rentedProperties / totalProperties) * 100 
+        : 0;
+
+      // 2. Buscar métricas de inquilinos
+      const { count: totalTenants, error: tenantError } = await supabase
+        .from("tenants")
+        .select("*", { count: 'exact', head: true });
+
+      if (tenantError) throw tenantError;
+
+      // 3. Buscar contratos ativos
+      const { count: activeContracts, error: rentalError } = await supabase
+        .from("rentals")
+        .select("*", { count: 'exact', head: true })
+        .eq("is_active", true);
+
+      if (rentalError) throw rentalError;
+
+      // 4. Buscar pagamentos do mês/ano selecionado
+      const startDate = new Date(year, month, 1).toISOString();
+      const endDate = new Date(year, month + 1, 0).toISOString();
+      const today = new Date().toISOString().split('T')[0];
+
+      const { data: payments, error: paymentError } = await supabase
+        .from("payments")
+        .select("status, expected_amount, paid_amount, due_date, admin_fee_value")
+        .gte("due_date", startDate)
+        .lte("due_date", endDate);
+
+      if (paymentError) throw paymentError;
+
+      // Calcular métricas financeiras
+      let expectedAmount = 0;
+      let receivedAmount = 0;
+      let overduePayments = 0;
+      let completedPayments = 0;
+      let pendingPayments = 0;
+      let dueTodayPayments = 0;
+      let adminFeeTotal = 0;
+
+      payments?.forEach(payment => {
+        expectedAmount += payment.expected_amount || 0;
+        
+        if (payment.status === "paid") {
+          receivedAmount += payment.paid_amount || 0;
+          completedPayments++;
+          // Se tiver taxa de administração registrada no pagamento
+          if (payment.admin_fee_value) {
+            adminFeeTotal += payment.admin_fee_value;
+          } else {
+            // Estimativa de 10% se não tiver valor salvo (ajuste conforme regra de negócio)
+            adminFeeTotal += (payment.paid_amount || 0) * 0.1;
+          }
+        } else if (payment.status === "overdue") {
+          overduePayments++;
+        } else if (payment.status === "pending") {
+          pendingPayments++;
+          if (payment.due_date === today) {
+            dueTodayPayments++;
+          }
+        }
+      });
+
+      const netRevenue = receivedAmount - adminFeeTotal;
+
+      setDashboardData({
+        totalProperties,
+        availableProperties,
+        unavailableProperties,
+        rentedProperties,
+        totalTenants: totalTenants || 0,
+        activeContracts: activeContracts || 0,
+        overduePayments,
+        completedPayments,
+        expectedAmount,
+        receivedAmount,
+        grossRevenue: receivedAmount,
+        netRevenue,
+        adminFee: adminFeeTotal,
+        paidPayments: completedPayments,
+        pendingPayments,
+        dueTodayPayments,
+        occupancyRate
+      });
+
+    } catch (err: any) {
+      console.error("Erro ao carregar dados do dashboard:", err);
+      setError(err.message || "Erro desconhecido ao carregar dados.");
       toast({
-        title: "Erro ao carregar dashboard",
-        description: error.message || "Tente novamente mais tarde.",
+        title: "Erro",
+        description: "Não foi possível carregar os dados do dashboard.",
         variant: "destructive",
       });
     } finally {
@@ -104,186 +168,10 @@ export function useDashboardData(period: Period = "month") {
     }
   }
 
-  async function fetchPropertiesMetrics() {
-    const { data: properties, error } = await supabase
-      .from("properties")
-      .select("status")
-      .limit(1000);
-
-    if (error) throw error;
-
-    const totalProperties = properties?.length || 0;
-    const availableProperties = properties?.filter((p) => p.status === "available").length || 0;
-    const occupiedProperties = properties?.filter((p) => p.status === "rented").length || 0;
-
-    const statusCount = properties?.reduce((acc, p) => {
-      const statusLabel = p.status === "available" ? "Disponível" : 
-                         p.status === "rented" ? "Alugado" : 
-                         p.status === "maintenance" ? "Manutenção" : p.status;
-      acc[statusLabel] = (acc[statusLabel] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>) || {};
-
-    const propertiesByStatus = Object.entries(statusCount).map(([status, count]) => ({
-      status,
-      count,
-    }));
-
-    const occupancyRate = totalProperties > 0
-      ? Math.round((occupiedProperties / totalProperties) * 100)
-      : 0;
-
-    return {
-      totalProperties,
-      availableProperties,
-      occupiedProperties,
-      occupancyRate,
-      propertiesByStatus,
-    };
-  }
-
-  async function fetchTenantsMetrics() {
-    const { data: tenants, error } = await supabase
-      .from("tenants")
-      .select("status")
-      .limit(1000);
-
-    if (error) throw error;
-
-    const totalTenants = tenants?.length || 0;
-    const activeTenants = tenants?.filter((t) => t.status === "active").length || 0;
-    const inactiveTenants = totalTenants - activeTenants;
-
-    return {
-      totalTenants,
-      activeTenants,
-      inactiveTenants,
-    };
-  }
-
-  async function fetchRentalsMetrics() {
-    const { data: rentals, error } = await supabase
-      .from("rentals")
-      .select("value")
-      .eq("is_active", true)
-      .limit(1000);
-
-    if (error) throw error;
-
-    const activeRentals = rentals?.length || 0;
-    const monthlyRevenue = rentals?.reduce((sum, r) => sum + (r.value || 0), 0) || 0;
-
-    return {
-      activeRentals,
-      monthlyRevenue,
-    };
-  }
-
-  async function fetchPaymentsMetrics(period: Period) {
-    const today = new Date();
-    let startDate: Date;
-
-    switch (period) {
-      case "week":
-        startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 7);
-        break;
-      case "month":
-        startDate = new Date(today.getFullYear(), today.getMonth(), 1);
-        break;
-      case "year":
-        startDate = new Date(today.getFullYear(), 0, 1);
-        break;
-    }
-
-    const { data: payments, error } = await supabase
-      .from("payments")
-      .select("status, expected_amount, paid_amount, due_date, payment_date")
-      .gte("due_date", startDate.toISOString().split("T")[0])
-      .limit(5000);
-
-    if (error) throw error;
-
-    const overduePayments = payments?.filter((p) => p.status === "overdue").length || 0;
-    const overdueAmount = payments
-      ?.filter((p) => p.status === "overdue")
-      .reduce((sum, p) => sum + (p.expected_amount || 0), 0) || 0;
-
-    const paidPayments = payments?.filter((p) => p.status === "paid").length || 0;
-    const paidAmount = payments
-      ?.filter((p) => p.status === "paid")
-      .reduce((sum, p) => sum + (p.paid_amount || 0), 0) || 0;
-
-    const pendingPayments = payments?.filter((p) => p.status === "pending").length || 0;
-    const pendingAmount = payments
-      ?.filter((p) => p.status === "pending")
-      .reduce((sum, p) => sum + (p.expected_amount || 0), 0) || 0;
-
-    const revenueByMonth = generateRevenueByMonth(payments || []);
-
-    const paymentsByStatus = [
-      {
-        status: "paid",
-        count: paidPayments,
-        amount: paidAmount,
-      },
-      {
-        status: "pending",
-        count: pendingPayments,
-        amount: pendingAmount,
-      },
-      {
-        status: "overdue",
-        count: overduePayments,
-        amount: overdueAmount,
-      },
-      {
-        status: "partial",
-        count: payments?.filter((p) => p.status === "partial").length || 0,
-        amount: payments
-          ?.filter((p) => p.status === "partial")
-          .reduce((sum, p) => sum + (p.expected_amount || 0) - (p.paid_amount || 0), 0) || 0,
-      },
-    ];
-
-    return {
-      metrics: {
-        overduePayments,
-        overdueAmount,
-        paidPayments,
-        paidAmount,
-        pendingPayments,
-        pendingAmount,
-      },
-      revenueByMonth,
-      paymentsByStatus,
-    };
-  }
-
-  function generateRevenueByMonth(payments: any[]) {
-    const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-    const today = new Date();
-    const data = [];
-
-    for (let i = 5; i >= 0; i--) {
-      const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
-      const month = monthNames[date.getMonth()];
-      const year = date.getFullYear();
-      const monthKey = `${year}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-
-      const value = payments
-        .filter((p) => p.status === "paid" && p.payment_date?.startsWith(monthKey))
-        .reduce((sum, p) => sum + (p.paid_amount || 0), 0);
-
-      data.push({ month: `${month}/${year}`, value });
-    }
-
-    return data;
-  }
-
   return {
-    metrics,
-    chartData,
+    dashboardData,
     loading,
+    error,
     refresh: loadDashboardData,
   };
 }
