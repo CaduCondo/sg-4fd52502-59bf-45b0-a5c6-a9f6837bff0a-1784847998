@@ -7,19 +7,16 @@ export function usePublicProperties(options?: { location?: string; sort?: string
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // Ref para evitar múltiplas chamadas simultâneas
   const isLoadingRef = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    // Cancelar requisição anterior se existir
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
     
     loadProperties();
     
-    // Cleanup: cancelar ao desmontar
     return () => {
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
@@ -28,7 +25,6 @@ export function usePublicProperties(options?: { location?: string; sort?: string
   }, [options?.location, options?.sort]);
 
   const loadProperties = async () => {
-    // Evitar múltiplas chamadas simultâneas
     if (isLoadingRef.current) {
       console.log("[usePublicProperties] ⏭️ Requisição já em andamento, ignorando...");
       return;
@@ -42,44 +38,18 @@ export function usePublicProperties(options?: { location?: string; sort?: string
       setLoading(true);
       setError(null);
 
-      // Criar novo AbortController
       abortControllerRef.current = new AbortController();
 
-      console.log("[usePublicProperties] 📡 Fazendo query no Supabase...");
+      console.log("[usePublicProperties] 📡 Fazendo query SIMPLES (SEM JOIN)...");
       const queryStart = performance.now();
       
+      // QUERY SIMPLES: Apenas properties, SEM JOIN com locations
       let query = supabase
         .from("properties")
-        .select(`
-          id,
-          location_id,
-          complement,
-          rooms,
-          bathrooms,
-          area,
-          value,
-          garage_value,
-          has_garage,
-          has_furniture,
-          accepts_pets,
-          description,
-          status,
-          images,
-          property_identifier,
-          created_at,
-          locations!inner (
-            id,
-            name,
-            city,
-            neighborhood,
-            state,
-            street,
-            zip_code
-          )
-        `)
+        .select("id, location_id, complement, rooms, bathrooms, area, value, garage_value, has_garage, has_furniture, accepts_pets, description, status, images, property_identifier, created_at")
         .eq("status", "available");
 
-      // Aplicar filtros opcionais
+      // Aplicar filtros
       if (options?.location) {
         query = query.eq("location_id", options.location);
       }
@@ -96,7 +66,7 @@ export function usePublicProperties(options?: { location?: string; sort?: string
       const { data, error: fetchError } = await query;
 
       const queryEnd = performance.now();
-      console.log(`[usePublicProperties] ✅ Query completada em ${(queryEnd - queryStart).toFixed(0)}ms`);
+      console.log(`[usePublicProperties] ✅ Query SEM JOIN completada em ${(queryEnd - queryStart).toFixed(0)}ms`);
 
       if (fetchError) {
         console.error("[usePublicProperties] ❌ Erro na query:", fetchError);
@@ -111,11 +81,34 @@ export function usePublicProperties(options?: { location?: string; sort?: string
         return;
       }
 
-      console.log(`[usePublicProperties] 📦 Recebidos ${data.length} imóveis. Mapeando dados...`);
+      console.log(`[usePublicProperties] 📦 Recebidos ${data.length} imóveis. Buscando localizações...`);
+      
+      // Buscar TODAS as localizações em UMA query separada (mais rápido)
+      const locationIds = [...new Set(data.map(p => p.location_id).filter(Boolean))];
+      const locationsStart = performance.now();
+      
+      const { data: locationsData, error: locationsError } = await supabase
+        .from("locations")
+        .select("id, name, city, neighborhood, state, street, zip_code")
+        .in("id", locationIds);
+
+      const locationsEnd = performance.now();
+      console.log(`[usePublicProperties] ✅ Localizações carregadas em ${(locationsEnd - locationsStart).toFixed(0)}ms`);
+
+      if (locationsError) {
+        console.error("[usePublicProperties] ⚠️ Erro ao buscar localizações:", locationsError);
+      }
+
+      // Criar mapa de localizações para lookup rápido
+      const locationsMap = new Map(
+        (locationsData || []).map(loc => [loc.id, loc])
+      );
+
+      console.log(`[usePublicProperties] 🔄 Mapeando ${data.length} imóveis...`);
       const mapStart = performance.now();
 
       const mappedProperties: Property[] = data.map((prop: any) => {
-        const locationData = Array.isArray(prop.locations) ? prop.locations[0] : prop.locations;
+        const locationData = locationsMap.get(prop.location_id);
         const locationName = locationData?.name || "";
 
         return {
@@ -159,7 +152,6 @@ export function usePublicProperties(options?: { location?: string; sort?: string
       setProperties(mappedProperties);
       setError(null);
     } catch (err: any) {
-      // Ignorar erros de abort
       if (err.name === 'AbortError' || err.message?.includes('aborted')) {
         console.log("[usePublicProperties] 🛑 Requisição cancelada (normal)");
         return;
