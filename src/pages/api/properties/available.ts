@@ -17,16 +17,15 @@ export default async function handler(
     const sortStr = Array.isArray(sort) ? sort[0] : sort;
     const orderStr = Array.isArray(order) ? order[0] : order;
 
-    // Query otimizada com JOIN direto
+    // Query otimizada usando APENAS colunas que existem
     let query = supabase
       .from("properties")
       .select(`
         id,
         location_id,
         complement,
-        property_type,
         property_identifier,
-        bedrooms,
+        rooms,
         bathrooms,
         area,
         value,
@@ -39,7 +38,7 @@ export default async function handler(
         images,
         created_at,
         updated_at,
-        locations (
+        locations!inner (
           id,
           name,
           street,
@@ -58,11 +57,10 @@ export default async function handler(
       query = query.eq("locations.name", locationStr);
     }
 
-    // Ordenação
+    // Ordenação com fallback seguro
     const validSorts = ["created_at", "value", "area"];
     const validOrders = ["asc", "desc"];
     
-    // Fallback seguro para ordenação
     const sortField = validSorts.includes(sortStr || "") ? sortStr! : "created_at";
     const sortOrder = validOrders.includes(orderStr || "") ? (orderStr as "asc" | "desc") : "desc";
 
@@ -74,7 +72,9 @@ export default async function handler(
       console.error("Supabase error:", error);
       return res.status(500).json({ 
         error: "Failed to fetch properties",
-        message: error.message 
+        message: error.message,
+        details: error.details,
+        hint: error.hint
       });
     }
 

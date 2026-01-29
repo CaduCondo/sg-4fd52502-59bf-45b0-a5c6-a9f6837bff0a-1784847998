@@ -15,16 +15,16 @@ export function usePublicProperties(filters: Filters = {}) {
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const abortControllerRef = useRef<AbortController | null>(null);
   const isFirstLoad = useRef(true);
+  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     loadProperties();
     
     return () => {
-      // Cancelar requisição ao desmontar
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
+      // Limpar timeout ao desmontar
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
       }
     };
   }, [filters.location, filters.sort]);
@@ -40,14 +40,6 @@ export function usePublicProperties(filters: Filters = {}) {
       setLoading(false);
       return;
     }
-
-    // Cancelar requisição anterior se existir
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-
-    // Criar novo AbortController
-    abortControllerRef.current = new AbortController();
 
     // Só mostrar loading se for primeira carga ou não tiver cache
     if (isFirstLoad.current || !cached) {
@@ -80,12 +72,11 @@ export function usePublicProperties(filters: Filters = {}) {
           break;
       }
 
-      const response = await fetch(`/api/properties/available?${params.toString()}`, {
-        signal: abortControllerRef.current.signal,
-      });
+      const response = await fetch(`/api/properties/available?${params.toString()}`);
       
       if (!response.ok) {
-        throw new Error("Erro ao carregar imóveis disponíveis");
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Erro ao carregar imóveis disponíveis");
       }
 
       const data = await response.json();
@@ -103,10 +94,11 @@ export function usePublicProperties(filters: Filters = {}) {
           locationId: prop.location_id,
           complement: prop.complement || "",
           
-          type: prop.property_type || "Outros",
+          // USAR rooms ao invés de bedrooms (campo correto no banco)
+          type: "Apartamento", // Tipo padrão já que property_type não existe
           propertyIdentifier: prop.property_identifier || "",
-          rooms: prop.bedrooms || 0,
-          bedrooms: prop.bedrooms || 0,
+          rooms: prop.rooms || 0,
+          bedrooms: prop.rooms || 0, // Mapear rooms para bedrooms para compatibilidade
           bathrooms: prop.bathrooms || 0,
           area: prop.area || 0,
           
@@ -131,7 +123,7 @@ export function usePublicProperties(filters: Filters = {}) {
           locationDetails: locationData.id ? {
             id: locationData.id,
             name: locationName,
-            address: locationData.address || "",
+            address: `${locationData.street || ""} ${locationData.number || ""}`.trim(),
             city: city,
             state: state,
             zipCode: locationData.zip_code || "",
@@ -151,11 +143,6 @@ export function usePublicProperties(filters: Filters = {}) {
       isFirstLoad.current = false;
 
     } catch (err: any) {
-      // Ignorar erros de abort
-      if (err.name === "AbortError") {
-        return;
-      }
-      
       console.error("Erro ao carregar imóveis públicos:", err);
       setError(err.message || "Erro ao carregar imóveis");
       
