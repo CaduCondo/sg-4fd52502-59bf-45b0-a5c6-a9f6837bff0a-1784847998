@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Head from "next/head";
 import { PublicHeader } from "@/components/public/PublicHeader";
 import { LocationFilter } from "@/components/public/LocationFilter";
@@ -25,32 +25,37 @@ export default function PublicHomePage() {
     sort: sortBy,
   });
 
-  // Filter properties by search term
-  const filteredProperties = properties.filter((prop) => {
-    if (!searchTerm) return true;
+  // Filter properties by search term (memoized para evitar recalculo)
+  const filteredProperties = useMemo(() => {
+    if (!searchTerm) return properties;
+    
     const search = searchTerm.toLowerCase();
-    return (
-      prop.complement?.toLowerCase().includes(search) ||
-      prop.description?.toLowerCase().includes(search) ||
-      prop.locationDetails?.city?.toLowerCase().includes(search) ||
-      prop.locationDetails?.neighborhood?.toLowerCase().includes(search) ||
-      prop.location?.toLowerCase().includes(search) ||
-      prop.type?.toLowerCase().includes(search)
-    );
-  });
+    return properties.filter((prop) => {
+      return (
+        prop.complement?.toLowerCase().includes(search) ||
+        prop.description?.toLowerCase().includes(search) ||
+        prop.locationDetails?.city?.toLowerCase().includes(search) ||
+        prop.locationDetails?.neighborhood?.toLowerCase().includes(search) ||
+        prop.location?.toLowerCase().includes(search) ||
+        prop.type?.toLowerCase().includes(search)
+      );
+    });
+  }, [properties, searchTerm]);
 
-  // Extract unique locations for filter
-  const uniqueLocations = Array.from(
-    new Set(properties.map((p) => p.location).filter(Boolean))
-  ).map((name) => {
-    const prop = properties.find((p) => p.location === name);
-    return {
-      id: prop?.locationId || "",
-      name: name || "",
-      city: prop?.locationDetails?.city || "",
-      neighborhood: prop?.locationDetails?.neighborhood || "",
-    };
-  }).filter(loc => loc.id && loc.id.trim() !== ""); // Filter out empty IDs
+  // Extract unique locations for filter (memoized)
+  const uniqueLocations = useMemo(() => {
+    return Array.from(
+      new Set(properties.map((p) => p.location).filter(Boolean))
+    ).map((name) => {
+      const prop = properties.find((p) => p.location === name);
+      return {
+        id: prop?.locationId || "",
+        name: name || "",
+        city: prop?.locationDetails?.city || "",
+        neighborhood: prop?.locationDetails?.neighborhood || "",
+      };
+    }).filter(loc => loc.id && loc.id.trim() !== "");
+  }, [properties]);
 
   return (
     <>
@@ -130,6 +135,22 @@ export default function PublicHomePage() {
                     <Skeleton className="h-10 w-full" />
                   </div>
                 ))}
+              </div>
+            ) : error ? (
+              <div className="text-center py-20">
+                <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-red-100 mb-6">
+                  <Home className="h-10 w-10 text-red-400" />
+                </div>
+                <h3 className="font-display text-2xl font-bold text-slate-900 mb-2">
+                  Erro ao carregar imóveis
+                </h3>
+                <p className="text-slate-600 mb-4">{error}</p>
+                <button 
+                  onClick={() => window.location.reload()}
+                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Tentar novamente
+                </button>
               </div>
             ) : filteredProperties.length === 0 ? (
               <div className="text-center py-20">

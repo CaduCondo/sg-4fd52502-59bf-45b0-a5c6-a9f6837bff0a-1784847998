@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Property } from "@/types";
 import { SortOption } from "@/components/public/SortSelector";
 
@@ -7,17 +7,52 @@ interface Filters {
   sort?: SortOption;
 }
 
+// Cache simples em memória para evitar requests desnecessárias
+const cache = new Map<string, { data: Property[]; timestamp: number }>();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
+
 export function usePublicProperties(filters: Filters = {}) {
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const isFirstLoad = useRef(true);
 
   useEffect(() => {
     loadProperties();
+    
+    return () => {
+      // Cancelar requisição ao desmontar
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
   }, [filters.location, filters.sort]);
 
   async function loadProperties() {
-    setLoading(true);
+    // Criar chave de cache baseada nos filtros
+    const cacheKey = JSON.stringify(filters);
+    
+    // Verificar cache primeiro
+    const cached = cache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+      setProperties(cached.data);
+      setLoading(false);
+      return;
+    }
+
+    // Cancelar requisição anterior se existir
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    // Criar novo AbortController
+    abortControllerRef.current = new AbortController();
+
+    // Só mostrar loading se for primeira carga ou não tiver cache
+    if (isFirstLoad.current || !cached) {
+      setLoading(true);
+    }
     setError(null);
 
     try {
@@ -45,7 +80,9 @@ export function usePublicProperties(filters: Filters = {}) {
           break;
       }
 
-      const response = await fetch(`/api/properties/available?${params.toString()}`);
+      const response = await fetch(`/api/properties/available?${params.toString()}`, {
+        signal: abortControllerRef.current.signal,
+      });
       
       if (!response.ok) {
         throw new Error("Erro ao carregar imóveis disponíveis");
@@ -55,7 +92,6 @@ export function usePublicProperties(filters: Filters = {}) {
       
       // Mapear campos do banco para frontend
       const mappedProperties: Property[] = (data || []).map((prop: any) => {
-        // Extrair dados da localização (se existir)
         const locationData = prop.locations || {};
         const city = locationData.city || "";
         const state = locationData.state || "";
@@ -67,7 +103,6 @@ export function usePublicProperties(filters: Filters = {}) {
           locationId: prop.location_id,
           complement: prop.complement || "",
           
-          // Informações do imóvel
           type: prop.property_type || "Outros",
           propertyIdentifier: prop.property_identifier || "",
           rooms: prop.bedrooms || 0,
@@ -75,30 +110,24 @@ export function usePublicProperties(filters: Filters = {}) {
           bathrooms: prop.bathrooms || 0,
           area: prop.area || 0,
           
-          // Valores
           value: prop.value || 0,
           garageValue: prop.garage_value || 0,
           
-          // Características
           hasGarage: prop.has_garage || false,
           hasFurniture: prop.has_furniture || false,
           acceptsPets: prop.accepts_pets || false,
           
-          // Textos
           description: prop.description || "",
           status: prop.status,
           images: Array.isArray(prop.images) ? prop.images : [],
           createdAt: prop.created_at,
           
-          // Localização (string para compatibilidade)
           location: locationName || `${city} - ${state}`,
           
-          // Localização (campos individuais)
           city: city,
           state: state,
           neighborhood: neighborhood,
           
-          // Localização (objeto completo)
           locationDetails: locationData.id ? {
             id: locationData.id,
             name: locationName,
@@ -112,10 +141,28 @@ export function usePublicProperties(filters: Filters = {}) {
       });
 
       setProperties(mappedProperties);
+      
+      // Atualizar cache
+      cache.set(cacheKey, {
+        data: mappedProperties,
+        timestamp: Date.now(),
+      });
+
+      isFirstLoad.current = false;
 
     } catch (err: any) {
+      // Ignorar erros de abort
+      if (err.name === "AbortError") {
+        return;
+      }
+      
       console.error("Erro ao carregar imóveis públicos:", err);
       setError(err.message || "Erro ao carregar imóveis");
+      
+      // Se tiver cache antigo, usar ele
+      if (cached) {
+        setProperties(cached.data);
+      }
     } finally {
       setLoading(false);
     }
