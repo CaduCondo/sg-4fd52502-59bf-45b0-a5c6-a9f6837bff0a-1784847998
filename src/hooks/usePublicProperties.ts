@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Property } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -6,24 +6,49 @@ export function usePublicProperties(options?: { location?: string; sort?: string
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Ref para evitar múltiplas chamadas simultâneas
+  const isLoadingRef = useRef(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
+    // Cancelar requisição anterior se existir
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    
     loadProperties();
+    
+    // Cleanup: cancelar ao desmontar
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
   }, [options?.location, options?.sort]);
 
   const loadProperties = async () => {
+    // Evitar múltiplas chamadas simultâneas
+    if (isLoadingRef.current) {
+      console.log("[usePublicProperties] ⏭️ Requisição já em andamento, ignorando...");
+      return;
+    }
+
     const startTime = performance.now();
-    console.log("[usePublicProperties] 🚀 Iniciando busca...");
+    console.log("[usePublicProperties] 🚀 Iniciando busca...", { location: options?.location, sort: options?.sort });
 
     try {
+      isLoadingRef.current = true;
       setLoading(true);
       setError(null);
 
-      // Query DIRETA e OTIMIZADA - busca apenas campos necessários
+      // Criar novo AbortController
+      abortControllerRef.current = new AbortController();
+
       console.log("[usePublicProperties] 📡 Fazendo query no Supabase...");
       const queryStart = performance.now();
       
-      const { data, error: fetchError } = await supabase
+      let query = supabase
         .from("properties")
         .select(`
           id,
@@ -45,16 +70,30 @@ export function usePublicProperties(options?: { location?: string; sort?: string
           locations!inner (
             id,
             name,
-            street,
-            number,
-            neighborhood,
             city,
+            neighborhood,
             state,
+            street,
             zip_code
           )
         `)
-        .eq("status", "available")
-        .order("created_at", { ascending: false });
+        .eq("status", "available");
+
+      // Aplicar filtros opcionais
+      if (options?.location) {
+        query = query.eq("location_id", options.location);
+      }
+
+      // Aplicar ordenação
+      if (options?.sort === "price-asc") {
+        query = query.order("value", { ascending: true });
+      } else if (options?.sort === "price-desc") {
+        query = query.order("value", { ascending: false });
+      } else {
+        query = query.order("created_at", { ascending: false });
+      }
+
+      const { data, error: fetchError } = await query;
 
       const queryEnd = performance.now();
       console.log(`[usePublicProperties] ✅ Query completada em ${(queryEnd - queryStart).toFixed(0)}ms`);
@@ -68,16 +107,16 @@ export function usePublicProperties(options?: { location?: string; sort?: string
         console.warn("[usePublicProperties] ⚠️ Nenhum imóvel encontrado");
         setProperties([]);
         setLoading(false);
+        isLoadingRef.current = false;
         return;
       }
 
       console.log(`[usePublicProperties] 📦 Recebidos ${data.length} imóveis. Mapeando dados...`);
       const mapStart = performance.now();
 
-      // Mapear dados do banco para o formato Property (OTIMIZADO)
       const mappedProperties: Property[] = data.map((prop: any) => {
-        const loc = Array.isArray(prop.locations) ? prop.locations[0] : prop.locations;
-        const locName = loc?.name || "";
+        const locationData = Array.isArray(prop.locations) ? prop.locations[0] : prop.locations;
+        const locationName = locationData?.name || "";
 
         return {
           id: prop.id,
@@ -98,15 +137,15 @@ export function usePublicProperties(options?: { location?: string; sort?: string
           propertyIdentifier: prop.property_identifier || "",
           type: "Apartamento",
           createdAt: prop.created_at,
-          location: locName,
-          locationDetails: loc ? {
-            id: loc.id,
-            name: loc.name,
-            city: loc.city || "",
-            neighborhood: loc.neighborhood || "",
-            state: loc.state || "",
-            address: loc.street || "",
-            zipCode: loc.zip_code || ""
+          location: locationName,
+          locationDetails: locationData ? {
+            id: locationData.id,
+            name: locationData.name,
+            city: locationData.city || "",
+            neighborhood: locationData.neighborhood || "",
+            state: locationData.state || "",
+            address: locationData.street || "",
+            zipCode: locationData.zip_code || ""
           } : undefined,
         };
       });
@@ -120,12 +159,20 @@ export function usePublicProperties(options?: { location?: string; sort?: string
       setProperties(mappedProperties);
       setError(null);
     } catch (err: any) {
+      // Ignorar erros de abort
+      if (err.name === 'AbortError' || err.message?.includes('aborted')) {
+        console.log("[usePublicProperties] 🛑 Requisição cancelada (normal)");
+        return;
+      }
+
       const errorTime = performance.now() - startTime;
       console.error(`[usePublicProperties] ❌ ERRO após ${errorTime.toFixed(0)}ms:`, err);
       setError(err?.message || "Erro ao carregar imóveis");
       setProperties([]);
     } finally {
       setLoading(false);
+      isLoadingRef.current = false;
+      abortControllerRef.current = null;
     }
   };
 
