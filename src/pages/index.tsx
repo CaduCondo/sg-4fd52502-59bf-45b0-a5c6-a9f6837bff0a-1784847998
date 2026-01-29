@@ -10,22 +10,31 @@ import { SortSelector } from "@/components/public/SortSelector";
 import { usePublicProperties } from "@/hooks/usePublicProperties";
 import { SortOption } from "@/components/public/SortSelector";
 import { Input } from "@/components/ui/input";
-import { Search, Home, Building2, Phone, Mail, MapPin } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Search, Home, Building2, Phone, Mail, MapPin, ChevronDown } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { siteConfig } from "@/services/configService";
 
+const ITEMS_PER_PAGE = 6;
+
 export default function PublicHomePage() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [selectedLocation, setSelectedLocation] = useState<string>("");
+  const [selectedLocation, setSelectedLocation] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("newest");
+  const [displayCount, setDisplayCount] = useState(ITEMS_PER_PAGE);
   
   const { properties, loading, error } = usePublicProperties({
     location: selectedLocation,
     sort: sortBy,
   });
 
-  // Filter properties by search term (memoized para evitar recalculo)
+  // Reset display count when filters change
+  useEffect(() => {
+    setDisplayCount(ITEMS_PER_PAGE);
+  }, [selectedLocation, searchTerm, sortBy]);
+
+  // Filter properties by search term (memoized)
   const filteredProperties = useMemo(() => {
     if (!searchTerm) return properties;
     
@@ -34,28 +43,39 @@ export default function PublicHomePage() {
       return (
         prop.complement?.toLowerCase().includes(search) ||
         prop.description?.toLowerCase().includes(search) ||
-        prop.locationDetails?.city?.toLowerCase().includes(search) ||
-        prop.locationDetails?.neighborhood?.toLowerCase().includes(search) ||
+        prop.city?.toLowerCase().includes(search) ||
+        prop.neighborhood?.toLowerCase().includes(search) ||
         prop.location?.toLowerCase().includes(search) ||
         prop.type?.toLowerCase().includes(search)
       );
     });
   }, [properties, searchTerm]);
 
+  // Properties to display (with pagination)
+  const displayedProperties = filteredProperties.slice(0, displayCount);
+  const hasMore = displayCount < filteredProperties.length;
+
   // Extract unique locations for filter (memoized)
   const uniqueLocations = useMemo(() => {
-    return Array.from(
-      new Set(properties.map((p) => p.location).filter(Boolean))
-    ).map((name) => {
-      const prop = properties.find((p) => p.location === name);
-      return {
-        id: prop?.locationId || "",
-        name: name || "",
-        city: prop?.locationDetails?.city || "",
-        neighborhood: prop?.locationDetails?.neighborhood || "",
-      };
-    }).filter(loc => loc.id && loc.id.trim() !== "");
+    const locationMap = new Map<string, { id: string; name: string; city: string; neighborhood: string }>();
+    
+    properties.forEach((prop) => {
+      if (prop.locationId && prop.location && !locationMap.has(prop.locationId)) {
+        locationMap.set(prop.locationId, {
+          id: prop.locationId,
+          name: prop.location,
+          city: prop.city || "",
+          neighborhood: prop.neighborhood || "",
+        });
+      }
+    });
+    
+    return Array.from(locationMap.values());
   }, [properties]);
+
+  const handleLoadMore = () => {
+    setDisplayCount((prev) => prev + ITEMS_PER_PAGE);
+  };
 
   return (
     <>
@@ -181,15 +201,36 @@ export default function PublicHomePage() {
 
                 {viewMode === "grid" ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {filteredProperties.map((property) => (
+                    {displayedProperties.map((property) => (
                       <PropertyPublicCard key={property.id} property={property} />
                     ))}
                   </div>
                 ) : (
                   <div className="space-y-6">
-                    {filteredProperties.map((property) => (
+                    {displayedProperties.map((property) => (
                       <PropertyListCard key={property.id} property={property} />
                     ))}
+                  </div>
+                )}
+
+                {/* Load More Button */}
+                {hasMore && (
+                  <div className="flex justify-center mt-12">
+                    <Button
+                      onClick={handleLoadMore}
+                      size="lg"
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-6 text-lg rounded-full shadow-lg transition-all hover:shadow-xl"
+                    >
+                      <ChevronDown className="h-5 w-5 mr-2" />
+                      Mostrar Mais Imóveis
+                    </Button>
+                  </div>
+                )}
+
+                {/* Show count indicator */}
+                {displayedProperties.length < filteredProperties.length && (
+                  <div className="text-center mt-6 text-slate-600">
+                    Mostrando {displayedProperties.length} de {filteredProperties.length} imóveis
                   </div>
                 )}
               </>
