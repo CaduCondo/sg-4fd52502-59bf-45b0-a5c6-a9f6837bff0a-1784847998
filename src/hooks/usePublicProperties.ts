@@ -2,21 +2,21 @@ import { useState, useEffect, useRef } from "react";
 import { Property } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 
-export function usePublicProperties(options?: { location?: string; sort?: string }) {
+interface UsePublicPropertiesOptions {
+  location?: string;
+  sort?: "newest" | "oldest" | "price_asc" | "price_desc" | "price-asc" | "price-desc" | "area-asc" | "area-desc";
+}
+
+export function usePublicProperties(options?: UsePublicPropertiesOptions) {
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
   const isLoadingRef = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    
     loadProperties();
-    
+
     return () => {
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
@@ -25,141 +25,130 @@ export function usePublicProperties(options?: { location?: string; sort?: string
   }, [options?.location, options?.sort]);
 
   const loadProperties = async () => {
+    console.log("[usePublicProperties] 🚀 Iniciando busca...", { 
+      location: options?.location || '', 
+      sort: options?.sort || 'newest' 
+    });
+
     if (isLoadingRef.current) {
       console.log("[usePublicProperties] ⏭️ Requisição já em andamento, ignorando...");
       return;
     }
 
-    const startTime = performance.now();
-    console.log("[usePublicProperties] 🚀 Iniciando busca...", { location: options?.location, sort: options?.sort });
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    abortControllerRef.current = new AbortController();
+    isLoadingRef.current = true;
+    setLoading(true);
+    setError(null);
 
     try {
-      isLoadingRef.current = true;
-      setLoading(true);
-      setError(null);
+      const startTime = performance.now();
+      console.log("[usePublicProperties] 📡 Query ULTRA SIMPLES (apenas properties)...");
 
-      abortControllerRef.current = new AbortController();
-
-      console.log("[usePublicProperties] 📡 Fazendo query SIMPLES (SEM JOIN)...");
-      const queryStart = performance.now();
-      
-      // QUERY SIMPLES: Apenas properties, SEM JOIN com locations
       let query = supabase
         .from("properties")
-        .select("id, location_id, complement, rooms, bathrooms, area, value, garage_value, has_garage, has_furniture, accepts_pets, description, status, images, property_identifier, created_at")
+        .select(`
+          id,
+          location_id,
+          complement,
+          rooms,
+          bathrooms,
+          area,
+          value,
+          garage_value,
+          has_garage,
+          has_furniture,
+          accepts_pets,
+          description,
+          status,
+          images,
+          property_identifier,
+          created_at
+        `)
         .eq("status", "available");
 
-      // Aplicar filtros
       if (options?.location) {
         query = query.eq("location_id", options.location);
       }
 
-      // Aplicar ordenação
-      if (options?.sort === "price-asc") {
-        query = query.order("value", { ascending: true });
-      } else if (options?.sort === "price-desc") {
-        query = query.order("value", { ascending: false });
-      } else {
+      const sortOption = options?.sort || "newest";
+      if (sortOption === "newest") {
         query = query.order("created_at", { ascending: false });
+      } else if (sortOption === "oldest") {
+        query = query.order("created_at", { ascending: true });
+      } else if (sortOption === "price_asc" || sortOption === "price-asc") {
+        query = query.order("value", { ascending: true });
+      } else if (sortOption === "price_desc" || sortOption === "price-desc") {
+        query = query.order("value", { ascending: false });
+      } else if (sortOption === "area-asc") {
+        query = query.order("area", { ascending: true });
+      } else if (sortOption === "area-desc") {
+        query = query.order("area", { ascending: false });
       }
 
-      const { data, error: fetchError } = await query;
+      const { data, error: queryError } = await query;
 
-      const queryEnd = performance.now();
-      console.log(`[usePublicProperties] ✅ Query SEM JOIN completada em ${(queryEnd - queryStart).toFixed(0)}ms`);
+      const queryTime = performance.now() - startTime;
+      console.log(`[usePublicProperties] ✅ Query completada em ${queryTime.toFixed(0)}ms`);
 
-      if (fetchError) {
-        console.error("[usePublicProperties] ❌ Erro na query:", fetchError);
-        throw fetchError;
+      if (queryError) {
+        console.error("[usePublicProperties] ❌ Erro na query:", queryError);
+        throw queryError;
       }
 
-      if (!data || data.length === 0) {
-        console.warn("[usePublicProperties] ⚠️ Nenhum imóvel encontrado");
+      if (!data) {
+        console.warn("[usePublicProperties] ⚠️ Nenhum dado retornado");
         setProperties([]);
         setLoading(false);
         isLoadingRef.current = false;
         return;
       }
 
-      console.log(`[usePublicProperties] 📦 Recebidos ${data.length} imóveis. Buscando localizações...`);
-      
-      // Buscar TODAS as localizações em UMA query separada (mais rápido)
-      const locationIds = [...new Set(data.map(p => p.location_id).filter(Boolean))];
-      const locationsStart = performance.now();
-      
-      const { data: locationsData, error: locationsError } = await supabase
-        .from("locations")
-        .select("id, name, city, neighborhood, state, street, zip_code")
-        .in("id", locationIds);
+      console.log(`[usePublicProperties] 📦 Recebidos ${data.length} imóveis. Mapeando...`);
+      const mapStartTime = performance.now();
 
-      const locationsEnd = performance.now();
-      console.log(`[usePublicProperties] ✅ Localizações carregadas em ${(locationsEnd - locationsStart).toFixed(0)}ms`);
+      const mappedProperties: Property[] = data.map((prop) => ({
+        id: prop.id,
+        locationId: prop.location_id || "",
+        location: "", // Não precisa na home
+        complement: prop.complement || "",
+        rooms: prop.rooms || 0,
+        bathrooms: prop.bathrooms || 0,
+        area: prop.area || 0,
+        value: prop.value || 0,
+        garageValue: prop.garage_value || 0,
+        hasGarage: prop.has_garage || false,
+        hasFurniture: prop.has_furniture || false,
+        acceptsPets: prop.accepts_pets || false,
+        description: prop.description || "",
+        status: (prop.status as Property["status"]) || "available",
+        images: Array.isArray(prop.images) ? (prop.images as string[]) : [],
+        propertyIdentifier: prop.property_identifier || "",
+        createdAt: prop.created_at || new Date().toISOString(),
+        locationDetails: undefined, // Não precisa na home
+      }));
 
-      if (locationsError) {
-        console.error("[usePublicProperties] ⚠️ Erro ao buscar localizações:", locationsError);
-      }
-
-      // Criar mapa de localizações para lookup rápido
-      const locationsMap = new Map(
-        (locationsData || []).map(loc => [loc.id, loc])
-      );
-
-      console.log(`[usePublicProperties] 🔄 Mapeando ${data.length} imóveis...`);
-      const mapStart = performance.now();
-
-      const mappedProperties: Property[] = data.map((prop: any) => {
-        const locationData = locationsMap.get(prop.location_id);
-        const locationName = locationData?.name || "";
-
-        return {
-          id: prop.id,
-          locationId: prop.location_id,
-          complement: prop.complement || "",
-          rooms: prop.rooms || 0,
-          bedrooms: prop.rooms || 0,
-          bathrooms: prop.bathrooms || 0,
-          area: prop.area || 0,
-          value: prop.value || 0,
-          garageValue: prop.garage_value || 0,
-          hasGarage: prop.has_garage || false,
-          hasFurniture: prop.has_furniture || false,
-          acceptsPets: prop.accepts_pets || false,
-          description: prop.description || "",
-          status: prop.status || "available",
-          images: Array.isArray(prop.images) ? prop.images : [],
-          propertyIdentifier: prop.property_identifier || "",
-          type: "Apartamento",
-          createdAt: prop.created_at,
-          location: locationName,
-          locationDetails: locationData ? {
-            id: locationData.id,
-            name: locationData.name,
-            city: locationData.city || "",
-            neighborhood: locationData.neighborhood || "",
-            state: locationData.state || "",
-            address: locationData.street || "",
-            zipCode: locationData.zip_code || ""
-          } : undefined,
-        };
-      });
-
-      const mapEnd = performance.now();
-      console.log(`[usePublicProperties] ✅ Mapeamento completado em ${(mapEnd - mapStart).toFixed(0)}ms`);
-
+      const mapTime = performance.now() - mapStartTime;
       const totalTime = performance.now() - startTime;
+
+      console.log(`[usePublicProperties] ✅ Mapeamento completado em ${mapTime.toFixed(0)}ms`);
       console.log(`[usePublicProperties] 🎉 TOTAL: ${totalTime.toFixed(0)}ms (${mappedProperties.length} imóveis)`);
 
       setProperties(mappedProperties);
       setError(null);
     } catch (err: any) {
-      if (err.name === 'AbortError' || err.message?.includes('aborted')) {
+      if (err.name === "AbortError") {
         console.log("[usePublicProperties] 🛑 Requisição cancelada (normal)");
         return;
       }
 
-      const errorTime = performance.now() - startTime;
-      console.error(`[usePublicProperties] ❌ ERRO após ${errorTime.toFixed(0)}ms:`, err);
-      setError(err?.message || "Erro ao carregar imóveis");
+      const errorTime = performance.now();
+      console.error("[usePublicProperties] ❌ ERRO após", errorTime.toFixed(0) + "ms:", err);
+      
+      setError(err.message || "Erro ao carregar imóveis");
       setProperties([]);
     } finally {
       setLoading(false);
