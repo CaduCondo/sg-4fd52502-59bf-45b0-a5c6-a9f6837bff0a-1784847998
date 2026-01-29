@@ -9,17 +9,20 @@ export function usePublicProperties(options?: { location?: string; sort?: string
 
   useEffect(() => {
     loadProperties();
-  }, []);
+  }, [options?.location, options?.sort]);
 
   const loadProperties = async () => {
     const startTime = performance.now();
-    console.log("[Hook] Starting to fetch properties...");
+    console.log("[usePublicProperties] 🚀 Iniciando busca...");
 
     try {
       setLoading(true);
       setError(null);
 
-      // Query DIRETA e SIMPLES - busca apenas o necessário
+      // Query DIRETA e OTIMIZADA - busca apenas campos necessários
+      console.log("[usePublicProperties] 📡 Fazendo query no Supabase...");
+      const queryStart = performance.now();
+      
       const { data, error: fetchError } = await supabase
         .from("properties")
         .select(`
@@ -39,7 +42,7 @@ export function usePublicProperties(options?: { location?: string; sort?: string
           images,
           property_identifier,
           created_at,
-          locations (
+          locations!inner (
             id,
             name,
             street,
@@ -53,38 +56,35 @@ export function usePublicProperties(options?: { location?: string; sort?: string
         .eq("status", "available")
         .order("created_at", { ascending: false });
 
-      const fetchTime = performance.now();
-      console.log(`[Hook] Fetch completed in ${(fetchTime - startTime).toFixed(2)}ms`);
+      const queryEnd = performance.now();
+      console.log(`[usePublicProperties] ✅ Query completada em ${(queryEnd - queryStart).toFixed(0)}ms`);
 
       if (fetchError) {
-        console.error("[Hook] Fetch error:", fetchError);
+        console.error("[usePublicProperties] ❌ Erro na query:", fetchError);
         throw fetchError;
       }
 
-      if (!data) {
-        console.warn("[Hook] No data returned");
+      if (!data || data.length === 0) {
+        console.warn("[usePublicProperties] ⚠️ Nenhum imóvel encontrado");
         setProperties([]);
         setLoading(false);
         return;
       }
 
-      console.log(`[Hook] Received ${data.length} properties`);
+      console.log(`[usePublicProperties] 📦 Recebidos ${data.length} imóveis. Mapeando dados...`);
+      const mapStart = performance.now();
 
-      // Mapear dados do banco para o formato Property
+      // Mapear dados do banco para o formato Property (OTIMIZADO)
       const mappedProperties: Property[] = data.map((prop: any) => {
-        // Locations pode vir como array ou objeto
-        const locationData = Array.isArray(prop.locations) 
-          ? prop.locations[0] 
-          : prop.locations;
-
-        const locationName = locationData?.name || "";
+        const loc = Array.isArray(prop.locations) ? prop.locations[0] : prop.locations;
+        const locName = loc?.name || "";
 
         return {
           id: prop.id,
           locationId: prop.location_id,
           complement: prop.complement || "",
           rooms: prop.rooms || 0,
-          bedrooms: prop.rooms || 0, // Usa rooms como bedrooms para compatibilidade
+          bedrooms: prop.rooms || 0,
           bathrooms: prop.bathrooms || 0,
           area: prop.area || 0,
           value: prop.value || 0,
@@ -96,29 +96,32 @@ export function usePublicProperties(options?: { location?: string; sort?: string
           status: prop.status || "available",
           images: Array.isArray(prop.images) ? prop.images : [],
           propertyIdentifier: prop.property_identifier || "",
-          type: "Apartamento", // Valor padrão já que não temos property_type no banco
+          type: "Apartamento",
           createdAt: prop.created_at,
-          location: locationName, // String com o nome da localização
-          locationDetails: locationData ? { // Objeto com os detalhes
-            id: locationData.id,
-            name: locationData.name,
-            city: locationData.city || "",
-            neighborhood: locationData.neighborhood || "",
-            state: locationData.state || "",
-            address: locationData.street || "",
-            zipCode: locationData.zip_code || ""
+          location: locName,
+          locationDetails: loc ? {
+            id: loc.id,
+            name: loc.name,
+            city: loc.city || "",
+            neighborhood: loc.neighborhood || "",
+            state: loc.state || "",
+            address: loc.street || "",
+            zipCode: loc.zip_code || ""
           } : undefined,
         };
       });
 
-      const mapTime = performance.now();
-      console.log(`[Hook] Mapping completed in ${(mapTime - fetchTime).toFixed(2)}ms`);
-      console.log(`[Hook] Total time: ${(mapTime - startTime).toFixed(2)}ms`);
+      const mapEnd = performance.now();
+      console.log(`[usePublicProperties] ✅ Mapeamento completado em ${(mapEnd - mapStart).toFixed(0)}ms`);
+
+      const totalTime = performance.now() - startTime;
+      console.log(`[usePublicProperties] 🎉 TOTAL: ${totalTime.toFixed(0)}ms (${mappedProperties.length} imóveis)`);
 
       setProperties(mappedProperties);
       setError(null);
     } catch (err: any) {
-      console.error("[Hook] Error loading properties:", err);
+      const errorTime = performance.now() - startTime;
+      console.error(`[usePublicProperties] ❌ ERRO após ${errorTime.toFixed(0)}ms:`, err);
       setError(err?.message || "Erro ao carregar imóveis");
       setProperties([]);
     } finally {
