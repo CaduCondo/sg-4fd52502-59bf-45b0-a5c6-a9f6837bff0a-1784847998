@@ -30,7 +30,6 @@ export default async function handler(
       .from("properties")
       .select("id, location_id, property_identifier, complement, description, rooms, bathrooms, area, has_garage, value, garage_value, status, images, has_furniture, accepts_pets, created_at, updated_at")
       .eq("status", "available")
-      .order("created_at", { ascending: false })
       .limit(50); // Reduced from 200 to 50
 
     if (propError) {
