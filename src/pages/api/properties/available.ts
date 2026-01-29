@@ -12,6 +12,11 @@ export default async function handler(
   try {
     const { location, sort = "created_at", order = "desc" } = req.query;
 
+    // Garantir que os parâmetros são strings
+    const locationStr = Array.isArray(location) ? location[0] : location;
+    const sortStr = Array.isArray(sort) ? sort[0] : sort;
+    const orderStr = Array.isArray(order) ? order[0] : order;
+
     // Query otimizada com JOIN direto
     let query = supabase
       .from("properties")
@@ -49,15 +54,17 @@ export default async function handler(
       .eq("status", "available");
 
     // Filtrar por localização se fornecido
-    if (location && typeof location === "string") {
-      query = query.eq("locations.name", location);
+    if (locationStr) {
+      query = query.eq("locations.name", locationStr);
     }
 
     // Ordenação
     const validSorts = ["created_at", "value", "area"];
     const validOrders = ["asc", "desc"];
-    const sortField = validSorts.includes(sort as string) ? sort : "created_at";
-    const sortOrder = validOrders.includes(order as string) ? (order as "asc" | "desc") : "desc";
+    
+    // Fallback seguro para ordenação
+    const sortField = validSorts.includes(sortStr || "") ? sortStr! : "created_at";
+    const sortOrder = validOrders.includes(orderStr || "") ? (orderStr as "asc" | "desc") : "desc";
 
     query = query.order(sortField, { ascending: sortOrder === "asc" }).limit(50);
 
