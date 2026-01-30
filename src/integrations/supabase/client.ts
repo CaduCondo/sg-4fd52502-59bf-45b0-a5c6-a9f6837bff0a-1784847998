@@ -30,57 +30,114 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   },
 });
 
-// Reconexão automática em caso de erro de rede
+// Variáveis de controle de reconexão
 let reconnectTimeout: NodeJS.Timeout | null = null;
+let reconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 3;
+let lastReconnectTime = 0;
+const MIN_RECONNECT_INTERVAL = 10000; // 10 segundos mínimo entre tentativas
 
-const handleNetworkError = () => {
-  if (reconnectTimeout) return;
+const handleNetworkError = async () => {
+  const now = Date.now();
   
-  console.log('🔄 Detectado problema de conexão, tentando reconectar...');
+  // Evitar múltiplas tentativas simultâneas
+  if (reconnectTimeout) {
+    console.log('⏳ Reconexão já em andamento...');
+    return;
+  }
+  
+  // Respeitar intervalo mínimo entre tentativas
+  if (now - lastReconnectTime < MIN_RECONNECT_INTERVAL) {
+    console.log('⏸️ Aguardando intervalo mínimo para reconexão...');
+    return;
+  }
+  
+  // Limitar número de tentativas
+  if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+    console.log('❌ Máximo de tentativas de reconexão atingido');
+    reconnectAttempts = 0; // Reset para permitir novas tentativas depois
+    return;
+  }
+  
+  reconnectAttempts++;
+  lastReconnectTime = now;
+  
+  console.log(`🔄 Tentativa de reconexão ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}...`);
+  
+  const backoffDelay = Math.min(1000 * Math.pow(2, reconnectAttempts - 1), 10000); // 1s, 2s, 4s, max 10s
   
   reconnectTimeout = setTimeout(async () => {
     try {
-      // Tenta fazer uma requisição simples para verificar conexão
-      const { error } = await supabase.from('properties').select('id').limit(1);
+      // Tenta atualizar a sessão
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       
-      if (!error) {
-        console.log('✅ Reconexão bem-sucedida');
+      if (!sessionError && sessionData?.session) {
+        console.log('✅ Sessão verificada com sucesso');
+        reconnectAttempts = 0; // Reset em caso de sucesso
+      } else {
+        console.log('⚠️ Sessão inválida, tentando refresh...');
+        const { error: refreshError } = await supabase.auth.refreshSession();
+        
+        if (!refreshError) {
+          console.log('✅ Sessão atualizada com sucesso');
+          reconnectAttempts = 0;
+        } else {
+          console.error('❌ Erro ao atualizar sessão:', refreshError);
+        }
       }
     } catch (err) {
-      console.error('❌ Falha na reconexão:', err);
+      console.error('❌ Erro na reconexão:', err);
     } finally {
       reconnectTimeout = null;
     }
-  }, 5000); // Tenta reconectar após 5 segundos
+  }, backoffDelay);
 };
 
-// Monitorar erros de rede
+// Monitorar mudanças na conexão de rede
 if (typeof window !== 'undefined') {
   window.addEventListener('online', () => {
-    console.log('🌐 Conexão restaurada');
+    console.log('🌐 Conexão de rede restaurada');
+    reconnectAttempts = 0; // Reset ao voltar online
     handleNetworkError();
   });
   
   window.addEventListener('offline', () => {
-    console.log('📡 Conexão perdida');
+    console.log('📡 Sem conexão de rede');
   });
 }
 
+// Monitorar erros de autenticação do Supabase
+supabase.auth.onAuthStateChange((event, session) => {
+  if (event === 'TOKEN_REFRESHED') {
+    console.log('🔄 Token atualizado automaticamente');
+    reconnectAttempts = 0;
+  } else if (event === 'SIGNED_OUT') {
+    console.log('👋 Usuário desconectado');
+    reconnectAttempts = 0;
+  }
+});
+
 // Helper function to set session after manual login
 export const setSupabaseSession = async (accessToken: string, refreshToken: string) => {
-  const { data, error } = await supabase.auth.setSession({
-    access_token: accessToken,
-    refresh_token: refreshToken,
-  });
-  
-  if (error) {
-    console.error('❌ Erro ao configurar sessão Supabase:', error);
-    handleNetworkError();
+  try {
+    const { data, error } = await supabase.auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    });
+    
+    if (error) {
+      console.error('❌ Erro ao configurar sessão Supabase:', error);
+      handleNetworkError();
+      return false;
+    }
+    
+    console.log('✅ Sessão Supabase configurada com sucesso');
+    reconnectAttempts = 0;
+    return true;
+  } catch (err) {
+    console.error('❌ Erro crítico ao configurar sessão:', err);
     return false;
   }
-  
-  console.log('✅ Sessão Supabase configurada com sucesso');
-  return true;
 };
 
 // Helper to get current session
@@ -101,3 +158,18 @@ export const getSupabaseSession = async () => {
     return null;
   }
 };
+
+// Refresh preventivo da sessão a cada 30 minutos
+if (typeof window !== 'undefined') {
+  setInterval(async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        console.log('🔄 Refresh preventivo da sessão...');
+        await supabase.auth.refreshSession();
+      }
+    } catch (err) {
+      console.error('❌ Erro no refresh preventivo:', err);
+    }
+  }, 30 * 60 * 1000); // 30 minutos
+}

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { propertyService, locationService } from "@/services";
 import type { Property, Location } from "@/types";
 import { parseCurrencyToFloat, formatCurrency } from "@/lib/masks";
+import { useToast } from "@/hooks/use-toast";
 
 interface UsePropertiesReturn {
   properties: Property[];
@@ -42,6 +43,7 @@ export interface PropertyFormData {
 }
 
 export function useProperties(): UsePropertiesReturn {
+  const { toast } = useToast();
   const [properties, setProperties] = useState<Property[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [filteredProperties, setFilteredProperties] = useState<Property[]>([]);
@@ -51,21 +53,6 @@ export function useProperties(): UsePropertiesReturn {
   const [sortOrder, setSortOrder] = useState<"alphabetical" | "price-asc" | "price-desc">("alphabetical");
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
   const [loading, setLoading] = useState(true);
-  const [formData, setFormData] = useState<PropertyFormData>({
-    location_id: "",
-    property_identifier: "",
-    complement: "",
-    rooms: "",
-    bathrooms: "",
-    monthly_rent: "",
-    description: "",
-    status: "available",
-    images: [],
-    hasFurniture: false,
-    acceptsPets: false,
-    area: "",
-    hasGarage: false,
-  });
 
   const loadData = useCallback(async () => {
     try {
@@ -131,11 +118,7 @@ export function useProperties(): UsePropertiesReturn {
       throw new Error("Local selecionado inválido. Por favor, selecione novamente.");
     }
 
-    console.log("=== CREATE PROPERTY DEBUG ===");
-    console.log("1. formData.monthly_rent (raw):", formData.monthly_rent);
-    
     const parsedValue = parseCurrencyToFloat(formData.monthly_rent);
-    console.log("2. parseCurrencyToFloat result:", parsedValue);
 
     const propertyData = {
       locationId: formData.location_id,
@@ -154,13 +137,9 @@ export function useProperties(): UsePropertiesReturn {
       hasGarage: formData.hasGarage,
     };
 
-    console.log("3. propertyData sent to service:", propertyData);
-    console.log("   - monthlyRent:", propertyData.monthlyRent);
-    console.log("   - value:", propertyData.value);
-
     const newProperty = await propertyService.create({
       ...propertyData,
-      status: "available", // Default status is required
+      status: "available",
     });
     setProperties([newProperty, ...properties]);
   }, [locations, properties]);
@@ -176,11 +155,7 @@ export function useProperties(): UsePropertiesReturn {
       throw new Error("Local selecionado inválido. Por favor, selecione novamente.");
     }
 
-    console.log("=== UPDATE PROPERTY DEBUG ===");
-    console.log("1. formData.monthly_rent (raw):", formData.monthly_rent);
-    
     const parsedValue = parseCurrencyToFloat(formData.monthly_rent);
-    console.log("2. parseCurrencyToFloat result:", parsedValue);
 
     const propertyData = {
       locationId: formData.location_id,
@@ -200,18 +175,42 @@ export function useProperties(): UsePropertiesReturn {
       hasGarage: formData.hasGarage,
     };
 
-    console.log("3. propertyData sent to service:", propertyData);
-    console.log("   - value:", propertyData.value);
-    console.log("   - monthlyRent:", propertyData.monthlyRent);
-
     await propertyService.update(id, propertyData);
     await loadData();
   }, [locations, loadData]);
 
   const deleteProperty = useCallback(async (id: string) => {
-    await propertyService.remove(id);
-    await loadData();
-  }, [loadData]);
+    try {
+      console.log("🗑️ Iniciando deleção do imóvel:", id);
+      
+      // Remove da UI imediatamente para feedback visual rápido
+      setProperties(prev => prev.filter(p => p.id !== id));
+      
+      // Deleta do banco
+      await propertyService.remove(id);
+      
+      console.log("✅ Imóvel deletado com sucesso");
+      
+      toast({
+        title: "Sucesso!",
+        description: "Imóvel deletado com sucesso.",
+      });
+      
+    } catch (error) {
+      console.error("❌ Erro ao deletar imóvel:", error);
+      
+      // Recarrega dados em caso de erro para sincronizar estado
+      await loadData();
+      
+      toast({
+        title: "Erro",
+        description: "Não foi possível deletar o imóvel. Tente novamente.",
+        variant: "destructive",
+      });
+      
+      throw error;
+    }
+  }, [loadData, toast]);
 
   useEffect(() => {
     loadData();

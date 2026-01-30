@@ -32,21 +32,26 @@ export function MetricCard({
       <Card className={cn("border-l-4 hover:shadow-md transition-all duration-200", borderColorClass)}>
         <CardContent className="p-5">
           <div className="flex items-start gap-3">
-            {/* Ícone à esquerda - mais compacto */}
+            {/* Ícone à esquerda */}
             <div className={cn("p-2.5 rounded-lg flex-shrink-0", iconBgClass)}>
               <Icon className={cn("h-5 w-5", iconColor)} />
             </div>
             
             {/* Conteúdo alinhado à esquerda */}
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-muted-foreground mb-0.5 leading-tight">
+              <p className="text-xs font-medium text-muted-foreground mb-1 leading-tight">
                 {title}
               </p>
-              <p className="text-2xl font-bold text-foreground mb-0.5 leading-tight">
+              <p className="text-2xl font-bold text-foreground leading-tight">
                 {displayValue}
               </p>
+              {subtitle && (
+                <p className="text-xs text-muted-foreground mt-1 leading-tight">
+                  {subtitle}
+                </p>
+              )}
               {secondaryInfo && (
-                <p className="text-xs text-muted-foreground leading-tight">
+                <p className="text-xs text-muted-foreground mt-0.5 leading-tight">
                   {secondaryInfo}
                 </p>
               )}

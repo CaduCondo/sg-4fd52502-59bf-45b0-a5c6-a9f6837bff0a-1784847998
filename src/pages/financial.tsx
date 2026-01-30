@@ -562,74 +562,74 @@ export default function Financial() {
 
         {/* KPI Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          <Card>
+          <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Receita Bruta</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-green-900">Receita Bruta</CardTitle>
+              <DollarSign className="h-4 w-4 text-green-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(totals.gross)}</div>
-              <p className="text-xs text-muted-foreground">
+              <div className="text-2xl font-bold text-green-700">{formatCurrency(totals.gross)}</div>
+              <p className="text-xs text-green-600">
                 Total recebido no período
               </p>
             </CardContent>
           </Card>
           
-          <Card>
+          <Card className="bg-gradient-to-br from-red-50 to-pink-50 border-red-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Taxa de Administração</CardTitle>
-              <Percent className="h-4 w-4 text-red-500" />
+              <CardTitle className="text-sm font-medium text-red-900">Taxa de Administração</CardTitle>
+              <Percent className="h-4 w-4 text-red-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-red-600">
+              <div className="text-2xl font-bold text-red-700">
                 {totals.adminFee > 0 ? `- ${formatCurrency(totals.adminFee)}` : formatCurrency(0)}
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-red-600">
                 {config?.admin_fee_percentage || 0}% sobre a receita bruta
               </p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Taxa de Gerenciamento</CardTitle>
-              <Wallet className="h-4 w-4 text-blue-500" />
+              <CardTitle className="text-sm font-medium text-blue-900">Taxa de Gerenciamento</CardTitle>
+              <Wallet className="h-4 w-4 text-blue-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-blue-600">
+              <div className="text-2xl font-bold text-blue-700">
                 {totals.managementFee > 0 ? `- ${formatCurrency(totals.managementFee)}` : formatCurrency(0)}
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-blue-600">
                 {config?.management_fee_percentage || 0}% sobre a receita bruta
               </p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-gradient-to-br from-orange-50 to-amber-50 border-orange-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Contas do Mês</CardTitle>
-              <Wallet className="h-4 w-4 text-orange-500" />
+              <CardTitle className="text-sm font-medium text-orange-900">Contas do Mês</CardTitle>
+              <Wallet className="h-4 w-4 text-orange-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-orange-600">
+              <div className="text-2xl font-bold text-orange-700">
                 {locationExpenses > 0 ? `- ${formatCurrency(locationExpenses)}` : formatCurrency(0)}
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-orange-600">
                 Água, luz e outras despesas dos locais
               </p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-gradient-to-br from-purple-50 to-violet-50 border-purple-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Receita Líquida</CardTitle>
-              <TrendingUp className="h-4 w-4 text-purple-500" />
+              <CardTitle className="text-sm font-medium text-purple-900">Receita Líquida</CardTitle>
+              <TrendingUp className="h-4 w-4 text-purple-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-purple-600">
+              <div className="text-2xl font-bold text-purple-700">
                 {formatCurrency(netRevenue)}
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-purple-600">
                 Valor após subtração das taxas e contas
               </p>
             </CardContent>

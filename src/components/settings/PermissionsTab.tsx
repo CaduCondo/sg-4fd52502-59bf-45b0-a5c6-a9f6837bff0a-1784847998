@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   Table, 
   TableBody, 
@@ -29,6 +29,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
 
 interface PermissionsTabProps {
   users: SystemUser[];
@@ -72,23 +73,86 @@ export function PermissionsTab({
   getUserLocationPermissions,
   getUserFeeExemptions,
 }: PermissionsTabProps) {
+  const { toast } = useToast();
   const [selectedUserForLocations, setSelectedUserForLocations] = useState<SystemUser | null>(null);
   const [selectedUserForFeeExemption, setSelectedUserForFeeExemption] = useState<SystemUser | null>(null);
   const [userLocationPermissions, setUserLocationPermissions] = useState<string[]>([]);
   const [isLocationPermissionsDialogOpen, setIsLocationPermissionsDialogOpen] = useState(false);
   const [isFeeExemptionDialogOpen, setIsFeeExemptionDialogOpen] = useState(false);
   const [isLoadingPermissions, setIsLoadingPermissions] = useState(false);
+  
+  // Estado local para controlar permissões sendo editadas
+  const [localPermissions, setLocalPermissions] = useState<Set<string>>(new Set());
+  const [isTogglingPermission, setIsTogglingPermission] = useState(false);
+
+  // Sincronizar permissões locais quando roleMenuPermissions mudar
+  useEffect(() => {
+    const permSet = new Set<string>();
+    roleMenuPermissions.forEach(perm => {
+      permSet.add(`${perm.role}-${perm.menu_id}`);
+    });
+    setLocalPermissions(permSet);
+  }, [roleMenuPermissions]);
 
   const getMenuPermission = (role: string, menuItem: string): boolean => {
-    const perm = roleMenuPermissions.find((p) => p.role === role && p.menu_id === menuItem);
-    return perm !== undefined;
+    return localPermissions.has(`${role}-${menuItem}`);
   };
 
   const togglePermission = async (role: string, menuItem: string) => {
-    const hasAccess = getMenuPermission(role, menuItem);
-    const success = await onUpdateRoleMenuPermission(role, menuItem, !hasAccess);
-    if (!success) {
-      console.error("Falha ao atualizar permissão");
+    if (isTogglingPermission) return;
+    
+    setIsTogglingPermission(true);
+    const key = `${role}-${menuItem}`;
+    const currentHasAccess = localPermissions.has(key);
+    const newHasAccess = !currentHasAccess;
+    
+    // Atualiza UI imediatamente
+    setLocalPermissions(prev => {
+      const newSet = new Set(prev);
+      if (newHasAccess) {
+        newSet.add(key);
+      } else {
+        newSet.delete(key);
+      }
+      return newSet;
+    });
+    
+    try {
+      const success = await onUpdateRoleMenuPermission(role, menuItem, newHasAccess);
+      
+      if (!success) {
+        // Reverte se falhar
+        setLocalPermissions(prev => {
+          const newSet = new Set(prev);
+          if (currentHasAccess) {
+            newSet.add(key);
+          } else {
+            newSet.delete(key);
+          }
+          return newSet;
+        });
+        
+        toast({
+          title: "Erro",
+          description: "Falha ao atualizar permissão",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Erro ao alternar permissão:", error);
+      
+      // Reverte em caso de erro
+      setLocalPermissions(prev => {
+        const newSet = new Set(prev);
+        if (currentHasAccess) {
+          newSet.add(key);
+        } else {
+          newSet.delete(key);
+        }
+        return newSet;
+      });
+    } finally {
+      setIsTogglingPermission(false);
     }
   };
 
@@ -165,7 +229,7 @@ export function PermissionsTab({
                           <button
                             onClick={() => togglePermission(role, menuItem)}
                             className="inline-flex items-center justify-center hover:opacity-80 transition-opacity"
-                            disabled={isLoading}
+                            disabled={isLoading || isTogglingPermission}
                           >
                             {hasAccess ? (
                               <CheckCircle2 className="h-6 w-6 text-green-600 dark:text-green-400" />
