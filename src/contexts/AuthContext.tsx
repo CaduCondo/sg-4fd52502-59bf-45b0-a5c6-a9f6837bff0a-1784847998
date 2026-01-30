@@ -1,7 +1,16 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { useRouter } from "next/router";
 import { getCurrentUser, isAuthenticated } from "@/services/authService";
-import { User } from "@/types"; // Import from global types
+
+// Define simpler User type that matches authService
+interface User {
+  id: string;
+  email: string;
+  name: string;
+  username: string;
+  role: string;
+  photo?: string | null;
+}
 
 interface AuthContextType {
   user: User | null;
@@ -22,8 +31,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshUser = () => {
     const currentUser = getCurrentUser();
     if (currentUser) {
-      // Cast to User type which now includes user_metadata
-      setUser(currentUser as unknown as User);
+      setUser(currentUser as User);
     } else {
       setUser(null);
     }
@@ -35,10 +43,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const isPublicRoute = publicRoutes.includes(router.pathname);
         
+        // Use authService as single source of truth
         if (isAuthenticated()) {
           const currentUser = getCurrentUser();
           if (currentUser) {
-            setUser(currentUser as unknown as User);
+            setUser(currentUser as User);
           } else {
             setUser(null);
             if (!isPublicRoute) {

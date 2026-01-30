@@ -112,15 +112,9 @@ export function OverviewCards({ data }: OverviewCardsProps) {
           
           <MetricCard
             title="Aluguéis Atrasados"
-            value={
-              <div className="flex items-baseline gap-2">
-                <span>{data.overduePayments}</span>
-                <span className="text-xs font-normal text-muted-foreground">
-                  {data.overdueAmount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                </span>
-              </div>
-            }
+            value={data.overduePayments}
             subtitle={`${data.dueTodayCount || 0} Vencem Hoje`}
+            secondaryValue={data.overdueAmount}
             icon={AlertCircle}
             iconColor="text-red-600"
             iconBgClass="bg-red-50"
