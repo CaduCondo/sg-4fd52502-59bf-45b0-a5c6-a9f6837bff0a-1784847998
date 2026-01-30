@@ -264,9 +264,6 @@ export function RentalFormDialog({
         hasPartnerBroker
       );
 
-      // Garantir que monthly_rent está definido
-      rentalData.monthly_rent = totalValue;
-
       if (isDepositInstallment && depositInstallmentCount) {
         rentalData.depositInstallments = parseInt(depositInstallmentCount);
         

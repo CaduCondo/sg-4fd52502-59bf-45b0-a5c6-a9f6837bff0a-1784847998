@@ -244,7 +244,6 @@ export type Database = {
           attachments: string[] | null
           created_at: string | null
           description: string
-          expense_type: string
           id: string
           location_id: string
           paid: boolean | null
@@ -258,7 +257,6 @@ export type Database = {
           attachments?: string[] | null
           created_at?: string | null
           description: string
-          expense_type?: string
           id?: string
           location_id: string
           paid?: boolean | null
@@ -272,7 +270,6 @@ export type Database = {
           attachments?: string[] | null
           created_at?: string | null
           description?: string
-          expense_type?: string
           id?: string
           location_id?: string
           paid?: boolean | null

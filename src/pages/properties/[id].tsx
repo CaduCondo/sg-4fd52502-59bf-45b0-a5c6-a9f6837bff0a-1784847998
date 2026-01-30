@@ -15,7 +15,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Save, Upload } from "lucide-react";
+import { ArrowLeft, Save, Upload, BedDouble, Bath, Maximize2, DollarSign } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrencyInput } from "@/lib/masks";
 import { AttachmentViewer } from "@/components/AttachmentViewer";
@@ -83,11 +83,11 @@ export default function PropertyDetails() {
           monthlyRent: data.value?.toString() || "",
           description: data.description || "",
           images: Array.isArray(data.images) ? data.images.map((img: any) => String(img)) : [],
-          hasFurniture: data.has_furniture === true,
-          acceptsPets: data.accepts_pets === true,
+          hasFurniture: data.has_furniture || false,
+          acceptsPets: data.accepts_pets || false,
           status: (data.status as "available" | "occupied" | "unavailable") || "available",
           area: data.area?.toString() || "",
-          hasGarage: data.has_garage === true,
+          hasGarage: data.has_garage || false,
         });
       }
     } catch (error) {
@@ -371,7 +371,7 @@ export default function PropertyDetails() {
                     id="hasFurniture"
                     checked={formData.hasFurniture}
                     onCheckedChange={(checked) =>
-                      setFormData({ ...formData, hasFurniture: checked === true })
+                      setFormData({ ...formData, hasFurniture: checked as boolean })
                     }
                   />
                   <Label htmlFor="hasFurniture" className="text-xs font-normal cursor-pointer">
@@ -384,7 +384,7 @@ export default function PropertyDetails() {
                     id="acceptsPets"
                     checked={formData.acceptsPets}
                     onCheckedChange={(checked) =>
-                      setFormData({ ...formData, acceptsPets: checked === true })
+                      setFormData({ ...formData, acceptsPets: checked as boolean })
                     }
                   />
                   <Label htmlFor="acceptsPets" className="text-xs font-normal cursor-pointer">
@@ -397,7 +397,7 @@ export default function PropertyDetails() {
                     id="hasGarage"
                     checked={formData.hasGarage}
                     onCheckedChange={(checked) =>
-                      setFormData({ ...formData, hasGarage: checked === true })
+                      setFormData({ ...formData, hasGarage: checked as boolean })
                     }
                   />
                   <Label htmlFor="hasGarage" className="text-xs font-normal cursor-pointer">
