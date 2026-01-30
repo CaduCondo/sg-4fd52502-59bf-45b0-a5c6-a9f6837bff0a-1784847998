@@ -222,41 +222,34 @@ export const getById = async (id: string): Promise<Property | null> => {
 /**
  * Criar novo imóvel
  */
-export const create = async (property: Partial<Property>): Promise<Property> => {
-  console.log("=== CREATING PROPERTY ===");
-
-  const propertyData = {
-    location_id: property.locationId,
-    property_identifier: property.propertyIdentifier || "Apartamento",
-    complement: property.complement,
-    description: property.description,
-    rooms: property.rooms,
-    bathrooms: property.bathrooms,
-    area: property.area,
-    has_garage: property.hasGarage,
-    value: property.value,
-    garage_value: property.garageValue,
-    status: property.status || "available",
-    images: property.images || [],
-    has_furniture: property.hasFurniture || false,
-    accepts_pets: property.acceptsPets || false,
-  };
-
+export const create = async (property: Omit<Property, "id" | "createdAt" | "updatedAt">): Promise<Property> => {
+  console.log("🔍 Creating property with data:", property);
+  
   const { data, error } = await supabase
     .from("properties")
-    .insert(propertyData)
+    .insert({
+      location_id: property.locationId,
+      complement: property.complement || null,
+      value: property.value || 0,
+      garage_value: property.garageValue || 0,
+      status: property.status || "available",
+      rooms: property.rooms || 0,
+      bathrooms: property.bathrooms || 0,
+      area: property.area || 0,
+      description: property.description || null,
+      images: property.images || [],
+      has_partner_broker: property.hasPartnerBroker || false,
+    })
     .select()
     .single();
 
   if (error) {
-    console.error("Error creating property:", error);
+    console.error("❌ Supabase error creating property:", error);
+    console.error("❌ Error details:", JSON.stringify(error, null, 2));
     throw error;
   }
 
-  // Invalidate cache
-  cacheService.remove("properties_all");
-
-  console.log("✅ Property created successfully");
+  console.log("✅ Property created successfully:", data);
   return mapDatabaseProperty(data);
 };
 

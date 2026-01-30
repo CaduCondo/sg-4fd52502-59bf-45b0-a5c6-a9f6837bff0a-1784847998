@@ -21,26 +21,30 @@ export function MetricCard({
   iconBgClass,
   borderColorClass,
 }: MetricCardProps) {
+  const displayValue = typeof value === "string" ? value : value.toLocaleString("pt-BR");
+
   return (
-    <Card className={cn("border-l-4 hover:shadow-lg transition-shadow", borderColorClass)}>
+    <Card className={cn("border-l-4 hover:shadow-lg transition-all duration-200", borderColorClass)}>
       <CardContent className="p-6">
-        <div className="flex items-start justify-between">
-          <div className="flex-1 min-w-0 mr-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Icon className={cn("h-5 w-5 flex-shrink-0", iconColor)} />
-              <p className="text-sm font-medium text-muted-foreground truncate">
-                {title}
-              </p>
+        <div className="flex flex-col gap-4">
+          {/* Header com ícone */}
+          <div className="flex items-center justify-between">
+            <div className={cn("p-2.5 rounded-lg", iconBgClass)}>
+              <Icon className={cn("h-5 w-5", iconColor)} />
             </div>
-            <p className="text-2xl font-bold truncate" title={value.toString()}>
-              {value}
+          </div>
+
+          {/* Conteúdo */}
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-muted-foreground leading-tight">
+              {title}
             </p>
-            <p className="text-xs text-muted-foreground mt-1 truncate" title={subtitle}>
+            <p className="text-3xl font-bold text-foreground leading-tight break-all">
+              {displayValue}
+            </p>
+            <p className="text-xs text-muted-foreground leading-tight">
               {subtitle}
             </p>
-          </div>
-          <div className={cn("p-3 rounded-lg flex-shrink-0", iconBgClass)}>
-            <Icon className={cn("h-6 w-6", iconColor)} />
           </div>
         </div>
       </CardContent>

@@ -86,6 +86,7 @@ export interface Property {
   images?: string[]; // Array de URLs das imagens
   hasFurniture?: boolean; // Móveis planejados
   acceptsPets?: boolean; // Aceita pets
+  hasPartnerBroker?: boolean; // Corretor parceiro
   
   // Financial
   value?: number; // DB field - Valor do imóvel/aluguel

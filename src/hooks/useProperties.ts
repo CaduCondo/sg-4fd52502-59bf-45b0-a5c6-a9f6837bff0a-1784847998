@@ -157,9 +157,12 @@ export function useProperties(): UsePropertiesReturn {
     console.log("   - monthlyRent:", propertyData.monthlyRent);
     console.log("   - value:", propertyData.value);
 
-    await propertyService.create(propertyData);
-    await loadData();
-  }, [locations, loadData]);
+    const newProperty = await propertyService.create({
+      ...propertyData,
+      status: "available", // Default status is required
+    });
+    setProperties([newProperty, ...properties]);
+  }, [locations, properties]);
 
   const updateProperty = useCallback(async (id: string, formData: PropertyFormData) => {
     if (!formData.location_id || formData.location_id.trim() === "") {

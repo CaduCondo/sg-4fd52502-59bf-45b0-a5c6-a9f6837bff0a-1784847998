@@ -1,4 +1,3 @@
-import { Card, CardContent } from "@/components/ui/card";
 import {
   Building2,
   Home,
@@ -9,38 +8,9 @@ import {
   CheckCircle,
   DollarSign,
   TrendingUp,
-  TrendingDown,
+  Wallet,
 } from "lucide-react";
-
-interface MetricCardProps {
-  title: string;
-  value: string | number;
-  subtitle: string;
-  icon: React.ReactNode;
-  colorClass: string;
-  iconBgClass: string;
-}
-
-function MetricCard({ title, value, subtitle, icon, colorClass, iconBgClass }: MetricCardProps) {
-  return (
-    <Card className={`border-l-4 ${colorClass} hover:shadow-lg transition-shadow`}>
-      <CardContent className="p-6">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-2">
-              <h3 className="text-sm font-medium text-slate-600">{title}</h3>
-              <div className={`p-1.5 rounded-lg ${iconBgClass}`}>
-                {icon}
-              </div>
-            </div>
-            <p className="text-3xl font-bold text-slate-900 mb-1">{value}</p>
-            <p className="text-sm text-slate-500">{subtitle}</p>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
+import { MetricCard } from "./MetricCard";
 
 interface OverviewCardsProps {
   data: {
@@ -71,107 +41,109 @@ export function OverviewCards({ data }: OverviewCardsProps) {
         <h2 className="text-2xl font-bold text-slate-900">Visão Geral</h2>
       </div>
 
+      {/* Seção: Imóveis e Contratos */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        {/* Total de Imóveis */}
         <MetricCard
           title="Total de Imóveis"
           value={data.totalProperties}
-          subtitle="Cadastrados e Ocupados"
-          icon={<Building2 className="h-4 w-4 text-blue-600" />}
-          colorClass="border-l-blue-500"
+          subtitle="Cadastrados"
+          icon={Building2}
+          iconColor="text-blue-600"
           iconBgClass="bg-blue-50"
+          borderColorClass="border-l-blue-500"
         />
 
-        {/* Imóveis Disponíveis */}
         <MetricCard
-          title="Imóveis Disponíveis"
+          title="Disponíveis"
           value={data.availableProperties}
-          subtitle="Prontos para locação"
-          icon={<Home className="h-4 w-4 text-green-600" />}
-          colorClass="border-l-green-500"
+          subtitle="Para locação"
+          icon={Home}
+          iconColor="text-green-600"
           iconBgClass="bg-green-50"
+          borderColorClass="border-l-green-500"
         />
 
-        {/* Imóveis Indisponíveis */}
         <MetricCard
-          title="Imóveis Indisponíveis"
+          title="Indisponíveis"
           value={data.unavailableProperties}
-          subtitle="Construindo/Reformando"
-          icon={<Construction className="h-4 w-4 text-orange-600" />}
-          colorClass="border-l-orange-500"
+          subtitle="Em obra/reforma"
+          icon={Construction}
+          iconColor="text-orange-600"
           iconBgClass="bg-orange-50"
+          borderColorClass="border-l-orange-500"
         />
 
-        {/* Total de Inquilinos */}
         <MetricCard
-          title="Total de Inquilinos"
+          title="Inquilinos"
           value={data.totalTenants}
-          subtitle="Ativos e locadores"
-          icon={<Users className="h-4 w-4 text-purple-600" />}
-          colorClass="border-l-purple-500"
+          subtitle="Ativos"
+          icon={Users}
+          iconColor="text-purple-600"
           iconBgClass="bg-purple-50"
+          borderColorClass="border-l-purple-500"
         />
 
-        {/* Contratos Ativos */}
         <MetricCard
-          title="Contratos Ativos"
+          title="Contratos"
           value={data.activeContracts}
-          subtitle="Locações vigentes"
-          icon={<FileCheck className="h-4 w-4 text-indigo-600" />}
-          colorClass="border-l-indigo-500"
+          subtitle="Vigentes"
+          icon={FileCheck}
+          iconColor="text-indigo-600"
           iconBgClass="bg-indigo-50"
+          borderColorClass="border-l-indigo-500"
         />
       </div>
 
+      {/* Seção: Financeiro */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        {/* Recebimentos Atrasados */}
         <MetricCard
-          title="Recebimentos Atrasados"
+          title="Atrasados"
           value={data.overduePayments}
-          subtitle="Pagamentos em atraso"
-          icon={<AlertCircle className="h-4 w-4 text-red-600" />}
-          colorClass="border-l-red-500"
+          subtitle="Pagamentos"
+          icon={AlertCircle}
+          iconColor="text-red-600"
           iconBgClass="bg-red-50"
+          borderColorClass="border-l-red-500"
         />
 
-        {/* Recebimentos Realizados */}
         <MetricCard
-          title="Recebimentos Realizados"
+          title="Realizados"
           value={data.completedPayments}
-          subtitle="Pagos no mês"
-          icon={<CheckCircle className="h-4 w-4 text-green-600" />}
-          colorClass="border-l-green-500"
+          subtitle="No período"
+          icon={CheckCircle}
+          iconColor="text-green-600"
           iconBgClass="bg-green-50"
+          borderColorClass="border-l-green-500"
         />
 
-        {/* Valor Esperado */}
         <MetricCard
-          title="Valor Esperado"
+          title="Esperado"
           value={formatCurrency(data.expectedAmount)}
           subtitle="Total previsto"
-          icon={<DollarSign className="h-4 w-4 text-blue-600" />}
-          colorClass="border-l-blue-500"
+          icon={DollarSign}
+          iconColor="text-blue-600"
           iconBgClass="bg-blue-50"
+          borderColorClass="border-l-blue-500"
         />
 
-        {/* Receita Bruta */}
         <MetricCard
           title="Receita Bruta"
           value={formatCurrency(data.grossRevenue)}
           subtitle="Total recebido"
-          icon={<TrendingUp className="h-4 w-4 text-green-600" />}
-          colorClass="border-l-green-500"
-          iconBgClass="bg-green-50"
+          icon={TrendingUp}
+          iconColor="text-emerald-600"
+          iconBgClass="bg-emerald-50"
+          borderColorClass="border-l-emerald-500"
         />
 
-        {/* Receita Líquida */}
         <MetricCard
           title="Receita Líquida"
           value={formatCurrency(data.netRevenue)}
-          subtitle="Após taxas"
-          icon={<TrendingDown className="h-4 w-4 text-purple-600" />}
-          colorClass="border-l-purple-500"
-          iconBgClass="bg-purple-50"
+          subtitle="Após despesas"
+          icon={Wallet}
+          iconColor="text-violet-600"
+          iconBgClass="bg-violet-50"
+          borderColorClass="border-l-violet-500"
         />
       </div>
     </div>
