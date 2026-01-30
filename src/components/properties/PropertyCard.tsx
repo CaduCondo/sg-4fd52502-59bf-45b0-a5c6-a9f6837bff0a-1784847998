@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Bed, Bath, Trash2, Camera, DollarSign } from "lucide-react";
+import { Bed, Bath, Trash2, Camera, DollarSign, MapPin } from "lucide-react";
 import { formatCurrency } from "@/lib/masks";
 import type { Property } from "@/types";
 
@@ -9,9 +9,10 @@ interface PropertyCardProps {
   property: Property;
   onCardClick: (property: Property) => void;
   onDeleteClick: (e: React.MouseEvent, id: string) => void;
+  locationName?: string;
 }
 
-export function PropertyCard({ property, onCardClick, onDeleteClick }: PropertyCardProps) {
+export function PropertyCard({ property, onCardClick, onDeleteClick, locationName }: PropertyCardProps) {
   const getStatusBadge = (status: string) => {
     const variants: Record<string, "default" | "secondary" | "destructive"> = {
       available: "default",
@@ -36,6 +37,12 @@ export function PropertyCard({ property, onCardClick, onDeleteClick }: PropertyC
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex-1">
+            {locationName && (
+              <div className="flex items-center gap-1 text-sm text-muted-foreground mb-1">
+                <MapPin className="h-3 w-3" />
+                <span className="font-medium">{locationName}</span>
+              </div>
+            )}
             <CardTitle className="text-lg font-bold text-primary">
               {property.location}
             </CardTitle>

@@ -161,24 +161,27 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Contas a Pagar - {location.name}</DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle>Contas a Pagar - {location.name}</DialogTitle>
+            {!isAdding && (
+              <Button onClick={() => setIsAdding(true)} size="sm">
+                <Plus className="h-4 w-4 mr-2" />
+                Nova Conta
+              </Button>
+            )}
+          </div>
         </DialogHeader>
 
         <div className="space-y-4">
-          {!isAdding ? (
-            <Button onClick={() => setIsAdding(true)} className="w-full">
-              <Plus className="h-4 w-4 mr-2" />
-              Nova Conta
-            </Button>
-          ) : (
-            <div className="p-4 border rounded-lg space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label>Tipo de Conta</Label>
+          {isAdding && (
+            <div className="p-4 border rounded-lg space-y-4 bg-muted/20">
+              <div className="grid grid-cols-6 gap-3">
+                <div className="space-y-2 col-span-2">
+                  <Label className="text-xs">Tipo de Conta *</Label>
                   <Select value={expenseType} onValueChange={setExpenseType}>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-9 text-sm">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -193,9 +196,9 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Mês</Label>
+                  <Label className="text-xs">Mês *</Label>
                   <Select value={referenceMonth.toString()} onValueChange={(v) => setReferenceMonth(parseInt(v))}>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-9 text-sm">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -209,9 +212,9 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Ano</Label>
+                  <Label className="text-xs">Ano *</Label>
                   <Select value={referenceYear.toString()} onValueChange={(v) => setReferenceYear(parseInt(v))}>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-9 text-sm">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -223,34 +226,34 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Descrição (opcional)</Label>
-                  <Input
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Ex: Conta de luz do mês"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Valor</Label>
+                <div className="space-y-2 col-span-2">
+                  <Label className="text-xs">Valor *</Label>
                   <Input
                     value={amount}
                     onChange={(e) => setAmount(applyRealMask(e.target.value))}
                     placeholder="R$ 0,00"
+                    className="h-9 text-sm"
                   />
                 </div>
               </div>
 
+              <div className="space-y-2">
+                <Label className="text-xs">Descrição</Label>
+                <Input
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Ex: Conta de luz do mês"
+                  className="h-9 text-sm"
+                />
+              </div>
+
               <div className="flex gap-2">
-                <Button onClick={handleSave} className="flex-1">
+                <Button onClick={handleSave} size="sm" className="flex-1">
                   <Check className="h-4 w-4 mr-2" />
                   {editingId ? "Atualizar" : "Adicionar"}
                 </Button>
-                <Button variant="outline" onClick={resetForm} className="flex-1">
+                <Button variant="outline" onClick={resetForm} size="sm" className="flex-1">
                   <X className="h-4 w-4 mr-2" />
                   Cancelar
                 </Button>
@@ -262,11 +265,11 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Tipo</TableHead>
+                  <TableHead className="w-[140px]">Tipo</TableHead>
                   <TableHead>Descrição</TableHead>
-                  <TableHead>Período</TableHead>
-                  <TableHead className="text-right">Valor</TableHead>
-                  <TableHead className="text-center">Ações</TableHead>
+                  <TableHead className="w-[100px]">Período</TableHead>
+                  <TableHead className="text-right w-[120px]">Valor</TableHead>
+                  <TableHead className="text-center w-[100px]">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -286,17 +289,17 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
                   expenses.map((expense) => (
                     <TableRow key={expense.id}>
                       <TableCell>
-                        <Badge variant="outline">{getExpenseTypeLabel(expense.expenseType)}</Badge>
+                        <Badge variant="outline" className="text-xs">{getExpenseTypeLabel(expense.expenseType)}</Badge>
                       </TableCell>
-                      <TableCell>{expense.description || "-"}</TableCell>
-                      <TableCell>
+                      <TableCell className="text-sm">{expense.description || "-"}</TableCell>
+                      <TableCell className="text-sm">
                         {getMonthName(expense.referenceMonth)}/{expense.referenceYear}
                       </TableCell>
-                      <TableCell className="text-right font-semibold">
+                      <TableCell className="text-right font-semibold text-sm">
                         {formatCurrency(expense.amount)}
                       </TableCell>
                       <TableCell>
-                        <div className="flex justify-center gap-2">
+                        <div className="flex justify-center gap-1">
                           <Button
                             variant="ghost"
                             size="sm"
@@ -322,10 +325,10 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
           </div>
 
           {expenses.length > 0 && (
-            <div className="p-4 bg-muted rounded-lg">
+            <div className="p-3 bg-muted rounded-lg">
               <div className="flex justify-between items-center">
-                <span className="font-semibold">Total de Contas:</span>
-                <span className="text-xl font-bold text-red-600">
+                <span className="text-sm font-semibold">Total de Contas:</span>
+                <span className="text-lg font-bold text-red-600">
                   {formatCurrency(expenses.reduce((sum, e) => sum + e.amount, 0))}
                 </span>
               </div>
@@ -334,7 +337,7 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} size="sm">
             Fechar
           </Button>
         </DialogFooter>

@@ -98,21 +98,7 @@ export function OverviewCards({ data }: OverviewCardsProps) {
       </div>
 
       {/* Seção: Financeiro */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        <MetricCard
-          title="Aluguéis Atrasados"
-          value={data.overduePayments}
-          subtitle={
-            <span className="text-xs flex items-center gap-1">
-              {formatCurrency(data.overdueAmount)} • {data.dueTodayPayments} Vencem Hoje
-            </span>
-          }
-          icon={AlertCircle}
-          iconColor="text-red-600"
-          iconBgClass="bg-red-50"
-          borderColorClass="border-l-red-500"
-        />
-
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
           title="Aluguéis Recebidos"
           value={data.completedPayments}
@@ -156,6 +142,38 @@ export function OverviewCards({ data }: OverviewCardsProps) {
           layout="horizontal"
         />
       </div>
+
+      {/* Card de Alertas - Atrasados e Vencem Hoje */}
+      {(data.overduePayments > 0 || data.dueTodayPayments > 0) && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {data.overduePayments > 0 && (
+            <MetricCard
+              title="Aluguéis Atrasados"
+              value={data.overduePayments}
+              subtitle={
+                <span className="flex items-center gap-1">
+                  {formatCurrency(data.overdueAmount)} em atraso
+                </span>
+              }
+              icon={AlertCircle}
+              iconColor="text-red-600"
+              iconBgClass="bg-red-50"
+              borderColorClass="border-l-red-500"
+            />
+          )}
+          {data.dueTodayPayments > 0 && (
+            <MetricCard
+              title="Vencem Hoje"
+              value={data.dueTodayPayments}
+              subtitle="Pagamentos para hoje"
+              icon={AlertCircle}
+              iconColor="text-amber-600"
+              iconBgClass="bg-amber-50"
+              borderColorClass="border-l-amber-500"
+            />
+          )}
+        </div>
+      )}
     </div>
   );
 }
