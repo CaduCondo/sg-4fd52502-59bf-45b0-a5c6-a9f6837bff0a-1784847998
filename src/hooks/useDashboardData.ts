@@ -199,16 +199,14 @@ export function useDashboardData(month: number, year: number) {
       // Calcular total de contas a pagar do mês
       const locationExpensesTotal = expensesData?.reduce((sum, expense) => sum + (expense.amount || 0), 0) || 0;
 
-      console.log("📊 Contas a Pagar do Mês (Dashboard):", {
-        month,
-        year,
-        total: locationExpensesTotal,
-        count: expensesData?.length || 0,
-      });
+      // Buscar rentals para mapeamento de propriedade/local
+      const { data: rentals } = await supabase
+        .from("rentals")
+        .select("id, property_id");
 
       // Buscar configuração para taxas
       const { data: configData } = await supabase
-        .from("config")
+        .from("configs")
         .select("admin_fee_percentage, management_fee_percentage")
         .single();
 
