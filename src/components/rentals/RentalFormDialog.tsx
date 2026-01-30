@@ -401,14 +401,48 @@ export function RentalFormDialog({
             status: "rented",
           });
         }
+        
+        // Mapear snake_case (banco) para camelCase (interface)
+        const mappedRental: Rental = {
+          ...createdRental,
+          id: createdRental.id,
+          propertyId: createdRental.property_id,
+          tenantId: createdRental.tenant_id,
+          startDate: createdRental.start_date,
+          endDate: createdRental.end_date,
+          monthlyRent: createdRental.monthly_rent,
+          paymentDay: createdRental.payment_day,
+          depositAmount: createdRental.deposit,
+          status: createdRental.status,
+          attachments: createdRental.attachments || [],
+          contractAttachments: createdRental.contract_attachments || [],
+          value: createdRental.value,
+          isActive: createdRental.is_active,
+          rentAmount: createdRental.monthly_rent,
+          autoRenew: false, // Valor padrão
+          hasGarage: createdRental.has_garage,
+          garageValue: createdRental.garage_value,
+          hasPartnerBroker: createdRental.has_partner_broker,
+          // Campos de depósito
+          depositInstallments: createdRental.depositInstallments,
+          depositInstallment1: createdRental.depositInstallment1,
+          depositInstallment2: createdRental.depositInstallment2,
+          depositInstallment3: createdRental.depositInstallment3,
+          depositPaymentDate: createdRental.depositPaymentDate,
+          depositInstallment2PaymentDate: createdRental.depositInstallment2PaymentDate,
+          depositInstallment3PaymentDate: createdRental.depositInstallment3PaymentDate,
+          depositPixCode: createdRental.depositPixCode,
+          depositInstallment2PixCode: createdRental.depositInstallment2PixCode,
+          depositInstallment3PixCode: createdRental.depositInstallment3PixCode,
+        };
 
-        await createPaymentsForRental(createdRental);
+        await createPaymentsForRental(mappedRental);
         await createDepositInstallments(createdRental.id, rentalData);
 
         const selectedLocation = locations.find((loc) => loc.id === selectedProperty.locationId);
 
         setCreatedRentalData({
-          rental: createdRental,
+          rental: mappedRental,
           property: selectedProperty,
           tenant: selectedTenant,
           location: selectedLocation,
