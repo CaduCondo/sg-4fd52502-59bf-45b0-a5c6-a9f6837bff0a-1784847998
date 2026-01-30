@@ -10,11 +10,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Save } from "lucide-react";
 import { applyCepMask } from "@/lib/masks";
 
-export default function EditLocation() {
+export default function ViewLocation() {
   const router = useRouter();
   const { id } = router.query;
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
   const [location, setLocation] = useState({
     name: "",
     zip_code: "",
@@ -79,7 +80,7 @@ export default function EditLocation() {
         description: "Local atualizado com sucesso."
       });
       
-      router.push("/settings");
+      setIsEditing(false);
     } catch (error) {
       console.error("Error updating location:", error);
       toast({
@@ -107,7 +108,9 @@ export default function EditLocation() {
           <Button variant="ghost" size="icon" onClick={() => router.back()}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <h1 className="text-3xl font-bold tracking-tight">Editar Local</h1>
+          <h1 className="text-3xl font-bold tracking-tight">
+            {isEditing ? "Edição do Local" : "Visualização do Local"}
+          </h1>
         </div>
 
         <Card>
@@ -123,6 +126,7 @@ export default function EditLocation() {
                   value={location.name}
                   onChange={(e) => setLocation({ ...location, name: e.target.value })}
                   placeholder="Ex: Condomínio Solar"
+                  disabled={!isEditing}
                 />
               </div>
 
@@ -133,6 +137,7 @@ export default function EditLocation() {
                   value={location.zip_code}
                   onChange={(e) => setLocation({ ...location, zip_code: applyCepMask(e.target.value) })}
                   placeholder="00000-000"
+                  disabled={!isEditing}
                 />
               </div>
 
@@ -142,6 +147,7 @@ export default function EditLocation() {
                   id="street"
                   value={location.street}
                   onChange={(e) => setLocation({ ...location, street: e.target.value })}
+                  disabled={!isEditing}
                 />
               </div>
 
@@ -152,6 +158,7 @@ export default function EditLocation() {
                     id="number"
                     value={location.number}
                     onChange={(e) => setLocation({ ...location, number: e.target.value })}
+                    disabled={!isEditing}
                   />
                 </div>
                 <div className="space-y-2">
@@ -160,6 +167,7 @@ export default function EditLocation() {
                     id="complement"
                     value={location.complement}
                     onChange={(e) => setLocation({ ...location, complement: e.target.value })}
+                    disabled={!isEditing}
                   />
                 </div>
               </div>
@@ -170,6 +178,7 @@ export default function EditLocation() {
                   id="neighborhood"
                   value={location.neighborhood}
                   onChange={(e) => setLocation({ ...location, neighborhood: e.target.value })}
+                  disabled={!isEditing}
                 />
               </div>
 
@@ -180,6 +189,7 @@ export default function EditLocation() {
                     id="city"
                     value={location.city}
                     onChange={(e) => setLocation({ ...location, city: e.target.value })}
+                    disabled={!isEditing}
                   />
                 </div>
                 <div className="space-y-2">
@@ -189,16 +199,33 @@ export default function EditLocation() {
                     value={location.state}
                     onChange={(e) => setLocation({ ...location, state: e.target.value })}
                     maxLength={2}
+                    disabled={!isEditing}
                   />
                 </div>
               </div>
             </div>
 
-            <div className="flex justify-end pt-4">
-              <Button onClick={handleSave}>
-                <Save className="mr-2 h-4 w-4" />
-                Salvar Alterações
-              </Button>
+            <div className="flex justify-end gap-2 pt-4">
+              {!isEditing ? (
+                <>
+                  <Button variant="outline" onClick={() => router.back()}>
+                    Fechar
+                  </Button>
+                  <Button onClick={() => setIsEditing(true)}>
+                    Editar
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button variant="outline" onClick={() => setIsEditing(false)}>
+                    Cancelar
+                  </Button>
+                  <Button onClick={handleSave}>
+                    <Save className="mr-2 h-4 w-4" />
+                    Salvar Alterações
+                  </Button>
+                </>
+              )}
             </div>
           </CardContent>
         </Card>

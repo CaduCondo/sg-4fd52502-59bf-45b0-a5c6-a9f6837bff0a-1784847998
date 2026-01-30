@@ -244,12 +244,14 @@ export type Database = {
           attachments: string[] | null
           created_at: string | null
           description: string
+          expense_type: string
           id: string
           location_id: string
           paid: boolean | null
           payment_date: string | null
           reference_month: number
           reference_year: number
+          status: string
           updated_at: string | null
         }
         Insert: {
@@ -257,12 +259,14 @@ export type Database = {
           attachments?: string[] | null
           created_at?: string | null
           description: string
+          expense_type?: string
           id?: string
           location_id: string
           paid?: boolean | null
           payment_date?: string | null
           reference_month: number
           reference_year: number
+          status?: string
           updated_at?: string | null
         }
         Update: {
@@ -270,12 +274,14 @@ export type Database = {
           attachments?: string[] | null
           created_at?: string | null
           description?: string
+          expense_type?: string
           id?: string
           location_id?: string
           paid?: boolean | null
           payment_date?: string | null
           reference_month?: number
           reference_year?: number
+          status?: string
           updated_at?: string | null
         }
         Relationships: [

@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Edit2, Check, X } from "lucide-react";
+import { Trash2, Eye } from "lucide-react";
 import { LocationExpense, Location } from "@/types";
 import { locationExpenseService } from "@/services/locationExpenseService";
 import { formatCurrency, applyRealMask, parseCurrencyToNumber } from "@/lib/masks";
@@ -22,8 +22,9 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
   const { toast } = useToast();
   const [expenses, setExpenses] = useState<LocationExpense[]>([]);
   const [loading, setLoading] = useState(false);
-  const [isAdding, setIsAdding] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<LocationExpense | null>(null);
 
   // Form state
   const [expenseType, setExpenseType] = useState<string>("water");
@@ -76,8 +77,8 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
         status: "pending",
       };
 
-      if (editingId) {
-        await locationExpenseService.update(editingId, expenseData);
+      if (editingExpense) {
+        await locationExpenseService.update(editingExpense.id, expenseData);
         toast({
           title: "Sucesso",
           description: "Conta atualizada com sucesso.",
@@ -102,14 +103,15 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
     }
   };
 
-  const handleEdit = (expense: LocationExpense) => {
-    setEditingId(expense.id);
+  const handleView = (expense: LocationExpense) => {
+    setEditingExpense(expense);
     setExpenseType(expense.expenseType);
     setDescription(expense.description || "");
     setAmount(formatCurrency(expense.amount));
     setReferenceMonth(expense.referenceMonth);
     setReferenceYear(expense.referenceYear);
-    setIsAdding(true);
+    setIsEditing(false);
+    setIsFormOpen(true);
   };
 
   const handleDelete = async (id: string) => {
@@ -133,13 +135,20 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
   };
 
   const resetForm = () => {
-    setIsAdding(false);
-    setEditingId(null);
+    setIsFormOpen(false);
+    setIsEditing(false);
+    setEditingExpense(null);
     setExpenseType("water");
     setDescription("");
     setAmount("");
     setReferenceMonth(new Date().getMonth() + 1);
     setReferenceYear(new Date().getFullYear());
+  };
+
+  const handleNewExpense = () => {
+    resetForm();
+    setIsEditing(true);
+    setIsFormOpen(true);
   };
 
   const getExpenseTypeLabel = (type: string) => {
@@ -160,185 +169,219 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Contas a Pagar - {location.name}</DialogTitle>
-        </DialogHeader>
+    <>
+      <Dialog open={open && !isFormOpen} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Contas a Pagar - {location.name}</DialogTitle>
+          </DialogHeader>
 
-        <div className="space-y-4">
-          {!isAdding ? (
-            <Button onClick={() => setIsAdding(true)} className="w-full">
-              <Plus className="h-4 w-4 mr-2" />
-              Nova Conta
-            </Button>
-          ) : (
-            <div className="p-4 border rounded-lg space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label>Tipo de Conta</Label>
-                  <Select value={expenseType} onValueChange={setExpenseType}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="water">Água</SelectItem>
-                      <SelectItem value="electricity">Luz</SelectItem>
-                      <SelectItem value="gas">Gás</SelectItem>
-                      <SelectItem value="internet">Internet</SelectItem>
-                      <SelectItem value="maintenance">Manutenção</SelectItem>
-                      <SelectItem value="other">Outros</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Mês</Label>
-                  <Select value={referenceMonth.toString()} onValueChange={(v) => setReferenceMonth(parseInt(v))}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Array.from({ length: 12 }, (_, i) => (
-                        <SelectItem key={i + 1} value={(i + 1).toString()}>
-                          {getMonthName(i + 1)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Ano</Label>
-                  <Select value={referenceYear.toString()} onValueChange={(v) => setReferenceYear(parseInt(v))}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {[2024, 2025, 2026, 2027, 2028].map((year) => (
-                        <SelectItem key={year} value={year.toString()}>
-                          {year}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Descrição (opcional)</Label>
-                  <Input
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Ex: Conta de luz do mês"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Valor</Label>
-                  <Input
-                    value={amount}
-                    onChange={(e) => setAmount(applyRealMask(e.target.value))}
-                    placeholder="R$ 0,00"
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-2">
-                <Button onClick={handleSave} className="flex-1">
-                  <Check className="h-4 w-4 mr-2" />
-                  {editingId ? "Atualizar" : "Adicionar"}
-                </Button>
-                <Button variant="outline" onClick={resetForm} className="flex-1">
-                  <X className="h-4 w-4 mr-2" />
-                  Cancelar
-                </Button>
-              </div>
-            </div>
-          )}
-
-          <div className="border rounded-lg">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead>Descrição</TableHead>
-                  <TableHead>Período</TableHead>
-                  <TableHead className="text-right">Valor</TableHead>
-                  <TableHead className="text-center">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
+          <div className="space-y-4">
+            <div className="border rounded-lg">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center">
-                      Carregando...
-                    </TableCell>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Descrição</TableHead>
+                    <TableHead>Período</TableHead>
+                    <TableHead className="text-right">Valor</TableHead>
+                    <TableHead className="text-center">Ações</TableHead>
                   </TableRow>
-                ) : expenses.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground">
-                      Nenhuma conta cadastrada
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  expenses.map((expense) => (
-                    <TableRow key={expense.id}>
-                      <TableCell>
-                        <Badge variant="outline">{getExpenseTypeLabel(expense.expenseType)}</Badge>
-                      </TableCell>
-                      <TableCell>{expense.description || "-"}</TableCell>
-                      <TableCell>
-                        {getMonthName(expense.referenceMonth)}/{expense.referenceYear}
-                      </TableCell>
-                      <TableCell className="text-right font-semibold">
-                        {formatCurrency(expense.amount)}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex justify-center gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEdit(expense)}
-                          >
-                            <Edit2 className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDelete(expense.id)}
-                            className="text-red-600 hover:text-red-700"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+                </TableHeader>
+                <TableBody>
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center">
+                        Carregando...
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                  ) : expenses.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center text-muted-foreground">
+                        Nenhuma conta cadastrada
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    expenses.map((expense) => (
+                      <TableRow 
+                        key={expense.id}
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => handleView(expense)}
+                      >
+                        <TableCell>
+                          <Badge variant="outline">{getExpenseTypeLabel(expense.expenseType)}</Badge>
+                        </TableCell>
+                        <TableCell>{expense.description || "-"}</TableCell>
+                        <TableCell>
+                          {getMonthName(expense.referenceMonth)}/{expense.referenceYear}
+                        </TableCell>
+                        <TableCell className="text-right font-semibold">
+                          {formatCurrency(expense.amount)}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex justify-center gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDelete(expense.id);
+                              }}
+                              className="text-red-600 hover:text-red-700"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+
+            {expenses.length > 0 && (
+              <div className="p-4 bg-muted rounded-lg">
+                <div className="flex justify-between items-center">
+                  <span className="font-semibold">Total de Contas:</span>
+                  <span className="text-xl font-bold text-red-600">
+                    {formatCurrency(expenses.reduce((sum, e) => sum + e.amount, 0))}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
 
-          {expenses.length > 0 && (
-            <div className="p-4 bg-muted rounded-lg">
-              <div className="flex justify-between items-center">
-                <span className="font-semibold">Total de Contas:</span>
-                <span className="text-xl font-bold text-red-600">
-                  {formatCurrency(expenses.reduce((sum, e) => sum + e.amount, 0))}
-                </span>
+          <DialogFooter>
+            <Button size="sm" onClick={handleNewExpense}>
+              Nova Conta
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => onOpenChange(false)}>
+              Fechar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Visualização/Edição da Conta */}
+      <Dialog open={isFormOpen} onOpenChange={() => resetForm()}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              {editingExpense && !isEditing
+                ? "Visualização da Conta a Pagar"
+                : editingExpense && isEditing
+                ? "Edição da Conta a Pagar"
+                : "Inclusão de Conta a Pagar"}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="grid grid-cols-6 gap-4">
+              <div className="space-y-2 col-span-2">
+                <Label>Tipo de Conta</Label>
+                <Select value={expenseType} onValueChange={setExpenseType} disabled={!isEditing && !!editingExpense}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="water">Água</SelectItem>
+                    <SelectItem value="electricity">Luz</SelectItem>
+                    <SelectItem value="gas">Gás</SelectItem>
+                    <SelectItem value="internet">Internet</SelectItem>
+                    <SelectItem value="maintenance">Manutenção</SelectItem>
+                    <SelectItem value="other">Outros</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2 col-span-2">
+                <Label>Mês</Label>
+                <Select 
+                  value={referenceMonth.toString()} 
+                  onValueChange={(v) => setReferenceMonth(parseInt(v))}
+                  disabled={!isEditing && !!editingExpense}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 12 }, (_, i) => (
+                      <SelectItem key={i + 1} value={(i + 1).toString()}>
+                        {getMonthName(i + 1)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2 col-span-2">
+                <Label>Ano</Label>
+                <Select 
+                  value={referenceYear.toString()} 
+                  onValueChange={(v) => setReferenceYear(parseInt(v))}
+                  disabled={!isEditing && !!editingExpense}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[2024, 2025, 2026, 2027, 2028].map((year) => (
+                      <SelectItem key={year} value={year.toString()}>
+                        {year}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
-          )}
-        </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Fechar
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Descrição (opcional)</Label>
+                <Input
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Ex: Conta de luz do mês"
+                  disabled={!isEditing && !!editingExpense}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Valor</Label>
+                <Input
+                  value={amount}
+                  onChange={(e) => setAmount(applyRealMask(e.target.value))}
+                  placeholder="R$ 0,00"
+                  disabled={!isEditing && !!editingExpense}
+                />
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            {editingExpense && !isEditing ? (
+              <>
+                <Button variant="outline" onClick={() => resetForm()}>
+                  Fechar
+                </Button>
+                <Button onClick={() => setIsEditing(true)}>
+                  Editar
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="outline" onClick={() => resetForm()}>
+                  Cancelar
+                </Button>
+                <Button onClick={handleSave}>
+                  {editingExpense ? "Salvar" : "Adicionar"}
+                </Button>
+              </>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
