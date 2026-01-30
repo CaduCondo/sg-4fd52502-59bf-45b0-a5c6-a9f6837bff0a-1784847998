@@ -1,18 +1,19 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ReactNode } from "react";
 
 export interface MetricCardProps {
   title: string;
   value: string | number;
-  subtitle?: string;
+  subtitle?: string | ReactNode;
   secondaryInfo?: string;
   icon: LucideIcon;
   iconColor: string;
   iconBgClass: string;
   borderColorClass: string;
   layout?: "vertical" | "horizontal";
-  valueClassName?: string; // Adicionado prop faltante
+  valueClassName?: string;
 }
 
 export function MetricCard({
@@ -47,9 +48,9 @@ export function MetricCard({
               {displayValue}
             </p>
             {subtitle && (
-              <p className="text-[10px] text-muted-foreground mt-0.5 leading-tight">
+              <div className="text-[10px] text-muted-foreground mt-0.5 leading-tight">
                 {subtitle}
-              </p>
+              </div>
             )}
             {secondaryInfo && (
               <p className="text-[10px] text-muted-foreground mt-0.5 leading-tight">
@@ -84,9 +85,9 @@ export function MetricCard({
           {/* Informações secundárias */}
           <div className="flex flex-col gap-0.5 pt-1">
             {subtitle && (
-              <p className="text-xs text-muted-foreground">
+              <div className="text-xs text-muted-foreground">
                 {subtitle}
-              </p>
+              </div>
             )}
             {secondaryInfo && (
               <p className="text-xs text-muted-foreground font-medium">
