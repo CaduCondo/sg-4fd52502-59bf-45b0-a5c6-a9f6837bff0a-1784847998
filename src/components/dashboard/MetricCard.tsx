@@ -5,7 +5,7 @@ import { ReactNode } from "react";
 
 export interface MetricCardProps {
   title: string;
-  value: string | number;
+  value: string | number | React.ReactNode;
   subtitle?: string | ReactNode;
   secondaryInfo?: string;
   icon: LucideIcon;
@@ -28,7 +28,7 @@ export function MetricCard({
   layout = "vertical",
   valueClassName,
 }: MetricCardProps) {
-  const displayValue = typeof value === "string" ? value : value.toLocaleString("pt-BR");
+  const displayValue = typeof value === "number" ? value.toLocaleString("pt-BR") : value;
 
   if (layout === "horizontal") {
     return (

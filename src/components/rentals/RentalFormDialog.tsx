@@ -235,7 +235,7 @@ export function RentalFormDialog({
         monthly_rent: totalValue,
         value: totalValue,
         deposit: parseCurrencyToNumber(securityDeposit) || 0,
-        status: "active",
+        status: "active" as const,
         is_active: true,
         attachments: attachments.length > 0 ? attachments : null,
         contract_attachments: null,
@@ -306,10 +306,10 @@ export function RentalFormDialog({
 
         setShowContract(true);
       } else {
-        // CRIAÇÃO - Usando objeto direto para insert para evitar qualquer perda de referência
+        // CRIAÇÃO - Usando supabase.insert direto para controle total
         // Mapeando explicitamente para garantir que property_id vá preenchido
-        const insertPayload = {
-            property_id: propertyId,
+        const insertPayload: any = {
+            property_id: propertyId, // Usando o ID convertido explicitamente
             tenant_id: tenantId,
             start_date: startDate,
             end_date: endDate || null,
@@ -323,7 +323,18 @@ export function RentalFormDialog({
             contract_attachments: null,
             has_garage: hasGarage,
             garage_value: hasGarage && garageValue ? parseCurrencyToNumber(garageValue) : null,
-            has_partner_broker: hasPartnerBroker
+            has_partner_broker: hasPartnerBroker,
+            // Campos camelCase para compatibilidade
+            depositInstallments: depositData.depositInstallments,
+            depositInstallment1: depositData.depositInstallment1,
+            depositPaymentDate: depositData.depositPaymentDate,
+            depositPixCode: depositData.depositPixCode,
+            depositInstallment2: depositData.depositInstallment2,
+            depositInstallment2PaymentDate: depositData.depositInstallment2PaymentDate,
+            depositInstallment2PixCode: depositData.depositInstallment2PixCode,
+            depositInstallment3: depositData.depositInstallment3,
+            depositInstallment3PaymentDate: depositData.depositInstallment3PaymentDate,
+            depositInstallment3PixCode: depositData.depositInstallment3PixCode,
         };
 
         const { data: createdRental, error: createError } = await supabase
@@ -354,24 +365,24 @@ export function RentalFormDialog({
           tenantId: createdRental.tenant_id,
           startDate: createdRental.start_date,
           endDate: createdRental.end_date,
-          monthlyRent: createdRental.monthly_rent,
-          paymentDay: createdRental.payment_day,
-          depositAmount: createdRental.deposit,
-          status: createdRental.status,
-          attachments: createdRental.attachments || [],
-          contractAttachments: createdRental.contract_attachments || [],
-          value: createdRental.value,
-          isActive: createdRental.is_active,
-          rentAmount: createdRental.monthly_rent,
+          monthlyRent: Number(createdRental.monthly_rent),
+          paymentDay: Number(createdRental.payment_day),
+          depositAmount: Number(createdRental.deposit),
+          status: createdRental.status as "active" | "terminated" | "pending",
+          attachments: (createdRental.attachments as string[]) || [],
+          contractAttachments: (createdRental.contract_attachments as string[]) || [],
+          value: Number(createdRental.value),
+          isActive: Boolean(createdRental.is_active),
+          rentAmount: Number(createdRental.monthly_rent),
           autoRenew: false,
-          hasGarage: createdRental.has_garage,
-          garageValue: createdRental.garage_value,
-          hasPartnerBroker: createdRental.has_partner_broker,
-          // Preencher campos de depósito com os dados do form, pois eles vão para tabela separada
-          depositInstallments: depositData.depositInstallments,
-          depositInstallment1: depositData.depositInstallment1,
-          depositInstallment2: depositData.depositInstallment2,
-          depositInstallment3: depositData.depositInstallment3,
+          hasGarage: Boolean(createdRental.has_garage),
+          garageValue: createdRental.garage_value ? Number(createdRental.garage_value) : undefined,
+          hasPartnerBroker: Boolean(createdRental.has_partner_broker),
+          // Preencher campos de depósito com os dados do form
+          depositInstallments: Number(depositData.depositInstallments),
+          depositInstallment1: Number(depositData.depositInstallment1),
+          depositInstallment2: depositData.depositInstallment2 ? Number(depositData.depositInstallment2) : undefined,
+          depositInstallment3: depositData.depositInstallment3 ? Number(depositData.depositInstallment3) : undefined,
           depositPaymentDate: depositData.depositPaymentDate,
           depositInstallment2PaymentDate: depositData.depositInstallment2PaymentDate,
           depositInstallment3PaymentDate: depositData.depositInstallment3PaymentDate,
