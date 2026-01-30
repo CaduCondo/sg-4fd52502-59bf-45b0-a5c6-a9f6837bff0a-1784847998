@@ -188,7 +188,7 @@ export function useDashboardData(month: number, year: number) {
       // Buscar contas a pagar (location_expenses) do período usando reference_month e reference_year
       const { data: expensesData, error: expensesError } = await supabase
         .from("location_expenses")
-        .select("amount, status")
+        .select("amount")
         .eq("reference_month", month)
         .eq("reference_year", year);
 
@@ -197,12 +197,12 @@ export function useDashboardData(month: number, year: number) {
       }
 
       // Calcular total de contas a pagar do mês
-      const accountsPayableTotal = expensesData?.reduce((sum, expense) => sum + (expense.amount || 0), 0) || 0;
+      const locationExpensesTotal = expensesData?.reduce((sum, expense) => sum + (expense.amount || 0), 0) || 0;
 
       console.log("📊 Contas a Pagar do Mês (Dashboard):", {
         month,
         year,
-        total: accountsPayableTotal,
+        total: locationExpensesTotal,
         count: expensesData?.length || 0,
       });
 
@@ -234,13 +234,14 @@ export function useDashboardData(month: number, year: number) {
         }
       });
 
-      // Calcular receita líquida (Recebido - Taxas - Contas a Pagar)
-      const netRevenue = receivedAmount - adminFeeTotal - accountsPayableTotal;
+      // Calcular receita líquida EXATAMENTE como na página Financeiro
+      // Receita Líquida = Receita Bruta - Taxa Admin - Contas a Pagar
+      const netRevenue = receivedAmount - adminFeeTotal - locationExpensesTotal;
 
       console.log("💰 Cálculo Receita Líquida (Dashboard):", {
         receivedAmount,
         adminFeeTotal,
-        accountsPayableTotal,
+        locationExpensesTotal,
         netRevenue,
       });
 
@@ -255,13 +256,13 @@ export function useDashboardData(month: number, year: number) {
         
         latePayments: overduePayments,
         receivedPayments: paidPayments,
-        expectedValue: expectedAmount + accountsPayableTotal,
+        expectedValue: expectedAmount,
 
         overduePayments,
         overdueAmount,
         completedPayments: paidPayments,
         dueTodayPayments,
-        expectedAmount: expectedAmount + accountsPayableTotal,
+        expectedAmount,
         receivedAmount,
         grossRevenue: receivedAmount,
         netRevenue,
