@@ -226,17 +226,14 @@ export function useDashboardData(month: number, year: number) {
         }
       });
 
-      // Calcular total de contas a pagar
-      let expensesTotal = 0;
+      // Calcular total de contas a pagar do mês
+      let monthExpensesTotal = 0;
       expensesData?.forEach((expense) => {
-        expensesTotal += Number(expense.amount) || 0;
+        monthExpensesTotal += Number(expense.amount) || 0;
       });
 
-      // NÃO adicionar ao expectedAmount - contas a pagar são separadas
-      // expectedAmount continua sendo apenas aluguéis
-
-      // Receita líquida = Receita bruta - taxa admin - contas a pagar
-      const netRevenue = receivedAmount - adminFeeTotal - expensesTotal;
+      // Receita Líquida = Receita Bruta (recebida) - Taxa Admin - Contas a Pagar
+      const netRevenue = receivedAmount - adminFeeTotal - monthExpensesTotal;
 
       setDashboardData({
         totalProperties,
@@ -249,13 +246,13 @@ export function useDashboardData(month: number, year: number) {
         
         latePayments: overduePayments,
         receivedPayments: paidPayments,
-        expectedValue: expectedAmount,
+        expectedValue: expectedAmount + monthExpensesTotal,
 
         overduePayments,
         overdueAmount,
         completedPayments: paidPayments,
         dueTodayPayments,
-        expectedAmount,
+        expectedAmount: expectedAmount + monthExpensesTotal,
         receivedAmount,
         grossRevenue: receivedAmount,
         netRevenue,

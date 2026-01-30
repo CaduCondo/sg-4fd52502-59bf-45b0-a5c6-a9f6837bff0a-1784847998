@@ -575,6 +575,23 @@ export default function Settings() {
                     </div>
                   </div>
 
+                  <div className="bg-amber-50 dark:bg-amber-950/20 p-4 rounded-md border border-amber-200 dark:border-amber-800 mt-4">
+                    <div className="flex items-start gap-3">
+                      <Coins className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5" />
+                      <div>
+                        <p className="font-medium text-amber-800 dark:text-amber-300">Exemplo de Cálculo</p>
+                        <p className="text-sm text-amber-700 dark:text-amber-400 mt-1">
+                          Para um boleto de R$ 1.000,00 com 10 dias de atraso:
+                        </p>
+                        <ul className="text-sm text-amber-700 dark:text-amber-400 list-disc ml-5 mt-1">
+                          <li>Multa ({lateFee}%): R$ {(1000 * (parsePercentageToFloat(lateFee)/100)).toFixed(2)}</li>
+                          <li>Juros ({interestRate}% ao dia × 10): R$ {(1000 * (parsePercentageToFloat(interestRate)/100) * 10).toFixed(2)}</li>
+                          <li><strong>Total a Pagar: R$ {(1000 * (1 + (parsePercentageToFloat(lateFee)/100) + ((parsePercentageToFloat(interestRate)/100) * 10))).toFixed(2)}</strong></li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="flex justify-end pt-4">
                     <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">
                       <Save className="h-4 w-4 mr-2" />
@@ -987,7 +1004,10 @@ export default function Settings() {
                     </Button>
                     <Button
                       type="button"
-                      onClick={() => setIsEditingLocation(true)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setIsEditingLocation(true);
+                      }}
                     >
                       Editar
                     </Button>

@@ -58,21 +58,17 @@ export function RentalFormDialog({
     location?: Location;
   } | null>(null);
 
-  // Estados para Caução
   const [isDepositInstallment, setIsDepositInstallment] = useState(false);
   const [depositInstallmentCount, setDepositInstallmentCount] = useState<string>("");
   
-  // Valores
   const [depositInstallment1, setDepositInstallment1] = useState("");
   const [depositInstallment2, setDepositInstallment2] = useState("");
   const [depositInstallment3, setDepositInstallment3] = useState("");
   
-  // Datas de Pagamento
   const [depositPaymentDate, setDepositPaymentDate] = useState("");
   const [depositInstallment2PaymentDate, setDepositInstallment2PaymentDate] = useState("");
   const [depositInstallment3PaymentDate, setDepositInstallment3PaymentDate] = useState("");
   
-  // Códigos PIX
   const [depositPixCode, setDepositPixCode] = useState("");
   const [depositInstallment2PixCode, setDepositInstallment2PixCode] = useState("");
   const [depositInstallment3PixCode, setDepositInstallment3PixCode] = useState("");
@@ -203,33 +199,35 @@ export function RentalFormDialog({
       return;
     }
 
-    // CORREÇÃO CRÍTICA: Calcular totalValue ANTES de tudo
+    // CÁLCULO DO VALOR TOTAL - ABSOLUTAMENTE CRÍTICO
     const baseRent = selectedProperty.value || selectedProperty.monthlyRent || 0;
     const garageAmount = hasGarage && garageValue ? parseCurrencyToNumber(garageValue) : 0;
-    const totalValue = baseRent + garageAmount;
-    
-    console.log("🔍 DEBUG FINAL - Valores:", {
+    let totalValue = baseRent + garageAmount;
+
+    // Garantir que seja um número válido
+    totalValue = parseFloat(totalValue.toFixed(2));
+
+    console.log("🔍 CÁLCULO FINAL monthly_rent:", {
       baseRent,
       garageAmount,
       totalValue,
+      tipo: typeof totalValue,
+      isNaN: isNaN(totalValue),
       propertyValue: selectedProperty.value,
       propertyMonthlyRent: selectedProperty.monthlyRent,
-      hasGarage,
-      garageValue
     });
-    
-    // Validação CRÍTICA: Valor NUNCA pode ser 0 ou null
+
+    // VALIDAÇÃO CRÍTICA
     if (!totalValue || totalValue <= 0 || isNaN(totalValue)) {
       toast({
         title: "Erro Crítico",
-        description: `O valor do aluguel é inválido (${totalValue}). Verifique o valor do imóvel selecionado.`,
+        description: `Valor do aluguel inválido: R$ ${totalValue}. Verifique o valor do imóvel.`,
         variant: "destructive",
       });
       return;
     }
 
     const valueValidation = validateRentalValue(totalValue);
-
     if (!valueValidation.isValid) {
       toast({
         title: "Erro",
@@ -250,60 +248,56 @@ export function RentalFormDialog({
       }
 
       const count = parseInt(depositInstallmentCount);
-      if (count === 2) {
-        if (!depositInstallment2) {
-          toast({
-            title: "Erro",
-            description: "Preencha o valor da 2ª parcela.",
-            variant: "destructive",
-          });
-          return;
-        }
-      } else if (count === 3) {
-        if (!depositInstallment2 || !depositInstallment3) {
-          toast({
-            title: "Erro",
-            description: "Preencha os valores da 2ª e 3ª parcelas.",
-            variant: "destructive",
-          });
-          return;
-        }
+      if (count === 2 && !depositInstallment2) {
+        toast({
+          title: "Erro",
+          description: "Preencha o valor da 2ª parcela.",
+          variant: "destructive",
+        });
+        return;
+      }
+      if (count === 3 && (!depositInstallment2 || !depositInstallment3)) {
+        toast({
+          title: "Erro",
+          description: "Preencha os valores da 2ª e 3ª parcelas.",
+          variant: "destructive",
+        });
+        return;
       }
     }
 
     try {
       setLoading(true);
 
-      // PREPARAR dados base
-      const rentalData: any = prepareRentalData(
-        selectedPropertyId,
-        selectedTenantId,
-        startDate,
-        endDate,
-        paymentDay,
-        totalValue,
-        hasGarage,
-        garageValue,
-        attachments,
-        securityDeposit,
-        hasPartnerBroker
-      );
+      // CRIAR OBJETO COM monthly_rent EXPLÍCITO
+      const rentalData: any = {
+        property_id: selectedPropertyId,
+        tenant_id: selectedTenantId,
+        start_date: startDate,
+        end_date: endDate || null,
+        payment_day: parseInt(paymentDay),
+        monthly_rent: totalValue, // VALOR CALCULADO
+        value: totalValue, // MESMO VALOR
+        deposit: parseCurrencyToNumber(securityDeposit) || 0,
+        status: "active",
+        is_active: true,
+        attachments: attachments.length > 0 ? attachments : null,
+        contract_attachments: null,
+        has_garage: hasGarage,
+        garage_value: hasGarage && garageValue ? parseCurrencyToNumber(garageValue) : null,
+        has_partner_broker: hasPartnerBroker,
+      };
 
-      // CORREÇÃO DEFINITIVA: FORÇAR monthly_rent SEMPRE
-      rentalData.monthly_rent = totalValue;
-      rentalData.value = totalValue;
+      console.log("📤 OBJETO FINAL sendo enviado:", rentalData);
 
-      console.log("🚀 DEBUG - Dados FINAIS enviados:", rentalData);
-
-      // Validação FINAL antes de enviar
-      if (!rentalData.monthly_rent || rentalData.monthly_rent <= 0 || isNaN(rentalData.monthly_rent)) {
-        throw new Error(`Valor do aluguel inválido após preparação: ${rentalData.monthly_rent}`);
+      // VALIDAÇÃO FINAL
+      if (!rentalData.monthly_rent || rentalData.monthly_rent <= 0) {
+        throw new Error(`monthly_rent inválido: ${rentalData.monthly_rent}`);
       }
 
       if (isDepositInstallment && depositInstallmentCount) {
         rentalData.depositInstallments = parseInt(depositInstallmentCount);
-        
-        rentalData.depositInstallment1 = parseCurrencyToNumber(securityDeposit); 
+        rentalData.depositInstallment1 = parseCurrencyToNumber(securityDeposit);
         rentalData.depositPaymentDate = depositPaymentDate || null;
         rentalData.depositPixCode = depositPixCode || null;
 
@@ -312,7 +306,7 @@ export function RentalFormDialog({
           rentalData.depositInstallment2PaymentDate = depositInstallment2PaymentDate || null;
           rentalData.depositInstallment2PixCode = depositInstallment2PixCode || null;
         }
-        
+
         if (parseInt(depositInstallmentCount) === 3) {
           rentalData.depositInstallment3 = parseCurrencyToNumber(depositInstallment3);
           rentalData.depositInstallment3PaymentDate = depositInstallment3PaymentDate || null;
@@ -364,7 +358,6 @@ export function RentalFormDialog({
         }
 
         await createPaymentsForRental(createdRental);
-
         await createDepositInstallments(createdRental.id, rentalData);
 
         const selectedLocation = locations.find((loc) => loc.id === selectedProperty.locationId);
@@ -384,12 +377,10 @@ export function RentalFormDialog({
         setShowContract(true);
       }
     } catch (error: any) {
-      console.error("❌ Error saving rental:", error);
+      console.error("❌ ERRO ao salvar locação:", error);
       toast({
         title: "Erro",
-        description: error.message || (rental
-          ? "Não foi possível atualizar a locação."
-          : "Não foi possível criar a locação."),
+        description: error.message || (rental ? "Não foi possível atualizar a locação." : "Não foi possível criar a locação."),
         variant: "destructive",
       });
     } finally {
@@ -419,7 +410,7 @@ export function RentalFormDialog({
         paymentDate = rentalData.depositInstallment3PaymentDate || null;
         pixCode = rentalData.depositInstallment3PixCode || null;
       }
-      
+
       installments.push({
         rental_id: rentalId,
         installment_number: i,
@@ -441,7 +432,7 @@ export function RentalFormDialog({
 
   const updateDepositInstallments = async (rentalId: string, rentalData: any) => {
     const { error: deleteError } = await supabase.from("deposit_installments").delete().eq("rental_id", rentalId);
-    
+
     if (deleteError) {
       console.error("Error deleting old deposit installments:", deleteError);
     }
@@ -451,21 +442,21 @@ export function RentalFormDialog({
 
   const calculateTotalDeposit = () => {
     let total = 0;
-    
+
     if (securityDeposit) {
       total += parseCurrencyToNumber(securityDeposit);
     }
-    
+
     if (isDepositInstallment && depositInstallmentCount) {
       if (parseInt(depositInstallmentCount) >= 2 && depositInstallment2) {
         total += parseCurrencyToNumber(depositInstallment2);
       }
-      
+
       if (parseInt(depositInstallmentCount) === 3 && depositInstallment3) {
         total += parseCurrencyToNumber(depositInstallment3);
       }
     }
-    
+
     return total;
   };
 
@@ -492,7 +483,6 @@ export function RentalFormDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* LINHA 1: Imóvel e Inquilino lado a lado */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="property_id">{rental ? "Imóvel Selecionado" : "Imóveis Disponíveis"} *</Label>
@@ -634,10 +624,9 @@ export function RentalFormDialog({
             </div>
           </div>
 
-          {/* SEÇÃO CAUÇÃO */}
           <div className="space-y-4 p-4 border rounded-md bg-muted/20">
             <h3 className="font-semibold text-sm text-muted-foreground mb-2">Informações da Caução</h3>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
               <div className="space-y-2 md:col-span-5">
                 <Label htmlFor="securityDeposit">
@@ -784,9 +773,7 @@ export function RentalFormDialog({
                 {isDepositInstallment && depositInstallmentCount && (
                   <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
                     <div className="flex justify-between items-center">
-                      <span className="font-bold text-blue-900 dark:text-blue-100">
-                        Valor Total Caução:
-                      </span>
+                      <span className="font-bold text-blue-900 dark:text-blue-100">Valor Total Caução:</span>
                       <span className="text-xl font-bold text-blue-600 dark:text-blue-400">
                         {formatCurrency(calculateTotalDeposit())}
                       </span>
@@ -845,9 +832,7 @@ export function RentalFormDialog({
                   </p>
                 </div>
                 <div className="flex justify-between items-center pt-2 border-t border-blue-200 dark:border-blue-800">
-                  <span className="font-bold text-blue-900 dark:text-blue-100">
-                    Valor 1ª Parcela:
-                  </span>
+                  <span className="font-bold text-blue-900 dark:text-blue-100">Valor 1ª Parcela:</span>
                   <span className="text-xl font-bold text-blue-600 dark:text-blue-400">
                     {formatCurrency(proportionalRentInfo.firstRentValue)}
                   </span>
@@ -949,13 +934,7 @@ export function RentalFormDialog({
                   Cancelar
                 </Button>
                 <Button type="submit" disabled={loading}>
-                  {loading
-                    ? rental
-                      ? "Atualizando..."
-                      : "Criando..."
-                    : rental
-                    ? "Atualizar Locação"
-                    : "Criar Locação"}
+                  {loading ? (rental ? "Atualizando..." : "Criando...") : rental ? "Atualizar Locação" : "Criar Locação"}
                 </Button>
               </>
             )}

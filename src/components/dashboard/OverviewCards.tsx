@@ -103,9 +103,14 @@ export function OverviewCards({ data }: OverviewCardsProps) {
           title="Aluguéis Atrasados"
           value={data.overduePayments}
           subtitle={
-            <span className="text-xs flex items-center gap-1">
-              {formatCurrency(data.overdueAmount)} • {data.dueTodayPayments} Vencem Hoje
-            </span>
+            <div className="space-y-1">
+              <span className="text-xs flex items-center gap-1">
+                {formatCurrency(data.overdueAmount)} em atraso
+              </span>
+              <span className="text-xs flex items-center gap-1">
+                {data.dueTodayPayments} vencem hoje
+              </span>
+            </div>
           }
           icon={AlertCircle}
           iconColor="text-red-600"

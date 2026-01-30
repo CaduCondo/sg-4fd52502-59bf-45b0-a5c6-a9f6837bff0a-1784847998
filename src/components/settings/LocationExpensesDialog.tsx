@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2 } from "lucide-react";
+import { Trash2, Filter } from "lucide-react";
 import { LocationExpense, Location } from "@/types";
 import { locationExpenseService } from "@/services/locationExpenseService";
 import { formatCurrency, applyRealMask, parseCurrencyToNumber } from "@/lib/masks";
@@ -26,6 +26,11 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
   const [isEditing, setIsEditing] = useState(false);
   const [editingExpense, setEditingExpense] = useState<LocationExpense | null>(null);
 
+  // Filtros
+  const [filterMonth, setFilterMonth] = useState(new Date().getMonth() + 1);
+  const [filterYear, setFilterYear] = useState(new Date().getFullYear());
+
+  // Form
   const [expenseType, setExpenseType] = useState<string>("water");
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
@@ -36,13 +41,19 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
     if (open) {
       loadExpenses();
     }
-  }, [open, location.id]);
+  }, [open, location.id, filterMonth, filterYear]);
 
   const loadExpenses = async () => {
     try {
       setLoading(true);
       const data = await locationExpenseService.getByLocation(location.id);
-      setExpenses(data);
+      
+      // Filtrar por mês e ano
+      const filtered = data.filter(
+        (exp) => exp.referenceMonth === filterMonth && exp.referenceYear === filterYear
+      );
+      
+      setExpenses(filtered);
     } catch (error) {
       console.error("Error loading expenses:", error);
       toast({
@@ -176,6 +187,36 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
           </DialogHeader>
 
           <div className="space-y-4">
+            {/* Filtros */}
+            <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg border">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <Label className="text-sm font-medium">Filtrar por:</Label>
+              <Select value={filterMonth.toString()} onValueChange={(v) => setFilterMonth(parseInt(v))}>
+                <SelectTrigger className="h-9 w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 12 }, (_, i) => (
+                    <SelectItem key={i + 1} value={(i + 1).toString()}>
+                      {getMonthName(i + 1)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={filterYear.toString()} onValueChange={(v) => setFilterYear(parseInt(v))}>
+                <SelectTrigger className="h-9 w-28">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {[2024, 2025, 2026, 2027, 2028].map((year) => (
+                    <SelectItem key={year} value={year.toString()}>
+                      {year}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="border rounded-lg">
               <Table>
                 <TableHeader>
@@ -197,7 +238,7 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
                   ) : expenses.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={5} className="text-center text-muted-foreground">
-                        Nenhuma conta cadastrada
+                        Nenhuma conta cadastrada para {getMonthName(filterMonth)}/{filterYear}
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -242,7 +283,7 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
             {expenses.length > 0 && (
               <div className="p-4 bg-muted rounded-lg">
                 <div className="flex justify-between items-center">
-                  <span className="font-semibold">Total de Contas:</span>
+                  <span className="font-semibold">Total de Contas ({getMonthName(filterMonth)}/{filterYear}):</span>
                   <span className="text-xl font-bold text-red-600">
                     {formatCurrency(expenses.reduce((sum, e) => sum + e.amount, 0))}
                   </span>
@@ -262,7 +303,7 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
         </DialogContent>
       </Dialog>
 
-      <Dialog open={isFormOpen} onOpenChange={() => resetForm()}>
+      <Dialog open={isFormOpen} onOpenChange={(open) => !open && resetForm()}>
         <DialogContent className="max-w-xl">
           <DialogHeader>
             <DialogTitle>
@@ -275,8 +316,8 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
           </DialogHeader>
 
           <div className="space-y-4">
-            <div className="grid grid-cols-3 gap-3">
-              <div className="space-y-2">
+            <div className="grid grid-cols-6 gap-3">
+              <div className="space-y-2 col-span-2">
                 <Label>Tipo</Label>
                 <Select value={expenseType} onValueChange={setExpenseType} disabled={!isEditing && !!editingExpense}>
                   <SelectTrigger className="h-9">
@@ -332,17 +373,17 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
                   </SelectContent>
                 </Select>
               </div>
-            </div>
 
-            <div className="space-y-2">
-              <Label>Valor</Label>
-              <Input
-                value={amount}
-                onChange={(e) => setAmount(applyRealMask(e.target.value))}
-                placeholder="R$ 0,00"
-                disabled={!isEditing && !!editingExpense}
-                className="h-9"
-              />
+              <div className="space-y-2 col-span-2">
+                <Label>Valor</Label>
+                <Input
+                  value={amount}
+                  onChange={(e) => setAmount(applyRealMask(e.target.value))}
+                  placeholder="R$ 0,00"
+                  disabled={!isEditing && !!editingExpense}
+                  className="h-9"
+                />
+              </div>
             </div>
 
             <div className="space-y-2">
