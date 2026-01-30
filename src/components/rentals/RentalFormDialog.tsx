@@ -264,9 +264,10 @@ export function RentalFormDialog({
         hasPartnerBroker
       );
 
-      // CRITICAL: Garantir que monthly_rent sempre tenha valor
-      rentalData.monthly_rent = totalValue;
-      rentalData.value = totalValue;
+      // CRITICAL FIX: Garantir que monthly_rent sempre tenha valor antes de enviar
+      const finalTotalValue = totalValue > 0 ? totalValue : (selectedProperty.value || 0);
+      rentalData.monthly_rent = finalTotalValue;
+      rentalData.value = finalTotalValue;
 
       if (isDepositInstallment && depositInstallmentCount) {
         rentalData.depositInstallments = parseInt(depositInstallmentCount);
@@ -295,7 +296,7 @@ export function RentalFormDialog({
 
       if (rental) {
         const updatedRental = await updateRentalService(rental.id, rentalData);
-        await updateFuturePayments(rental.id, totalValue);
+        await updateFuturePayments(rental.id, finalTotalValue);
 
         if (rental.paymentDay !== parseInt(paymentDay)) {
           await updateFuturePaymentsOnPaymentDayChange(rental.id, parseInt(paymentDay));

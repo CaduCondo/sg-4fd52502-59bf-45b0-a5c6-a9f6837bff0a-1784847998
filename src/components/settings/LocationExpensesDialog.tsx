@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, Eye } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { LocationExpense, Location } from "@/types";
 import { locationExpenseService } from "@/services/locationExpenseService";
 import { formatCurrency, applyRealMask, parseCurrencyToNumber } from "@/lib/masks";
@@ -185,7 +185,7 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
                     <TableHead>Descrição</TableHead>
                     <TableHead>Período</TableHead>
                     <TableHead className="text-right">Valor</TableHead>
-                    <TableHead className="text-center">Ações</TableHead>
+                    <TableHead className="text-center w-24">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -219,7 +219,7 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
                           {formatCurrency(expense.amount)}
                         </TableCell>
                         <TableCell>
-                          <div className="flex justify-center gap-2">
+                          <div className="flex justify-center">
                             <Button
                               variant="ghost"
                               size="sm"
@@ -227,7 +227,7 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
                                 e.stopPropagation();
                                 handleDelete(expense.id);
                               }}
-                              className="text-red-600 hover:text-red-700"
+                              className="text-red-600 hover:text-red-700 h-8 w-8 p-0"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -252,7 +252,7 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
             )}
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="gap-2">
             <Button size="sm" onClick={handleNewExpense}>
               Nova Conta
             </Button>

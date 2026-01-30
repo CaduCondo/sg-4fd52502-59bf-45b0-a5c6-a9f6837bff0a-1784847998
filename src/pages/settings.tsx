@@ -740,20 +740,16 @@ export default function Settings() {
                             {location.city}, {location.state}
                             {location.zip_code && ` • ${location.zip_code}`}
                           </p>
-                          
-                          {/* Botão para gerenciar contas do local */}
-                          <div className="mt-2">
-                             <Button variant="outline" size="sm" className="h-7 text-xs gap-1"
-                               onClick={() => setSelectedLocationForExpenses(location)}>
-                               <Wallet className="h-3 w-3" />
-                               Gerenciar Contas (Água, Luz)
-                             </Button>
-                          </div>
                         </div>
                         <div className="flex gap-2 ml-4">
-                          <Button variant="outline" size="sm" className="gap-2" onClick={() => openLocationDialog(location)}>
-                            <Pencil className="h-3 w-3" />
-                            Editar
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="gap-2"
+                            onClick={() => setSelectedLocationForExpenses(location)}
+                          >
+                            <Wallet className="h-3 w-3" />
+                            Gerenciar Contas
                           </Button>
                           <Button
                             variant="outline"
