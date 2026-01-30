@@ -101,13 +101,15 @@ export function OverviewCards({ data }: OverviewCardsProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <MetricCard
           title="Aluguéis Atrasados"
-          value={`${data.overduePayments} (${formatCurrency(data.overdueAmount)})`}
+          // MUDANÇA: Valor monetário removido do value principal
+          value={data.overduePayments} 
+          // MUDANÇA: Valor monetário adicionado aqui, menor
+          subtitle={`Total: ${formatCurrency(data.overdueAmount)}`}
           secondaryInfo={`${data.dueTodayPayments} Vencem Hoje`}
           icon={AlertCircle}
           iconColor="text-red-600"
           iconBgClass="bg-red-50"
           borderColorClass="border-l-red-500"
-          valueClassName="text-sm"
         />
 
         <MetricCard
