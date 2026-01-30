@@ -206,6 +206,12 @@ export function useDashboardData(month: number, year: number) {
         count: expensesData?.length || 0,
       });
 
+      // Buscar configuração para taxas
+      const { data: configData } = await supabase
+        .from("config")
+        .select("admin_fee_percentage, management_fee_percentage")
+        .single();
+
       let paidPayments = 0;
       let overduePayments = 0;
       let overdueAmount = 0;
@@ -213,16 +219,40 @@ export function useDashboardData(month: number, year: number) {
       let expectedAmount = 0;
       let receivedAmount = 0;
       let adminFeeTotal = 0;
+      let managementFeeTotal = 0;
 
       const today = new Date().toISOString().split("T")[0];
+
+      // Buscar isenções de taxa para cálculo correto
+      const { data: exemptions } = await supabase
+        .from("user_fee_exemptions")
+        .select("location_id")
+        .eq("user_id", user?.id);
+      
+      const exemptLocationIds = exemptions?.map(e => e.location_id) || [];
 
       paymentsData?.forEach((payment) => {
         expectedAmount += Number(payment.expected_amount) || 0;
 
         if (payment.status === "paid") {
           paidPayments++;
-          receivedAmount += Number(payment.paid_amount) || 0;
-          adminFeeTotal += Number(payment.admin_fee) || 0;
+          const paidAmount = Number(payment.paid_amount) || 0;
+          receivedAmount += paidAmount;
+          
+          // Buscar o rental para verificar isenção
+          const rental = properties?.find(p => {
+            const rentalMatch = rentals?.find(r => r.id === payment.rental_id);
+            return rentalMatch && p.id === rentalMatch.property_id;
+          });
+          
+          // Calcular taxas (só se não houver isenção)
+          if (rental && !exemptLocationIds.includes(rental.location_id)) {
+            const adminFeeRate = configData ? (configData.admin_fee_percentage || 0) / 100 : 0.05;
+            const managementFeeRate = configData ? (configData.management_fee_percentage || 0) / 100 : 0;
+            
+            adminFeeTotal += paidAmount * adminFeeRate;
+            managementFeeTotal += paidAmount * managementFeeRate;
+          }
         } else {
           const dueDate = payment.due_date?.split("T")[0];
           if (dueDate && dueDate < today) {
@@ -235,12 +265,14 @@ export function useDashboardData(month: number, year: number) {
       });
 
       // Calcular receita líquida EXATAMENTE como na página Financeiro
-      // Receita Líquida = Receita Bruta - Taxa Admin - Contas a Pagar
-      const netRevenue = receivedAmount - adminFeeTotal - locationExpensesTotal;
+      // Receita Líquida = Receita Bruta - Taxa Admin - Taxa Gerenciamento - Contas do Mês
+      const grossRevenue = receivedAmount;
+      const netRevenue = grossRevenue - adminFeeTotal - managementFeeTotal - locationExpensesTotal;
 
       console.log("💰 Cálculo Receita Líquida (Dashboard):", {
-        receivedAmount,
+        grossRevenue,
         adminFeeTotal,
+        managementFeeTotal,
         locationExpensesTotal,
         netRevenue,
       });
@@ -264,7 +296,7 @@ export function useDashboardData(month: number, year: number) {
         dueTodayPayments,
         expectedAmount,
         receivedAmount,
-        grossRevenue: receivedAmount,
+        grossRevenue,
         netRevenue,
         adminFee: adminFeeTotal,
         paidPayments,
