@@ -265,15 +265,15 @@ export function RentalFormDialog({
     try {
       setLoading(true);
 
-      // CRIAR OBJETO COM TODOS OS CAMPOS OBRIGATÓRIOS
-      const rentalData: any = {
-        property_id: selectedPropertyId, // STRING UUID
-        tenant_id: selectedTenantId, // STRING UUID
-        start_date: startDate, // STRING ISO DATE
+      // CRIAR OBJETO COM TODOS OS CAMPOS OBRIGATÓRIOS - GARANTINDO TIPOS CORRETOS
+      const rentalData: Record<string, any> = {
+        property_id: selectedPropertyId,
+        tenant_id: selectedTenantId,
+        start_date: startDate,
         end_date: endDate || null,
-        payment_day: parseInt(paymentDay), // INTEGER
-        monthly_rent: totalValue, // NUMERIC - NUNCA NULL
-        value: totalValue, // NUMERIC
+        payment_day: parseInt(paymentDay),
+        monthly_rent: totalValue,
+        value: totalValue,
         deposit: parseCurrencyToNumber(securityDeposit) || 0,
         status: "active",
         is_active: true,
@@ -284,13 +284,7 @@ export function RentalFormDialog({
         has_partner_broker: hasPartnerBroker,
       };
 
-      console.log("📤 OBJETO FINAL sendo enviado:", {
-        ...rentalData,
-        property_id_type: typeof rentalData.property_id,
-        tenant_id_type: typeof rentalData.tenant_id,
-        monthly_rent_type: typeof rentalData.monthly_rent,
-        payment_day_type: typeof rentalData.payment_day,
-      });
+      console.log("📤 OBJETO FINAL sendo enviado:", rentalData);
 
       // VALIDAÇÃO FINAL ANTES DE ENVIAR
       if (!rentalData.property_id || rentalData.property_id === "") {
@@ -358,7 +352,43 @@ export function RentalFormDialog({
       } else {
         console.log("🚀 Criando nova locação com dados:", rentalData);
         
-        const createdRental = await createRental(rentalData);
+        // USAR DIRETAMENTE O SUPABASE CLIENT PARA TER CONTROLE TOTAL
+        const { data: createdRental, error: createError } = await supabase
+          .from("rentals")
+          .insert([{
+            property_id: rentalData.property_id,
+            tenant_id: rentalData.tenant_id,
+            start_date: rentalData.start_date,
+            end_date: rentalData.end_date,
+            payment_day: rentalData.payment_day,
+            monthly_rent: rentalData.monthly_rent,
+            value: rentalData.value,
+            deposit: rentalData.deposit,
+            status: rentalData.status,
+            is_active: rentalData.is_active,
+            attachments: rentalData.attachments,
+            contract_attachments: rentalData.contract_attachments,
+            has_garage: rentalData.has_garage,
+            garage_value: rentalData.garage_value,
+            has_partner_broker: rentalData.has_partner_broker,
+            depositInstallments: rentalData.depositInstallments,
+            depositInstallment1: rentalData.depositInstallment1,
+            depositPaymentDate: rentalData.depositPaymentDate,
+            depositPixCode: rentalData.depositPixCode,
+            depositInstallment2: rentalData.depositInstallment2,
+            depositInstallment2PaymentDate: rentalData.depositInstallment2PaymentDate,
+            depositInstallment2PixCode: rentalData.depositInstallment2PixCode,
+            depositInstallment3: rentalData.depositInstallment3,
+            depositInstallment3PaymentDate: rentalData.depositInstallment3PaymentDate,
+            depositInstallment3PixCode: rentalData.depositInstallment3PixCode,
+          }])
+          .select()
+          .single();
+
+        if (createError) {
+          console.error("❌ Erro ao criar locação:", createError);
+          throw createError;
+        }
         
         console.log("✅ Locação criada com sucesso:", createdRental);
 

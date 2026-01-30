@@ -793,7 +793,7 @@ export default function Settings() {
                             }}
                           >
                             <Wallet className="h-3 w-3" />
-                            Contas
+                            Contas a Pagar
                           </Button>
                           <Button
                             variant="outline"

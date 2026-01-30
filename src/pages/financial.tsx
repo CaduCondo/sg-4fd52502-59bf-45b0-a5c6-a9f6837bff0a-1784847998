@@ -623,7 +623,7 @@ export default function Financial() {
               <Wallet className="h-4 w-4 text-orange-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-orange-700">
+              <div className="text-xl font-bold text-orange-700 break-words">
                 {locationExpenses > 0 ? `- ${formatCurrency(locationExpenses)}` : formatCurrency(0)}
               </div>
               <p className="text-xs text-orange-600">
