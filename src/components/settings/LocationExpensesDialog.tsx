@@ -26,7 +26,6 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
   const [isEditing, setIsEditing] = useState(false);
   const [editingExpense, setEditingExpense] = useState<LocationExpense | null>(null);
 
-  // Form state
   const [expenseType, setExpenseType] = useState<string>("water");
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
@@ -253,19 +252,18 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
           </div>
 
           <DialogFooter className="gap-2">
+            <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
+              Fechar
+            </Button>
             <Button size="sm" onClick={handleNewExpense}>
               Nova Conta
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => onOpenChange(false)}>
-              Fechar
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Dialog de Visualização/Edição da Conta */}
       <Dialog open={isFormOpen} onOpenChange={() => resetForm()}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-xl">
           <DialogHeader>
             <DialogTitle>
               {editingExpense && !isEditing
@@ -277,11 +275,11 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
           </DialogHeader>
 
           <div className="space-y-4">
-            <div className="grid grid-cols-6 gap-4">
-              <div className="space-y-2 col-span-2">
-                <Label>Tipo de Conta</Label>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-2">
+                <Label>Tipo</Label>
                 <Select value={expenseType} onValueChange={setExpenseType} disabled={!isEditing && !!editingExpense}>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-9">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -295,14 +293,14 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
                 </Select>
               </div>
 
-              <div className="space-y-2 col-span-2">
+              <div className="space-y-2">
                 <Label>Mês</Label>
                 <Select 
                   value={referenceMonth.toString()} 
                   onValueChange={(v) => setReferenceMonth(parseInt(v))}
                   disabled={!isEditing && !!editingExpense}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="h-9">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -315,14 +313,14 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
                 </Select>
               </div>
 
-              <div className="space-y-2 col-span-2">
+              <div className="space-y-2">
                 <Label>Ano</Label>
                 <Select 
                   value={referenceYear.toString()} 
                   onValueChange={(v) => setReferenceYear(parseInt(v))}
                   disabled={!isEditing && !!editingExpense}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="h-9">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -336,26 +334,26 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Descrição (opcional)</Label>
-                <Input
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Ex: Conta de luz do mês"
-                  disabled={!isEditing && !!editingExpense}
-                />
-              </div>
+            <div className="space-y-2">
+              <Label>Valor</Label>
+              <Input
+                value={amount}
+                onChange={(e) => setAmount(applyRealMask(e.target.value))}
+                placeholder="R$ 0,00"
+                disabled={!isEditing && !!editingExpense}
+                className="h-9"
+              />
+            </div>
 
-              <div className="space-y-2">
-                <Label>Valor</Label>
-                <Input
-                  value={amount}
-                  onChange={(e) => setAmount(applyRealMask(e.target.value))}
-                  placeholder="R$ 0,00"
-                  disabled={!isEditing && !!editingExpense}
-                />
-              </div>
+            <div className="space-y-2">
+              <Label>Descrição (opcional)</Label>
+              <Input
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Ex: Conta de luz do mês"
+                disabled={!isEditing && !!editingExpense}
+                className="h-9"
+              />
             </div>
           </div>
 
