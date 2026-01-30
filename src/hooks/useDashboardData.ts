@@ -186,13 +186,11 @@ export function useDashboardData(month: number, year: number) {
       if (paymentsError) throw paymentsError;
 
       // Buscar contas a pagar (location_expenses) do período usando reference_month e reference_year
-      const expensesQuery = supabase
+      const { data: expensesData, error: expensesError } = await supabase
         .from("location_expenses")
         .select("amount, status")
         .eq("reference_month", month)
         .eq("reference_year", year);
-
-      const { data: expensesData, error: expensesError } = await expensesQuery;
 
       if (expensesError) {
         console.error("Error fetching expenses:", expensesError);
@@ -201,7 +199,7 @@ export function useDashboardData(month: number, year: number) {
       // Calcular total de contas a pagar do mês
       const accountsPayableTotal = expensesData?.reduce((sum, expense) => sum + (expense.amount || 0), 0) || 0;
 
-      console.log("📊 Contas a Pagar do Mês:", {
+      console.log("📊 Contas a Pagar do Mês (Dashboard):", {
         month,
         year,
         total: accountsPayableTotal,
@@ -238,6 +236,13 @@ export function useDashboardData(month: number, year: number) {
 
       // Calcular receita líquida (Recebido - Taxas - Contas a Pagar)
       const netRevenue = receivedAmount - adminFeeTotal - accountsPayableTotal;
+
+      console.log("💰 Cálculo Receita Líquida (Dashboard):", {
+        receivedAmount,
+        adminFeeTotal,
+        accountsPayableTotal,
+        netRevenue,
+      });
 
       setDashboardData({
         totalProperties,

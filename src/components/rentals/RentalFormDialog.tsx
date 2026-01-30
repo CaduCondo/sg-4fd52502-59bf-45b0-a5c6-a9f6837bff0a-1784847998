@@ -309,7 +309,7 @@ export function RentalFormDialog({
         // CRIAÇÃO - Usando supabase.insert direto para controle total
         // Mapeando explicitamente para garantir que property_id vá preenchido
         const insertPayload: any = {
-            property_id: propertyId, // Usando o ID convertido explicitamente
+            property_id: propertyId,
             tenant_id: tenantId,
             start_date: startDate,
             end_date: endDate || null,
@@ -324,17 +324,17 @@ export function RentalFormDialog({
             has_garage: hasGarage,
             garage_value: hasGarage && garageValue ? parseCurrencyToNumber(garageValue) : null,
             has_partner_broker: hasPartnerBroker,
-            // Campos camelCase para compatibilidade
-            depositInstallments: depositData.depositInstallments,
-            depositInstallment1: depositData.depositInstallment1,
-            depositPaymentDate: depositData.depositPaymentDate,
-            depositPixCode: depositData.depositPixCode,
-            depositInstallment2: depositData.depositInstallment2,
-            depositInstallment2PaymentDate: depositData.depositInstallment2PaymentDate,
-            depositInstallment2PixCode: depositData.depositInstallment2PixCode,
-            depositInstallment3: depositData.depositInstallment3,
-            depositInstallment3PaymentDate: depositData.depositInstallment3PaymentDate,
-            depositInstallment3PixCode: depositData.depositInstallment3PixCode,
+            // SNAKE_CASE para o banco (colunas reais)
+            deposit_installments: depositData.depositInstallments,
+            deposit_installment_1: depositData.depositInstallment1,
+            deposit_payment_date: depositData.depositPaymentDate,
+            deposit_pix_code: depositData.depositPixCode,
+            deposit_installment_2: depositData.depositInstallment2,
+            deposit_installment_2_payment_date: depositData.depositInstallment2PaymentDate,
+            deposit_installment_2_pix_code: depositData.depositInstallment2PixCode,
+            deposit_installment_3: depositData.depositInstallment3,
+            deposit_installment_3_payment_date: depositData.depositInstallment3PaymentDate,
+            deposit_installment_3_pix_code: depositData.depositInstallment3PixCode,
         };
 
         const { data: createdRental, error: createError } = await supabase

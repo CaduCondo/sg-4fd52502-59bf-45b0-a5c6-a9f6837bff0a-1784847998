@@ -105,7 +105,7 @@ export function OverviewCards({ data }: OverviewCardsProps) {
             <div className="flex items-center gap-2 text-xl">
               <span>{data.overduePayments}</span>
               <span className="text-sm font-normal text-muted-foreground">•</span>
-              <span className="text-lg font-medium text-muted-foreground">{formatCurrency(data.overdueAmount)}</span>
+              <span className="text-xs font-medium text-muted-foreground">{formatCurrency(data.overdueAmount)}</span>
             </div>
           }
           subtitle={
