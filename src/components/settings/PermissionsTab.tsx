@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { 
   Table, 
   TableBody, 
@@ -10,10 +10,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { useToast } from "@/hooks/use-toast";
-import { RoleMenuPermission, UserLocationPermission, SystemUser, Location } from "@/types";
+import { RoleMenuPermission, SystemUser, Location } from "@/types";
 import { FeeExemptionDialog } from "./FeeExemptionDialog";
 import { 
   CheckCircle2, 
@@ -83,10 +80,8 @@ export function PermissionsTab({
   const [isLoadingPermissions, setIsLoadingPermissions] = useState(false);
 
   const getMenuPermission = (role: string, menuItem: string): boolean => {
-    // Check if property is menu_item or menu_id based on Type definition
-    const perm = roleMenuPermissions.find((p) => p.role === role && (p.menu_id === menuItem || (p as any).menu_item === menuItem));
-    // Fallback safely if property names vary in DB types vs Frontend types
-    return perm ? ((perm as any).can_access ?? (perm as any).has_access ?? false) : false;
+    const perm = roleMenuPermissions.find((p) => p.role === role && p.menu_id === menuItem);
+    return perm ? true : false;
   };
 
   const togglePermission = async (role: string, menuItem: string) => {
@@ -196,7 +191,7 @@ export function PermissionsTab({
             Permissões de Local (Usuários Financeiros)
           </CardTitle>
           <CardDescription>
-            Defina quais locais cada usuário financeiro pode visualizar na página Financeiro
+            Defina quais locais cada usuário financeiro pode visualizar no Dashboard e na página Financeiro
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -275,7 +270,7 @@ export function PermissionsTab({
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Gerenciar Locais - {selectedUserForLocations?.name}</DialogTitle>
-            <DialogDescription>Selecione os locais que este usuário pode visualizar na página Financeiro</DialogDescription>
+            <DialogDescription>Selecione os locais que este usuário pode visualizar no Dashboard e na página Financeiro</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             {isLoadingPermissions ? (

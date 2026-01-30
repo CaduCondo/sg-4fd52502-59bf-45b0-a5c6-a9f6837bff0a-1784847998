@@ -24,14 +24,13 @@ export function usePermissions() {
       const typedPermissions: RoleMenuPermission[] = (data || []).map(p => ({
         id: p.id,
         role: p.role,
-        menu_id: p.menu_item, // Map menu_item to menu_id
+        menu_id: p.menu_item,
         created_at: p.created_at
       }));
 
       setRoleMenuPermissions(typedPermissions);
     } catch (error) {
       console.error("Erro ao carregar permissões:", error);
-      // Silent error or toast
     }
   };
 
@@ -106,7 +105,6 @@ export function usePermissions() {
 
   const saveLocationPermissions = async (userId: string, locationIds: string[]) => {
     try {
-      // First delete existing permissions for this user
       await supabase
         .from("user_location_permissions")
         .delete()
@@ -154,17 +152,54 @@ export function usePermissions() {
   };
 
   const getUserFeeExemptions = async (userId: string): Promise<string[]> => {
-    // Implementação mock ou real se a tabela existir
-    return [];
+    try {
+      const { data, error } = await supabase
+        .from("broker_fee_exemptions")
+        .select("location_id")
+        .eq("user_id", userId);
+
+      if (error) throw error;
+      return data?.map(p => p.location_id) || [];
+    } catch (error) {
+      console.error("Erro ao carregar isenções de taxa:", error);
+      return [];
+    }
   };
   
   const saveFeeExemptions = async (userId: string, locationIds: string[]) => {
-    // Implementação mock ou real
-    return true;
+    try {
+      await supabase
+        .from("broker_fee_exemptions")
+        .delete()
+        .eq("user_id", userId);
+
+      if (locationIds.length > 0) {
+        const exemptionsToInsert = locationIds.map(locationId => ({
+          user_id: userId,
+          location_id: locationId,
+        }));
+
+        const { error } = await supabase
+          .from("broker_fee_exemptions")
+          .insert(exemptionsToInsert);
+          
+        if (error) throw error;
+      }
+
+      toast({ title: "Isenções de taxa salvas com sucesso!" });
+      return true;
+    } catch (error) {
+      console.error("Erro ao salvar isenções de taxa:", error);
+      toast({
+        title: "Erro ao salvar isenções de taxa",
+        variant: "destructive",
+      });
+      return false;
+    }
   };
 
   return {
-    permissions: roleMenuPermissions, // Alias for compatibility
+    permissions: roleMenuPermissions,
     roleMenuPermissions,
     locationPermissions,
     loading: isLoading,
