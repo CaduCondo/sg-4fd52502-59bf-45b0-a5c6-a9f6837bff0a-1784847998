@@ -236,7 +236,7 @@ export function useDashboardData(month: number, year: number) {
         }
       });
 
-      // Calcular receita líquida: Recebido - Taxa Admin - Contas a Pagar
+      // Calcular receita líquida (Recebido - Taxas - Contas a Pagar)
       const netRevenue = receivedAmount - adminFeeTotal - accountsPayableTotal;
 
       setDashboardData({
