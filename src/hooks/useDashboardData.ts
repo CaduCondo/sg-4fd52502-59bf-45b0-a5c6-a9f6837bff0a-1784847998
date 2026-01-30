@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface DashboardData {
   totalProperties: number;
@@ -8,6 +9,7 @@ interface DashboardData {
   rentedProperties: number;
   unavailableProperties: number;
   totalTenants: number;
+  activeTenants: number;
   activeContracts: number;
   latePayments: number;
   receivedPayments: number;
@@ -18,15 +20,16 @@ interface DashboardData {
   revenueData?: { month: string; value: number }[];
   occupancyData?: { month: string; rate: number }[];
   
-  // Missing fields required by dashboard.tsx
+  // Dashboard fields
   overduePayments: number;
+  overdueAmount: number;
+  dueTodayPayments: number;
   completedPayments: number;
   expectedAmount: number;
   receivedAmount: number;
   adminFee: number;
   paidPayments: number;
   pendingPayments: number;
-  dueTodayPayments: number;
 }
 
 const DEFAULT_DATA: DashboardData = {
@@ -35,6 +38,7 @@ const DEFAULT_DATA: DashboardData = {
   unavailableProperties: 0,
   rentedProperties: 0,
   totalTenants: 0,
+  activeTenants: 0,
   activeContracts: 0,
   latePayments: 0,
   receivedPayments: 0,
@@ -43,34 +47,69 @@ const DEFAULT_DATA: DashboardData = {
   netRevenue: 0,
   occupancyRate: 0,
   overduePayments: 0,
+  overdueAmount: 0,
+  dueTodayPayments: 0,
   completedPayments: 0,
   expectedAmount: 0,
   receivedAmount: 0,
   adminFee: 0,
   paidPayments: 0,
   pendingPayments: 0,
-  dueTodayPayments: 0,
 };
 
 export function useDashboardData(month: number, year: number) {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [dashboardData, setDashboardData] = useState<DashboardData>(DEFAULT_DATA);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    loadDashboardData();
-  }, [month, year]);
+    if (user) {
+      loadDashboardData();
+    }
+  }, [month, year, user]);
 
   async function loadDashboardData() {
     setLoading(true);
     setError(null);
 
     try {
-      // 1. Buscar métricas de imóveis
-      const { data: properties, error: propError } = await supabase
+      // Verificar se o usuário é financeiro e tem permissões de local
+      const { data: userData } = await supabase
+        .from("system_users")
+        .select("role")
+        .eq("id", user?.id)
+        .single();
+
+      let allowedLocationIds: string[] | null = null;
+
+      if (userData?.role === "financeiro") {
+        const { data: permissions } = await supabase
+          .from("user_location_permissions")
+          .select("location_id")
+          .eq("user_id", user?.id);
+
+        allowedLocationIds = permissions?.map(p => p.location_id) || [];
+        
+        if (allowedLocationIds.length === 0) {
+          // Usuário financeiro sem permissões não vê nada
+          setDashboardData(DEFAULT_DATA);
+          setLoading(false);
+          return;
+        }
+      }
+
+      // 1. Buscar imóveis (filtrar por localização se necessário)
+      let propertiesQuery = supabase
         .from("properties")
-        .select("status");
+        .select("id, status, location_id");
+
+      if (allowedLocationIds) {
+        propertiesQuery = propertiesQuery.in("location_id", allowedLocationIds);
+      }
+
+      const { data: properties, error: propError } = await propertiesQuery;
 
       if (propError) throw propError;
 
@@ -83,36 +122,82 @@ export function useDashboardData(month: number, year: number) {
         ? (rentedProperties / totalProperties) * 100 
         : 0;
 
-      // 2. Buscar métricas de inquilinos
-      const { count: totalTenants, error: tenantError } = await supabase
+      // 2. Buscar inquilinos (filtrar por imóveis permitidos)
+      const propertyIds = properties?.map(p => p.id) || [];
+      
+      let tenantsQuery = supabase
         .from("tenants")
-        .select("*", { count: 'exact', head: true });
+        .select("id, status");
+
+      if (allowedLocationIds && propertyIds.length > 0) {
+        // Buscar apenas inquilinos com locações nos imóveis permitidos
+        const { data: rentalsData } = await supabase
+          .from("rentals")
+          .select("tenant_id")
+          .in("property_id", propertyIds);
+
+        const tenantIds = rentalsData?.map(r => r.tenant_id) || [];
+        if (tenantIds.length > 0) {
+          tenantsQuery = tenantsQuery.in("id", tenantIds);
+        } else {
+          tenantsQuery = tenantsQuery.eq("id", "00000000-0000-0000-0000-000000000000"); // Nenhum resultado
+        }
+      }
+
+      const { data: tenants, error: tenantError } = await tenantsQuery;
 
       if (tenantError) throw tenantError;
 
-      // 3. Buscar contratos ativos
-      const { count: activeContracts, error: rentalError } = await supabase
+      const totalTenants = tenants?.length || 0;
+      const activeTenants = tenants?.filter(t => t.status === "active").length || 0;
+
+      // 3. Buscar contratos ativos (filtrar por imóveis permitidos)
+      let rentalsQuery = supabase
         .from("rentals")
-        .select("*", { count: 'exact', head: true })
+        .select("id", { count: 'exact', head: true })
         .eq("is_active", true);
+
+      if (allowedLocationIds && propertyIds.length > 0) {
+        rentalsQuery = rentalsQuery.in("property_id", propertyIds);
+      }
+
+      const { count: activeContracts, error: rentalError } = await rentalsQuery;
 
       if (rentalError) throw rentalError;
 
-      // 4. Buscar pagamentos do mês/ano selecionado
+      // 4. Buscar pagamentos do período (filtrar por imóveis permitidos)
       const startDate = new Date(year, month - 1, 1).toISOString();
       const endDate = new Date(year, month, 0, 23, 59, 59).toISOString();
 
-      const { data: paymentsData, error: paymentsError } = await supabase
+      let paymentsQuery = supabase
         .from("payments")
-        .select("status, expected_amount, paid_amount, due_date, admin_fee")
+        .select("status, expected_amount, paid_amount, due_date, admin_fee, rental_id")
         .gte("due_date", startDate)
         .lte("due_date", endDate);
+
+      if (allowedLocationIds && propertyIds.length > 0) {
+        // Buscar rental_ids dos imóveis permitidos
+        const { data: rentalIds } = await supabase
+          .from("rentals")
+          .select("id")
+          .in("property_id", propertyIds);
+
+        const validRentalIds = rentalIds?.map(r => r.id) || [];
+        if (validRentalIds.length > 0) {
+          paymentsQuery = paymentsQuery.in("rental_id", validRentalIds);
+        } else {
+          paymentsQuery = paymentsQuery.eq("rental_id", "00000000-0000-0000-0000-000000000000"); // Nenhum resultado
+        }
+      }
+
+      const { data: paymentsData, error: paymentsError } = await paymentsQuery;
 
       if (paymentsError) throw paymentsError;
 
       // Calcular métricas de pagamentos
       let paidPayments = 0;
       let overduePayments = 0;
+      let overdueAmount = 0;
       let dueTodayPayments = 0;
       let expectedAmount = 0;
       let receivedAmount = 0;
@@ -131,6 +216,7 @@ export function useDashboardData(month: number, year: number) {
           const dueDate = payment.due_date?.split("T")[0];
           if (dueDate && dueDate < today) {
             overduePayments++;
+            overdueAmount += Number(payment.expected_amount) || 0;
           } else if (dueDate === today) {
             dueTodayPayments++;
           }
@@ -144,17 +230,20 @@ export function useDashboardData(month: number, year: number) {
         availableProperties,
         unavailableProperties,
         rentedProperties,
-        totalTenants: totalTenants || 0,
+        totalTenants,
+        activeTenants,
         activeContracts: activeContracts || 0,
         
-        // Legacy fields mapping
+        // Legacy fields
         latePayments: overduePayments,
         receivedPayments: paidPayments,
         expectedValue: expectedAmount,
 
         // Current fields
         overduePayments,
+        overdueAmount,
         completedPayments: paidPayments,
+        dueTodayPayments,
         expectedAmount,
         receivedAmount,
         grossRevenue: receivedAmount,
@@ -162,7 +251,6 @@ export function useDashboardData(month: number, year: number) {
         adminFee: adminFeeTotal,
         paidPayments,
         pendingPayments: 0,
-        dueTodayPayments,
         occupancyRate,
         revenueData: [], 
         occupancyData: [] 

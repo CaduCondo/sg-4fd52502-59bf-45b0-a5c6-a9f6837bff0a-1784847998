@@ -15,15 +15,18 @@ import { MetricCard } from "./MetricCard";
 interface OverviewCardsProps {
   data: {
     totalProperties: number;
+    rentedProperties: number;
     availableProperties: number;
     unavailableProperties: number;
     totalTenants: number;
+    activeTenants: number;
     activeContracts: number;
     overduePayments: number;
+    overdueAmount: number;
+    dueTodayPayments: number;
     completedPayments: number;
     expectedAmount: number;
     grossRevenue: number;
-    netRevenue: number;
   };
 }
 
@@ -44,9 +47,9 @@ export function OverviewCards({ data }: OverviewCardsProps) {
       {/* Seção: Imóveis e Contratos */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <MetricCard
-          title="Total de Imóveis"
+          title="Total de Imóveis Cadastrados"
           value={data.totalProperties}
-          subtitle="Cadastrados"
+          secondaryInfo={`${data.rentedProperties} Alugados`}
           icon={Building2}
           iconColor="text-blue-600"
           iconBgClass="bg-blue-50"
@@ -54,7 +57,7 @@ export function OverviewCards({ data }: OverviewCardsProps) {
         />
 
         <MetricCard
-          title="Disponíveis"
+          title="Imóveis Disponíveis"
           value={data.availableProperties}
           subtitle="Para locação"
           icon={Home}
@@ -64,7 +67,7 @@ export function OverviewCards({ data }: OverviewCardsProps) {
         />
 
         <MetricCard
-          title="Indisponíveis"
+          title="Imóveis Indisponíveis"
           value={data.unavailableProperties}
           subtitle="Em obra/reforma"
           icon={Construction}
@@ -76,7 +79,7 @@ export function OverviewCards({ data }: OverviewCardsProps) {
         <MetricCard
           title="Inquilinos"
           value={data.totalTenants}
-          subtitle="Ativos"
+          secondaryInfo={`${data.activeTenants} Ativos`}
           icon={Users}
           iconColor="text-purple-600"
           iconBgClass="bg-purple-50"
@@ -84,9 +87,9 @@ export function OverviewCards({ data }: OverviewCardsProps) {
         />
 
         <MetricCard
-          title="Contratos"
+          title="Contratos Vigentes"
           value={data.activeContracts}
-          subtitle="Vigentes"
+          subtitle="Locações ativas"
           icon={FileCheck}
           iconColor="text-indigo-600"
           iconBgClass="bg-indigo-50"
@@ -97,9 +100,10 @@ export function OverviewCards({ data }: OverviewCardsProps) {
       {/* Seção: Financeiro */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <MetricCard
-          title="Atrasados"
+          title="Aluguéis Atrasados"
           value={data.overduePayments}
-          subtitle="Pagamentos"
+          subtitle={formatCurrency(data.overdueAmount)}
+          secondaryInfo={`${data.dueTodayPayments} Vencem Hoje`}
           icon={AlertCircle}
           iconColor="text-red-600"
           iconBgClass="bg-red-50"
@@ -107,7 +111,7 @@ export function OverviewCards({ data }: OverviewCardsProps) {
         />
 
         <MetricCard
-          title="Realizados"
+          title="Aluguéis Recebidos"
           value={data.completedPayments}
           subtitle="No período"
           icon={CheckCircle}
@@ -117,33 +121,36 @@ export function OverviewCards({ data }: OverviewCardsProps) {
         />
 
         <MetricCard
-          title="Esperado"
+          title="Receita Esperada"
           value={formatCurrency(data.expectedAmount)}
-          subtitle="Total previsto"
+          subtitle="Total de recebimentos"
           icon={DollarSign}
           iconColor="text-blue-600"
           iconBgClass="bg-blue-50"
           borderColorClass="border-l-blue-500"
+          layout="horizontal"
         />
 
         <MetricCard
-          title="Receita Bruta"
+          title="Receita Recebida"
           value={formatCurrency(data.grossRevenue)}
-          subtitle="Total recebido"
+          secondaryInfo="No período"
           icon={TrendingUp}
           iconColor="text-emerald-600"
           iconBgClass="bg-emerald-50"
           borderColorClass="border-l-emerald-500"
+          layout="horizontal"
         />
 
         <MetricCard
           title="Receita Líquida"
-          value={formatCurrency(data.netRevenue)}
-          subtitle="Após despesas"
+          value={formatCurrency(data.grossRevenue * 0.9)}
+          secondaryInfo="Após despesas"
           icon={Wallet}
           iconColor="text-violet-600"
           iconBgClass="bg-violet-50"
           borderColorClass="border-l-violet-500"
+          layout="horizontal"
         />
       </div>
     </div>

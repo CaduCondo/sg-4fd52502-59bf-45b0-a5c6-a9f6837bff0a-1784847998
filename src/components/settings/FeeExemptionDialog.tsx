@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
 
 interface FeeExemptionDialogProps {
   open: boolean;
@@ -29,16 +30,28 @@ export function FeeExemptionDialog({
   onSave,
   getUserExemptions,
 }: FeeExemptionDialogProps) {
+  const { toast } = useToast();
   const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     const loadExemptions = async () => {
       if (user && open) {
         setIsLoading(true);
-        const exemptions = await getUserExemptions(user.id);
-        setSelectedLocations(exemptions);
-        setIsLoading(false);
+        try {
+          const exemptions = await getUserExemptions(user.id);
+          setSelectedLocations(exemptions);
+        } catch (error) {
+          console.error("Erro ao carregar isenções:", error);
+          toast({
+            title: "Erro",
+            description: "Não foi possível carregar as isenções.",
+            variant: "destructive",
+          });
+        } finally {
+          setIsLoading(false);
+        }
       }
     };
     loadExemptions();
@@ -54,9 +67,32 @@ export function FeeExemptionDialog({
 
   const handleSave = async () => {
     if (!user) return;
-    const success = await onSave(selectedLocations);
-    if (success) {
-      onOpenChange(false);
+    
+    setIsSaving(true);
+    try {
+      const success = await onSave(selectedLocations);
+      if (success) {
+        toast({
+          title: "Sucesso",
+          description: "Isenções de taxa salvas com sucesso!",
+        });
+        onOpenChange(false);
+      } else {
+        toast({
+          title: "Erro",
+          description: "Não foi possível salvar as isenções.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Erro ao salvar isenções:", error);
+      toast({
+        title: "Erro",
+        description: "Erro ao salvar as isenções de taxa.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -72,6 +108,8 @@ export function FeeExemptionDialog({
         <div className="space-y-4 py-4">
           {isLoading ? (
             <p className="text-sm text-muted-foreground">Carregando...</p>
+          ) : locations.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nenhum local cadastrado.</p>
           ) : (
             locations.map((location) => (
               <div key={location.id} className="flex items-center space-x-2">
@@ -91,10 +129,16 @@ export function FeeExemptionDialog({
           )}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button 
+            variant="outline" 
+            onClick={() => onOpenChange(false)}
+            disabled={isSaving}
+          >
             Cancelar
           </Button>
-          <Button onClick={handleSave}>Salvar</Button>
+          <Button onClick={handleSave} disabled={isSaving || isLoading}>
+            {isSaving ? "Salvando..." : "Salvar"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
