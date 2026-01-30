@@ -141,7 +141,15 @@ export function useProperties(): UsePropertiesReturn {
       ...propertyData,
       status: "available",
     });
-    setProperties([newProperty, ...properties]);
+    
+    // CRÍTICO: Adicionar location_id ao objeto retornado para garantir que apareça no card
+    const propertyWithLocation = {
+      ...newProperty,
+      locationId: formData.location_id,
+      location_id: formData.location_id,
+    };
+    
+    setProperties([propertyWithLocation, ...properties]);
   }, [locations, properties]);
 
   const updateProperty = useCallback(async (id: string, formData: PropertyFormData) => {

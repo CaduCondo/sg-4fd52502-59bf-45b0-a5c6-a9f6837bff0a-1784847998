@@ -185,6 +185,19 @@ export function useDashboardData(month: number, year: number) {
 
       if (paymentsError) throw paymentsError;
 
+      // Buscar contas a pagar (location_expenses) do mês
+      let expensesQuery = supabase
+        .from("location_expenses")
+        .select("amount, status, location_id")
+        .gte("month", `${year}-${String(month).padStart(2, "0")}-01`)
+        .lte("month", `${year}-${String(month).padStart(2, "0")}-31`);
+
+      if (allowedLocationIds) {
+        expensesQuery = expensesQuery.in("location_id", allowedLocationIds);
+      }
+
+      const { data: expensesData } = await expensesQuery;
+
       let paidPayments = 0;
       let overduePayments = 0;
       let overdueAmount = 0;
@@ -212,6 +225,14 @@ export function useDashboardData(month: number, year: number) {
           }
         }
       });
+
+      // Adicionar contas a pagar ao valor esperado
+      let expensesTotal = 0;
+      expensesData?.forEach((expense) => {
+        expensesTotal += Number(expense.amount) || 0;
+      });
+
+      expectedAmount += expensesTotal;
 
       const netRevenue = receivedAmount - adminFeeTotal;
 

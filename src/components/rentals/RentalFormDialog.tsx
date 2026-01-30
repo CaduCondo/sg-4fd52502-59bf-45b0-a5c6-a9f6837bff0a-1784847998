@@ -203,21 +203,30 @@ export function RentalFormDialog({
       return;
     }
 
-    // CRITICAL FIX: Calcular o valor total ANTES de qualquer validação
-    const totalValue = calculateTotal();
-    const finalMonthlyRent = totalValue > 0 ? totalValue : (selectedProperty.value || 0);
+    // CORREÇÃO DEFINITIVA: Calcular totalValue corretamente
+    const baseRent = selectedProperty.value || selectedProperty.monthlyRent || 0;
+    const garageAmount = hasGarage && garageValue ? parseCurrencyToNumber(garageValue) : 0;
+    const totalValue = baseRent + garageAmount;
     
-    // Se mesmo assim não tiver valor, bloquear
-    if (finalMonthlyRent <= 0) {
+    console.log("🔍 DEBUG - Valores:", {
+      baseRent,
+      garageAmount,
+      totalValue,
+      propertyValue: selectedProperty.value,
+      propertyMonthlyRent: selectedProperty.monthlyRent
+    });
+    
+    // Validação: Valor DEVE ser maior que 0
+    if (!totalValue || totalValue <= 0) {
       toast({
         title: "Erro",
-        description: "O valor do aluguel não pode ser zero. Verifique o valor do imóvel.",
+        description: "O valor do aluguel não pode ser zero. Verifique o valor do imóvel selecionado.",
         variant: "destructive",
       });
       return;
     }
 
-    const valueValidation = validateRentalValue(finalMonthlyRent);
+    const valueValidation = validateRentalValue(totalValue);
 
     if (!valueValidation.isValid) {
       toast({
@@ -269,7 +278,7 @@ export function RentalFormDialog({
         startDate,
         endDate,
         paymentDay,
-        selectedProperty.value || 0,
+        totalValue,
         hasGarage,
         garageValue,
         attachments,
@@ -277,13 +286,15 @@ export function RentalFormDialog({
         hasPartnerBroker
       );
 
-      // CRITICAL FIX: FORÇAR monthly_rent com valor calculado
-      rentalData.monthly_rent = finalMonthlyRent;
-      rentalData.value = finalMonthlyRent;
+      // CORREÇÃO CRÍTICA: FORÇAR monthly_rent com valor validado
+      rentalData.monthly_rent = totalValue;
+      rentalData.value = totalValue;
 
-      // Garantir que não há valores undefined ou null
+      console.log("🚀 DEBUG - Dados enviados:", rentalData);
+
+      // Validação final antes de enviar
       if (!rentalData.monthly_rent || rentalData.monthly_rent <= 0) {
-        throw new Error("Valor do aluguel inválido");
+        throw new Error("Valor do aluguel inválido após preparação dos dados");
       }
 
       if (isDepositInstallment && depositInstallmentCount) {
@@ -313,7 +324,7 @@ export function RentalFormDialog({
 
       if (rental) {
         const updatedRental = await updateRentalService(rental.id, rentalData);
-        await updateFuturePayments(rental.id, finalMonthlyRent);
+        await updateFuturePayments(rental.id, totalValue);
 
         if (rental.paymentDay !== parseInt(paymentDay)) {
           await updateFuturePaymentsOnPaymentDayChange(rental.id, parseInt(paymentDay));
@@ -369,13 +380,13 @@ export function RentalFormDialog({
 
         setShowContract(true);
       }
-    } catch (error) {
-      console.error("Error saving rental:", error);
+    } catch (error: any) {
+      console.error("❌ Error saving rental:", error);
       toast({
         title: "Erro",
-        description: rental
+        description: error.message || (rental
           ? "Não foi possível atualizar a locação."
-          : "Não foi possível criar a locação.",
+          : "Não foi possível criar a locação."),
         variant: "destructive",
       });
     } finally {

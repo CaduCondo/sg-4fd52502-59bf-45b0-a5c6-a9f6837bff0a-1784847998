@@ -716,7 +716,11 @@ export default function Settings() {
                     {filteredLocations.map((location) => (
                       <div
                         key={location.id}
-                        className="flex items-start justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors"
+                        className="flex items-start justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors cursor-pointer"
+                        onClick={() => {
+                          // Navegar para tela de visualização do local
+                          window.location.href = `/locations/${location.id}`;
+                        }}
                       >
                         <div className="flex-1 space-y-1">
                           <h4 className="font-semibold flex items-center gap-2">
@@ -746,7 +750,10 @@ export default function Settings() {
                             variant="outline" 
                             size="sm" 
                             className="gap-2"
-                            onClick={() => setSelectedLocationForExpenses(location)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedLocationForExpenses(location);
+                            }}
                           >
                             <Wallet className="h-3 w-3" />
                             Gerenciar Contas
@@ -755,7 +762,10 @@ export default function Settings() {
                             variant="outline"
                             size="sm"
                             className="gap-2 text-destructive hover:bg-destructive/10"
-                            onClick={() => handleDeleteLocation(location.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteLocation(location.id);
+                            }}
                           >
                             <Trash2 className="h-3 w-3" />
                             Excluir
