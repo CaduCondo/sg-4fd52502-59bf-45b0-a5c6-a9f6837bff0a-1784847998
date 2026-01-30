@@ -80,85 +80,87 @@ export function PermissionsTab({
   const [isLocationPermissionsDialogOpen, setIsLocationPermissionsDialogOpen] = useState(false);
   const [isFeeExemptionDialogOpen, setIsFeeExemptionDialogOpen] = useState(false);
   const [isLoadingPermissions, setIsLoadingPermissions] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   
-  // Estado local sincronizado com roleMenuPermissions
-  const [permissionsMap, setPermissionsMap] = useState<Map<string, boolean>>(new Map());
-  const [isTogglingPermission, setIsTogglingPermission] = useState(false);
+  // Estado local para permissões (sincronizado com roleMenuPermissions)
+  const [permissionsSet, setPermissionsSet] = useState<Set<string>>(new Set());
 
-  // Sincronizar permissões quando roleMenuPermissions mudar
+  // Sincronizar estado local quando roleMenuPermissions mudar
   useEffect(() => {
-    console.log("🔄 Sincronizando permissões da tabela:", roleMenuPermissions);
-    const newMap = new Map<string, boolean>();
+    console.log("🔄 Sincronizando permissões:", roleMenuPermissions);
+    const newSet = new Set<string>();
     
     roleMenuPermissions.forEach(perm => {
       const key = `${perm.role}-${perm.menu_id}`;
-      newMap.set(key, true); // Se existe na tabela, tem acesso
+      newSet.add(key);
     });
     
-    setPermissionsMap(newMap);
+    console.log("📊 Set de permissões criado:", Array.from(newSet));
+    setPermissionsSet(newSet);
   }, [roleMenuPermissions]);
 
   const hasPermission = (role: string, menuItem: string): boolean => {
     const key = `${role}-${menuItem}`;
-    return permissionsMap.has(key) && permissionsMap.get(key) === true;
+    const has = permissionsSet.has(key);
+    console.log(`🔍 Verificando permissão: ${key} = ${has}`);
+    return has;
   };
 
   const togglePermission = async (role: string, menuItem: string) => {
-    if (isTogglingPermission) return;
+    if (isSaving) {
+      console.log("⏳ Já está salvando, aguarde...");
+      return;
+    }
     
-    setIsTogglingPermission(true);
+    setIsSaving(true);
     const key = `${role}-${menuItem}`;
     const currentHasAccess = hasPermission(role, menuItem);
     const newHasAccess = !currentHasAccess;
     
-    console.log(`🔄 Toggle permission: ${role} - ${menuItem}, Current: ${currentHasAccess}, New: ${newHasAccess}`);
+    console.log(`🔄 Toggle: ${key}, Atual: ${currentHasAccess}, Novo: ${newHasAccess}`);
     
-    // Atualiza UI imediatamente
-    setPermissionsMap(prev => {
-      const newMap = new Map(prev);
+    // Atualiza UI otimisticamente
+    setPermissionsSet(prev => {
+      const newSet = new Set(prev);
       if (newHasAccess) {
-        newMap.set(key, true);
+        newSet.add(key);
       } else {
-        newMap.delete(key);
+        newSet.delete(key);
       }
-      return newMap;
+      console.log("📊 Novo set:", Array.from(newSet));
+      return newSet;
     });
     
     try {
       const success = await onUpdateRoleMenuPermission(role, menuItem, newHasAccess);
       
       if (!success) {
-        // Reverte se falhar
-        setPermissionsMap(prev => {
-          const newMap = new Map(prev);
+        // Reverter se falhar
+        console.log("❌ Falha ao salvar, revertendo...");
+        setPermissionsSet(prev => {
+          const newSet = new Set(prev);
           if (currentHasAccess) {
-            newMap.set(key, true);
+            newSet.add(key);
           } else {
-            newMap.delete(key);
+            newSet.delete(key);
           }
-          return newMap;
-        });
-        
-        toast({
-          title: "Erro",
-          description: "Falha ao atualizar permissão",
-          variant: "destructive",
+          return newSet;
         });
       } else {
-        console.log("✅ Permissão atualizada com sucesso");
+        console.log("✅ Permissão salva com sucesso!");
       }
     } catch (error) {
       console.error("❌ Erro ao alternar permissão:", error);
       
-      // Reverte em caso de erro
-      setPermissionsMap(prev => {
-        const newMap = new Map(prev);
+      // Reverter em caso de erro
+      setPermissionsSet(prev => {
+        const newSet = new Set(prev);
         if (currentHasAccess) {
-          newMap.set(key, true);
+          newSet.add(key);
         } else {
-          newMap.delete(key);
+          newSet.delete(key);
         }
-        return newMap;
+        return newSet;
       });
       
       toast({
@@ -167,7 +169,7 @@ export function PermissionsTab({
         variant: "destructive",
       });
     } finally {
-      setIsTogglingPermission(false);
+      setIsSaving(false);
     }
   };
 
@@ -244,7 +246,7 @@ export function PermissionsTab({
                           <button
                             onClick={() => togglePermission(role, menuItem)}
                             className="inline-flex items-center justify-center hover:opacity-80 transition-opacity disabled:opacity-50"
-                            disabled={isLoading || isTogglingPermission}
+                            disabled={isLoading || isSaving}
                           >
                             {hasAccess ? (
                               <CheckCircle2 className="h-6 w-6 text-green-600 dark:text-green-400" />

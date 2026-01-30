@@ -33,27 +33,29 @@ export function MetricCard({
   if (layout === "horizontal") {
     return (
       <Card className={cn("border-l-4 hover:shadow-md transition-all duration-200 h-full", borderColorClass)}>
-        <CardContent className="p-4 flex items-start gap-3">
-          {/* Ícone à esquerda - mais compacto */}
-          <div className={cn("p-2 rounded-lg flex-shrink-0 mt-1", iconBgClass)}>
-            <Icon className={cn("h-5 w-5", iconColor)} />
-          </div>
-          
-          {/* Conteúdo alinhado à esquerda */}
-          <div className="flex-1 min-w-0 flex flex-col justify-center">
-            <p className="text-xs font-medium text-muted-foreground mb-0.5 leading-tight">
+        <CardContent className="p-4">
+          {/* Linha 1: Ícone + Título */}
+          <div className="flex items-start gap-3 mb-2">
+            <div className={cn("p-2 rounded-lg flex-shrink-0", iconBgClass)}>
+              <Icon className={cn("h-5 w-5", iconColor)} />
+            </div>
+            <p className="text-xs font-medium text-muted-foreground leading-tight pt-1">
               {title}
             </p>
-            <p className={cn("text-xl font-bold text-foreground leading-tight tracking-tight", valueClassName)}>
+          </div>
+          
+          {/* Linha 2: Valor grande alinhado à esquerda */}
+          <div className="pl-0">
+            <p className={cn("text-2xl font-bold text-foreground leading-tight tracking-tight", valueClassName)}>
               {displayValue}
             </p>
             {subtitle && (
-              <div className="text-[10px] text-muted-foreground mt-0.5 leading-tight">
+              <div className="text-xs text-muted-foreground mt-1 leading-tight">
                 {subtitle}
               </div>
             )}
             {secondaryInfo && (
-              <p className="text-[10px] text-muted-foreground mt-0.5 leading-tight">
+              <p className="text-xs text-muted-foreground mt-1 leading-tight">
                 {secondaryInfo}
               </p>
             )}

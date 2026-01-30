@@ -102,12 +102,9 @@ export function OverviewCards({ data }: OverviewCardsProps) {
         <MetricCard
           title="Aluguéis Atrasados"
           value={data.overduePayments}
-          // Valor monetário pequeno e ao lado do texto
           subtitle={
-            <span className="flex items-center gap-1">
-              <span>{formatCurrency(data.overdueAmount)}</span>
-              <span>•</span>
-              <span>{data.dueTodayPayments} Vencem Hoje</span>
+            <span className="text-xs">
+              {formatCurrency(data.overdueAmount)} • {data.dueTodayPayments} Vencem Hoje
             </span>
           }
           icon={AlertCircle}

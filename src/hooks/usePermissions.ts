@@ -14,23 +14,32 @@ export function usePermissions() {
 
   const fetchRoleMenuPermissions = async () => {
     try {
+      console.log("🔍 Buscando permissões de menu...");
       const { data, error } = await supabase
         .from("role_menu_permissions")
         .select("*")
         .order("role");
 
-      if (error) throw error;
+      if (error) {
+        console.error("❌ Erro ao buscar permissões:", error);
+        throw error;
+      }
+      
+      console.log("✅ Permissões carregadas:", data);
       
       const typedPermissions: RoleMenuPermission[] = (data || []).map(p => ({
         id: p.id,
         role: p.role,
-        menu_id: p.menu_item,
+        menu_id: p.menu_item, // Mapear menu_item → menu_id
         created_at: p.created_at
       }));
 
+      console.log("📊 Permissões tipadas:", typedPermissions);
       setRoleMenuPermissions(typedPermissions);
+      return typedPermissions;
     } catch (error) {
-      console.error("Erro ao carregar permissões:", error);
+      console.error("❌ Erro ao carregar permissões:", error);
+      return [];
     }
   };
 
@@ -60,7 +69,7 @@ export function usePermissions() {
         fetchedRef.current = true;
       });
     } else if (!user) {
-        setIsLoading(false);
+      setIsLoading(false);
     }
   }, [user]);
 
@@ -70,33 +79,57 @@ export function usePermissions() {
     hasAccess: boolean
   ) => {
     try {
-      const { data: existing } = await supabase
-        .from("role_menu_permissions")
-        .select("id")
-        .eq("role", role)
-        .eq("menu_item", menuItem)
-        .single();
-
-      if (existing) {
+      console.log(`🔄 Atualizando permissão: role=${role}, menuItem=${menuItem}, hasAccess=${hasAccess}`);
+      
+      if (hasAccess) {
+        // Inserir ou atualizar para ter acesso
         const { error } = await supabase
           .from("role_menu_permissions")
-          .update({ can_access: hasAccess })
-          .eq("id", existing.id);
-        if (error) throw error;
+          .upsert(
+            { 
+              role, 
+              menu_item: menuItem,
+              can_access: true 
+            },
+            { 
+              onConflict: 'role,menu_item',
+              ignoreDuplicates: false 
+            }
+          );
+        
+        if (error) {
+          console.error("❌ Erro ao inserir/atualizar:", error);
+          throw error;
+        }
+        console.log("✅ Permissão adicionada/atualizada");
       } else {
+        // Remover permissão (deletar registro)
         const { error } = await supabase
           .from("role_menu_permissions")
-          .insert({ role, menu_item: menuItem, can_access: hasAccess });
-        if (error) throw error;
+          .delete()
+          .eq("role", role)
+          .eq("menu_item", menuItem);
+        
+        if (error) {
+          console.error("❌ Erro ao deletar:", error);
+          throw error;
+        }
+        console.log("✅ Permissão removida");
       }
       
-      toast({ title: "Permissão atualizada com sucesso!" });
+      toast({ 
+        title: "Permissão atualizada com sucesso!",
+        description: `${role} ${hasAccess ? 'agora tem' : 'não tem mais'} acesso a ${menuItem}`
+      });
+      
+      // Recarregar permissões
       await fetchRoleMenuPermissions();
       return true;
     } catch (error) {
-      console.error("Erro ao atualizar permissão:", error);
+      console.error("❌ Erro ao atualizar permissão:", error);
       toast({
         title: "Erro ao atualizar permissão",
+        description: "Tente novamente",
         variant: "destructive",
       });
       return false;
