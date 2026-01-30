@@ -185,18 +185,28 @@ export function useDashboardData(month: number, year: number) {
 
       if (paymentsError) throw paymentsError;
 
-      // Buscar contas a pagar (location_expenses) do mês
-      let expensesQuery = supabase
+      // Buscar contas a pagar (location_expenses) do período usando reference_month e reference_year
+      const expensesQuery = supabase
         .from("location_expenses")
-        .select("amount, status, location_id")
+        .select("amount, status")
         .eq("reference_month", month)
         .eq("reference_year", year);
 
-      if (allowedLocationIds) {
-        expensesQuery = expensesQuery.in("location_id", allowedLocationIds);
+      const { data: expensesData, error: expensesError } = await expensesQuery;
+
+      if (expensesError) {
+        console.error("Error fetching expenses:", expensesError);
       }
 
-      const { data: expensesData } = await expensesQuery;
+      // Calcular total de contas a pagar do mês
+      const accountsPayableTotal = expensesData?.reduce((sum, expense) => sum + (expense.amount || 0), 0) || 0;
+
+      console.log("📊 Contas a Pagar do Mês:", {
+        month,
+        year,
+        total: accountsPayableTotal,
+        count: expensesData?.length || 0,
+      });
 
       let paidPayments = 0;
       let overduePayments = 0;
@@ -226,14 +236,8 @@ export function useDashboardData(month: number, year: number) {
         }
       });
 
-      // Calcular total de contas a pagar do mês
-      let monthExpensesTotal = 0;
-      expensesData?.forEach((expense) => {
-        monthExpensesTotal += Number(expense.amount) || 0;
-      });
-
-      // Receita Líquida = Receita Bruta (recebida) - Taxa Admin - Contas a Pagar
-      const netRevenue = receivedAmount - adminFeeTotal - monthExpensesTotal;
+      // Calcular receita líquida: Recebido - Taxa Admin - Contas a Pagar
+      const netRevenue = receivedAmount - adminFeeTotal - accountsPayableTotal;
 
       setDashboardData({
         totalProperties,
@@ -246,13 +250,13 @@ export function useDashboardData(month: number, year: number) {
         
         latePayments: overduePayments,
         receivedPayments: paidPayments,
-        expectedValue: expectedAmount + monthExpensesTotal,
+        expectedValue: expectedAmount + accountsPayableTotal,
 
         overduePayments,
         overdueAmount,
         completedPayments: paidPayments,
         dueTodayPayments,
-        expectedAmount: expectedAmount + monthExpensesTotal,
+        expectedAmount: expectedAmount + accountsPayableTotal,
         receivedAmount,
         grossRevenue: receivedAmount,
         netRevenue,

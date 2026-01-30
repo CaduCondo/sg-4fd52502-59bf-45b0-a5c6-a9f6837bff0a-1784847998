@@ -171,17 +171,18 @@ export function RentalFormDialog({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const validation = validateRentalForm({
-      propertyId: selectedPropertyId,
-      tenantId: selectedTenantId,
+    console.log("🔍 DEBUG INÍCIO - Valores no formulário:", {
+      selectedPropertyId,
+      selectedTenantId,
       startDate,
       paymentDay,
     });
 
-    if (!validation.isValid) {
+    // VALIDAÇÃO 1: Campos obrigatórios
+    if (!selectedPropertyId || !selectedTenantId || !startDate || !paymentDay) {
       toast({
         title: "Erro",
-        description: validation.error,
+        description: "Preencha todos os campos obrigatórios: Imóvel, Inquilino, Data Início e Dia Pagamento.",
         variant: "destructive",
       });
       return;
@@ -189,6 +190,11 @@ export function RentalFormDialog({
 
     const selectedProperty = properties.find((p) => p.id === selectedPropertyId);
     const selectedTenant = tenants.find((t) => t.id === selectedTenantId);
+
+    console.log("🔍 DEBUG - Imóvel e Inquilino encontrados:", {
+      property: selectedProperty,
+      tenant: selectedTenant,
+    });
 
     if (!selectedProperty || !selectedTenant) {
       toast({
@@ -227,16 +233,6 @@ export function RentalFormDialog({
       return;
     }
 
-    const valueValidation = validateRentalValue(totalValue);
-    if (!valueValidation.isValid) {
-      toast({
-        title: "Erro",
-        description: valueValidation.error,
-        variant: "destructive",
-      });
-      return;
-    }
-
     if (isDepositInstallment) {
       if (!depositInstallmentCount) {
         toast({
@@ -269,15 +265,15 @@ export function RentalFormDialog({
     try {
       setLoading(true);
 
-      // CRIAR OBJETO COM monthly_rent EXPLÍCITO
+      // CRIAR OBJETO COM TODOS OS CAMPOS OBRIGATÓRIOS
       const rentalData: any = {
-        property_id: selectedPropertyId,
-        tenant_id: selectedTenantId,
-        start_date: startDate,
+        property_id: selectedPropertyId, // STRING UUID
+        tenant_id: selectedTenantId, // STRING UUID
+        start_date: startDate, // STRING ISO DATE
         end_date: endDate || null,
-        payment_day: parseInt(paymentDay),
-        monthly_rent: totalValue, // VALOR CALCULADO
-        value: totalValue, // MESMO VALOR
+        payment_day: parseInt(paymentDay), // INTEGER
+        monthly_rent: totalValue, // NUMERIC - NUNCA NULL
+        value: totalValue, // NUMERIC
         deposit: parseCurrencyToNumber(securityDeposit) || 0,
         status: "active",
         is_active: true,
@@ -288,11 +284,26 @@ export function RentalFormDialog({
         has_partner_broker: hasPartnerBroker,
       };
 
-      console.log("📤 OBJETO FINAL sendo enviado:", rentalData);
+      console.log("📤 OBJETO FINAL sendo enviado:", {
+        ...rentalData,
+        property_id_type: typeof rentalData.property_id,
+        tenant_id_type: typeof rentalData.tenant_id,
+        monthly_rent_type: typeof rentalData.monthly_rent,
+        payment_day_type: typeof rentalData.payment_day,
+      });
 
-      // VALIDAÇÃO FINAL
+      // VALIDAÇÃO FINAL ANTES DE ENVIAR
+      if (!rentalData.property_id || rentalData.property_id === "") {
+        throw new Error("property_id está vazio ou null");
+      }
+      if (!rentalData.tenant_id || rentalData.tenant_id === "") {
+        throw new Error("tenant_id está vazio ou null");
+      }
       if (!rentalData.monthly_rent || rentalData.monthly_rent <= 0) {
         throw new Error(`monthly_rent inválido: ${rentalData.monthly_rent}`);
+      }
+      if (!rentalData.payment_day || isNaN(rentalData.payment_day)) {
+        throw new Error(`payment_day inválido: ${rentalData.payment_day}`);
       }
 
       if (isDepositInstallment && depositInstallmentCount) {
@@ -345,7 +356,11 @@ export function RentalFormDialog({
 
         setShowContract(true);
       } else {
+        console.log("🚀 Criando nova locação com dados:", rentalData);
+        
         const createdRental = await createRental(rentalData);
+        
+        console.log("✅ Locação criada com sucesso:", createdRental);
 
         await updateProperty(selectedPropertyId, { status: "occupied" });
 

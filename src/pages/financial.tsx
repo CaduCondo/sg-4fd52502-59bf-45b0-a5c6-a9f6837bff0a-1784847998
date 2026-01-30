@@ -119,14 +119,26 @@ export default function Financial() {
       setConfig(configData);
 
       // Buscar despesas de locais para o período selecionado
-      const expensesData = await locationExpenseService.getByPeriod(
-        parseInt(selectedMonth) + 1, // Mês é 0-indexed no JS, 1-indexed no banco
-        parseInt(selectedYear)
-      );
+      const { data: expensesData, error: expensesError } = await supabase
+        .from("location_expenses")
+        .select("amount, status")
+        .eq("reference_month", parseInt(selectedMonth) + 1)
+        .eq("reference_year", parseInt(selectedYear));
+      
+      if (expensesError) {
+        console.error("Error fetching location expenses:", expensesError);
+      }
       
       const totalExpenses = expensesData
-        .filter(e => e.status === 'paid')
-        .reduce((sum, e) => sum + e.amount, 0);
+        ? expensesData.reduce((sum, e) => sum + (e.amount || 0), 0)
+        : 0;
+      
+      console.log("💰 Contas a Pagar carregadas:", {
+        month: parseInt(selectedMonth) + 1,
+        year: parseInt(selectedYear),
+        totalExpenses,
+        count: expensesData?.length || 0
+      });
       
       setLocationExpenses(totalExpenses);
 
