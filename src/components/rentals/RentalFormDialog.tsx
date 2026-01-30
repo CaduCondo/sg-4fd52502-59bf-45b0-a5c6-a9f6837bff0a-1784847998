@@ -203,8 +203,21 @@ export function RentalFormDialog({
       return;
     }
 
+    // CRITICAL FIX: Calcular o valor total ANTES de qualquer validação
     const totalValue = calculateTotal();
-    const valueValidation = validateRentalValue(totalValue);
+    const finalMonthlyRent = totalValue > 0 ? totalValue : (selectedProperty.value || 0);
+    
+    // Se mesmo assim não tiver valor, bloquear
+    if (finalMonthlyRent <= 0) {
+      toast({
+        title: "Erro",
+        description: "O valor do aluguel não pode ser zero. Verifique o valor do imóvel.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const valueValidation = validateRentalValue(finalMonthlyRent);
 
     if (!valueValidation.isValid) {
       toast({
@@ -264,10 +277,14 @@ export function RentalFormDialog({
         hasPartnerBroker
       );
 
-      // CRITICAL FIX: Garantir que monthly_rent sempre tenha valor antes de enviar
-      const finalTotalValue = totalValue > 0 ? totalValue : (selectedProperty.value || 0);
-      rentalData.monthly_rent = finalTotalValue;
-      rentalData.value = finalTotalValue;
+      // CRITICAL FIX: FORÇAR monthly_rent com valor calculado
+      rentalData.monthly_rent = finalMonthlyRent;
+      rentalData.value = finalMonthlyRent;
+
+      // Garantir que não há valores undefined ou null
+      if (!rentalData.monthly_rent || rentalData.monthly_rent <= 0) {
+        throw new Error("Valor do aluguel inválido");
+      }
 
       if (isDepositInstallment && depositInstallmentCount) {
         rentalData.depositInstallments = parseInt(depositInstallmentCount);
@@ -296,7 +313,7 @@ export function RentalFormDialog({
 
       if (rental) {
         const updatedRental = await updateRentalService(rental.id, rentalData);
-        await updateFuturePayments(rental.id, finalTotalValue);
+        await updateFuturePayments(rental.id, finalMonthlyRent);
 
         if (rental.paymentDay !== parseInt(paymentDay)) {
           await updateFuturePaymentsOnPaymentDayChange(rental.id, parseInt(paymentDay));
