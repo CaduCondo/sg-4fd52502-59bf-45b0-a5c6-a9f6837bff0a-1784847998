@@ -561,7 +561,7 @@ export default function Financial() {
         </ScrollReveal>
 
         {/* KPI Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Receita Bruta</CardTitle>
@@ -582,7 +582,7 @@ export default function Financial() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-red-600">
-                - {formatCurrency(totals.adminFee)}
+                {totals.adminFee > 0 ? `- ${formatCurrency(totals.adminFee)}` : formatCurrency(0)}
               </div>
               <p className="text-xs text-muted-foreground">
                 {config?.admin_fee_percentage || 0}% sobre a receita bruta
@@ -597,7 +597,7 @@ export default function Financial() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-blue-600">
-                - {formatCurrency(totals.managementFee || 0)}
+                {totals.managementFee > 0 ? `- ${formatCurrency(totals.managementFee)}` : formatCurrency(0)}
               </div>
               <p className="text-xs text-muted-foreground">
                 {config?.management_fee_percentage || 0}% sobre a receita bruta
@@ -612,7 +612,7 @@ export default function Financial() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-orange-600">
-                - {formatCurrency(locationExpenses)}
+                {locationExpenses > 0 ? `- ${formatCurrency(locationExpenses)}` : formatCurrency(0)}
               </div>
               <p className="text-xs text-muted-foreground">
                 Água, luz e outras despesas dos locais
@@ -621,14 +621,15 @@ export default function Financial() {
           </Card>
 
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Receita Líquida</CardTitle>
+              <TrendingUp className="h-4 w-4 text-purple-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-purple-600">
+              <div className="text-2xl font-bold text-purple-600">
                 {formatCurrency(netRevenue)}
               </div>
-              <p className="text-xs text-muted-foreground mt-2">
+              <p className="text-xs text-muted-foreground">
                 Valor após subtração das taxas e contas
               </p>
             </CardContent>

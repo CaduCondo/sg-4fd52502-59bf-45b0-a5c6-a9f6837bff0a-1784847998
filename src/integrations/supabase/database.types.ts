@@ -62,6 +62,7 @@ export type Database = {
           id: string
           interest_rate_percentage: number | null
           late_fee_percentage: number | null
+          management_fee_percentage: number | null
           phone: string | null
           state: string | null
           updated_at: string | null
@@ -78,6 +79,7 @@ export type Database = {
           id?: string
           interest_rate_percentage?: number | null
           late_fee_percentage?: number | null
+          management_fee_percentage?: number | null
           phone?: string | null
           state?: string | null
           updated_at?: string | null
@@ -94,6 +96,7 @@ export type Database = {
           id?: string
           interest_rate_percentage?: number | null
           late_fee_percentage?: number | null
+          management_fee_percentage?: number | null
           phone?: string | null
           state?: string | null
           updated_at?: string | null
@@ -192,6 +195,53 @@ export type Database = {
             columns: ["rental_id"]
             isOneToOne: false
             referencedRelation: "rentals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      location_expenses: {
+        Row: {
+          amount: number
+          created_at: string | null
+          description: string
+          id: string
+          location_id: string
+          paid: boolean | null
+          payment_date: string | null
+          reference_month: number
+          reference_year: number
+          updated_at: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          description: string
+          id?: string
+          location_id: string
+          paid?: boolean | null
+          payment_date?: string | null
+          reference_month: number
+          reference_year: number
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          description?: string
+          id?: string
+          location_id?: string
+          paid?: boolean | null
+          payment_date?: string | null
+          reference_month?: number
+          reference_year?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "location_expenses_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
             referencedColumns: ["id"]
           },
         ]
@@ -427,6 +477,7 @@ export type Database = {
           property_id: string
           security_deposit: number | null
           start_date: string
+          status: string | null
           tenant_id: string
           updated_at: string | null
           value: number
@@ -459,6 +510,7 @@ export type Database = {
           property_id: string
           security_deposit?: number | null
           start_date: string
+          status?: string | null
           tenant_id: string
           updated_at?: string | null
           value: number
@@ -491,6 +543,7 @@ export type Database = {
           property_id?: string
           security_deposit?: number | null
           start_date?: string
+          status?: string | null
           tenant_id?: string
           updated_at?: string | null
           value?: number

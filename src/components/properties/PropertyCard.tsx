@@ -35,15 +35,15 @@ export function PropertyCard({ property, onCardClick, onDeleteClick }: PropertyC
     >
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
-          <div>
+          <div className="flex-1">
             <CardTitle className="text-lg font-bold text-primary">
               {property.location}
             </CardTitle>
             <p className="text-sm text-muted-foreground mt-1">
-              {property.propertyIdentifier || property.complement || "Sem identificador"}
+              {property.complement || property.propertyIdentifier || "Sem complemento"}
             </p>
           </div>
-          <div className="flex flex-col items-end gap-2">
+          <div className="flex flex-col items-end gap-2 ml-2">
             {getStatusBadge(property.status)}
             {hasImages && (
               <div className="flex items-center justify-center pr-1" title={`${property.images?.length || 0} fotos`}>

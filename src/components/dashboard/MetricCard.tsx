@@ -36,13 +36,13 @@ export function MetricCard({
 
           {/* Conteúdo */}
           <div className="space-y-1">
-            <p className="text-sm font-medium text-muted-foreground leading-tight">
+            <p className="text-sm font-medium text-muted-foreground">
               {title}
             </p>
-            <p className="text-3xl font-bold text-foreground leading-tight break-all">
+            <p className="text-3xl font-bold text-foreground">
               {displayValue}
             </p>
-            <p className="text-xs text-muted-foreground leading-tight">
+            <p className="text-xs text-muted-foreground">
               {subtitle}
             </p>
           </div>
