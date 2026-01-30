@@ -14,7 +14,7 @@ export function usePermissions() {
 
   const fetchRoleMenuPermissions = async () => {
     try {
-      console.log("🔍 Buscando permissões de menu...");
+      // console.log("🔍 Buscando permissões de menu...");
       const { data, error } = await supabase
         .from("role_menu_permissions")
         .select("*")
@@ -25,7 +25,7 @@ export function usePermissions() {
         throw error;
       }
       
-      console.log("✅ Permissões carregadas:", data);
+      // console.log("✅ Permissões carregadas:", data);
       
       const typedPermissions: RoleMenuPermission[] = (data || []).map(p => ({
         id: p.id,
@@ -34,7 +34,7 @@ export function usePermissions() {
         created_at: p.created_at
       }));
 
-      console.log("📊 Permissões tipadas:", typedPermissions);
+      // console.log("📊 Permissões tipadas:", typedPermissions);
       setRoleMenuPermissions(typedPermissions);
       return typedPermissions;
     } catch (error) {
