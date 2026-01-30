@@ -107,6 +107,7 @@ export function OverviewCards({ data }: OverviewCardsProps) {
           iconColor="text-red-600"
           iconBgClass="bg-red-50"
           borderColorClass="border-l-red-500"
+          valueClassName="text-sm"
         />
 
         <MetricCard

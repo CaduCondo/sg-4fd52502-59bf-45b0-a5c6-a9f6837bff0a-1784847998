@@ -183,34 +183,37 @@ export function useProperties(): UsePropertiesReturn {
     try {
       console.log("🗑️ Iniciando deleção do imóvel:", id);
       
-      // Remove da UI imediatamente para feedback visual rápido
+      // Remove imediatamente da UI para feedback visual rápido
+      const propertyToDelete = properties.find(p => p.id === id);
       setProperties(prev => prev.filter(p => p.id !== id));
       
-      // Deleta do banco
+      // Deleta do banco de dados
       await propertyService.remove(id);
       
-      console.log("✅ Imóvel deletado com sucesso");
+      console.log("✅ Imóvel deletado com sucesso do banco de dados");
       
       toast({
         title: "Sucesso!",
         description: "Imóvel deletado com sucesso.",
       });
       
-    } catch (error) {
+    } catch (error: any) {
       console.error("❌ Erro ao deletar imóvel:", error);
       
       // Recarrega dados em caso de erro para sincronizar estado
       await loadData();
       
+      const errorMessage = error?.message || "Não foi possível deletar o imóvel. Tente novamente.";
+      
       toast({
-        title: "Erro",
-        description: "Não foi possível deletar o imóvel. Tente novamente.",
+        title: "Erro ao deletar",
+        description: errorMessage,
         variant: "destructive",
       });
       
       throw error;
     }
-  }, [loadData, toast]);
+  }, [properties, loadData, toast]);
 
   useEffect(() => {
     loadData();

@@ -503,6 +503,7 @@ export type Database = {
           deposit_installments: number | null
           deposit_payment_date: string | null
           deposit_pix_code: string | null
+          deposit_value: number | null
           end_date: string | null
           garage_value: number | null
           has_garage: boolean | null
@@ -538,6 +539,7 @@ export type Database = {
           deposit_installments?: number | null
           deposit_payment_date?: string | null
           deposit_pix_code?: string | null
+          deposit_value?: number | null
           end_date?: string | null
           garage_value?: number | null
           has_garage?: boolean | null
@@ -573,6 +575,7 @@ export type Database = {
           deposit_installments?: number | null
           deposit_payment_date?: string | null
           deposit_pix_code?: string | null
+          deposit_value?: number | null
           end_date?: string | null
           garage_value?: number | null
           has_garage?: boolean | null

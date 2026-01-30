@@ -81,21 +81,26 @@ export function PermissionsTab({
   const [isFeeExemptionDialogOpen, setIsFeeExemptionDialogOpen] = useState(false);
   const [isLoadingPermissions, setIsLoadingPermissions] = useState(false);
   
-  // Estado local para controlar permissões sendo editadas
-  const [localPermissions, setLocalPermissions] = useState<Set<string>>(new Set());
+  // Estado local sincronizado com roleMenuPermissions
+  const [permissionsMap, setPermissionsMap] = useState<Map<string, boolean>>(new Map());
   const [isTogglingPermission, setIsTogglingPermission] = useState(false);
 
-  // Sincronizar permissões locais quando roleMenuPermissions mudar
+  // Sincronizar permissões quando roleMenuPermissions mudar
   useEffect(() => {
-    const permSet = new Set<string>();
+    console.log("🔄 Sincronizando permissões da tabela:", roleMenuPermissions);
+    const newMap = new Map<string, boolean>();
+    
     roleMenuPermissions.forEach(perm => {
-      permSet.add(`${perm.role}-${perm.menu_id}`);
+      const key = `${perm.role}-${perm.menu_id}`;
+      newMap.set(key, true); // Se existe na tabela, tem acesso
     });
-    setLocalPermissions(permSet);
+    
+    setPermissionsMap(newMap);
   }, [roleMenuPermissions]);
 
-  const getMenuPermission = (role: string, menuItem: string): boolean => {
-    return localPermissions.has(`${role}-${menuItem}`);
+  const hasPermission = (role: string, menuItem: string): boolean => {
+    const key = `${role}-${menuItem}`;
+    return permissionsMap.has(key) && permissionsMap.get(key) === true;
   };
 
   const togglePermission = async (role: string, menuItem: string) => {
@@ -103,18 +108,20 @@ export function PermissionsTab({
     
     setIsTogglingPermission(true);
     const key = `${role}-${menuItem}`;
-    const currentHasAccess = localPermissions.has(key);
+    const currentHasAccess = hasPermission(role, menuItem);
     const newHasAccess = !currentHasAccess;
     
+    console.log(`🔄 Toggle permission: ${role} - ${menuItem}, Current: ${currentHasAccess}, New: ${newHasAccess}`);
+    
     // Atualiza UI imediatamente
-    setLocalPermissions(prev => {
-      const newSet = new Set(prev);
+    setPermissionsMap(prev => {
+      const newMap = new Map(prev);
       if (newHasAccess) {
-        newSet.add(key);
+        newMap.set(key, true);
       } else {
-        newSet.delete(key);
+        newMap.delete(key);
       }
-      return newSet;
+      return newMap;
     });
     
     try {
@@ -122,14 +129,14 @@ export function PermissionsTab({
       
       if (!success) {
         // Reverte se falhar
-        setLocalPermissions(prev => {
-          const newSet = new Set(prev);
+        setPermissionsMap(prev => {
+          const newMap = new Map(prev);
           if (currentHasAccess) {
-            newSet.add(key);
+            newMap.set(key, true);
           } else {
-            newSet.delete(key);
+            newMap.delete(key);
           }
-          return newSet;
+          return newMap;
         });
         
         toast({
@@ -137,19 +144,27 @@ export function PermissionsTab({
           description: "Falha ao atualizar permissão",
           variant: "destructive",
         });
+      } else {
+        console.log("✅ Permissão atualizada com sucesso");
       }
     } catch (error) {
-      console.error("Erro ao alternar permissão:", error);
+      console.error("❌ Erro ao alternar permissão:", error);
       
       // Reverte em caso de erro
-      setLocalPermissions(prev => {
-        const newSet = new Set(prev);
+      setPermissionsMap(prev => {
+        const newMap = new Map(prev);
         if (currentHasAccess) {
-          newSet.add(key);
+          newMap.set(key, true);
         } else {
-          newSet.delete(key);
+          newMap.delete(key);
         }
-        return newSet;
+        return newMap;
+      });
+      
+      toast({
+        title: "Erro",
+        description: "Erro ao atualizar permissão. Tente novamente.",
+        variant: "destructive",
       });
     } finally {
       setIsTogglingPermission(false);
@@ -223,12 +238,12 @@ export function PermissionsTab({
                   <TableRow key={menuItem}>
                     <TableCell className="font-medium">{menuLabels[menuItem]}</TableCell>
                     {roles.map((role) => {
-                      const hasAccess = getMenuPermission(role, menuItem);
+                      const hasAccess = hasPermission(role, menuItem);
                       return (
                         <TableCell key={role} className="text-center">
                           <button
                             onClick={() => togglePermission(role, menuItem)}
-                            className="inline-flex items-center justify-center hover:opacity-80 transition-opacity"
+                            className="inline-flex items-center justify-center hover:opacity-80 transition-opacity disabled:opacity-50"
                             disabled={isLoading || isTogglingPermission}
                           >
                             {hasAccess ? (
