@@ -1,51 +1,43 @@
-import { useEffect, useState } from "react";
-import { useRouter } from "next/router";
-import Layout from "@/components/Layout";
-import { WelcomeCard } from "@/components/dashboard/WelcomeCard";
+import { useState } from "react";
+import { Layout } from "@/components/Layout";
 import { OverviewCards } from "@/components/dashboard/OverviewCards";
 import { AnalyticsCharts } from "@/components/dashboard/AnalyticsCharts";
-import { PeriodSelector } from "@/components/dashboard/PeriodSelector";
 import { useDashboardData } from "@/hooks/useDashboardData";
-import { useAuth } from "@/contexts/AuthContext";
-import { Loader2 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
+import { SEO } from "@/components/SEO";
+import { PeriodSelector } from "@/components/dashboard/PeriodSelector";
 
 export default function Dashboard() {
-  const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
-  const [period, setPeriod] = useState(30);
-  const { dashboardData, loading, error } = useDashboardData(period);
+  const currentDate = new Date();
+  const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth());
+  const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
 
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.push("/login");
-    }
-  }, [user, authLoading, router]);
+  const { dashboardData, loading, error, refresh } = useDashboardData(selectedMonth, selectedYear);
 
-  if (authLoading || loading) {
-    return (
-      <Layout>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      </Layout>
-    );
-  }
+  const handlePeriodChange = (month: number, year: number) => {
+    setSelectedMonth(month);
+    setSelectedYear(year);
+  };
 
   if (error) {
     return (
       <Layout>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <p className="text-destructive">Erro ao carregar dados do dashboard</p>
-        </div>
-      </Layout>
-    );
-  }
-
-  if (!dashboardData) {
-    return (
-      <Layout>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <p className="text-muted-foreground">Nenhum dado disponível</p>
+        <SEO title="Dashboard - Gerenciador de Locações" />
+        <div className="p-6">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Erro ao carregar dados do dashboard: {error}
+            </AlertDescription>
+          </Alert>
+          <button 
+            onClick={refresh}
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            Tentar Novamente
+          </button>
         </div>
       </Layout>
     );
@@ -53,18 +45,42 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      <div className="space-y-8">
-        {/* Header com boas-vindas e seletor de período */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <WelcomeCard userName={user?.user_metadata?.name || user?.email || "Usuário"} />
-          <PeriodSelector period={period} onPeriodChange={setPeriod} />
+      <SEO title="Dashboard - Gerenciador de Locações" />
+      <div className="p-6 space-y-8">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Dashboard</h1>
+          <PeriodSelector 
+            selectedMonth={selectedMonth} 
+            selectedYear={selectedYear} 
+            onPeriodChange={handlePeriodChange} 
+          />
         </div>
 
-        {/* Cards de métricas */}
-        <OverviewCards data={dashboardData} />
+        {loading ? (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+              {[...Array(10)].map((_, i) => (
+                <Skeleton key={i} className="h-32" />
+              ))}
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {[...Array(4)].map((_, i) => (
+                <Skeleton key={i} className="h-64" />
+              ))}
+            </div>
+          </div>
+        ) : (
+          <>
+            <OverviewCards data={dashboardData} />
+            {/* Charts Section */}
+            <AnalyticsCharts 
+              revenueData={dashboardData?.revenueData}
+              occupancyData={dashboardData?.occupancyData}
+            />
 
-        {/* Gráficos e análises */}
-        <AnalyticsCharts data={dashboardData} period={period} />
+            {/* Recent Activity & Upcoming Payments */}
+          </>
+        )}
       </div>
     </Layout>
   );
