@@ -365,7 +365,6 @@ export function RentalFormDialog({
           tenantId: createdRental.tenant_id,
           startDate: createdRental.start_date,
           endDate: createdRental.end_date,
-          monthlyRent: Number(createdRental.monthly_rent),
           paymentDay: Number(createdRental.payment_day),
           depositAmount: Number(createdRental.deposit),
           status: createdRental.status as "active" | "terminated" | "pending",
