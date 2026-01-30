@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
-import Layout from "@/components/Layout";
+import { Layout } from "@/components/Layout";
 import { WelcomeCard } from "@/components/dashboard/WelcomeCard";
 import { OverviewCards } from "@/components/dashboard/OverviewCards";
 import { AnalyticsCharts } from "@/components/dashboard/AnalyticsCharts";
