@@ -241,6 +241,7 @@ export type Database = {
       location_expenses: {
         Row: {
           amount: number
+          attachments: string[] | null
           created_at: string | null
           description: string
           id: string
@@ -253,6 +254,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          attachments?: string[] | null
           created_at?: string | null
           description: string
           id?: string
@@ -265,6 +267,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          attachments?: string[] | null
           created_at?: string | null
           description?: string
           id?: string

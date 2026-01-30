@@ -20,7 +20,6 @@ interface DashboardData {
   revenueData?: { month: string; value: number }[];
   occupancyData?: { month: string; rate: number }[];
   
-  // Dashboard fields
   overduePayments: number;
   overdueAmount: number;
   dueTodayPayments: number;
@@ -75,7 +74,6 @@ export function useDashboardData(month: number, year: number) {
     setError(null);
 
     try {
-      // Verificar se o usuário é financeiro e tem permissões de local
       const { data: userData } = await supabase
         .from("system_users")
         .select("role")
@@ -93,14 +91,12 @@ export function useDashboardData(month: number, year: number) {
         allowedLocationIds = permissions?.map(p => p.location_id) || [];
         
         if (allowedLocationIds.length === 0) {
-          // Usuário financeiro sem permissões não vê nada
           setDashboardData(DEFAULT_DATA);
           setLoading(false);
           return;
         }
       }
 
-      // 1. Buscar imóveis (filtrar por localização se necessário)
       let propertiesQuery = supabase
         .from("properties")
         .select("id, status, location_id");
@@ -122,7 +118,6 @@ export function useDashboardData(month: number, year: number) {
         ? (rentedProperties / totalProperties) * 100 
         : 0;
 
-      // 2. Buscar inquilinos (filtrar por imóveis permitidos)
       const propertyIds = properties?.map(p => p.id) || [];
       
       let tenantsQuery = supabase
@@ -130,7 +125,6 @@ export function useDashboardData(month: number, year: number) {
         .select("id, status");
 
       if (allowedLocationIds && propertyIds.length > 0) {
-        // Buscar apenas inquilinos com locações nos imóveis permitidos
         const { data: rentalsData } = await supabase
           .from("rentals")
           .select("tenant_id")
@@ -140,7 +134,7 @@ export function useDashboardData(month: number, year: number) {
         if (tenantIds.length > 0) {
           tenantsQuery = tenantsQuery.in("id", tenantIds);
         } else {
-          tenantsQuery = tenantsQuery.eq("id", "00000000-0000-0000-0000-000000000000"); // Nenhum resultado
+          tenantsQuery = tenantsQuery.eq("id", "00000000-0000-0000-0000-000000000000");
         }
       }
 
@@ -151,7 +145,6 @@ export function useDashboardData(month: number, year: number) {
       const totalTenants = tenants?.length || 0;
       const activeTenants = tenants?.filter(t => t.status === "active").length || 0;
 
-      // 3. Buscar contratos ativos (filtrar por imóveis permitidos)
       let rentalsQuery = supabase
         .from("rentals")
         .select("id", { count: 'exact', head: true })
@@ -165,7 +158,6 @@ export function useDashboardData(month: number, year: number) {
 
       if (rentalError) throw rentalError;
 
-      // 4. Buscar pagamentos do período (filtrar por imóveis permitidos)
       const startDate = new Date(year, month - 1, 1).toISOString();
       const endDate = new Date(year, month, 0, 23, 59, 59).toISOString();
 
@@ -176,7 +168,6 @@ export function useDashboardData(month: number, year: number) {
         .lte("due_date", endDate);
 
       if (allowedLocationIds && propertyIds.length > 0) {
-        // Buscar rental_ids dos imóveis permitidos
         const { data: rentalIds } = await supabase
           .from("rentals")
           .select("id")
@@ -186,7 +177,7 @@ export function useDashboardData(month: number, year: number) {
         if (validRentalIds.length > 0) {
           paymentsQuery = paymentsQuery.in("rental_id", validRentalIds);
         } else {
-          paymentsQuery = paymentsQuery.eq("rental_id", "00000000-0000-0000-0000-000000000000"); // Nenhum resultado
+          paymentsQuery = paymentsQuery.eq("rental_id", "00000000-0000-0000-0000-000000000000");
         }
       }
 
@@ -194,7 +185,6 @@ export function useDashboardData(month: number, year: number) {
 
       if (paymentsError) throw paymentsError;
 
-      // Calcular métricas de pagamentos
       let paidPayments = 0;
       let overduePayments = 0;
       let overdueAmount = 0;
@@ -234,12 +224,10 @@ export function useDashboardData(month: number, year: number) {
         activeTenants,
         activeContracts: activeContracts || 0,
         
-        // Legacy fields
         latePayments: overduePayments,
         receivedPayments: paidPayments,
         expectedValue: expectedAmount,
 
-        // Current fields
         overduePayments,
         overdueAmount,
         completedPayments: paidPayments,
@@ -259,7 +247,6 @@ export function useDashboardData(month: number, year: number) {
     } catch (err: any) {
       console.error("Erro ao carregar dados do dashboard:", err);
       setError(err.message || "Erro desconhecido ao carregar dados.");
-      // Não mostrar toast - pode ser simplesmente que não há dados ainda
     } finally {
       setLoading(false);
     }
