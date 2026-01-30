@@ -31,15 +31,11 @@ export function useTenants() {
       setLocations(locationsData);
     } catch (error) {
       console.error("Error loading tenants:", error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível carregar os inquilinos.",
-        variant: "destructive",
-      });
+      // Não mostrar toast de erro - pode ser simplesmente que não há dados ainda
     } finally {
       setIsLoading(false);
     }
-  }, [toast]);
+  }, []);
 
   useEffect(() => {
     // loadData é memorizado por useCallback, então este efeito não causa loops

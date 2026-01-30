@@ -77,6 +77,7 @@ export function useProperties(): UsePropertiesReturn {
       setLocations(locationsData);
     } catch (error) {
       console.error("Erro ao carregar dados:", error);
+      // Não mostrar toast de erro - pode ser simplesmente que não há dados ainda
     } finally {
       setLoading(false);
     }

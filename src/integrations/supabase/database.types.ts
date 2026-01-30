@@ -90,6 +90,7 @@ export type Database = {
         Row: {
           address: string | null
           admin_fee_percentage: number
+          broker_fee_percentage: number | null
           city: string | null
           cnpj: string | null
           company_name: string | null
@@ -107,6 +108,7 @@ export type Database = {
         Insert: {
           address?: string | null
           admin_fee_percentage?: number
+          broker_fee_percentage?: number | null
           city?: string | null
           cnpj?: string | null
           company_name?: string | null
@@ -124,6 +126,7 @@ export type Database = {
         Update: {
           address?: string | null
           admin_fee_percentage?: number
+          broker_fee_percentage?: number | null
           city?: string | null
           cnpj?: string | null
           company_name?: string | null
@@ -816,7 +819,18 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      dashboard_metrics: {
+        Row: {
+          active_rentals: number | null
+          active_tenants: number | null
+          available_properties: number | null
+          occupied_properties: number | null
+          total_properties: number | null
+          total_tenants: number | null
+          unavailable_properties: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       authenticate_user_secure: {
@@ -915,6 +929,7 @@ export type Database = {
       }
       get_system_user_id: { Args: never; Returns: string }
       hash_password: { Args: { plain_password: string }; Returns: string }
+      is_valid_uuid: { Args: { uuid_text: string }; Returns: boolean }
       migrate_system_user_to_auth: {
         Args: { p_email: string; p_password: string; p_system_user_id: string }
         Returns: string

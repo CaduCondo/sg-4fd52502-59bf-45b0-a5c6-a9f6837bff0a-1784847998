@@ -29,24 +29,24 @@ export function MetricCard({
 
   if (layout === "horizontal") {
     return (
-      <Card className={cn("border-l-4 hover:shadow-lg transition-all duration-200", borderColorClass)}>
-        <CardContent className="p-6">
-          <div className="flex items-start gap-4">
-            {/* Ícone à esquerda */}
-            <div className={cn("p-2 rounded-lg flex-shrink-0", iconBgClass)}>
+      <Card className={cn("border-l-4 hover:shadow-md transition-all duration-200", borderColorClass)}>
+        <CardContent className="p-5">
+          <div className="flex items-start gap-3">
+            {/* Ícone à esquerda - mais compacto */}
+            <div className={cn("p-2.5 rounded-lg flex-shrink-0", iconBgClass)}>
               <Icon className={cn("h-5 w-5", iconColor)} />
             </div>
             
-            {/* Conteúdo */}
+            {/* Conteúdo alinhado à esquerda */}
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-muted-foreground mb-1">
+              <p className="text-xs font-medium text-muted-foreground mb-0.5 leading-tight">
                 {title}
               </p>
-              <p className="text-2xl font-bold text-foreground mb-1">
+              <p className="text-2xl font-bold text-foreground mb-0.5 leading-tight">
                 {displayValue}
               </p>
               {secondaryInfo && (
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground leading-tight">
                   {secondaryInfo}
                 </p>
               )}
@@ -58,7 +58,7 @@ export function MetricCard({
   }
 
   return (
-    <Card className={cn("border-l-4 hover:shadow-lg transition-all duration-200", borderColorClass)}>
+    <Card className={cn("border-l-4 hover:shadow-md transition-all duration-200", borderColorClass)}>
       <CardContent className="p-6">
         <div className="space-y-3">
           {/* Título */}

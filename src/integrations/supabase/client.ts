@@ -15,7 +15,56 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     detectSessionInUrl: false,
     storageKey: 'rental-auth-token',
   },
+  global: {
+    headers: {
+      'x-client-info': 'rental-management',
+    },
+  },
+  db: {
+    schema: 'public',
+  },
+  realtime: {
+    params: {
+      eventsPerSecond: 2,
+    },
+  },
 });
+
+// Reconexão automática em caso de erro de rede
+let reconnectTimeout: NodeJS.Timeout | null = null;
+
+const handleNetworkError = () => {
+  if (reconnectTimeout) return;
+  
+  console.log('🔄 Detectado problema de conexão, tentando reconectar...');
+  
+  reconnectTimeout = setTimeout(async () => {
+    try {
+      // Tenta fazer uma requisição simples para verificar conexão
+      const { error } = await supabase.from('properties').select('id').limit(1);
+      
+      if (!error) {
+        console.log('✅ Reconexão bem-sucedida');
+      }
+    } catch (err) {
+      console.error('❌ Falha na reconexão:', err);
+    } finally {
+      reconnectTimeout = null;
+    }
+  }, 5000); // Tenta reconectar após 5 segundos
+};
+
+// Monitorar erros de rede
+if (typeof window !== 'undefined') {
+  window.addEventListener('online', () => {
+    console.log('🌐 Conexão restaurada');
+    handleNetworkError();
+  });
+  
+  window.addEventListener('offline', () => {
+    console.log('📡 Conexão perdida');
+  });
+}
 
 // Helper function to set session after manual login
 export const setSupabaseSession = async (accessToken: string, refreshToken: string) => {
@@ -26,6 +75,7 @@ export const setSupabaseSession = async (accessToken: string, refreshToken: stri
   
   if (error) {
     console.error('❌ Erro ao configurar sessão Supabase:', error);
+    handleNetworkError();
     return false;
   }
   
@@ -35,12 +85,19 @@ export const setSupabaseSession = async (accessToken: string, refreshToken: stri
 
 // Helper to get current session
 export const getSupabaseSession = async () => {
-  const { data: { session }, error } = await supabase.auth.getSession();
-  
-  if (error) {
-    console.error('❌ Erro ao obter sessão:', error);
+  try {
+    const { data: { session }, error } = await supabase.auth.getSession();
+    
+    if (error) {
+      console.error('❌ Erro ao obter sessão:', error);
+      handleNetworkError();
+      return null;
+    }
+    
+    return session;
+  } catch (err) {
+    console.error('❌ Erro crítico ao obter sessão:', err);
+    handleNetworkError();
     return null;
   }
-  
-  return session;
 };

@@ -16,7 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 interface FeeExemptionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  user?: SystemUser;
+  user: SystemUser;
   locations: Location[];
   onSave: (locationIds: string[]) => Promise<boolean>;
   getUserExemptions: (userId: string) => Promise<string[]>;
@@ -34,14 +34,16 @@ export function FeeExemptionDialog({
   const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   useEffect(() => {
     const loadExemptions = async () => {
-      if (user && open) {
+      if (user && open && !hasLoaded) {
         setIsLoading(true);
         try {
           const exemptions = await getUserExemptions(user.id);
           setSelectedLocations(exemptions);
+          setHasLoaded(true);
         } catch (error) {
           console.error("Erro ao carregar isenções:", error);
           toast({
@@ -55,7 +57,14 @@ export function FeeExemptionDialog({
       }
     };
     loadExemptions();
-  }, [user, open, getUserExemptions]);
+  }, [user, open, hasLoaded, getUserExemptions, toast]);
+
+  // Reset quando o dialog fechar
+  useEffect(() => {
+    if (!open) {
+      setHasLoaded(false);
+    }
+  }, [open]);
 
   const handleToggle = (locationId: string) => {
     setSelectedLocations((prev) =>
@@ -111,21 +120,23 @@ export function FeeExemptionDialog({
           ) : locations.length === 0 ? (
             <p className="text-sm text-muted-foreground">Nenhum local cadastrado.</p>
           ) : (
-            locations.map((location) => (
-              <div key={location.id} className="flex items-center space-x-2">
-                <Checkbox
-                  id={`location-${location.id}`}
-                  checked={selectedLocations.includes(location.id)}
-                  onCheckedChange={() => handleToggle(location.id)}
-                />
-                <Label
-                  htmlFor={`location-${location.id}`}
-                  className="text-sm font-normal cursor-pointer"
-                >
-                  {location.name}
-                </Label>
-              </div>
-            ))
+            <div className="space-y-2 max-h-[400px] overflow-y-auto">
+              {locations.map((location) => (
+                <div key={location.id} className="flex items-center space-x-2 p-2 hover:bg-accent rounded">
+                  <Checkbox
+                    id={`location-${location.id}`}
+                    checked={selectedLocations.includes(location.id)}
+                    onCheckedChange={() => handleToggle(location.id)}
+                  />
+                  <Label
+                    htmlFor={`location-${location.id}`}
+                    className="text-sm font-normal cursor-pointer flex-1"
+                  >
+                    {location.name}
+                  </Label>
+                </div>
+              ))}
+            </div>
           )}
         </div>
         <DialogFooter>

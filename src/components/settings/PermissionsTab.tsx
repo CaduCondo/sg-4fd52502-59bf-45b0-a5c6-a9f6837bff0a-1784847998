@@ -81,12 +81,15 @@ export function PermissionsTab({
 
   const getMenuPermission = (role: string, menuItem: string): boolean => {
     const perm = roleMenuPermissions.find((p) => p.role === role && p.menu_id === menuItem);
-    return perm ? true : false;
+    return perm !== undefined;
   };
 
   const togglePermission = async (role: string, menuItem: string) => {
     const hasAccess = getMenuPermission(role, menuItem);
-    await onUpdateRoleMenuPermission(role, menuItem, !hasAccess);
+    const success = await onUpdateRoleMenuPermission(role, menuItem, !hasAccess);
+    if (!success) {
+      console.error("Falha ao atualizar permissão");
+    }
   };
 
   const openLocationPermissionsDialog = async (user: SystemUser) => {
@@ -161,7 +164,8 @@ export function PermissionsTab({
                         <TableCell key={role} className="text-center">
                           <button
                             onClick={() => togglePermission(role, menuItem)}
-                            className="inline-flex items-center justify-center"
+                            className="inline-flex items-center justify-center hover:opacity-80 transition-opacity"
+                            disabled={isLoading}
                           >
                             {hasAccess ? (
                               <CheckCircle2 className="h-6 w-6 text-green-600 dark:text-green-400" />
@@ -309,14 +313,16 @@ export function PermissionsTab({
       </Dialog>
 
       {/* Dialog de Isenção de Taxa */}
-      <FeeExemptionDialog
-        open={isFeeExemptionDialogOpen}
-        onOpenChange={setIsFeeExemptionDialogOpen}
-        user={selectedUserForFeeExemption || undefined}
-        locations={locations}
-        onSave={handleSaveFeeExemptions}
-        getUserExemptions={getUserFeeExemptions}
-      />
+      {isFeeExemptionDialogOpen && selectedUserForFeeExemption && (
+        <FeeExemptionDialog
+          open={isFeeExemptionDialogOpen}
+          onOpenChange={setIsFeeExemptionDialogOpen}
+          user={selectedUserForFeeExemption}
+          locations={locations}
+          onSave={handleSaveFeeExemptions}
+          getUserExemptions={getUserFeeExemptions}
+        />
+      )}
     </div>
   );
 }
