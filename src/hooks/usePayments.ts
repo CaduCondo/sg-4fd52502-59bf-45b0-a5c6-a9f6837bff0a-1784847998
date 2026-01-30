@@ -39,11 +39,7 @@ export function usePayments() {
       setTenants(tenantsData);
     } catch (error) {
       console.error("Error loading data:", error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível carregar os dados.",
-        variant: "destructive",
-      });
+      // Não mostrar toast - pode ser simplesmente que não há dados ainda
     } finally {
       setLoading(false);
     }

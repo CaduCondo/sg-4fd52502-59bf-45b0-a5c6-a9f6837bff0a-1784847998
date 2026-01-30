@@ -259,11 +259,7 @@ export function useDashboardData(month: number, year: number) {
     } catch (err: any) {
       console.error("Erro ao carregar dados do dashboard:", err);
       setError(err.message || "Erro desconhecido ao carregar dados.");
-      toast({
-        title: "Erro",
-        description: "Não foi possível carregar os dados do dashboard.",
-        variant: "destructive",
-      });
+      // Não mostrar toast - pode ser simplesmente que não há dados ainda
     } finally {
       setLoading(false);
     }
