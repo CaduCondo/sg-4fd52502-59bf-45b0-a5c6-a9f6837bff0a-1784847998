@@ -203,24 +203,26 @@ export function RentalFormDialog({
       return;
     }
 
-    // CORREÇÃO DEFINITIVA: Calcular totalValue corretamente
+    // CORREÇÃO CRÍTICA: Calcular totalValue ANTES de tudo
     const baseRent = selectedProperty.value || selectedProperty.monthlyRent || 0;
     const garageAmount = hasGarage && garageValue ? parseCurrencyToNumber(garageValue) : 0;
     const totalValue = baseRent + garageAmount;
     
-    console.log("🔍 DEBUG - Valores:", {
+    console.log("🔍 DEBUG FINAL - Valores:", {
       baseRent,
       garageAmount,
       totalValue,
       propertyValue: selectedProperty.value,
-      propertyMonthlyRent: selectedProperty.monthlyRent
+      propertyMonthlyRent: selectedProperty.monthlyRent,
+      hasGarage,
+      garageValue
     });
     
-    // Validação: Valor DEVE ser maior que 0
-    if (!totalValue || totalValue <= 0) {
+    // Validação CRÍTICA: Valor NUNCA pode ser 0 ou null
+    if (!totalValue || totalValue <= 0 || isNaN(totalValue)) {
       toast({
-        title: "Erro",
-        description: "O valor do aluguel não pode ser zero. Verifique o valor do imóvel selecionado.",
+        title: "Erro Crítico",
+        description: `O valor do aluguel é inválido (${totalValue}). Verifique o valor do imóvel selecionado.`,
         variant: "destructive",
       });
       return;
@@ -272,6 +274,7 @@ export function RentalFormDialog({
     try {
       setLoading(true);
 
+      // PREPARAR dados base
       const rentalData: any = prepareRentalData(
         selectedPropertyId,
         selectedTenantId,
@@ -286,15 +289,15 @@ export function RentalFormDialog({
         hasPartnerBroker
       );
 
-      // CORREÇÃO CRÍTICA: FORÇAR monthly_rent com valor validado
+      // CORREÇÃO DEFINITIVA: FORÇAR monthly_rent SEMPRE
       rentalData.monthly_rent = totalValue;
       rentalData.value = totalValue;
 
-      console.log("🚀 DEBUG - Dados enviados:", rentalData);
+      console.log("🚀 DEBUG - Dados FINAIS enviados:", rentalData);
 
-      // Validação final antes de enviar
-      if (!rentalData.monthly_rent || rentalData.monthly_rent <= 0) {
-        throw new Error("Valor do aluguel inválido após preparação dos dados");
+      // Validação FINAL antes de enviar
+      if (!rentalData.monthly_rent || rentalData.monthly_rent <= 0 || isNaN(rentalData.monthly_rent)) {
+        throw new Error(`Valor do aluguel inválido após preparação: ${rentalData.monthly_rent}`);
       }
 
       if (isDepositInstallment && depositInstallmentCount) {

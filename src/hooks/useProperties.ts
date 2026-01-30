@@ -122,7 +122,7 @@ export function useProperties(): UsePropertiesReturn {
 
     const propertyData = {
       locationId: formData.location_id,
-      location: selectedLocation?.name,
+      location: selectedLocation.name,
       propertyIdentifier: formData.property_identifier,
       complement: formData.complement,
       rooms: Number(formData.rooms) || 0,
@@ -142,11 +142,13 @@ export function useProperties(): UsePropertiesReturn {
       status: "available",
     });
     
-    // CRÍTICO: Adicionar location_id ao objeto retornado para garantir que apareça no card
+    // CRÍTICO: Adicionar TODOS os campos necessários ao objeto retornado
     const propertyWithLocation = {
       ...newProperty,
       locationId: formData.location_id,
       location_id: formData.location_id,
+      location: selectedLocation.name, // Nome do local
+      locationName: selectedLocation.name, // Nome do local alternativo
     };
     
     setProperties([propertyWithLocation, ...properties]);

@@ -247,12 +247,14 @@ export type Database = {
           expense_type: string
           id: string
           location_id: string
+          month: number | null
           paid: boolean | null
           payment_date: string | null
           reference_month: number
           reference_year: number
           status: string
           updated_at: string | null
+          year: number | null
         }
         Insert: {
           amount: number
@@ -262,12 +264,14 @@ export type Database = {
           expense_type?: string
           id?: string
           location_id: string
+          month?: number | null
           paid?: boolean | null
           payment_date?: string | null
           reference_month: number
           reference_year: number
           status?: string
           updated_at?: string | null
+          year?: number | null
         }
         Update: {
           amount?: number
@@ -277,12 +281,14 @@ export type Database = {
           expense_type?: string
           id?: string
           location_id?: string
+          month?: number | null
           paid?: boolean | null
           payment_date?: string | null
           reference_month?: number
           reference_year?: number
           status?: string
           updated_at?: string | null
+          year?: number | null
         }
         Relationships: [
           {

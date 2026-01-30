@@ -189,8 +189,8 @@ export function useDashboardData(month: number, year: number) {
       let expensesQuery = supabase
         .from("location_expenses")
         .select("amount, status, location_id")
-        .gte("month", `${year}-${String(month).padStart(2, "0")}-01`)
-        .lte("month", `${year}-${String(month).padStart(2, "0")}-31`);
+        .eq("reference_month", month)
+        .eq("reference_year", year);
 
       if (allowedLocationIds) {
         expensesQuery = expensesQuery.in("location_id", allowedLocationIds);
@@ -226,15 +226,17 @@ export function useDashboardData(month: number, year: number) {
         }
       });
 
-      // Adicionar contas a pagar ao valor esperado
+      // Calcular total de contas a pagar
       let expensesTotal = 0;
       expensesData?.forEach((expense) => {
         expensesTotal += Number(expense.amount) || 0;
       });
 
-      expectedAmount += expensesTotal;
+      // NÃO adicionar ao expectedAmount - contas a pagar são separadas
+      // expectedAmount continua sendo apenas aluguéis
 
-      const netRevenue = receivedAmount - adminFeeTotal;
+      // Receita líquida = Receita bruta - taxa admin - contas a pagar
+      const netRevenue = receivedAmount - adminFeeTotal - expensesTotal;
 
       setDashboardData({
         totalProperties,

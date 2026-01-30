@@ -22,6 +22,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { 
   Save, 
   MapPin, 
@@ -102,6 +112,7 @@ export default function Settings() {
   const [searchLocation, setSearchLocation] = useState("");
   const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false);
   const [editingLocation, setEditingLocation] = useState<Location | null>(null);
+  const [isEditingLocation, setIsEditingLocation] = useState(false);
   const [locationForm, setLocationForm] = useState({
     name: "",
     street: "",
@@ -113,6 +124,7 @@ export default function Settings() {
     zip_code: "",
   });
   const [selectedLocationForExpenses, setSelectedLocationForExpenses] = useState<Location | null>(null);
+  const [locationToDelete, setLocationToDelete] = useState<Location | null>(null);
 
   // Use custom hooks for users and permissions
   const { 
@@ -127,7 +139,7 @@ export default function Settings() {
 
   const { 
     users, 
-    isLoading: usersLoading, // Rename exposed isLoading to usersLoading
+    isLoading: usersLoading,
     error: usersError, 
     refresh: refreshUsers,
     handleCreateUser,
@@ -273,6 +285,7 @@ export default function Settings() {
 
       setIsLocationDialogOpen(false);
       setEditingLocation(null);
+      setIsEditingLocation(false);
       setLocationForm({
         name: "",
         street: "",
@@ -297,6 +310,7 @@ export default function Settings() {
   const openLocationDialog = (location?: Location) => {
     if (location) {
       setEditingLocation(location);
+      setIsEditingLocation(false);
       setLocationForm({
         name: location.name,
         street: location.street || "",
@@ -309,6 +323,7 @@ export default function Settings() {
       });
     } else {
       setEditingLocation(null);
+      setIsEditingLocation(true);
       setLocationForm({
         name: "",
         street: "",
@@ -323,16 +338,24 @@ export default function Settings() {
     setIsLocationDialogOpen(true);
   };
 
-  const handleDeleteLocation = async (locationId: string) => {
-    if (!confirm("Tem certeza que deseja excluir este local?")) return;
+  const confirmDeleteLocation = async () => {
+    if (!locationToDelete) return;
 
     try {
-      await locationService.deleteLocation(locationId);
-      toast({ title: "Local excluído com sucesso!" });
+      await locationService.deleteLocation(locationToDelete.id);
+      toast({ 
+        title: "Sucesso!",
+        description: "Local excluído com sucesso." 
+      });
+      setLocationToDelete(null);
       loadLocations();
     } catch (error) {
       console.error("Erro ao excluir local:", error);
-      toast({ title: "Erro ao excluir local", variant: "destructive" });
+      toast({ 
+        title: "Erro",
+        description: "Não foi possível excluir o local.",
+        variant: "destructive" 
+      });
     }
   };
 
@@ -717,10 +740,7 @@ export default function Settings() {
                       <div
                         key={location.id}
                         className="flex items-start justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors cursor-pointer"
-                        onClick={() => {
-                          // Navegar para tela de visualização do local
-                          window.location.href = `/locations/${location.id}`;
-                        }}
+                        onClick={() => openLocationDialog(location)}
                       >
                         <div className="flex-1 space-y-1">
                           <h4 className="font-semibold flex items-center gap-2">
@@ -756,7 +776,7 @@ export default function Settings() {
                             }}
                           >
                             <Wallet className="h-3 w-3" />
-                            Gerenciar Contas
+                            Contas
                           </Button>
                           <Button
                             variant="outline"
@@ -764,7 +784,7 @@ export default function Settings() {
                             className="gap-2 text-destructive hover:bg-destructive/10"
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleDeleteLocation(location.id);
+                              setLocationToDelete(location);
                             }}
                           >
                             <Trash2 className="h-3 w-3" />
@@ -786,10 +806,32 @@ export default function Settings() {
         </Tabs>
 
         {/* DIALOG DE LOCAL */}
-        <Dialog open={isLocationDialogOpen} onOpenChange={setIsLocationDialogOpen}>
+        <Dialog open={isLocationDialogOpen} onOpenChange={(open) => {
+          if (!open) {
+            setIsLocationDialogOpen(false);
+            setEditingLocation(null);
+            setIsEditingLocation(false);
+            setLocationForm({
+              name: "",
+              street: "",
+              number: "",
+              complement: "",
+              neighborhood: "",
+              city: "",
+              state: "",
+              zip_code: "",
+            });
+          }
+        }}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>{editingLocation ? "Editar Local" : "Novo Local"}</DialogTitle>
+              <DialogTitle>
+                {editingLocation && !isEditingLocation
+                  ? "Visualização do Local"
+                  : editingLocation && isEditingLocation
+                  ? "Edição do Local"
+                  : "Novo Local"}
+              </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleLocationSubmit} className="space-y-4">
               <div className="space-y-2">
@@ -800,6 +842,7 @@ export default function Settings() {
                   onChange={(e) => setLocationForm({ ...locationForm, name: e.target.value })}
                   placeholder="Ex: Casa 1, Apartamento A, Loja Centro"
                   required
+                  disabled={editingLocation && !isEditingLocation}
                 />
               </div>
 
@@ -819,6 +862,7 @@ export default function Settings() {
                   placeholder="00000-000"
                   maxLength={9}
                   required
+                  disabled={editingLocation && !isEditingLocation}
                 />
               </div>
 
@@ -831,6 +875,7 @@ export default function Settings() {
                     onChange={(e) => setLocationForm({ ...locationForm, street: e.target.value })}
                     placeholder="Rua, Avenida, etc."
                     required
+                    disabled={editingLocation && !isEditingLocation}
                   />
                 </div>
 
@@ -842,6 +887,7 @@ export default function Settings() {
                     onChange={(e) => setLocationForm({ ...locationForm, number: e.target.value })}
                     placeholder="123"
                     required
+                    disabled={editingLocation && !isEditingLocation}
                   />
                 </div>
               </div>
@@ -853,6 +899,7 @@ export default function Settings() {
                   value={locationForm.complement}
                   onChange={(e) => setLocationForm({ ...locationForm, complement: e.target.value })}
                   placeholder="Bloco, Andar, Sala, etc."
+                  disabled={editingLocation && !isEditingLocation}
                 />
               </div>
 
@@ -865,6 +912,7 @@ export default function Settings() {
                     onChange={(e) => setLocationForm({ ...locationForm, neighborhood: e.target.value })}
                     placeholder="Centro, Jardins, etc."
                     required
+                    disabled={editingLocation && !isEditingLocation}
                   />
                 </div>
 
@@ -876,6 +924,7 @@ export default function Settings() {
                     onChange={(e) => setLocationForm({ ...locationForm, city: e.target.value })}
                     placeholder="São Paulo"
                     required
+                    disabled={editingLocation && !isEditingLocation}
                   />
                 </div>
               </div>
@@ -885,6 +934,7 @@ export default function Settings() {
                 <Select
                   value={locationForm.state}
                   onValueChange={(value) => setLocationForm({ ...locationForm, state: value })}
+                  disabled={editingLocation && !isEditingLocation}
                 >
                   <SelectTrigger id="locationState">
                     <SelectValue placeholder="Selecione o estado" />
@@ -922,33 +972,84 @@ export default function Settings() {
               </div>
 
               <div className="flex justify-end gap-2 pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setIsLocationDialogOpen(false);
-                    setEditingLocation(null);
-                    setLocationForm({
-                      name: "",
-                      street: "",
-                      number: "",
-                      complement: "",
-                      neighborhood: "",
-                      city: "",
-                      state: "",
-                      zip_code: "",
-                    });
-                  }}
-                >
-                  Cancelar
-                </Button>
-                <Button type="submit">
-                  {editingLocation ? "Atualizar" : "Cadastrar"} Local
-                </Button>
+                {editingLocation && !isEditingLocation ? (
+                  <>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setIsLocationDialogOpen(false);
+                        setEditingLocation(null);
+                        setIsEditingLocation(false);
+                      }}
+                    >
+                      Fechar
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => setIsEditingLocation(true)}
+                    >
+                      Editar
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        if (editingLocation && isEditingLocation) {
+                          setIsEditingLocation(false);
+                        } else {
+                          setIsLocationDialogOpen(false);
+                          setEditingLocation(null);
+                          setIsEditingLocation(false);
+                          setLocationForm({
+                            name: "",
+                            street: "",
+                            number: "",
+                            complement: "",
+                            neighborhood: "",
+                            city: "",
+                            state: "",
+                            zip_code: "",
+                          });
+                        }
+                      }}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button type="submit">
+                      {editingLocation ? "Atualizar" : "Cadastrar"} Local
+                    </Button>
+                  </>
+                )}
               </div>
             </form>
           </DialogContent>
         </Dialog>
+
+        {/* ALERT DIALOG PARA CONFIRMAR EXCLUSÃO */}
+        <AlertDialog open={!!locationToDelete} onOpenChange={(open) => !open && setLocationToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que deseja excluir o local <strong>{locationToDelete?.name}</strong>?
+                Esta ação não pode ser desfeita.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={confirmDeleteLocation}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Excluir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {selectedLocationForExpenses && (
           <LocationExpensesDialog
