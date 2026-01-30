@@ -12,6 +12,11 @@ export interface User {
   cpf?: string;
   active?: boolean;
   createdAt?: string;
+  user_metadata?: {
+    name?: string;
+    full_name?: string;
+    avatar_url?: string;
+  };
 }
 
 export interface SystemUser {
@@ -126,6 +131,7 @@ export interface Property {
   property_identifier?: string;
   has_furniture?: boolean;
   accepts_pets?: boolean;
+  allows_pets?: boolean; // Alias para acceptsPets
   property_type?: PropertyType;
   rent_amount?: number;
   condominium_fee?: number;
@@ -134,10 +140,9 @@ export interface Property {
   has_parking?: boolean; // Alias para hasGarage
   
   // DEPRECATED/LEGACY FIELDS (mantidos para compatibilidade, mas NÃO existem no banco)
-  // Estes campos eram usados no código antigo mas não existem na tabela properties
-  type?: string; // DEPRECATED - Não existe no banco
-  bedrooms?: number; // DEPRECATED - Use 'rooms' ao invés
-  monthlyRent?: number; // DEPRECATED - Use 'value' ao invés
+  type?: string; 
+  bedrooms?: number; 
+  monthlyRent?: number;
 }
 
 export interface Tenant {

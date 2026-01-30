@@ -15,7 +15,7 @@ interface PropertyFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   property?: Property | null;
-  onSave: (property: Partial<Property>) => Promise<void>;
+  onSave?: (property: Partial<Property>) => Promise<void>; // Make optional
   // Props adicionais para compatibilidade com o uso em properties.tsx
   onSubmit?: (e: React.FormEvent) => Promise<void>;
   formData?: any;
@@ -186,18 +186,20 @@ export function PropertyFormDialog({
     
     setInternalLoading(true);
     try {
-      await onSave({
-        ...internalFormData,
-        photos: internalImages,
-        // Ensure aliases are set for compatibility
-        has_furniture: internalFormData.hasFurniture,
-        accepts_pets: internalFormData.acceptsPets,
-        allows_pets: internalFormData.acceptsPets,
-        has_garage: internalFormData.hasGarage,
-        has_parking: internalFormData.hasGarage,
-      });
-      toast({ title: "Sucesso", description: property ? "Imóvel atualizado" : "Imóvel criado" });
-      onOpenChange(false);
+      if (onSave) {
+        await onSave({
+          ...internalFormData,
+          photos: internalImages,
+          // Ensure aliases are set for compatibility
+          has_furniture: internalFormData.hasFurniture,
+          accepts_pets: internalFormData.acceptsPets,
+          allows_pets: internalFormData.acceptsPets,
+          has_garage: internalFormData.hasGarage,
+          has_parking: internalFormData.hasGarage,
+        });
+        toast({ title: "Sucesso", description: property ? "Imóvel atualizado" : "Imóvel criado" });
+        onOpenChange(false);
+      }
     } catch (error) {
       console.error("Erro ao salvar:", error);
       toast({ title: "Erro", description: "Erro ao salvar imóvel", variant: "destructive" });

@@ -12,14 +12,23 @@ import { Loader2 } from "lucide-react";
 export default function Dashboard() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const [period, setPeriod] = useState(30);
-  const { dashboardData, loading, error } = useDashboardData(period);
+  
+  // Estado para Mês e Ano (padrão: mês atual)
+  const [month, setMonth] = useState(new Date().getMonth() + 1);
+  const [year, setYear] = useState(new Date().getFullYear());
+
+  const { dashboardData, loading, error } = useDashboardData(month, year);
 
   useEffect(() => {
     if (!authLoading && !user) {
       router.push("/login");
     }
   }, [user, authLoading, router]);
+
+  const handlePeriodChange = (newMonth: number, newYear: number) => {
+    setMonth(newMonth);
+    setYear(newYear);
+  };
 
   if (authLoading || loading) {
     return (
@@ -56,15 +65,22 @@ export default function Dashboard() {
       <div className="space-y-8">
         {/* Header com boas-vindas e seletor de período */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <WelcomeCard userName={user?.user_metadata?.name || user?.email || "Usuário"} />
-          <PeriodSelector period={period} onPeriodChange={setPeriod} />
+          <WelcomeCard 
+            greeting="Olá,"
+            userName={user?.user_metadata?.name || user?.user_metadata?.full_name || user?.email || "Usuário"} 
+          />
+          <PeriodSelector 
+            selectedMonth={month}
+            selectedYear={year}
+            onPeriodChange={handlePeriodChange} 
+          />
         </div>
 
         {/* Cards de métricas */}
         <OverviewCards data={dashboardData} />
 
         {/* Gráficos e análises */}
-        <AnalyticsCharts data={dashboardData} period={period} />
+        <AnalyticsCharts data={dashboardData} period={month} />
       </div>
     </Layout>
   );
