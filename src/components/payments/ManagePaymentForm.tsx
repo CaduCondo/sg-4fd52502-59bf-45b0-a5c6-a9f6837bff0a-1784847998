@@ -508,7 +508,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       {!embedded && (
         <div className="text-center mb-6">
           <h1 className="text-2xl font-bold">
-            {isPaid && isEditMode ? "Edição do Recebimento" : isPaid ? "Detalhes do Recebimento" : "Registro de Recebimento"}
+            {isPaid && isEditMode ? "Edição do Recebimento" : isPaid ? "Detalhes do Recebimento" : "Registrar Recebimento"}
           </h1>
         </div>
       )}
@@ -743,9 +743,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                     <SelectContent>
                       <SelectItem value="pix">PIX</SelectItem>
                       <SelectItem value="dinheiro">Dinheiro</SelectItem>
-                      <SelectItem value="transferencia">Transferência</SelectItem>
-                      <SelectItem value="debito">Débito</SelectItem>
-                      <SelectItem value="credito">Crédito</SelectItem>
                       <SelectItem value="boleto">Boleto</SelectItem>
                     </SelectContent>
                   </Select>
@@ -756,7 +753,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                 {formData.payment_method !== "dinheiro" && formData.payment_method !== "boleto" && (
                   <div>
                     <Label htmlFor="pix_code_type">
-                      Código Pix <span className="text-red-500">*</span>
+                      C/C Recebimento <span className="text-red-500">*</span>
                     </Label>
                     <Select
                       value={formData.pix_code_type}

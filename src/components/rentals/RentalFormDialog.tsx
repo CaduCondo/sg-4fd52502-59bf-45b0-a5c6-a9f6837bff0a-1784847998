@@ -316,6 +316,7 @@ export function RentalFormDialog({
             payment_day: parseInt(paymentDay),
             monthly_rent: totalValue,
             value: totalValue,
+            rent_amount: baseRent,
             deposit: parseCurrencyToNumber(securityDeposit) || 0,
             status: "active",
             is_active: true,

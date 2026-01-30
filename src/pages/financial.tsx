@@ -541,7 +541,10 @@ export default function Financial() {
           <Card className="bg-white border-slate-200 shadow-sm">
             <CardContent className="p-4 flex gap-4">
               <div className="w-[200px]">
-                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                <Select value={selectedMonth} onValueChange={(value) => {
+                  setSelectedMonth(value);
+                  loadData();
+                }}>
                   <SelectTrigger className="bg-slate-50 border-slate-200">
                     <SelectValue placeholder="Mês" />
                   </SelectTrigger>
@@ -555,7 +558,10 @@ export default function Financial() {
                 </Select>
               </div>
               <div className="w-[120px]">
-                <Select value={selectedYear} onValueChange={setSelectedYear}>
+                <Select value={selectedYear} onValueChange={(value) => {
+                  setSelectedYear(value);
+                  loadData();
+                }}>
                   <SelectTrigger className="bg-slate-50 border-slate-200">
                     <SelectValue placeholder="Ano" />
                   </SelectTrigger>

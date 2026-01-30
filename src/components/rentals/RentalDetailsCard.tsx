@@ -41,7 +41,7 @@ export function RentalDetailsCard({ rental, property, tenant }: RentalDetailsCar
           <div className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
             <span>
-              {rental.properties?.locations?.name} - {rental.properties?.complement || "S/N"}
+              {rental.properties?.locations?.name || property?.location || "N/A"} - {rental.properties?.complement || property?.complement || "S/N"}
             </span>
           </div>
           <div className="flex gap-2">
@@ -169,6 +169,9 @@ export function RentalDetailsCard({ rental, property, tenant }: RentalDetailsCar
               <div className="flex items-center gap-2 text-sm">
                 <Car className="h-3 w-3 text-green-600" />
                 <span className="text-green-600 font-medium">Possui Vaga de Garagem</span>
+                {rental.garageValue && rental.garageValue > 0 && (
+                  <span className="text-muted-foreground">- {formatCurrency(rental.garageValue)}</span>
+                )}
               </div>
             )}
             {rental.hasPartnerBroker && (
