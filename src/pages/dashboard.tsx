@@ -5,6 +5,7 @@ import { WelcomeCard } from "@/components/dashboard/WelcomeCard";
 import { OverviewCards } from "@/components/dashboard/OverviewCards";
 import { AnalyticsCharts } from "@/components/dashboard/AnalyticsCharts";
 import { PeriodSelector } from "@/components/dashboard/PeriodSelector";
+import { DashboardCharts } from "@/components/dashboard/DashboardCharts";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { useAuth } from "@/contexts/AuthContext";
 import { Loader2 } from "lucide-react";
@@ -81,6 +82,9 @@ export default function Dashboard() {
 
         {/* Gráficos e análises */}
         <AnalyticsCharts data={dashboardData} period={month} />
+
+        {/* Novo: Gráficos adicionais */}
+        <DashboardCharts data={dashboardData} />
       </div>
     </Layout>
   );
