@@ -8,9 +8,8 @@ interface DashboardChartsProps {
 
 export function DashboardCharts({ data }: DashboardChartsProps) {
   // Calcular percentuais para gráficos
-  const occupancyPercentage = typeof data.occupancyRate === 'string' 
-    ? parseFloat(data.occupancyRate.replace('%', '')) 
-    : (data.occupancyRate || 0);
+  const occupancyRateStr = String(data.occupancyRate || "0");
+  const occupancyPercentage = parseFloat(occupancyRateStr.replace('%', ''));
   
   const revenuePercentage = data.expectedRevenue > 0 
     ? Math.round((data.receivedRevenue / data.expectedRevenue) * 100) 

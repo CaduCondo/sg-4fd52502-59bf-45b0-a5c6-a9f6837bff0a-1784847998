@@ -3,12 +3,12 @@ import {
   Home,
   Construction,
   Users,
-  FileCheck,
   AlertCircle,
   CheckCircle,
   DollarSign,
   TrendingUp,
   TrendingDown,
+  FileCheck,
 } from "lucide-react";
 import { MetricCard } from "./MetricCard";
 import { DashboardData } from "@/types";
@@ -53,7 +53,7 @@ export function OverviewCards({ data }: OverviewCardsProps) {
           
           <MetricCard
             title="Em Manutenção"
-            value={data.maintenanceProperties}
+            value={data.maintenanceProperties || 0}
             icon={Construction}
             iconColor="text-orange-600"
             iconBgClass="bg-orange-50"
@@ -83,7 +83,6 @@ export function OverviewCards({ data }: OverviewCardsProps) {
             iconBgClass="bg-blue-50"
             borderColorClass="border-l-blue-500"
             isCurrency
-            layout="vertical"
           />
           
           <MetricCard
@@ -95,19 +94,17 @@ export function OverviewCards({ data }: OverviewCardsProps) {
             iconBgClass="bg-green-50"
             borderColorClass="border-l-green-500"
             isCurrency
-            layout="vertical"
           />
           
           <MetricCard
             title="Receita Líquida"
-            value={data.netRevenue}
+            value={data.netRevenue || 0}
             subtitle="Após despesas"
             icon={TrendingUp}
             iconColor="text-emerald-600"
             iconBgClass="bg-emerald-50"
             borderColorClass="border-l-emerald-500"
             isCurrency
-            layout="vertical"
           />
           
           <MetricCard
@@ -115,7 +112,7 @@ export function OverviewCards({ data }: OverviewCardsProps) {
             value={
               <div className="flex items-baseline gap-2">
                 <span>{data.overduePayments}</span>
-                <span className="text-xs font-normal text-muted-foreground">
+                <span className="text-sm font-normal text-muted-foreground">
                   {data.overdueAmount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                 </span>
               </div>
@@ -134,7 +131,6 @@ export function OverviewCards({ data }: OverviewCardsProps) {
             iconColor="text-violet-600"
             iconBgClass="bg-violet-50"
             borderColorClass="border-l-violet-500"
-            layout="horizontal"
           />
         </div>
       </div>
