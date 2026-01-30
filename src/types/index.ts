@@ -60,6 +60,9 @@ export interface UserLocationPermission {
   created_at?: string;
 }
 
+export type PropertyStatus = "available" | "rented" | "maintenance" | "occupied" | "unavailable";
+export type PropertyType = "apartment" | "house" | "commercial" | "land" | "farm";
+
 export interface Property {
   id: string;
   // Location info
@@ -76,6 +79,7 @@ export interface Property {
   zipCode?: string;
 
   // Details
+  name?: string; // Adicionado para compatibilidade com formulário
   description?: string; // DB field
   rooms?: number; // DB field - Total de cômodos (não confundir com quartos)
   bathrooms?: number; // DB field
@@ -84,16 +88,22 @@ export interface Property {
   
   // Novos campos
   images?: string[]; // Array de URLs das imagens
+  photos?: string[]; // Alias para images
   hasFurniture?: boolean; // Móveis planejados
   acceptsPets?: boolean; // Aceita pets
   hasPartnerBroker?: boolean; // Corretor parceiro
   
   // Financial
   value?: number; // DB field - Valor do imóvel/aluguel
+  rentAmount?: number; // Alias para value
   garageValue?: number; // Mapped from garage_value
+  condominiumFee?: number;
+  iptu?: number;
+  brokerFeePercentage?: number;
 
   // Status & Metadata
-  status: "available" | "occupied" | "unavailable";
+  status: PropertyStatus;
+  propertyType?: PropertyType;
   propertyIdentifier?: string; // Mapped from property_identifier
   createdAt?: string;
   updatedAt?: string;
@@ -109,13 +119,19 @@ export interface Property {
     zipCode?: string;
   };
 
-  // Database snake_case fallbacks (optional, for raw data)
+  // Database snake_case fallbacks (optional, for raw data compatibility)
   location_id?: string;
   has_garage?: boolean;
   garage_value?: number;
   property_identifier?: string;
   has_furniture?: boolean;
   accepts_pets?: boolean;
+  property_type?: PropertyType;
+  rent_amount?: number;
+  condominium_fee?: number;
+  broker_fee_percentage?: number;
+  zip_code?: string;
+  has_parking?: boolean; // Alias para hasGarage
   
   // DEPRECATED/LEGACY FIELDS (mantidos para compatibilidade, mas NÃO existem no banco)
   // Estes campos eram usados no código antigo mas não existem na tabela properties
@@ -302,4 +318,38 @@ export interface LocationExpense {
   attachments?: string[];
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface DashboardData {
+  totalProperties: number;
+  availableProperties: number;
+  rentedProperties: number;
+  unavailableProperties: number;
+  maintenanceProperties: number;
+  totalTenants: number;
+  activeTenants: number;
+  activeContracts: number;
+  
+  // Financeiro
+  expectedRevenue: number;
+  receivedRevenue: number;
+  netRevenue: number;
+  overduePayments: number;
+  overdueAmount: number;
+  dueTodayCount: number;
+  occupancyRate: number;
+  
+  // Legado / Compatibilidade
+  latePayments?: number;
+  receivedPayments?: number;
+  grossRevenue?: number;
+  completedPayments?: number;
+  expectedAmount?: number;
+  receivedAmount?: number;
+  adminFee?: number;
+  paidPayments?: number;
+  pendingPayments?: number;
+  
+  revenueData?: { month: string; value: number }[];
+  occupancyData?: { month: string; rate: number }[];
 }

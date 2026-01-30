@@ -261,6 +261,9 @@ export const parseCurrencyToFloat = (value: string): number => {
   return isNaN(numValue) ? 0 : numValue;
 };
 
+// Alias para applyRealMask
+export const applyBRLMask = applyRealMask;
+
 // Apply percentage mask with 3 decimal places (ex: 2,125%)
 export const applyPercentageMask = (value: string): string => {
   if (!value) return "";
