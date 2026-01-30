@@ -47,7 +47,7 @@ export function OverviewCards({ data }: OverviewCardsProps) {
       {/* Seção: Imóveis e Contratos */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <MetricCard
-          title="Total de Imóveis Cadastrados"
+          title="Imóveis Cadastrados"
           value={data.totalProperties}
           secondaryInfo={`${data.rentedProperties} Alugados`}
           icon={Building2}
@@ -134,7 +134,7 @@ export function OverviewCards({ data }: OverviewCardsProps) {
         <MetricCard
           title="Receita Recebida"
           value={formatCurrency(data.grossRevenue)}
-          secondaryInfo="No período"
+          subtitle="No período"
           icon={TrendingUp}
           iconColor="text-emerald-600"
           iconBgClass="bg-emerald-50"
@@ -145,7 +145,7 @@ export function OverviewCards({ data }: OverviewCardsProps) {
         <MetricCard
           title="Receita Líquida"
           value={formatCurrency(data.grossRevenue * 0.9)}
-          secondaryInfo="Após despesas"
+          subtitle="Após despesas"
           icon={Wallet}
           iconColor="text-violet-600"
           iconBgClass="bg-violet-50"

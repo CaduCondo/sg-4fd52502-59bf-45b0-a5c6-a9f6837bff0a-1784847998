@@ -38,7 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    // Check authentication on mount
+    // Check authentication on mount and route changes only
     const checkAuth = () => {
       try {
         const isPublicRoute = publicRoutes.includes(router.pathname);
@@ -71,23 +71,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     checkAuth();
 
-    // Poll for auth changes every 5 seconds
-    const interval = setInterval(() => {
-      const isPublicRoute = publicRoutes.includes(router.pathname);
-      
-      if (isAuthenticated()) {
-        refreshUser();
-      } else {
-        setUser(null);
-        // Apenas redireciona para login se NÃO estiver em rota pública
-        if (!isPublicRoute) {
-          router.push("/login");
-        }
-      }
-    }, 5000);
+    // Listen to route changes instead of polling
+    const handleRouteChange = () => {
+      checkAuth();
+    };
 
-    return () => clearInterval(interval);
-  }, [router]);
+    router.events.on("routeChangeComplete", handleRouteChange);
+
+    return () => {
+      router.events.off("routeChangeComplete", handleRouteChange);
+    };
+  }, [router.pathname]);
 
   return (
     <AuthContext.Provider value={{ user, loading, refreshUser }}>
