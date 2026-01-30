@@ -1,7 +1,7 @@
 import { Rental, Property, Tenant } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, User, Calendar, DollarSign, FileText } from "lucide-react";
+import { MapPin, User, Calendar, DollarSign, FileText, Car, UserCheck, Coins } from "lucide-react";
 import { formatCurrency } from "@/lib/masks";
 import { formatDateLocal } from "@/lib/rentalCalculations";
 import { format } from "date-fns";
@@ -109,6 +109,9 @@ export function RentalDetailsCard({ rental, property, tenant }: RentalDetailsCar
                 ? format(formatDateLocal(rental.endDate), "dd/MM/yyyy", { locale: ptBR })
                 : "Indeterminado"}
             </p>
+            <p className="text-sm">
+              <span className="text-muted-foreground">Dia do Pagamento:</span> {rental.paymentDay}
+            </p>
             {rental.status === "terminated" && rental.endDate && (
               <p className="text-sm">
                 <span className="text-muted-foreground">Encerrado em:</span>{" "}
@@ -126,9 +129,16 @@ export function RentalDetailsCard({ rental, property, tenant }: RentalDetailsCar
           </div>
           <div className="ml-6 space-y-1">
             <p className="text-sm">
-              <span className="text-muted-foreground">Aluguel:</span>{" "}
-              {formatCurrency(rental.rentAmount)}
+              <span className="text-muted-foreground">Aluguel Base:</span>{" "}
+              {formatCurrency(rental.rentAmount || rental.value || 0)}
             </p>
+            {rental.hasGarage && rental.garageValue && rental.garageValue > 0 && (
+              <div className="flex items-center gap-2 text-sm">
+                <Car className="h-3 w-3 text-muted-foreground" />
+                <span className="text-muted-foreground">Vaga Garagem:</span>
+                <span>{formatCurrency(rental.garageValue)}</span>
+              </div>
+            )}
             {rental.condominiumFee && rental.condominiumFee > 0 && (
               <p className="text-sm">
                 <span className="text-muted-foreground">Condomínio:</span>{" "}
@@ -141,27 +151,143 @@ export function RentalDetailsCard({ rental, property, tenant }: RentalDetailsCar
                 {formatCurrency(rental.iptuFee)}
               </p>
             )}
-            <p className="text-sm font-medium">
-              <span className="text-muted-foreground">Total:</span>{" "}
-              {formatCurrency(
-                rental.rentAmount +
-                  (rental.condominiumFee || 0) +
-                  (rental.iptuFee || 0)
-              )}
+            <p className="text-sm font-medium pt-1 border-t">
+              <span className="text-muted-foreground">Total Mensal:</span>{" "}
+              {formatCurrency(rental.value || 0)}
             </p>
           </div>
         </div>
 
-        {/* Parcelas */}
+        {/* Informações Adicionais */}
         <div className="space-y-2">
-          <div className="text-sm font-medium">Parcelamento</div>
-          <div className="ml-6">
-            <p className="text-sm">
-              <span className="text-muted-foreground">Número de parcelas:</span>{" "}
-              {rental.installments}
-            </p>
+          <div className="flex items-center gap-2 text-sm font-medium">
+            <UserCheck className="h-4 w-4" />
+            Informações Adicionais
+          </div>
+          <div className="ml-6 space-y-1">
+            {rental.hasGarage && (
+              <div className="flex items-center gap-2 text-sm">
+                <Car className="h-3 w-3 text-green-600" />
+                <span className="text-green-600 font-medium">Possui Vaga de Garagem</span>
+              </div>
+            )}
+            {rental.hasPartnerBroker && (
+              <div className="flex items-center gap-2 text-sm">
+                <UserCheck className="h-3 w-3 text-blue-600" />
+                <span className="text-blue-600 font-medium">Possui Corretor Parceiro</span>
+              </div>
+            )}
           </div>
         </div>
+
+        {/* Informações da Caução */}
+        {rental.depositAmount && rental.depositAmount > 0 && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <Coins className="h-4 w-4" />
+              Informações da Caução
+            </div>
+            <div className="ml-6 space-y-2">
+              <p className="text-sm">
+                <span className="text-muted-foreground">Valor Total:</span>{" "}
+                {formatCurrency(rental.depositAmount)}
+              </p>
+              
+              {rental.depositInstallments && rental.depositInstallments > 1 ? (
+                <>
+                  <p className="text-sm font-medium text-blue-600">
+                    Caução Parcelado em {rental.depositInstallments}x
+                  </p>
+                  
+                  {/* 1ª Parcela */}
+                  {rental.depositInstallment1 && (
+                    <div className="pl-4 border-l-2 border-blue-200 space-y-1">
+                      <p className="text-sm font-medium">1ª Parcela:</p>
+                      <p className="text-sm">
+                        <span className="text-muted-foreground">Valor:</span>{" "}
+                        {formatCurrency(rental.depositInstallment1)}
+                      </p>
+                      {rental.depositPaymentDate && (
+                        <p className="text-sm">
+                          <span className="text-muted-foreground">Data Pagamento:</span>{" "}
+                          {format(formatDateLocal(rental.depositPaymentDate), "dd/MM/yyyy", { locale: ptBR })}
+                        </p>
+                      )}
+                      {rental.depositPixCode && (
+                        <p className="text-sm">
+                          <span className="text-muted-foreground">Código PIX:</span>{" "}
+                          {rental.depositPixCode}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* 2ª Parcela */}
+                  {rental.depositInstallment2 && (
+                    <div className="pl-4 border-l-2 border-blue-200 space-y-1">
+                      <p className="text-sm font-medium">2ª Parcela:</p>
+                      <p className="text-sm">
+                        <span className="text-muted-foreground">Valor:</span>{" "}
+                        {formatCurrency(rental.depositInstallment2)}
+                      </p>
+                      {rental.depositInstallment2PaymentDate && (
+                        <p className="text-sm">
+                          <span className="text-muted-foreground">Data Pagamento:</span>{" "}
+                          {format(formatDateLocal(rental.depositInstallment2PaymentDate), "dd/MM/yyyy", { locale: ptBR })}
+                        </p>
+                      )}
+                      {rental.depositInstallment2PixCode && (
+                        <p className="text-sm">
+                          <span className="text-muted-foreground">Código PIX:</span>{" "}
+                          {rental.depositInstallment2PixCode}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* 3ª Parcela */}
+                  {rental.depositInstallment3 && (
+                    <div className="pl-4 border-l-2 border-blue-200 space-y-1">
+                      <p className="text-sm font-medium">3ª Parcela:</p>
+                      <p className="text-sm">
+                        <span className="text-muted-foreground">Valor:</span>{" "}
+                        {formatCurrency(rental.depositInstallment3)}
+                      </p>
+                      {rental.depositInstallment3PaymentDate && (
+                        <p className="text-sm">
+                          <span className="text-muted-foreground">Data Pagamento:</span>{" "}
+                          {format(formatDateLocal(rental.depositInstallment3PaymentDate), "dd/MM/yyyy", { locale: ptBR })}
+                        </p>
+                      )}
+                      {rental.depositInstallment3PixCode && (
+                        <p className="text-sm">
+                          <span className="text-muted-foreground">Código PIX:</span>{" "}
+                          {rental.depositInstallment3PixCode}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <p className="text-sm font-medium text-green-600">Caução à Vista</p>
+                  {rental.depositPaymentDate && (
+                    <p className="text-sm">
+                      <span className="text-muted-foreground">Data Pagamento:</span>{" "}
+                      {format(formatDateLocal(rental.depositPaymentDate), "dd/MM/yyyy", { locale: ptBR })}
+                    </p>
+                  )}
+                  {rental.depositPixCode && (
+                    <p className="text-sm">
+                      <span className="text-muted-foreground">Código PIX:</span>{" "}
+                      {rental.depositPixCode}
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

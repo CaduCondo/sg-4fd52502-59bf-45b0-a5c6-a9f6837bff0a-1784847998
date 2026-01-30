@@ -208,7 +208,7 @@ export function useDashboardData(month: number, year: number) {
       const { data: configData } = await supabase
         .from("configs")
         .select("admin_fee_percentage, management_fee_percentage")
-        .single();
+        .maybeSingle();
 
       let paidPayments = 0;
       let overduePayments = 0;

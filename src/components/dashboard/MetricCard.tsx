@@ -39,25 +39,25 @@ export function MetricCard({
             <div className={cn("p-2 rounded-lg flex-shrink-0", iconBgClass)}>
               <Icon className={cn("h-5 w-5", iconColor)} />
             </div>
-            <p className="text-xs font-medium text-muted-foreground leading-tight pt-1">
+            <div className="text-xs font-medium text-muted-foreground leading-tight pt-1">
               {title}
-            </p>
+            </div>
           </div>
           
           {/* Linha 2: Valor grande alinhado à esquerda */}
           <div className="pl-0">
-            <p className={cn("text-2xl font-bold text-foreground leading-tight tracking-tight", valueClassName)}>
+            <div className={cn("text-2xl font-bold text-foreground leading-tight tracking-tight", valueClassName)}>
               {displayValue}
-            </p>
+            </div>
             {subtitle && (
               <div className="text-xs text-muted-foreground mt-1 leading-tight">
                 {subtitle}
               </div>
             )}
             {secondaryInfo && (
-              <p className="text-xs text-muted-foreground mt-1 leading-tight">
+              <div className="text-xs text-muted-foreground mt-1 leading-tight">
                 {secondaryInfo}
-              </p>
+              </div>
             )}
           </div>
         </CardContent>
@@ -70,18 +70,18 @@ export function MetricCard({
       <CardContent className="p-5">
         <div className="space-y-2">
           {/* Título */}
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
             {title}
-          </p>
+          </div>
 
           {/* Valor com ícone */}
           <div className="flex items-center gap-2">
             <div className={cn("p-1.5 rounded-md flex-shrink-0", iconBgClass)}>
               <Icon className={cn("h-4 w-4", iconColor)} />
             </div>
-            <p className={cn("text-2xl font-bold text-foreground", valueClassName)}>
+            <div className={cn("text-2xl font-bold text-foreground", valueClassName)}>
               {displayValue}
-            </p>
+            </div>
           </div>
 
           {/* Informações secundárias */}
@@ -92,9 +92,9 @@ export function MetricCard({
               </div>
             )}
             {secondaryInfo && (
-              <p className="text-xs text-muted-foreground font-medium">
+              <div className="text-xs text-muted-foreground font-medium">
                 {secondaryInfo}
-              </p>
+              </div>
             )}
           </div>
         </div>
