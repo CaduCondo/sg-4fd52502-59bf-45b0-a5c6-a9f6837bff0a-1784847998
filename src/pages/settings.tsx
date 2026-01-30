@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Dialog,
   DialogContent,
@@ -32,7 +33,8 @@ import {
   Pencil,
   Trash2,
   Users,
-  Shield
+  Shield,
+  Wallet
 } from "lucide-react";
 
 // Services
@@ -58,12 +60,16 @@ import { Location, CompanyConfig } from "@/types";
 // New modular components
 import { UsersTab } from "@/components/settings/UsersTab";
 import { PermissionsTab } from "@/components/settings/PermissionsTab";
+import { FeeExemptionDialog } from "@/components/settings/FeeExemptionDialog";
+import { UserDialog } from "@/components/settings/UserDialog";
 
 // Custom hooks
 import { useUsers } from "@/hooks/useUsers";
 import { usePermissions } from "@/hooks/usePermissions";
+import { LocationExpensesDialog } from "@/components/settings/LocationExpensesDialog";
 
 export default function Settings() {
+  const { user } = useAuth();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("company");
 
@@ -79,12 +85,14 @@ export default function Settings() {
     state: "",
     zip_code: "",
     admin_fee_percentage: 0,
+    management_fee_percentage: 0,
     late_fee_percentage: 0,
     interest_rate_percentage: 0,
   });
 
   // State for form inputs (strings to handle formatting)
   const [adminFee, setAdminFee] = useState("0,000");
+  const [managementFee, setManagementFee] = useState("0,000");
   const [lateFee, setLateFee] = useState("0,000");
   const [interestRate, setInterestRate] = useState("0,000");
 
@@ -104,33 +112,46 @@ export default function Settings() {
     state: "",
     zip_code: "",
   });
+  const [selectedLocationForExpenses, setSelectedLocationForExpenses] = useState<Location | null>(null);
 
   // Use custom hooks for users and permissions
-  const {
-    users,
-    isLoading: isLoadingUsers,
-    fetchUsers: loadUsers,
+  const { 
+    permissions, 
+    loading: permissionsLoading, 
+    updateRoleMenuPermission, 
+    saveLocationPermissions, 
+    saveFeeExemptions,
+    getUserLocationPermissions,
+    getUserFeeExemptions
+  } = usePermissions();
+
+  const { 
+    users, 
+    isLoading: usersLoading, // Rename exposed isLoading to usersLoading
+    error: usersError, 
+    refresh: refreshUsers,
     handleCreateUser,
     handleUpdateUser,
     handleDeleteUser,
-    handleToggleUserStatus,
+    handleToggleUserStatus
   } = useUsers();
 
-  const {
-    roleMenuPermissions,
-    isLoading: isLoadingPermissions,
-    updateRoleMenuPermission,
-    saveLocationPermissions,
-    saveFeeExemptions,
-    getUserLocationPermissions,
-    getUserFeeExemptions,
-  } = usePermissions();
-
   useEffect(() => {
-    loadConfig();
-    loadLocations();
-    loadUsers();
-  }, []);
+    const loadData = async () => {
+      if (!user) return;
+      
+      try {
+        await Promise.all([
+          loadConfig(),
+          loadLocations()
+        ]);
+      } catch (err) {
+        console.error("Error loading settings data:", err);
+      }
+    };
+
+    loadData();
+  }, [user?.id]);
 
   const loadConfig = async () => {
     try {
@@ -138,6 +159,7 @@ export default function Settings() {
       if (data) {
         setConfig(data);
         setAdminFee(formatPercentage(data.admin_fee_percentage));
+        setManagementFee(formatPercentage(data.management_fee_percentage || 0));
         setLateFee(formatPercentage(data.late_fee_percentage));
         setInterestRate(formatPercentage(data.interest_rate_percentage));
       }
@@ -168,6 +190,7 @@ export default function Settings() {
     const updatedConfig = {
       ...config,
       admin_fee_percentage: parsePercentageToFloat(adminFee),
+      management_fee_percentage: parsePercentageToFloat(managementFee),
       late_fee_percentage: parsePercentageToFloat(lateFee),
       interest_rate_percentage: parsePercentageToFloat(interestRate),
     };
@@ -474,33 +497,59 @@ export default function Settings() {
             </Card>
           </TabsContent>
 
-          {/* TAXAS ADMINISTRATIVAS */}
+          {/* TAXAS ADMINISTRATIVAS & GERENCIAMENTO */}
           <TabsContent value="admin-fees">
             <Card>
               <CardHeader>
-                <CardTitle>Taxa de Administração</CardTitle>
+                <CardTitle>Taxas e Comissões</CardTitle>
                 <CardDescription>
-                  Percentual padrão cobrado sobre os aluguéis
+                  Configure as taxas cobradas sobre os aluguéis
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <form onSubmit={handleConfigSubmit} className="space-y-4">
-                  <div className="max-w-xs space-y-2">
-                    <Label htmlFor="adminFee">Taxa Administrativa (%)</Label>
-                    <div className="relative">
-                      <Input 
-                        id="adminFee" 
-                        type="text"
-                        value={adminFee}
-                        onChange={(e) => setAdminFee(e.target.value)}
-                        className="pr-8"
-                        placeholder="0,000"
-                      />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
+                <form onSubmit={handleConfigSubmit} className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="adminFee" className="flex items-center gap-2">
+                        <Percent className="h-4 w-4 text-emerald-600" />
+                        Taxa de Administração (%)
+                      </Label>
+                      <div className="relative">
+                        <Input 
+                          id="adminFee" 
+                          type="text"
+                          value={adminFee}
+                          onChange={(e) => setAdminFee(e.target.value)}
+                          className="pr-8"
+                          placeholder="0,000"
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Incide sobre o valor bruto do aluguel.
+                      </p>
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      Esta taxa será sugerida ao criar novos contratos de locação.
-                    </p>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="managementFee" className="flex items-center gap-2">
+                        <Wallet className="h-4 w-4 text-blue-600" />
+                        Taxa de Gerenciamento (%)
+                      </Label>
+                      <div className="relative">
+                        <Input 
+                          id="managementFee" 
+                          type="text"
+                          value={managementFee}
+                          onChange={(e) => setManagementFee(e.target.value)}
+                          className="pr-8"
+                          placeholder="0,000"
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Taxa adicional para gestão de imóveis (opcional).
+                      </p>
+                    </div>
                   </div>
 
                   <div className="flex justify-end pt-4">
@@ -591,11 +640,11 @@ export default function Settings() {
             </Card>
           </TabsContent>
 
-          {/* USUÁRIOS - Using modular component */}
+          {/* USUÁRIOS */}
           <TabsContent value="users">
             <UsersTab
               users={users}
-              isLoading={isLoadingUsers}
+              isLoading={usersLoading}
               onCreateUser={handleCreateUser}
               onUpdateUser={handleUpdateUser}
               onDeleteUser={handleDeleteUser}
@@ -604,13 +653,13 @@ export default function Settings() {
             />
           </TabsContent>
 
-          {/* PERMISSÕES - Using modular component */}
+          {/* PERMISSÕES */}
           <TabsContent value="permissions">
             <PermissionsTab
               users={users}
               locations={locations}
-              roleMenuPermissions={roleMenuPermissions}
-              isLoading={isLoadingPermissions}
+              roleMenuPermissions={permissions}
+              isLoading={permissionsLoading}
               onUpdateRoleMenuPermission={updateRoleMenuPermission}
               onSaveLocationPermissions={saveLocationPermissions}
               onSaveFeeExemptions={saveFeeExemptions}
@@ -629,7 +678,7 @@ export default function Settings() {
                     Gerenciar Locais
                   </CardTitle>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Cadastre os locais/condomínios onde seus imóveis estão localizados
+                    Cadastre os locais/condomínios e gerencie suas contas mensais
                   </p>
                 </div>
                 <Button onClick={() => openLocationDialog()} className="gap-2">
@@ -691,6 +740,15 @@ export default function Settings() {
                             {location.city}, {location.state}
                             {location.zip_code && ` • ${location.zip_code}`}
                           </p>
+                          
+                          {/* Botão para gerenciar contas do local */}
+                          <div className="mt-2">
+                             <Button variant="outline" size="sm" className="h-7 text-xs gap-1"
+                               onClick={() => setSelectedLocationForExpenses(location)}>
+                               <Wallet className="h-3 w-3" />
+                               Gerenciar Contas (Água, Luz)
+                             </Button>
+                          </div>
                         </div>
                         <div className="flex gap-2 ml-4">
                           <Button variant="outline" size="sm" className="gap-2" onClick={() => openLocationDialog(location)}>
@@ -885,6 +943,14 @@ export default function Settings() {
             </form>
           </DialogContent>
         </Dialog>
+
+        {selectedLocationForExpenses && (
+          <LocationExpensesDialog
+            open={!!selectedLocationForExpenses}
+            onOpenChange={(open) => !open && setSelectedLocationForExpenses(null)}
+            location={selectedLocationForExpenses}
+          />
+        )}
       </div>
     </Layout>
   );

@@ -1,177 +1,193 @@
-import { Rental } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
-import { deleteFutureByRentalId } from "./paymentService";
+import { Rental } from "@/types";
 
-const TABLE = "rentals";
-
-function mapRentalToDB(rental: any) {
-  const dbRental: any = {
-    property_id: rental.propertyId,
-    tenant_id: rental.tenantId,
-    start_date: rental.startDate,
-    end_date: rental.endDate,
-    payment_day: rental.paymentDay,
-    monthly_rent: rental.monthlyRent,
-    value: rental.value,
-    has_garage: rental.hasGarage,
-    garage_value: rental.garageValue,
-    is_active: rental.isActive !== undefined ? rental.isActive : true,
-    contract_attachments: rental.contractAttachments,
-    attachments: rental.attachments,
-    pix_code: rental.pixCode,
-    rent_amount: rental.rentAmount,
-    auto_renew: rental.autoRenew,
-    security_deposit: rental.securityDeposit,
-    has_partner_broker: rental.hasPartnerBroker,
-    partner_broker_value: rental.partnerBrokerValue,
-    deposit_installments: rental.depositInstallments,
-    deposit_installment_1: rental.depositInstallment1,
-    deposit_installment_2: rental.depositInstallment2,
-    deposit_installment_3: rental.depositInstallment3,
-    // ✅ CORRETO: 1ª parcela usa deposit_payment_date e deposit_pix_code
-    deposit_payment_date: rental.depositPaymentDate,
-    deposit_pix_code: rental.depositPixCode,
-    // ✅ CORRETO: 2ª e 3ª parcelas têm colunas específicas
-    deposit_installment_2_payment_date: rental.depositInstallment2PaymentDate,
-    deposit_installment_2_pix_code: rental.depositInstallment2PixCode,
-    deposit_installment_3_payment_date: rental.depositInstallment3PaymentDate,
-    deposit_installment_3_pix_code: rental.depositInstallment3PixCode,
-  };
-
-  // Remove undefined values
-  Object.keys(dbRental).forEach(key => {
-    if (dbRental[key] === undefined) {
-      delete dbRental[key];
-    }
-  });
-
-  // Validação de campos obrigatórios
-  if (!dbRental.property_id) {
-    throw new Error("property_id is required");
-  }
-  if (!dbRental.tenant_id) {
-    throw new Error("tenant_id is required");
-  }
-  if (!dbRental.start_date) {
-    throw new Error("start_date is required");
-  }
-  if (!dbRental.payment_day) {
-    throw new Error("payment_day is required");
-  }
-
-  return dbRental;
-}
-
-export async function getAll(): Promise<Rental[]> {
-  const { data, error } = await supabase
-    .from(TABLE)
-    .select("*")
-    .order("created_at", { ascending: false });
-
-  if (error) throw error;
-  return (data || []).map(mapRentalFromDB);
-}
-
-export async function getById(id: string): Promise<Rental> {
-  const { data, error } = await supabase
-    .from(TABLE)
-    .select("*")
-    .eq("id", id)
-    .single();
-
-  if (error) throw error;
-  return mapRentalFromDB(data);
-}
-
-export async function create(rental: any): Promise<Rental> {
-  const dbRental = mapRentalToDB(rental);
-  
-  const { data, error } = await supabase
-    .from(TABLE)
-    .insert(dbRental)
-    .select()
-    .single();
-
-  if (error) throw error;
-  return mapRentalFromDB(data);
-}
-
-export async function update(id: string, rental: any): Promise<Rental> {
-  const dbRental = mapRentalToDB(rental);
-  
-  const { data, error } = await supabase
-    .from(TABLE)
-    .update(dbRental)
-    .eq("id", id)
-    .select()
-    .single();
-
-  if (error) throw error;
-  return mapRentalFromDB(data);
-}
-
-export async function remove(id: string): Promise<void> {
-  const { error } = await supabase
-    .from(TABLE)
-    .delete()
-    .eq("id", id);
-
-  if (error) throw error;
-}
-
-export async function terminateContract(rentalId: string): Promise<void> {
-  await deleteFutureByRentalId(rentalId);
-  
-  const { error } = await supabase
-    .from(TABLE)
-    .update({ is_active: false })
-    .eq("id", rentalId);
-
-  if (error) throw error;
-}
-
-function mapRentalFromDB(data: any): Rental {
-  // Calcular duração em meses se não vier do banco
-  let durationMonths = data.duration_months;
-  if (!durationMonths && data.start_date && data.end_date) {
-    const start = new Date(data.start_date);
-    const end = new Date(data.end_date);
-    durationMonths = (end.getFullYear() - start.getFullYear()) * 12 + 
-                     (end.getMonth() - start.getMonth());
-  }
-
+// Helper para mapear dados do banco para o tipo Rental
+const mapRentalData = (data: any): Rental => {
   return {
     id: data.id,
     propertyId: data.property_id,
     tenantId: data.tenant_id,
     startDate: data.start_date,
     endDate: data.end_date,
-    durationMonths,
-    paymentDay: data.payment_day,
-    monthlyRent: data.monthly_rent,
-    value: data.value,
-    hasGarage: data.has_garage,
-    garageValue: data.garage_value,
-    isActive: data.is_active,
-    contractAttachments: data.contract_attachments,
-    attachments: data.attachments,
-    pixCode: data.pix_code,
-    rentAmount: data.rent_amount || data.monthly_rent || 0,
-    status: data.is_active ? "active" : "completed",
-    autoRenew: data.auto_renew || false,
-    securityDeposit: data.security_deposit,
-    hasPartnerBroker: data.has_partner_broker,
-    depositInstallments: data.deposit_installments,
-    depositInstallment1: data.deposit_installment_1,
-    depositInstallment2: data.deposit_installment_2,
-    depositInstallment3: data.deposit_installment_3,
-    // ✅ CORRETO: 1ª parcela usa deposit_payment_date e deposit_pix_code
-    depositPaymentDate: data.deposit_payment_date,
-    depositPixCode: data.deposit_pix_code,
-    // ✅ CORRETO: 2ª e 3ª parcelas têm campos específicos
-    depositInstallment2PaymentDate: data.deposit_installment_2_payment_date,
-    depositInstallment2PixCode: data.deposit_installment_2_pix_code,
-    depositInstallment3PaymentDate: data.deposit_installment_3_payment_date,
-    depositInstallment3PixCode: data.deposit_installment_3_pix_code,
+    rentAmount: data.rent_value || 0,
+    depositAmount: data.deposit_value || 0,
+    paymentDay: data.rent_due_day || 0,
+    status: data.status,
+    attachments: data.attachments || [],
+    contractAttachments: data.contract_attachments || [],
+    value: data.rent_value || 0, // Compatibilidade
+    isActive: data.status === 'active',
+    autoRenew: false, // Valor padrão se não existir no banco
+    
+    // Propriedades aninhadas
+    properties: data.properties,
+    tenants: data.tenants
   };
-}
+};
+
+export const rentalService = {
+  async getAll(): Promise<Rental[]> {
+    console.time("⏱️ Rental Query Performance");
+    
+    const { data, error } = await supabase
+      .from("rentals")
+      .select(`
+        id,
+        tenant_id,
+        property_id,
+        start_date,
+        end_date,
+        status,
+        rent_value,
+        rent_due_day,
+        deposit_value,
+        created_at,
+        tenants!rentals_tenant_id_fkey (
+          id,
+          name,
+          phone
+        ),
+        properties!rentals_property_id_fkey (
+          id,
+          property_identifier,
+          complement,
+          value,
+          locations!properties_location_id_fkey (
+            id,
+            name,
+            city
+          )
+        )
+      `)
+      .order("created_at", { ascending: false });
+
+    console.timeEnd("⏱️ Rental Query Performance");
+
+    if (error) {
+      console.error("Error fetching rentals:", error);
+      throw error;
+    }
+
+    return (data || []).map(mapRentalData);
+  },
+
+  async getById(id: string): Promise<Rental> {
+    const { data, error } = await supabase
+      .from("rentals")
+      .select(`
+        *,
+        tenants!rentals_tenant_id_fkey (
+          id,
+          name,
+          email,
+          phone,
+          cpf,
+          rg
+        ),
+        properties!rentals_property_id_fkey (
+          id,
+          property_identifier,
+          complement,
+          description,
+          rooms,
+          bathrooms,
+          area,
+          value,
+          garage_value,
+          has_garage,
+          has_furniture,
+          accepts_pets,
+          images,
+          locations!properties_location_id_fkey (
+            id,
+            name,
+            city,
+            state,
+            neighborhood,
+            street
+          )
+        )
+      `)
+      .eq("id", id)
+      .single();
+
+    if (error) throw error;
+    return mapRentalData(data);
+  },
+
+  async create(rental: Partial<Rental>): Promise<Rental> {
+    // Mapear camelCase para snake_case para inserção
+    const dbData = {
+      property_id: rental.propertyId,
+      tenant_id: rental.tenantId,
+      start_date: rental.startDate,
+      end_date: rental.endDate,
+      monthly_rent: rental.rentAmount, // Correct column name
+      payment_day: rental.paymentDay,  // Correct column name
+      deposit: rental.depositAmount ? String(rental.depositAmount) : null, // Correct column name
+      status: rental.status,
+      attachments: rental.attachments,
+      contract_attachments: rental.contractAttachments,
+      value: rental.rentAmount // Ensure value is also set if needed or let DB handle it
+    };
+
+    const { data, error } = await supabase
+      .from("rentals")
+      .insert([dbData])
+      .select()
+      .single();
+
+    if (error) throw error;
+    return mapRentalData(data);
+  },
+
+  async update(id: string, rental: Partial<Rental>): Promise<Rental> {
+    // Mapear camelCase para snake_case para atualização
+    const dbData: any = {};
+    if (rental.propertyId) dbData.property_id = rental.propertyId;
+    if (rental.tenantId) dbData.tenant_id = rental.tenantId;
+    if (rental.startDate) dbData.start_date = rental.startDate;
+    if (rental.endDate) dbData.end_date = rental.endDate;
+    if (rental.rentAmount) dbData.monthly_rent = rental.rentAmount; // Correct column name
+    if (rental.paymentDay) dbData.payment_day = rental.paymentDay;   // Correct column name
+    if (rental.depositAmount) dbData.deposit = String(rental.depositAmount); // Correct column name
+    if (rental.status) dbData.status = rental.status;
+    if (rental.attachments) dbData.attachments = rental.attachments;
+    if (rental.contractAttachments) dbData.contract_attachments = rental.contractAttachments;
+
+    const { data, error } = await supabase
+      .from("rentals")
+      .update(dbData)
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return mapRentalData(data);
+  },
+
+  async remove(id: string): Promise<void> {
+    const { error } = await supabase.from("rentals").delete().eq("id", id);
+    if (error) throw error;
+  },
+
+  async terminateContract(id: string): Promise<void> {
+    const { error } = await supabase
+      .from("rentals")
+      .update({ 
+        status: "terminated", 
+        end_date: new Date().toISOString() 
+      })
+      .eq("id", id);
+
+    if (error) throw error;
+  }
+};
+
+// Aliases para compatibilidade com código existente que pode importar com nomes diferentes
+export const create = rentalService.create;
+export const update = rentalService.update;
+export const getAll = rentalService.getAll;
+export const getById = rentalService.getById;
+export const remove = rentalService.remove;
+export const terminateContract = rentalService.terminateContract;

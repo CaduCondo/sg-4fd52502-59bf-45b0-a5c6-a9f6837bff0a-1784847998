@@ -41,10 +41,9 @@ export interface CompanyConfig {
   state: string;
   zip_code: string;
   admin_fee_percentage: number;
+  management_fee_percentage?: number; // Nova taxa
   late_fee_percentage: number;
   interest_rate_percentage: number;
-  created_at?: string;
-  updated_at?: string;
 }
 
 export interface RoleMenuPermission {
@@ -152,66 +151,56 @@ export interface Rental {
   propertyId: string;
   tenantId: string;
   startDate: string;
-  endDate?: string;
-  
-  // Financials
+  endDate: string;
   rentAmount: number;
-  monthlyRent?: number; // Alias
-  value?: number; // Alias for total value
-  depositAmount?: number;
-  deposit?: string; // DB field is text
-  securityDeposit?: number; // Valor da Caução
-  garageValue?: number;
   condominiumFee?: number;
   iptuFee?: number;
+  depositAmount?: number;
+  paymentDay: number;
+  autoRenew: boolean;
   installments?: number;
+  status: "active" | "terminated" | "pending";
+  attachments: string[];
+  contractAttachments: string[];
+  value: number; // For compatibility with existing code
+  isActive: boolean; // Computed property
   
-  // Deposit Installments
+  // New fields for Deposit Installments & Legacy support
   depositInstallments?: number;
   depositInstallment1?: number;
   depositInstallment2?: number;
   depositInstallment3?: number;
-  
-  // Deposit Payment Info
   depositPaymentDate?: string;
-  depositPixCode?: string;
-  
-  depositInstallment1PaymentDate?: string;
-  depositInstallment1PixCode?: string;
-  
   depositInstallment2PaymentDate?: string;
-  depositInstallment2PixCode?: string;
-  
   depositInstallment3PaymentDate?: string;
+  depositPixCode?: string;
+  depositInstallment2PixCode?: string;
   depositInstallment3PixCode?: string;
-  
-  // Status & Config
-  status: "pending" | "active" | "completed" | "paid" | "overdue" | "terminated";
-  isActive?: boolean;
-  paymentDay: number;
-  autoRenew: boolean;
-  hasGarage?: boolean;
-  
-  // Relations & Meta
-  property?: Property;
-  tenant?: Tenant;
-  contractUrl?: string;
-  notes?: string;
-  attachments?: string[];
-  contractAttachments?: string[];
   pixCode?: string;
-  
-  // Helper fields for display/logic
-  durationMonths?: number;
-  dueDate?: string;
-  receivedDate?: string;
-  paidAmount?: number;
-  referenceMonth?: number;
-  referenceYear?: number;
-  
-  createdAt?: string;
+
+  // Legacy/Property mirror fields (sometimes used in contracts)
+  hasGarage?: boolean;
+  garageValue?: number;
   hasPartnerBroker?: boolean;
-  partnerBrokerValue?: number;
+  securityDeposit?: number; // Alias for depositAmount/depositInstallment1
+
+  // Dados aninhados do Supabase (joins)
+  properties?: {
+    id: string;
+    property_identifier?: string;
+    complement?: string;
+    value?: number;
+    locations?: {
+      id: string;
+      name: string;
+      city?: string;
+    };
+  };
+  tenants?: {
+    id: string;
+    name: string;
+    phone?: string;
+  };
 }
 
 export interface Payment {
@@ -292,6 +281,24 @@ export interface DepositInstallment {
   lateFee?: number; // Alias
   interest?: number; // Alias
   
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+// Location Expenses (contas a pagar por local)
+export interface LocationExpense {
+  id: string;
+  locationId: string;
+  expenseType: 'water' | 'electricity' | 'gas' | 'internet' | 'maintenance' | 'other';
+  description?: string;
+  amount: number;
+  referenceMonth: number;
+  referenceYear: number;
+  dueDate?: string;
+  paymentDate?: string;
+  status: 'pending' | 'paid' | 'overdue';
+  notes?: string;
+  attachments?: string[];
   createdAt?: string;
   updatedAt?: string;
 }

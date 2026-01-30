@@ -118,7 +118,25 @@ export function RentalFormDialog({
   }, []);
 
   useEffect(() => {
-    if (open && rental) {
+    if (rental && isViewMode) {
+      // When viewing existing rental
+      setIsDepositInstallment(rental.depositInstallments ? rental.depositInstallments > 1 : false);
+      setDepositInstallmentCount(rental.depositInstallments ? rental.depositInstallments.toString() : "");
+      
+      // Valores
+      setDepositInstallment1(rental.depositInstallment1 ? formatCurrency(rental.depositInstallment1) : "");
+      setDepositInstallment2(rental.depositInstallment2 ? formatCurrency(rental.depositInstallment2) : "");
+      setDepositInstallment3(rental.depositInstallment3 ? formatCurrency(rental.depositInstallment3) : "");
+      
+      // ✅ CORRETO: 1ª parcela usa depositPaymentDate e depositPixCode
+      setDepositPaymentDate(rental.depositPaymentDate || "");
+      setDepositInstallment2PaymentDate(rental.depositInstallment2PaymentDate || "");
+      setDepositInstallment3PaymentDate(rental.depositInstallment3PaymentDate || "");
+      
+      // PIX
+      setDepositPixCode(rental.depositPixCode || "");
+    } else if (open && rental) {
+      // When creating new rental or editing, load from rental data if available
       setIsDepositInstallment(rental.depositInstallments ? rental.depositInstallments > 1 : false);
       setDepositInstallmentCount(rental.depositInstallments ? rental.depositInstallments.toString() : "");
       
@@ -457,41 +475,45 @@ export function RentalFormDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="property">{rental ? "Imóvel Selecionado" : "Imóveis Disponíveis"} *</Label>
-              <Select value={selectedPropertyId} onValueChange={setSelectedPropertyId} disabled={!isEditing || !!rental}>
-                <SelectTrigger id="property">
-                  <SelectValue placeholder="Selecione o imóvel" />
-                </SelectTrigger>
-                <SelectContent>
-                  {propertiesToDisplay
-                    .slice()
-                    .sort((a, b) => {
-                      const locationA = getLocationName(a.locationId);
-                      const locationB = getLocationName(b.locationId);
-                      if (locationA < locationB) return -1;
-                      if (locationA > locationB) return 1;
-                      return 0;
-                    })
-                    .map((property) => (
-                      <SelectItem key={property.id} value={property.id}>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">
-                            {getLocationName(property.locationId)}
-                            {property.complement && ` - ${property.complement}`}
-                          </span>
-                          <span className="text-muted-foreground">•</span>
-                          <span className="text-sm font-semibold text-emerald-600">
-                            {formatCurrency(property.value || 0)}
-                          </span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="property_id">Imóvel Selecionado</Label>
+            <Select
+              value={selectedPropertyId}
+              onValueChange={(value) => setSelectedPropertyId(value)}
+              disabled={!isEditing || !!rental}
+            >
+              <SelectTrigger id="property_id">
+                <SelectValue placeholder="Selecione um imóvel" />
+              </SelectTrigger>
+              <SelectContent>
+                {propertiesToDisplay
+                  .slice()
+                  .sort((a, b) => {
+                    const locationA = getLocationName(a.locationId);
+                    const locationB = getLocationName(b.locationId);
+                    if (locationA < locationB) return -1;
+                    if (locationA > locationB) return 1;
+                    return 0;
+                  })
+                  .map((property) => (
+                    <SelectItem key={property.id} value={property.id}>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">
+                          {getLocationName(property.locationId)}
+                          {property.complement && ` - ${property.complement}`}
+                        </span>
+                        <span className="text-muted-foreground">•</span>
+                        <span className="text-sm font-semibold text-emerald-600">
+                          {formatCurrency(property.value || 0)}
+                        </span>
+                      </div>
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="tenant">{rental ? "Inquilino Selecionado" : "Inquilinos Disponíveis"} *</Label>
               <Select value={selectedTenantId} onValueChange={setSelectedTenantId} disabled={!isEditing || !!rental}>

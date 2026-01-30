@@ -35,7 +35,9 @@ import {
   ArrowDown,
   Edit2,
   Check,
-  X
+  X,
+  Percent,
+  Wallet
 } from "lucide-react";
 import { Payment, Property, Rental, Tenant, User } from "@/types";
 import { format, differenceInMonths } from "date-fns";
@@ -46,6 +48,7 @@ import { getAll as getAllTenants } from "@/services/tenantService";
 import { getAll as getAllRentals, update as updateRental } from "@/services/rentalService";
 import { getUserLocationPermissions } from "@/services/userLocationPermissionService";
 import { userStorage } from "@/lib/storage";
+import { locationExpenseService } from "@/services/locationExpenseService";
 import { hasPermission } from "@/lib/permissions";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
 import { useRouter } from "next/navigation";
@@ -75,6 +78,7 @@ export default function Financial() {
   const now = new Date();
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth().toString());
   const [selectedYear, setSelectedYear] = useState(now.getFullYear().toString());
+  const [locationExpenses, setLocationExpenses] = useState<number>(0);
 
   // PIX Code editing state
   const [editingPixCode, setEditingPixCode] = useState<{ [key: string]: string }>({});
@@ -113,6 +117,18 @@ export default function Financial() {
       ]);
 
       setConfig(configData);
+
+      // Buscar despesas de locais para o período selecionado
+      const expensesData = await locationExpenseService.getByPeriod(
+        parseInt(selectedMonth) + 1, // Mês é 0-indexed no JS, 1-indexed no banco
+        parseInt(selectedYear)
+      );
+      
+      const totalExpenses = expensesData
+        .filter(e => e.status === 'paid')
+        .reduce((sum, e) => sum + e.amount, 0);
+      
+      setLocationExpenses(totalExpenses);
 
       // Buscar permissões de locais do usuário logado
       let allowedLocations: string[] = [];
@@ -278,7 +294,24 @@ export default function Financial() {
       return sum + ((p.paidAmount || 0) * feeRate);
     }, 0);
   
-  const netRevenue = totalReceived - adminFee;
+  // Totals object for the cards
+  const totals = {
+    gross: totalReceived,
+    expected: totalExpected,
+    adminFee: adminFee,
+    managementFee: filteredPayments.reduce((sum, p) => {
+       const rental = rentals.find(r => r.id === p.rentalId);
+       const property = properties.find(prop => prop.id === rental?.propertyId);
+       if (property && exemptLocationIds.includes(property.locationId)) return sum;
+       
+       const mgmtRate = config ? (config.management_fee_percentage || 0) / 100 : 0;
+       return sum + ((p.paidAmount || 0) * mgmtRate);
+    }, 0),
+    net: 0 // Will be calculated below
+  };
+  
+  totals.net = totals.gross - totals.adminFee - totals.managementFee;
+  const netRevenue = totalReceived - adminFee - totals.managementFee - locationExpenses;
 
   const getStatusBadge = (status: string) => {
     const badges = {
@@ -528,89 +561,78 @@ export default function Financial() {
         </ScrollReveal>
 
         {/* KPI Cards Grid */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          {/* Card 1: Valor Bruto Esperado */}
-          <ScrollReveal delay={0.2}>
-            <Card className="border-blue-100 bg-blue-50/30 shadow-sm h-full">
-              <CardContent className="p-6 space-y-4">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 bg-blue-100 rounded-lg">
-                    <BarChart3 className="h-5 w-5 text-blue-600" />
-                  </div>
-                  <span className="text-sm font-medium text-slate-600">Valor Bruto Esperado</span>
-                </div>
-                <div>
-                  <div className="text-3xl font-bold text-slate-900">
-                    {formatCurrency(totalExpected)}
-                  </div>
-                  <p className="text-xs text-blue-500 mt-1">Soma de todos os recebimentos</p>
-                </div>
-              </CardContent>
-            </Card>
-          </ScrollReveal>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Receita Bruta</CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{formatCurrency(totals.gross)}</div>
+              <p className="text-xs text-muted-foreground">
+                Total recebido no período
+              </p>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Taxa de Administração</CardTitle>
+              <Percent className="h-4 w-4 text-red-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-red-600">
+                - {formatCurrency(totals.adminFee)}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {config?.admin_fee_percentage || 0}% sobre a receita bruta
+              </p>
+            </CardContent>
+          </Card>
 
-          {/* Card 2: Valor Bruto Recebido */}
-          <ScrollReveal delay={0.3}>
-            <Card className="border-green-100 bg-green-50/30 shadow-sm h-full">
-              <CardContent className="p-6 space-y-4">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 bg-green-100 rounded-lg">
-                    <DollarSign className="h-5 w-5 text-green-600" />
-                  </div>
-                  <span className="text-sm font-medium text-slate-600">Valor Bruto Recebido</span>
-                </div>
-                <div>
-                  <div className="text-3xl font-bold text-slate-900">
-                    {formatCurrency(totalReceived)}
-                  </div>
-                  <p className="text-xs text-green-600 mt-1">Todos os pagamentos recebidos</p>
-                </div>
-              </CardContent>
-            </Card>
-          </ScrollReveal>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Taxa de Gerenciamento</CardTitle>
+              <Wallet className="h-4 w-4 text-blue-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-blue-600">
+                - {formatCurrency(totals.managementFee || 0)}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {config?.management_fee_percentage || 0}% sobre a receita bruta
+              </p>
+            </CardContent>
+          </Card>
 
-          {/* Card 3: Taxa de Administração */}
-          <ScrollReveal delay={0.4}>
-            <Card className="border-purple-100 bg-purple-50/30 shadow-sm h-full">
-              <CardContent className="p-6 space-y-4">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 bg-purple-100 rounded-lg">
-                    <HeartHandshake className="h-5 w-5 text-purple-600" />
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-sm font-medium text-slate-600">Taxa de</span>
-                    <span className="text-sm font-medium text-slate-600">Administração</span>
-                  </div>
-                </div>
-                <div>
-                  <div className="text-3xl font-bold text-purple-900">
-                    {formatCurrency(adminFee)}
-                  </div>
-                  <p className="text-xs text-purple-600 mt-1">5% da receita</p>
-                </div>
-              </CardContent>
-            </Card>
-          </ScrollReveal>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Contas do Mês</CardTitle>
+              <Wallet className="h-4 w-4 text-orange-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-orange-600">
+                - {formatCurrency(locationExpenses)}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Água, luz e outras despesas dos locais
+              </p>
+            </CardContent>
+          </Card>
 
-          {/* Card 4: Receita Líquida */}
-          <ScrollReveal delay={0.5}>
-            <Card className="border-indigo-100 bg-indigo-50/30 shadow-sm h-full">
-              <CardContent className="p-6 space-y-4">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 bg-indigo-100 rounded-lg">
-                    <Target className="h-5 w-5 text-indigo-600" />
-                  </div>
-                  <span className="text-sm font-medium text-slate-600">Receita Líquida</span>
-                </div>
-                <div>
-                  <div className="text-3xl font-bold text-indigo-900">
-                    {formatCurrency(netRevenue)}
-                  </div>
-                  <p className="text-xs text-indigo-600 mt-1">Receita após taxa administrativa</p>
-                </div>
-              </CardContent>
-            </Card>
-          </ScrollReveal>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm font-medium">Receita Líquida</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-purple-600">
+                {formatCurrency(netRevenue)}
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Valor após subtração das taxas e contas
+              </p>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Detailed Table */}

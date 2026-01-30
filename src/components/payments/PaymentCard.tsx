@@ -212,11 +212,19 @@ export function PaymentCard({
                   {installment}
                 </span>
               </div>
-              <h3 className={`text-sm font-semibold truncate ${!isPaid ? colors.icon : ''}`}>
-                {property?.location || "N/A"}
-              </h3>
-              {property?.complement && (
-                <p className="text-xs text-muted-foreground truncate">{property.complement}</p>
+              {property ? (
+                <div className="flex flex-col">
+                  <span className="text-lg font-bold text-blue-600">
+                    {property.location || "Local não informado"}
+                  </span>
+                  {property.complement && (
+                    <span className="text-sm text-muted-foreground">
+                      {property.complement}
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <span className="text-lg font-semibold">Imóvel não encontrado</span>
               )}
             </div>
           </div>

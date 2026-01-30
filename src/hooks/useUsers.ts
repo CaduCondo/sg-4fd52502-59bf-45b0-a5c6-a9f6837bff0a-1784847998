@@ -123,6 +123,8 @@ export function useUsers() {
   return {
     users,
     isLoading,
+    error: null, // Basic implementation
+    refresh: fetchUsers,
     fetchUsers,
     handleCreateUser,
     handleUpdateUser,

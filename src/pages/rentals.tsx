@@ -42,17 +42,16 @@ export default function RentalsPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [rentalsData, propertiesData, tenantsData, locationsData] = await Promise.all([
-        getAllRentals(),
-        getAllProperties(),
-        getAllTenants(),
-        getAllLocations(),
-      ]);
-
+      // Optimize: Only fetch rentals initially for the grid
+      // Properties/Tenants/Locations are heavy and mostly needed for the form or specific displays
+      // We can fetch them in background or simplified versions
+      
+      const rentalsData = await getAllRentals();
       setRentals(rentalsData);
-      setProperties(propertiesData);
-      setTenants(tenantsData);
-      setLocations(locationsData);
+      
+      // Fetch others in background to unblock UI
+      loadAuxiliaryData();
+      
     } catch (error) {
       console.error("Erro ao carregar dados:", error);
       toast({
@@ -62,6 +61,21 @@ export default function RentalsPage() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadAuxiliaryData = async () => {
+    try {
+      const [propertiesData, tenantsData, locationsData] = await Promise.all([
+        getAllProperties(),
+        getAllTenants(),
+        getAllLocations(),
+      ]);
+      setProperties(propertiesData);
+      setTenants(tenantsData);
+      setLocations(locationsData);
+    } catch (err) {
+      console.error("Background data load failed", err);
     }
   };
 

@@ -1,16 +1,15 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { LucideIcon } from "lucide-react";
-import { FloatingCard } from "@/components/animations/FloatingCard";
+import { cn } from "@/lib/utils";
 
 interface MetricCardProps {
   title: string;
   value: string | number;
   subtitle: string;
   icon: LucideIcon;
-  borderColor: string;
   iconColor: string;
-  onClick?: () => void;
-  delay?: number;
+  iconBgClass: string;
+  borderColorClass: string;
 }
 
 export function MetricCard({
@@ -18,26 +17,33 @@ export function MetricCard({
   value,
   subtitle,
   icon: Icon,
-  borderColor,
   iconColor,
-  onClick,
-  delay = 0
+  iconBgClass,
+  borderColorClass,
 }: MetricCardProps) {
   return (
-    <FloatingCard delay={delay}>
-      <Card
-        className={`cursor-pointer hover:shadow-lg transition-shadow border-l-4 ${borderColor} h-full`}
-        onClick={onClick}
-      >
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4">
-          <CardTitle className="text-sm font-medium">{title}</CardTitle>
-          <Icon className={`h-4 w-4 ${iconColor}`} />
-        </CardHeader>
-        <CardContent className="p-4 pt-0">
-          <div className="text-2xl font-bold">{value}</div>
-          <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>
-        </CardContent>
-      </Card>
-    </FloatingCard>
+    <Card className={cn("border-l-4 hover:shadow-lg transition-shadow", borderColorClass)}>
+      <CardContent className="p-6">
+        <div className="flex items-start justify-between">
+          <div className="flex-1 min-w-0 mr-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Icon className={cn("h-5 w-5 flex-shrink-0", iconColor)} />
+              <p className="text-sm font-medium text-muted-foreground truncate">
+                {title}
+              </p>
+            </div>
+            <p className="text-2xl font-bold truncate" title={value.toString()}>
+              {value}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1 truncate" title={subtitle}>
+              {subtitle}
+            </p>
+          </div>
+          <div className={cn("p-3 rounded-lg flex-shrink-0", iconBgClass)}>
+            <Icon className={cn("h-6 w-6", iconColor)} />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

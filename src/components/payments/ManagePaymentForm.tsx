@@ -407,13 +407,15 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           tenantId: rental.tenant_id,
           startDate: rental.start_date,
           endDate: rental.end_date,
-          rentAmount: rental.monthly_rent,
-          monthlyRent: rental.monthly_rent,
-          garageValue: rental.garage_value,
-          value: rental.value,
-          paymentDay: rental.payment_day,
-          status: rental.is_active ? "active" : "terminated",
+          rentAmount: rental.monthly_rent || rental.rentAmount, // Fallback
+          depositAmount: rental.deposit ? parseFloat(rental.deposit) : (rental.depositAmount || 0),
+          paymentDay: rental.payment_day || rental.paymentDay,
+          status: rental.status,
+          isActive: rental.status === 'active',
           autoRenew: false,
+          value: rental.monthly_rent || rental.value || 0,
+          attachments: rental.attachments || [],
+          contractAttachments: rental.contract_attachments || []
         };
 
         const propertyForReceipt: Property = {

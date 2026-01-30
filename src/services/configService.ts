@@ -47,62 +47,24 @@ export async function getConfig(): Promise<CompanyConfig | null> {
   return data;
 }
 
-export const updateConfig = async (config: CompanyConfig): Promise<CompanyConfig> => {
-  try {
-    // Check if config exists first
-    const existing = await getConfig();
-
-    let result;
-    
-    if (existing) {
-      const { data, error } = await supabase
-        .from("configs")
-        .update({
-          company_name: config.company_name,
-          cnpj: config.cnpj,
-          email: config.email,
-          phone: config.phone,
-          address: config.address,
-          city: config.city,
-          state: config.state,
-          zip_code: config.zip_code,
-          admin_fee_percentage: config.admin_fee_percentage,
-          late_fee_percentage: config.late_fee_percentage,
-          interest_rate_percentage: config.interest_rate_percentage,
-          updated_at: new Date().toISOString()
-        })
-        .eq("id", existing.id)
-        .select()
-        .single();
-        
-      if (error) throw error;
-      result = data;
-    } else {
-      const { data, error } = await supabase
-        .from("configs")
-        .insert([{
-          company_name: config.company_name,
-          cnpj: config.cnpj,
-          email: config.email,
-          phone: config.phone,
-          address: config.address,
-          city: config.city,
-          state: config.state,
-          zip_code: config.zip_code,
-          admin_fee_percentage: config.admin_fee_percentage,
-          late_fee_percentage: config.late_fee_percentage,
-          interest_rate_percentage: config.interest_rate_percentage
-        }])
-        .select()
-        .single();
-        
-      if (error) throw error;
-      result = data;
-    }
-
-    return result;
-  } catch (error) {
-    console.error("Error updating config:", error);
-    throw error;
-  }
+export const updateConfig = async (config: CompanyConfig) => {
+  const { error } = await supabase
+    .from("configs")
+    .update({
+      company_name: config.company_name,
+      cnpj: config.cnpj,
+      email: config.email,
+      phone: config.phone,
+      address: config.address,
+      city: config.city,
+      state: config.state,
+      zip_code: config.zip_code,
+      admin_fee_percentage: config.admin_fee_percentage,
+      management_fee_percentage: config.management_fee_percentage || 0,
+      late_fee_percentage: config.late_fee_percentage,
+      interest_rate_percentage: config.interest_rate_percentage,
+    })
+    .eq("id", config.id); // Assuming we update by ID, or just take the first one if singleton
+  
+  if (error) throw error;
 };

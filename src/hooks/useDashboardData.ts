@@ -2,24 +2,31 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
-export interface DashboardData {
+interface DashboardData {
   totalProperties: number;
   availableProperties: number;
-  unavailableProperties: number;
   rentedProperties: number;
+  unavailableProperties: number;
   totalTenants: number;
   activeContracts: number;
+  latePayments: number;
+  receivedPayments: number;
+  expectedValue: number;
+  grossRevenue: number;
+  netRevenue: number;
+  occupancyRate: number;
+  revenueData?: { month: string; value: number }[];
+  occupancyData?: { month: string; rate: number }[];
+  
+  // Missing fields required by dashboard.tsx
   overduePayments: number;
   completedPayments: number;
   expectedAmount: number;
   receivedAmount: number;
-  grossRevenue: number;
-  netRevenue: number;
   adminFee: number;
   paidPayments: number;
   pendingPayments: number;
   dueTodayPayments: number;
-  occupancyRate: number;
 }
 
 const DEFAULT_DATA: DashboardData = {
@@ -29,17 +36,20 @@ const DEFAULT_DATA: DashboardData = {
   rentedProperties: 0,
   totalTenants: 0,
   activeContracts: 0,
+  latePayments: 0,
+  receivedPayments: 0,
+  expectedValue: 0,
+  grossRevenue: 0,
+  netRevenue: 0,
+  occupancyRate: 0,
   overduePayments: 0,
   completedPayments: 0,
   expectedAmount: 0,
   receivedAmount: 0,
-  grossRevenue: 0,
-  netRevenue: 0,
   adminFee: 0,
   paidPayments: 0,
   pendingPayments: 0,
   dueTodayPayments: 0,
-  occupancyRate: 0,
 };
 
 export function useDashboardData(month: number, year: number) {
@@ -89,45 +99,39 @@ export function useDashboardData(month: number, year: number) {
       if (rentalError) throw rentalError;
 
       // 4. Buscar pagamentos do mês/ano selecionado
-      const startDate = new Date(year, month, 1).toISOString();
-      const endDate = new Date(year, month + 1, 0).toISOString();
-      const today = new Date().toISOString().split('T')[0];
+      const startDate = new Date(year, month - 1, 1).toISOString();
+      const endDate = new Date(year, month, 0, 23, 59, 59).toISOString();
 
-      const { data: payments, error: paymentError } = await supabase
+      const { data: paymentsData, error: paymentsError } = await supabase
         .from("payments")
-        .select("status, expected_amount, paid_amount, due_date, admin_fee_value")
+        .select("status, expected_amount, paid_amount, due_date, admin_fee")
         .gte("due_date", startDate)
         .lte("due_date", endDate);
 
-      if (paymentError) throw paymentError;
+      if (paymentsError) throw paymentsError;
 
-      // Calcular métricas financeiras
+      // Calcular métricas de pagamentos
+      let paidPayments = 0;
+      let overduePayments = 0;
+      let dueTodayPayments = 0;
       let expectedAmount = 0;
       let receivedAmount = 0;
-      let overduePayments = 0;
-      let completedPayments = 0;
-      let pendingPayments = 0;
-      let dueTodayPayments = 0;
       let adminFeeTotal = 0;
 
-      payments?.forEach(payment => {
-        expectedAmount += payment.expected_amount || 0;
-        
+      const today = new Date().toISOString().split("T")[0];
+
+      paymentsData?.forEach((payment) => {
+        expectedAmount += Number(payment.expected_amount) || 0;
+
         if (payment.status === "paid") {
-          receivedAmount += payment.paid_amount || 0;
-          completedPayments++;
-          // Se tiver taxa de administração registrada no pagamento
-          if (payment.admin_fee_value) {
-            adminFeeTotal += payment.admin_fee_value;
-          } else {
-            // Estimativa de 10% se não tiver valor salvo (ajuste conforme regra de negócio)
-            adminFeeTotal += (payment.paid_amount || 0) * 0.1;
-          }
-        } else if (payment.status === "overdue") {
-          overduePayments++;
-        } else if (payment.status === "pending") {
-          pendingPayments++;
-          if (payment.due_date === today) {
+          paidPayments++;
+          receivedAmount += Number(payment.paid_amount) || 0;
+          adminFeeTotal += Number(payment.admin_fee) || 0;
+        } else {
+          const dueDate = payment.due_date?.split("T")[0];
+          if (dueDate && dueDate < today) {
+            overduePayments++;
+          } else if (dueDate === today) {
             dueTodayPayments++;
           }
         }
@@ -142,17 +146,26 @@ export function useDashboardData(month: number, year: number) {
         rentedProperties,
         totalTenants: totalTenants || 0,
         activeContracts: activeContracts || 0,
+        
+        // Legacy fields mapping
+        latePayments: overduePayments,
+        receivedPayments: paidPayments,
+        expectedValue: expectedAmount,
+
+        // Current fields
         overduePayments,
-        completedPayments,
+        completedPayments: paidPayments,
         expectedAmount,
         receivedAmount,
         grossRevenue: receivedAmount,
         netRevenue,
         adminFee: adminFeeTotal,
-        paidPayments: completedPayments,
-        pendingPayments,
+        paidPayments,
+        pendingPayments: 0,
         dueTodayPayments,
-        occupancyRate
+        occupancyRate,
+        revenueData: [], 
+        occupancyData: [] 
       });
 
     } catch (err: any) {

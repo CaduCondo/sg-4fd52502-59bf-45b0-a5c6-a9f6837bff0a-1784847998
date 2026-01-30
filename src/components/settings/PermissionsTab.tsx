@@ -1,14 +1,37 @@
-import { useState } from "react";
-import { SystemUser, Location } from "@/types";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useState, useEffect } from "react";
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
-import { Shield, MapPin, DollarSign, User, CheckCircle2, XCircle, Settings as SettingsIcon } from "lucide-react";
-import { RoleMenuPermission } from "@/hooks/usePermissions";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useToast } from "@/hooks/use-toast";
+import { RoleMenuPermission, UserLocationPermission, SystemUser, Location } from "@/types";
 import { FeeExemptionDialog } from "./FeeExemptionDialog";
+import { 
+  CheckCircle2, 
+  XCircle, 
+  User, 
+  Settings as SettingsIcon,
+  MapPin, 
+  Shield, 
+  DollarSign 
+} from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface PermissionsTabProps {
   users: SystemUser[];
@@ -60,8 +83,10 @@ export function PermissionsTab({
   const [isLoadingPermissions, setIsLoadingPermissions] = useState(false);
 
   const getMenuPermission = (role: string, menuItem: string): boolean => {
-    const perm = roleMenuPermissions.find((p) => p.role === role && p.menu_item === menuItem);
-    return perm ? perm.can_access : false;
+    // Check if property is menu_item or menu_id based on Type definition
+    const perm = roleMenuPermissions.find((p) => p.role === role && (p.menu_id === menuItem || (p as any).menu_item === menuItem));
+    // Fallback safely if property names vary in DB types vs Frontend types
+    return perm ? ((perm as any).can_access ?? (perm as any).has_access ?? false) : false;
   };
 
   const togglePermission = async (role: string, menuItem: string) => {

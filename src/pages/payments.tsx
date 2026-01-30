@@ -133,7 +133,7 @@ export default function Payments() {
         notes: paymentData.notes,
         referenceMonth: parseInt(paymentData.reference_month),
         referenceYear: parseInt(paymentData.reference_year),
-        attachments: (paymentData.attachments as string[]) || [],
+        attachments: (paymentData.attachments as unknown as string[]) || [],
         lateFee: paymentData.late_fee || 0,
         interest: paymentData.interest || 0,
       };
@@ -145,12 +145,14 @@ export default function Payments() {
         startDate: rental.start_date,
         endDate: rental.end_date,
         rentAmount: rental.monthly_rent,
-        monthlyRent: rental.monthly_rent,
-        garageValue: rental.garage_value,
-        value: rental.value,
+        depositAmount: rental.deposit ? parseFloat(rental.deposit) : 0,
         paymentDay: rental.payment_day,
-        status: rental.is_active ? "active" : "terminated",
+        status: (rental as any).status || "active", // Cast to any to bypass missing property error if schema inference is lagging
+        isActive: ((rental as any).status || "active") === 'active',
         autoRenew: false,
+        value: rental.monthly_rent,
+        attachments: (rental.attachments as unknown as string[]) || [],
+        contractAttachments: (rental.contract_attachments as unknown as string[]) || []
       };
 
       const propertyForReceipt: Property = {

@@ -20,7 +20,40 @@ export function useRentalDetails(rentalId: string) {
       // Buscar dados da locação
       const { data: rentalData, error: rentalError } = await supabase
         .from("rentals")
-        .select("*")
+        .select(`
+          *,
+          tenants (
+            id,
+            name,
+            email,
+            phone,
+            cpf,
+            rg
+          ),
+          properties (
+            id,
+            property_identifier,
+            complement,
+            description,
+            rooms,
+            bathrooms,
+            area,
+            value,
+            garage_value,
+            has_garage,
+            has_furniture,
+            accepts_pets,
+            images,
+            locations!properties_location_id_fkey (
+              id,
+              name,
+              city,
+              state,
+              neighborhood,
+              street
+            )
+          )
+        `)
         .eq("id", rentalId)
         .single();
 

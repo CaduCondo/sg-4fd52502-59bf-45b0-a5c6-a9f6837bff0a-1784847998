@@ -153,37 +153,61 @@ export function usePayments() {
 
       // Se não encontrar, busca do banco (útil para acesso direto via URL)
       // Usamos o serviço existente ou query direta se o serviço não tiver getById
-      const { data, error } = await supabase
+      const { data: paymentsData, error: paymentsError } = await supabase
         .from("payments")
-        .select("*")
+        .select(`
+          id,
+          rental_id,
+          due_date,
+          expected_amount,
+          status,
+          paid_amount,
+          payment_date,
+          payment_method,
+          notes,
+          late_fee,
+          interest,
+          attachments,
+          reference_month,
+          reference_year,
+          created_at,
+          updated_at,
+          rental: rental_id (
+            property: property_id (
+              location,
+              complement
+            )
+          )
+        `)
+        .order("due_date", { ascending: true })
         .eq("id", id)
         .single();
       
-      if (error) throw error;
+      if (paymentsError) throw paymentsError;
       
       // Mapear campos do banco para o tipo Payment
       // Extrair mês e ano da data de vencimento se não vier do banco
-      const dueDateObj = new Date(data.due_date);
+      const dueDateObj = new Date(paymentsData.due_date);
       
       return {
-        id: data.id,
-        rentalId: data.rental_id,
-        dueDate: data.due_date,
-        amount: data.expected_amount, // Mapeado de expected_amount
-        status: data.status,
-        expectedAmount: data.expected_amount,
-        paidAmount: data.paid_amount || 0,
-        paymentDate: data.payment_date,
-        paymentMethod: data.payment_method,
-        notes: data.notes,
+        id: paymentsData.id,
+        rentalId: paymentsData.rental_id,
+        dueDate: paymentsData.due_date,
+        amount: paymentsData.expected_amount, // Mapeado de expected_amount
+        status: paymentsData.status,
+        expectedAmount: paymentsData.expected_amount,
+        paidAmount: paymentsData.paid_amount || 0,
+        paymentDate: paymentsData.payment_date,
+        paymentMethod: paymentsData.payment_method,
+        notes: paymentsData.notes,
         discountAmount: 0, // Campo não existente no banco
-        penaltyAmount: data.late_fee, // Mapeado de late_fee
-        interestAmount: data.interest, // Mapeado de interest
-        attachments: data.attachments as string[], // Cast explícito para string[]
-        referenceMonth: data.reference_month || (dueDateObj.getMonth() + 1),
-        referenceYear: data.reference_year || dueDateObj.getFullYear(),
-        createdAt: data.created_at,
-        updatedAt: data.updated_at
+        penaltyAmount: paymentsData.late_fee, // Mapeado de late_fee
+        interestAmount: paymentsData.interest, // Mapeado de interest
+        attachments: paymentsData.attachments as string[], // Cast explícito para string[]
+        referenceMonth: paymentsData.reference_month || (dueDateObj.getMonth() + 1),
+        referenceYear: paymentsData.reference_year || dueDateObj.getFullYear(),
+        createdAt: paymentsData.created_at,
+        updatedAt: paymentsData.updated_at
       } as Payment;
     } catch (error) {
       console.error("Erro ao buscar pagamento:", error);

@@ -72,7 +72,13 @@ export default function Dashboard() {
         ) : (
           <>
             <OverviewCards data={dashboardData} />
-            <AnalyticsCharts data={dashboardData} />
+            {/* Charts Section */}
+            <AnalyticsCharts 
+              revenueData={dashboardData?.revenueData}
+              occupancyData={dashboardData?.occupancyData}
+            />
+
+            {/* Recent Activity & Upcoming Payments */}
           </>
         )}
       </div>

@@ -1,7 +1,7 @@
 import { Rental, Property, Tenant } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, User, Calendar, DollarSign } from "lucide-react";
+import { MapPin, User, Calendar, DollarSign, FileText } from "lucide-react";
 import { formatCurrency } from "@/lib/masks";
 import { formatDateLocal } from "@/lib/rentalCalculations";
 import { format } from "date-fns";
@@ -37,10 +37,17 @@ export function RentalDetailsCard({ rental, property, tenant }: RentalDetailsCar
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle>Detalhes da Locação</CardTitle>
-          {getStatusBadge(rental.status)}
-        </div>
+        <CardTitle className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            <span>
+              {rental.properties?.locations?.name} - {rental.properties?.complement || "S/N"}
+            </span>
+          </div>
+          <div className="flex gap-2">
+            {getStatusBadge(rental.status)}
+          </div>
+        </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Propriedade */}
