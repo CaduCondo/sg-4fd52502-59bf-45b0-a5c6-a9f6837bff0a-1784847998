@@ -87,6 +87,7 @@ export function PermissionsTab({
 
   // Sincronizar estado local quando roleMenuPermissions mudar
   useEffect(() => {
+    console.log("🔄 Sincronizando permissões:", roleMenuPermissions);
     const newSet = new Set<string>();
     
     roleMenuPermissions.forEach(perm => {
@@ -94,21 +95,29 @@ export function PermissionsTab({
       newSet.add(key);
     });
     
+    console.log("📊 Set de permissões criado:", Array.from(newSet));
     setPermissionsSet(newSet);
   }, [roleMenuPermissions]);
 
   const hasPermission = (role: string, menuItem: string): boolean => {
     const key = `${role}-${menuItem}`;
-    return permissionsSet.has(key);
+    const has = permissionsSet.has(key);
+    console.log(`🔍 Verificando permissão: ${key} = ${has}`);
+    return has;
   };
 
   const togglePermission = async (role: string, menuItem: string) => {
-    if (isSaving) return;
+    if (isSaving) {
+      console.log("⏳ Já está salvando, aguarde...");
+      return;
+    }
     
     setIsSaving(true);
     const key = `${role}-${menuItem}`;
     const currentHasAccess = hasPermission(role, menuItem);
     const newHasAccess = !currentHasAccess;
+    
+    console.log(`🔄 Toggle: ${key}, Atual: ${currentHasAccess}, Novo: ${newHasAccess}`);
     
     // Atualiza UI otimisticamente
     setPermissionsSet(prev => {
@@ -118,6 +127,7 @@ export function PermissionsTab({
       } else {
         newSet.delete(key);
       }
+      console.log("📊 Novo set:", Array.from(newSet));
       return newSet;
     });
     
@@ -126,6 +136,7 @@ export function PermissionsTab({
       
       if (!success) {
         // Reverter se falhar
+        console.log("❌ Falha ao salvar, revertendo...");
         setPermissionsSet(prev => {
           const newSet = new Set(prev);
           if (currentHasAccess) {
@@ -135,8 +146,12 @@ export function PermissionsTab({
           }
           return newSet;
         });
+      } else {
+        console.log("✅ Permissão salva com sucesso!");
       }
     } catch (error) {
+      console.error("❌ Erro ao alternar permissão:", error);
+      
       // Reverter em caso de erro
       setPermissionsSet(prev => {
         const newSet = new Set(prev);

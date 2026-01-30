@@ -14,15 +14,16 @@ const DEFAULT_DATA: DashboardData = {
   activeContracts: 0,
   latePayments: 0,
   receivedPayments: 0,
+  expectedValue: 0,
   grossRevenue: 0,
   netRevenue: 0,
   occupancyRate: 0,
   overduePayments: 0,
   overdueAmount: 0,
-  dueTodayCount: 0,
+  dueTodayCount: 0, // Corrigido de dueTodayPayments
   completedPayments: 0,
-  expectedRevenue: 0,
-  receivedRevenue: 0,
+  expectedRevenue: 0, // Mapeado de expectedAmount
+  receivedRevenue: 0, // Mapeado de receivedAmount
   adminFee: 0,
   paidPayments: 0,
   pendingPayments: 0,
@@ -65,7 +66,7 @@ export function useDashboardData(month: number, year: number) {
         allowedLocationIds = permissions?.map(p => p.location_id) || [];
         
         // Se não tem permissão nenhuma, retorna vazio
-        if (allowedLocationIds.length === 0) {
+        if (allowedLocationIds.length === 0 && userData?.role !== 'admin') {
           setDashboardData(DEFAULT_DATA);
           setLoading(false);
           return;
@@ -203,6 +204,7 @@ export function useDashboardData(month: number, year: number) {
         dueTodayCount: dueTodayCountTotal,
         completedPayments: paidPayments,
         
+        expectedValue: expectedAmountTotal,
         expectedRevenue: expectedAmountTotal,
         
         receivedRevenue: receivedAmountTotal,

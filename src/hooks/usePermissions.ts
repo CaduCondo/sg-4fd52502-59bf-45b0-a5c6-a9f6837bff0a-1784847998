@@ -30,7 +30,7 @@ export function usePermissions() {
       const typedPermissions: RoleMenuPermission[] = (data || []).map(p => ({
         id: p.id,
         role: p.role,
-        menu_id: p.menu_item,
+        menu_id: p.menu_item, // Mapear menu_item → menu_id
         created_at: p.created_at
       }));
 
@@ -57,23 +57,21 @@ export function usePermissions() {
   };
 
   const fetchAll = async () => {
-    if (!user || fetchedRef.current) return;
+    if (!user) return;
     setIsLoading(true);
     await Promise.all([fetchRoleMenuPermissions(), fetchLocationPermissions()]);
     setIsLoading(false);
-    fetchedRef.current = true;
   };
 
   useEffect(() => {
-    // CORREÇÃO: Carregar apenas UMA vez quando o usuário estiver disponível
     if (user && !fetchedRef.current) {
-      fetchAll();
+      fetchAll().then(() => {
+        fetchedRef.current = true;
+      });
     } else if (!user) {
       setIsLoading(false);
     }
-    // NÃO adicionar 'user' nas dependências para evitar loop
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]); // Usar user.id em vez de user completo
+  }, [user]);
 
   const updateRoleMenuPermission = async (
     role: string,
