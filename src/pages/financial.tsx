@@ -224,6 +224,13 @@ export default function Financial() {
       });
       
       console.log(`💵 Payments filtrados: ${filteredPayments.length} de ${paymentsData.length}`);
+      console.log("📋 IDs dos rentals permitidos:", allowedRentalIds);
+      console.log("📋 Payments filtrados por rental_id:", filteredPayments.map(p => ({
+        id: p.id,
+        rentalId: p.rentalId,
+        expectedAmount: p.expectedAmount,
+        status: p.status
+      })));
       console.log("✅ Financeiro: Dados carregados com sucesso");
       
       setPayments(filteredPayments);

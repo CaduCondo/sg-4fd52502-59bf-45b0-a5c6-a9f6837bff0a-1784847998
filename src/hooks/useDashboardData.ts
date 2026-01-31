@@ -8,6 +8,7 @@ export function useDashboardData(month: number, year: number, userId: string | u
   const [properties, setProperties] = useState<Property[]>([]);
   const [rentals, setRentals] = useState<Rental[]>([]);
   const [allowedLocationIds, setAllowedLocationIds] = useState<string[]>([]);
+  const [locationExpenses, setLocationExpenses] = useState<number>(0);
 
   // Memoizar as funções de mapeamento para evitar recriação
   const mapPaymentFromDB = useCallback((data: any): Payment => {
@@ -203,6 +204,42 @@ export function useDashboardData(month: number, year: number, userId: string | u
           console.log(`✅ Payments carregados: ${paymentsData?.length || 0}`);
         }
 
+        // 5. Buscar despesas de locais para o período selecionado (CONTAS A PAGAR)
+        let expensesQuery = supabase
+          .from("location_expenses")
+          .select("amount, status, location_id")
+          .eq("reference_month", month)
+          .eq("reference_year", year);
+        
+        // Filtrar despesas por locais permitidos se for usuário financeiro
+        if (userRole === "financial" && allowedLocations.length > 0) {
+          expensesQuery = expensesQuery.in("location_id", allowedLocations);
+          console.log("💸 Filtrando location_expenses por locais permitidos");
+        }
+        
+        const { data: expensesData, error: expensesError } = await expensesQuery;
+        
+        if (expensesError) {
+          console.error("❌ Erro ao buscar despesas de locais:", expensesError);
+        } else {
+          const totalExpenses = expensesData
+            ? expensesData.reduce((sum, e) => sum + (e.amount || 0), 0)
+            : 0;
+          
+          console.log("💰 Location Expenses carregadas:", {
+            month,
+            year,
+            userRole,
+            allowedLocations: userRole === "financial" ? allowedLocations : "Todos",
+            totalExpenses,
+            count: expensesData?.length || 0
+          });
+          
+          if (isMounted) {
+            setLocationExpenses(totalExpenses);
+          }
+        }
+
         if (isMounted) {
           setPayments((paymentsData || []).map(mapPaymentFromDB));
           setProperties((propertiesData || []).map(mapPropertyFromDB));
@@ -231,5 +268,5 @@ export function useDashboardData(month: number, year: number, userId: string | u
     };
   }, [month, year, userId, userRole, mapPaymentFromDB, mapPropertyFromDB, mapRentalFromDB]);
 
-  return { loading, payments, properties, rentals, allowedLocationIds };
+  return { loading, payments, properties, rentals, allowedLocationIds, locationExpenses };
 }

@@ -16,7 +16,7 @@ export default function Dashboard() {
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
   const { user } = useAuth();
 
-  const { loading, payments, properties, rentals, allowedLocationIds } = useDashboardData(
+  const { loading, payments, properties, rentals, allowedLocationIds, locationExpenses } = useDashboardData(
     selectedMonth,
     selectedYear,
     user?.id,
@@ -31,10 +31,12 @@ export default function Dashboard() {
   
   // Calcular overviewData apenas quando os dados mudarem
   const overviewData = useMemo(() => {
-    console.log("🔢 Calculando overviewData...", { 
-      paymentsCount: payments.length, 
-      propertiesCount: properties.length, 
-      rentalsCount: rentals.length 
+    console.log("📊 Recalculando overviewData...");
+    console.log("🔢 Calculando overviewData...", {
+      paymentsCount: payments.length,
+      propertiesCount: properties.length,
+      rentalsCount: rentals.length,
+      locationExpenses
     });
 
     const totalProperties = properties.length;
@@ -71,6 +73,28 @@ export default function Dashboard() {
 
     const occupancyRate = totalProperties > 0 ? (rentedProperties / totalProperties) * 100 : 0;
 
+    const grossRevenue = payments.reduce((sum, p) => sum + (p.paidAmount || 0), 0);
+
+    // Calcular taxas (administrativas + gerenciamento)
+    const totalFees = payments.reduce((sum, p) => {
+      const rental = rentals.find(r => r.id === p.rentalId);
+      const property = properties.find(prop => prop.id === rental?.propertyId);
+      
+      // Taxa administrativa (5%)
+      const adminFee = (p.paidAmount || 0) * 0.05;
+      
+      // Taxa de gerenciamento (3%)
+      const managementFee = (p.paidAmount || 0) * 0.03;
+      
+      return sum + adminFee + managementFee;
+    }, 0);
+
+    // Total de taxas + contas a pagar (location_expenses)
+    const totalFeesAndExpenses = totalFees + locationExpenses;
+
+    // Receita líquida = Receita bruta - Taxas - Contas a pagar
+    const netRevenue = grossRevenue - totalFeesAndExpenses;
+
     return {
       totalProperties,
       availableProperties,
@@ -85,11 +109,11 @@ export default function Dashboard() {
       completedPayments,
       expectedAmount,
       totalRevenue,
-      grossRevenue: totalRevenue,
-      totalFeesAndExpenses: 0,
-      netRevenue: totalRevenue,
+      grossRevenue,
+      totalFeesAndExpenses,
+      netRevenue,
     };
-  }, [payments, properties, rentals]);
+  }, [payments, properties, rentals, locationExpenses]);
 
   return (
     <Layout>
