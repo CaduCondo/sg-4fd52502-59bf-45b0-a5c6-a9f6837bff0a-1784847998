@@ -312,12 +312,6 @@ export default function RentalsPage() {
                               <p className="text-sm text-gray-600 dark:text-gray-400">{tenant?.name || "-"}</p>
                             </div>
 
-                            <div className="mb-3">
-                              <p className="text-2xl font-bold text-slate-900">
-                                {formatCurrency(rental.value || 0)}
-                              </p>
-                            </div>
-
                             <div className="flex items-end justify-between">
                               <div>
                                 <p className="text-sm text-gray-600 dark:text-gray-400">Valor</p>
@@ -478,15 +472,17 @@ export default function RentalsPage() {
                                 <p className="text-sm text-gray-600 dark:text-gray-400">{tenant?.name || "-"}</p>
                               </div>
 
-                              <div className="mb-3">
-                                <p className="text-2xl font-bold text-slate-900">
-                                  {formatCurrency(rental.value || 0)}
-                                </p>
+                              <div className="flex items-end justify-between">
+                                <div>
+                                  <p className="text-sm text-gray-600 dark:text-gray-400">Valor</p>
+                                  <p className="text-2xl font-bold text-emerald-600">
+                                    {formatCurrency(rental.value || 0)}
+                                  </p>
+                                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                    Término: {formatDate(rental.endDate || "")}
+                                  </p>
+                                </div>
                               </div>
-
-                              <p className="text-sm text-gray-600 dark:text-gray-400">
-                                Término: {formatDate(rental.endDate || "")}
-                              </p>
                             </CardContent>
                           </Card>
                         );

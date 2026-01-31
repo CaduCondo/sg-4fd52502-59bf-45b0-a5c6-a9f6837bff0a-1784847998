@@ -57,7 +57,7 @@ export default function ManagePaymentPage() {
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>
-              <h1 className="text-3xl font-bold">Gerenciar Pagamento</h1>
+              <h1 className="text-3xl font-bold">Registrar Recebimento</h1>
             </div>
           </div>
 

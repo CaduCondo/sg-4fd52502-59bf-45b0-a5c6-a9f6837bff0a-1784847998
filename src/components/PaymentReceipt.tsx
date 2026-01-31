@@ -124,12 +124,26 @@ export function PaymentReceipt({
   const referenceMonthName = monthNames[(payment.referenceMonth || 1) - 1];
   const dueDate = payment.dueDate ? new Date(payment.dueDate + "T00:00:00") : new Date();
 
-  const contractStartDate = new Date(rental.startDate + "T00:00:00");
-  const contractEndDate = new Date(rental.endDate + "T00:00:00");
-  const totalMonths = differenceInMonths(contractEndDate, contractStartDate) + 1;
+  // Validar datas do contrato
+  const contractStartDate = rental.startDate 
+    ? new Date(rental.startDate + "T00:00:00") 
+    : new Date();
+  const contractEndDate = rental.endDate 
+    ? new Date(rental.endDate + "T00:00:00") 
+    : new Date();
   
-  const referenceDate = new Date(payment.referenceYear || 0, (payment.referenceMonth || 1) - 1, 1);
-  const currentPaymentNumber = differenceInMonths(referenceDate, contractStartDate) + 1;
+  // Calcular meses apenas se as datas forem válidas
+  let totalMonths = 1;
+  let currentPaymentNumber = 1;
+  
+  if (rental.startDate && rental.endDate) {
+    totalMonths = differenceInMonths(contractEndDate, contractStartDate) + 1;
+  }
+  
+  if (rental.startDate && payment.referenceYear && payment.referenceMonth) {
+    const referenceDate = new Date(payment.referenceYear, (payment.referenceMonth || 1) - 1, 1);
+    currentPaymentNumber = differenceInMonths(referenceDate, contractStartDate) + 1;
+  }
 
   const handleDownloadPDF = () => {
     setLoading(true);

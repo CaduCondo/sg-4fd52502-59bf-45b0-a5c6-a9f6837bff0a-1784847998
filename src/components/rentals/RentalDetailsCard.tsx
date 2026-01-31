@@ -184,7 +184,7 @@ export function RentalDetailsCard({ rental, property, tenant }: RentalDetailsCar
                   </p>
                   
                   {/* 1ª Parcela */}
-                  {rental.depositInstallment1 && (
+                  {rental.depositInstallment1 && rental.depositInstallment1 > 0 && (
                     <div className="pl-4 border-l-2 border-blue-200 space-y-1">
                       <p className="text-sm font-medium">1ª Parcela:</p>
                       <p className="text-sm">
@@ -207,7 +207,7 @@ export function RentalDetailsCard({ rental, property, tenant }: RentalDetailsCar
                   )}
 
                   {/* 2ª Parcela */}
-                  {rental.depositInstallment2 && (
+                  {rental.depositInstallment2 && rental.depositInstallment2 > 0 && (
                     <div className="pl-4 border-l-2 border-blue-200 space-y-1">
                       <p className="text-sm font-medium">2ª Parcela:</p>
                       <p className="text-sm">
@@ -230,7 +230,7 @@ export function RentalDetailsCard({ rental, property, tenant }: RentalDetailsCar
                   )}
 
                   {/* 3ª Parcela */}
-                  {rental.depositInstallment3 && (
+                  {rental.depositInstallment3 && rental.depositInstallment3 > 0 && (
                     <div className="pl-4 border-l-2 border-blue-200 space-y-1">
                       <p className="text-sm font-medium">3ª Parcela:</p>
                       <p className="text-sm">
