@@ -53,5 +53,11 @@ export async function updateLocation(id: string, updates: Partial<Location>): Pr
 }
 
 export async function deleteLocation(id: string): Promise<void> {
-  return deleteSingle(TABLE, id);
+  console.log(`Iniciando exclusão do local com ID: ${id}`);
+  const { error } = await deleteSingle(TABLE, id);
+  if (error) {
+    console.error(`Erro ao excluir local com ID ${id}: ${error.message}`);
+    throw error;
+  }
+  console.log(`Local com ID ${id} excluído com sucesso`);
 }
