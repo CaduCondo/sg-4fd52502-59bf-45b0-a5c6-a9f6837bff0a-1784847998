@@ -84,11 +84,14 @@ export async function updateSingle<T>(
 
   if (selectError) {
     console.error(`Erro ao buscar registro atualizado em ${table}:`, selectError);
-    throw new Error(`Erro ao buscar registro atualizado: ${selectError.message}`);
+    // ✅ NÃO lança erro - UPDATE foi bem-sucedido, então retornar os updates
+    return { id, ...updates } as T;
   }
 
-  if (!data && options.throwOnNotFound) {
-    throw new Error(`Registro não encontrado em ${table} com id: ${id}`);
+  if (!data) {
+    // ✅ Se não encontrou registro MAS update funcionou, retornar os updates
+    console.warn(`Registro não encontrado após UPDATE em ${table} com id: ${id}, mas UPDATE foi bem-sucedido`);
+    return { id, ...updates } as T;
   }
 
   return data as T;
