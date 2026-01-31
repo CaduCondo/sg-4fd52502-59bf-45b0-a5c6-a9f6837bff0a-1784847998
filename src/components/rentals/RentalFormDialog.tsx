@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Camera, Paperclip } from "lucide-react";
-import { formatCurrency, parseCurrencyToNumber } from "@/lib/masks";
+import { formatCurrency, parseCurrencyToNumber, formatCurrencyInput } from "@/lib/masks";
 import { create as createRental, update as updateRentalService } from "@/services/rentalService";
 import { update as updateProperty } from "@/services/propertyService";
 import { update as updateTenant } from "@/services/tenantService";
@@ -141,6 +141,7 @@ export function RentalFormDialog({
       setDepositInstallment3PaymentDate(rental.depositInstallment3PaymentDate || "");
       
       setDepositPixCode(rental.depositPixCode || "");
+      setIsEditing(true);
     } else if (!open) {
       setIsDepositInstallment(false);
       setDepositInstallmentCount("");
@@ -151,6 +152,7 @@ export function RentalFormDialog({
       setDepositInstallment2PaymentDate("");
       setDepositInstallment3PaymentDate("");
       setDepositPixCode("");
+      setIsEditing(false);
       resetForm();
     }
   }, [open, rental, selectedPropertyId]);
@@ -513,11 +515,7 @@ export function RentalFormDialog({
   const tenantsToDisplay = rental ? tenants : availableTenants;
   const selectedProperty = getSelectedProperty();
 
-  // Determinar se os campos devem estar habilitados
-  // Em modo de criação (!rental), sempre habilitado
-  // Em modo de edição (rental + isEditing), habilitado
-  // Em modo de visualização (rental + !isEditing), desabilitado
-  const isFieldDisabled = rental ? (isViewMode && !isEditing) : false;
+  const isFieldDisabled = rental ? !isEditing : false;
 
   if (!open) return null;
 
@@ -656,10 +654,10 @@ export function RentalFormDialog({
             {hasGarage && (
               <Input
                 value={garageValue}
-                onChange={(e) => setGarageValue(formatCurrency(e.target.value))}
+                onChange={(e) => setGarageValue(formatCurrencyInput(e.target.value))}
                 placeholder="R$ 0,00"
                 className="w-32"
-                disabled={!isEditing}
+                disabled={isFieldDisabled}
               />
             )}
 
@@ -687,9 +685,9 @@ export function RentalFormDialog({
                 <Input
                   id="depositAmount"
                   value={depositAmount}
-                  onChange={(e) => setDepositAmount(formatCurrency(e.target.value))}
+                  onChange={(e) => setDepositAmount(formatCurrencyInput(e.target.value))}
                   placeholder="R$ 0,00"
-                  disabled={!isEditing}
+                  disabled={isFieldDisabled}
                 />
               </div>
 
@@ -700,7 +698,7 @@ export function RentalFormDialog({
                   type="date"
                   value={depositPaymentDate}
                   onChange={(e) => setDepositPaymentDate(e.target.value)}
-                  disabled={!isEditing}
+                  disabled={isFieldDisabled}
                 />
               </div>
 
@@ -711,7 +709,7 @@ export function RentalFormDialog({
                   value={depositPixCode}
                   onChange={(e) => setDepositPixCode(e.target.value)}
                   placeholder="Código PIX"
-                  disabled={!isEditing}
+                  disabled={isFieldDisabled}
                 />
               </div>
             </div>
@@ -771,9 +769,9 @@ export function RentalFormDialog({
                     <Input
                       id="depositInstallment2"
                       value={depositInstallment2}
-                      onChange={(e) => setDepositInstallment2(formatCurrency(e.target.value))}
+                      onChange={(e) => setDepositInstallment2(formatCurrencyInput(e.target.value))}
                       placeholder="R$ 0,00"
-                      disabled={!isEditing}
+                      disabled={isFieldDisabled}
                     />
                   </div>
 
@@ -784,7 +782,7 @@ export function RentalFormDialog({
                       type="date"
                       value={depositInstallment2PaymentDate}
                       onChange={(e) => setDepositInstallment2PaymentDate(e.target.value)}
-                      disabled={!isEditing}
+                      disabled={isFieldDisabled}
                     />
                   </div>
                 </div>
@@ -796,9 +794,9 @@ export function RentalFormDialog({
                       <Input
                         id="depositInstallment3"
                         value={depositInstallment3}
-                        onChange={(e) => setDepositInstallment3(formatCurrency(e.target.value))}
+                        onChange={(e) => setDepositInstallment3(formatCurrencyInput(e.target.value))}
                         placeholder="R$ 0,00"
-                        disabled={!isEditing}
+                        disabled={isFieldDisabled}
                       />
                     </div>
 
@@ -809,7 +807,7 @@ export function RentalFormDialog({
                         type="date"
                         value={depositInstallment3PaymentDate}
                         onChange={(e) => setDepositInstallment3PaymentDate(e.target.value)}
-                        disabled={!isEditing}
+                        disabled={isFieldDisabled}
                       />
                     </div>
                   </div>
@@ -844,7 +842,7 @@ export function RentalFormDialog({
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-emerald-900 dark:text-emerald-100">Vaga Garagem:</span>
                   <span className="font-semibold text-emerald-700 dark:text-emerald-300">
-                    {garageValue ? `+ ${garageValue}` : "+ R$ 0,00"}
+                    {garageValue ? `+ ${formatCurrency(parseCurrencyToNumber(garageValue))}` : "+ R$ 0,00"}
                   </span>
                 </div>
               )}
