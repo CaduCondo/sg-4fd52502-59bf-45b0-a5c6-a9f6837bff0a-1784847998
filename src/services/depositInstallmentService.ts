@@ -100,7 +100,7 @@ export const depositInstallmentService = {
         installmentsData.push({
           installment_number: 1,
           amount: depositData.installment1,
-          payment_date: depositData.paymentDate1 || null,
+          payment_date: depositData.paymentDate1 ? normalizeDate(depositData.paymentDate1) : null,
           pix_code: depositData.pixCode1 || null,
         });
       }
@@ -109,7 +109,7 @@ export const depositInstallmentService = {
         installmentsData.push({
           installment_number: 2,
           amount: depositData.installment2,
-          payment_date: depositData.paymentDate2 || null,
+          payment_date: depositData.paymentDate2 ? normalizeDate(depositData.paymentDate2) : null,
           pix_code: depositData.pixCode2 || null,
         });
       }
@@ -118,7 +118,7 @@ export const depositInstallmentService = {
         installmentsData.push({
           installment_number: 3,
           amount: depositData.installment3,
-          payment_date: depositData.paymentDate3 || null,
+          payment_date: depositData.paymentDate3 ? normalizeDate(depositData.paymentDate3) : null,
           pix_code: depositData.pixCode3 || null,
         });
       }
