@@ -445,12 +445,12 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
             <AlertDialogDescription>
               Tem certeza que deseja excluir esta conta? Esta ação não pode ser desfeita.
               {expenseToDelete && (
-                <div className="mt-3 p-3 bg-muted rounded-md">
-                  <p className="font-medium">{getExpenseTypeLabel(expenseToDelete.expenseType)}</p>
-                  <p className="text-sm text-muted-foreground">
+                <span className="mt-3 p-3 bg-muted rounded-md block">
+                  <span className="font-medium block">{getExpenseTypeLabel(expenseToDelete.expenseType)}</span>
+                  <span className="text-sm text-muted-foreground block">
                     {getMonthName(expenseToDelete.referenceMonth)}/{expenseToDelete.referenceYear} - {formatCurrency(expenseToDelete.amount)}
-                  </p>
-                </div>
+                  </span>
+                </span>
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>

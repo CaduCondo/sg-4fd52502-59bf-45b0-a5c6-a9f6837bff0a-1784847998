@@ -15,6 +15,16 @@ import { PaymentCard } from "@/components/payments/PaymentCard";
 import { ManagePaymentForm } from "@/components/payments/ManagePaymentForm";
 import { PaymentReceipt } from "@/components/PaymentReceipt";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import type { Payment, Rental, Property, Tenant } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -41,6 +51,7 @@ export default function Payments() {
   const [selectedPaymentId, setSelectedPaymentId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [paymentToCancel, setPaymentToCancel] = useState<Payment | null>(null);
 
   const [showReceipt, setShowReceipt] = useState(false);
   const [receiptData, setReceiptData] = useState<{
@@ -206,12 +217,16 @@ export default function Payments() {
 
   const handleCancelPaymentClick = async (paymentId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    
-    if (!confirm("Tem certeza que deseja cancelar este pagamento? O recebimento voltará ao estado pendente.")) {
-      return;
+    const payment = payments.find(p => p.id === paymentId);
+    if (payment) {
+      setPaymentToCancel(payment);
     }
+  };
 
-    await handleCancelPayment(paymentId);
+  const handleConfirmCancelPayment = async () => {
+    if (!paymentToCancel) return;
+    await handleCancelPayment(paymentToCancel.id);
+    setPaymentToCancel(null);
   };
 
   const getMonthName = (month: number): string => {
@@ -588,6 +603,26 @@ export default function Payments() {
             onClose={handleCloseReceipt}
           />
         )}
+
+        <AlertDialog open={!!paymentToCancel} onOpenChange={(open) => !open && setPaymentToCancel(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirmar Cancelamento</AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que deseja cancelar este pagamento? O recebimento voltará ao estado pendente e esta ação não pode ser desfeita.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleConfirmCancelPayment}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                Sim, Cancelar Pagamento
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </Layout>
     </>
   );
