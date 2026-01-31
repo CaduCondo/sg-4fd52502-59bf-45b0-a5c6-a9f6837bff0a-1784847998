@@ -1,5 +1,30 @@
 import { supabase } from "@/integrations/supabase/client";
 
+/**
+ * Normaliza uma data para o formato YYYY-MM-DD, garantindo que não haja perda de dias por timezone
+ */
+const normalizeDate = (date: string | Date | null): string | null => {
+  if (!date) return null;
+  
+  // Se já for uma string YYYY-MM-DD simples, retorna ela mesma
+  if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return date;
+  }
+  
+  // Se for objeto Date ou string ISO completa
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return null;
+  
+  // Ajusta o timezone para evitar que a data volte 1 dia
+  // new Date('2024-05-20') cria em UTC (2024-05-20T00:00:00Z)
+  // getTimezoneOffset() retorna a diferença em minutos (ex: 180 para UTC-3)
+  // Somando o offset, trazemos a data "visual" para o UTC, mantendo o dia correto no split
+  const offset = d.getTimezoneOffset();
+  const adjustedDate = new Date(d.getTime() + offset * 60 * 1000);
+  
+  return adjustedDate.toISOString().split('T')[0];
+};
+
 interface DepositInstallmentData {
   rental_id: string;
   installment_number: number;
