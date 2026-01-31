@@ -152,14 +152,15 @@ export function useDashboardData(month: number, year: number) {
 
       if (rentalError) throw rentalError;
 
+      // CRÍTICO: month e year já vêm no formato correto (month = 1-12, não 0-11)
       const startDate = new Date(year, month - 1, 1).toISOString();
       const endDate = new Date(year, month, 0, 23, 59, 59).toISOString();
 
       let paymentsQuery = supabase
         .from("payments")
-        .select("status, expected_amount, paid_amount, due_date, admin_fee, rental_id")
-        .gte("due_date", startDate)
-        .lte("due_date", endDate);
+        .select("status, expected_amount, paid_amount, due_date, admin_fee, rental_id, reference_month, reference_year")
+        .eq("reference_month", month)
+        .eq("reference_year", year);
 
       if (allowedLocationIds && propertyIds.length > 0) {
         const { data: rentalIds } = await supabase
@@ -179,24 +180,16 @@ export function useDashboardData(month: number, year: number) {
 
       if (paymentsError) throw paymentsError;
 
-      // Ajustar mês para formato 1-12 (banco) vs 0-11 (JS)
-      // Se referenceMonth é o mês atual (ex: Jan = 0), no banco deve ser 1.
-      const dbMonth = month + 1;
-      const dbYear = year;
+      console.log(`✅ Buscando despesas para: Mês ${month}, Ano ${year}`);
 
-      console.log(`Buscando despesas para: Mês ${dbMonth}, Ano ${dbYear}`);
-
-      // Buscar despesas do mês
       const { data: expensesData, error: expensesError } = await supabase
         .from("location_expenses")
         .select("amount")
-        .eq("reference_month", dbMonth)
-        .eq("reference_year", dbYear);
+        .eq("reference_month", month)
+        .eq("reference_year", year);
 
       if (expensesError) throw expensesError;
 
-      // IMPORTANTE: Se expensesData for null, locationExpensesTotal será 0.
-      // Se tiver dados, soma os valores.
       const locationExpensesTotal = expensesData?.reduce((sum, expense) => sum + (Number(expense.amount) || 0), 0) || 0;
 
       const { data: rentals } = await supabase
@@ -256,9 +249,7 @@ export function useDashboardData(month: number, year: number) {
       });
 
       const grossRevenue = receivedAmount;
-      // Taxas calculadas sobre recebimentos + Contas a pagar (independente de recebimento)
       const totalFeesAndExpenses = adminFeeTotal + managementFeeTotal + locationExpensesTotal;
-      // Receita Líquida pode ser negativa se despesas > receitas
       const netRevenue = grossRevenue - totalFeesAndExpenses;
 
       // Dados dos últimos 6 meses para gráficos
@@ -266,18 +257,15 @@ export function useDashboardData(month: number, year: number) {
       const monthlyExpensesData = [];
 
       for (let i = 5; i >= 0; i--) {
-        const targetDate = new Date(year, month - 1 - i, 1);
-        const targetMonth = targetDate.getMonth() + 1;
-        const targetYear = targetDate.getFullYear();
-
-        const monthStart = new Date(targetYear, targetMonth - 1, 1).toISOString();
-        const monthEnd = new Date(targetYear, targetMonth, 0, 23, 59, 59).toISOString();
+        const targetMonth = month - i;
+        const targetYear = targetMonth <= 0 ? year - 1 : year;
+        const adjustedMonth = targetMonth <= 0 ? targetMonth + 12 : targetMonth;
 
         let monthPaymentsQuery = supabase
           .from("payments")
-          .select("status, paid_amount")
-          .gte("due_date", monthStart)
-          .lte("due_date", monthEnd)
+          .select("status, paid_amount, rental_id")
+          .eq("reference_month", adjustedMonth)
+          .eq("reference_year", targetYear)
           .eq("status", "paid");
 
         if (allowedLocationIds && propertyIds.length > 0) {
@@ -297,7 +285,7 @@ export function useDashboardData(month: number, year: number) {
         let monthExpensesQuery = supabase
           .from("location_expenses")
           .select("amount")
-          .eq("reference_month", targetMonth) // targetMonth já é 1-12
+          .eq("reference_month", adjustedMonth)
           .eq("reference_year", targetYear);
 
         if (allowedLocationIds) {
@@ -312,19 +300,21 @@ export function useDashboardData(month: number, year: number) {
         let monthFees = 0;
         monthPayments?.forEach((payment) => {
           const paidAmount = Number(payment.paid_amount) || 0;
-          const adminFeeRate = configData ? (configData.admin_fee_percentage || 0) / 100 : 0.05;
-          const managementFeeRate = configData ? (configData.management_fee_percentage || 0) / 100 : 0;
-          monthFees += paidAmount * (adminFeeRate + managementFeeRate);
+          const rental = rentals?.find(r => r.id === payment.rental_id);
+          const property = properties?.find(p => p.id === rental?.property_id);
+          
+          if (property && !exemptLocationIds.includes(property.location_id)) {
+            const adminFeeRate = configData ? (configData.admin_fee_percentage || 0) / 100 : 0.05;
+            const managementFeeRate = configData ? (configData.management_fee_percentage || 0) / 100 : 0;
+            monthFees += paidAmount * (adminFeeRate + managementFeeRate);
+          }
         });
 
         const monthTotal = monthFees + monthExpensesTotal;
-        const monthNet = monthGross - monthTotal; // Agora subtrai corretamente despesas mesmo se monthGross for 0
+        const monthNet = monthGross - monthTotal;
 
-        // Ajuste no label do mês para garantir localização correta sem problemas de timezone
-        // Usar UTC para evitar que dia 1 vire dia 31 do mês anterior
-        const utcDate = new Date(Date.UTC(targetYear, targetMonth - 1, 2)); 
-        const monthName = utcDate.toLocaleString('pt-BR', { month: 'short', timeZone: 'UTC' });
-        const monthLabel = `${monthName}/${targetYear.toString().slice(2)}`;
+        const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+        const monthLabel = `${monthNames[adjustedMonth - 1]}/${targetYear.toString().slice(2)}`;
 
         monthlyRevenueData.push({
           month: monthLabel,

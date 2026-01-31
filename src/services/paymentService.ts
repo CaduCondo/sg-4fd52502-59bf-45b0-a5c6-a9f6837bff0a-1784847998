@@ -24,8 +24,8 @@ function mapPaymentFromDB(data: any): Payment {
     paidAmount: data.paid_amount,
     paymentDate: data.payment_date,
     paymentMethod: data.payment_method,
-    referenceMonth: data.reference_month,
-    referenceYear: data.reference_year,
+    referenceMonth: data.reference_month ? parseInt(data.reference_month) : undefined,
+    referenceYear: data.reference_year ? parseInt(data.reference_year) : undefined,
     receiptUrl: data.receipt_url,
     penaltyAmount: data.penalty_amount,
     interestAmount: data.interest_amount,
@@ -49,8 +49,8 @@ function mapPaymentToDB(data: Partial<Payment>): any {
   if (data.paidAmount) dbData.paid_amount = data.paidAmount;
   if (data.paymentDate) dbData.payment_date = data.paymentDate;
   if (data.paymentMethod) dbData.payment_method = data.paymentMethod;
-  if (data.referenceMonth) dbData.reference_month = data.referenceMonth;
-  if (data.referenceYear) dbData.reference_year = data.referenceYear;
+  if (data.referenceMonth !== undefined) dbData.reference_month = data.referenceMonth;
+  if (data.referenceYear !== undefined) dbData.reference_year = data.referenceYear;
   if (data.receiptUrl) dbData.receipt_url = data.receiptUrl;
   if (data.penaltyAmount) dbData.penalty_amount = data.penaltyAmount;
   if (data.interestAmount) dbData.interest_amount = data.interestAmount;

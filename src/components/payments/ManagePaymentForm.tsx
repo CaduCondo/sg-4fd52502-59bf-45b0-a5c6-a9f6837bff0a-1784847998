@@ -156,7 +156,8 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       : valorIntegral;
     
     // Detectar se é proporcional comparando com o valor integral
-    const isProportional = payment?.expected_amount && Math.abs(valorAluguel - valorIntegral) > 0.01;
+    const isProportional = payment?.expected_amount && 
+      Math.abs(valorAluguel - valorIntegral) > 1.0; // Tolerância maior que 1 real para evitar flutuação de centavos
     
     let multa = 0;
     let juros = 0;

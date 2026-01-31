@@ -313,13 +313,12 @@ export default function RentalsPage() {
                             </div>
 
                             <div className="flex items-end justify-between">
-                              <div>
-                                <p className="text-sm text-gray-600 dark:text-gray-400">Valor</p>
-                                <p className="text-2xl font-bold text-emerald-600">
-                                  {formatCurrency(rental.value || 0)}
+                              <div className="mb-3">
+                                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+                                  Valor do Aluguel
                                 </p>
-                                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                                  Início: {formatDate(rental.startDate)}
+                                <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                                  {formatCurrency(rental.value || 0)}
                                 </p>
                               </div>
                               <div className="flex flex-col gap-2">

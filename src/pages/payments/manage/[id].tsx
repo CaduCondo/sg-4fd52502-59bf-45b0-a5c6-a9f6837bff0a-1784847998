@@ -52,12 +52,10 @@ export default function ManagePaymentPage() {
       </Head>
       <Layout>
         <div className="space-y-6">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => router.back()}>
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-              <h1 className="text-3xl font-bold">Registrar Recebimento</h1>
+              <h1 className="text-3xl font-bold text-slate-900">Registrar Recebimento</h1>
+              <p className="text-muted-foreground mt-1">Gerencie os detalhes do recebimento</p>
             </div>
           </div>
 
