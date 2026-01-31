@@ -1,7 +1,7 @@
 /**
  * HELPERS GENÉRICOS PARA OPERAÇÕES COM SUPABASE
  * 
- * Wrappers que garantem uso correto de .single() e tratamento de erros
+ * Wrappers que garantem uso correto de .maybeSingle() e tratamento de erros
  * consistente em todas as operações do banco de dados.
  */
 
@@ -220,7 +220,7 @@ export async function getByField<T>(
     .from(table as any)
     .select("*")
     .eq(field, value)
-    .maybeSingle(); // Use maybeSingle() em vez de single() para evitar erro quando não encontrar
+    .maybeSingle();
 
   if (error) {
     console.error(`Erro ao buscar registro em ${table}:`, error);
