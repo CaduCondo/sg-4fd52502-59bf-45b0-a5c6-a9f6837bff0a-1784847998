@@ -1,23 +1,14 @@
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, Filter } from "lucide-react";
+import { Trash2, Filter, AlertTriangle } from "lucide-react";
 import { LocationExpense, Location } from "@/types";
 import { locationExpenseService } from "@/services/locationExpenseService";
 import { formatCurrency, applyRealMask, parseCurrencyToNumber } from "@/lib/masks";
@@ -35,7 +26,7 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editingExpense, setEditingExpense] = useState<LocationExpense | null>(null);
-  const [expenseToDelete, setExpenseToDelete] = useState<LocationExpense | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<LocationExpense | null>(null);
 
   // Filtros
   const [filterMonth, setFilterMonth] = useState(new Date().getMonth() + 1);
@@ -59,7 +50,6 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
       setLoading(true);
       const data = await locationExpenseService.getByLocation(location.id);
       
-      // Filtrar por mês e ano
       const filtered = data.filter(
         (exp) => exp.referenceMonth === filterMonth && exp.referenceYear === filterYear
       );
@@ -89,7 +79,6 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
 
     try {
       const selectedDate = new Date(`${referenceYear}-${referenceMonth}-01`);
-      // Salvar mês como 1-12 (Janeiro = 1)
       const month = selectedDate.getMonth() + 1;
       const year = selectedDate.getFullYear();
 
@@ -129,6 +118,27 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
     }
   };
 
+  const handleDelete = async (id: string) => {
+    try {
+      await locationExpenseService.delete(id);
+      
+      toast({
+        title: "Sucesso",
+        description: "Conta excluída com sucesso.",
+      });
+      
+      setConfirmDelete(null);
+      loadExpenses();
+    } catch (error) {
+      console.error("Error deleting expense:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível excluir a conta.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleView = (expense: LocationExpense) => {
     setEditingExpense(expense);
     setExpenseType(expense.expenseType);
@@ -138,34 +148,6 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
     setReferenceYear(expense.referenceYear);
     setIsEditing(false);
     setIsFormOpen(true);
-  };
-
-  const handleDelete = async (id: string) => {
-    console.log("🔴 [DELETE] Iniciando exclusão, ID:", id);
-    
-    try {
-      console.log("🔴 [DELETE] Chamando locationExpenseService.delete...");
-      await locationExpenseService.delete(id);
-      
-      console.log("🔴 [DELETE] Exclusão bem-sucedida!");
-      
-      toast({
-        title: "Sucesso",
-        description: "Conta excluída com sucesso.",
-      });
-      
-      console.log("🔴 [DELETE] Recarregando lista...");
-      await loadExpenses();
-      
-      console.log("🔴 [DELETE] Processo completo!");
-    } catch (error) {
-      console.error("🔴 [DELETE] Erro durante exclusão:", error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível excluir a conta.",
-        variant: "destructive",
-      });
-    }
   };
 
   const resetForm = () => {
@@ -204,7 +186,7 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
 
   return (
     <>
-      <Dialog open={open && !isFormOpen} onOpenChange={onOpenChange}>
+      <Dialog open={open && !isFormOpen && !confirmDelete} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Contas a Pagar - {location.name}</DialogTitle>
@@ -289,7 +271,7 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
                               size="sm"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setExpenseToDelete(expense);
+                                setConfirmDelete(expense);
                               }}
                               className="text-red-600 hover:text-red-700 h-8 w-8 p-0"
                             >
@@ -327,6 +309,7 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
         </DialogContent>
       </Dialog>
 
+      {/* Form Dialog */}
       <Dialog open={isFormOpen} onOpenChange={(open) => !open && resetForm()}>
         <DialogContent className="max-w-xl">
           <DialogHeader>
@@ -446,72 +429,71 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={!!expenseToDelete} onOpenChange={(open) => {
-        console.log("🟡 [ALERT] onOpenChange chamado, open:", open);
-        if (!open) {
-          console.log("🟡 [ALERT] Fechando AlertDialog");
-          setExpenseToDelete(null);
-        }
-      }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja excluir esta conta? Esta ação não pode ser desfeita.
-              {expenseToDelete && (
-                <span className="mt-3 p-3 bg-muted rounded-md block">
-                  <span className="font-medium block">{getExpenseTypeLabel(expenseToDelete.expenseType)}</span>
-                  <span className="text-sm text-muted-foreground block">
-                    {getMonthName(expenseToDelete.referenceMonth)}/{expenseToDelete.referenceYear} - {formatCurrency(expenseToDelete.amount)}
-                  </span>
-                </span>
+      {/* Confirmation Card Dialog */}
+      <Dialog open={!!confirmDelete} onOpenChange={(open) => !open && setConfirmDelete(null)}>
+        <DialogContent className="max-w-md">
+          <Card className="border-red-200 bg-red-50/50">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
+                  <AlertTriangle className="h-6 w-6 text-red-600" />
+                </div>
+                <div>
+                  <CardTitle className="text-red-900">Confirmar Exclusão</CardTitle>
+                  <CardDescription className="text-red-700">
+                    Esta ação não pode ser desfeita
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {confirmDelete && (
+                <div className="p-4 bg-white rounded-lg border border-red-200">
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-sm text-muted-foreground">Tipo:</span>
+                      <span className="font-medium">{getExpenseTypeLabel(confirmDelete.expenseType)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-muted-foreground">Período:</span>
+                      <span className="font-medium">
+                        {getMonthName(confirmDelete.referenceMonth)}/{confirmDelete.referenceYear}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-muted-foreground">Valor:</span>
+                      <span className="font-semibold text-red-600">
+                        {formatCurrency(confirmDelete.amount)}
+                      </span>
+                    </div>
+                    {confirmDelete.description && (
+                      <div className="pt-2 border-t">
+                        <span className="text-sm text-muted-foreground">Descrição:</span>
+                        <p className="text-sm mt-1">{confirmDelete.description}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
               )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel 
-              onClick={() => {
-                console.log("🟡 [ALERT] Botão Cancelar clicado");
-                setExpenseToDelete(null);
-              }}
-            >
-              Cancelar
-            </AlertDialogCancel>
-            <Button
-              onClick={async (e) => {
-                console.log("🔴 [ALERT] Botão Excluir clicado");
-                console.log("🔴 [ALERT] expenseToDelete:", expenseToDelete);
-                
-                if (!expenseToDelete) {
-                  console.error("🔴 [ALERT] ERRO: expenseToDelete é null!");
-                  return;
-                }
-                
-                const idToDelete = expenseToDelete.id;
-                console.log("🔴 [ALERT] ID capturado:", idToDelete);
-                
-                // Remove o foco do botão ANTES de fechar (corrige o erro de aria-hidden)
-                console.log("🔴 [ALERT] Removendo foco do botão...");
-                (e.target as HTMLButtonElement).blur();
-                
-                // Fecha o AlertDialog
-                console.log("🔴 [ALERT] Fechando AlertDialog...");
-                setExpenseToDelete(null);
-                
-                // Aguarda um frame para garantir que o dialog fechou
-                await new Promise(resolve => setTimeout(resolve, 150));
-                
-                // Executa a exclusão
-                console.log("🔴 [ALERT] Executando handleDelete...");
-                await handleDelete(idToDelete);
-              }}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              Excluir
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+
+              <div className="flex gap-2 justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => setConfirmDelete(null)}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => confirmDelete && handleDelete(confirmDelete.id)}
+                >
+                  Excluir Conta
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
