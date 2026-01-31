@@ -19,6 +19,7 @@ export const getAll = async (): Promise<Location[]> => {
   const { data, error } = await supabase
     .from("locations")
     .select("*")
+    .eq("is_active", true) // ✅ Filtra apenas ativos
     .order("name");
 
   if (error) throw error;
@@ -53,11 +54,17 @@ export async function updateLocation(id: string, updates: Partial<Location>): Pr
 }
 
 export async function deleteLocation(id: string): Promise<void> {
-  console.log(`Iniciando exclusão do local com ID: ${id}`);
-  const { error } = await deleteSingle(TABLE, id);
+  console.log(`Iniciando exclusão (soft delete) do local com ID: ${id}`);
+  
+  // ✅ Usa UPDATE para desativar em vez de DELETE físico
+  const { error } = await supabase
+    .from(TABLE)
+    .update({ is_active: false })
+    .eq("id", id);
+
   if (error) {
-    console.error(`Erro ao excluir local com ID ${id}: ${error.message}`);
+    console.error(`Erro ao desativar local com ID ${id}: ${error.message}`);
     throw error;
   }
-  console.log(`Local com ID ${id} excluído com sucesso`);
+  console.log(`Local com ID ${id} desativado com sucesso`);
 }
