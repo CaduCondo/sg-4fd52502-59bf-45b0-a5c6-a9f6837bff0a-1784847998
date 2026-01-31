@@ -154,7 +154,7 @@ export function useDashboardData(selectedPeriod: { month: number; year: number }
       updatedAt: data.updated_at,
       // Campos opcionais que podem não vir do banco diretamente dessa forma
       images: data.photos || [],
-      features: data.features || [],
+      // features: data.features || [], // Removido pois não existe no tipo Property
     };
   }
 

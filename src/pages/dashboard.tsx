@@ -82,6 +82,8 @@ export default function Dashboard() {
     completedPayments,
     expectedAmount,
     totalRevenue,
+    grossRevenue: totalRevenue, // Adicionado (igual ao totalRevenue por enquanto)
+    totalFeesAndExpenses: 0,    // Adicionado (placeholder)
     netRevenue,
     // Campos extras que podem ser úteis
     payments,
