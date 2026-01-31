@@ -403,12 +403,7 @@ export function RentalFormDialog({
         }
         
         // Validar e converter status explicitamente ANTES de criar o objeto
-        const rentalStatus = createdRental.status;
-        let validStatus: "active" | "terminated" | "pending" = "active";
-        
-        if (rentalStatus === "active" || rentalStatus === "terminated" || rentalStatus === "pending") {
-          validStatus = rentalStatus;
-        }
+        const rentalStatus = createdRental.status as "active" | "terminated" | "pending";
         
         // Mapeamento manual do resultado do Supabase (snake_case) para a interface Rental (camelCase)
         const mappedRental: Rental = {
@@ -419,7 +414,7 @@ export function RentalFormDialog({
           endDate: createdRental.end_date,
           paymentDay: Number(createdRental.payment_day),
           depositAmount: Number(createdRental.deposit),
-          status: validStatus,
+          status: rentalStatus,
           attachments: (createdRental.attachments as string[]) || [],
           contractAttachments: (createdRental.contract_attachments as string[]) || [],
           value: Number(createdRental.value),
