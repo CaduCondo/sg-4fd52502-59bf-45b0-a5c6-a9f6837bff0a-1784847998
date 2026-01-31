@@ -94,13 +94,13 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
       const year = selectedDate.getFullYear();
 
       const expenseData = {
-        location_id: location.id,
+        locationId: location.id,
+        expenseType: expenseType,
         description,
         amount: parseCurrencyToNumber(amount),
-        expense_date: selectedDate,
-        reference_month: month,
-        reference_year: year,
-        is_paid: false,
+        referenceMonth: month,
+        referenceYear: year,
+        status: "pending",
       };
 
       if (editingExpense) {
