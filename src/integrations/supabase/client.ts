@@ -10,11 +10,6 @@ if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
   throw new Error('❌ CRÍTICO: Chaves do Supabase não configuradas');
 }
 
-// Estado de saúde do Supabase
-let supabaseHealthy = true;
-let lastHealthCheck = 0;
-const HEALTH_CHECK_INTERVAL = 60000; // 1 minuto
-
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
     persistSession: true,
@@ -25,16 +20,6 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   global: {
     headers: {
       'x-client-info': 'rental-management',
-    },
-    fetch: (url, options = {}) => {
-      // Timeout customizado para todas as requisições
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
-      
-      return fetch(url, {
-        ...options,
-        signal: controller.signal,
-      }).finally(() => clearTimeout(timeoutId));
     },
   },
   db: {
@@ -47,90 +32,40 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   },
 });
 
-// Controle de reconexão
-let reconnectTimeout: NodeJS.Timeout | null = null;
-let reconnectAttempts = 0;
-const MAX_RECONNECT_ATTEMPTS = 3;
-let lastReconnectTime = 0;
-const MIN_RECONNECT_INTERVAL = 10000; // 10 segundos
-let isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
-
-// Health check do Supabase
-const checkSupabaseHealth = async (): Promise<boolean> => {
-  const now = Date.now();
-  
-  // Usar cache se checado recentemente
-  if (now - lastHealthCheck < HEALTH_CHECK_INTERVAL) {
-    return supabaseHealthy;
-  }
-  
-  try {
-    console.log('🏥 Verificando saúde do Supabase...');
-    
-    // Fazer uma requisição simples para verificar conectividade
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/`, {
-      method: 'HEAD',
-      headers: {
-        'apikey': SUPABASE_PUBLISHABLE_KEY,
-      },
-      signal: AbortSignal.timeout(10000), // 10s timeout
-    });
-    
-    supabaseHealthy = response.ok || response.status === 404; // 404 é aceitável (endpoint root)
-    lastHealthCheck = now;
-    
-    if (supabaseHealthy) {
-      console.log('✅ Supabase está saudável');
-      reconnectAttempts = 0;
-    } else {
-      console.error('❌ Supabase retornou status:', response.status);
-    }
-    
-    return supabaseHealthy;
-  } catch (error: any) {
-    console.error('❌ Erro no health check do Supabase:', error.message);
-    supabaseHealthy = false;
-    lastHealthCheck = now;
-    return false;
-  }
-};
-
-// Wrapper para requisições com retry automático
+// Wrapper para requisições com retry automático (apenas para erros de rede reais)
 export const withRetry = async <T>(
   operation: () => Promise<T>,
-  maxRetries = 3,
+  maxRetries = 2,
   delayMs = 1000
 ): Promise<T> => {
   let lastError: any;
   
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      // Verificar saúde antes da operação
-      if (!isOnline) {
-        throw new Error('Sem conexão com a internet');
-      }
-      
-      const isHealthy = await checkSupabaseHealth();
-      if (!isHealthy && attempt === 1) {
-        throw new Error('Supabase está inacessível. Verifique se o projeto está ativo.');
-      }
-      
       return await operation();
     } catch (error: any) {
       lastError = error;
       
       // Não fazer retry em erros que não são de rede
-      if (
+      const isRetryableError = 
+        error.message?.includes('fetch') ||
+        error.message?.includes('network') ||
+        error.message?.includes('timeout') ||
+        error.name === 'AbortError';
+      
+      // Não fazer retry em erros de permissão, autenticação ou tabela inexistente
+      const isNonRetryableError =
         error.code === 'PGRST' || 
         error.message?.includes('JWT') ||
         error.message?.includes('permission') ||
-        error.code === '42P01' // Table doesn't exist
-      ) {
+        error.code === '42P01';
+      
+      if (isNonRetryableError || !isRetryableError) {
         throw error;
       }
       
       if (attempt < maxRetries) {
-        const delay = delayMs * Math.pow(2, attempt - 1); // Exponential backoff
+        const delay = delayMs * attempt; // Linear backoff
         console.log(`⏳ Tentativa ${attempt}/${maxRetries} falhou. Aguardando ${delay}ms...`);
         await new Promise(resolve => setTimeout(resolve, delay));
       }
@@ -140,139 +75,14 @@ export const withRetry = async <T>(
   throw lastError;
 };
 
-const handleNetworkError = async (showToast = false) => {
-  // Se estamos offline, não tentar reconectar
-  if (!isOnline) {
-    console.log('📡 Sistema está offline, aguardando conexão...');
-    return;
-  }
-  
-  const now = Date.now();
-  
-  if (reconnectTimeout) {
-    console.log('⏳ Reconexão já em andamento...');
-    return;
-  }
-  
-  if (now - lastReconnectTime < MIN_RECONNECT_INTERVAL) {
-    console.log('⏸️ Aguardando intervalo mínimo para reconexão...');
-    return;
-  }
-  
-  if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
-    console.error('❌ Máximo de tentativas de reconexão atingido');
-    console.error('⚠️ AÇÃO NECESSÁRIA: Verifique se o projeto Supabase está ativo e pausado em https://supabase.com/dashboard');
-    reconnectAttempts = 0;
-    return;
-  }
-  
-  reconnectAttempts++;
-  lastReconnectTime = now;
-  
-  console.log(`🔄 Tentativa de reconexão ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}...`);
-  
-  const backoffDelay = Math.min(5000 * Math.pow(2, reconnectAttempts - 1), 30000);
-  
-  reconnectTimeout = setTimeout(async () => {
-    try {
-      // Primeiro verificar saúde do Supabase
-      const isHealthy = await checkSupabaseHealth();
-      
-      if (!isHealthy) {
-        console.error('❌ Supabase não está respondendo. Projeto pode estar pausado.');
-        console.error('⚠️ Acesse: https://supabase.com/dashboard/project/yrknfweilbuwrhzzwnrr');
-        return;
-      }
-      
-      // Tentar verificar sessão
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-      
-      if (!sessionError && sessionData?.session) {
-        console.log('✅ Sessão verificada com sucesso');
-        reconnectAttempts = 0;
-      } else if (!sessionError) {
-        console.log('⚠️ Sem sessão ativa');
-        reconnectAttempts = 0;
-      } else {
-        console.error('❌ Erro ao verificar sessão:', sessionError);
-      }
-    } catch (err: any) {
-      console.error('❌ Erro na reconexão:', err.message);
-    } finally {
-      reconnectTimeout = null;
-    }
-  }, backoffDelay);
-};
-
-// Interceptar erros de rede do Supabase
-if (typeof window !== 'undefined') {
-  const originalFetch = window.fetch;
-  window.fetch = async (...args) => {
-    try {
-      const response = await originalFetch(...args);
-      
-      // Se a requisição foi bem-sucedida, resetar contador de reconexão
-      if (response.ok) {
-        reconnectAttempts = 0;
-        if (!supabaseHealthy) {
-          supabaseHealthy = true;
-          console.log('✅ Conexão com Supabase restaurada');
-        }
-      }
-      
-      return response;
-    } catch (error: any) {
-      // Detectar erro de rede
-      const isNetworkError = 
-        error.message === 'Failed to fetch' || 
-        error.name === 'TypeError' || 
-        error.name === 'AbortError' ||
-        !isOnline;
-      
-      if (isNetworkError) {
-        console.error('🚨 Erro de rede detectado:', error.message);
-        console.error('🔍 URL:', args[0]);
-        console.error('⚠️ Verifique se o projeto Supabase está ativo');
-        handleNetworkError(true);
-      }
-      throw error;
-    }
-  };
-  
-  // Monitorar status de conexão
-  window.addEventListener('online', () => {
-    console.log('🌐 Conexão de rede restaurada');
-    isOnline = true;
-    reconnectAttempts = 0;
-    supabaseHealthy = false; // Forçar recheck
-    lastHealthCheck = 0;
-    handleNetworkError();
-  });
-  
-  window.addEventListener('offline', () => {
-    console.log('📡 Sem conexão de rede');
-    isOnline = false;
-    supabaseHealthy = false;
-  });
-  
-  // Health check periódico (a cada 2 minutos)
-  setInterval(async () => {
-    if (isOnline) {
-      await checkSupabaseHealth();
-    }
-  }, 120000); // 2 minutos
-}
-
+// Monitorar eventos de autenticação
 supabase.auth.onAuthStateChange((event, session) => {
   if (event === 'TOKEN_REFRESHED') {
     console.log('🔄 Token atualizado automaticamente');
-    reconnectAttempts = 0;
   } else if (event === 'SIGNED_OUT') {
     console.log('👋 Usuário desconectado');
-    reconnectAttempts = 0;
   } else if (event === 'SIGNED_IN') {
     console.log('✅ Usuário autenticado');
-    reconnectAttempts = 0;
   }
 });
 
@@ -285,12 +95,10 @@ export const setSupabaseSession = async (accessToken: string, refreshToken: stri
     
     if (error) {
       console.error('❌ Erro ao configurar sessão Supabase:', error);
-      handleNetworkError();
       return false;
     }
     
     console.log('✅ Sessão Supabase configurada com sucesso');
-    reconnectAttempts = 0;
     return true;
   } catch (err) {
     console.error('❌ Erro crítico ao configurar sessão:', err);
@@ -304,14 +112,12 @@ export const getSupabaseSession = async () => {
     
     if (error) {
       console.error('❌ Erro ao obter sessão:', error);
-      handleNetworkError();
       return null;
     }
     
     return session;
   } catch (err) {
     console.error('❌ Erro crítico ao obter sessão:', err);
-    handleNetworkError();
     return null;
   }
 };
@@ -327,10 +133,6 @@ if (typeof window !== 'undefined') {
       }
     } catch (err) {
       console.error('❌ Erro no refresh preventivo:', err);
-      handleNetworkError();
     }
   }, 25 * 60 * 1000); // 25 minutos
 }
-
-// Exportar função de health check para uso externo
-export { checkSupabaseHealth };
