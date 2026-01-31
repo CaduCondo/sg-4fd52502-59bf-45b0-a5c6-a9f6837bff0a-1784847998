@@ -313,7 +313,7 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
                     <SelectItem value="active">Ativo</SelectItem>
                     <SelectItem value="inactive">Inativo</SelectItem>
                   </SelectContent>
-                </SelectContent>
+                </Select>
               </div>
             </div>
           </div>
