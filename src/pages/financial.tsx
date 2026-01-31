@@ -608,20 +608,22 @@ export default function Financial() {
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-200">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-blue-900">Taxa de Gerenciamento</CardTitle>
-              <Wallet className="h-4 w-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-700">
-                {totals.managementFee > 0 ? `- ${formatCurrency(totals.managementFee)}` : formatCurrency(0)}
-              </div>
-              <p className="text-xs text-blue-600">
-                {config?.management_fee_percentage || 0}% sobre a receita bruta
-              </p>
-            </CardContent>
-          </Card>
+          {user?.role === "admin" && (
+            <Card className="bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-200">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-blue-900">Taxa de Gerenciamento</CardTitle>
+                <Wallet className="h-4 w-4 text-blue-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-blue-700">
+                  {totals.managementFee > 0 ? `- ${formatCurrency(totals.managementFee)}` : formatCurrency(0)}
+                </div>
+                <p className="text-xs text-blue-600">
+                  {config?.management_fee_percentage || 0}% sobre a receita bruta
+                </p>
+              </CardContent>
+            </Card>
+          )}
 
           <Card className="bg-gradient-to-br from-orange-50 to-amber-50 border-orange-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

@@ -77,19 +77,19 @@ export default function Dashboard() {
           </div>
         ) : (
           <>
-            <OverviewCards data={dashboardData} />
+            <OverviewCards data={overviewData} />
             
             {/* Charts Section */}
             <AnalyticsCharts 
-              revenueData={dashboardData?.revenueData}
-              occupancyData={dashboardData?.occupancyData}
+              revenueData={[]} // TODO: Processar dados reais para o gráfico
+              occupancyData={[]} // TODO: Processar dados reais
             />
 
             {/* Financial Charts - 6 Months */}
             <FinancialCharts
-              monthlyRevenueData={dashboardData.monthlyRevenueData}
-              monthlyExpensesData={dashboardData.monthlyExpensesData}
-              occupancyData={dashboardData.occupancyData}
+              monthlyRevenueData={[]} // TODO: Processar dados reais
+              monthlyExpensesData={[]} // TODO: Processar dados reais
+              occupancyData={[]} // TODO: Processar dados reais
             />
           </>
         )}

@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Camera, Paperclip } from "lucide-react";
-import { applyRealMask, formatCurrency, parseCurrencyToNumber } from "@/lib/masks";
+import { formatCurrency, parseCurrencyToNumber } from "@/lib/masks";
 import { create as createRental, update as updateRentalService } from "@/services/rentalService";
 import { update as updateProperty } from "@/services/propertyService";
 import { update as updateTenant } from "@/services/tenantService";
@@ -679,7 +679,7 @@ export function RentalFormDialog({
             {hasGarage && (
               <Input
                 value={garageValue}
-                onChange={(e) => setGarageValue(applyRealMask(e.target.value))}
+                onChange={(e) => setGarageValue(formatCurrency(e.target.value))}
                 placeholder="R$ 0,00"
                 className="w-32"
                 disabled={!isEditing}
@@ -794,7 +794,7 @@ export function RentalFormDialog({
                     <Input
                       id="depositInstallment2"
                       value={depositInstallment2}
-                      onChange={(e) => setDepositInstallment2(applyRealMask(e.target.value))}
+                      onChange={(e) => setDepositInstallment2(formatCurrency(e.target.value))}
                       placeholder="R$ 0,00"
                       disabled={!isEditing}
                     />
@@ -819,7 +819,7 @@ export function RentalFormDialog({
                       <Input
                         id="depositInstallment3"
                         value={depositInstallment3}
-                        onChange={(e) => setDepositInstallment3(applyRealMask(e.target.value))}
+                        onChange={(e) => setDepositInstallment3(formatCurrency(e.target.value))}
                         placeholder="R$ 0,00"
                         disabled={!isEditing}
                       />
