@@ -141,16 +141,25 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
   };
 
   const handleDelete = async (id: string) => {
+    console.log("🔴 [DELETE] Iniciando exclusão, ID:", id);
+    
     try {
+      console.log("🔴 [DELETE] Chamando locationExpenseService.delete...");
       await locationExpenseService.delete(id);
+      
+      console.log("🔴 [DELETE] Exclusão bem-sucedida!");
+      
       toast({
         title: "Sucesso",
         description: "Conta excluída com sucesso.",
       });
-      setExpenseToDelete(null);
-      loadExpenses();
+      
+      console.log("🔴 [DELETE] Recarregando lista...");
+      await loadExpenses();
+      
+      console.log("🔴 [DELETE] Processo completo!");
     } catch (error) {
-      console.error("Error deleting expense:", error);
+      console.error("🔴 [DELETE] Erro durante exclusão:", error);
       toast({
         title: "Erro",
         description: "Não foi possível excluir a conta.",
@@ -437,7 +446,13 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={!!expenseToDelete} onOpenChange={(open) => !open && setExpenseToDelete(null)}>
+      <AlertDialog open={!!expenseToDelete} onOpenChange={(open) => {
+        console.log("🟡 [ALERT] onOpenChange chamado, open:", open);
+        if (!open) {
+          console.log("🟡 [ALERT] Fechando AlertDialog");
+          setExpenseToDelete(null);
+        }
+      }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
@@ -454,21 +469,37 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={(e) => {
-              e.stopPropagation();
-              setExpenseToDelete(null);
-            }}>
+            <AlertDialogCancel 
+              onClick={() => {
+                console.log("🟡 [ALERT] Botão Cancelar clicado");
+                setExpenseToDelete(null);
+              }}
+            >
               Cancelar
             </AlertDialogCancel>
             <Button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if (expenseToDelete) {
-                  const idToDelete = expenseToDelete.id;
-                  setExpenseToDelete(null);
-                  handleDelete(idToDelete);
+              onClick={async () => {
+                console.log("🔴 [ALERT] Botão Excluir clicado");
+                console.log("🔴 [ALERT] expenseToDelete:", expenseToDelete);
+                
+                if (!expenseToDelete) {
+                  console.error("🔴 [ALERT] ERRO: expenseToDelete é null!");
+                  return;
                 }
+                
+                const idToDelete = expenseToDelete.id;
+                console.log("🔴 [ALERT] ID capturado:", idToDelete);
+                
+                // Fecha o AlertDialog ANTES de executar a exclusão
+                console.log("🔴 [ALERT] Fechando AlertDialog...");
+                setExpenseToDelete(null);
+                
+                // Aguarda um frame para garantir que o dialog fechou
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                // Executa a exclusão
+                console.log("🔴 [ALERT] Executando handleDelete...");
+                await handleDelete(idToDelete);
               }}
               className="bg-red-600 hover:bg-red-700"
             >

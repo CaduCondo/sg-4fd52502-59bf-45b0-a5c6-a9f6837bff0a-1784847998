@@ -149,12 +149,19 @@ export const locationExpenseService = {
   },
 
   async delete(id: string): Promise<void> {
+    console.log("🔵 [SERVICE] delete chamado, ID:", id);
+    
     const { error } = await db
       .from("location_expenses")
       .delete()
       .eq("id", id);
 
-    if (error) throw error;
+    if (error) {
+      console.error("🔵 [SERVICE] Erro no delete:", error);
+      throw error;
+    }
+    
+    console.log("🔵 [SERVICE] Delete bem-sucedido!");
   },
 };
 
