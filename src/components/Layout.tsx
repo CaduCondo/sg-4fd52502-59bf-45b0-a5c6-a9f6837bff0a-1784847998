@@ -247,7 +247,7 @@ export function Layout({ children }: LayoutProps) {
             </div>
 
             {/* Desktop Navigation */}
-            <div className="hidden md:flex items-center gap-1 flex-1 justify-center">
+            <div className="hidden md:flex items-center gap-1 flex-1">
               {navigationItems.map((item) => {
                 const Icon = item.icon;
                 const active = isActive(item.path);

@@ -711,36 +711,34 @@ export default function Settings() {
           {/* LOCAIS */}
           <TabsContent value="locations" className="space-y-3">
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <div>
-                  <CardTitle className="flex items-center gap-2 text-base">
+                  <CardTitle className="flex items-center gap-2 text-sm">
                     <MapPin className="h-4 w-4" />
                     Gerenciar Locais
                   </CardTitle>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Cadastre os locais/condomínios e gerencie suas contas mensais
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    Cadastre locais/condomínios e gerencie contas
                   </p>
                 </div>
-                <Button onClick={() => openLocationDialog()} className="gap-1.5 h-8 text-xs">
+                <Button onClick={() => openLocationDialog()} className="gap-1.5 h-7 text-xs">
                   <Plus className="h-3 w-3" />
                   Novo Local
                 </Button>
               </CardHeader>
-              <CardContent className="pb-4">
+              <CardContent className="pb-3">
                 {/* Busca */}
                 <div className="mb-3">
-                  <div className="relative">
-                    <input
-                      type="text"
-                      placeholder="Buscar por nome, cidade ou bairro..."
-                      value={searchLocation}
-                      onChange={(e) => setSearchLocation(e.target.value)}
-                      className="w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
-                    />
-                  </div>
+                  <input
+                    type="text"
+                    placeholder="Buscar por nome, cidade ou bairro..."
+                    value={searchLocation}
+                    onChange={(e) => setSearchLocation(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:bg-slate-800 dark:border-slate-700"
+                  />
                 </div>
 
-                {/* Lista de Locais */}
+                {/* Grid de Locais */}
                 {isLoadingLocations ? (
                   <div className="text-center py-6 text-muted-foreground text-xs">
                     Carregando locais...
@@ -748,64 +746,69 @@ export default function Settings() {
                 ) : filteredLocations.length === 0 ? (
                   <div className="text-center py-6 text-muted-foreground text-xs">
                     {searchLocation
-                      ? "Nenhum local encontrado com esse filtro"
-                      : "Nenhum local cadastrado ainda"}
+                      ? "Nenhum local encontrado"
+                      : "Nenhum local cadastrado"}
                   </div>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3">
                     {filteredLocations.map((location) => (
                       <div
                         key={location.id}
-                        className="flex items-start justify-between p-3 border rounded-lg hover:bg-accent/50 transition-colors cursor-pointer"
+                        className="border rounded-lg p-3 hover:bg-accent/50 transition-colors cursor-pointer group"
                         onClick={() => openLocationDialog(location)}
                       >
-                        <div className="flex-1 space-y-0.5">
-                          <h4 className="font-semibold flex items-center gap-1.5 text-sm">
-                            <Building2 className="h-3 w-3 text-primary" />
-                            {location.name}
-                          </h4>
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <Building2 className="h-4 w-4 text-primary flex-shrink-0" />
+                            <h4 className="font-semibold text-sm truncate">{location.name}</h4>
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-1 mb-3">
                           {(location.street || location.number) && (
-                            <p className="text-xs text-muted-foreground flex items-center gap-1">
-                              <MapPin className="h-2.5 w-2.5" />
-                              {location.street}
-                              {location.number && `, ${location.number}`}
-                              {location.complement && ` - ${location.complement}`}
+                            <p className="text-xs text-muted-foreground flex items-start gap-1">
+                              <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                              <span className="line-clamp-1">
+                                {location.street}
+                                {location.number && `, ${location.number}`}
+                                {location.complement && ` - ${location.complement}`}
+                              </span>
                             </p>
                           )}
                           {location.neighborhood && (
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-xs text-muted-foreground ml-4 line-clamp-1">
                               {location.neighborhood}
                             </p>
                           )}
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-xs text-muted-foreground ml-4">
                             {location.city}, {location.state}
                             {location.zip_code && ` • ${location.zip_code}`}
                           </p>
                         </div>
-                        <div className="flex gap-1.5 ml-3">
+
+                        <div className="flex gap-1.5">
                           <Button 
                             variant="outline" 
                             size="sm" 
-                            className="gap-1.5 h-7 text-xs px-2"
+                            className="flex-1 gap-1 h-7 text-xs"
                             onClick={(e) => {
                               e.stopPropagation();
                               setSelectedLocationForExpenses(location);
                             }}
                           >
                             <Wallet className="h-3 w-3" />
-                            Contas
+                            Contas a Pagar
                           </Button>
                           <Button
                             variant="outline"
                             size="sm"
-                            className="gap-1.5 text-destructive hover:bg-destructive/10 h-7 text-xs px-2"
+                            className="gap-1 text-destructive hover:bg-destructive/10 h-7 text-xs px-2"
                             onClick={(e) => {
                               e.stopPropagation();
                               setLocationToDelete(location);
                             }}
                           >
                             <Trash2 className="h-3 w-3" />
-                            Excluir
                           </Button>
                         </div>
                       </div>
@@ -813,9 +816,9 @@ export default function Settings() {
                   </div>
                 )}
 
-                {/* Footer com total */}
+                {/* Footer */}
                 <div className="mt-3 pt-3 border-t text-xs text-muted-foreground text-center">
-                  Total: {filteredLocations.length} local(is) cadastrado(s)
+                  {filteredLocations.length} local(is) • {searchLocation && "Filtrado"}
                 </div>
               </CardContent>
             </Card>

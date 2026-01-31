@@ -1,11 +1,11 @@
 import { MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { siteConfig } from "@/services/configService";
 
 export function WhatsAppButton() {
   const handleWhatsAppClick = () => {
-    const message = encodeURIComponent(siteConfig.whatsappMessage);
-    const url = `https://wa.me/${siteConfig.contact.whatsapp}?text=${message}`;
+    const phoneNumber = "5511976543210"; // (11) 97654-3210 em formato internacional
+    const message = encodeURIComponent("Olá! Gostaria de mais informações sobre os imóveis disponíveis.");
+    const url = `https://wa.me/${phoneNumber}?text=${message}`;
     window.open(url, "_blank");
   };
 

@@ -484,7 +484,7 @@ export function DepositInstallmentsTable({
         <Card className="border-slate-200 shadow-sm overflow-hidden">
           <CardHeader className="border-b border-slate-100 bg-white pb-4">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <CardTitle className="text-base font-medium text-slate-700">
+              <CardTitle className="text-lg font-medium text-slate-700">
                 Detalhamento dos Cauções
               </CardTitle>
               <div className="flex flex-wrap gap-4 items-end">
@@ -535,7 +535,7 @@ export function DepositInstallmentsTable({
                 <TableHeader>
                   <TableRow className="bg-slate-50/50 hover:bg-slate-50/50">
                     <TableHead 
-                      className="text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
+                      className="text-sm font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
                       onClick={() => handleSort("location")}
                     >
                       <div className="flex items-center">
@@ -544,7 +544,7 @@ export function DepositInstallmentsTable({
                       </div>
                     </TableHead>
                     <TableHead 
-                      className="text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
+                      className="text-sm font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
                       onClick={() => handleSort("complement")}
                     >
                       <div className="flex items-center">
@@ -553,7 +553,7 @@ export function DepositInstallmentsTable({
                       </div>
                     </TableHead>
                     <TableHead 
-                      className="text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
+                      className="text-sm font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
                       onClick={() => handleSort("tenant")}
                     >
                       <div className="flex items-center">
@@ -562,7 +562,7 @@ export function DepositInstallmentsTable({
                       </div>
                     </TableHead>
                     <TableHead 
-                      className="text-xs font-semibold text-slate-500 uppercase tracking-wider text-right cursor-pointer hover:bg-slate-100"
+                      className="text-sm font-semibold text-slate-500 uppercase tracking-wider text-right cursor-pointer hover:bg-slate-100"
                       onClick={() => handleSort("rentalAmount")}
                     >
                       <div className="flex items-center justify-end">
@@ -571,7 +571,7 @@ export function DepositInstallmentsTable({
                       </div>
                     </TableHead>
                     <TableHead 
-                      className="text-xs font-semibold text-slate-500 uppercase tracking-wider text-right cursor-pointer hover:bg-slate-100"
+                      className="text-sm font-semibold text-slate-500 uppercase tracking-wider text-right cursor-pointer hover:bg-slate-100"
                       onClick={() => handleSort("securityDeposit")}
                     >
                       <div className="flex items-center justify-end">
@@ -580,7 +580,7 @@ export function DepositInstallmentsTable({
                       </div>
                     </TableHead>
                     <TableHead 
-                      className="text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
+                      className="text-sm font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
                       onClick={() => handleSort("hasPartner")}
                     >
                       <div className="flex items-center">
@@ -588,14 +588,14 @@ export function DepositInstallmentsTable({
                         <SortIcon field="hasPartner" />
                       </div>
                     </TableHead>
-                    <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">
+                    <TableHead className="text-sm font-semibold text-slate-500 uppercase tracking-wider text-right">
                       Valor Pg Corretagem Parceiro
                     </TableHead>
-                    <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">
+                    <TableHead className="text-sm font-semibold text-slate-500 uppercase tracking-wider text-right">
                       Valor Pg Corretagem Interno
                     </TableHead>
                     <TableHead 
-                      className="text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
+                      className="text-sm font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
                       onClick={() => handleSort("installment")}
                     >
                       <div className="flex items-center">
@@ -603,11 +603,11 @@ export function DepositInstallmentsTable({
                         <SortIcon field="installment" />
                       </div>
                     </TableHead>
-                    <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    <TableHead className="text-sm font-semibold text-slate-500 uppercase tracking-wider">
                       Data Pagamento
                     </TableHead>
                     <TableHead 
-                      className="text-xs font-semibold text-slate-500 uppercase tracking-wider text-right cursor-pointer hover:bg-slate-100"
+                      className="text-sm font-semibold text-slate-500 uppercase tracking-wider text-right cursor-pointer hover:bg-slate-100"
                       onClick={() => handleSort("amount")}
                     >
                       <div className="flex items-center justify-end">
@@ -616,7 +616,7 @@ export function DepositInstallmentsTable({
                       </div>
                     </TableHead>
                     <TableHead 
-                      className="text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
+                      className="text-sm font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
                       onClick={() => handleSort("pixCode")}
                     >
                       <div className="flex items-center">
@@ -630,200 +630,206 @@ export function DepositInstallmentsTable({
                   {Object.entries(groupedByRental).map(([rentalId, installments]) => {
                     const firstInstallment = installments[0];
                     const rowSpan = installments.length;
+                    const totalCaucaoValue = installments.reduce((sum, inst) => sum + inst.amount, 0);
 
-                    return installments.map((installment, index) => (
-                      <TableRow key={installment.id} className="hover:bg-slate-50 transition-colors">
-                        {index === 0 && (
-                          <>
-                            <TableCell rowSpan={rowSpan} className="font-medium text-slate-900 border-r border-slate-100">
-                              {firstInstallment.rental?.property?.location?.name || "-"}
-                            </TableCell>
-                            <TableCell rowSpan={rowSpan} className="text-slate-600 border-r border-slate-100">
-                              {firstInstallment.rental?.property?.complement || "-"}
-                            </TableCell>
-                            <TableCell rowSpan={rowSpan} className="text-slate-600 border-r border-slate-100">
-                              {firstInstallment.rental?.tenant?.name || "-"}
-                            </TableCell>
-                            <TableCell rowSpan={rowSpan} className="text-right font-medium text-slate-900 border-r border-slate-100">
-                              {formatCurrency((firstInstallment.rental?.monthly_rent || 0) + (firstInstallment.rental?.garage_value || 0))}
-                            </TableCell>
-                            <TableCell rowSpan={rowSpan} className="text-right font-medium text-slate-900 border-r border-slate-100">
-                              {formatCurrency(firstInstallment.rental?.security_deposit || 0)}
-                            </TableCell>
-                            <TableCell rowSpan={rowSpan} className="text-slate-600 border-r border-slate-100">
-                              {firstInstallment.rental?.has_partner_broker ? "Sim" : "Não"}
-                            </TableCell>
-                            <TableCell rowSpan={rowSpan} className="text-right border-r border-slate-100">
-                              {editingCommission?.id === firstInstallment.id && editingCommission?.field === "partner" ? (
-                                <div className="flex items-center gap-2">
-                                  <Input
-                                    value={editingCommission.value}
-                                    onChange={(e) => {
-                                      const masked = applyMoneyMask(e.target.value);
-                                      setEditingCommission({ ...editingCommission, value: masked });
-                                    }}
-                                    className="h-9 text-sm text-right"
-                                    autoFocus
-                                  />
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => handleEditCommission(firstInstallment.id, "partner", editingCommission.value)}
-                                  >
-                                    <Check className="h-4 w-4 text-green-600" />
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => setEditingCommission(null)}
-                                  >
-                                    <X className="h-4 w-4 text-red-600" />
-                                  </Button>
-                                </div>
-                              ) : (
-                                <div className="flex items-center justify-end gap-2">
-                                  <span className="text-slate-900 font-medium">
-                                    {formatCurrency(firstInstallment.partner_commission || 0)}
-                                  </span>
-                                  {isAdmin && (
+                    return installments.map((installment, index) => {
+                      const isPaid = installment.pix_code && installment.pix_code.trim() !== "";
+                      const rowBgClass = isPaid ? "bg-green-50/30" : "bg-red-50/30";
+                      
+                      return (
+                        <TableRow key={installment.id} className="hover:bg-slate-50 transition-colors">
+                          {index === 0 && (
+                            <>
+                              <TableCell rowSpan={rowSpan} className="font-medium text-slate-900 border-r border-slate-100 text-sm">
+                                {firstInstallment.rental?.property?.location?.name || "-"}
+                              </TableCell>
+                              <TableCell rowSpan={rowSpan} className="text-slate-600 border-r border-slate-100 text-sm">
+                                {firstInstallment.rental?.property?.complement || "-"}
+                              </TableCell>
+                              <TableCell rowSpan={rowSpan} className="text-slate-600 border-r border-slate-100 text-sm">
+                                {firstInstallment.rental?.tenant?.name || "-"}
+                              </TableCell>
+                              <TableCell rowSpan={rowSpan} className="text-right font-medium text-slate-900 border-r border-slate-100 text-sm">
+                                {formatCurrency((firstInstallment.rental?.monthly_rent || 0) + (firstInstallment.rental?.garage_value || 0))}
+                              </TableCell>
+                              <TableCell rowSpan={rowSpan} className="text-right font-medium text-slate-900 border-r border-slate-100 text-sm">
+                                {formatCurrency(totalCaucaoValue)}
+                              </TableCell>
+                              <TableCell rowSpan={rowSpan} className="text-slate-600 border-r border-slate-100 text-sm">
+                                {firstInstallment.rental?.has_partner_broker ? "Sim" : "Não"}
+                              </TableCell>
+                              <TableCell rowSpan={rowSpan} className="text-right border-r border-slate-100">
+                                {editingCommission?.id === firstInstallment.id && editingCommission?.field === "partner" ? (
+                                  <div className="flex items-center gap-2">
+                                    <Input
+                                      value={editingCommission.value}
+                                      onChange={(e) => {
+                                        const masked = applyMoneyMask(e.target.value);
+                                        setEditingCommission({ ...editingCommission, value: masked });
+                                      }}
+                                      className="h-9 text-sm text-right"
+                                      autoFocus
+                                    />
                                     <Button
                                       size="sm"
                                       variant="ghost"
-                                      onClick={() => {
-                                        setEditingCommission({
-                                          id: firstInstallment.id,
-                                          field: "partner",
-                                          value: applyMoneyMask(String(firstInstallment.partner_commission || 0))
-                                        });
-                                      }}
+                                      onClick={() => handleEditCommission(firstInstallment.id, "partner", editingCommission.value)}
                                     >
-                                      <Edit2 className="h-4 w-4 text-slate-600" />
+                                      <Check className="h-4 w-4 text-green-600" />
                                     </Button>
-                                  )}
-                                </div>
-                              )}
-                            </TableCell>
-                            <TableCell rowSpan={rowSpan} className="text-right border-r border-slate-100">
-                              {editingCommission?.id === firstInstallment.id && editingCommission?.field === "internal" ? (
-                                <div className="flex items-center gap-2">
-                                  <Input
-                                    value={editingCommission.value}
-                                    onChange={(e) => {
-                                      const masked = applyMoneyMask(e.target.value);
-                                      setEditingCommission({ ...editingCommission, value: masked });
-                                    }}
-                                    className="h-9 text-sm text-right"
-                                    autoFocus
-                                  />
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => handleEditCommission(firstInstallment.id, "internal", editingCommission.value)}
-                                  >
-                                    <Check className="h-4 w-4 text-green-600" />
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => setEditingCommission(null)}
-                                  >
-                                    <X className="h-4 w-4 text-red-600" />
-                                  </Button>
-                                </div>
-                              ) : (
-                                <div className="flex items-center justify-end gap-2">
-                                  <span className="text-slate-900 font-medium">
-                                    {formatCurrency(firstInstallment.internal_commission || 0)}
-                                  </span>
-                                  {isAdmin && (
                                     <Button
                                       size="sm"
                                       variant="ghost"
-                                      onClick={() => {
-                                        setEditingCommission({
-                                          id: firstInstallment.id,
-                                          field: "internal",
-                                          value: applyMoneyMask(String(firstInstallment.internal_commission || 0))
-                                        });
-                                      }}
+                                      onClick={() => setEditingCommission(null)}
                                     >
-                                      <Edit2 className="h-4 w-4 text-slate-600" />
+                                      <X className="h-4 w-4 text-red-600" />
                                     </Button>
-                                  )}
-                                </div>
-                              )}
-                            </TableCell>
-                          </>
-                        )}
-                        <TableCell className="font-medium text-slate-900">
-                          {installment.installment_number}/{installment.total_installments}
-                        </TableCell>
-                        <TableCell>
-                          {installment.payment_date 
-                            ? new Date(installment.payment_date).toLocaleDateString("pt-BR")
-                            : "-"}
-                        </TableCell>
-                        <TableCell className="text-right font-medium text-slate-900">
-                          {formatCurrency(installment.amount)}
-                        </TableCell>
-                        <TableCell>
-                          {editingPixCode?.id === installment.id ? (
-                            <div className="flex items-center gap-2">
-                              <Input
-                                value={editingPixCode.value}
-                                onChange={(e) => {
-                                  setEditingPixCode({
-                                    ...editingPixCode,
-                                    value: e.target.value
-                                  });
-                                }}
-                                placeholder="Digite o código PIX"
-                                className="h-9 text-sm"
-                                autoFocus
-                              />
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => handleEditPixCode(installment.id, editingPixCode.value)}
-                              >
-                                <Check className="h-4 w-4 text-green-600" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => setEditingPixCode(null)}
-                              >
-                                <X className="h-4 w-4 text-red-600" />
-                              </Button>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-2">
-                              <span className="text-slate-600 text-sm">
-                                {installment.pix_code || "-"}
-                              </span>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => {
-                                  setEditingPixCode({
-                                    id: installment.id,
-                                    value: installment.pix_code || ""
-                                  });
-                                }}
-                              >
-                                <Edit2 className="h-4 w-4 text-slate-600" />
-                              </Button>
-                            </div>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center justify-end gap-2">
+                                    <span className="text-slate-900 font-medium text-sm">
+                                      {formatCurrency(firstInstallment.partner_commission || 0)}
+                                    </span>
+                                    {isAdmin && (
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() => {
+                                          setEditingCommission({
+                                            id: firstInstallment.id,
+                                            field: "partner",
+                                            value: applyMoneyMask(String(firstInstallment.partner_commission || 0))
+                                          });
+                                        }}
+                                      >
+                                        <Edit2 className="h-4 w-4 text-slate-600" />
+                                      </Button>
+                                    )}
+                                  </div>
+                                )}
+                              </TableCell>
+                              <TableCell rowSpan={rowSpan} className="text-right border-r border-slate-100">
+                                {editingCommission?.id === firstInstallment.id && editingCommission?.field === "internal" ? (
+                                  <div className="flex items-center gap-2">
+                                    <Input
+                                      value={editingCommission.value}
+                                      onChange={(e) => {
+                                        const masked = applyMoneyMask(e.target.value);
+                                        setEditingCommission({ ...editingCommission, value: masked });
+                                      }}
+                                      className="h-9 text-sm text-right"
+                                      autoFocus
+                                    />
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => handleEditCommission(firstInstallment.id, "internal", editingCommission.value)}
+                                    >
+                                      <Check className="h-4 w-4 text-green-600" />
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => setEditingCommission(null)}
+                                    >
+                                      <X className="h-4 w-4 text-red-600" />
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center justify-end gap-2">
+                                    <span className="text-slate-900 font-medium text-sm">
+                                      {formatCurrency(firstInstallment.internal_commission || 0)}
+                                    </span>
+                                    {isAdmin && (
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() => {
+                                          setEditingCommission({
+                                            id: firstInstallment.id,
+                                            field: "internal",
+                                            value: applyMoneyMask(String(firstInstallment.internal_commission || 0))
+                                          });
+                                        }}
+                                      >
+                                        <Edit2 className="h-4 w-4 text-slate-600" />
+                                      </Button>
+                                    )}
+                                  </div>
+                                )}
+                              </TableCell>
+                            </>
                           )}
-                        </TableCell>
-                      </TableRow>
-                    ));
+                          <TableCell className={`font-medium text-slate-900 text-sm ${rowBgClass}`}>
+                            {installment.installment_number}/{installment.total_installments}
+                          </TableCell>
+                          <TableCell className={`text-sm ${rowBgClass}`}>
+                            {installment.payment_date 
+                              ? new Date(installment.payment_date).toLocaleDateString("pt-BR")
+                              : "-"}
+                          </TableCell>
+                          <TableCell className={`text-right font-medium text-slate-900 text-sm ${rowBgClass}`}>
+                            {formatCurrency(installment.amount)}
+                          </TableCell>
+                          <TableCell className={rowBgClass}>
+                            {editingPixCode?.id === installment.id ? (
+                              <div className="flex items-center gap-2">
+                                <Input
+                                  value={editingPixCode.value}
+                                  onChange={(e) => {
+                                    setEditingPixCode({
+                                      ...editingPixCode,
+                                      value: e.target.value
+                                    });
+                                  }}
+                                  placeholder="Digite o código PIX"
+                                  className="h-9 text-sm"
+                                  autoFocus
+                                />
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleEditPixCode(installment.id, editingPixCode.value)}
+                                >
+                                  <Check className="h-4 w-4 text-green-600" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => setEditingPixCode(null)}
+                                >
+                                  <X className="h-4 w-4 text-red-600" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <span className="text-slate-600 text-sm">
+                                  {installment.pix_code || "-"}
+                                </span>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    setEditingPixCode({
+                                      id: installment.id,
+                                      value: installment.pix_code || ""
+                                    });
+                                  }}
+                                >
+                                  <Edit2 className="h-4 w-4 text-slate-600" />
+                                </Button>
+                              </div>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    });
                   })}
                   <TableRow className="bg-slate-100 font-bold border-t-2 border-slate-300">
-                    <TableCell colSpan={3} className="text-right text-slate-900 uppercase tracking-wide">
+                    <TableCell colSpan={3} className="text-right text-slate-900 uppercase tracking-wide text-sm">
                       Total:
                     </TableCell>
-                    <TableCell className="text-right text-slate-900"></TableCell>
+                    <TableCell className="text-right text-slate-900 text-sm"></TableCell>
                     <TableCell className="text-right text-slate-900 text-lg">
                       {formatCurrency(totalSecurityDeposit)}
                     </TableCell>

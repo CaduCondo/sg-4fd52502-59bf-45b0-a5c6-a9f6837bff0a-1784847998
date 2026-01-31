@@ -85,37 +85,26 @@ export function PermissionsTab({
   const [permissionsSet, setPermissionsSet] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    console.log("🔄 Sincronizando permissões:", roleMenuPermissions);
     const newSet = new Set<string>();
-    
     roleMenuPermissions.forEach(perm => {
       const key = `${perm.role}-${perm.menu_id}`;
       newSet.add(key);
     });
-    
-    console.log("📊 Set de permissões criado:", Array.from(newSet));
     setPermissionsSet(newSet);
   }, [roleMenuPermissions]);
 
   const hasPermission = (role: string, menuItem: string): boolean => {
     const key = `${role}-${menuItem}`;
-    const has = permissionsSet.has(key);
-    console.log(`🔍 Verificando permissão: ${key} = ${has}`);
-    return has;
+    return permissionsSet.has(key);
   };
 
   const togglePermission = async (role: string, menuItem: string) => {
-    if (isSaving) {
-      console.log("⏳ Já está salvando, aguarde...");
-      return;
-    }
+    if (isSaving) return;
     
     setIsSaving(true);
     const key = `${role}-${menuItem}`;
     const currentHasAccess = hasPermission(role, menuItem);
     const newHasAccess = !currentHasAccess;
-    
-    console.log(`🔄 Toggle: ${key}, Atual: ${currentHasAccess}, Novo: ${newHasAccess}`);
     
     setPermissionsSet(prev => {
       const newSet = new Set(prev);
@@ -124,7 +113,6 @@ export function PermissionsTab({
       } else {
         newSet.delete(key);
       }
-      console.log("📊 Novo set:", Array.from(newSet));
       return newSet;
     });
     
@@ -132,7 +120,6 @@ export function PermissionsTab({
       const success = await onUpdateRoleMenuPermission(role, menuItem, newHasAccess);
       
       if (!success) {
-        console.log("❌ Falha ao salvar, revertendo...");
         setPermissionsSet(prev => {
           const newSet = new Set(prev);
           if (currentHasAccess) {
@@ -142,11 +129,9 @@ export function PermissionsTab({
           }
           return newSet;
         });
-      } else {
-        console.log("✅ Permissão salva com sucesso!");
       }
     } catch (error) {
-      console.error("❌ Erro ao alternar permissão:", error);
+      console.error("Erro ao alternar permissão:", error);
       
       setPermissionsSet(prev => {
         const newSet = new Set(prev);
@@ -208,31 +193,31 @@ export function PermissionsTab({
 
   return (
     <div className="space-y-4">
+      {/* Permissões de Menu */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Shield className="h-4 w-4 flex-shrink-0" />
-            <span>Permissões de Menu por Perfil</span>
+          <CardTitle className="flex items-center gap-2 text-sm">
+            <Shield className="h-4 w-4" />
+            Permissões de Menu por Perfil
           </CardTitle>
-          <CardDescription className="text-xs">Controle quais menus cada perfil de usuário pode acessar</CardDescription>
+          <CardDescription className="text-xs">Controle o acesso de cada perfil aos menus do sistema</CardDescription>
         </CardHeader>
-        <CardContent className="pb-4">
-          <div className="rounded-md border table-wrapper">
+        <CardContent className="pb-3">
+          <div className="rounded-md border overflow-hidden">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[120px] sm:w-[160px] font-semibold text-xs h-9">Menu</TableHead>
+                <TableRow className="bg-muted/50">
+                  <TableHead className="w-[140px] font-semibold text-xs py-2">Menu</TableHead>
                   {roles.map((role) => (
-                    <TableHead key={role} className="text-center min-w-[80px] font-semibold text-xs h-9">
-                      <span className="hidden sm:inline">{roleLabels[role]}</span>
-                      <span className="sm:hidden text-xs">{roleLabels[role].substring(0, 5)}</span>
+                    <TableHead key={role} className="text-center font-semibold text-xs py-2">
+                      {roleLabels[role]}
                     </TableHead>
                   ))}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {menuItems.map((menuItem) => (
-                  <TableRow key={menuItem} className="h-10">
+                  <TableRow key={menuItem} className="hover:bg-muted/30">
                     <TableCell className="font-medium text-xs py-2">{menuLabels[menuItem]}</TableCell>
                     {roles.map((role) => {
                       const hasAccess = hasPermission(role, menuItem);
@@ -240,13 +225,13 @@ export function PermissionsTab({
                         <TableCell key={role} className="text-center py-2">
                           <button
                             onClick={() => togglePermission(role, menuItem)}
-                            className="inline-flex items-center justify-center hover:opacity-80 transition-opacity disabled:opacity-50 touch-target"
+                            className="inline-flex items-center justify-center hover:opacity-80 transition-opacity disabled:opacity-50"
                             disabled={isLoading || isSaving}
                           >
                             {hasAccess ? (
-                              <CheckCircle2 className="h-5 w-5 sm:h-6 sm:w-6 text-green-600 dark:text-green-400" />
+                              <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
                             ) : (
-                              <XCircle className="h-5 w-5 sm:h-6 sm:w-6 text-red-600 dark:text-red-400" />
+                              <XCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
                             )}
                           </button>
                         </TableCell>
@@ -257,145 +242,144 @@ export function PermissionsTab({
               </TableBody>
             </Table>
           </div>
-          <p className="text-xs text-muted-foreground mt-3">
-            💡 Clique nos ícones para habilitar/desabilitar o acesso de cada perfil aos menus.
-          </p>
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <MapPin className="h-4 w-4 flex-shrink-0" />
-            <span>Permissões de Local (Usuários Financeiros)</span>
-          </CardTitle>
-          <CardDescription className="text-xs">
-            Defina quais locais cada usuário financeiro pode visualizar
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="pb-4">
-          {users.filter((u) => u.role === "financial").length === 0 ? (
-            <div className="text-center py-6 text-muted-foreground text-xs">Nenhum usuário com perfil Financeiro cadastrado</div>
-          ) : (
-            <div className="space-y-2">
-              {users
-                .filter((u) => u.role === "financial")
-                .map((user) => (
-                  <div
-                    key={user.id}
-                    className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-3 border rounded-lg hover:bg-accent/50 transition-colors"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-semibold flex items-center gap-2 text-sm">
-                        <User className="h-3 w-3 text-primary flex-shrink-0" />
-                        <span className="truncate">{user.name}</span>
-                      </h4>
-                      <p className="text-xs text-muted-foreground truncate">{user.email}</p>
-                    </div>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="gap-1.5 w-full sm:w-auto h-8 text-xs flex-shrink-0" 
-                      onClick={() => openLocationPermissionsDialog(user)}
+      {/* Permissões de Locais por Usuário */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Permissões de Local (Financeiros) */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <MapPin className="h-4 w-4" />
+              Permissões de Locais
+            </CardTitle>
+            <CardDescription className="text-xs">Usuários Financeiros</CardDescription>
+          </CardHeader>
+          <CardContent className="pb-3">
+            {users.filter((u) => u.role === "financial").length === 0 ? (
+              <div className="text-center py-4 text-muted-foreground text-xs">
+                Nenhum usuário financeiro
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {users
+                  .filter((u) => u.role === "financial")
+                  .map((user) => (
+                    <div
+                      key={user.id}
+                      className="flex items-center justify-between p-2 border rounded-lg hover:bg-accent/30 transition-colors"
                     >
-                      <MapPin className="h-3 w-3" />
-                      Gerenciar
-                    </Button>
-                  </div>
-                ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <DollarSign className="h-4 w-4 flex-shrink-0" />
-            <span>Isenção de Taxa de Administração</span>
-          </CardTitle>
-          <CardDescription className="text-xs">Defina quais locais cada corretor NÃO receberá taxa de administração</CardDescription>
-        </CardHeader>
-        <CardContent className="pb-4">
-          {users.filter((u) => u.role === "broker").length === 0 ? (
-            <div className="text-center py-6 text-muted-foreground text-xs">Nenhum corretor cadastrado</div>
-          ) : (
-            <div className="space-y-2">
-              {users
-                .filter((u) => u.role === "broker")
-                .map((user) => (
-                  <div
-                    key={user.id}
-                    className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-3 border rounded-lg hover:bg-accent transition-colors"
-                  >
-                    <div className="flex items-center gap-2 min-w-0 flex-1">
-                      <div className="h-8 w-8 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center flex-shrink-0">
-                        <DollarSign className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <User className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                        <div className="min-w-0">
+                          <p className="font-medium text-xs truncate">{user.name}</p>
+                          <p className="text-[10px] text-muted-foreground truncate">{user.email}</p>
+                        </div>
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <h4 className="font-semibold text-sm truncate">{user.name}</h4>
-                        <p className="text-xs text-muted-foreground">Configurar locais sem taxa</p>
-                      </div>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="h-7 text-[10px] px-2 ml-2 flex-shrink-0"
+                        onClick={() => openLocationPermissionsDialog(user)}
+                      >
+                        Gerenciar
+                      </Button>
                     </div>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => openFeeExemptionDialog(user)}
-                      className="w-full sm:w-auto h-8 gap-1.5 text-xs flex-shrink-0"
-                    >
-                      <SettingsIcon className="h-3 w-3" />
-                      Configurar
-                    </Button>
-                  </div>
-                ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                  ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
+        {/* Isenção de Taxa (Corretores) */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <DollarSign className="h-4 w-4" />
+              Isenção de Taxa Admin
+            </CardTitle>
+            <CardDescription className="text-xs">Corretores sem taxa</CardDescription>
+          </CardHeader>
+          <CardContent className="pb-3">
+            {users.filter((u) => u.role === "broker").length === 0 ? (
+              <div className="text-center py-4 text-muted-foreground text-xs">
+                Nenhum corretor
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {users
+                  .filter((u) => u.role === "broker")
+                  .map((user) => (
+                    <div
+                      key={user.id}
+                      className="flex items-center justify-between p-2 border rounded-lg hover:bg-accent/30 transition-colors"
+                    >
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <DollarSign className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+                        <div className="min-w-0">
+                          <p className="font-medium text-xs truncate">{user.name}</p>
+                          <p className="text-[10px] text-muted-foreground">Locais sem taxa</p>
+                        </div>
+                      </div>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        className="h-7 text-[10px] px-2 ml-2 flex-shrink-0"
+                        onClick={() => openFeeExemptionDialog(user)}
+                      >
+                        Configurar
+                      </Button>
+                    </div>
+                  ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Dialog de Permissões de Local */}
       <Dialog open={isLocationPermissionsDialogOpen} onOpenChange={setIsLocationPermissionsDialogOpen}>
         <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-base sm:text-lg">Gerenciar Locais - {selectedUserForLocations?.name}</DialogTitle>
-            <DialogDescription className="text-sm">Selecione os locais que este usuário pode visualizar no Dashboard e na página Financeiro</DialogDescription>
+            <DialogTitle className="text-base">Permissões de Locais - {selectedUserForLocations?.name}</DialogTitle>
+            <DialogDescription className="text-xs">Selecione os locais que este usuário pode visualizar</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-3">
             {isLoadingPermissions ? (
-              <div className="text-center py-8 text-muted-foreground text-sm">Carregando locais...</div>
+              <div className="text-center py-6 text-muted-foreground text-sm">Carregando...</div>
             ) : locations.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground text-sm">Nenhum local cadastrado</div>
+              <div className="text-center py-6 text-muted-foreground text-sm">Nenhum local cadastrado</div>
             ) : (
-              <div className="space-y-2 max-h-[400px] overflow-y-auto border rounded-lg p-4 smooth-scroll">
+              <div className="space-y-2 max-h-[400px] overflow-y-auto border rounded-lg p-3">
                 {locations.map((location) => (
-                  <div key={location.id} className="flex items-center gap-3 p-3 border rounded hover:bg-accent/50 transition-colors touch-target">
+                  <div key={location.id} className="flex items-center gap-2 p-2 border rounded hover:bg-accent/50">
                     <Checkbox
-                      id={`perm-${location.id}`}
+                      id={`loc-${location.id}`}
                       checked={userLocationPermissions.includes(location.id)}
                       onCheckedChange={() => handleToggleLocationPermission(location.id)}
-                      className="flex-shrink-0"
                     />
-                    <label htmlFor={`perm-${location.id}`} className="flex-1 cursor-pointer min-w-0">
-                      <div className="font-medium text-sm truncate">{location.name}</div>
-                      <div className="text-xs sm:text-sm text-muted-foreground truncate">
-                        {location.city}, {location.state}
-                      </div>
+                    <label htmlFor={`loc-${location.id}`} className="flex-1 cursor-pointer">
+                      <p className="font-medium text-sm">{location.name}</p>
+                      <p className="text-xs text-muted-foreground">{location.city}, {location.state}</p>
                     </label>
                   </div>
                 ))}
               </div>
             )}
           </div>
-          <DialogFooter className="flex-col-reverse sm:flex-row gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setIsLocationPermissionsDialogOpen(false)} className="w-full sm:w-auto h-11">
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsLocationPermissionsDialogOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={handleSaveLocationPermissions} className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 h-11">
-              Salvar Permissões
+            <Button onClick={handleSaveLocationPermissions} className="bg-emerald-600 hover:bg-emerald-700">
+              Salvar
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
+      {/* Dialog de Isenção de Taxa */}
       {isFeeExemptionDialogOpen && selectedUserForFeeExemption && (
         <FeeExemptionDialog
           open={isFeeExemptionDialogOpen}
