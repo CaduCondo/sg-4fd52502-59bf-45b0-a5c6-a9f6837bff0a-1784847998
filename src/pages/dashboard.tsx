@@ -1,17 +1,14 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Layout } from "@/components/Layout";
 import { OverviewCards } from "@/components/dashboard/OverviewCards";
 import { AnalyticsCharts } from "@/components/dashboard/AnalyticsCharts";
 import { FinancialCharts } from "@/components/dashboard/FinancialCharts";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
 import { SEO } from "@/components/SEO";
 import { PeriodSelector } from "@/components/dashboard/PeriodSelector";
 import { useAuth } from "@/contexts/AuthContext";
 import { WelcomeCard } from "@/components/dashboard/WelcomeCard";
-import { useMemo } from "react";
 
 export default function Dashboard() {
   const currentDate = new Date();
@@ -23,18 +20,23 @@ export default function Dashboard() {
     payments, 
     properties, 
     rentals, 
-    allowedLocationIds,
     loading 
-  } = useDashboardData({ month: selectedMonth, year: selectedYear });
+  } = useDashboardData(selectedMonth, selectedYear);
 
   const handlePeriodChange = (month: number, year: number) => {
+    console.log("📅 Mudando período:", { month, year });
     setSelectedMonth(month);
     setSelectedYear(year);
   };
   
-  // Usar useMemo para evitar recálculo constante
+  // Calcular overviewData apenas quando os dados mudarem
   const overviewData = useMemo(() => {
-    // Cálculos detalhados para o OverviewCards
+    console.log("🔢 Calculando overviewData...", { 
+      paymentsCount: payments.length, 
+      propertiesCount: properties.length, 
+      rentalsCount: rentals.length 
+    });
+
     const totalProperties = properties.length;
     const availableProperties = properties.filter(p => p.status === 'available').length;
     const rentedProperties = properties.filter(p => p.status === 'occupied').length;
@@ -44,7 +46,6 @@ export default function Dashboard() {
     const activeContracts = rentals.filter(r => r.isActive).length;
     
     const totalRevenue = payments.reduce((acc, p) => acc + (p.paidAmount || 0), 0);
-    const netRevenue = totalRevenue;
     
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -86,12 +87,9 @@ export default function Dashboard() {
       totalRevenue,
       grossRevenue: totalRevenue,
       totalFeesAndExpenses: 0,
-      netRevenue,
-      payments,
-      properties,
-      rentals
+      netRevenue: totalRevenue,
     };
-  }, [payments, properties, rentals]); // ✅ Dependências corretas
+  }, [payments, properties, rentals]);
 
   return (
     <Layout>

@@ -1,121 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Payment, Property, Rental } from "@/types";
-import { checkUserPermission } from "@/lib/permissions";
 
-export function useDashboardData(selectedPeriod: { month: number; year: number }) {
+export function useDashboardData(month: number, year: number) {
   const [loading, setLoading] = useState(true);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [rentals, setRentals] = useState<Rental[]>([]);
-  const [allowedLocationIds, setAllowedLocationIds] = useState<string[] | null>(null);
 
-  useEffect(() => {
-    let isMounted = true;
-
-    const loadData = async () => {
-      try {
-        if (!isMounted) return;
-        setLoading(true);
-        
-        // Verificar permissões do usuário
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error("Usuário não autenticado");
-
-        const hasFullAccess = await checkUserPermission(user.id, 'payments', 'read');
-        
-        let locationIds: string[] | null = null;
-        
-        if (!hasFullAccess) {
-          // Buscar locais permitidos para usuário financeiro
-          const { data: permissions } = await supabase
-            .from("user_location_permissions")
-            .select("location_id")
-            .eq("user_id", user.id);
-          
-          if (permissions && permissions.length > 0) {
-            locationIds = permissions.map(p => p.location_id);
-            setAllowedLocationIds(locationIds);
-          } else {
-            // Se não tem permissões, não mostra nada
-            setAllowedLocationIds([]);
-            setPayments([]);
-            setProperties([]);
-            setRentals([]);
-            setLoading(false);
-            return;
-          }
-        }
-
-        // Buscar pagamentos do período
-        const paymentsQuery = supabase
-          .from("payments")
-          .select("*")
-          .eq("reference_month", selectedPeriod.month.toString())
-          .eq("reference_year", selectedPeriod.year.toString());
-
-        const { data: paymentsData, error: paymentsError } = await paymentsQuery;
-        if (paymentsError) throw paymentsError;
-
-        // Buscar imóveis
-        let propertiesQuery = supabase
-          .from("properties")
-          .select("*");
-        
-        if (locationIds) {
-          propertiesQuery = propertiesQuery.in("location_id", locationIds);
-        }
-
-        const { data: propertiesData, error: propertiesError } = await propertiesQuery;
-        if (propertiesError) throw propertiesError;
-
-        // Buscar locações
-        const rentalsQuery = supabase
-          .from("rentals")
-          .select("*")
-          .eq("is_active", true);
-
-        const { data: rentalsData, error: rentalsError } = await rentalsQuery;
-        if (rentalsError) throw rentalsError;
-
-        // Filtrar pagamentos e locações se necessário
-        let filteredPayments = paymentsData || [];
-        let filteredRentals = rentalsData || [];
-
-        if (locationIds) {
-          const allowedPropertyIds = (propertiesData || []).map(p => p.id);
-          
-          filteredRentals = (rentalsData || []).filter(r => 
-            allowedPropertyIds.includes(r.property_id)
-          );
-          
-          const allowedRentalIds = filteredRentals.map(r => r.id);
-          filteredPayments = (paymentsData || []).filter(p => 
-            allowedRentalIds.includes(p.rental_id)
-          );
-        }
-
-        if (isMounted) {
-          setPayments(filteredPayments.map(mapPaymentFromDB));
-          setProperties((propertiesData || []).map(mapPropertyFromDB));
-          setRentals(filteredRentals.map(mapRentalFromDB));
-        }
-      } catch (error) {
-        console.error("Error loading dashboard data:", error);
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    };
-
-    loadData();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [selectedPeriod]);
-
-  // Função auxiliar para mapear pagamentos do DB
-  function mapPaymentFromDB(data: any): Payment {
+  // Memoizar as funções de mapeamento para evitar recriação
+  const mapPaymentFromDB = useCallback((data: any): Payment => {
     return {
       ...data,
       rentalId: data.rental_id,
@@ -135,9 +29,9 @@ export function useDashboardData(selectedPeriod: { month: number; year: number }
       interest: data.interest,
       paymentLocation: data.payment_location,
     };
-  }
+  }, []);
 
-  function mapPropertyFromDB(data: any): Property {
+  const mapPropertyFromDB = useCallback((data: any): Property => {
     return {
       id: data.id,
       address: data.address,
@@ -162,9 +56,9 @@ export function useDashboardData(selectedPeriod: { month: number; year: number }
       updatedAt: data.updated_at,
       images: data.photos || [],
     };
-  }
+  }, []);
 
-  function mapRentalFromDB(data: any): Rental {
+  const mapRentalFromDB = useCallback((data: any): Rental => {
     return {
       id: data.id,
       propertyId: data.property_id,
@@ -187,7 +81,69 @@ export function useDashboardData(selectedPeriod: { month: number; year: number }
       attachments: data.attachments,
       autoRenew: false
     };
-  }
+  }, []);
 
-  return { loading, payments, properties, rentals, allowedLocationIds };
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadData = async () => {
+      try {
+        if (!isMounted) return;
+        setLoading(true);
+        
+        console.log("🔄 Dashboard: Carregando dados...", { month, year });
+
+        // Buscar pagamentos do período
+        const { data: paymentsData, error: paymentsError } = await supabase
+          .from("payments")
+          .select("*")
+          .eq("reference_month", month.toString())
+          .eq("reference_year", year.toString());
+
+        if (paymentsError) {
+          console.error("Erro ao buscar pagamentos:", paymentsError);
+        }
+
+        // Buscar imóveis
+        const { data: propertiesData, error: propertiesError } = await supabase
+          .from("properties")
+          .select("*");
+
+        if (propertiesError) {
+          console.error("Erro ao buscar imóveis:", propertiesError);
+        }
+
+        // Buscar locações
+        const { data: rentalsData, error: rentalsError } = await supabase
+          .from("rentals")
+          .select("*")
+          .eq("is_active", true);
+
+        if (rentalsError) {
+          console.error("Erro ao buscar locações:", rentalsError);
+        }
+
+        if (isMounted) {
+          setPayments((paymentsData || []).map(mapPaymentFromDB));
+          setProperties((propertiesData || []).map(mapPropertyFromDB));
+          setRentals((rentalsData || []).map(mapRentalFromDB));
+          console.log("✅ Dashboard: Dados carregados com sucesso");
+        }
+      } catch (error) {
+        console.error("Erro ao carregar dados do dashboard:", error);
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [month, year, mapPaymentFromDB, mapPropertyFromDB, mapRentalFromDB]);
+
+  return { loading, payments, properties, rentals };
 }
