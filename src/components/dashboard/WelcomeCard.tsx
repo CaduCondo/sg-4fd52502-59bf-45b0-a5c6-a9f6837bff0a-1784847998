@@ -1,16 +1,25 @@
 import { Building2, TrendingUp } from "lucide-react";
+import { useState, useEffect } from "react";
 
 interface WelcomeCardProps {
   userName: string;
 }
 
 export function WelcomeCard({ userName }: WelcomeCardProps) {
-  const getGreeting = () => {
+  const [greeting, setGreeting] = useState("Olá");
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
     const hour = new Date().getHours();
-    if (hour < 12) return "Bom dia";
-    if (hour < 18) return "Boa tarde";
-    return "Boa noite";
-  };
+    if (hour < 12) {
+      setGreeting("Bom dia");
+    } else if (hour < 18) {
+      setGreeting("Boa tarde");
+    } else {
+      setGreeting("Boa noite");
+    }
+  }, []);
 
   return (
     <div className="bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 rounded-2xl p-5 sm:p-6 lg:p-8 text-white shadow-xl overflow-hidden relative">
@@ -26,7 +35,9 @@ export function WelcomeCard({ userName }: WelcomeCardProps) {
             
             <div className="flex-1 min-w-0">
               <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold flex items-center gap-2 mb-2 flex-wrap">
-                <span className="break-words">{getGreeting()}, {userName}!</span>
+                <span className="break-words">
+                  {mounted ? greeting : "Olá"}, {userName}!
+                </span>
                 <span className="inline-block animate-wave text-2xl sm:text-3xl">👋</span>
               </h1>
               <p className="text-blue-50 text-sm sm:text-base leading-relaxed">
