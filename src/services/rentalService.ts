@@ -13,13 +13,13 @@ const mapRentalData = (data: any): Rental => {
     value: Number(data.value || data.monthly_rent || 0), // Fallback seguro
     depositAmount: data.deposit ? Number(data.deposit) : 0,
     status: data.status,
-    isActive: data.is_active,
-    attachments: data.attachments || [],
-    contractAttachments: data.contract_attachments || [],
+    isActive: data.is_active !== false, // Default to true if undefined/null, strictly false only if false
+    attachments: (data.attachments as string[]) || [],
+    contractAttachments: (data.contract_attachments as string[]) || [],
     
     // Mapeamento explícito dos novos campos
-    hasGarage: data.has_garage || false,
-    garageValue: data.garage_value ? Number(data.garage_value) : 0,
+    hasGarage: Boolean(data.has_garage),
+    garageValue: data.garage_value ? Number(data.garage_value) : undefined,
     hasPartnerBroker: data.has_partner_broker || false,
     
     // Campos de parcelamento da caução

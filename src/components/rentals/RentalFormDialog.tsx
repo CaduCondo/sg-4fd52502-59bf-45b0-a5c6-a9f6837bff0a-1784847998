@@ -292,8 +292,30 @@ export function RentalFormDialog({
 
         const selectedLocation = locations.find((loc) => loc.id === selectedProperty.locationId);
 
+        // Validar e converter status do rental atualizado
+        const updatedStatus = updatedRental.status;
+        let validUpdatedStatus: "active" | "terminated" | "pending" = "active";
+        
+        if (updatedStatus === "active" || updatedStatus === "terminated" || updatedStatus === "pending") {
+          validUpdatedStatus = updatedStatus;
+        }
+
+        // Mapear objeto atualizado garantindo tipos corretos
+        const mergedRental: Rental = {
+          ...rental,
+          ...updatedRental,
+          status: validUpdatedStatus,
+          attachments: (updatedRental.attachments as unknown as string[]) || [],
+          contractAttachments: (updatedRental.contract_attachments as unknown as string[]) || [],
+          value: Number(updatedRental.value || updatedRental.monthly_rent || rental.value),
+          isActive: Boolean(updatedRental.is_active),
+          hasGarage: Boolean(updatedRental.has_garage),
+          garageValue: updatedRental.garage_value ? Number(updatedRental.garage_value) : undefined,
+          hasPartnerBroker: Boolean(updatedRental.has_partner_broker),
+        };
+
         setCreatedRentalData({
-          rental: { ...rental, ...updatedRental },
+          rental: mergedRental,
           property: selectedProperty,
           tenant: selectedTenant,
           location: selectedLocation,
@@ -357,6 +379,14 @@ export function RentalFormDialog({
           await updateTenant(selectedTenantId, { ...tenant, status: "rented" });
         }
         
+        // Validar e converter status explicitamente ANTES de criar o objeto
+        const rentalStatus = createdRental.status;
+        let validStatus: "active" | "terminated" | "pending" = "active";
+        
+        if (rentalStatus === "active" || rentalStatus === "terminated" || rentalStatus === "pending") {
+          validStatus = rentalStatus;
+        }
+        
         // Mapeamento manual do resultado do Supabase (snake_case) para a interface Rental (camelCase)
         const mappedRental: Rental = {
           id: createdRental.id,
@@ -366,7 +396,7 @@ export function RentalFormDialog({
           endDate: createdRental.end_date,
           paymentDay: Number(createdRental.payment_day),
           depositAmount: Number(createdRental.deposit),
-          status: (createdRental.status as "active" | "terminated" | "pending"),
+          status: validStatus,
           attachments: (createdRental.attachments as string[]) || [],
           contractAttachments: (createdRental.contract_attachments as string[]) || [],
           value: Number(createdRental.value),
@@ -388,15 +418,15 @@ export function RentalFormDialog({
           depositInstallment3PixCode: depositData.depositInstallment3PixCode,
         };
 
+        await createPaymentsForRental(mappedRental);
+        await createDepositInstallments(createdRental.id, depositData);
+
         const statusTyped = mappedRental.status as "active" | "terminated" | "pending";
         mappedRental.status = statusTyped;
 
         if (isViewMode) {
           mappedRental.status = "active" as "active" | "terminated" | "pending";
         }
-
-        await createPaymentsForRental(mappedRental);
-        await createDepositInstallments(createdRental.id, depositData);
 
         const selectedLocation = locations.find((loc) => loc.id === selectedProperty.locationId);
 

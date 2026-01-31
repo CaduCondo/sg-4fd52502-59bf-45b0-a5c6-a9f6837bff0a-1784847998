@@ -313,12 +313,8 @@ export default function RentalsPage() {
                             </div>
 
                             <div className="mb-3">
-                              <p className="text-sm text-gray-600 dark:text-gray-400">Valor</p>
-                              <p className="text-2xl font-bold text-emerald-600">
+                              <p className="text-2xl font-bold text-slate-900">
                                 {formatCurrency(rental.value || 0)}
-                              </p>
-                              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                                Início: {formatDate(rental.startDate)}
                               </p>
                             </div>
 
@@ -483,8 +479,7 @@ export default function RentalsPage() {
                               </div>
 
                               <div className="mb-3">
-                                <p className="text-sm text-gray-600 dark:text-gray-400">Valor</p>
-                                <p className="text-2xl font-bold text-gray-600">
+                                <p className="text-2xl font-bold text-slate-900">
                                   {formatCurrency(rental.value || 0)}
                                 </p>
                               </div>

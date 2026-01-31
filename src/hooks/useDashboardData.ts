@@ -179,22 +179,21 @@ export function useDashboardData(month: number, year: number) {
 
       if (paymentsError) throw paymentsError;
 
-      // Buscar despesas do mês usando reference_month e reference_year
-      let expensesQuery = supabase
+      // Ajustar mês para formato 1-12 (banco) vs 0-11 (JS)
+      // Se referenceMonth é o mês atual (ex: Jan = 0), no banco deve ser 1.
+      const dbMonth = month + 1;
+      const dbYear = year;
+
+      console.log(`Buscando despesas para: Mês ${dbMonth}, Ano ${dbYear}`);
+
+      // Buscar despesas do mês
+      const { data: expensesData, error: expensesError } = await supabase
         .from("location_expenses")
         .select("amount")
-        .eq("reference_month", month)
-        .eq("reference_year", year);
+        .eq("reference_month", dbMonth)
+        .eq("reference_year", dbYear);
 
-      if (allowedLocationIds) {
-        expensesQuery = expensesQuery.in("location_id", allowedLocationIds);
-      }
-
-      const { data: expensesData, error: expensesError } = await expensesQuery;
-
-      if (expensesError) {
-        console.error("Error fetching expenses:", expensesError);
-      }
+      if (expensesError) throw expensesError;
 
       // IMPORTANTE: Se expensesData for null, locationExpensesTotal será 0.
       // Se tiver dados, soma os valores.

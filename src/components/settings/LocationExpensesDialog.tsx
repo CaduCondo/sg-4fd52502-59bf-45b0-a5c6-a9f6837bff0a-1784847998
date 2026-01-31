@@ -77,14 +77,19 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
     }
 
     try {
-      const expenseData: Partial<LocationExpense> = {
-        locationId: location.id,
-        expenseType: expenseType as any,
+      const selectedDate = new Date(`${referenceYear}-${referenceMonth}-01`);
+      // Salvar mês como 1-12 (Janeiro = 1)
+      const month = selectedDate.getMonth() + 1;
+      const year = selectedDate.getFullYear();
+
+      const expenseData = {
+        location_id: location.id,
         description,
         amount: parseCurrencyToNumber(amount),
-        referenceMonth,
-        referenceYear,
-        status: "pending",
+        expense_date: selectedDate,
+        reference_month: month,
+        reference_year: year,
+        is_paid: false,
       };
 
       if (editingExpense) {
