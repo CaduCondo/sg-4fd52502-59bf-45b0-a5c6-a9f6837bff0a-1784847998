@@ -194,7 +194,6 @@ export function RentalFormDialog({
       return;
     }
 
-    // CÁLCULO DO VALOR TOTAL
     const baseRent = selectedProperty.value || selectedProperty.monthlyRent || 0;
     const garageAmount = hasGarage && garageValue ? parseCurrencyToNumber(garageValue) : 0;
     let totalValue = baseRent + garageAmount;
@@ -224,7 +223,6 @@ export function RentalFormDialog({
     try {
       setLoading(true);
 
-      // PREPARAÇÃO DOS DADOS - Convertendo IDs explicitamente para string
       const propertyId = String(selectedPropertyId);
       const tenantId = String(selectedTenantId);
       
@@ -244,14 +242,8 @@ export function RentalFormDialog({
         has_garage: hasGarage,
         garage_value: hasGarage && garageValue ? parseCurrencyToNumber(garageValue) : null,
         has_partner_broker: hasPartnerBroker,
-        
-        // Dados de depósito para o insert principal (embora não sejam colunas reais em alguns casos, 
-        // o Supabase JS ignora campos extras no insert se configurado, mas vamos manter o padrão)
-        // Nota: Se estas colunas não existirem na tabela rentals, elas serão ignoradas ou causarão erro.
-        // Assumindo que existem baseadas no código anterior.
       };
       
-      // Preparar dados de parcelamento para tabela auxiliar
       const depositData: any = {
         depositInstallments: 1,
         depositInstallment1: parseCurrencyToNumber(depositAmount),
@@ -278,10 +270,7 @@ export function RentalFormDialog({
       console.log("📤 ENVIANDO DADOS PARA SUPABASE:", commonData);
 
       if (rental) {
-        // ATUALIZAÇÃO
-        // Mesclando dados para update
         const updateData = { ...commonData };
-        // Remover campos que não devem ser atualizados se necessário
         
         const updatedRental = await updateRentalService(rental.id, updateData);
         await updateFuturePayments(rental.id, totalValue);
@@ -292,13 +281,7 @@ export function RentalFormDialog({
 
         await updateDepositInstallments(rental.id, depositData);
 
-        // Remover redeclaração, usar atribuição se necessário ou apenas usar o valor
         const finalStatus = (updatedRental.status || "active") as "active" | "terminated" | "pending";
-        // updatedRental.status = finalStatus; // Removida atribuição direta para evitar erro
-
-        if (isViewMode) {
-          // updatedRental.status = "active"; // Removida atribuição direta
-        }
 
         const mergedRental: Rental = {
           ...rental,
@@ -311,7 +294,6 @@ export function RentalFormDialog({
           hasGarage: Boolean(updatedRental.has_garage),
           garageValue: updatedRental.garage_value ? Number(updatedRental.garage_value) : undefined,
           hasPartnerBroker: Boolean(updatedRental.has_partner_broker),
-          // Preencher campos de depósito com os dados do form
           depositInstallments: Number(depositData.depositInstallments),
           depositInstallment1: Number(depositData.depositInstallment1),
           depositInstallment2: depositData.depositInstallment2 ? Number(depositData.depositInstallment2) : undefined,
@@ -334,9 +316,6 @@ export function RentalFormDialog({
           mergedRental.status = "active" as "active" | "terminated" | "pending";
         }
         
-        // selectedLocation já foi declarado anteriormente ou não é necessário redeclarar aqui se for o mesmo escopo
-        // Removendo a linha de redeclaração se existir
-        
         setCreatedRentalData({
           rental: mergedRental,
           property: selectedProperty,
@@ -351,8 +330,6 @@ export function RentalFormDialog({
 
         setShowContract(true);
       } else {
-        // CRIAÇÃO - Usando supabase.insert direto para controle total
-        // Mapeando explicitamente para garantir que property_id vá preenchido
         const insertPayload: any = {
             property_id: propertyId,
             tenant_id: tenantId,
@@ -369,7 +346,6 @@ export function RentalFormDialog({
             has_garage: hasGarage,
             garage_value: hasGarage && garageValue ? parseCurrencyToNumber(garageValue) : null,
             has_partner_broker: hasPartnerBroker,
-            // SNAKE_CASE para o banco (colunas reais)
             deposit_installments: depositData.depositInstallments,
             deposit_installment_1: depositData.depositInstallment1,
             deposit_payment_date: depositData.depositPaymentDate,
@@ -402,10 +378,8 @@ export function RentalFormDialog({
           await updateTenant(selectedTenantId, { ...tenant, status: "rented" });
         }
         
-        // Validar e converter status explicitamente ANTES de criar o objeto
         const rentalStatus = (createdRental.status || "active") as "active" | "terminated" | "pending";
         
-        // Mapeamento manual do resultado do Supabase (snake_case) para a interface Rental (camelCase)
         const mappedRental: Rental = {
           id: createdRental.id,
           propertyId: createdRental.property_id,
@@ -417,13 +391,12 @@ export function RentalFormDialog({
           status: rentalStatus,
           attachments: (createdRental.attachments as string[]) || [],
           contractAttachments: (createdRental.contract_attachments as string[]) || [],
-          value: totalValue, // ✅ Usar valor calculado localmente para feedback imediato
+          value: totalValue,
           isActive: Boolean(createdRental.is_active),
           autoRenew: false,
           hasGarage: hasGarage,
           garageValue: hasGarage && garageValue ? parseCurrencyToNumber(garageValue) : undefined,
           hasPartnerBroker: hasPartnerBroker,
-          // Preencher campos de depósito com os dados do form
           depositInstallments: Number(depositData.depositInstallments),
           depositInstallment1: Number(depositData.depositInstallment1),
           depositInstallment2: depositData.depositInstallment2 ? Number(depositData.depositInstallment2) : undefined,
@@ -439,7 +412,6 @@ export function RentalFormDialog({
         await createPaymentsForRental(mappedRental);
         await createDepositInstallments(createdRental.id, depositData);
 
-        // Remover redeclaração aqui também
         const createdStatusTyped = mappedRental.status as "active" | "terminated" | "pending";
         mappedRental.status = createdStatusTyped;
 
@@ -541,7 +513,12 @@ export function RentalFormDialog({
   const tenantsToDisplay = rental ? tenants : availableTenants;
   const selectedProperty = getSelectedProperty();
 
-  // Se estiver carregando, mostra skeleton ou spinner
+  // Determinar se os campos devem estar habilitados
+  // Em modo de criação (!rental), sempre habilitado
+  // Em modo de edição (rental + isEditing), habilitado
+  // Em modo de visualização (rental + !isEditing), desabilitado
+  const isFieldDisabled = rental ? (isViewMode && !isEditing) : false;
+
   if (!open) return null;
 
   return (
@@ -564,7 +541,7 @@ export function RentalFormDialog({
               <Select
                 value={selectedPropertyId}
                 onValueChange={(value) => setSelectedPropertyId(value)}
-                disabled={!isEditing || !!rental}
+                disabled={isFieldDisabled || !!rental}
               >
                 <SelectTrigger id="property_id">
                   <SelectValue placeholder="Selecione um imóvel" />
@@ -599,7 +576,7 @@ export function RentalFormDialog({
 
             <div className="space-y-2">
               <Label htmlFor="tenant">{rental ? "Inquilino Selecionado" : "Inquilinos Disponíveis"} *</Label>
-              <Select value={selectedTenantId} onValueChange={setSelectedTenantId} disabled={!isEditing || !!rental}>
+              <Select value={selectedTenantId} onValueChange={setSelectedTenantId} disabled={isFieldDisabled || !!rental}>
                 <SelectTrigger id="tenant">
                   <SelectValue placeholder="Selecione o inquilino" />
                 </SelectTrigger>
@@ -626,7 +603,7 @@ export function RentalFormDialog({
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
                 required
-                disabled={!isEditing}
+                disabled={isFieldDisabled}
               />
             </div>
 
@@ -637,13 +614,13 @@ export function RentalFormDialog({
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                disabled={!isEditing}
+                disabled={isFieldDisabled}
               />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="paymentDay">Dia Pagamento *</Label>
-              <Select value={paymentDay} onValueChange={setPaymentDay} disabled={!isEditing}>
+              <Select value={paymentDay} onValueChange={setPaymentDay} disabled={isFieldDisabled}>
                 <SelectTrigger id="paymentDay">
                   <SelectValue placeholder="Selecione o dia" />
                 </SelectTrigger>
@@ -669,7 +646,7 @@ export function RentalFormDialog({
                     setGarageValue("");
                   }
                 }}
-                disabled={!isEditing}
+                disabled={isFieldDisabled}
               />
               <Label htmlFor="hasGarage" className="cursor-pointer">
                 Vaga Garagem ?
@@ -691,7 +668,7 @@ export function RentalFormDialog({
                 id="hasPartnerBroker"
                 checked={hasPartnerBroker}
                 onCheckedChange={(checked) => setHasPartnerBroker(checked as boolean)}
-                disabled={!isEditing}
+                disabled={isFieldDisabled}
               />
               <Label htmlFor="hasPartnerBroker" className="cursor-pointer">
                 Corretor Parceiro ?
@@ -754,7 +731,7 @@ export function RentalFormDialog({
                       setDepositInstallment3PaymentDate("");
                     }
                   }}
-                  disabled={!isEditing}
+                  disabled={isFieldDisabled}
                 />
                 <Label htmlFor="isDepositInstallment" className="cursor-pointer font-medium">
                   Caução Parcelado ?
@@ -772,7 +749,7 @@ export function RentalFormDialog({
                         setDepositInstallment3PaymentDate("");
                       }
                     }}
-                    disabled={!isEditing}
+                    disabled={isFieldDisabled}
                   >
                     <SelectTrigger className="h-9">
                       <SelectValue placeholder="Selecione" />
@@ -921,7 +898,7 @@ export function RentalFormDialog({
                   variant="outline"
                   size="sm"
                   onClick={() => document.getElementById("rentalCameraCapture")?.click()}
-                  disabled={!isEditing}
+                  disabled={isFieldDisabled}
                 >
                   <Camera className="mr-2 h-4 w-4" />
                   Tirar Foto
@@ -931,7 +908,7 @@ export function RentalFormDialog({
                   variant="outline"
                   size="sm"
                   onClick={() => document.getElementById("rentalFileUpload")?.click()}
-                  disabled={!isEditing}
+                  disabled={isFieldDisabled}
                 >
                   <Paperclip className="mr-2 h-4 w-4" />
                   Anexar Arquivo
