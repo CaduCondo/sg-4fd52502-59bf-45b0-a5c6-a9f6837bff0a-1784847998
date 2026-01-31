@@ -316,7 +316,7 @@ export default function RentalsPage() {
                               <div>
                                 <p className="text-sm text-gray-600 dark:text-gray-400">Valor</p>
                                 <p className="text-2xl font-bold text-emerald-600">
-                                  {formatCurrency(rental.value)}
+                                  {formatCurrency(rental.value || 0)}
                                 </p>
                                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                                   Início: {formatDate(rental.startDate)}
@@ -384,7 +384,7 @@ export default function RentalsPage() {
                               <TableCell>{property?.complement || "-"}</TableCell>
                               <TableCell>{tenant?.name || "-"}</TableCell>
                               <TableCell className="font-bold text-emerald-600">
-                                {formatCurrency(rental.value)}
+                                {formatCurrency(rental.value || 0)}
                               </TableCell>
                               <TableCell>{formatDate(rental.startDate)}</TableCell>
                               <TableCell>
@@ -475,12 +475,12 @@ export default function RentalsPage() {
                               <div className="mb-3">
                                 <p className="text-sm text-gray-600 dark:text-gray-400">Valor</p>
                                 <p className="text-2xl font-bold text-gray-600">
-                                  {formatCurrency(rental.value)}
+                                  {formatCurrency(rental.value || 0)}
                                 </p>
                               </div>
 
                               <p className="text-sm text-gray-600 dark:text-gray-400">
-                                Término: {formatDate(rental.endDate)}
+                                Término: {formatDate(rental.endDate || "")}
                               </p>
                             </CardContent>
                           </Card>
@@ -514,9 +514,9 @@ export default function RentalsPage() {
                                 <TableCell>{property?.complement || "-"}</TableCell>
                                 <TableCell>{tenant?.name || "-"}</TableCell>
                                 <TableCell className="font-bold text-gray-600">
-                                  {formatCurrency(rental.value)}
+                                  {formatCurrency(rental.value || 0)}
                                 </TableCell>
-                                <TableCell>{formatDate(rental.endDate)}</TableCell>
+                                <TableCell>{formatDate(rental.endDate || "")}</TableCell>
                                 <TableCell>
                                   <Badge className="bg-gray-500 hover:bg-gray-600 text-white">
                                     Inativa

@@ -9,16 +9,34 @@ const mapRentalData = (data: any): Rental => {
     tenantId: data.tenant_id,
     startDate: data.start_date,
     endDate: data.end_date,
-    value: data.value || data.monthly_rent || 0, // Prioridade para value
-    depositAmount: Number(data.deposit) || 0,
-    paymentDay: data.payment_day || 0,
+    paymentDay: data.payment_day,
+    value: Number(data.value || data.monthly_rent || 0), // Fallback seguro
+    depositAmount: data.deposit ? Number(data.deposit) : 0,
     status: data.status,
+    isActive: data.is_active,
     attachments: data.attachments || [],
     contractAttachments: data.contract_attachments || [],
-    isActive: data.status === 'active',
-    autoRenew: false,
     
-    // Propriedades aninhadas
+    // Mapeamento explícito dos novos campos
+    hasGarage: data.has_garage || false,
+    garageValue: data.garage_value ? Number(data.garage_value) : 0,
+    hasPartnerBroker: data.has_partner_broker || false,
+    
+    // Campos de parcelamento da caução
+    depositInstallments: data.deposit_installments,
+    depositInstallment1: data.deposit_installment_1 ? Number(data.deposit_installment_1) : undefined,
+    depositPaymentDate: data.deposit_payment_date,
+    depositPixCode: data.deposit_pix_code,
+    
+    depositInstallment2: data.deposit_installment_2 ? Number(data.deposit_installment_2) : undefined,
+    depositInstallment2PaymentDate: data.deposit_installment_2_payment_date,
+    depositInstallment2PixCode: data.deposit_installment_2_pix_code,
+    
+    depositInstallment3: data.deposit_installment_3 ? Number(data.deposit_installment_3) : undefined,
+    depositInstallment3PaymentDate: data.deposit_installment_3_payment_date,
+    depositInstallment3PixCode: data.deposit_installment_3_pix_code,
+
+    // Joins
     properties: data.properties,
     tenants: data.tenants
   };
@@ -194,14 +212,30 @@ export const create = async (rental: Omit<Rental, "id">) => {
     payment_day: rental.paymentDay,
     monthly_rent: rental.value,
     value: rental.value,
-    deposit: rental.depositAmount ? rental.depositAmount : null,
+    deposit: rental.depositAmount,
     status: rental.status,
     is_active: rental.isActive,
     attachments: rental.attachments,
     contract_attachments: rental.contractAttachments,
+    
+    // Campos críticos que estavam faltando ou com problemas
     has_garage: rental.hasGarage,
-    garage_value: rental.garageValue ? rental.garageValue : null,
-    has_partner_broker: rental.hasPartnerBroker
+    garage_value: rental.garageValue,
+    has_partner_broker: rental.hasPartnerBroker,
+    
+    // Parcelamento da caução
+    deposit_installments: rental.depositInstallments,
+    deposit_installment_1: rental.depositInstallment1,
+    deposit_payment_date: rental.depositPaymentDate,
+    deposit_pix_code: rental.depositPixCode,
+    
+    deposit_installment_2: rental.depositInstallment2,
+    deposit_installment_2_payment_date: rental.depositInstallment2PaymentDate,
+    deposit_installment_2_pix_code: rental.depositInstallment2PixCode,
+    
+    deposit_installment_3: rental.depositInstallment3,
+    deposit_installment_3_payment_date: rental.depositInstallment3PaymentDate,
+    deposit_installment_3_pix_code: rental.depositInstallment3PixCode
   };
 
   const { data, error } = await supabase
@@ -211,7 +245,9 @@ export const create = async (rental: Omit<Rental, "id">) => {
     .single();
 
   if (error) throw error;
-  return data;
+  
+  // Retornar o dado mapeado corretamente para a UI atualizar sem refresh
+  return mapRentalData(data);
 };
 
 export const update = async (id: string, rental: Partial<Rental>) => {

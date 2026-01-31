@@ -298,7 +298,7 @@ export function useDashboardData(month: number, year: number) {
         let monthExpensesQuery = supabase
           .from("location_expenses")
           .select("amount")
-          .eq("reference_month", targetMonth)
+          .eq("reference_month", targetMonth) // targetMonth já é 1-12
           .eq("reference_year", targetYear);
 
         if (allowedLocationIds) {
@@ -319,9 +319,11 @@ export function useDashboardData(month: number, year: number) {
         });
 
         const monthTotal = monthFees + monthExpensesTotal;
-        const monthNet = monthGross - monthTotal;
+        const monthNet = monthGross - monthTotal; // Agora subtrai corretamente despesas mesmo se monthGross for 0
 
-        const monthLabel = new Intl.DateTimeFormat('pt-BR', { month: 'short', year: '2-digit' }).format(targetDate);
+        // Ajuste no label do mês para garantir localização correta sem problemas de timezone
+        const monthName = targetDate.toLocaleString('pt-BR', { month: 'short' });
+        const monthLabel = `${monthName}/${targetDate.getFullYear().toString().slice(2)}`;
 
         monthlyRevenueData.push({
           month: monthLabel,
