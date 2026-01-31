@@ -36,7 +36,7 @@ export async function createSingle<T>(
     .from(table as any)
     .insert(data)
     .select("*")
-    .single();
+    .maybeSingle();
 
   if (error) {
     console.error(`Erro ao criar registro em ${table}:`, error);
@@ -69,7 +69,7 @@ export async function updateSingle<T>(
     .update(updates)
     .eq("id", id)
     .select("*")
-    .single();
+    .maybeSingle();
 
   if (error) {
     console.error(`Erro ao atualizar registro em ${table}:`, error);
@@ -119,7 +119,7 @@ export async function getSingle<T>(
     .from(table as any)
     .select("*")
     .eq("id", id)
-    .single();
+    .maybeSingle();
 
   if (error) {
     if (error.code === "PGRST116" && !options.throwOnNotFound) {
