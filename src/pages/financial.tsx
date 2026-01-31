@@ -96,13 +96,23 @@ export default function Financial() {
     if (user) {
       loadData();
     }
-  }, [user]);
+  }, [user, selectedMonth, selectedYear]);
 
   const loadData = async () => {
     try {
       setIsLoading(true);
       
-      console.log("🔄 Financeiro: Carregando dados...", { selectedMonth, selectedYear, userRole: user?.role });
+      // Converter selectedMonth para número (1-12)
+      const filterMonth = parseInt(selectedMonth);
+      const filterYear = parseInt(selectedYear);
+      
+      console.log("🔄 Financeiro: Carregando dados...", { 
+        selectedMonth, 
+        selectedYear,
+        filterMonth,
+        filterYear,
+        userRole: user?.role 
+      });
       
       const [
         paymentsData, 
@@ -154,8 +164,8 @@ export default function Financial() {
       let expensesQuery = supabase
         .from("location_expenses")
         .select("amount, status, location_id")
-        .eq("reference_month", parseInt(selectedMonth))
-        .eq("reference_year", parseInt(selectedYear));
+        .eq("reference_month", filterMonth)
+        .eq("reference_year", filterYear);
       
       // ✅ Filtrar despesas por locais permitidos se for usuário financeiro
       if (user?.role === "financial" && allowedLocations.length > 0) {
@@ -174,8 +184,8 @@ export default function Financial() {
         : 0;
       
       console.log("💰 Contas a Pagar carregadas:", {
-        month: parseInt(selectedMonth),
-        year: parseInt(selectedYear),
+        month: filterMonth,
+        year: filterYear,
         userRole: user?.role,
         allowedLocations: allowedLocations.length > 0 ? allowedLocations : "Todos",
         totalExpenses,
@@ -210,10 +220,10 @@ export default function Financial() {
       // Filtrar pagamentos pelo mês/ano selecionado E por rentals permitidos
       const allowedRentalIds = filteredRentals.map(r => r.id);
       const filteredPayments = paymentsData.filter((payment) => {
-        const dueDate = new Date(payment.dueDate);
+        // ✅ Filtro de data: Usa reference_month e reference_year (1-12)
         const matchesDate = 
-          dueDate.getMonth() === parseInt(selectedMonth) - 1 &&
-          dueDate.getFullYear() === parseInt(selectedYear);
+          payment.referenceMonth === filterMonth &&
+          payment.referenceYear === filterYear;
         
         const matchesPermission = 
           user?.role !== "financial" || 
@@ -225,8 +235,10 @@ export default function Financial() {
       
       console.log(`💵 Payments filtrados: ${filteredPayments.length} de ${paymentsData.length}`);
       console.log("📋 IDs dos rentals permitidos:", allowedRentalIds);
-      console.log("📋 Payments filtrados por rental_id:", filteredPayments.map(p => ({
+      console.log("📋 Payments filtrados detalhados:", filteredPayments.map(p => ({
         id: p.id,
+        referenceMonth: p.referenceMonth,
+        referenceYear: p.referenceYear,
         rentalId: p.rentalId,
         expectedAmount: p.expectedAmount,
         status: p.status
@@ -559,10 +571,7 @@ export default function Financial() {
           <Card className="bg-white border-slate-200 shadow-sm">
             <CardContent className="p-4 flex gap-4">
               <div className="w-[200px]">
-                <Select value={selectedMonth} onValueChange={(value) => {
-                  setSelectedMonth(value);
-                  loadData();
-                }}>
+                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
                   <SelectTrigger className="bg-slate-50 border-slate-200">
                     <SelectValue placeholder="Mês" />
                   </SelectTrigger>
@@ -576,10 +585,7 @@ export default function Financial() {
                 </Select>
               </div>
               <div className="w-[120px]">
-                <Select value={selectedYear} onValueChange={(value) => {
-                  setSelectedYear(value);
-                  loadData();
-                }}>
+                <Select value={selectedYear} onValueChange={setSelectedYear}>
                   <SelectTrigger className="bg-slate-50 border-slate-200">
                     <SelectValue placeholder="Ano" />
                   </SelectTrigger>
