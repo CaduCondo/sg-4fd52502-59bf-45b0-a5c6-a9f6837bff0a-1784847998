@@ -48,7 +48,7 @@ export default function ManagePaymentPage() {
   return (
     <>
       <Head>
-        <title>Gerenciar Pagamento - Sistema de Locações</title>
+        <title>Registrar Recebimento - Sistema de Locações</title>
       </Head>
       <Layout>
         <div className="space-y-6">

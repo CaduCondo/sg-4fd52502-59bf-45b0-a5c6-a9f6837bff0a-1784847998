@@ -1,7 +1,7 @@
 import { Rental, Property, Tenant } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, User, Calendar, DollarSign, FileText, Car, UserCheck, Coins, ShieldCheck, Banknote } from "lucide-react";
+import { MapPin, User, DollarSign, FileText, Car, UserCheck, Coins, Banknote } from "lucide-react";
 import { formatCurrency } from "@/lib/masks";
 import { formatDateLocal } from "@/lib/rentalCalculations";
 import { format } from "date-fns";
@@ -34,7 +34,6 @@ export function RentalDetailsCard({ rental, property, tenant }: RentalDetailsCar
     );
   };
 
-  // Safe formatting helpers
   const safeDate = (dateString?: string) => {
     if (!dateString) return "N/A";
     try {
@@ -136,39 +135,27 @@ export function RentalDetailsCard({ rental, property, tenant }: RentalDetailsCar
         </div>
 
         {/* Adicionais (Garagem, Corretor) */}
-        {(rental.hasGarage || rental.hasPartnerBroker) && (
-          <div className="space-y-3 p-4 bg-slate-50 rounded-lg border border-slate-100">
-            <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-              <ShieldCheck className="h-4 w-4" />
-              Adicionais
-            </div>
-            <div className="ml-6 space-y-3">
-              {rental.hasGarage && (
-                <div className="flex items-start gap-3 p-3 bg-white rounded border border-slate-200">
-                  <Car className="h-5 w-5 text-blue-600 mt-0.5" />
-                  <div>
-                    <p className="font-medium text-sm text-slate-900">Vaga de Garagem Inclusa</p>
-                    {rental.garageValue && rental.garageValue > 0 && (
-                      <p className="text-sm text-green-600 font-medium">
-                        + {formatCurrency(rental.garageValue)}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-              
-              {rental.hasPartnerBroker && (
-                <div className="flex items-start gap-3 p-3 bg-white rounded border border-slate-200">
-                  <UserCheck className="h-5 w-5 text-purple-600 mt-0.5" />
-                  <div>
-                    <p className="font-medium text-sm text-slate-900">Corretor Parceiro</p>
-                    <p className="text-sm text-muted-foreground">Comissão configurada</p>
-                  </div>
-                </div>
-              )}
-            </div>
+        <div className="space-y-3 p-4 bg-slate-50 rounded-lg border border-slate-100">
+          <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+            <Car className="h-4 w-4" />
+            Adicionais
           </div>
-        )}
+          <div className="ml-6 space-y-2">
+             <div className="flex items-center gap-2">
+                <input type="checkbox" checked={rental.hasGarage} readOnly className="rounded border-gray-300" />
+                <span className="text-sm">Possui vaga de garagem</span>
+                {rental.hasGarage && rental.garageValue && (
+                  <span className="text-sm font-semibold text-green-600 ml-2">
+                    (+ {formatCurrency(rental.garageValue)})
+                  </span>
+                )}
+             </div>
+             <div className="flex items-center gap-2">
+                <input type="checkbox" checked={rental.hasPartnerBroker} readOnly className="rounded border-gray-300" />
+                <span className="text-sm">Corretor Parceiro</span>
+             </div>
+          </div>
+        </div>
 
         {/* Caução */}
         {(rental.depositAmount && rental.depositAmount > 0) || (rental.depositInstallments && rental.depositInstallments > 0) ? (
@@ -179,25 +166,13 @@ export function RentalDetailsCard({ rental, property, tenant }: RentalDetailsCar
             </div>
             
             <div className="ml-6 space-y-4">
-              <div className="flex items-center justify-between pb-2 border-b border-slate-200">
-                <span className="text-sm text-muted-foreground">Valor Total da Caução:</span>
-                <span className="text-sm font-bold text-slate-900">
-                   {/* Fallback to sum of installments if total not set directly */}
-                   {formatCurrency(rental.depositAmount || 
-                     ((rental.depositInstallment1 || 0) + (rental.depositInstallment2 || 0) + (rental.depositInstallment3 || 0))
-                   )}
-                </span>
-              </div>
-
               {rental.depositInstallments && rental.depositInstallments > 1 ? (
                 <div className="space-y-3">
                   <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
                     Parcelado em {rental.depositInstallments}x
                   </Badge>
 
-                  {/* Parcelas */}
                   <div className="grid grid-cols-1 gap-3">
-                    {/* Parcela 1 */}
                     {rental.depositInstallment1 && rental.depositInstallment1 > 0 && (
                       <div className="p-3 bg-white rounded border border-slate-200 text-sm">
                         <div className="flex justify-between items-center mb-1">
@@ -205,19 +180,11 @@ export function RentalDetailsCard({ rental, property, tenant }: RentalDetailsCar
                           <span className="font-bold text-green-600">{formatCurrency(rental.depositInstallment1)}</span>
                         </div>
                         <div className="flex flex-col gap-1 text-xs text-muted-foreground">
-                           {rental.depositPaymentDate && (
-                             <span>Vencimento: {safeDate(rental.depositPaymentDate)}</span>
-                           )}
-                           {rental.depositPixCode && (
-                             <span className="truncate" title={rental.depositPixCode}>
-                               PIX: {rental.depositPixCode}
-                             </span>
-                           )}
+                           {rental.depositPaymentDate && <span>Vencimento: {safeDate(rental.depositPaymentDate)}</span>}
+                           {rental.depositPixCode && <span className="truncate">PIX: {rental.depositPixCode}</span>}
                         </div>
                       </div>
                     )}
-
-                    {/* Parcela 2 */}
                     {rental.depositInstallment2 && rental.depositInstallment2 > 0 && (
                       <div className="p-3 bg-white rounded border border-slate-200 text-sm">
                         <div className="flex justify-between items-center mb-1">
@@ -225,19 +192,11 @@ export function RentalDetailsCard({ rental, property, tenant }: RentalDetailsCar
                           <span className="font-bold text-green-600">{formatCurrency(rental.depositInstallment2)}</span>
                         </div>
                         <div className="flex flex-col gap-1 text-xs text-muted-foreground">
-                           {rental.depositInstallment2PaymentDate && (
-                             <span>Vencimento: {safeDate(rental.depositInstallment2PaymentDate)}</span>
-                           )}
-                           {rental.depositInstallment2PixCode && (
-                             <span className="truncate" title={rental.depositInstallment2PixCode}>
-                               PIX: {rental.depositInstallment2PixCode}
-                             </span>
-                           )}
+                           {rental.depositInstallment2PaymentDate && <span>Vencimento: {safeDate(rental.depositInstallment2PaymentDate)}</span>}
+                           {rental.depositInstallment2PixCode && <span className="truncate">PIX: {rental.depositInstallment2PixCode}</span>}
                         </div>
                       </div>
                     )}
-
-                    {/* Parcela 3 */}
                     {rental.depositInstallment3 && rental.depositInstallment3 > 0 && (
                       <div className="p-3 bg-white rounded border border-slate-200 text-sm">
                         <div className="flex justify-between items-center mb-1">
@@ -245,14 +204,8 @@ export function RentalDetailsCard({ rental, property, tenant }: RentalDetailsCar
                           <span className="font-bold text-green-600">{formatCurrency(rental.depositInstallment3)}</span>
                         </div>
                         <div className="flex flex-col gap-1 text-xs text-muted-foreground">
-                           {rental.depositInstallment3PaymentDate && (
-                             <span>Vencimento: {safeDate(rental.depositInstallment3PaymentDate)}</span>
-                           )}
-                           {rental.depositInstallment3PixCode && (
-                             <span className="truncate" title={rental.depositInstallment3PixCode}>
-                               PIX: {rental.depositInstallment3PixCode}
-                             </span>
-                           )}
+                           {rental.depositInstallment3PaymentDate && <span>Vencimento: {safeDate(rental.depositInstallment3PaymentDate)}</span>}
+                           {rental.depositInstallment3PixCode && <span className="truncate">PIX: {rental.depositInstallment3PixCode}</span>}
                         </div>
                       </div>
                     )}
@@ -265,12 +218,8 @@ export function RentalDetailsCard({ rental, property, tenant }: RentalDetailsCar
                     <span className="font-medium text-slate-900">Pagamento à Vista</span>
                   </div>
                   <div className="space-y-1 text-xs text-muted-foreground">
-                    {rental.depositPaymentDate && (
-                      <p>Data Pagamento: {safeDate(rental.depositPaymentDate)}</p>
-                    )}
-                    {rental.depositPixCode && (
-                      <p className="break-all">PIX: {rental.depositPixCode}</p>
-                    )}
+                    <p>Valor: {formatCurrency(rental.depositAmount || 0)}</p>
+                    {rental.depositPaymentDate && <p>Data Pagamento: {safeDate(rental.depositPaymentDate)}</p>}
                   </div>
                 </div>
               )}

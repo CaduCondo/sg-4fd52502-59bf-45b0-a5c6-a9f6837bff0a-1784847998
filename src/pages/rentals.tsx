@@ -318,7 +318,7 @@ export default function RentalsPage() {
                                   Valor do Aluguel
                                 </p>
                                 <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                                  {formatCurrency(rental.value || 0)}
+                                  {formatCurrency(rental.value || rental.monthlyRent || 0)}
                                 </p>
                               </div>
                               <div className="flex flex-col gap-2">
