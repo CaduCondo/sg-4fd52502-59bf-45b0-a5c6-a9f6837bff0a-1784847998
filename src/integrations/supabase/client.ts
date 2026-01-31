@@ -7,7 +7,7 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 
 // Validação de chaves
 if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
-  throw new Error('❌ CRÍTICO: Chaves do Supabase não configuradas');
+  throw new Error('Chaves do Supabase não configuradas');
 }
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
@@ -22,67 +22,16 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
       'x-client-info': 'rental-management',
     },
   },
-  db: {
-    schema: 'public',
-  },
-  realtime: {
-    params: {
-      eventsPerSecond: 2,
-    },
-  },
 });
-
-// Wrapper para requisições com retry automático (apenas para erros de rede reais)
-export const withRetry = async <T>(
-  operation: () => Promise<T>,
-  maxRetries = 2,
-  delayMs = 1000
-): Promise<T> => {
-  let lastError: any;
-  
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      return await operation();
-    } catch (error: any) {
-      lastError = error;
-      
-      // Não fazer retry em erros que não são de rede
-      const isRetryableError = 
-        error.message?.includes('fetch') ||
-        error.message?.includes('network') ||
-        error.message?.includes('timeout') ||
-        error.name === 'AbortError';
-      
-      // Não fazer retry em erros de permissão, autenticação ou tabela inexistente
-      const isNonRetryableError =
-        error.code === 'PGRST' || 
-        error.message?.includes('JWT') ||
-        error.message?.includes('permission') ||
-        error.code === '42P01';
-      
-      if (isNonRetryableError || !isRetryableError) {
-        throw error;
-      }
-      
-      if (attempt < maxRetries) {
-        const delay = delayMs * attempt; // Linear backoff
-        console.log(`⏳ Tentativa ${attempt}/${maxRetries} falhou. Aguardando ${delay}ms...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-      }
-    }
-  }
-  
-  throw lastError;
-};
 
 // Monitorar eventos de autenticação
 supabase.auth.onAuthStateChange((event, session) => {
   if (event === 'TOKEN_REFRESHED') {
-    console.log('🔄 Token atualizado automaticamente');
+    console.log('Token atualizado');
   } else if (event === 'SIGNED_OUT') {
-    console.log('👋 Usuário desconectado');
+    console.log('Usuário desconectado');
   } else if (event === 'SIGNED_IN') {
-    console.log('✅ Usuário autenticado');
+    console.log('Usuário autenticado');
   }
 });
 
@@ -94,14 +43,13 @@ export const setSupabaseSession = async (accessToken: string, refreshToken: stri
     });
     
     if (error) {
-      console.error('❌ Erro ao configurar sessão Supabase:', error);
+      console.error('Erro ao configurar sessão:', error);
       return false;
     }
     
-    console.log('✅ Sessão Supabase configurada com sucesso');
     return true;
   } catch (err) {
-    console.error('❌ Erro crítico ao configurar sessão:', err);
+    console.error('Erro ao configurar sessão:', err);
     return false;
   }
 };
@@ -111,28 +59,13 @@ export const getSupabaseSession = async () => {
     const { data: { session }, error } = await supabase.auth.getSession();
     
     if (error) {
-      console.error('❌ Erro ao obter sessão:', error);
+      console.error('Erro ao obter sessão:', error);
       return null;
     }
     
     return session;
   } catch (err) {
-    console.error('❌ Erro crítico ao obter sessão:', err);
+    console.error('Erro ao obter sessão:', err);
     return null;
   }
 };
-
-// Refresh preventivo da sessão a cada 25 minutos
-if (typeof window !== 'undefined') {
-  setInterval(async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        console.log('🔄 Refresh preventivo da sessão...');
-        await supabase.auth.refreshSession();
-      }
-    } catch (err) {
-      console.error('❌ Erro no refresh preventivo:', err);
-    }
-  }, 25 * 60 * 1000); // 25 minutos
-}
