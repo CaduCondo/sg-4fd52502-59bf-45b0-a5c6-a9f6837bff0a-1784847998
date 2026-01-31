@@ -620,12 +620,12 @@ export default function Payments() {
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancelar</AlertDialogCancel>
-              <AlertDialogAction
+              <Button
                 onClick={handleConfirmCancelPayment}
                 className="bg-red-600 hover:bg-red-700"
               >
                 Sim, Cancelar Pagamento
-              </AlertDialogAction>
+              </Button>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>

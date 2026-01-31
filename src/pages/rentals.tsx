@@ -573,9 +573,9 @@ export default function RentalsPage() {
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancelar</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDeleteRental} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              <Button onClick={handleDeleteRental} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
                 Excluir
-              </AlertDialogAction>
+              </Button>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>

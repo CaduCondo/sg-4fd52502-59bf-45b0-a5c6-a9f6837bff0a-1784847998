@@ -126,9 +126,9 @@ export default function RentalDetailsPage() {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleTerminateRental}>
+                      <Button onClick={handleTerminateRental} onBlur={() => {}}>
                         Confirmar
-                      </AlertDialogAction>
+                      </Button>
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>

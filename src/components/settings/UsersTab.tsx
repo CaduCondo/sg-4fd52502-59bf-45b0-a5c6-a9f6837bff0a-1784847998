@@ -193,12 +193,15 @@ export function UsersTab({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleConfirmDelete}
+            <Button
+              onClick={() => {
+                handleConfirmDelete();
+                (document.activeElement as HTMLElement).blur();
+              }}
               className="bg-red-600 hover:bg-red-700"
             >
               Excluir
-            </AlertDialogAction>
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
