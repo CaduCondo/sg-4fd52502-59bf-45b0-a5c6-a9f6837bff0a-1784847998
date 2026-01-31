@@ -151,20 +151,26 @@
   
   body {
     @apply bg-background text-foreground;
-    /* Prevent zoom on iOS when focusing inputs */
+    font-size: 14px;
     -webkit-text-size-adjust: 100%;
-    /* Smooth scrolling for better mobile experience */
     -webkit-overflow-scrolling: touch;
   }
   
+  /* Compact typography - smaller, more professional */
+  h1 { @apply text-xl sm:text-2xl font-bold; }
+  h2 { @apply text-lg sm:text-xl font-semibold; }
+  h3 { @apply text-base sm:text-lg font-semibold; }
+  h4 { @apply text-sm sm:text-base font-medium; }
+  p { @apply text-sm; }
+  
   /* Mobile input optimization - prevent zoom on focus */
   input, select, textarea {
-    font-size: 16px;
+    font-size: 14px;
   }
   
   @media (min-width: 768px) {
     input, select, textarea {
-      font-size: 14px;
+      font-size: 13px;
     }
   }
   
@@ -228,22 +234,22 @@
     @apply mx-auto px-4 md:px-6 lg:px-8 max-w-7xl w-full;
   }
   
-  /* Mobile-optimized card */
+  /* Mobile-optimized card - more compact */
   .mobile-card {
-    @apply bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-800 p-4 sm:p-6;
+    @apply bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-800 p-3 sm:p-4;
   }
   
-  /* Mobile-friendly button */
+  /* Mobile-friendly button - more compact */
   .mobile-button {
-    @apply h-11 px-4 sm:h-10 sm:px-3 text-base sm:text-sm font-medium;
+    @apply h-9 px-3 sm:h-9 sm:px-3 text-sm font-medium;
   }
   
-  /* Responsive spacing */
+  /* Responsive spacing - more compact */
   .section-spacing {
-    @apply py-6 sm:py-8 md:py-12;
+    @apply py-4 sm:py-6 md:py-8;
   }
   
   .content-spacing {
-    @apply space-y-4 sm:space-y-6;
+    @apply space-y-3 sm:space-y-4;
   }
 }

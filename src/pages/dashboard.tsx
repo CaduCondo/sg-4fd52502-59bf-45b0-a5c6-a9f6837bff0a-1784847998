@@ -29,7 +29,6 @@ export default function Dashboard() {
     setSelectedYear(year);
   };
   
-  // Calcular overviewData apenas quando os dados mudarem
   const overviewData = useMemo(() => {
     console.log("📊 Recalculando overviewData...");
     console.log("🔢 Calculando overviewData...", {
@@ -75,24 +74,17 @@ export default function Dashboard() {
 
     const grossRevenue = payments.reduce((sum, p) => sum + (p.paidAmount || 0), 0);
 
-    // Calcular taxas (administrativas + gerenciamento)
     const totalFees = payments.reduce((sum, p) => {
       const rental = rentals.find(r => r.id === p.rentalId);
       const property = properties.find(prop => prop.id === rental?.propertyId);
       
-      // Taxa administrativa (5%)
       const adminFee = (p.paidAmount || 0) * 0.05;
-      
-      // Taxa de gerenciamento (3%)
       const managementFee = (p.paidAmount || 0) * 0.03;
       
       return sum + adminFee + managementFee;
     }, 0);
 
-    // Total de taxas + contas a pagar (location_expenses)
     const totalFeesAndExpenses = totalFees + locationExpenses;
-
-    // Receita líquida = Receita bruta - Taxas - Contas a pagar
     const netRevenue = grossRevenue - totalFeesAndExpenses;
 
     return {
@@ -118,23 +110,14 @@ export default function Dashboard() {
   return (
     <Layout>
       <SEO title="Dashboard - Gerenciador de Locações" />
-      <div className="p-6 space-y-8">
+      <div className="p-4 md:p-6 space-y-6">
         <WelcomeCard userName={user?.name || user?.email?.split('@')[0] || "Usuário"} />
-        
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Dashboard</h1>
-          <PeriodSelector 
-            selectedMonth={selectedMonth} 
-            selectedYear={selectedYear} 
-            onPeriodChange={handlePeriodChange} 
-          />
-        </div>
 
         {loading ? (
           <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
               {[...Array(15)].map((_, i) => (
-                <Skeleton key={i} className="h-32" />
+                <Skeleton key={i} className="h-28" />
               ))}
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -145,7 +128,12 @@ export default function Dashboard() {
           </div>
         ) : (
           <>
-            <OverviewCards data={overviewData} />
+            <OverviewCards 
+              data={overviewData} 
+              selectedMonth={selectedMonth}
+              selectedYear={selectedYear}
+              onPeriodChange={handlePeriodChange}
+            />
             
             <AnalyticsCharts 
               revenueData={[]} 

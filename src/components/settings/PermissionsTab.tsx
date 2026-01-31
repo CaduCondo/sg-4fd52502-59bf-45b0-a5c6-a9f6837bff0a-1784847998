@@ -207,23 +207,23 @@ export function PermissionsTab({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-            <Shield className="h-5 w-5 flex-shrink-0" />
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Shield className="h-4 w-4 flex-shrink-0" />
             <span>Permissões de Menu por Perfil</span>
           </CardTitle>
-          <CardDescription className="text-sm">Controle quais menus cada perfil de usuário pode acessar</CardDescription>
+          <CardDescription className="text-xs">Controle quais menus cada perfil de usuário pode acessar</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pb-4">
           <div className="rounded-md border table-wrapper">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[140px] sm:w-[200px] font-semibold">Menu</TableHead>
+                  <TableHead className="w-[120px] sm:w-[160px] font-semibold text-xs h-9">Menu</TableHead>
                   {roles.map((role) => (
-                    <TableHead key={role} className="text-center min-w-[100px] font-semibold">
+                    <TableHead key={role} className="text-center min-w-[80px] font-semibold text-xs h-9">
                       <span className="hidden sm:inline">{roleLabels[role]}</span>
                       <span className="sm:hidden text-xs">{roleLabels[role].substring(0, 5)}</span>
                     </TableHead>
@@ -232,21 +232,21 @@ export function PermissionsTab({
               </TableHeader>
               <TableBody>
                 {menuItems.map((menuItem) => (
-                  <TableRow key={menuItem}>
-                    <TableCell className="font-medium text-sm">{menuLabels[menuItem]}</TableCell>
+                  <TableRow key={menuItem} className="h-10">
+                    <TableCell className="font-medium text-xs py-2">{menuLabels[menuItem]}</TableCell>
                     {roles.map((role) => {
                       const hasAccess = hasPermission(role, menuItem);
                       return (
-                        <TableCell key={role} className="text-center">
+                        <TableCell key={role} className="text-center py-2">
                           <button
                             onClick={() => togglePermission(role, menuItem)}
                             className="inline-flex items-center justify-center hover:opacity-80 transition-opacity disabled:opacity-50 touch-target"
                             disabled={isLoading || isSaving}
                           >
                             {hasAccess ? (
-                              <CheckCircle2 className="h-6 w-6 sm:h-7 sm:w-7 text-green-600 dark:text-green-400" />
+                              <CheckCircle2 className="h-5 w-5 sm:h-6 sm:w-6 text-green-600 dark:text-green-400" />
                             ) : (
-                              <XCircle className="h-6 w-6 sm:h-7 sm:w-7 text-red-600 dark:text-red-400" />
+                              <XCircle className="h-5 w-5 sm:h-6 sm:w-6 text-red-600 dark:text-red-400" />
                             )}
                           </button>
                         </TableCell>
@@ -257,49 +257,49 @@ export function PermissionsTab({
               </TableBody>
             </Table>
           </div>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-4">
-            💡 <strong>Dica:</strong> Clique nos ícones para habilitar/desabilitar o acesso de cada perfil aos menus do sistema.
+          <p className="text-xs text-muted-foreground mt-3">
+            💡 Clique nos ícones para habilitar/desabilitar o acesso de cada perfil aos menus.
           </p>
         </CardContent>
       </Card>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-            <MapPin className="h-5 w-5 flex-shrink-0" />
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <MapPin className="h-4 w-4 flex-shrink-0" />
             <span>Permissões de Local (Usuários Financeiros)</span>
           </CardTitle>
-          <CardDescription className="text-sm">
-            Defina quais locais cada usuário financeiro pode visualizar no Dashboard e na página Financeiro
+          <CardDescription className="text-xs">
+            Defina quais locais cada usuário financeiro pode visualizar
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pb-4">
           {users.filter((u) => u.role === "financial").length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground text-sm">Nenhum usuário com perfil Financeiro cadastrado</div>
+            <div className="text-center py-6 text-muted-foreground text-xs">Nenhum usuário com perfil Financeiro cadastrado</div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-2">
               {users
                 .filter((u) => u.role === "financial")
                 .map((user) => (
                   <div
                     key={user.id}
-                    className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 border rounded-lg hover:bg-accent/50 transition-colors"
+                    className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-3 border rounded-lg hover:bg-accent/50 transition-colors"
                   >
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-semibold flex items-center gap-2 text-sm sm:text-base">
-                        <User className="h-4 w-4 text-primary flex-shrink-0" />
+                      <h4 className="font-semibold flex items-center gap-2 text-sm">
+                        <User className="h-3 w-3 text-primary flex-shrink-0" />
                         <span className="truncate">{user.name}</span>
                       </h4>
-                      <p className="text-xs sm:text-sm text-muted-foreground truncate">{user.email}</p>
+                      <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                     </div>
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      className="gap-2 w-full sm:w-auto h-10 sm:h-9 flex-shrink-0" 
+                      className="gap-1.5 w-full sm:w-auto h-8 text-xs flex-shrink-0" 
                       onClick={() => openLocationPermissionsDialog(user)}
                     >
                       <MapPin className="h-3 w-3" />
-                      Gerenciar Locais
+                      Gerenciar
                     </Button>
                   </div>
                 ))}
@@ -309,42 +309,42 @@ export function PermissionsTab({
       </Card>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-            <DollarSign className="h-5 w-5 flex-shrink-0" />
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <DollarSign className="h-4 w-4 flex-shrink-0" />
             <span>Isenção de Taxa de Administração</span>
           </CardTitle>
-          <CardDescription className="text-sm">Defina quais locais cada corretor NÃO receberá taxa de administração</CardDescription>
+          <CardDescription className="text-xs">Defina quais locais cada corretor NÃO receberá taxa de administração</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pb-4">
           {users.filter((u) => u.role === "broker").length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground text-sm">Nenhum corretor cadastrado</div>
+            <div className="text-center py-6 text-muted-foreground text-xs">Nenhum corretor cadastrado</div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-2">
               {users
                 .filter((u) => u.role === "broker")
                 .map((user) => (
                   <div
                     key={user.id}
-                    className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 border rounded-lg hover:bg-accent transition-colors"
+                    className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-3 border rounded-lg hover:bg-accent transition-colors"
                   >
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <div className="h-10 w-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center flex-shrink-0">
-                        <DollarSign className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <div className="h-8 w-8 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center flex-shrink-0">
+                        <DollarSign className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <h4 className="font-semibold text-sm sm:text-base truncate">{user.name}</h4>
-                        <p className="text-xs sm:text-sm text-muted-foreground">Configurar locais sem taxa de administração</p>
+                        <h4 className="font-semibold text-sm truncate">{user.name}</h4>
+                        <p className="text-xs text-muted-foreground">Configurar locais sem taxa</p>
                       </div>
                     </div>
                     <Button 
                       variant="outline" 
                       size="sm" 
                       onClick={() => openFeeExemptionDialog(user)}
-                      className="w-full sm:w-auto h-10 sm:h-9 gap-2 flex-shrink-0"
+                      className="w-full sm:w-auto h-8 gap-1.5 text-xs flex-shrink-0"
                     >
-                      <SettingsIcon className="h-4 w-4" />
-                      Configurar Isenção
+                      <SettingsIcon className="h-3 w-3" />
+                      Configurar
                     </Button>
                   </div>
                 ))}

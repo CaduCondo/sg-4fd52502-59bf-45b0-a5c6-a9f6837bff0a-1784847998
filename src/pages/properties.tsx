@@ -5,7 +5,7 @@ import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Bed, Bath, Trash2 } from "lucide-react";
+import { Plus, Bed, Bath, Trash2, Grid3x3, List } from "lucide-react";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
 import { formatCurrency, parseCurrencyToFloat } from "@/lib/masks";
 import type { Property } from "@/types";
@@ -248,20 +248,43 @@ export default function PropertiesPage() {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Imóveis</h1>
-            <p className="text-muted-foreground">
+            <h1 className="text-2xl font-bold tracking-tight">Imóveis</h1>
+            <p className="text-sm text-muted-foreground">
               Gerenciamento de cadastro dos imóveis para locação.
             </p>
           </div>
-          <Button
-            onClick={() => {
-              resetForm();
-              setIsDialogOpen(true);
-            }}
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Novo Imóvel
-          </Button>
+          <div className="flex items-center gap-2">
+            {/* View Mode Toggle */}
+            <div className="flex gap-1 border rounded-lg p-1">
+              <Button
+                variant={viewMode === "grid" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode("grid")}
+                className="h-8 px-3"
+              >
+                <Grid3x3 className="h-4 w-4 mr-1.5" />
+                Grade
+              </Button>
+              <Button
+                variant={viewMode === "table" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode("table")}
+                className="h-8 px-3"
+              >
+                <List className="h-4 w-4 mr-1.5" />
+                Lista
+              </Button>
+            </div>
+            <Button
+              onClick={() => {
+                resetForm();
+                setIsDialogOpen(true);
+              }}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Novo Imóvel
+            </Button>
+          </div>
         </div>
 
         <Card>
@@ -277,8 +300,6 @@ export default function PropertiesPage() {
               setStatusFilter={setStatusFilter}
               sortOrder={sortOrder}
               setSortOrder={setSortOrder}
-              viewMode={viewMode}
-              setViewMode={setViewMode}
               totalCount={filteredProperties.length}
             />
           </CardContent>

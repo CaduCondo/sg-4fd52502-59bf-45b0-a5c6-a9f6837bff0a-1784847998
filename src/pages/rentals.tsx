@@ -181,7 +181,8 @@ export default function RentalsPage() {
                   onClick={() => setViewMode("grid")}
                   className="rounded-none"
                 >
-                  <Grid3x3 className="h-4 w-4" />
+                  <Grid3x3 className="h-4 w-4 mr-1.5" />
+                  Grade
                 </Button>
                 <Button
                   variant={viewMode === "table" ? "default" : "ghost"}
@@ -189,7 +190,8 @@ export default function RentalsPage() {
                   onClick={() => setViewMode("table")}
                   className="rounded-none"
                 >
-                  <List className="h-4 w-4" />
+                  <List className="h-4 w-4 mr-1.5" />
+                  Lista
                 </Button>
               </div>
               <Button onClick={handleCreateNew}>

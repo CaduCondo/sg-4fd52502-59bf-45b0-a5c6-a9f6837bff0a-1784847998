@@ -153,10 +153,10 @@ export default function TenantsPage() {
         <ScrollReveal>
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
             <div>
-              <h1 className="text-4xl font-bold mb-2">Inquilinos</h1>
-              <p className="text-muted-foreground">Gerencie os inquilinos dos seus imóveis</p>
+              <h1 className="text-3xl font-bold mb-1">Inquilinos</h1>
+              <p className="text-sm text-muted-foreground">Gerencie os inquilinos dos seus imóveis</p>
             </div>
-            <div className="flex gap-3">
+            <div className="flex gap-2">
               <Button
                 variant={viewMode === "grid" ? "default" : "outline"}
                 size="sm"

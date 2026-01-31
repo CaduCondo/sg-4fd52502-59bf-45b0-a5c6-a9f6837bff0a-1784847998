@@ -23,44 +23,42 @@ export function TenantFilters({
   totalCount,
 }: TenantFiltersProps) {
   return (
-    <div className="space-y-3 sm:space-y-4">
-      <div className="text-xs sm:text-sm text-muted-foreground font-medium">
+    <div className="space-y-3">
+      <div className="text-xs text-muted-foreground font-medium">
         {totalCount} {totalCount === 1 ? "inquilino encontrado" : "inquilinos encontrados"}
       </div>
       
-      <div className="flex flex-col gap-3">
-        <div className="relative flex-1">
+      <div className="flex flex-col sm:flex-row gap-2">
+        <div className="relative flex-1 sm:max-w-xs">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Buscar inquilinos..."
             value={searchTerm}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="pl-9 h-10 sm:h-9 text-sm mobile-input"
+            className="pl-9 h-9 text-sm"
           />
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-          <Select value={statusFilter} onValueChange={onStatusFilterChange}>
-            <SelectTrigger className="w-full sm:w-[160px] h-10 sm:h-9 text-sm">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="active">Ativos</SelectItem>
-              <SelectItem value="inactive">Inativos</SelectItem>
-            </SelectContent>
-          </Select>
+        <Select value={statusFilter} onValueChange={onStatusFilterChange}>
+          <SelectTrigger className="w-full sm:w-[140px] h-9 text-sm">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos</SelectItem>
+            <SelectItem value="active">Ativos</SelectItem>
+            <SelectItem value="inactive">Inativos</SelectItem>
+          </SelectContent>
+        </Select>
 
-          <Select value={sortBy} onValueChange={(value: "alphabetical" | "recent") => onSortChange(value)}>
-            <SelectTrigger className="w-full sm:flex-1 sm:max-w-[160px] h-10 sm:h-9 text-sm">
-              <SelectValue placeholder="Ordenar" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="alphabetical">A-Z</SelectItem>
-              <SelectItem value="recent">Recentes</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        <Select value={sortBy} onValueChange={(value: "alphabetical" | "recent") => onSortChange(value)}>
+          <SelectTrigger className="w-full sm:w-[140px] h-9 text-sm">
+            <SelectValue placeholder="Ordenar" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="alphabetical">A-Z</SelectItem>
+            <SelectItem value="recent">Recentes</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
     </div>
   );

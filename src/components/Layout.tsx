@@ -239,8 +239,8 @@ export function Layout({ children }: LayoutProps) {
               </Button>
 
               <Link href="/dashboard" className="flex items-center gap-2 min-w-0">
-                <Building2 className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 flex-shrink-0" />
-                <span className="font-bold text-slate-900 dark:text-slate-100 text-sm sm:text-base md:text-lg truncate">
+                <Building2 className="h-7 w-7 sm:h-8 sm:w-8 text-blue-600 flex-shrink-0" />
+                <span className="font-bold text-slate-900 dark:text-slate-100 text-xs sm:text-sm whitespace-nowrap">
                   D&apos;Uvo Enterprise
                 </span>
               </Link>
@@ -257,7 +257,7 @@ export function Layout({ children }: LayoutProps) {
                     key={item.name}
                     href={item.path}
                     className={cn(
-                      "group flex items-center gap-x-2 rounded-lg px-3 py-2 text-sm font-semibold transition-all",
+                      "group flex items-center gap-x-2 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-all",
                       active
                         ? "bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400"
                         : "text-slate-700 hover:bg-slate-50 hover:text-blue-600 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-blue-400"

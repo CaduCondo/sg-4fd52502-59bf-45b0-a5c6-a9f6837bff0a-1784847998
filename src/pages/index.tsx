@@ -95,17 +95,17 @@ export default function PublicHomePage() {
         <PublicHeader />
 
         {/* Hero Section */}
-        <section className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 py-20">
+        <section className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 py-12 md:py-16">
           <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTM2IDE0YzAtMS4xMDUuODk1LTIgMi0yaDJjMS4xMDUgMCAyIC44OTUgMiAydjJjMCAxLjEwNS0uODk1IDItMiAyaC0yYy0xLjEwNSAwLTItLjg5NS0yLTJ2LTJ6TTM2IDQyYzAtMS4xMDUuODk1LTIgMi0yaDJjMS4xMDUgMCAyIC44OTUgMiAydjJjMCAxLjEwNS0uODk1IDItMiAyaC0yYy0xLjEwNSAwLTItLjg5NS0yLTJ2LTJ6TTE4IDE0YzAtMS4xMDUuODk1LTIgMi0yaDJjMS4xMDUgMCAyIC44OTUgMiAydjJjMCAxLjEwNS0uODk1IDItMiAyaC0yYy0xLjEwNSAwLTItLjg5NS0yLTJ2LTJ6TTE4IDQyYzAtMS4xMDUuODk1LTIgMi0yaDJjMS4xMDUgMCAyIC44OTUgMiAydjJjMCAxLjEwNS0uODk1IDItMiAyaC0yYy0xLjEwNSAwLTItLjg5NS0yLTJ2LTJ6Ii8+PC9nPjwvZz48L3N2Zz4=')] opacity-10" />
           
           <div className="container relative mx-auto px-4">
             <div className="max-w-3xl mx-auto text-center">
-              <h1 className="font-display text-5xl md:text-6xl font-bold text-white mb-6 leading-tight">
+              <h1 className="font-display text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-4 leading-tight">
                 Encontre o Imóvel
                 <br />
                 <span className="text-orange-400">Perfeito para Você</span>
               </h1>
-              <p className="text-xl text-blue-100 mb-8">
+              <p className="text-base md:text-lg text-blue-100 mb-6">
                 Apartamentos e imóveis comerciais em diversas localidades
               </p>
 
@@ -117,7 +117,7 @@ export default function PublicHomePage() {
                   placeholder="Buscar por bairro, cidade ou nome do imóvel..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-12 pr-4 py-6 text-lg rounded-full shadow-2xl border-0"
+                  className="pl-12 pr-4 py-5 text-base rounded-full shadow-2xl border-0"
                 />
               </div>
             </div>
