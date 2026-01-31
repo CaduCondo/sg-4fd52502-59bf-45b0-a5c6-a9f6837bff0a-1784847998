@@ -123,14 +123,12 @@ export function PaymentReceipt({
   
   const referenceMonthName = monthNames[(payment.referenceMonth || 1) - 1];
 
-  // Validar e criar datas com fallback para data atual
   const safeDate = (dateString: string | undefined | null): Date => {
     if (!dateString) return new Date();
     const date = new Date(dateString + "T00:00:00");
     return isNaN(date.getTime()) ? new Date() : date;
   };
 
-  // Função auxiliar para formatar datas com segurança
   const formatSafeDate = (date: Date | string | undefined | null, formatStr: string): string => {
     try {
       if (!date) return "Data não disponível";
@@ -153,7 +151,6 @@ export function PaymentReceipt({
   const contractStartDate = safeDate(rental.startDate);
   const contractEndDate = safeDate(rental.endDate);
 
-  // Cálculo seguro de meses
   let totalMonths = 1;
   let currentPaymentNumber = 1;
 
@@ -290,33 +287,33 @@ export function PaymentReceipt({
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            Recibo de Pagamento
+          <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
+            <FileText className="h-5 w-5 flex-shrink-0" />
+            <span className="truncate">Recibo de Pagamento</span>
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6 print:p-8">
+        <div className="space-y-4 sm:space-y-6 print:p-8">
           <Card className="receipt-content">
-            <CardContent className="pt-6 space-y-6">
-              <div className="text-center border-b pb-4">
-                <h2 className="text-2xl font-bold uppercase">Recibo de Aluguel</h2>
-                <p className="text-sm text-muted-foreground mt-2">
+            <CardContent className="pt-4 sm:pt-6 space-y-4 sm:space-y-6">
+              <div className="text-center border-b pb-3 sm:pb-4">
+                <h2 className="text-xl sm:text-2xl font-bold uppercase">Recibo de Aluguel</h2>
+                <p className="text-xs sm:text-sm text-muted-foreground mt-2">
                   ({currentPaymentNumber}/{totalMonths})
                 </p>
               </div>
 
-              <div className="space-y-4 text-sm leading-relaxed text-justify">
+              <div className="space-y-3 sm:space-y-4 text-xs sm:text-sm leading-relaxed text-justify">
                 <p>
                   Recebi dos Srs. <span className="font-semibold uppercase">{tenant.name}</span>, a importância de <span className="font-semibold uppercase">{numberToWords(totalAmount)}</span>, proveniente ao depósito de aluguel referente ao mês de <span className="font-semibold">{referenceMonthName} de {payment.referenceYear}</span>, tendo seu vencimento em <span className="font-semibold">{format(dueDate, "dd/MM/yyyy", { locale: ptBR })}</span>, do imóvel situado em <span className="font-semibold uppercase">{fullAddress}</span>, após a apresentação dos comprovantes de depósito bancário e contas de água e luz do mês anterior pagas, sendo este vinculado ao INSTRUMENTO PARTICULAR DE CONTRATO DE LOCAÇÃO PARA FIM RESIDENCIAL, assinado entre as partes em <span className="font-semibold">{format(new Date(rental.startDate + "T00:00:00"), "dd/MM/yyyy", { locale: ptBR })}</span>.
                 </p>
               </div>
 
-              <div className="border-t pt-4 space-y-2">
-                <p className="font-semibold text-sm mb-3">Valores:</p>
-                <div className="space-y-1 text-sm">
+              <div className="border-t pt-3 sm:pt-4 space-y-2">
+                <p className="font-semibold text-xs sm:text-sm mb-2 sm:mb-3">Valores:</p>
+                <div className="space-y-1 text-xs sm:text-sm">
                   <div className="flex justify-between">
                     <span>Valor:</span>
                     <span className="font-semibold">{formatCurrency(baseAmount)}</span>
@@ -327,55 +324,57 @@ export function PaymentReceipt({
                   </div>
                   <div className="flex justify-between border-t pt-1 mt-1">
                     <span className="font-semibold">Total:</span>
-                    <span className="font-semibold text-lg">{formatCurrency(totalAmount)}</span>
+                    <span className="font-semibold text-base sm:text-lg">{formatCurrency(totalAmount)}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="border-t pt-6 space-y-8">
+              <div className="border-t pt-4 sm:pt-6 space-y-6 sm:space-y-8">
                 <div className="text-center">
-                  <p className="font-semibold uppercase">
+                  <p className="font-semibold uppercase text-xs sm:text-sm">
                     São Paulo, {formatSafeDate(new Date(), "dd 'de' MMMM 'de' yyyy, HH:mm")}
                   </p>
                 </div>
 
-                <div className="flex justify-center pt-8">
+                <div className="flex justify-center pt-6 sm:pt-8">
                   <div className="text-center flex flex-col items-center">
-                    <div className="h-24 flex items-end justify-center mb-2">
+                    <div className="h-20 sm:h-24 flex items-end justify-center mb-2">
                       <Image
                         src="/signature.png"
                         alt="Assinatura"
                         width={200}
                         height={100}
-                        className="object-contain max-h-20"
+                        className="object-contain max-h-16 sm:max-h-20"
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
                           target.style.display = "none";
                         }}
                       />
                     </div>
-                    <div className="border-t-2 border-gray-400 w-80 mb-2"></div>
-                    <p className="font-semibold uppercase">{user?.name || "Administrador"}</p>
+                    <div className="border-t-2 border-gray-400 w-64 sm:w-80 mb-2"></div>
+                    <p className="font-semibold uppercase text-xs sm:text-sm">{user?.name || "Administrador"}</p>
                   </div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <div className="flex flex-wrap justify-end gap-2 print:hidden">
-            <Button variant="outline" onClick={onClose}>
+          <div className="flex flex-col sm:flex-row flex-wrap justify-end gap-2 print:hidden">
+            <Button variant="outline" onClick={onClose} className="h-11 w-full sm:w-auto order-last sm:order-first">
               <X className="mr-2 h-4 w-4" />
               Fechar
             </Button>
-            <Button variant="outline" onClick={handleShare}>
+            <Button variant="outline" onClick={handleShare} className="h-11 w-full sm:w-auto">
               <Share2 className="mr-2 h-4 w-4" />
-              Compartilhar
+              <span className="hidden sm:inline">Compartilhar</span>
+              <span className="sm:hidden">Compartilhar</span>
             </Button>
-            <Button variant="outline" onClick={handleEmail}>
+            <Button variant="outline" onClick={handleEmail} className="h-11 w-full sm:w-auto">
               <Mail className="mr-2 h-4 w-4" />
-              Enviar por Email
+              <span className="hidden sm:inline">Enviar por Email</span>
+              <span className="sm:hidden">Email</span>
             </Button>
-            <Button onClick={handleDownloadPDF} disabled={loading}>
+            <Button onClick={handleDownloadPDF} disabled={loading} className="h-11 w-full sm:w-auto">
               <Download className="mr-2 h-4 w-4" />
               {loading ? "Salvando..." : "Salvar PDF"}
             </Button>

@@ -129,7 +129,6 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
         photo: selectedUser.photo,
       };
 
-      // Se admin alterou a senha, incluir no mesmo update
       if (user.role === "admin" && formData.newPassword) {
         (updates as any).password = formData.newPassword;
       }
@@ -171,20 +170,19 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <User className="h-5 w-5" />
-            Editar Perfil do Usuário
+          <DialogTitle className="flex items-center gap-2 text-lg sm:text-xl">
+            <User className="h-5 w-5 flex-shrink-0" />
+            <span className="truncate">Editar Perfil do Usuário</span>
           </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Foto de Perfil */}
           <div className="flex flex-col items-center space-y-4 pb-4 border-b">
-            <Avatar className="h-24 w-24">
+            <Avatar className="h-20 w-20 sm:h-24 sm:w-24">
               <AvatarImage src={photoPreview || undefined} alt={selectedUser.name} />
-              <AvatarFallback className="text-2xl">
+              <AvatarFallback className="text-xl sm:text-2xl">
                 {selectedUser.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
               </AvatarFallback>
             </Avatar>
@@ -193,6 +191,7 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
               variant="outline"
               size="sm"
               onClick={() => document.getElementById("photoUpload")?.click()}
+              className="h-10 sm:h-9"
             >
               <Camera className="h-4 w-4 mr-2" />
               Alterar Foto
@@ -206,30 +205,30 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
             />
           </div>
 
-          {/* Informações Pessoais */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+            <h3 className="text-xs sm:text-sm font-semibold text-muted-foreground uppercase tracking-wide">
               Informações Pessoais
             </h3>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="profile-name" className="flex items-center gap-2">
-                  <User className="h-4 w-4" />
-                  Nome Completo
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="profile-name" className="flex items-center gap-2 text-sm">
+                  <User className="h-4 w-4 flex-shrink-0" />
+                  <span>Nome Completo</span>
                 </Label>
                 <Input
                   id="profile-name"
                   value={selectedUser.name}
                   onChange={(e) => handleInputChange("name", e.target.value)}
                   placeholder="Seu nome completo"
+                  className="h-11"
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="profile-email" className="flex items-center gap-2">
-                  <Mail className="h-4 w-4" />
-                  E-mail
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="profile-email" className="flex items-center gap-2 text-sm">
+                  <Mail className="h-4 w-4 flex-shrink-0" />
+                  <span>E-mail</span>
                 </Label>
                 <Input
                   id="profile-email"
@@ -237,26 +236,28 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
                   value={selectedUser.email || ""}
                   onChange={(e) => handleInputChange("email", e.target.value)}
                   placeholder="seu@email.com"
+                  className="h-11"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="profile-phone" className="flex items-center gap-2">
-                  <Phone className="h-4 w-4" />
-                  Telefone
+                <Label htmlFor="profile-phone" className="flex items-center gap-2 text-sm">
+                  <Phone className="h-4 w-4 flex-shrink-0" />
+                  <span>Telefone</span>
                 </Label>
                 <Input
                   id="profile-phone"
                   value={selectedUser.phone ? applyPhoneMask(selectedUser.phone) : ""}
                   onChange={(e) => handleInputChange("phone", removeMask(e.target.value))}
                   placeholder="(00) 00000-0000"
+                  className="h-11"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="cpf" className="flex items-center gap-2">
-                  <Shield className="h-4 w-4" />
-                  CPF
+                <Label htmlFor="cpf" className="flex items-center gap-2 text-sm">
+                  <Shield className="h-4 w-4 flex-shrink-0" />
+                  <span>CPF</span>
                 </Label>
                 <Input
                   id="cpf"
@@ -264,27 +265,29 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
                   onChange={(e) => handleInputChange("cpf", removeMask(e.target.value))}
                   placeholder="000.000.000-00"
                   maxLength={14}
+                  className="h-11"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="rg">RG</Label>
+                <Label htmlFor="rg" className="text-sm">RG</Label>
                 <Input
                   id="rg"
                   value={selectedUser.rg || ""}
                   onChange={(e) => handleInputChange("rg", e.target.value)}
                   placeholder="00.000.000-0"
+                  className="h-11"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="role">Perfil</Label>
+                <Label htmlFor="role" className="text-sm">Perfil</Label>
                 <Select
                   value={selectedUser.role}
                   onValueChange={handleRoleChange}
                   disabled={user?.role !== "admin"}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="h-11">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -297,20 +300,20 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
             </div>
           </div>
 
-          {/* Nova Senha - Apenas para Admin */}
           {user?.role === "admin" && (
             <div className="space-y-4">
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+              <h3 className="text-xs sm:text-sm font-semibold text-muted-foreground uppercase tracking-wide">
                 Alterar Senha
               </h3>
               <div className="space-y-2">
-                <Label htmlFor="newPassword">Nova Senha</Label>
+                <Label htmlFor="newPassword" className="text-sm">Nova Senha</Label>
                 <Input
                   id="newPassword"
                   type="password"
                   value={formData.newPassword}
                   onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
                   placeholder="Digite a nova senha (deixe em branco para não alterar)"
+                  className="h-11"
                 />
                 <p className="text-xs text-muted-foreground">
                   Deixe em branco se não quiser alterar a senha
@@ -319,34 +322,40 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
             </div>
           )}
 
-          {/* Botões de Ação */}
-          <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleResetPassword}
-              disabled={isResettingPassword || isSubmitting || isUnlocking}
-              className="flex-1"
-            >
-              <KeyRound className="h-4 w-4 mr-2" />
-              {isResettingPassword ? "Zerando..." : "Zerar Senha"}
-            </Button>
+          <div className="flex flex-col gap-3 pt-4 border-t">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleResetPassword}
+                disabled={isResettingPassword || isSubmitting || isUnlocking}
+                className="h-11 w-full"
+              >
+                <KeyRound className="h-4 w-4 mr-2" />
+                <span className="truncate">{isResettingPassword ? "Zerando..." : "Zerar Senha"}</span>
+              </Button>
 
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleUnlockUser}
-              disabled={isUnlocking || isSubmitting || isResettingPassword}
-              className="flex-1"
-            >
-              <Unlock className="h-4 w-4 mr-2" />
-              {isUnlocking ? (selectedUser.active ? "Bloqueando..." : "Desbloqueando...") : (selectedUser.active ? "Bloquear Usuário" : "Desbloquear Usuário")}
-            </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleUnlockUser}
+                disabled={isUnlocking || isSubmitting || isResettingPassword}
+                className="h-11 w-full"
+              >
+                <Unlock className="h-4 w-4 mr-2" />
+                <span className="truncate">
+                  {isUnlocking 
+                    ? (selectedUser.active ? "Bloqueando..." : "Desbloqueando...") 
+                    : (selectedUser.active ? "Bloquear" : "Desbloquear")
+                  }
+                </span>
+              </Button>
+            </div>
 
             <Button
               type="submit"
               disabled={isSubmitting || isResettingPassword || isUnlocking}
-              className="flex-1"
+              className="h-11 w-full"
             >
               <Save className="h-4 w-4 mr-2" />
               {isSubmitting ? "Salvando..." : "Salvar Alterações"}
