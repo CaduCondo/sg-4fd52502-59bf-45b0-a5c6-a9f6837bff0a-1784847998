@@ -155,9 +155,9 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       ? Math.round(payment.expected_amount * 100) / 100 
       : valorIntegral;
     
-    // Detectar se é proporcional comparando com o valor integral
+    // Calcular se é proporcional (diferença > R$ 1,00)
     const isProportional = payment?.expected_amount && 
-      Math.abs(valorAluguel - valorIntegral) > 0.1; // Se a diferença for maior que 10 centavos, considera proporcional
+      Math.abs(valorAluguel - valorIntegral) > 1.00; // Diferença maior que R$ 1,00
     
     let multa = 0;
     let juros = 0;
@@ -640,7 +640,9 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                     <span className="text-blue-600 font-medium ml-2">(Proporcional)</span>
                   )}
                 </span>
-                <span className="font-medium">{formatCurrency(values.valorAluguel.toFixed(2))}</span>
+                <span className="font-medium">
+                  {formatCurrency(values.valorAluguel.toFixed(2))}
+                </span>
               </div>
 
               {values.multa > 0 && (

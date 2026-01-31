@@ -25,6 +25,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { applyMoneyMask, parseCurrencyToFloat } from "@/lib/masks";
+import { format } from "date-fns";
 
 interface DepositInstallmentData {
   id: string;
@@ -548,366 +549,92 @@ export function DepositInstallmentsTable({
               <Table>
                 <TableHeader>
                   <TableRow className="bg-slate-50/50 hover:bg-slate-50/50">
-                    <TableHead
-                      className="cursor-pointer hover:bg-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wider"
-                      onClick={() => handleSort("location")}
-                    >
-                      <div className="flex items-center">
-                        Local
-                        <SortIcon field="location" />
-                      </div>
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer hover:bg-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wider"
-                      onClick={() => handleSort("complement")}
-                    >
-                      <div className="flex items-center">
-                        Complemento
-                        <SortIcon field="complement" />
-                      </div>
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer hover:bg-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wider"
-                      onClick={() => handleSort("tenant")}
-                    >
-                      <div className="flex items-center">
-                        Inquilino
-                        <SortIcon field="tenant" />
-                      </div>
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer hover:bg-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wider"
-                      onClick={() => handleSort("rentalAmount")}
-                    >
-                      <div className="flex items-center">
-                        Valor Aluguel
-                        <SortIcon field="rentalAmount" />
-                      </div>
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer hover:bg-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wider"
-                      onClick={() => handleSort("securityDeposit")}
-                    >
-                      <div className="flex items-center">
-                        Valor Total Caução
-                        <SortIcon field="securityDeposit" />
-                      </div>
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer hover:bg-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wider"
-                      onClick={() => handleSort("hasPartner")}
-                    >
-                      <div className="flex items-center">
-                        Corretor Parceiro?
-                        <SortIcon field="hasPartner" />
-                      </div>
+                    <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                      Parcela
                     </TableHead>
                     <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                      Valor Pg Corretagem Parceiro
+                      Data Pagamento
+                    </TableHead>
+                    <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">
+                      Valor Parcela
                     </TableHead>
                     <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                      Valor Pg Corretagem Interno
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer hover:bg-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wider"
-                      onClick={() => handleSort("installment")}
-                    >
-                      <div className="flex items-center">
-                        Parcela
-                        <SortIcon field="installment" />
-                      </div>
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer hover:bg-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wider"
-                      onClick={() => handleSort("amount")}
-                    >
-                      <div className="flex items-center">
-                        Valor Parcela
-                        <SortIcon field="amount" />
-                      </div>
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer hover:bg-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wider"
-                      onClick={() => handleSort("pixCode")}
-                    >
-                      <div className="flex items-center">
-                        Código PIX
-                        <SortIcon field="pixCode" />
-                      </div>
+                      Código PIX
                     </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {sortedData.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={11} className="h-24 text-center text-slate-500">
-                        Nenhum registro encontrado.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    <>
-                      {Object.values(groupedByRental).map((group) =>
-                        group.map((item, index) => (
-                          <TableRow key={item.id} className="hover:bg-slate-50 transition-colors">
-                            {/* Colunas mescladas - renderizadas apenas na primeira linha do grupo */}
-                            {index === 0 && (
-                              <>
-                                <TableCell
-                                  rowSpan={group.length}
-                                  className="align-top font-medium text-slate-900"
-                                >
-                                  {item.rental?.property?.location?.name || "-"}
-                                </TableCell>
-                                <TableCell rowSpan={group.length} className="align-top text-slate-600">
-                                  {item.rental?.property?.complement || "-"}
-                                </TableCell>
-                                <TableCell rowSpan={group.length} className="align-top text-slate-600">
-                                  {item.rental?.tenant?.name || "-"}
-                                </TableCell>
-                                <TableCell rowSpan={group.length} className="align-top font-medium text-slate-900">
-                                  {formatCurrency(
-                                    (item.rental?.monthly_rent || 0) +
-                                      (item.rental?.garage_value || 0)
-                                  )}
-                                </TableCell>
-                                <TableCell rowSpan={group.length} className="align-top font-medium text-slate-900">
-                                  {formatCurrency(item.rental?.security_deposit || 0)}
-                                </TableCell>
-                                <TableCell rowSpan={group.length} className="align-top text-slate-600">
-                                  {item.rental?.has_partner_broker ? "Sim" : "Não"}
-                                </TableCell>
-                                <TableCell rowSpan={group.length} className="align-top">
-                                  {!item.rental?.has_partner_broker ? (
-                                    <div className="flex items-center gap-3">
-                                      <span className="text-slate-600 text-sm">-</span>
-                                      <Button
-                                        size="default"
-                                        variant="ghost"
-                                        disabled
-                                        className="h-9 w-9 p-0 opacity-30 cursor-not-allowed"
-                                        title="Sem corretor parceiro nesta locação"
-                                      >
-                                        <Edit2 className="h-5 w-5 text-slate-600" />
-                                      </Button>
-                                    </div>
-                                  ) : editingCommission?.id === item.id &&
-                                  editingCommission?.field === "partner" ? (
-                                    <div className="flex items-center gap-3">
-                                      <Input
-                                        type="text"
-                                        className="w-40 h-10 text-sm border-2 border-blue-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
-                                        value={editingCommission.value}
-                                        onChange={(e) => {
-                                          const formatted = applyMoneyMask(e.target.value);
-                                          setEditingCommission({
-                                            ...editingCommission,
-                                            value: formatted,
-                                          });
-                                        }}
-                                        placeholder="0,00"
-                                        autoFocus
-                                      />
-                                      <Button
-                                        size="default"
-                                        variant="ghost"
-                                        onClick={() =>
-                                          handleEditCommission(
-                                            item.id,
-                                            "partner",
-                                            editingCommission.value
-                                          )
-                                        }
-                                        className="h-10 w-10 p-0 hover:bg-green-100 transition-colors"
-                                        title="Salvar comissão"
-                                      >
-                                        <Check className="h-5 w-5 text-green-600" />
-                                      </Button>
-                                      <Button
-                                        size="default"
-                                        variant="ghost"
-                                        onClick={() => setEditingCommission(null)}
-                                        className="h-10 w-10 p-0 hover:bg-red-100 transition-colors"
-                                        title="Cancelar edição"
-                                      >
-                                        <X className="h-5 w-5 text-red-600" />
-                                      </Button>
-                                    </div>
-                                  ) : (
-                                    <div className="flex items-center gap-3">
-                                      <span className="font-medium text-slate-900 text-sm">
-                                        {formatCurrency(item.partner_commission || 0)}
-                                      </span>
-                                      <Button
-                                        size="default"
-                                        variant="ghost"
-                                        onClick={() =>
-                                          setEditingCommission({
-                                            id: item.id,
-                                            field: "partner",
-                                            value: applyMoneyMask((item.partner_commission || 0).toString()),
-                                          })
-                                        }
-                                        className="h-9 w-9 p-0 hover:bg-slate-100 transition-colors"
-                                        title="Editar comissão parceiro"
-                                      >
-                                        <Edit2 className="h-5 w-5 text-slate-600" />
-                                      </Button>
-                                    </div>
-                                  )}
-                                </TableCell>
-                                <TableCell rowSpan={group.length} className="align-top">
-                                  {editingCommission?.id === item.id &&
-                                  editingCommission?.field === "internal" ? (
-                                    <div className="flex items-center gap-3">
-                                      <Input
-                                        type="text"
-                                        className="w-40 h-10 text-sm border-2 border-blue-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
-                                        value={editingCommission.value}
-                                        onChange={(e) => {
-                                          const formatted = applyMoneyMask(e.target.value);
-                                          setEditingCommission({
-                                            ...editingCommission,
-                                            value: formatted,
-                                          });
-                                        }}
-                                        placeholder="0,00"
-                                        autoFocus
-                                      />
-                                      <Button
-                                        size="default"
-                                        variant="ghost"
-                                        onClick={() =>
-                                          handleEditCommission(
-                                            item.id,
-                                            "internal",
-                                            editingCommission.value
-                                          )
-                                        }
-                                        className="h-10 w-10 p-0 hover:bg-green-100 transition-colors"
-                                        title="Salvar comissão"
-                                      >
-                                        <Check className="h-5 w-5 text-green-600" />
-                                      </Button>
-                                      <Button
-                                        size="default"
-                                        variant="ghost"
-                                        onClick={() => setEditingCommission(null)}
-                                        className="h-10 w-10 p-0 hover:bg-red-100 transition-colors"
-                                        title="Cancelar edição"
-                                      >
-                                        <X className="h-5 w-5 text-red-600" />
-                                      </Button>
-                                    </div>
-                                  ) : (
-                                    <div className="flex items-center gap-3">
-                                      <span className="font-medium text-slate-900 text-sm">
-                                        {formatCurrency(item.internal_commission || 0)}
-                                      </span>
-                                      <Button
-                                        size="default"
-                                        variant="ghost"
-                                        onClick={() =>
-                                          setEditingCommission({
-                                            id: item.id,
-                                            field: "internal",
-                                            value: applyMoneyMask((item.internal_commission || 0).toString()),
-                                          })
-                                        }
-                                        className="h-9 w-9 p-0 hover:bg-slate-100 transition-colors"
-                                        title="Editar comissão interno"
-                                      >
-                                        <Edit2 className="h-5 w-5 text-slate-600" />
-                                      </Button>
-                                    </div>
-                                  )}
-                                </TableCell>
-                              </>
-                            )}
+                  {sortedData.map((installment) => {
+                    // Coloração: verde se PIX preenchido, vermelho se vazio
+                    const rowClassName = installment.pix_code 
+                      ? "bg-green-50 hover:bg-green-100 transition-colors"
+                      : "bg-red-50 hover:bg-red-100 transition-colors";
 
-                            {/* Colunas individuais - renderizadas em todas as linhas */}
-                            <TableCell className="font-medium text-slate-900">
-                              {item.installment_number}/{item.total_installments}
-                            </TableCell>
-                            <TableCell className="font-medium text-slate-900">
-                              {formatCurrency(item.amount)}
-                            </TableCell>
-                            <TableCell>
-                              {editingPixCode?.id === item.id ? (
-                                <div className="flex items-center gap-3">
-                                  <Input
-                                    value={editingPixCode.value}
-                                    onChange={(e) =>
-                                      setEditingPixCode({
-                                        ...editingPixCode,
-                                        value: e.target.value,
-                                      })
-                                    }
-                                    placeholder="Digite o código PIX"
-                                    className="h-10 text-sm min-w-[250px] border-2 border-blue-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
-                                    autoFocus
-                                  />
-                                  <Button
-                                    size="default"
-                                    variant="ghost"
-                                    onClick={() =>
-                                      handleEditPixCode(item.id, editingPixCode.value)
-                                    }
-                                    className="h-10 w-10 p-0 hover:bg-green-100 transition-colors"
-                                    title="Salvar código PIX"
-                                  >
-                                    <Check className="h-5 w-5 text-green-600" />
-                                  </Button>
-                                  <Button
-                                    size="default"
-                                    variant="ghost"
-                                    onClick={() => setEditingPixCode(null)}
-                                    className="h-10 w-10 p-0 hover:bg-red-100 transition-colors"
-                                    title="Cancelar edição"
-                                  >
-                                    <X className="h-5 w-5 text-red-600" />
-                                  </Button>
-                                </div>
-                              ) : (
-                                <div className="flex items-center gap-3">
-                                  <span className="max-w-xs truncate text-slate-600 text-sm">
-                                    {item.pix_code || "-"}
-                                  </span>
-                                  <Button
-                                    size="default"
-                                    variant="ghost"
-                                    onClick={() =>
-                                      setEditingPixCode({
-                                        id: item.id,
-                                        value: item.pix_code || "",
-                                      })
-                                    }
-                                    className="h-9 w-9 p-0 hover:bg-slate-100 transition-colors"
-                                    title="Editar código PIX"
-                                  >
-                                    <Edit2 className="h-5 w-5 text-slate-600" />
-                                  </Button>
-                                </div>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      )}
-
-                      {/* Linha de totais */}
-                      <TableRow className="bg-slate-100 font-bold border-t-2 border-slate-300">
-                        <TableCell colSpan={4} className="text-right text-slate-900 uppercase tracking-wide">
-                          Total:
+                    return (
+                      <TableRow key={installment.id} className={rowClassName}>
+                        <TableCell className="font-medium text-slate-900">
+                          {installment.installment_number}/{installment.total_installments}
                         </TableCell>
-                        <TableCell className="text-slate-900 text-lg">{formatCurrency(totalSecurityDeposit)}</TableCell>
-                        <TableCell></TableCell>
-                        <TableCell className="text-slate-900 text-lg">{formatCurrency(totalPartnerCommission)}</TableCell>
-                        <TableCell className="text-slate-900 text-lg">{formatCurrency(totalInternalCommission)}</TableCell>
-                        <TableCell></TableCell>
-                        <TableCell className="text-slate-900 text-lg">{formatCurrency(totalAmountColumn)}</TableCell>
-                        <TableCell></TableCell>
+                        <TableCell className="text-slate-600">
+                           {/* Data pagamento não existe na interface DepositInstallmentData, vou deixar como traço por enquanto ou remover se não existir no banco */}
+                           -
+                        </TableCell>
+                        <TableCell className="text-right font-medium text-slate-900">
+                          {formatCurrency(installment.amount)}
+                        </TableCell>
+                        <TableCell>
+                          {editingPixCode?.id === installment.id ? (
+                            <div className="flex items-center gap-2">
+                              <Input
+                                value={editingPixCode.value}
+                                onChange={(e) => {
+                                  setEditingPixCode({
+                                    ...editingPixCode,
+                                    value: e.target.value
+                                  });
+                                }}
+                                placeholder="Digite o código PIX"
+                                className="h-9 text-sm"
+                                autoFocus
+                              />
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleEditPixCode(installment.id, editingPixCode.value)}
+                              >
+                                <Check className="h-4 w-4 text-green-600" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setEditingPixCode(null)}
+                              >
+                                <X className="h-4 w-4 text-red-600" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <span className="text-slate-600 text-sm">
+                                {installment.pix_code || "-"}
+                              </span>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  setEditingPixCode({
+                                    id: installment.id,
+                                    value: installment.pix_code || ""
+                                  });
+                                }}
+                              >
+                                <Edit2 className="h-4 w-4 text-slate-600" />
+                              </Button>
+                            </div>
+                          )}
+                        </TableCell>
                       </TableRow>
-                    </>
-                  )}
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>

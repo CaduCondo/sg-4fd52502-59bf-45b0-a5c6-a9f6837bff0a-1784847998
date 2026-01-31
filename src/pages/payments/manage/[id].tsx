@@ -52,10 +52,12 @@ export default function ManagePaymentPage() {
       </Head>
       <Layout>
         <div className="space-y-6">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-slate-900">Registrar Recebimento</h1>
-              <p className="text-muted-foreground mt-1">Gerencie os detalhes do recebimento</p>
+              <h1 className="text-3xl font-bold text-slate-900">
+                Registrar Recebimento
+              </h1>
+              <p className="text-slate-600 mt-2">Gerencie os detalhes do recebimento</p>
             </div>
           </div>
 

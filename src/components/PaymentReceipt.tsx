@@ -120,30 +120,57 @@ export function PaymentReceipt({
     "janeiro", "fevereiro", "março", "abril", "maio", "junho",
     "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"
   ];
-
-  const referenceMonthName = monthNames[(payment.referenceMonth || 1) - 1];
-  const dueDate = payment.dueDate ? new Date(payment.dueDate + "T00:00:00") : new Date();
-
-  // Validar datas do contrato
-  const contractStartDate = rental.startDate 
-    ? new Date(rental.startDate + "T00:00:00") 
-    : new Date();
-  const contractEndDate = rental.endDate 
-    ? new Date(rental.endDate + "T00:00:00") 
-    : new Date();
   
-  // Calcular meses apenas se as datas forem válidas
+  const referenceMonthName = monthNames[(payment.referenceMonth || 1) - 1];
+
+  // Validar e criar datas com fallback para data atual
+  const safeDate = (dateString: string | undefined | null): Date => {
+    if (!dateString) return new Date();
+    const date = new Date(dateString + "T00:00:00");
+    return isNaN(date.getTime()) ? new Date() : date;
+  };
+
+  const dueDate = safeDate(payment.dueDate);
+  const contractStartDate = safeDate(rental.startDate);
+  const contractEndDate = safeDate(rental.endDate);
+
+  // Cálculo seguro de meses
   let totalMonths = 1;
   let currentPaymentNumber = 1;
-  
+
   if (rental.startDate && rental.endDate) {
-    totalMonths = differenceInMonths(contractEndDate, contractStartDate) + 1;
+    try {
+      totalMonths = differenceInMonths(contractEndDate, contractStartDate) + 1;
+    } catch (error) {
+      console.error("Erro ao calcular totalMonths:", error);
+      totalMonths = 1;
+    }
   }
-  
+
   if (rental.startDate && payment.referenceYear && payment.referenceMonth) {
-    const referenceDate = new Date(payment.referenceYear, (payment.referenceMonth || 1) - 1, 1);
-    currentPaymentNumber = differenceInMonths(referenceDate, contractStartDate) + 1;
+    try {
+      const referenceDate = new Date(
+        payment.referenceYear, 
+        (payment.referenceMonth || 1) - 1, 
+        1
+      );
+      if (!isNaN(referenceDate.getTime())) {
+        currentPaymentNumber = differenceInMonths(referenceDate, contractStartDate) + 1;
+      }
+    } catch (error) {
+      console.error("Erro ao calcular currentPaymentNumber:", error);
+      currentPaymentNumber = 1;
+    }
   }
+
+  const formatDate = (date: Date): string => {
+    try {
+      return format(date, "dd/MM/yyyy", { locale: ptBR });
+    } catch (error) {
+      console.error("Erro ao formatar data:", error);
+      return "Data inválida";
+    }
+  };
 
   const handleDownloadPDF = () => {
     setLoading(true);

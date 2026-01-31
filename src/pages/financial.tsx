@@ -76,7 +76,7 @@ export default function Financial() {
 
   // Date State
   const now = new Date();
-  const [selectedMonth, setSelectedMonth] = useState(now.getMonth().toString());
+  const [selectedMonth, setSelectedMonth] = useState((now.getMonth() + 1).toString());
   const [selectedYear, setSelectedYear] = useState(now.getFullYear().toString());
   const [locationExpenses, setLocationExpenses] = useState<number>(0);
 
@@ -259,18 +259,18 @@ export default function Financial() {
   };
 
   const months = [
-    { value: "0", label: "Janeiro" },
-    { value: "1", label: "Fevereiro" },
-    { value: "2", label: "Março" },
-    { value: "3", label: "Abril" },
-    { value: "4", label: "Maio" },
-    { value: "5", label: "Junho" },
-    { value: "6", label: "Julho" },
-    { value: "7", label: "Agosto" },
-    { value: "8", label: "Setembro" },
-    { value: "9", label: "Outubro" },
-    { value: "10", label: "Novembro" },
-    { value: "11", label: "Dezembro" },
+    { value: "1", label: "Janeiro" },
+    { value: "2", label: "Fevereiro" },
+    { value: "3", label: "Março" },
+    { value: "4", label: "Abril" },
+    { value: "5", label: "Maio" },
+    { value: "6", label: "Junho" },
+    { value: "7", label: "Julho" },
+    { value: "8", label: "Agosto" },
+    { value: "9", label: "Setembro" },
+    { value: "10", label: "Outubro" },
+    { value: "11", label: "Novembro" },
+    { value: "12", label: "Dezembro" },
   ];
 
   const years = ["2024", "2025", "2026", "2027"];
@@ -462,7 +462,7 @@ export default function Financial() {
   // Export to Excel function
   const handleExportExcel = () => {
     const sortedPayments = getSortedPayments();
-    const monthName = months[parseInt(selectedMonth)].label;
+    const monthName = months[parseInt(selectedMonth) - 1].label;
 
     // Prepare data for Excel
     const excelData = sortedPayments.map(payment => {
@@ -531,7 +531,7 @@ export default function Financial() {
         <ScrollReveal>
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-medium text-slate-500">
-              {months[parseInt(selectedMonth)].label} de {selectedYear}
+              {months[parseInt(selectedMonth) - 1].label} de {selectedYear}
             </h1>
           </div>
         </ScrollReveal>
@@ -662,7 +662,7 @@ export default function Financial() {
                 <div className="flex items-center gap-2">
                   <FileText className="h-5 w-5 text-slate-400" />
                   <CardTitle className="text-base font-medium text-slate-700">
-                    Detalhamento de Locações - {months[parseInt(selectedMonth)].label} {selectedYear}
+                    Detalhamento de Locações - {months[parseInt(selectedMonth) - 1].label} {selectedYear}
                   </CardTitle>
                 </div>
                 <div className="flex gap-2">
@@ -786,7 +786,7 @@ export default function Financial() {
                     <>
                       {sortedPayments.map((payment) => {
                         const details = getPaymentDetails(payment);
-                        const monthName = months[parseInt(selectedMonth)].label;
+                        const monthName = months[parseInt(selectedMonth) - 1].label;
                         const paymentNumber = calculatePaymentNumber(payment, details.rental);
                         
                         return (

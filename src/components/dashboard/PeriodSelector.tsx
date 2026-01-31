@@ -43,7 +43,7 @@ export function PeriodSelector({
             </SelectTrigger>
             <SelectContent>
               {MONTHS.map((month, index) => (
-                <SelectItem key={index} value={index.toString()}>
+                <SelectItem key={index + 1} value={(index + 1).toString()}>
                   {month}
                 </SelectItem>
               ))}

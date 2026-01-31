@@ -18,6 +18,7 @@ export function PaymentFilters({
   onStatusChange,
 }: PaymentFiltersProps) {
   const months = [
+    { value: "all", label: "Todos os meses" },
     { value: "1", label: "Janeiro" },
     { value: "2", label: "Fevereiro" },
     { value: "3", label: "Março" },
@@ -42,7 +43,6 @@ export function PaymentFilters({
           <SelectValue placeholder="Todos os meses" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">Todos os meses</SelectItem>
           {months.map((month) => (
             <SelectItem key={month.value} value={month.value}>
               {month.label}
