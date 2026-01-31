@@ -95,6 +95,19 @@ export const rentalService = {
       .from("rentals")
       .select(`
         *,
+        has_garage,
+        garage_value,
+        has_partner_broker,
+        deposit_installments,
+        deposit_installment_1,
+        deposit_payment_date,
+        deposit_pix_code,
+        deposit_installment_2,
+        deposit_installment_2_payment_date,
+        deposit_installment_2_pix_code,
+        deposit_installment_3,
+        deposit_installment_3_payment_date,
+        deposit_installment_3_pix_code,
         tenants!rentals_tenant_id_fkey (
           id,
           name,
@@ -140,13 +153,26 @@ export const rentalService = {
       tenant_id: rental.tenantId,
       start_date: rental.startDate,
       end_date: rental.endDate,
-      monthly_rent: rental.value, // Mapear value para monthly_rent no banco se necessário, ou usar value se a coluna existir
+      monthly_rent: rental.value,
+      value: rental.value, // Garantir persistência em ambas as colunas se existirem
       payment_day: rental.paymentDay,
       deposit: rental.depositAmount ? String(rental.depositAmount) : null,
       status: rental.status,
       attachments: rental.attachments,
       contract_attachments: rental.contractAttachments,
-      value: rental.value
+      has_garage: rental.hasGarage,
+      garage_value: rental.garageValue,
+      has_partner_broker: rental.hasPartnerBroker,
+      deposit_installments: rental.depositInstallments,
+      deposit_installment_1: rental.depositInstallment1,
+      deposit_payment_date: rental.depositPaymentDate,
+      deposit_pix_code: rental.depositPixCode,
+      deposit_installment_2: rental.depositInstallment2,
+      deposit_installment_2_payment_date: rental.depositInstallment2PaymentDate,
+      deposit_installment_2_pix_code: rental.depositInstallment2PixCode,
+      deposit_installment_3: rental.depositInstallment3,
+      deposit_installment_3_payment_date: rental.depositInstallment3PaymentDate,
+      deposit_installment_3_pix_code: rental.depositInstallment3PixCode
     };
 
     const { data, error } = await supabase

@@ -205,9 +205,9 @@ export function OverviewCards({ data }: OverviewCardsProps) {
           value={formatCurrency(data.netRevenue)}
           subtitle="Após taxas e despesas"
           icon={Wallet}
-          iconColor="text-violet-600"
-          iconBgClass="bg-violet-50"
-          borderColorClass="border-l-violet-500"
+          iconColor={data.netRevenue >= 0 ? "text-violet-600" : "text-red-600"}
+          iconBgClass={data.netRevenue >= 0 ? "bg-violet-50" : "bg-red-50"}
+          borderColorClass={data.netRevenue >= 0 ? "border-l-violet-500" : "border-l-red-500"}
           layout="horizontal"
         />
       </div>

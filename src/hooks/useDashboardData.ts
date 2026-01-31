@@ -322,8 +322,10 @@ export function useDashboardData(month: number, year: number) {
         const monthNet = monthGross - monthTotal; // Agora subtrai corretamente despesas mesmo se monthGross for 0
 
         // Ajuste no label do mês para garantir localização correta sem problemas de timezone
-        const monthName = targetDate.toLocaleString('pt-BR', { month: 'short' });
-        const monthLabel = `${monthName}/${targetDate.getFullYear().toString().slice(2)}`;
+        // Usar UTC para evitar que dia 1 vire dia 31 do mês anterior
+        const utcDate = new Date(Date.UTC(targetYear, targetMonth - 1, 2)); 
+        const monthName = utcDate.toLocaleString('pt-BR', { month: 'short', timeZone: 'UTC' });
+        const monthLabel = `${monthName}/${targetYear.toString().slice(2)}`;
 
         monthlyRevenueData.push({
           month: monthLabel,

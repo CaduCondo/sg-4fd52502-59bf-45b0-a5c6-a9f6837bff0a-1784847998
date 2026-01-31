@@ -366,7 +366,7 @@ export function RentalFormDialog({
           endDate: createdRental.end_date,
           paymentDay: Number(createdRental.payment_day),
           depositAmount: Number(createdRental.deposit),
-          status: createdRental.status as "active" | "terminated" | "pending",
+          status: (createdRental.status as "active" | "terminated" | "pending"),
           attachments: (createdRental.attachments as string[]) || [],
           contractAttachments: (createdRental.contract_attachments as string[]) || [],
           value: Number(createdRental.value),
