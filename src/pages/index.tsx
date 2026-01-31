@@ -23,10 +23,10 @@ export default function PublicHomePage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("newest");
   const [displayCount, setDisplayCount] = useState(ITEMS_PER_PAGE);
-  
+
   const { properties, loading, error } = usePublicProperties({
     location: selectedLocation,
-    sort: sortBy,
+    sort: sortBy
   });
 
   // Reset display count when filters change
@@ -37,7 +37,7 @@ export default function PublicHomePage() {
   // Filter properties by search term (memoized)
   const filteredProperties = useMemo(() => {
     if (!searchTerm) return properties;
-    
+
     const search = searchTerm.toLowerCase();
     return properties.filter((prop) => {
       return (
@@ -46,8 +46,8 @@ export default function PublicHomePage() {
         prop.city?.toLowerCase().includes(search) ||
         prop.neighborhood?.toLowerCase().includes(search) ||
         prop.location?.toLowerCase().includes(search) ||
-        prop.type?.toLowerCase().includes(search)
-      );
+        prop.type?.toLowerCase().includes(search));
+
     });
   }, [properties, searchTerm]);
 
@@ -57,19 +57,19 @@ export default function PublicHomePage() {
 
   // Extract unique locations for filter (memoized)
   const uniqueLocations = useMemo(() => {
-    const locationMap = new Map<string, { id: string; name: string; city: string; neighborhood: string }>();
-    
+    const locationMap = new Map<string, {id: string;name: string;city: string;neighborhood: string;}>();
+
     properties.forEach((prop) => {
       if (prop.locationId && prop.location && !locationMap.has(prop.locationId)) {
         locationMap.set(prop.locationId, {
           id: prop.locationId,
           name: prop.location,
           city: prop.city || "",
-          neighborhood: prop.neighborhood || "",
+          neighborhood: prop.neighborhood || ""
         });
       }
     });
-    
+
     return Array.from(locationMap.values());
   }, [properties]);
 
@@ -117,8 +117,8 @@ export default function PublicHomePage() {
                   placeholder="Buscar por bairro, cidade ou nome do imóvel..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-12 pr-4 py-5 text-base rounded-full shadow-2xl border-0"
-                />
+                  className="pl-12 pr-4 py-5 text-base rounded-full shadow-2xl border-0" />
+
               </div>
             </div>
           </div>
@@ -131,8 +131,8 @@ export default function PublicHomePage() {
               <LocationFilter
                 locations={uniqueLocations}
                 selectedLocation={selectedLocation}
-                onLocationChange={setSelectedLocation}
-              />
+                onLocationChange={setSelectedLocation} />
+
               
               <div className="flex gap-3 items-center">
                 <SortSelector sortBy={sortBy} onSortChange={setSortBy} />
@@ -145,19 +145,19 @@ export default function PublicHomePage() {
         {/* Properties Grid/List */}
         <section className="py-12">
           <div className="container mx-auto px-4">
-            {loading ? (
-              <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" : "space-y-6"}>
-                {[...Array(6)].map((_, i) => (
-                  <div key={i} className="space-y-4">
+            {loading ?
+            <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" : "space-y-6"}>
+                {[...Array(6)].map((_, i) =>
+              <div key={i} className="space-y-4">
                     <Skeleton className="aspect-[4/3] w-full rounded-lg" />
                     <Skeleton className="h-6 w-3/4" />
                     <Skeleton className="h-4 w-1/2" />
                     <Skeleton className="h-10 w-full" />
                   </div>
-                ))}
-              </div>
-            ) : error ? (
-              <div className="text-center py-20">
+              )}
+              </div> :
+            error ?
+            <div className="text-center py-20">
                 <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-red-100 mb-6">
                   <Home className="h-10 w-10 text-red-400" />
                 </div>
@@ -165,15 +165,15 @@ export default function PublicHomePage() {
                   Erro ao carregar imóveis
                 </h3>
                 <p className="text-slate-600 mb-4">{error}</p>
-                <button 
-                  onClick={() => window.location.reload()}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
+                <button
+                onClick={() => window.location.reload()}
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+
                   Tentar novamente
                 </button>
-              </div>
-            ) : filteredProperties.length === 0 ? (
-              <div className="text-center py-20">
+              </div> :
+            filteredProperties.length === 0 ?
+            <div className="text-center py-20">
                 <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-slate-100 mb-6">
                   <Home className="h-10 w-10 text-slate-400" />
                 </div>
@@ -183,9 +183,9 @@ export default function PublicHomePage() {
                 <p className="text-slate-600">
                   Tente ajustar os filtros ou fazer uma nova busca
                 </p>
-              </div>
-            ) : (
-              <>
+              </div> :
+
+            <>
                 <div className="flex items-center justify-between mb-8">
                   <h2 className="font-display text-3xl font-bold text-slate-900">
                     Imóveis Disponíveis
@@ -199,42 +199,42 @@ export default function PublicHomePage() {
                   </div>
                 </div>
 
-                {viewMode === "grid" ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {displayedProperties.map((property) => (
-                      <PropertyPublicCard key={property.id} property={property} />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="space-y-6">
-                    {displayedProperties.map((property) => (
-                      <PropertyListCard key={property.id} property={property} />
-                    ))}
-                  </div>
+                {viewMode === "grid" ?
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    {displayedProperties.map((property) =>
+                <PropertyPublicCard key={property.id} property={property} />
                 )}
+                  </div> :
+
+              <div className="space-y-6">
+                    {displayedProperties.map((property) =>
+                <PropertyListCard key={property.id} property={property} />
+                )}
+                  </div>
+              }
 
                 {/* Load More Button */}
-                {hasMore && (
-                  <div className="flex justify-center mt-12">
+                {hasMore &&
+              <div className="flex justify-center mt-12">
                     <Button
-                      onClick={handleLoadMore}
-                      size="lg"
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-6 text-lg rounded-full shadow-lg transition-all hover:shadow-xl"
-                    >
+                  onClick={handleLoadMore}
+                  size="lg"
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-6 text-lg rounded-full shadow-lg transition-all hover:shadow-xl">
+
                       <ChevronDown className="h-5 w-5 mr-2" />
                       Mostrar Mais Imóveis
                     </Button>
                   </div>
-                )}
+              }
 
                 {/* Show count indicator */}
-                {displayedProperties.length < filteredProperties.length && (
-                  <div className="text-center mt-6 text-slate-600">
+                {displayedProperties.length < filteredProperties.length &&
+              <div className="text-center mt-6 text-slate-600">
                     Mostrando {displayedProperties.length} de {filteredProperties.length} imóveis
                   </div>
-                )}
+              }
               </>
-            )}
+            }
           </div>
         </section>
 
@@ -263,15 +263,15 @@ export default function PublicHomePage() {
                 <div className="space-y-3">
                   <a
                     href={`tel:${siteConfig.contact.phone}`}
-                    className="flex items-center gap-3 text-slate-300 hover:text-white transition-colors"
-                  >
+                    className="flex items-center gap-3 text-slate-300 hover:text-white transition-colors">
+
                     <Phone className="h-5 w-5 text-blue-400" />
                     {siteConfig.contact.phone}
                   </a>
                   <a
                     href={`mailto:${siteConfig.contact.email}`}
-                    className="flex items-center gap-3 text-slate-300 hover:text-white transition-colors"
-                  >
+                    className="flex items-center gap-3 text-slate-300 hover:text-white transition-colors">
+
                     <Mail className="h-5 w-5 text-blue-400" />
                     {siteConfig.contact.email}
                   </a>
@@ -295,6 +295,6 @@ export default function PublicHomePage() {
         {/* WhatsApp Floating Button */}
         <WhatsAppButton />
       </div>
-    </>
-  );
+    </>);
+
 }
