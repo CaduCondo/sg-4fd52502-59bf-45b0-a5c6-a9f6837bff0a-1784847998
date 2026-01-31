@@ -773,7 +773,7 @@ export function DepositInstallmentsTable({
                           </TableCell>
                           <TableCell className={rowBgClass}>
                             {editingPixCode?.id === installment.id ? (
-                              <div className="flex items-center gap-3">
+                              <div className="flex items-center gap-2">
                                 <Input
                                   value={editingPixCode.value}
                                   onChange={(e) => {
@@ -783,35 +783,31 @@ export function DepositInstallmentsTable({
                                     });
                                   }}
                                   placeholder="Digite o código PIX"
-                                  className="h-9 text-sm border-2 border-blue-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all min-w-[250px] bg-white"
+                                  className="h-9 text-sm bg-white"
                                   autoFocus
                                 />
                                 <Button
-                                  size="default"
+                                  size="sm"
                                   variant="ghost"
                                   onClick={() => handleEditPixCode(installment.id, editingPixCode.value)}
-                                  className="h-9 w-9 p-0 hover:bg-green-100 transition-colors"
-                                  title="Salvar código PIX"
                                 >
-                                  <Check className="h-5 w-5 text-green-600" />
+                                  <Check className="h-4 w-4 text-green-600" />
                                 </Button>
                                 <Button
-                                  size="default"
+                                  size="sm"
                                   variant="ghost"
                                   onClick={() => setEditingPixCode(null)}
-                                  className="h-9 w-9 p-0 hover:bg-red-100 transition-colors"
-                                  title="Cancelar edição"
                                 >
-                                  <X className="h-5 w-5 text-red-600" />
+                                  <X className="h-4 w-4 text-red-600" />
                                 </Button>
                               </div>
                             ) : (
-                              <div className="flex items-center gap-3">
-                                <span className="text-slate-600 max-w-xs truncate text-sm">
+                              <div className="flex items-center gap-2">
+                                <span className="text-slate-600 text-sm">
                                   {installment.pix_code || "-"}
                                 </span>
                                 <Button
-                                  size="default"
+                                  size="sm"
                                   variant="ghost"
                                   onClick={() => {
                                     setEditingPixCode({
@@ -819,10 +815,8 @@ export function DepositInstallmentsTable({
                                       value: installment.pix_code || ""
                                     });
                                   }}
-                                  className="h-9 w-9 p-0 hover:bg-slate-100 transition-colors"
-                                  title="Editar código PIX"
                                 >
-                                  <Edit2 className="h-5 w-5 text-slate-600" />
+                                  <Edit2 className="h-4 w-4 text-slate-600" />
                                 </Button>
                               </div>
                             )}

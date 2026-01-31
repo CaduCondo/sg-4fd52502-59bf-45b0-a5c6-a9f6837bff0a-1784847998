@@ -39,35 +39,35 @@ export function MetricCard({
         clickable && "cursor-pointer hover:shadow-md active:scale-[0.98]",
         borderColorClass
       )}>
-        <CardContent className="p-4">
-          <div className="flex items-start gap-3">
+        <CardContent className="p-3">
+          <div className="flex flex-col sm:flex-row sm:items-start gap-2.5">
             <div className={cn(
-              "p-2 rounded-lg flex-shrink-0 shadow-sm",
+              "p-2 rounded-lg flex-shrink-0 shadow-sm w-fit",
               iconBgClass
             )}>
-              <Icon className={cn("h-5 w-5", iconColor)} />
+              <Icon className={cn("h-4 w-4 sm:h-5 sm:w-5", iconColor)} />
             </div>
             
             <div className="flex-1 min-w-0">
-              <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+              <div className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
                 {title}
               </div>
               
               <div className={cn(
-                "text-2xl font-bold text-foreground mb-1",
-                "whitespace-nowrap overflow-hidden text-ellipsis text-left",
+                "text-xl sm:text-2xl font-bold text-foreground leading-tight tracking-tight mb-0.5",
+                "break-words",
                 valueClassName
               )}>
                 {displayValue}
               </div>
               
               {subtitle && (
-                <div className="text-xs text-muted-foreground leading-snug">
+                <div className="text-[10px] sm:text-xs text-muted-foreground leading-snug">
                   {subtitle}
                 </div>
               )}
               {secondaryInfo && (
-                <div className="text-xs text-muted-foreground font-medium mt-0.5">
+                <div className="text-[10px] sm:text-xs text-muted-foreground font-medium mt-0.5">
                   {secondaryInfo}
                 </div>
               )}
@@ -84,37 +84,37 @@ export function MetricCard({
       clickable && "cursor-pointer hover:shadow-md active:scale-[0.98]",
       borderColorClass
     )}>
-      <CardContent className="p-4">
+      <CardContent className="p-3">
         <div className="space-y-2">
-          <div className="flex items-center gap-2.5 mb-3">
+          <div className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            {title}
+          </div>
+
+          <div className="flex items-center gap-2.5">
             <div className={cn(
               "p-2 rounded-lg flex-shrink-0 shadow-sm",
               iconBgClass
             )}>
-              <Icon className={cn("h-5 w-5", iconColor)} />
+              <Icon className={cn("h-4 w-4 sm:h-5 sm:w-5", iconColor)} />
             </div>
-            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex-1">
-              {title}
+            <div className={cn(
+              "text-xl sm:text-2xl font-bold text-foreground leading-tight",
+              "break-words flex-1 min-w-0",
+              valueClassName
+            )}>
+              {displayValue}
             </div>
-          </div>
-
-          <div className={cn(
-            "text-2xl font-bold text-foreground leading-tight",
-            "whitespace-nowrap overflow-hidden text-ellipsis text-left",
-            valueClassName
-          )}>
-            {displayValue}
           </div>
 
           {(subtitle || secondaryInfo) && (
-            <div className="flex flex-col gap-0.5 pt-1">
+            <div className="flex flex-col gap-0.5 pt-1 border-t border-border/50">
               {subtitle && (
-                <div className="text-xs text-muted-foreground leading-snug">
+                <div className="text-[10px] sm:text-xs text-muted-foreground leading-snug">
                   {subtitle}
                 </div>
               )}
               {secondaryInfo && (
-                <div className="text-xs text-muted-foreground font-medium">
+                <div className="text-[10px] sm:text-xs text-muted-foreground font-medium">
                   {secondaryInfo}
                 </div>
               )}
