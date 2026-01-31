@@ -1,11 +1,17 @@
 import { Building2, TrendingUp } from "lucide-react";
 
 interface WelcomeCardProps {
-  greeting: string;
   userName: string;
 }
 
-export function WelcomeCard({ greeting, userName }: WelcomeCardProps) {
+export function WelcomeCard({ userName }: WelcomeCardProps) {
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Bom dia";
+    if (hour < 18) return "Boa tarde";
+    return "Boa noite";
+  };
+
   return (
     <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-lg p-6 text-white shadow-lg">
       <div className="flex items-center justify-between">
@@ -13,7 +19,7 @@ export function WelcomeCard({ greeting, userName }: WelcomeCardProps) {
           <Building2 className="h-12 w-12 text-white" />
           <div>
             <h1 className="text-3xl font-bold flex items-center gap-2">
-              Olá, {greeting.toLowerCase()} {userName}!
+              Olá, {getGreeting().toLowerCase()} {userName}!
               <span className="inline-block animate-wave">👋</span>
             </h1>
             <p className="text-blue-100 mt-2">

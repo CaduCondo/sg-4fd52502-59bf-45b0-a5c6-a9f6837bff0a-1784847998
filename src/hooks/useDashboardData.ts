@@ -8,27 +8,18 @@ interface DashboardData {
   availableProperties: number;
   rentedProperties: number;
   unavailableProperties: number;
+  occupancyRate: number;
   totalTenants: number;
   activeTenants: number;
   activeContracts: number;
-  latePayments: number;
-  receivedPayments: number;
-  expectedValue: number;
-  grossRevenue: number;
-  netRevenue: number;
-  occupancyRate: number;
-  revenueData?: { month: string; value: number }[];
-  occupancyData?: { month: string; rate: number }[];
-  
   overduePayments: number;
   overdueAmount: number;
   dueTodayPayments: number;
   completedPayments: number;
   expectedAmount: number;
-  receivedAmount: number;
-  adminFee: number;
-  paidPayments: number;
-  pendingPayments: number;
+  grossRevenue: number;
+  totalFeesAndExpenses: number;
+  netRevenue: number;
 }
 
 const DEFAULT_DATA: DashboardData = {
@@ -36,24 +27,18 @@ const DEFAULT_DATA: DashboardData = {
   availableProperties: 0,
   unavailableProperties: 0,
   rentedProperties: 0,
+  occupancyRate: 0,
   totalTenants: 0,
   activeTenants: 0,
   activeContracts: 0,
-  latePayments: 0,
-  receivedPayments: 0,
-  expectedValue: 0,
-  grossRevenue: 0,
-  netRevenue: 0,
-  occupancyRate: 0,
   overduePayments: 0,
   overdueAmount: 0,
   dueTodayPayments: 0,
   completedPayments: 0,
   expectedAmount: 0,
-  receivedAmount: 0,
-  adminFee: 0,
-  paidPayments: 0,
-  pendingPayments: 0,
+  grossRevenue: 0,
+  totalFeesAndExpenses: 0,
+  netRevenue: 0,
 };
 
 export function useDashboardData(month: number, year: number) {
@@ -111,11 +96,13 @@ export function useDashboardData(month: number, year: number) {
 
       const totalProperties = properties?.length || 0;
       const availableProperties = properties?.filter(p => p.status === "available").length || 0;
-      const rentedProperties = properties?.filter(p => p.status === "rented").length || 0;
-      const unavailableProperties = properties?.filter(p => p.status !== "available" && p.status !== "rented").length || 0;
+      const rentedProperties = properties?.filter(p => p.status === "occupied").length || 0;
+      const unavailableProperties = properties?.filter(p => p.status === "unavailable").length || 0;
       
-      const occupancyRate = totalProperties > 0 
-        ? (rentedProperties / totalProperties) * 100 
+      // Taxa de ocupação: imóveis ocupados / (imóveis disponíveis + ocupados)
+      const totalAvailableForRent = availableProperties + rentedProperties;
+      const occupancyRate = totalAvailableForRent > 0 
+        ? (rentedProperties / totalAvailableForRent) * 100 
         : 0;
 
       const propertyIds = properties?.map(p => p.id) || [];
@@ -185,7 +172,6 @@ export function useDashboardData(month: number, year: number) {
 
       if (paymentsError) throw paymentsError;
 
-      // Buscar contas a pagar (location_expenses) do período usando reference_month e reference_year
       const { data: expensesData, error: expensesError } = await supabase
         .from("location_expenses")
         .select("amount")
@@ -196,15 +182,12 @@ export function useDashboardData(month: number, year: number) {
         console.error("Error fetching expenses:", expensesError);
       }
 
-      // Calcular total de contas a pagar do mês
       const locationExpensesTotal = expensesData?.reduce((sum, expense) => sum + (expense.amount || 0), 0) || 0;
 
-      // Buscar rentals para mapeamento de propriedade/local
       const { data: rentals } = await supabase
         .from("rentals")
         .select("id, property_id");
 
-      // Buscar configuração para taxas
       const { data: configData } = await supabase
         .from("configs")
         .select("admin_fee_percentage, management_fee_percentage")
@@ -221,7 +204,6 @@ export function useDashboardData(month: number, year: number) {
 
       const today = new Date().toISOString().split("T")[0];
 
-      // Buscar isenções de taxa para cálculo correto
       const { data: exemptions } = await supabase
         .from("user_fee_exemptions")
         .select("location_id")
@@ -237,14 +219,10 @@ export function useDashboardData(month: number, year: number) {
           const paidAmount = Number(payment.paid_amount) || 0;
           receivedAmount += paidAmount;
           
-          // Buscar o rental para verificar isenção
-          const rental = properties?.find(p => {
-            const rentalMatch = rentals?.find(r => r.id === payment.rental_id);
-            return rentalMatch && p.id === rentalMatch.property_id;
-          });
+          const rental = rentals?.find(r => r.id === payment.rental_id);
+          const property = properties?.find(p => p.id === rental?.property_id);
           
-          // Calcular taxas (só se não houver isenção)
-          if (rental && !exemptLocationIds.includes(rental.location_id)) {
+          if (property && !exemptLocationIds.includes(property.location_id)) {
             const adminFeeRate = configData ? (configData.admin_fee_percentage || 0) / 100 : 0.05;
             const managementFeeRate = configData ? (configData.management_fee_percentage || 0) / 100 : 0;
             
@@ -262,46 +240,27 @@ export function useDashboardData(month: number, year: number) {
         }
       });
 
-      // Calcular receita líquida EXATAMENTE como na página Financeiro
-      // Receita Líquida = Receita Bruta - Taxa Admin - Taxa Gerenciamento - Contas do Mês
       const grossRevenue = receivedAmount;
-      const netRevenue = grossRevenue - adminFeeTotal - managementFeeTotal - locationExpensesTotal;
-
-      console.log("💰 Cálculo Receita Líquida (Dashboard):", {
-        grossRevenue,
-        adminFeeTotal,
-        managementFeeTotal,
-        locationExpensesTotal,
-        netRevenue,
-      });
+      const totalFeesAndExpenses = adminFeeTotal + managementFeeTotal + locationExpensesTotal;
+      const netRevenue = grossRevenue - totalFeesAndExpenses;
 
       setDashboardData({
         totalProperties,
         availableProperties,
         unavailableProperties,
         rentedProperties,
+        occupancyRate,
         totalTenants,
         activeTenants,
         activeContracts: activeContracts || 0,
-        
-        latePayments: overduePayments,
-        receivedPayments: paidPayments,
-        expectedValue: expectedAmount,
-
         overduePayments,
         overdueAmount,
         completedPayments: paidPayments,
         dueTodayPayments,
         expectedAmount,
-        receivedAmount,
         grossRevenue,
+        totalFeesAndExpenses,
         netRevenue,
-        adminFee: adminFeeTotal,
-        paidPayments,
-        pendingPayments: 0,
-        occupancyRate,
-        revenueData: [], 
-        occupancyData: [] 
       });
 
     } catch (err: any) {
