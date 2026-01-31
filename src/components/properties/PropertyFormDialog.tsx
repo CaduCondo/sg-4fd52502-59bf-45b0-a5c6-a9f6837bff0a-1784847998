@@ -84,12 +84,12 @@ export function PropertyFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-lg">
+      <DialogContent className="max-w-2xl max-h-[90vh] sm:max-h-[85vh] overflow-y-auto p-4 sm:p-6">
+        <DialogHeader className="space-y-2 pb-3">
+          <DialogTitle className="text-base sm:text-lg font-bold">
             {isReadOnly ? "Visualizar Imóvel" : isEditMode ? "Editar Imóvel" : "Novo Imóvel"}
           </DialogTitle>
-          <DialogDescription className="text-xs">
+          <DialogDescription className="text-xs sm:text-sm">
             {isReadOnly
               ? "Visualize as informações do imóvel"
               : isEditMode
@@ -98,11 +98,11 @@ export function PropertyFormDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-3">
+        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
           {/* Linha 1: Local e Complemento */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label htmlFor="location_id" className="text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="location_id" className="text-sm font-medium">
                 Local *
               </Label>
               <Select
@@ -112,7 +112,7 @@ export function PropertyFormDialog({
                 }
                 disabled={isReadOnly}
               >
-                <SelectTrigger id="location_id" className="h-8 text-sm">
+                <SelectTrigger id="location_id" className="h-11 sm:h-10 text-sm mobile-input">
                   <SelectValue placeholder="Selecione o local" />
                 </SelectTrigger>
                 <SelectContent>
@@ -125,8 +125,8 @@ export function PropertyFormDialog({
               </Select>
             </div>
 
-            <div className="space-y-1">
-              <Label htmlFor="complement" className="text-xs">
+            <div className="space-y-2">
+              <Label htmlFor="complement" className="text-sm font-medium">
                 Complemento
               </Label>
               <Input
@@ -136,16 +136,16 @@ export function PropertyFormDialog({
                   setFormData({ ...formData, complement: e.target.value })
                 }
                 placeholder="Ex: Apto 102, Bloco A"
-                className="h-8 text-sm"
+                className="h-11 sm:h-10 text-sm mobile-input"
                 disabled={isReadOnly}
               />
             </div>
           </div>
 
-          {/* Linha 2: Quartos, Banheiros, Área e Valor Aluguel */}
-          <div className="grid grid-cols-4 gap-3">
-            <div className="space-y-1">
-              <Label htmlFor="rooms" className="text-xs">
+          {/* Linha 2: Quartos, Banheiros, Área e Valor */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="rooms" className="text-sm font-medium">
                 Quartos *
               </Label>
               <Input
@@ -158,15 +158,15 @@ export function PropertyFormDialog({
                   const value = e.target.value.replace(/\D/g, "");
                   setFormData({ ...formData, rooms: value });
                 }}
-                placeholder="Ex: 3"
+                placeholder="3"
                 required
-                className="h-8 text-sm"
+                className="h-11 sm:h-10 text-sm mobile-input"
                 disabled={isReadOnly}
               />
             </div>
 
-            <div className="space-y-1">
-              <Label htmlFor="bathrooms" className="text-xs">
+            <div className="space-y-2">
+              <Label htmlFor="bathrooms" className="text-sm font-medium">
                 Banheiros *
               </Label>
               <Input
@@ -179,15 +179,15 @@ export function PropertyFormDialog({
                   const value = e.target.value.replace(/\D/g, "");
                   setFormData({ ...formData, bathrooms: value });
                 }}
-                placeholder="Ex: 2"
+                placeholder="2"
                 required
-                className="h-8 text-sm"
+                className="h-11 sm:h-10 text-sm mobile-input"
                 disabled={isReadOnly}
               />
             </div>
 
-            <div className="space-y-1">
-              <Label htmlFor="area" className="text-xs">
+            <div className="space-y-2">
+              <Label htmlFor="area" className="text-sm font-medium">
                 Área (m²) *
               </Label>
               <Input
@@ -196,15 +196,15 @@ export function PropertyFormDialog({
                 onChange={(e) =>
                   setFormData({ ...formData, area: e.target.value })
                 }
-                placeholder="Ex: 80"
-                className="h-8 text-sm"
+                placeholder="80"
+                className="h-11 sm:h-10 text-sm mobile-input"
                 disabled={isReadOnly}
               />
             </div>
 
-            <div className="space-y-1">
-              <Label htmlFor="monthly_rent" className="text-xs">
-                Valor Aluguel:
+            <div className="space-y-2">
+              <Label htmlFor="monthly_rent" className="text-sm font-medium">
+                Valor
               </Label>
               <Input
                 id="monthly_rent"
@@ -214,14 +214,15 @@ export function PropertyFormDialog({
                   setFormData({ ...formData, monthly_rent: formatted });
                 }}
                 placeholder="R$ 0,00"
-                className="h-8 text-sm"
+                className="h-11 sm:h-10 text-sm mobile-input"
                 disabled={isReadOnly}
               />
             </div>
           </div>
 
-          <div className="space-y-1">
-            <Label htmlFor="status" className="text-xs">
+          {/* Status */}
+          <div className="space-y-2">
+            <Label htmlFor="status" className="text-sm font-medium">
               Status *
             </Label>
             <Select
@@ -234,7 +235,7 @@ export function PropertyFormDialog({
               }
               disabled={isReadOnly}
             >
-              <SelectTrigger className="h-8 text-sm">
+              <SelectTrigger className="h-11 sm:h-10 text-sm mobile-input">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -245,8 +246,9 @@ export function PropertyFormDialog({
             </Select>
           </div>
 
-          <div className="flex items-center gap-4">
-            <div className="flex items-center space-x-2">
+          {/* Checkboxes - Mobile optimized */}
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+            <div className="flex items-center space-x-3 touch-target">
               <Checkbox
                 id="hasFurniture"
                 checked={formData.hasFurniture}
@@ -254,13 +256,14 @@ export function PropertyFormDialog({
                   setFormData({ ...formData, hasFurniture: checked as boolean })
                 }
                 disabled={isReadOnly}
+                className="h-5 w-5"
               />
-              <Label htmlFor="hasFurniture" className="text-xs cursor-pointer">
+              <Label htmlFor="hasFurniture" className="text-sm cursor-pointer font-normal">
                 Móveis Planejados
               </Label>
             </div>
 
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-3 touch-target">
               <Checkbox
                 id="acceptsPets"
                 checked={formData.acceptsPets}
@@ -268,13 +271,14 @@ export function PropertyFormDialog({
                   setFormData({ ...formData, acceptsPets: checked as boolean })
                 }
                 disabled={isReadOnly}
+                className="h-5 w-5"
               />
-              <Label htmlFor="acceptsPets" className="text-xs cursor-pointer">
+              <Label htmlFor="acceptsPets" className="text-sm cursor-pointer font-normal">
                 Aceita Pets
               </Label>
             </div>
 
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-3 touch-target">
               <Checkbox
                 id="hasGarage"
                 checked={formData.hasGarage}
@@ -282,48 +286,51 @@ export function PropertyFormDialog({
                   setFormData({ ...formData, hasGarage: checked as boolean })
                 }
                 disabled={isReadOnly}
+                className="h-5 w-5"
               />
-              <Label htmlFor="hasGarage" className="text-xs cursor-pointer">
+              <Label htmlFor="hasGarage" className="text-sm cursor-pointer font-normal">
                 Vaga Garagem
               </Label>
             </div>
           </div>
 
-          <div className="space-y-1">
-            <Label htmlFor="description" className="text-xs">
+          {/* Description */}
+          <div className="space-y-2">
+            <Label htmlFor="description" className="text-sm font-medium">
               Descrição
             </Label>
             <Textarea
               id="description"
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="text-sm resize-none"
+              className="text-sm resize-none min-h-[80px] mobile-input"
               placeholder="Descreva o imóvel..."
-              rows={2}
+              rows={3}
               disabled={isReadOnly}
             />
           </div>
 
+          {/* Image Upload - Edit mode only */}
           {!isReadOnly && (
-            <div className="space-y-2">
-              <Label className="text-xs">Fotos do Imóvel</Label>
-              <div className="flex gap-2">
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Fotos do Imóvel</Label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => document.getElementById("photo-upload")?.click()}
-                  className="h-8 text-xs flex-1"
+                  className="h-11 sm:h-10 text-sm touch-target"
                 >
-                  <ImageIcon className="h-3 w-3 mr-2" />
+                  <ImageIcon className="h-4 w-4 mr-2" />
                   Selecionar Fotos
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => document.getElementById("camera-capture")?.click()}
-                  className="h-8 text-xs flex-1"
+                  className="h-11 sm:h-10 text-sm touch-target"
                 >
-                  <Camera className="h-3 w-3 mr-2" />
+                  <Camera className="h-4 w-4 mr-2" />
                   Tirar Foto
                 </Button>
               </div>
@@ -346,16 +353,17 @@ export function PropertyFormDialog({
             </div>
           )}
 
+          {/* Image Gallery - View mode */}
           {isReadOnly && formData.images.length > 0 && (
-            <div className="space-y-2">
-              <Label className="text-xs">Fotos do Imóvel</Label>
-              <div className="grid grid-cols-4 gap-2">
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Fotos do Imóvel</Label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                 {formData.images.map((image, index) => (
-                  <div key={index} className="relative">
+                  <div key={index} className="relative aspect-video">
                     <img
                       src={image}
                       alt={`Preview ${index + 1}`}
-                      className="w-full h-20 object-cover rounded border"
+                      className="w-full h-full object-cover rounded-lg border"
                     />
                   </div>
                 ))}
@@ -363,10 +371,16 @@ export function PropertyFormDialog({
             </div>
           )}
 
-          <div className="flex justify-end gap-2 pt-2">
+          {/* Action Buttons - Mobile optimized */}
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 pt-3 border-t">
             {showEditButton && (
-              <Button type="button" onClick={handleEditClick} variant="default" size="sm">
-                <Pencil className="h-3 w-3 mr-2" />
+              <Button 
+                type="button" 
+                onClick={handleEditClick} 
+                variant="default" 
+                className="h-11 sm:h-10 touch-target"
+              >
+                <Pencil className="h-4 w-4 mr-2" />
                 Editar Imóvel
               </Button>
             )}
@@ -377,11 +391,15 @@ export function PropertyFormDialog({
                   variant="outline"
                   onClick={() => onOpenChange(false)}
                   disabled={isSubmitting}
-                  size="sm"
+                  className="h-11 sm:h-10 touch-target"
                 >
                   Cancelar
                 </Button>
-                <Button type="submit" disabled={isSubmitting} size="sm">
+                <Button 
+                  type="submit" 
+                  disabled={isSubmitting} 
+                  className="h-11 sm:h-10 touch-target"
+                >
                   {isSubmitting ? "Salvando..." : isEditMode ? "Atualizar" : "Criar"}
                 </Button>
               </>
@@ -391,7 +409,7 @@ export function PropertyFormDialog({
                 type="button"
                 variant="outline"
                 onClick={() => onOpenChange(false)}
-                size="sm"
+                className="h-11 sm:h-10 touch-target"
               >
                 Fechar
               </Button>
