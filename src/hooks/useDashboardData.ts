@@ -159,8 +159,8 @@ export function useDashboardData(month: number, year: number) {
       let paymentsQuery = supabase
         .from("payments")
         .select("status, expected_amount, paid_amount, due_date, admin_fee, rental_id, reference_month, reference_year")
-        .eq("reference_month", month)
-        .eq("reference_year", year);
+        .eq("reference_month", month.toString())
+        .eq("reference_year", year.toString());
 
       if (allowedLocationIds && propertyIds.length > 0) {
         const { data: rentalIds } = await supabase
@@ -257,42 +257,21 @@ export function useDashboardData(month: number, year: number) {
       const monthlyExpensesData = [];
 
       for (let i = 5; i >= 0; i--) {
-        const targetMonth = month - i;
-        const targetYear = targetMonth <= 0 ? year - 1 : year;
-        const adjustedMonth = targetMonth <= 0 ? targetMonth + 12 : targetMonth;
+        const adjustedMonth = month - i;
+        const adjustedYear = adjustedMonth < 1 ? year - 1 : year;
+        const finalMonth = adjustedMonth < 1 ? adjustedMonth + 12 : adjustedMonth;
 
-        let monthPaymentsQuery = supabase
+        const { data: monthPayments } = await supabase
           .from("payments")
-          .select("status, paid_amount, rental_id")
-          .eq("reference_month", adjustedMonth)
-          .eq("reference_year", targetYear)
-          .eq("status", "paid");
+          .select("status, expected_amount, paid_amount, admin_fee, rental_id")
+          .eq("reference_month", finalMonth.toString())
+          .eq("reference_year", adjustedYear.toString());
 
-        if (allowedLocationIds && propertyIds.length > 0) {
-          const { data: rentalIds } = await supabase
-            .from("rentals")
-            .select("id")
-            .in("property_id", propertyIds);
-
-          const validRentalIds = rentalIds?.map(r => r.id) || [];
-          if (validRentalIds.length > 0) {
-            monthPaymentsQuery = monthPaymentsQuery.in("rental_id", validRentalIds);
-          }
-        }
-
-        const { data: monthPayments } = await monthPaymentsQuery;
-
-        let monthExpensesQuery = supabase
+        const { data: monthExpenses } = await supabase
           .from("location_expenses")
           .select("amount")
-          .eq("reference_month", adjustedMonth)
-          .eq("reference_year", targetYear);
-
-        if (allowedLocationIds) {
-          monthExpensesQuery = monthExpensesQuery.in("location_id", allowedLocationIds);
-        }
-
-        const { data: monthExpenses } = await monthExpensesQuery;
+          .eq("reference_month", finalMonth)
+          .eq("reference_year", adjustedYear);
 
         const monthGross = monthPayments?.reduce((sum, p) => sum + (Number(p.paid_amount) || 0), 0) || 0;
         const monthExpensesTotal = monthExpenses?.reduce((sum, e) => sum + (Number(e.amount) || 0), 0) || 0;
@@ -314,7 +293,7 @@ export function useDashboardData(month: number, year: number) {
         const monthNet = monthGross - monthTotal;
 
         const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-        const monthLabel = `${monthNames[adjustedMonth - 1]}/${targetYear.toString().slice(2)}`;
+        const monthLabel = `${monthNames[finalMonth - 1]}/${adjustedYear.toString().slice(2)}`;
 
         monthlyRevenueData.push({
           month: monthLabel,

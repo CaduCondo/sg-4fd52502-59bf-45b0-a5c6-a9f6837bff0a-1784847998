@@ -122,7 +122,7 @@ export default function Financial() {
       const { data: expensesData, error: expensesError } = await supabase
         .from("location_expenses")
         .select("amount, status")
-        .eq("reference_month", parseInt(selectedMonth) + 1)
+        .eq("reference_month", parseInt(selectedMonth))
         .eq("reference_year", parseInt(selectedYear));
       
       if (expensesError) {
@@ -134,7 +134,7 @@ export default function Financial() {
         : 0;
       
       console.log("💰 Contas a Pagar carregadas:", {
-        month: parseInt(selectedMonth) + 1,
+        month: parseInt(selectedMonth),
         year: parseInt(selectedYear),
         totalExpenses,
         count: expensesData?.length || 0
