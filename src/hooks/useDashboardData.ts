@@ -139,11 +139,10 @@ export function useDashboardData(selectedPeriod: { month: number; year: number }
       state: data.state,
       zipCode: data.zip_code,
       value: Number(data.value),
-      monthlyRent: Number(data.monthly_rent), // Fallback se value não existir
+      monthlyRent: Number(data.monthly_rent),
       description: data.description,
       area: Number(data.area),
       bathrooms: Number(data.bathrooms),
-      // garage: Number(data.garage_value), // Propriedade não existe no tipo Property
       hasGarage: data.has_garage,
       acceptsPets: data.accepts_pets,
       hasFurniture: data.has_furniture,
@@ -152,9 +151,7 @@ export function useDashboardData(selectedPeriod: { month: number; year: number }
       locationId: data.location_id,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
-      // Campos opcionais que podem não vir do banco diretamente dessa forma
       images: data.photos || [],
-      // features: data.features || [], // Removido pois não existe no tipo Property
     };
   }
 
@@ -170,26 +167,18 @@ export function useDashboardData(selectedPeriod: { month: number; year: number }
       status: data.status,
       isActive: data.is_active,
       depositAmount: Number(data.deposit),
-      // Campos de depósito
       depositInstallments: data.deposit_installments,
       depositInstallment1: data.deposit_installment_1,
       depositInstallment2: data.deposit_installment_2,
       depositInstallment3: data.deposit_installment_3,
-      // Outros campos
       hasGarage: data.has_garage,
       garageValue: data.garage_value,
       hasPartnerBroker: data.has_partner_broker,
       contractAttachments: data.contract_attachments,
       attachments: data.attachments,
-      autoRenew: false // Default
+      autoRenew: false
     };
   }
 
-  return { 
-    loading, 
-    payments, 
-    properties: properties.map(mapPropertyFromDB), 
-    rentals: rentals.map(mapRentalFromDB), 
-    allowedLocationIds 
-  };
+  return { loading, payments, properties, rentals, allowedLocationIds };
 }
