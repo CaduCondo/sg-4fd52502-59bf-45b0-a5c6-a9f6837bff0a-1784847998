@@ -33,8 +33,15 @@ let reconnectAttempts = 0;
 const MAX_RECONNECT_ATTEMPTS = 5;
 let lastReconnectTime = 0;
 const MIN_RECONNECT_INTERVAL = 5000; // 5 segundos
+let isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
 
 const handleNetworkError = async (showToast = false) => {
+  // Se estamos offline, não tentar reconectar
+  if (!isOnline) {
+    console.log('📡 Sistema está offline, aguardando conexão...');
+    return;
+  }
+  
   const now = Date.now();
   
   if (reconnectTimeout) {
@@ -101,7 +108,7 @@ if (typeof window !== 'undefined') {
       return response;
     } catch (error: any) {
       // Detectar erro de rede
-      if (error.message === 'Failed to fetch' || error.name === 'TypeError') {
+      if (error.message === 'Failed to fetch' || error.name === 'TypeError' || !isOnline) {
         console.error('🚨 Erro de rede detectado:', error);
         handleNetworkError(true);
       }
@@ -109,15 +116,34 @@ if (typeof window !== 'undefined') {
     }
   };
   
+  // Monitorar status de conexão
   window.addEventListener('online', () => {
     console.log('🌐 Conexão de rede restaurada');
+    isOnline = true;
     reconnectAttempts = 0;
     handleNetworkError();
   });
   
   window.addEventListener('offline', () => {
     console.log('📡 Sem conexão de rede');
+    isOnline = false;
   });
+  
+  // Heartbeat a cada 30 segundos para manter conexão ativa
+  setInterval(async () => {
+    if (isOnline) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          // Ping silencioso para manter conexão viva
+          await supabase.from('system_users').select('id').limit(1);
+        }
+      } catch (err) {
+        console.error('⚠️ Erro no heartbeat:', err);
+        handleNetworkError();
+      }
+    }
+  }, 30000); // 30 segundos
 }
 
 supabase.auth.onAuthStateChange((event, session) => {

@@ -216,11 +216,8 @@ export function Layout({ children }: LayoutProps) {
     },
   ];
 
-  const filteredMenuItems = menuItems.filter((item) => 
-    hasPermission(authUser?.role, item.permission as any)
-  );
-
-  const navigationItems = filteredMenuItems.filter(item => shouldShowMenu(item.path));
+  // ✅ USAR APENAS shouldShowMenu (banco de dados) - REMOVER filtro hardcoded
+  const navigationItems = menuItems.filter(item => shouldShowMenu(item.path));
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
