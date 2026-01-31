@@ -55,8 +55,14 @@ export function UsersTab({
 
   const handleConfirmDelete = async () => {
     if (!userToDelete) return;
-    const success = await onDeleteUser(userToDelete.id);
-    if (success) {
+    
+    try {
+      const success = await onDeleteUser(userToDelete.id);
+      if (success) {
+        setUserToDelete(null);
+      }
+    } catch (error) {
+      console.error("Error deleting user:", error);
       setUserToDelete(null);
     }
   };

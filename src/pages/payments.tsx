@@ -225,8 +225,14 @@ export default function Payments() {
 
   const handleConfirmCancelPayment = async () => {
     if (!paymentToCancel) return;
-    await handleCancelPayment(paymentToCancel.id);
-    setPaymentToCancel(null);
+    
+    try {
+      await handleCancelPayment(paymentToCancel.id);
+      setPaymentToCancel(null);
+    } catch (error) {
+      console.error("Error canceling payment:", error);
+      setPaymentToCancel(null);
+    }
   };
 
   const getMonthName = (month: number): string => {

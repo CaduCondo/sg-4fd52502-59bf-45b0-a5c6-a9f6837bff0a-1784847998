@@ -163,7 +163,6 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
     setIsFormOpen(false);
     setIsEditing(false);
     setEditingExpense(null);
-    setExpenseToDelete(null);
     setExpenseType("water");
     setDescription("");
     setAmount("");
