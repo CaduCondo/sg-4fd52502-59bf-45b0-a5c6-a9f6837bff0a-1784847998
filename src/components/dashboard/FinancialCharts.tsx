@@ -1,5 +1,16 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  Legend, 
+  ResponsiveContainer,
+  ComposedChart,
+  Line
+} from "recharts";
 
 interface FinancialChartsProps {
   monthlyRevenueData: any[];
@@ -7,64 +18,69 @@ interface FinancialChartsProps {
 }
 
 export function FinancialCharts({ monthlyRevenueData, monthlyExpensesData }: FinancialChartsProps) {
+  // Combinar dados para o gráfico
+  const data = monthlyRevenueData.map((rev, index) => {
+    const exp = monthlyExpensesData[index];
+    return {
+      month: rev.month,
+      ReceitaBruta: rev.bruta,
+      Despesas: exp ? (exp.taxas + exp.contas) : 0,
+      ReceitaLiquida: rev.liquida
+    };
+  });
+
   const formatCurrency = (value: number) => {
-    return value.toLocaleString("pt-BR", {
+    return new Intl.NumberFormat("pt-BR", {
       style: "currency",
       currency: "BRL",
-    });
+      maximumFractionDigits: 0,
+    }).format(value);
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Receita Bruta vs Líquida - 6 Meses */}
-      <Card>
+    <div className="grid grid-cols-1 gap-6">
+      <Card className="col-span-1">
         <CardHeader>
-          <CardTitle>Receita Bruta vs Líquida (Últimos 6 Meses)</CardTitle>
+          <CardTitle>Histórico Financeiro (Últimos 6 meses)</CardTitle>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={monthlyRevenueData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis />
-              <Tooltip formatter={(value: number) => formatCurrency(value)} />
-              <Legend />
-              <Line 
-                type="monotone" 
-                dataKey="bruta" 
-                stroke="#10b981" 
-                strokeWidth={2}
-                name="Receita Bruta"
-              />
-              <Line 
-                type="monotone" 
-                dataKey="liquida" 
-                stroke="#6366f1" 
-                strokeWidth={2}
-                name="Receita Líquida"
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
-
-      {/* Taxas e Contas - 6 Meses */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Taxas e Contas a Pagar (Últimos 6 Meses)</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={monthlyExpensesData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis />
-              <Tooltip formatter={(value: number) => formatCurrency(value)} />
-              <Legend />
-              <Bar dataKey="taxas" fill="#f59e0b" name="Taxas (Admin + Gerenc.)" />
-              <Bar dataKey="contas" fill="#ef4444" name="Contas a Pagar" />
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="h-[400px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart
+                data={data}
+                margin={{
+                  top: 20,
+                  right: 30,
+                  left: 20,
+                  bottom: 5,
+                }}
+              >
+                <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                <XAxis dataKey="month" />
+                <YAxis tickFormatter={(value) => `R$ ${value/1000}k`} />
+                <Tooltip 
+                  formatter={(value: number) => formatCurrency(value)}
+                  labelStyle={{ color: '#333' }}
+                />
+                <Legend />
+                
+                {/* Barras para Receita e Despesa */}
+                <Bar dataKey="ReceitaBruta" name="Receita Bruta" fill="#22c55e" radius={[4, 4, 0, 0]} barSize={20} />
+                <Bar dataKey="Despesas" name="Taxas e Contas" fill="#ef4444" radius={[4, 4, 0, 0]} barSize={20} />
+                
+                {/* Linha para Receita Líquida */}
+                <Line 
+                  type="monotone" 
+                  dataKey="ReceitaLiquida" 
+                  name="Receita Líquida" 
+                  stroke="#8b5cf6" 
+                  strokeWidth={3}
+                  dot={{ r: 4 }}
+                  activeDot={{ r: 8 }}
+                />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
         </CardContent>
       </Card>
     </div>

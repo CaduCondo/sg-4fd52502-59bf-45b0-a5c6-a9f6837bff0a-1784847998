@@ -186,26 +186,27 @@ export const rentalService = {
 
 // Aliases para compatibilidade com código existente que pode importar com nomes diferentes
 export const create = async (rental: Omit<Rental, "id">) => {
+  const insertData = {
+    property_id: rental.propertyId,
+    tenant_id: rental.tenantId,
+    start_date: rental.startDate,
+    end_date: rental.endDate,
+    payment_day: rental.paymentDay,
+    monthly_rent: rental.value, // Obrigatório pelo tipo do banco
+    value: rental.value,
+    deposit: rental.depositAmount ? String(rental.depositAmount) : null, // Convertendo para string (money type)
+    status: rental.status,
+    is_active: rental.isActive,
+    attachments: rental.attachments,
+    contract_attachments: rental.contractAttachments,
+    has_garage: rental.hasGarage,
+    garage_value: rental.garageValue ? String(rental.garageValue) : null, // Convertendo para string
+    has_partner_broker: rental.hasPartnerBroker
+  };
+
   const { data, error } = await supabase
     .from("rentals")
-    .insert([
-      {
-        property_id: rental.propertyId,
-        tenant_id: rental.tenantId,
-        start_date: rental.startDate,
-        end_date: rental.endDate,
-        payment_day: rental.paymentDay,
-        value: rental.value,
-        deposit: rental.depositAmount,
-        status: rental.status,
-        is_active: rental.isActive,
-        attachments: rental.attachments,
-        contract_attachments: rental.contractAttachments,
-        has_garage: rental.hasGarage,
-        garage_value: rental.garageValue,
-        has_partner_broker: rental.hasPartnerBroker
-      },
-    ])
+    .insert([insertData])
     .select()
     .single();
 

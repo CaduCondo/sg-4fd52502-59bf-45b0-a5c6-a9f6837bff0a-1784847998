@@ -121,6 +121,9 @@ export default function Payments() {
       const location = property.locations;
       const tenant = rental.tenants;
 
+      const amount = paymentData.paid_amount || paymentData.expected_amount; // Definir amount
+      const dueDate = paymentData.due_date; // Definir dueDate
+
       const paymentForReceipt: Payment = {
         id: paymentData.id,
         rentalId: paymentData.rental_id,
