@@ -13,6 +13,22 @@
     transform-origin: 70% 70%;
     display: inline-block;
   }
+  
+  /* Mobile-optimized touch targets */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+  
+  /* Smooth scrolling for mobile */
+  .smooth-scroll {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+  
+  /* Better mobile input sizing */
+  .mobile-input {
+    @apply text-base sm:text-sm;
+  }
 }
 
 @keyframes wave {
@@ -90,24 +106,42 @@
 }
 
 @layer base {
-  /* Interactive Hover Effects */
+  /* Interactive Hover Effects - Optimized for mobile */
   .card-hover-effect {
-    @apply transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer;
+    @apply transition-all duration-300 cursor-pointer;
+  }
+  
+  @media (min-width: 768px) {
+    .card-hover-effect {
+      @apply hover:shadow-lg hover:-translate-y-1;
+    }
   }
 
   .list-item-hover {
-    @apply transition-all duration-200 hover:bg-accent/50 hover:scale-[1.02] cursor-pointer;
+    @apply transition-all duration-200 cursor-pointer active:bg-accent/50 active:scale-[0.98];
+  }
+  
+  @media (min-width: 768px) {
+    .list-item-hover {
+      @apply hover:bg-accent/50 hover:scale-[1.02];
+    }
   }
 
   .button-hover-scale {
-    @apply transition-transform duration-200 hover:scale-105 active:scale-95;
+    @apply transition-transform duration-200 active:scale-95;
+  }
+  
+  @media (min-width: 768px) {
+    .button-hover-scale {
+      @apply hover:scale-105;
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {
     .card-hover-effect,
     .list-item-hover,
     .button-hover-scale {
-      @apply transition-none hover:transform-none;
+      @apply transition-none hover:transform-none active:transform-none;
     }
   }
 
@@ -117,6 +151,21 @@
   
   body {
     @apply bg-background text-foreground;
+    /* Prevent zoom on iOS when focusing inputs */
+    -webkit-text-size-adjust: 100%;
+    /* Smooth scrolling for better mobile experience */
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Mobile input optimization - prevent zoom on focus */
+  input, select, textarea {
+    font-size: 16px;
+  }
+  
+  @media (min-width: 768px) {
+    input, select, textarea {
+      font-size: 14px;
+    }
   }
   
   /* Dark mode fixes for mobile */
@@ -139,10 +188,62 @@
   .dark .border-slate-200 {
     @apply border-slate-800;
   }
+  
+  /* Better mobile scrollbars */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    @apply bg-slate-100 dark:bg-slate-900;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    @apply bg-slate-300 dark:bg-slate-700 rounded-full;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-slate-400 dark:bg-slate-600;
+  }
+  
+  /* Mobile-friendly table wrapper */
+  .table-wrapper {
+    @apply overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Safe area padding for notched devices */
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
 }
 
 @layer components {
   .container {
     @apply mx-auto px-4 md:px-6 lg:px-8 max-w-7xl w-full;
+  }
+  
+  /* Mobile-optimized card */
+  .mobile-card {
+    @apply bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-800 p-4 sm:p-6;
+  }
+  
+  /* Mobile-friendly button */
+  .mobile-button {
+    @apply h-11 px-4 sm:h-10 sm:px-3 text-base sm:text-sm font-medium;
+  }
+  
+  /* Responsive spacing */
+  .section-spacing {
+    @apply py-6 sm:py-8 md:py-12;
+  }
+  
+  .content-spacing {
+    @apply space-y-4 sm:space-y-6;
   }
 }

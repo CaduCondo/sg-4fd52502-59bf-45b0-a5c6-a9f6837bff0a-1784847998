@@ -88,10 +88,38 @@ const config: Config = {
             height: "0",
           },
         },
+        "slide-in-from-bottom": {
+          from: {
+            transform: "translateY(100%)",
+          },
+          to: {
+            transform: "translateY(0)",
+          },
+        },
+        "slide-out-to-bottom": {
+          from: {
+            transform: "translateY(0)",
+          },
+          to: {
+            transform: "translateY(100%)",
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "slide-in": "slide-in-from-bottom 0.3s ease-out",
+        "slide-out": "slide-out-to-bottom 0.3s ease-out",
+      },
+      spacing: {
+        'safe-top': 'env(safe-area-inset-top)',
+        'safe-bottom': 'env(safe-area-inset-bottom)',
+        'safe-left': 'env(safe-area-inset-left)',
+        'safe-right': 'env(safe-area-inset-right)',
+      },
+      screens: {
+        'xs': '475px',
+        'touch': { 'raw': '(hover: none)' },
       },
     },
   },
