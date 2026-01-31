@@ -15,14 +15,12 @@ const normalizeDate = (date: string | Date | null): string | null => {
   const d = new Date(date);
   if (isNaN(d.getTime())) return null;
   
-  // Ajusta o timezone para evitar que a data volte 1 dia
-  // new Date('2024-05-20') cria em UTC (2024-05-20T00:00:00Z)
-  // getTimezoneOffset() retorna a diferença em minutos (ex: 180 para UTC-3)
-  // Somando o offset, trazemos a data "visual" para o UTC, mantendo o dia correto no split
-  const offset = d.getTimezoneOffset();
-  const adjustedDate = new Date(d.getTime() + offset * 60 * 1000);
+  // Pega os componentes da data no timezone LOCAL (não UTC)
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
   
-  return adjustedDate.toISOString().split('T')[0];
+  return `${year}-${month}-${day}`;
 };
 
 interface DepositInstallmentData {
@@ -122,28 +120,37 @@ export const depositInstallmentService = {
       }> = [];
 
       if (depositData.installment1) {
+        const normalizedDate = normalizeDate(depositData.paymentDate1 || null);
+        console.log("📅 Parcela 1 - Data original:", depositData.paymentDate1, "→ Normalizada:", normalizedDate);
+        
         installmentsData.push({
           installment_number: 1,
           amount: depositData.installment1,
-          payment_date: depositData.paymentDate1 ? normalizeDate(depositData.paymentDate1) : null,
+          payment_date: normalizedDate,
           pix_code: depositData.pixCode1 || null,
         });
       }
 
       if (depositData.installment2) {
+        const normalizedDate = normalizeDate(depositData.paymentDate2 || null);
+        console.log("📅 Parcela 2 - Data original:", depositData.paymentDate2, "→ Normalizada:", normalizedDate);
+        
         installmentsData.push({
           installment_number: 2,
           amount: depositData.installment2,
-          payment_date: depositData.paymentDate2 ? normalizeDate(depositData.paymentDate2) : null,
+          payment_date: normalizedDate,
           pix_code: depositData.pixCode2 || null,
         });
       }
 
       if (depositData.installment3) {
+        const normalizedDate = normalizeDate(depositData.paymentDate3 || null);
+        console.log("📅 Parcela 3 - Data original:", depositData.paymentDate3, "→ Normalizada:", normalizedDate);
+        
         installmentsData.push({
           installment_number: 3,
           amount: depositData.installment3,
-          payment_date: depositData.paymentDate3 ? normalizeDate(depositData.paymentDate3) : null,
+          payment_date: normalizedDate,
           pix_code: depositData.pixCode3 || null,
         });
       }
@@ -166,6 +173,8 @@ export const depositInstallmentService = {
           partner_commission: commissions.partner_commission,
           internal_commission: commissions.internal_commission,
         };
+
+        console.log(`💾 Salvando parcela ${installmentData.installment_number} com payment_date:`, installmentData.payment_date);
 
         if (existingInstallment) {
           // ATUALIZAR parcela existente
