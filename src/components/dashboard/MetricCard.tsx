@@ -32,33 +32,51 @@ export function MetricCard({
 
   if (layout === "horizontal") {
     return (
-      <Card className={cn("border-l-4 hover:shadow-md transition-all duration-200 h-full", borderColorClass)}>
-        <CardContent className="p-4">
-          {/* Linha 1: Ícone + Título */}
-          <div className="flex items-start gap-3 mb-2">
-            <div className={cn("p-2 rounded-lg flex-shrink-0", iconBgClass)}>
-              <Icon className={cn("h-5 w-5", iconColor)} />
+      <Card className={cn(
+        "border-l-4 hover:shadow-lg transition-all duration-300 h-full",
+        "active:scale-[0.98] sm:hover:scale-[1.01]",
+        borderColorClass
+      )}>
+        <CardContent className="p-4 sm:p-5">
+          {/* Mobile: Layout Vertical, Desktop: Layout Horizontal */}
+          <div className="flex flex-col sm:flex-row sm:items-start gap-3">
+            {/* Ícone */}
+            <div className={cn(
+              "p-2.5 sm:p-3 rounded-xl flex-shrink-0 shadow-sm",
+              "w-fit",
+              iconBgClass
+            )}>
+              <Icon className={cn("h-5 w-5 sm:h-6 sm:w-6", iconColor)} />
             </div>
-            <div className="text-xs font-medium text-muted-foreground leading-tight pt-1">
-              {title}
-            </div>
-          </div>
-          
-          {/* Linha 2: Valor grande alinhado à esquerda */}
-          <div className="pl-0">
-            <div className={cn("text-2xl font-bold text-foreground leading-tight tracking-tight", valueClassName)}>
-              {displayValue}
-            </div>
-            {subtitle && (
-              <div className="text-xs text-muted-foreground mt-1 leading-tight">
-                {subtitle}
+            
+            {/* Conteúdo */}
+            <div className="flex-1 min-w-0">
+              {/* Título */}
+              <div className="text-xs sm:text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                {title}
               </div>
-            )}
-            {secondaryInfo && (
-              <div className="text-xs text-muted-foreground mt-1 leading-tight">
-                {secondaryInfo}
+              
+              {/* Valor */}
+              <div className={cn(
+                "text-2xl sm:text-3xl font-bold text-foreground leading-tight tracking-tight mb-1",
+                "break-words",
+                valueClassName
+              )}>
+                {displayValue}
               </div>
-            )}
+              
+              {/* Informações secundárias */}
+              {subtitle && (
+                <div className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                  {subtitle}
+                </div>
+              )}
+              {secondaryInfo && (
+                <div className="text-xs sm:text-sm text-muted-foreground font-medium mt-1">
+                  {secondaryInfo}
+                </div>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -66,37 +84,50 @@ export function MetricCard({
   }
 
   return (
-    <Card className={cn("border-l-4 hover:shadow-md transition-all duration-200 h-full", borderColorClass)}>
-      <CardContent className="p-5">
-        <div className="space-y-2">
+    <Card className={cn(
+      "border-l-4 hover:shadow-lg transition-all duration-300 h-full",
+      "active:scale-[0.98] sm:hover:scale-[1.01]",
+      borderColorClass
+    )}>
+      <CardContent className="p-4 sm:p-5">
+        <div className="space-y-3">
           {/* Título */}
-          <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          <div className="text-xs sm:text-sm font-semibold text-muted-foreground uppercase tracking-wide">
             {title}
           </div>
 
           {/* Valor com ícone */}
-          <div className="flex items-center gap-2">
-            <div className={cn("p-1.5 rounded-md flex-shrink-0", iconBgClass)}>
-              <Icon className={cn("h-4 w-4", iconColor)} />
+          <div className="flex items-center gap-3">
+            <div className={cn(
+              "p-2 sm:p-2.5 rounded-xl flex-shrink-0 shadow-sm",
+              iconBgClass
+            )}>
+              <Icon className={cn("h-5 w-5 sm:h-6 sm:w-6", iconColor)} />
             </div>
-            <div className={cn("text-2xl font-bold text-foreground", valueClassName)}>
+            <div className={cn(
+              "text-2xl sm:text-3xl font-bold text-foreground leading-tight",
+              "break-words flex-1 min-w-0",
+              valueClassName
+            )}>
               {displayValue}
             </div>
           </div>
 
           {/* Informações secundárias */}
-          <div className="flex flex-col gap-0.5 pt-1">
-            {subtitle && (
-              <div className="text-xs text-muted-foreground">
-                {subtitle}
-              </div>
-            )}
-            {secondaryInfo && (
-              <div className="text-xs text-muted-foreground font-medium">
-                {secondaryInfo}
-              </div>
-            )}
-          </div>
+          {(subtitle || secondaryInfo) && (
+            <div className="flex flex-col gap-1 pt-1 border-t border-border/50">
+              {subtitle && (
+                <div className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                  {subtitle}
+                </div>
+              )}
+              {secondaryInfo && (
+                <div className="text-xs sm:text-sm text-muted-foreground font-medium">
+                  {secondaryInfo}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
