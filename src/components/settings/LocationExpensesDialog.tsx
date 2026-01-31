@@ -478,7 +478,7 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
               Cancelar
             </AlertDialogCancel>
             <Button
-              onClick={async () => {
+              onClick={async (e) => {
                 console.log("🔴 [ALERT] Botão Excluir clicado");
                 console.log("🔴 [ALERT] expenseToDelete:", expenseToDelete);
                 
@@ -490,12 +490,16 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
                 const idToDelete = expenseToDelete.id;
                 console.log("🔴 [ALERT] ID capturado:", idToDelete);
                 
-                // Fecha o AlertDialog ANTES de executar a exclusão
+                // Remove o foco do botão ANTES de fechar (corrige o erro de aria-hidden)
+                console.log("🔴 [ALERT] Removendo foco do botão...");
+                (e.target as HTMLButtonElement).blur();
+                
+                // Fecha o AlertDialog
                 console.log("🔴 [ALERT] Fechando AlertDialog...");
                 setExpenseToDelete(null);
                 
                 // Aguarda um frame para garantir que o dialog fechou
-                await new Promise(resolve => setTimeout(resolve, 100));
+                await new Promise(resolve => setTimeout(resolve, 150));
                 
                 // Executa a exclusão
                 console.log("🔴 [ALERT] Executando handleDelete...");
