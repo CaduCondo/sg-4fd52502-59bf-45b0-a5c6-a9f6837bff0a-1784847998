@@ -460,18 +460,20 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
             }}>
               Cancelar
             </AlertDialogCancel>
-            <AlertDialogAction
+            <Button
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 if (expenseToDelete) {
-                  handleDelete(expenseToDelete.id);
+                  const idToDelete = expenseToDelete.id;
+                  setExpenseToDelete(null);
+                  handleDelete(idToDelete);
                 }
               }}
               className="bg-red-600 hover:bg-red-700"
             >
               Excluir
-            </AlertDialogAction>
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
