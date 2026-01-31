@@ -28,6 +28,16 @@ export interface SystemUser {
   last_login?: string;
   created_at: string;
   updated_at: string;
+  cpf?: string;
+  rg?: string;
+  birthDate?: string;
+  cep?: string;
+  street?: string;
+  number?: string;
+  complement?: string;
+  neighborhood?: string;
+  city?: string;
+  state?: string;
 }
 
 export interface CompanyConfig {
