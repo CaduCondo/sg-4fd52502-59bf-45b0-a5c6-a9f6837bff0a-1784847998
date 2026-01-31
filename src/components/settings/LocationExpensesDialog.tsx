@@ -1,5 +1,15 @@
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,6 +35,7 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editingExpense, setEditingExpense] = useState<LocationExpense | null>(null);
+  const [expenseToDelete, setExpenseToDelete] = useState<LocationExpense | null>(null);
 
   // Filtros
   const [filterMonth, setFilterMonth] = useState(new Date().getMonth() + 1);
@@ -130,14 +141,13 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Tem certeza que deseja excluir esta conta?")) return;
-
     try {
       await locationExpenseService.delete(id);
       toast({
         title: "Sucesso",
         description: "Conta excluída com sucesso.",
       });
+      setExpenseToDelete(null);
       loadExpenses();
     } catch (error) {
       console.error("Error deleting expense:", error);
@@ -153,6 +163,7 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
     setIsFormOpen(false);
     setIsEditing(false);
     setEditingExpense(null);
+    setExpenseToDelete(null);
     setExpenseType("water");
     setDescription("");
     setAmount("");
@@ -270,7 +281,7 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
                               size="sm"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleDelete(expense.id);
+                                setExpenseToDelete(expense);
                               }}
                               className="text-red-600 hover:text-red-700 h-8 w-8 p-0"
                             >
@@ -426,6 +437,34 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!expenseToDelete} onOpenChange={(open) => !open && setExpenseToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir esta conta? Esta ação não pode ser desfeita.
+              {expenseToDelete && (
+                <div className="mt-3 p-3 bg-muted rounded-md">
+                  <p className="font-medium">{getExpenseTypeLabel(expenseToDelete.expenseType)}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {getMonthName(expenseToDelete.referenceMonth)}/{expenseToDelete.referenceYear} - {formatCurrency(expenseToDelete.amount)}
+                  </p>
+                </div>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => expenseToDelete && handleDelete(expenseToDelete.id)}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
