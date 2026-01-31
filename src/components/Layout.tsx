@@ -163,12 +163,21 @@ export function Layout({ children }: LayoutProps) {
     // For Financial menu, also allow broker role
     if (menuPath === "/financial" && authUser.role === "broker") return true;
 
-    // Check permissions from database
+    // Check permissions from database - CORRIGIDO: usar menu_id
+    console.log("🔍 Verificando permissão:", {
+      role: authUser.role,
+      menuPath,
+      menuItem,
+      allPermissions: permissions,
+    });
+
     const permission = permissions.find(
-      (p) => p.role === authUser.role && p.menu_item === menuItem
+      (p) => p.role === authUser.role && p.menu_id === menuItem
     );
 
-    return permission ? permission.can_access : false;
+    console.log("✅ Permissão encontrada:", permission);
+
+    return permission ? true : false;
   };
 
   const menuItems = [
