@@ -262,10 +262,29 @@ export async function updateFuturePayments(rentalId: string, newValue: number): 
 /**
  * FUNÇÃO CORRIGIDA - Cria parcelas de pagamento para uma locação
  * FIX: Evita duplicação de parcelas no mesmo mês
+ * FIX: Não cria novos recebimentos se já existem para esta locação
  */
 export async function createPaymentsForRental(rental: any): Promise<void> {
   console.log("=== INICIO createPaymentsForRental (VERSÃO CORRIGIDA) ===");
   console.log("Rental recebido:", rental);
+
+  // VERIFICAR SE JÁ EXISTEM RECEBIMENTOS PARA ESTA LOCAÇÃO
+  const { data: existingPayments, error: checkError } = await supabase
+    .from("payments")
+    .select("id")
+    .eq("rental_id", rental.id)
+    .limit(1);
+
+  if (checkError) {
+    console.error("Erro ao verificar recebimentos existentes:", checkError);
+    throw checkError;
+  }
+
+  if (existingPayments && existingPayments.length > 0) {
+    console.log("⚠️ Já existem recebimentos para esta locação. Pulando criação.");
+    console.log("💡 Use updateFuturePayments() para atualizar valores.");
+    return;
+  }
   
   const startDate = new Date(rental.startDate || rental.start_date);
   const endDate = rental.endDate || rental.end_date 

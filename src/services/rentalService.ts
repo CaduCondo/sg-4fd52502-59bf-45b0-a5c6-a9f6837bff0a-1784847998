@@ -184,7 +184,7 @@ export const rentalService = {
 
     if (error) throw error;
 
-    // Sincronizar parcelas do caução
+    // Sincronizar parcelas do caução APENAS se houver
     if (rental.depositInstallments && rental.depositInstallments > 0) {
       await depositInstallmentService.syncDepositInstallments(
         data.id,

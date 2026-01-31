@@ -15,6 +15,7 @@ interface DepositInstallmentData {
 export const depositInstallmentService = {
   /**
    * Sincroniza as parcelas do caução ao criar/editar uma locação
+   * VERSÃO CORRIGIDA: Atualiza registros existentes em vez de deletar tudo
    */
   async syncDepositInstallments(
     rentalId: string,
@@ -38,36 +39,46 @@ export const depositInstallmentService = {
     console.log("Dados recebidos:", depositData);
 
     try {
-      // 1. Deletar todas as parcelas existentes desta locação
-      const { error: deleteError } = await supabase
+      // 1. Buscar parcelas existentes
+      const { data: existingInstallments, error: fetchError } = await supabase
         .from("deposit_installments")
-        .delete()
+        .select("*")
         .eq("rental_id", rentalId);
 
-      if (deleteError) {
-        console.error("Erro ao deletar parcelas antigas:", deleteError);
-        throw deleteError;
+      if (fetchError) {
+        console.error("Erro ao buscar parcelas existentes:", fetchError);
+        throw fetchError;
       }
 
-      console.log("✅ Parcelas antigas deletadas");
+      console.log("📋 Parcelas existentes:", existingInstallments?.length || 0);
 
-      // 2. Se não houver parcelas, retornar
+      // 2. Se não houver parcelas configuradas, deletar todas existentes
       if (!depositInstallments || depositInstallments === 0) {
-        console.log("ℹ️ Caução sem parcelamento - nada a criar");
+        if (existingInstallments && existingInstallments.length > 0) {
+          const { error: deleteError } = await supabase
+            .from("deposit_installments")
+            .delete()
+            .eq("rental_id", rentalId);
+
+          if (deleteError) throw deleteError;
+          console.log("✅ Todas as parcelas foram removidas");
+        } else {
+          console.log("ℹ️ Caução sem parcelamento - nada a fazer");
+        }
         return;
       }
 
-      // 3. Calcular comissões (se houver corretor parceiro)
+      // 3. Calcular comissões
       const calculateCommissions = (amount: number) => {
         if (hasPartnerBroker) {
           return {
-            partner_commission: amount * 0.5, // 50% para parceiro
-            internal_commission: amount * 0.5, // 50% interno
+            partner_commission: amount * 0.5,
+            internal_commission: amount * 0.5,
           };
         }
         return {
           partner_commission: 0,
-          internal_commission: amount, // 100% interno se não houver parceiro
+          internal_commission: amount,
         };
       };
 
@@ -77,72 +88,111 @@ export const depositInstallmentService = {
         (depositData.installment2 || 0) +
         (depositData.installment3 || 0);
 
-      // 5. Criar novas parcelas
-      const installmentsToCreate: DepositInstallmentData[] = [];
+      // 5. Preparar dados das parcelas
+      const installmentsData: Array<{
+        installment_number: number;
+        amount: number;
+        payment_date: string | null;
+        pix_code: string | null;
+      }> = [];
 
-      // Parcela 1
       if (depositData.installment1) {
-        const commissions = calculateCommissions(depositData.installment1);
-        installmentsToCreate.push({
-          rental_id: rentalId,
+        installmentsData.push({
           installment_number: 1,
-          total_installments: depositInstallments,
-          installment_total: totalDeposit,
           amount: depositData.installment1,
-          pix_code: depositData.pixCode1 || null,
           payment_date: depositData.paymentDate1 || null,
-          partner_commission: commissions.partner_commission,
-          internal_commission: commissions.internal_commission,
+          pix_code: depositData.pixCode1 || null,
         });
       }
 
-      // Parcela 2
       if (depositData.installment2) {
-        const commissions = calculateCommissions(depositData.installment2);
-        installmentsToCreate.push({
-          rental_id: rentalId,
+        installmentsData.push({
           installment_number: 2,
-          total_installments: depositInstallments,
-          installment_total: totalDeposit,
           amount: depositData.installment2,
-          pix_code: depositData.pixCode2 || null,
           payment_date: depositData.paymentDate2 || null,
-          partner_commission: commissions.partner_commission,
-          internal_commission: commissions.internal_commission,
+          pix_code: depositData.pixCode2 || null,
         });
       }
 
-      // Parcela 3
       if (depositData.installment3) {
-        const commissions = calculateCommissions(depositData.installment3);
-        installmentsToCreate.push({
-          rental_id: rentalId,
+        installmentsData.push({
           installment_number: 3,
+          amount: depositData.installment3,
+          payment_date: depositData.paymentDate3 || null,
+          pix_code: depositData.pixCode3 || null,
+        });
+      }
+
+      // 6. Atualizar ou criar cada parcela
+      for (const installmentData of installmentsData) {
+        const commissions = calculateCommissions(installmentData.amount);
+        const existingInstallment = existingInstallments?.find(
+          (i) => i.installment_number === installmentData.installment_number
+        );
+
+        const installmentRecord = {
+          rental_id: rentalId,
+          installment_number: installmentData.installment_number,
           total_installments: depositInstallments,
           installment_total: totalDeposit,
-          amount: depositData.installment3,
-          pix_code: depositData.pixCode3 || null,
-          payment_date: depositData.paymentDate3 || null,
+          amount: installmentData.amount,
+          pix_code: installmentData.pix_code,
+          payment_date: installmentData.payment_date,
           partner_commission: commissions.partner_commission,
           internal_commission: commissions.internal_commission,
-        });
-      }
+        };
 
-      console.log("📦 Parcelas a criar:", installmentsToCreate.length);
+        if (existingInstallment) {
+          // ATUALIZAR parcela existente
+          const { error: updateError } = await supabase
+            .from("deposit_installments")
+            .update(installmentRecord)
+            .eq("id", existingInstallment.id);
 
-      if (installmentsToCreate.length > 0) {
-        const { data, error: insertError } = await supabase
-          .from("deposit_installments")
-          .insert(installmentsToCreate)
-          .select();
+          if (updateError) {
+            console.error(`Erro ao atualizar parcela ${installmentData.installment_number}:`, updateError);
+            throw updateError;
+          }
 
-        if (insertError) {
-          console.error("Erro ao inserir parcelas:", insertError);
-          throw insertError;
+          console.log(`✅ Parcela ${installmentData.installment_number}/${depositInstallments} ATUALIZADA`);
+        } else {
+          // CRIAR nova parcela
+          const { error: insertError } = await supabase
+            .from("deposit_installments")
+            .insert([installmentRecord]);
+
+          if (insertError) {
+            console.error(`Erro ao criar parcela ${installmentData.installment_number}:`, insertError);
+            throw insertError;
+          }
+
+          console.log(`✅ Parcela ${installmentData.installment_number}/${depositInstallments} CRIADA`);
         }
-
-        console.log("✅ Parcelas criadas com sucesso:", data?.length || 0);
       }
+
+      // 7. Deletar parcelas que não existem mais
+      const installmentNumbers = installmentsData.map((i) => i.installment_number);
+      const toDelete = existingInstallments?.filter(
+        (i) => !installmentNumbers.includes(i.installment_number)
+      );
+
+      if (toDelete && toDelete.length > 0) {
+        for (const installment of toDelete) {
+          const { error: deleteError } = await supabase
+            .from("deposit_installments")
+            .delete()
+            .eq("id", installment.id);
+
+          if (deleteError) {
+            console.error(`Erro ao deletar parcela ${installment.installment_number}:`, deleteError);
+            throw deleteError;
+          }
+
+          console.log(`🗑️ Parcela ${installment.installment_number} REMOVIDA`);
+        }
+      }
+
+      console.log("✅ Sincronização de parcelas do caução concluída com sucesso");
     } catch (error) {
       console.error("❌ Erro na sincronização de parcelas do caução:", error);
       throw error;
