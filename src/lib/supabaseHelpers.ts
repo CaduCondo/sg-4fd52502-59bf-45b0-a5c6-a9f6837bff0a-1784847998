@@ -64,16 +64,27 @@ export async function updateSingle<T>(
   updates: Partial<T>,
   options: QueryOptions = { throwOnNotFound: true }
 ): Promise<T> {
-  const { data, error } = await supabase
+  // PASSO 1: Fazer UPDATE sem tentar buscar resultado (evita erro 406)
+  const { error: updateError } = await supabase
     .from(table as any)
     .update(updates)
-    .eq("id", id)
+    .eq("id", id);
+
+  if (updateError) {
+    console.error(`Erro ao atualizar registro em ${table}:`, updateError);
+    throw new Error(`Erro ao atualizar registro: ${updateError.message}`);
+  }
+
+  // PASSO 2: Buscar o registro atualizado com SELECT separado
+  const { data, error: selectError } = await supabase
+    .from(table as any)
     .select("*")
+    .eq("id", id)
     .maybeSingle();
 
-  if (error) {
-    console.error(`Erro ao atualizar registro em ${table}:`, error);
-    throw new Error(`Erro ao atualizar registro: ${error.message}`);
+  if (selectError) {
+    console.error(`Erro ao buscar registro atualizado em ${table}:`, selectError);
+    throw new Error(`Erro ao buscar registro atualizado: ${selectError.message}`);
   }
 
   if (!data && options.throwOnNotFound) {

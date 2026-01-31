@@ -166,11 +166,6 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
     setSelectedUser(prev => prev ? { ...prev, role: roleValue } : null);
   };
 
-  const handleStatusChange = (value: string) => {
-    if (!selectedUser) return;
-    setSelectedUser(prev => prev ? { ...prev, active: value === "active" } : null);
-  };
-
   if (!selectedUser) return null;
 
   return (
@@ -295,23 +290,6 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
                     <SelectItem value="admin">Administrador</SelectItem>
                     <SelectItem value="broker">Corretor</SelectItem>
                     <SelectItem value="financial">Financeiro</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="status">Status</Label>
-                <Select
-                  value={selectedUser.active ? "active" : "inactive"}
-                  onValueChange={handleStatusChange}
-                  disabled={user?.role !== "admin"}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">Ativo</SelectItem>
-                    <SelectItem value="inactive">Inativo</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
