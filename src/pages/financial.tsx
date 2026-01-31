@@ -302,24 +302,15 @@ export default function Financial() {
 
   const years = ["2024", "2025", "2026", "2027"];
 
-  // Filter logic
-  const filteredPayments = payments.filter((payment) => {
-    const dueDate = new Date(payment.dueDate);
-    return (
-      dueDate.getMonth() === parseInt(selectedMonth) &&
-      dueDate.getFullYear() === parseInt(selectedYear)
-    );
-  });
-
-  // KPI Calculations
-  const totalExpected = filteredPayments.reduce((sum, p) => sum + p.expectedAmount, 0);
+  // KPI Calculations - usar 'payments' que já está filtrado corretamente
+  const totalExpected = payments.reduce((sum, p) => sum + p.expectedAmount, 0);
   
-  const totalReceived = filteredPayments
+  const totalReceived = payments
     .filter((p) => p.status === "paid" || p.status === "partial")
     .reduce((sum, p) => sum + (p.paidAmount || 0), 0);
 
   // Calcular taxa adm considerando isenções
-  const adminFee = filteredPayments
+  const adminFee = payments
     .filter((p) => p.status === "paid" || p.status === "partial")
     .reduce((sum, p) => {
       const rental = rentals.find(r => r.id === p.rentalId);
@@ -338,7 +329,7 @@ export default function Financial() {
     gross: totalReceived,
     expected: totalExpected,
     adminFee: adminFee,
-    managementFee: filteredPayments.reduce((sum, p) => {
+    managementFee: payments.reduce((sum, p) => {
        const rental = rentals.find(r => r.id === p.rentalId);
        const property = properties.find(prop => prop.id === rental?.propertyId);
        if (property && exemptLocationIds.includes(property.locationId)) return sum;
@@ -416,9 +407,9 @@ export default function Financial() {
 
   // Get sorted payments
   const getSortedPayments = () => {
-    if (!sortField || !sortDirection) return filteredPayments;
+    if (!sortField || !sortDirection) return payments;
 
-    return [...filteredPayments].sort((a, b) => {
+    return [...payments].sort((a, b) => {
       let aValue: any;
       let bValue: any;
 
