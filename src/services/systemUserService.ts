@@ -39,7 +39,16 @@ export async function createUser(userData: {
 }
 
 export async function updateUser(id: string, user: Partial<SystemUser>): Promise<SystemUser> {
-  return updateSingle<SystemUser>(TABLE, id, user);
+  // Converter camelCase → snake_case para campos do banco
+  const dbUser: any = { ...user };
+  
+  // Mapear campos camelCase → snake_case
+  if (user.birthDate !== undefined) {
+    dbUser.birth_date = user.birthDate;
+    delete dbUser.birthDate;
+  }
+  
+  return updateSingle<SystemUser>(TABLE, id, dbUser);
 }
 
 export async function deleteUser(id: string): Promise<void> {
