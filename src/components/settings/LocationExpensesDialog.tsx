@@ -95,12 +95,12 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
 
       const expenseData = {
         locationId: location.id,
-        expenseType: expenseType,
+        expenseType: expenseType as LocationExpense["expenseType"],
         description,
         amount: parseCurrencyToNumber(amount),
         referenceMonth: month,
         referenceYear: year,
-        status: "pending",
+        status: "pending" as LocationExpense["status"],
       };
 
       if (editingExpense) {
