@@ -130,6 +130,25 @@ export function PaymentReceipt({
     return isNaN(date.getTime()) ? new Date() : date;
   };
 
+  // Função auxiliar para formatar datas com segurança
+  const formatSafeDate = (date: Date | string | undefined | null, formatStr: string): string => {
+    try {
+      if (!date) return "Data não disponível";
+      
+      const dateObj = typeof date === "string" ? new Date(date + "T00:00:00") : date;
+      
+      if (isNaN(dateObj.getTime())) {
+        console.error("Data inválida:", date);
+        return "Data inválida";
+      }
+      
+      return format(dateObj, formatStr, { locale: ptBR });
+    } catch (error) {
+      console.error("Erro ao formatar data:", date, error);
+      return "Data inválida";
+    }
+  };
+
   const dueDate = safeDate(payment.dueDate);
   const contractStartDate = safeDate(rental.startDate);
   const contractEndDate = safeDate(rental.endDate);
@@ -210,12 +229,12 @@ export function PaymentReceipt({
     const shareText = 
       `RECIBO DE ALUGUEL\n\n` +
       `Recebi dos Srs. ${tenant.name.toUpperCase()}, a importância de: ${numberToWords(totalAmount).toUpperCase()}\n\n` +
-      `Referente ao mês de ${referenceMonthName}/${payment.referenceYear}, tendo seu vencimento em ${format(dueDate, "dd/MM/yyyy", { locale: ptBR })}\n` +
+      `Referente ao mês de ${referenceMonthName}/${payment.referenceYear}, tendo seu vencimento em ${formatSafeDate(dueDate, "dd/MM/yyyy")}\n` +
       `Imóvel: ${addressParts.join(", ").toUpperCase()}\n\n` +
       `Valor: ${formatCurrency(baseAmount)}\n` +
       (totalCharges > 0 ? `Multa/Juros: ${formatCurrency(totalCharges)}\n` : "") +
       `Total: ${formatCurrency(totalAmount)}\n\n` +
-      `SÃO PAULO, ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`;
+      `SÃO PAULO, ${formatSafeDate(new Date(), "dd/MM/yyyy 'às' HH:mm")}`;
 
     const shareData = {
       title: `Recibo de Pagamento - ${property.address || property.location}`,
@@ -316,7 +335,7 @@ export function PaymentReceipt({
               <div className="border-t pt-6 space-y-8">
                 <div className="text-center">
                   <p className="font-semibold uppercase">
-                    São Paulo, {format(new Date(), "dd 'de' MMMM 'de' yyyy, HH:mm", { locale: ptBR })}
+                    São Paulo, {formatSafeDate(new Date(), "dd 'de' MMMM 'de' yyyy, HH:mm")}
                   </p>
                 </div>
 
@@ -331,7 +350,7 @@ export function PaymentReceipt({
                         className="object-contain max-h-20"
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
-                          target.style.display = 'none';
+                          target.style.display = "none";
                         }}
                       />
                     </div>
