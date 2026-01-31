@@ -134,6 +134,8 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
         (updates as any).password = formData.newPassword;
       }
 
+      console.log("Enviando dados para atualização:", updates);
+
       await updateUser(user.id, updates);
       
       toast({
