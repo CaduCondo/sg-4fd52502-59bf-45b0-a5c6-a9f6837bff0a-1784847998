@@ -2,11 +2,12 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Payment, Property, Rental } from "@/types";
 
-export function useDashboardData(month: number, year: number) {
+export function useDashboardData(month: number, year: number, userId: string | undefined, userRole: string | undefined) {
   const [loading, setLoading] = useState(true);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [rentals, setRentals] = useState<Rental[]>([]);
+  const [allowedLocationIds, setAllowedLocationIds] = useState<string[]>([]);
 
   // Memoizar as funções de mapeamento para evitar recriação
   const mapPaymentFromDB = useCallback((data: any): Payment => {
@@ -88,39 +89,118 @@ export function useDashboardData(month: number, year: number) {
 
     const loadData = async () => {
       try {
-        if (!isMounted) return;
+        if (!userId) {
+          console.log("⚠️ Dashboard: userId não fornecido, aguardando...");
+          return;
+        }
+
         setLoading(true);
         
-        console.log("🔄 Dashboard: Carregando dados...", { month, year });
+        console.log("🔄 Dashboard: Carregando dados...", { month, year, userId, userRole });
 
-        // Buscar pagamentos do período
-        const { data: paymentsData, error: paymentsError } = await supabase
+        // 1. Buscar locais permitidos para usuários Financial
+        let allowedLocations: string[] = [];
+        
+        if (userRole === "financial") {
+          const { data: permissions, error: permError } = await supabase
+            .from("user_location_permissions")
+            .select("location_id")
+            .eq("user_id", userId);
+
+          if (permError) {
+            console.error("❌ Erro ao buscar permissões:", permError);
+          } else {
+            allowedLocations = permissions?.map(p => p.location_id) || [];
+            console.log("🔐 Locais permitidos para usuário Financial:", allowedLocations);
+            
+            if (isMounted) {
+              setAllowedLocationIds(allowedLocations);
+            }
+          }
+        } else {
+          console.log("👑 Usuário Admin/Broker: acesso a todos os locais");
+          if (isMounted) {
+            setAllowedLocationIds([]);
+          }
+        }
+
+        // 2. Buscar imóveis (filtrados por local se Financial)
+        let propertiesQuery = supabase.from("properties").select("*");
+        
+        if (userRole === "financial" && allowedLocations.length > 0) {
+          propertiesQuery = propertiesQuery.in("location_id", allowedLocations);
+          console.log("🏢 Filtrando properties por locais:", allowedLocations);
+        }
+
+        const { data: propertiesData, error: propertiesError } = await propertiesQuery;
+
+        if (propertiesError) {
+          console.error("❌ Erro ao buscar imóveis:", propertiesError);
+        } else {
+          console.log(`✅ Properties carregados: ${propertiesData?.length || 0}`);
+        }
+
+        // 3. Buscar locações (filtradas pelos imóveis permitidos)
+        const allowedPropertyIds = (propertiesData || []).map((p: any) => p.id);
+        
+        let rentalsQuery = supabase
+          .from("rentals")
+          .select("*")
+          .eq("is_active", true);
+
+        if (userRole === "financial" && allowedPropertyIds.length > 0) {
+          rentalsQuery = rentalsQuery.in("property_id", allowedPropertyIds);
+          console.log(`🏠 Filtrando rentals por ${allowedPropertyIds.length} properties permitidos`);
+        } else if (userRole === "financial" && allowedPropertyIds.length === 0) {
+          // Se não há properties permitidos, não há rentals
+          console.log("⚠️ Nenhum property permitido, sem rentals");
+          if (isMounted) {
+            setPayments([]);
+            setProperties([]);
+            setRentals([]);
+            setLoading(false);
+          }
+          return;
+        }
+
+        const { data: rentalsData, error: rentalsError } = await rentalsQuery;
+
+        if (rentalsError) {
+          console.error("❌ Erro ao buscar locações:", rentalsError);
+        } else {
+          console.log(`✅ Rentals carregados: ${rentalsData?.length || 0}`);
+        }
+
+        // 4. Buscar pagamentos do período (filtrados pelos rentals permitidos)
+        const allowedRentalIds = (rentalsData || []).map((r: any) => r.id);
+        
+        let paymentsQuery = supabase
           .from("payments")
           .select("*")
           .eq("reference_month", month.toString())
           .eq("reference_year", year.toString());
 
+        if (userRole === "financial" && allowedRentalIds.length > 0) {
+          paymentsQuery = paymentsQuery.in("rental_id", allowedRentalIds);
+          console.log(`💰 Filtrando payments por ${allowedRentalIds.length} rentals permitidos`);
+        } else if (userRole === "financial" && allowedRentalIds.length === 0) {
+          // Se não há rentals permitidos, não há payments
+          console.log("⚠️ Nenhum rental permitido, sem payments");
+          if (isMounted) {
+            setPayments([]);
+            setProperties((propertiesData || []).map(mapPropertyFromDB));
+            setRentals([]);
+            setLoading(false);
+          }
+          return;
+        }
+
+        const { data: paymentsData, error: paymentsError } = await paymentsQuery;
+
         if (paymentsError) {
-          console.error("Erro ao buscar pagamentos:", paymentsError);
-        }
-
-        // Buscar imóveis
-        const { data: propertiesData, error: propertiesError } = await supabase
-          .from("properties")
-          .select("*");
-
-        if (propertiesError) {
-          console.error("Erro ao buscar imóveis:", propertiesError);
-        }
-
-        // Buscar locações
-        const { data: rentalsData, error: rentalsError } = await supabase
-          .from("rentals")
-          .select("*")
-          .eq("is_active", true);
-
-        if (rentalsError) {
-          console.error("Erro ao buscar locações:", rentalsError);
+          console.error("❌ Erro ao buscar pagamentos:", paymentsError);
+        } else {
+          console.log(`✅ Payments carregados: ${paymentsData?.length || 0}`);
         }
 
         if (isMounted) {
@@ -128,9 +208,15 @@ export function useDashboardData(month: number, year: number) {
           setProperties((propertiesData || []).map(mapPropertyFromDB));
           setRentals((rentalsData || []).map(mapRentalFromDB));
           console.log("✅ Dashboard: Dados carregados com sucesso");
+          console.log("📊 Resumo:", {
+            properties: propertiesData?.length || 0,
+            rentals: rentalsData?.length || 0,
+            payments: paymentsData?.length || 0,
+            allowedLocations: userRole === "financial" ? allowedLocations : "Todos"
+          });
         }
       } catch (error) {
-        console.error("Erro ao carregar dados do dashboard:", error);
+        console.error("❌ Erro ao carregar dados do dashboard:", error);
       } finally {
         if (isMounted) {
           setLoading(false);
@@ -143,7 +229,7 @@ export function useDashboardData(month: number, year: number) {
     return () => {
       isMounted = false;
     };
-  }, [month, year, mapPaymentFromDB, mapPropertyFromDB, mapRentalFromDB]);
+  }, [month, year, userId, userRole, mapPaymentFromDB, mapPropertyFromDB, mapRentalFromDB]);
 
-  return { loading, payments, properties, rentals };
+  return { loading, payments, properties, rentals, allowedLocationIds };
 }

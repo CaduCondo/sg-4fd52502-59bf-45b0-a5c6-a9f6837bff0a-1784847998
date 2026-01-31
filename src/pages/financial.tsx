@@ -102,6 +102,8 @@ export default function Financial() {
     try {
       setIsLoading(true);
       
+      console.log("🔄 Financeiro: Carregando dados...", { selectedMonth, selectedYear, userRole: user?.role });
+      
       const [
         paymentsData, 
         propertiesData, 
@@ -129,6 +131,7 @@ export default function Financial() {
         
         const exemptIds = exemptions?.map(e => e.location_id) || [];
         setExemptLocationIds(exemptIds);
+        console.log("🎁 Locais com isenção de taxa:", exemptIds);
 
         // Buscar permissões de local (para usuários financeiros)
         if (user.role === "financial") {
@@ -139,9 +142,11 @@ export default function Financial() {
           
           allowedLocations = permissions?.map(p => p.location_id) || [];
           setAllowedLocationIds(allowedLocations);
+          console.log("🔐 Locais permitidos para usuário Financial:", allowedLocations);
         } else {
           // Admin e outros veem tudo
           setAllowedLocationIds([]);
+          console.log("👑 Usuário Admin/Broker: acesso a todos os locais");
         }
       }
 
@@ -155,12 +160,13 @@ export default function Financial() {
       // ✅ Filtrar despesas por locais permitidos se for usuário financeiro
       if (user?.role === "financial" && allowedLocations.length > 0) {
         expensesQuery = expensesQuery.in("location_id", allowedLocations);
+        console.log("💸 Filtrando despesas por locais permitidos");
       }
       
       const { data: expensesData, error: expensesError } = await expensesQuery;
       
       if (expensesError) {
-        console.error("Error fetching location expenses:", expensesError);
+        console.error("❌ Error fetching location expenses:", expensesError);
       }
       
       const totalExpenses = expensesData
@@ -184,6 +190,7 @@ export default function Financial() {
         filteredProperties = propertiesData.filter(p => 
           allowedLocations.includes(p.locationId)
         );
+        console.log(`🏢 Properties filtrados: ${filteredProperties.length} de ${propertiesData.length}`);
       }
 
       // Filtrar rentals que usam properties permitidas
@@ -193,6 +200,7 @@ export default function Financial() {
         filteredRentals = rentalsData.filter(r => 
           allowedPropertyIds.includes(r.propertyId)
         );
+        console.log(`🏠 Rentals filtrados: ${filteredRentals.length} de ${rentalsData.length}`);
       }
 
       setProperties(filteredProperties);
@@ -204,7 +212,7 @@ export default function Financial() {
       const filteredPayments = paymentsData.filter((payment) => {
         const dueDate = new Date(payment.dueDate);
         const matchesDate = 
-          dueDate.getMonth() === parseInt(selectedMonth) &&
+          dueDate.getMonth() === parseInt(selectedMonth) - 1 &&
           dueDate.getFullYear() === parseInt(selectedYear);
         
         const matchesPermission = 
@@ -215,10 +223,13 @@ export default function Financial() {
         return matchesDate && matchesPermission;
       });
       
+      console.log(`💵 Payments filtrados: ${filteredPayments.length} de ${paymentsData.length}`);
+      console.log("✅ Financeiro: Dados carregados com sucesso");
+      
       setPayments(filteredPayments);
 
     } catch (error) {
-      console.error("Error loading financial data:", error);
+      console.error("❌ Error loading financial data:", error);
       toast({
         title: "Erro",
         description: "Não foi possível carregar os dados financeiros.",

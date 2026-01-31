@@ -11,17 +11,17 @@ import { useAuth } from "@/contexts/AuthContext";
 import { WelcomeCard } from "@/components/dashboard/WelcomeCard";
 
 export default function Dashboard() {
-  const currentDate = new Date();
-  const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth() + 1);
-  const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
+  const now = new Date();
+  const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState(now.getFullYear());
   const { user } = useAuth();
 
-  const { 
-    payments, 
-    properties, 
-    rentals, 
-    loading 
-  } = useDashboardData(selectedMonth, selectedYear);
+  const { loading, payments, properties, rentals, allowedLocationIds } = useDashboardData(
+    selectedMonth,
+    selectedYear,
+    user?.id,
+    user?.role
+  );
 
   const handlePeriodChange = (month: number, year: number) => {
     console.log("📅 Mudando período:", { month, year });
