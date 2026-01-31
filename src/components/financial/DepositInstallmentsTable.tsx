@@ -26,6 +26,22 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { applyMoneyMask, parseCurrencyToFloat } from "@/lib/masks";
 
+/**
+ * Formata data YYYY-MM-DD para DD/MM/YYYY sem conversão de timezone
+ */
+const formatDateWithoutTimezone = (dateString: string | null): string => {
+  if (!dateString) return "-";
+  
+  // Se já estiver no formato YYYY-MM-DD
+  const match = dateString.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (match) {
+    const [, year, month, day] = match;
+    return `${day}/${month}/${year}`;
+  }
+  
+  return "-";
+};
+
 interface DepositInstallmentData {
   id: string;
   rental_id: string;
@@ -318,7 +334,7 @@ export function DepositInstallmentsTable({
       "Valor Pg Corretagem Parceiro": item.partner_commission || 0,
       "Valor Pg Corretagem Interno": item.internal_commission || 0,
       Parcela: `${item.installment_number}/${item.total_installments}`,
-      "Data Pagamento": item.payment_date ? new Date(item.payment_date).toLocaleDateString("pt-BR") : "-",
+      "Data Pagamento": formatDateWithoutTimezone(item.payment_date),
       "Valor Parcela": item.amount,
       "Código PIX": item.pix_code || "-",
     }));
@@ -764,9 +780,7 @@ export function DepositInstallmentsTable({
                             {installment.installment_number}/{installment.total_installments}
                           </TableCell>
                           <TableCell className={`text-sm ${rowBgClass}`}>
-                            {installment.payment_date 
-                              ? new Date(installment.payment_date).toLocaleDateString("pt-BR")
-                              : "-"}
+                            {formatDateWithoutTimezone(installment.payment_date)}
                           </TableCell>
                           <TableCell className={`text-right font-medium text-slate-900 text-sm ${rowBgClass}`}>
                             {formatCurrency(installment.amount)}
