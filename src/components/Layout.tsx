@@ -247,7 +247,7 @@ export function Layout({ children }: LayoutProps) {
             </div>
 
             {/* Desktop Navigation */}
-            <div className="hidden md:flex items-center gap-1 flex-1">
+            <div className="hidden md:flex items-center gap-1.5 flex-1 justify-start pl-4">
               {navigationItems.map((item) => {
                 const Icon = item.icon;
                 const active = isActive(item.path);
@@ -257,14 +257,14 @@ export function Layout({ children }: LayoutProps) {
                     key={item.name}
                     href={item.path}
                     className={cn(
-                      "group flex items-center gap-x-2 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-all",
+                      "group flex items-center gap-x-2 rounded-lg px-3 py-2 text-sm font-semibold transition-all",
                       active
                         ? "bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400"
                         : "text-slate-700 hover:bg-slate-50 hover:text-blue-600 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-blue-400"
                     )}
                   >
                     <Icon className="h-4 w-4" />
-                    <span className="hidden lg:inline">{item.name}</span>
+                    <span>{item.name}</span>
                   </Link>
                 );
               })}

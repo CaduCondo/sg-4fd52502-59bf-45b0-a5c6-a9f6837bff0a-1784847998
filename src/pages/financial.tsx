@@ -687,7 +687,7 @@ export default function Financial() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <FileText className="h-5 w-5 text-slate-400" />
-                  <CardTitle className="text-base font-medium text-slate-700">
+                  <CardTitle className="text-xl font-semibold text-slate-800">
                     Detalhamento de Locações - {months[parseInt(selectedMonth) - 1].label} {selectedYear}
                   </CardTitle>
                 </div>

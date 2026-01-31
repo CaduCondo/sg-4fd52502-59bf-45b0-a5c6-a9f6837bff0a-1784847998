@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 
 export function WhatsAppButton() {
   const handleWhatsAppClick = () => {
-    const phoneNumber = "5511976543210"; // (11) 97654-3210 em formato internacional
+    const phoneNumber = "5511996803386"; // +55 11 99680-3386 em formato internacional
     const message = encodeURIComponent("Olá! Gostaria de mais informações sobre os imóveis disponíveis.");
     const url = `https://wa.me/${phoneNumber}?text=${message}`;
     window.open(url, "_blank");

@@ -484,7 +484,7 @@ export function DepositInstallmentsTable({
         <Card className="border-slate-200 shadow-sm overflow-hidden">
           <CardHeader className="border-b border-slate-100 bg-white pb-4">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <CardTitle className="text-lg font-medium text-slate-700">
+              <CardTitle className="text-xl font-semibold text-slate-800">
                 Detalhamento dos Cauções
               </CardTitle>
               <div className="flex flex-wrap gap-4 items-end">
@@ -634,7 +634,7 @@ export function DepositInstallmentsTable({
 
                     return installments.map((installment, index) => {
                       const isPaid = installment.pix_code && installment.pix_code.trim() !== "";
-                      const rowBgClass = isPaid ? "bg-green-50/30" : "bg-red-50/30";
+                      const rowBgClass = isPaid ? "bg-green-100/60" : "bg-red-100/60";
                       
                       return (
                         <TableRow key={installment.id} className="hover:bg-slate-50 transition-colors">
@@ -783,7 +783,7 @@ export function DepositInstallmentsTable({
                                     });
                                   }}
                                   placeholder="Digite o código PIX"
-                                  className="h-9 text-sm"
+                                  className="h-9 text-sm bg-white"
                                   autoFocus
                                 />
                                 <Button

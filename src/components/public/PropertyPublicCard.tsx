@@ -160,45 +160,45 @@ export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-5">
+          <div className="space-y-3">
             {/* Descrição */}
             {property.description && (
               <div>
-                <h3 className="font-semibold text-base mb-2">📝 Descrição</h3>
+                <h3 className="font-semibold text-base mb-1.5">📝 Descrição</h3>
                 <p className="text-sm text-slate-600 leading-relaxed">{property.description}</p>
               </div>
             )}
 
             {/* Informações Principais */}
             <div>
-              <h3 className="font-semibold text-base mb-3">🏠 Informações do Imóvel</h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <h3 className="font-semibold text-base mb-2">🏠 Informações do Imóvel</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                 {property.rooms > 0 && (
-                  <Card className="p-3 text-center">
-                    <Bed className="h-6 w-6 mx-auto mb-2 text-blue-600" />
+                  <Card className="p-2.5 text-center">
+                    <Bed className="h-5 w-5 mx-auto mb-1.5 text-blue-600" />
                     <p className="text-xs text-slate-600">Quartos</p>
-                    <p className="text-lg font-bold">{property.rooms}</p>
+                    <p className="text-base font-bold">{property.rooms}</p>
                   </Card>
                 )}
                 {property.bathrooms > 0 && (
-                  <Card className="p-3 text-center">
-                    <Bath className="h-6 w-6 mx-auto mb-2 text-blue-600" />
+                  <Card className="p-2.5 text-center">
+                    <Bath className="h-5 w-5 mx-auto mb-1.5 text-blue-600" />
                     <p className="text-xs text-slate-600">Banheiros</p>
-                    <p className="text-lg font-bold">{property.bathrooms}</p>
+                    <p className="text-base font-bold">{property.bathrooms}</p>
                   </Card>
                 )}
                 {property.area > 0 && (
-                  <Card className="p-3 text-center">
-                    <Maximize className="h-6 w-6 mx-auto mb-2 text-blue-600" />
+                  <Card className="p-2.5 text-center">
+                    <Maximize className="h-5 w-5 mx-auto mb-1.5 text-blue-600" />
                     <p className="text-xs text-slate-600">Área</p>
-                    <p className="text-lg font-bold">{property.area}m²</p>
+                    <p className="text-base font-bold">{property.area}m²</p>
                   </Card>
                 )}
                 {property.hasGarage && (
-                  <Card className="p-3 text-center">
-                    <Car className="h-6 w-6 mx-auto mb-2 text-blue-600" />
+                  <Card className="p-2.5 text-center">
+                    <Car className="h-5 w-5 mx-auto mb-1.5 text-blue-600" />
                     <p className="text-xs text-slate-600">Garagem</p>
-                    <p className="text-lg font-bold">Sim</p>
+                    <p className="text-base font-bold">Sim</p>
                   </Card>
                 )}
               </div>
@@ -206,31 +206,31 @@ export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
 
             {/* Detalhes Adicionais */}
             <div>
-              <h3 className="font-semibold text-base mb-3">✨ Detalhes Adicionais</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg">
-                  <Armchair className="h-5 w-5 text-slate-600" />
+              <h3 className="font-semibold text-base mb-2">✨ Detalhes Adicionais</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                <div className="flex items-center gap-2 p-2.5 bg-slate-50 rounded-lg">
+                  <Armchair className="h-4 w-4 text-slate-600" />
                   <div>
                     <p className="text-xs font-medium">Móveis Planejados</p>
-                    <Badge variant={property.hasFurniture ? "default" : "secondary"} className="mt-1 text-xs">
+                    <Badge variant={property.hasFurniture ? "default" : "secondary"} className="mt-0.5 text-xs">
                       {property.hasFurniture ? "✅ Sim" : "❌ Não"}
                     </Badge>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg">
-                  <PawPrint className="h-5 w-5 text-slate-600" />
+                <div className="flex items-center gap-2 p-2.5 bg-slate-50 rounded-lg">
+                  <PawPrint className="h-4 w-4 text-slate-600" />
                   <div>
                     <p className="text-xs font-medium">Aceita Pets</p>
-                    <Badge variant={property.acceptsPets ? "default" : "secondary"} className="mt-1 text-xs">
+                    <Badge variant={property.acceptsPets ? "default" : "secondary"} className="mt-0.5 text-xs">
                       {property.acceptsPets ? "✅ Sim" : "❌ Não"}
                     </Badge>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg">
-                  <Car className="h-5 w-5 text-slate-600" />
+                <div className="flex items-center gap-2 p-2.5 bg-slate-50 rounded-lg">
+                  <Car className="h-4 w-4 text-slate-600" />
                   <div>
                     <p className="text-xs font-medium">Vaga de Garagem</p>
-                    <Badge variant={property.hasGarage ? "default" : "secondary"} className="mt-1 text-xs">
+                    <Badge variant={property.hasGarage ? "default" : "secondary"} className="mt-0.5 text-xs">
                       {property.hasGarage ? "✅ Sim" : "❌ Não"}
                     </Badge>
                   </div>
@@ -239,45 +239,57 @@ export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
             </div>
 
             {/* Valores */}
-            <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-5 rounded-lg">
-              <h3 className="font-semibold text-base mb-3">💰 Valores</h3>
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-slate-700">Aluguel:</span>
-                  <span className="text-lg font-semibold">
-                    {property.value.toLocaleString("pt-BR", {
-                      style: "currency",
-                      currency: "BRL",
-                    })}
-                  </span>
-                </div>
-                {property.hasGarage && property.garageValue > 0 && (
+            <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded-lg">
+              <h3 className="font-semibold text-base mb-2">💰 Valores</h3>
+              <div className="space-y-1.5">
+                {property.hasGarage && property.garageValue > 0 ? (
+                  <>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-slate-700">Aluguel:</span>
+                      <span className="text-base font-semibold">
+                        {property.value.toLocaleString("pt-BR", {
+                          style: "currency",
+                          currency: "BRL",
+                        })}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-slate-700">Garagem:</span>
+                      <span className="text-base font-semibold">
+                        {property.garageValue.toLocaleString("pt-BR", {
+                          style: "currency",
+                          currency: "BRL",
+                        })}
+                      </span>
+                    </div>
+                    <div className="border-t pt-1.5 mt-1.5">
+                      <div className="flex justify-between items-center">
+                        <span className="text-base font-semibold">Total Mensal:</span>
+                        <span className="text-xl font-bold text-blue-600">
+                          {(property.value + property.garageValue).toLocaleString("pt-BR", {
+                            style: "currency",
+                            currency: "BRL",
+                          })}
+                        </span>
+                      </div>
+                    </div>
+                  </>
+                ) : (
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-slate-700">Garagem:</span>
-                    <span className="text-lg font-semibold">
-                      {property.garageValue.toLocaleString("pt-BR", {
+                    <span className="text-base font-semibold">Valor Mensal:</span>
+                    <span className="text-xl font-bold text-blue-600">
+                      {property.value.toLocaleString("pt-BR", {
                         style: "currency",
                         currency: "BRL",
                       })}
                     </span>
                   </div>
                 )}
-                <div className="border-t pt-2 mt-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-base font-semibold">Total Mensal:</span>
-                    <span className="text-xl font-bold text-blue-600">
-                      {(property.value + (property.hasGarage ? property.garageValue : 0)).toLocaleString("pt-BR", {
-                        style: "currency",
-                        currency: "BRL",
-                      })}
-                    </span>
-                  </div>
-                </div>
               </div>
             </div>
 
             {/* Botões de Ação */}
-            <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex flex-col sm:flex-row gap-2 pt-2">
               <Button
                 onClick={() => setShowInterestForm(true)}
                 className="flex-1 bg-green-500 hover:bg-green-600"
@@ -289,9 +301,9 @@ export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
               <ShareButtons propertyName={displayTitle} propertyUrl={`/locations/${property.id}`} />
             </div>
 
-            {/* Galeria de Imagens - AGORA NO RODAPÉ */}
+            {/* Galeria de Imagens - NO RODAPÉ */}
             <div>
-              <h3 className="font-semibold text-base mb-3">📸 Galeria de Fotos</h3>
+              <h3 className="font-semibold text-base mb-2">📸 Galeria de Fotos</h3>
               <div className="relative aspect-video bg-slate-100 rounded-lg overflow-hidden">
                 {images.length > 0 ? (
                   <>
