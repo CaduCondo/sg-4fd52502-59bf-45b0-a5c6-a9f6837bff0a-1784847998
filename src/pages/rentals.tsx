@@ -36,22 +36,17 @@ export default function RentalsPage() {
   const [selectedRental, setSelectedRental] = useState<Rental | null>(null);
   const [isViewMode, setIsViewMode] = useState(false);
   const [rentalToDelete, setRentalToDelete] = useState<Rental | null>(null);
+  const [rentalToEnd, setRentalToEnd] = useState<Rental | null>(null);
   const [showInactive, setShowInactive] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
 
   const loadData = async () => {
     try {
       setLoading(true);
-      // Optimize: Only fetch rentals initially for the grid
-      // Properties/Tenants/Locations are heavy and mostly needed for the form or specific displays
-      // We can fetch them in background or simplified versions
-      
       const rentalsData = await getAllRentals();
       setRentals(rentalsData);
       
-      // Fetch others in background to unblock UI
       loadAuxiliaryData();
-      
     } catch (error) {
       console.error("Erro ao carregar dados:", error);
       toast({
@@ -90,11 +85,6 @@ export default function RentalsPage() {
   const inactiveRentals = rentals.filter((r) => !r.isActive);
   const canCreateRental = availableProperties.length > 0 && availableTenants.length > 0;
 
-  const getLocationName = (locationId: string) => {
-    const location = locations.find((loc) => loc.id === locationId);
-    return location?.name || "Local não encontrado";
-  };
-
   const getPropertyByRental = (rental: Rental) => {
     return properties.find((p) => p.id === rental.propertyId);
   };
@@ -108,16 +98,17 @@ export default function RentalsPage() {
     return `${day}/${month}/${year}`;
   };
 
-  const handleEndContract = async (rental: Rental) => {
+  const confirmEndContract = async () => {
+    if (!rentalToEnd) return;
+
     try {
-      await terminateContract(rental.id);
+      await terminateContract(rentalToEnd.id);
       
-      // Update property and tenant status
-      if (rental.propertyId) {
-        await updateProperty(rental.propertyId, { status: "available" });
+      if (rentalToEnd.propertyId) {
+        await updateProperty(rentalToEnd.propertyId, { status: "available" });
       }
-      if (rental.tenantId) {
-        await updateTenant(rental.tenantId, { status: "active" });
+      if (rentalToEnd.tenantId) {
+        await updateTenant(rentalToEnd.tenantId, { status: "active" });
       }
 
       toast({
@@ -125,6 +116,7 @@ export default function RentalsPage() {
         description: "Contrato encerrado com sucesso!",
       });
       
+      setRentalToEnd(null);
       loadData();
     } catch (error) {
       console.error("Error ending contract:", error);
@@ -328,8 +320,7 @@ export default function RentalsPage() {
                                   className="bg-yellow-500 hover:bg-yellow-600 text-white border-yellow-500"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    const confirmEnd = confirm("Tem certeza que deseja encerrar este contrato?");
-                                    if (confirmEnd) handleEndContract(rental);
+                                    setRentalToEnd(rental);
                                   }}
                                 >
                                   <XCircle className="h-4 w-4" />
@@ -399,8 +390,7 @@ export default function RentalsPage() {
                                     className="bg-yellow-500 hover:bg-yellow-600 text-white border-yellow-500"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      const confirmEnd = confirm("Tem certeza que deseja encerrar este contrato?");
-                                      if (confirmEnd) handleEndContract(rental);
+                                      setRentalToEnd(rental);
                                     }}
                                   >
                                     <XCircle className="h-4 w-4" />
@@ -573,9 +563,26 @@ export default function RentalsPage() {
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancelar</AlertDialogCancel>
-              <Button onClick={async (e) => { (e.target as HTMLButtonElement).blur(); await handleDeleteRental(); }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              <AlertDialogAction onClick={handleDeleteRental} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
                 Excluir
-              </Button>
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog open={!!rentalToEnd} onOpenChange={() => setRentalToEnd(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirmar encerramento</AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que deseja encerrar este contrato? O imóvel ficará disponível e o inquilino voltará ao status ativo.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmEndContract} className="bg-yellow-500 text-white hover:bg-yellow-600">
+                Encerrar Contrato
+              </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>

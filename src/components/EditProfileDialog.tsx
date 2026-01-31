@@ -10,7 +10,6 @@ import { updateUser, resetPassword, unlockUser } from "@/services/systemUserServ
 import { User, Mail, Phone, MapPin, Calendar, Shield, Save, KeyRound, Unlock, Camera } from "lucide-react";
 import { applyCpfMask, applyPhoneMask, applyCepMask, removeMask } from "@/lib/masks";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { supabase } from "@/integrations/supabase/client";
 
 interface ExtendedSystemUser extends SystemUser {
   photo?: string;
@@ -158,7 +157,7 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!selectedUser) return;
+    if (!selectedUser || !user?.id) return;
 
     try {
       setIsSubmitting(true);
@@ -168,27 +167,32 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
         email: selectedUser.email,
         phone: selectedUser.phone,
         role: selectedUser.role,
+        document: selectedUser.document,
+        birthDate: selectedUser.birthDate,
+        cep: selectedUser.cep,
+        street: selectedUser.street,
+        number: selectedUser.number,
+        complement: selectedUser.complement,
+        neighborhood: selectedUser.neighborhood,
+        city: selectedUser.city,
+        state: selectedUser.state,
+        photo: selectedUser.photo,
       };
 
-      if (user?.id) {
-        await updateUser(user.id, updates);
-        
-        // Se admin alterou a senha, atualizar separadamente
-        if (user.role === "admin" && formData.newPassword) {
-          await supabase
-            .from("system_users")
-            .update({ password: formData.newPassword })
-            .eq("id", user.id);
-        }
-        
-        toast({
-          title: "Sucesso",
-          description: "Perfil atualizado com sucesso!",
-        });
-        
-        onSuccess();
-        onOpenChange(false);
+      // Se admin alterou a senha, incluir no mesmo update
+      if (user.role === "admin" && formData.newPassword) {
+        (updates as any).password = formData.newPassword;
       }
+
+      await updateUser(user.id, updates);
+      
+      toast({
+        title: "Sucesso",
+        description: "Perfil atualizado com sucesso!",
+      });
+      
+      onSuccess();
+      onOpenChange(false);
     } catch (error) {
       console.error("Error updating profile:", error);
       toast({
@@ -270,8 +274,8 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
                 </Label>
                 <Input
                   id="profile-name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  value={selectedUser.name}
+                  onChange={(e) => handleInputChange("name", e.target.value)}
                   placeholder="Seu nome completo"
                 />
               </div>
