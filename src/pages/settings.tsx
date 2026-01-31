@@ -1019,12 +1019,15 @@ export default function Settings() {
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancelar</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={confirmDeleteLocation}
+              <Button
+                onClick={(e) => {
+                  (e.target as HTMLButtonElement).blur();
+                  confirmDeleteLocation();
+                }}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
                 Excluir
-              </AlertDialogAction>
+              </Button>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
