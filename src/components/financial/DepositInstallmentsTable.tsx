@@ -783,7 +783,7 @@ export function DepositInstallmentsTable({
                                     });
                                   }}
                                   placeholder="Digite o código PIX"
-                                  className="h-9 text-sm bg-white"
+                                  className="h-9 text-sm bg-white border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                                   autoFocus
                                 />
                                 <Button
