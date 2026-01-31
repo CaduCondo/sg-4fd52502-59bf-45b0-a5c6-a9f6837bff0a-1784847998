@@ -48,6 +48,10 @@ export async function updateUser(id: string, user: Partial<SystemUser>): Promise
     delete dbUser.birthDate;
   }
   
+  console.log("Atualizando usuário com ID:", id);
+  console.log("Dados antes da atualização:", user);
+  console.log("Dados após a conversão para snake_case:", dbUser);
+  
   return updateSingle<SystemUser>(TABLE, id, dbUser);
 }
 

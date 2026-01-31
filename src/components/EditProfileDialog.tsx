@@ -134,8 +134,6 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
         (updates as any).password = formData.newPassword;
       }
 
-      console.log("Enviando dados para atualização:", updates);
-
       await updateUser(user.id, updates);
       
       toast({
@@ -146,7 +144,7 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
       onSuccess();
       onOpenChange(false);
     } catch (error) {
-      console.error("Error updating profile:", error);
+      console.error("Erro ao atualizar perfil:", error);
       toast({
         title: "Erro",
         description: "Não foi possível atualizar o perfil.",
@@ -154,6 +152,7 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
       });
     } finally {
       setIsSubmitting(false);
+      onOpenChange?.(false);
     }
   };
 
