@@ -159,8 +159,8 @@ export function useDashboardData(month: number, year: number) {
       let paymentsQuery = supabase
         .from("payments")
         .select("status, expected_amount, paid_amount, due_date, admin_fee, rental_id, reference_month, reference_year")
-        .eq("reference_month", month)
-        .eq("reference_year", year);
+        .eq("reference_month", month.toString())
+        .eq("reference_year", year.toString());
 
       if (allowedLocationIds && propertyIds.length > 0) {
         const { data: rentalIds } = await supabase
@@ -185,8 +185,8 @@ export function useDashboardData(month: number, year: number) {
       const { data: expensesData, error: expensesError } = await supabase
         .from("location_expenses")
         .select("amount")
-        .eq("reference_month", month)
-        .eq("reference_year", year);
+        .eq("reference_month", month.toString())
+        .eq("reference_year", year.toString());
 
       if (expensesError) throw expensesError;
 
@@ -264,8 +264,8 @@ export function useDashboardData(month: number, year: number) {
         let monthPaymentsQuery = supabase
           .from("payments")
           .select("status, paid_amount, rental_id")
-          .eq("reference_month", adjustedMonth)
-          .eq("reference_year", targetYear)
+          .eq("reference_month", adjustedMonth.toString())
+          .eq("reference_year", targetYear.toString())
           .eq("status", "paid");
 
         if (allowedLocationIds && propertyIds.length > 0) {
@@ -285,8 +285,8 @@ export function useDashboardData(month: number, year: number) {
         let monthExpensesQuery = supabase
           .from("location_expenses")
           .select("amount")
-          .eq("reference_month", adjustedMonth)
-          .eq("reference_year", targetYear);
+          .eq("reference_month", adjustedMonth.toString())
+          .eq("reference_year", targetYear.toString());
 
         if (allowedLocationIds) {
           monthExpensesQuery = monthExpensesQuery.in("location_id", allowedLocationIds);
