@@ -8,11 +8,14 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { SEO } from "@/components/SEO";
 import { PeriodSelector } from "@/components/dashboard/PeriodSelector";
+import { useAuth } from "@/contexts/AuthContext";
+import { WelcomeCard } from "@/components/dashboard/WelcomeCard";
 
 export default function Dashboard() {
   const currentDate = new Date();
   const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth());
   const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
+  const { user } = useAuth();
 
   const { dashboardData, loading, error, refresh } = useDashboardData(selectedMonth, selectedYear);
 
@@ -47,6 +50,8 @@ export default function Dashboard() {
     <Layout>
       <SEO title="Dashboard - Gerenciador de Locações" />
       <div className="p-6 space-y-8">
+        <WelcomeCard userName={user?.user_metadata?.full_name || user?.email?.split('@')[0] || "Usuário"} />
+        
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold tracking-tight text-slate-900">Dashboard</h1>
           <PeriodSelector 

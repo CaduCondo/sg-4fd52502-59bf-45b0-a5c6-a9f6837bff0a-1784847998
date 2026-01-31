@@ -20,6 +20,8 @@ interface DashboardData {
   grossRevenue: number;
   totalFeesAndExpenses: number;
   netRevenue: number;
+  revenueData: any[];
+  occupancyData: any[];
 }
 
 const DEFAULT_DATA: DashboardData = {
@@ -39,6 +41,8 @@ const DEFAULT_DATA: DashboardData = {
   grossRevenue: 0,
   totalFeesAndExpenses: 0,
   netRevenue: 0,
+  revenueData: [],
+  occupancyData: [],
 };
 
 export function useDashboardData(month: number, year: number) {
@@ -244,6 +248,17 @@ export function useDashboardData(month: number, year: number) {
       const totalFeesAndExpenses = adminFeeTotal + managementFeeTotal + locationExpensesTotal;
       const netRevenue = grossRevenue - totalFeesAndExpenses;
 
+      const occupancyData = [
+        { name: "Ocupados", value: rentedProperties, color: "#4f46e5" },
+        { name: "Disponíveis", value: availableProperties, color: "#22c55e" },
+        { name: "Indisponíveis", value: unavailableProperties, color: "#f97316" },
+      ];
+
+      const revenueData = [
+        { name: "Recebido", value: grossRevenue },
+        { name: "Esperado", value: expectedAmount },
+      ];
+
       setDashboardData({
         totalProperties,
         availableProperties,
@@ -261,6 +276,8 @@ export function useDashboardData(month: number, year: number) {
         grossRevenue,
         totalFeesAndExpenses,
         netRevenue,
+        revenueData,
+        occupancyData,
       });
 
     } catch (err: any) {
