@@ -24,6 +24,7 @@ interface OverviewCardsProps {
     totalTenants: number;
     activeContracts: number;
     overduePayments: number;
+    overdueAmount: number;
     dueTodayPayments: number;
     completedPayments: number;
     expectedAmount: number;
@@ -156,13 +157,14 @@ export function OverviewCards({ data }: OverviewCardsProps) {
       {/* Terceira Linha - Financeiro */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <MetricCard
-          title="Recebimentos do Período"
-          value={data.completedPayments}
-          subtitle="Quantidade recebida"
-          icon={Receipt}
-          iconColor="text-teal-600"
-          iconBgClass="bg-teal-50"
-          borderColorClass="border-l-teal-500"
+          title="Total em Atraso"
+          value={formatCurrency(data.overdueAmount)}
+          subtitle="Valor acumulado"
+          icon={AlertCircle}
+          iconColor="text-red-600"
+          iconBgClass="bg-red-50"
+          borderColorClass="border-l-red-500"
+          layout="horizontal"
         />
 
         <MetricCard
