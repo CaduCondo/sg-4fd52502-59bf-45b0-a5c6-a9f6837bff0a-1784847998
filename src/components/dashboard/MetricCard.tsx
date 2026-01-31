@@ -26,57 +26,11 @@ export function MetricCard({
   iconColor,
   iconBgClass,
   borderColorClass,
-  layout = "vertical",
+  layout = "horizontal",
   valueClassName,
   clickable = false,
 }: MetricCardProps) {
   const displayValue = typeof value === "number" ? value.toLocaleString("pt-BR") : value;
-
-  if (layout === "horizontal") {
-    return (
-      <Card className={cn(
-        "border-l-4 transition-all duration-200 h-full",
-        clickable && "cursor-pointer hover:shadow-md active:scale-[0.98]",
-        borderColorClass
-      )}>
-        <CardContent className="p-4">
-          <div className="flex items-start gap-3">
-            <div className={cn(
-              "p-2 rounded-lg flex-shrink-0 shadow-sm",
-              iconBgClass
-            )}>
-              <Icon className={cn("h-5 w-5", iconColor)} />
-            </div>
-            
-            <div className="flex-1 min-w-0">
-              <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1">
-                {title}
-              </div>
-              
-              <div className={cn(
-                "text-2xl font-bold text-foreground mb-1",
-                "whitespace-nowrap overflow-hidden text-ellipsis text-left",
-                valueClassName
-              )}>
-                {displayValue}
-              </div>
-              
-              {subtitle && (
-                <div className="text-xs text-muted-foreground leading-snug">
-                  {subtitle}
-                </div>
-              )}
-              {secondaryInfo && (
-                <div className="text-xs text-muted-foreground font-medium mt-0.5">
-                  {secondaryInfo}
-                </div>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
 
   return (
     <Card className={cn(
@@ -85,29 +39,32 @@ export function MetricCard({
       borderColorClass
     )}>
       <CardContent className="p-4">
-        <div className="space-y-2">
-          <div className="flex items-center gap-2.5 mb-3">
+        <div className="flex flex-col gap-2">
+          {/* Título no topo */}
+          <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            {title}
+          </div>
+          
+          {/* Ícone + Valor (lado a lado) */}
+          <div className="flex items-center gap-3">
             <div className={cn(
-              "p-2 rounded-lg flex-shrink-0 shadow-sm",
+              "p-2.5 rounded-lg flex-shrink-0 shadow-sm",
               iconBgClass
             )}>
-              <Icon className={cn("h-5 w-5", iconColor)} />
+              <Icon className={cn("h-6 w-6", iconColor)} />
             </div>
-            <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide flex-1">
-              {title}
+            
+            <div className={cn(
+              "text-3xl font-bold text-foreground",
+              valueClassName
+            )}>
+              {displayValue}
             </div>
           </div>
-
-          <div className={cn(
-            "text-2xl font-bold text-foreground leading-tight",
-            "whitespace-nowrap overflow-hidden text-ellipsis text-left",
-            valueClassName
-          )}>
-            {displayValue}
-          </div>
-
+          
+          {/* Descrições embaixo */}
           {(subtitle || secondaryInfo) && (
-            <div className="flex flex-col gap-0.5 pt-1">
+            <div className="flex flex-col gap-0.5">
               {subtitle && (
                 <div className="text-xs text-muted-foreground leading-snug">
                   {subtitle}
