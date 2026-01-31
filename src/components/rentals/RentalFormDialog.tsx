@@ -388,6 +388,13 @@ export function RentalFormDialog({
           depositInstallment3PixCode: depositData.depositInstallment3PixCode,
         };
 
+        const statusTyped = mappedRental.status as "active" | "terminated" | "pending";
+        mappedRental.status = statusTyped;
+
+        if (isViewMode) {
+          mappedRental.status = "active" as "active" | "terminated" | "pending";
+        }
+
         await createPaymentsForRental(mappedRental);
         await createDepositInstallments(createdRental.id, depositData);
 

@@ -87,8 +87,9 @@ export default function Dashboard() {
 
             {/* Financial Charts - 6 Months */}
             <FinancialCharts
-              monthlyRevenueData={dashboardData?.monthlyRevenueData}
-              monthlyExpensesData={dashboardData?.monthlyExpensesData}
+              monthlyRevenueData={dashboardData.monthlyRevenueData}
+              monthlyExpensesData={dashboardData.monthlyExpensesData}
+              occupancyData={dashboardData.occupancyData}
             />
           </>
         )}

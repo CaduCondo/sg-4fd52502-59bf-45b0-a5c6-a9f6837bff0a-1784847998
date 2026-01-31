@@ -36,6 +36,8 @@ const mapRentalData = (data: any): Rental => {
     depositInstallment3PaymentDate: data.deposit_installment_3_payment_date,
     depositInstallment3PixCode: data.deposit_installment_3_pix_code,
 
+    autoRenew: false, // Campo obrigatório na interface Rental, default false se não existir no banco
+
     // Joins
     properties: data.properties,
     tenants: data.tenants
@@ -212,7 +214,7 @@ export const create = async (rental: Omit<Rental, "id">) => {
     payment_day: rental.paymentDay,
     monthly_rent: rental.value,
     value: rental.value,
-    deposit: rental.depositAmount,
+    deposit: rental.depositAmount ? String(rental.depositAmount) : null,
     status: rental.status,
     is_active: rental.isActive,
     attachments: rental.attachments,
