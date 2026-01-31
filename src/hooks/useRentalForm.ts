@@ -29,7 +29,7 @@ export function useRentalForm({
   const [hasGarage, setHasGarage] = useState(false);
   const [garageValue, setGarageValue] = useState("");
   const [hasPartnerBroker, setHasPartnerBroker] = useState(false);
-  const [securityDeposit, setSecurityDeposit] = useState("");
+  const [depositAmount, setDepositAmount] = useState("");
   const [attachments, setAttachments] = useState<string[]>([]);
   
   // Estado para valor proporcional
@@ -88,8 +88,8 @@ export function useRentalForm({
           rental.garageValue ? formatCurrency(rental.garageValue) : ""
         );
         setHasPartnerBroker(rental.hasPartnerBroker || false);
-        setSecurityDeposit(
-          rental.securityDeposit ? formatCurrency(rental.securityDeposit) : ""
+        setDepositAmount(
+          rental.depositAmount ? formatCurrency(rental.depositAmount) : ""
         );
         setAttachments(rental.contractAttachments || rental.attachments || []);
       } else {
@@ -112,7 +112,7 @@ export function useRentalForm({
     setHasGarage(false);
     setGarageValue("");
     setHasPartnerBroker(false);
-    setSecurityDeposit("");
+    setDepositAmount("");
     setAttachments([]);
     setProportionalRentInfo({
       isProportional: false,
@@ -195,8 +195,8 @@ export function useRentalForm({
     setGarageValue,
     hasPartnerBroker,
     setHasPartnerBroker,
-    securityDeposit,
-    setSecurityDeposit,
+    depositAmount,
+    setDepositAmount,
     attachments,
     setAttachments,
     proportionalRentInfo,

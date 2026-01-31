@@ -92,9 +92,10 @@ export function RentalFormDialog({
     setGarageValue,
     hasPartnerBroker,
     setHasPartnerBroker,
-    securityDeposit,
-    setSecurityDeposit,
+    depositAmount,
+    setDepositAmount,
     attachments,
+    setAttachments,
     proportionalRentInfo,
     resetForm,
     handleFileUpload,
@@ -150,8 +151,9 @@ export function RentalFormDialog({
       setDepositInstallment2PaymentDate("");
       setDepositInstallment3PaymentDate("");
       setDepositPixCode("");
+      resetForm();
     }
-  }, [open, rental]);
+  }, [open, rental, selectedPropertyId]);
 
   const loadLocations = async () => {
     try {
@@ -234,7 +236,7 @@ export function RentalFormDialog({
         payment_day: parseInt(paymentDay),
         monthly_rent: totalValue,
         value: totalValue,
-        deposit: parseCurrencyToNumber(securityDeposit) || 0,
+        deposit: parseCurrencyToNumber(depositAmount) || 0,
         status: "active" as const,
         is_active: true,
         attachments: attachments.length > 0 ? attachments : null,
@@ -252,7 +254,7 @@ export function RentalFormDialog({
       // Preparar dados de parcelamento para tabela auxiliar
       const depositData: any = {
         depositInstallments: 1,
-        depositInstallment1: parseCurrencyToNumber(securityDeposit),
+        depositInstallment1: parseCurrencyToNumber(depositAmount),
         depositPaymentDate: depositPaymentDate || null,
         depositPixCode: depositPixCode || null,
       };
@@ -290,21 +292,18 @@ export function RentalFormDialog({
 
         await updateDepositInstallments(rental.id, depositData);
 
-        const selectedLocation = locations.find((loc) => loc.id === selectedProperty.locationId);
+        // Remover redeclaração, usar atribuição se necessário ou apenas usar o valor
+        const finalStatus = updatedRental.status as "active" | "terminated" | "pending";
+        updatedRental.status = finalStatus;
 
-        // Validar e converter status do rental atualizado
-        const updatedStatus = updatedRental.status;
-        let validUpdatedStatus: "active" | "terminated" | "pending" = "active";
-        
-        if (updatedStatus === "active" || updatedStatus === "terminated" || updatedStatus === "pending") {
-          validUpdatedStatus = updatedStatus;
+        if (isViewMode) {
+          updatedRental.status = "active" as "active" | "terminated" | "pending";
         }
 
-        // Mapear objeto atualizado garantindo tipos corretos
         const mergedRental: Rental = {
           ...rental,
           ...updatedRental,
-          status: validUpdatedStatus,
+          status: updatedRental.status,
           attachments: (updatedRental.attachments as unknown as string[]) || [],
           contractAttachments: (updatedRental.contract_attachments as unknown as string[]) || [],
           value: Number(updatedRental.value || updatedRental.monthly_rent || rental.value),
@@ -312,13 +311,37 @@ export function RentalFormDialog({
           hasGarage: Boolean(updatedRental.has_garage),
           garageValue: updatedRental.garage_value ? Number(updatedRental.garage_value) : undefined,
           hasPartnerBroker: Boolean(updatedRental.has_partner_broker),
+          // Preencher campos de depósito com os dados do form
+          depositInstallments: Number(depositData.depositInstallments),
+          depositInstallment1: Number(depositData.depositInstallment1),
+          depositInstallment2: depositData.depositInstallment2 ? Number(depositData.depositInstallment2) : undefined,
+          depositInstallment3: depositData.depositInstallment3 ? Number(depositData.depositInstallment3) : undefined,
+          depositPaymentDate: depositData.depositPaymentDate,
+          depositInstallment2PaymentDate: depositData.depositInstallment2PaymentDate,
+          depositInstallment3PaymentDate: depositData.depositInstallment3PaymentDate,
+          depositPixCode: depositData.depositPixCode,
+          depositInstallment2PixCode: depositData.depositInstallment2PixCode,
+          depositInstallment3PixCode: depositData.depositInstallment3PixCode,
         };
 
+        await createPaymentsForRental(mergedRental);
+        await createDepositInstallments(updatedRental.id, depositData);
+
+        const statusTyped = mergedRental.status as "active" | "terminated" | "pending";
+        mergedRental.status = statusTyped;
+
+        if (isViewMode) {
+          mergedRental.status = "active" as "active" | "terminated" | "pending";
+        }
+        
+        // selectedLocation já foi declarado anteriormente ou não é necessário redeclarar aqui se for o mesmo escopo
+        // Removendo a linha de redeclaração se existir
+        
         setCreatedRentalData({
           rental: mergedRental,
           property: selectedProperty,
           tenant: selectedTenant,
-          location: selectedLocation,
+          location: locations.find((loc) => loc.id === selectedProperty.locationId),
         });
 
         toast({
@@ -338,7 +361,7 @@ export function RentalFormDialog({
             payment_day: parseInt(paymentDay),
             monthly_rent: totalValue,
             value: totalValue,
-            deposit: parseCurrencyToNumber(securityDeposit) || 0,
+            deposit: parseCurrencyToNumber(depositAmount) || 0,
             status: "active",
             is_active: true,
             attachments: attachments.length > 0 ? attachments : null,
@@ -421,8 +444,9 @@ export function RentalFormDialog({
         await createPaymentsForRental(mappedRental);
         await createDepositInstallments(createdRental.id, depositData);
 
-        const statusTyped = mappedRental.status as "active" | "terminated" | "pending";
-        mappedRental.status = statusTyped;
+        // Remover redeclaração aqui também
+        const createdStatusTyped = mappedRental.status as "active" | "terminated" | "pending";
+        mappedRental.status = createdStatusTyped;
 
         if (isViewMode) {
           mappedRental.status = "active" as "active" | "terminated" | "pending";
@@ -505,7 +529,7 @@ export function RentalFormDialog({
 
   const calculateTotalDeposit = () => {
     let total = 0;
-    if (securityDeposit) total += parseCurrencyToNumber(securityDeposit);
+    if (depositAmount) total += parseCurrencyToNumber(depositAmount);
     if (isDepositInstallment && depositInstallmentCount) {
       if (parseInt(depositInstallmentCount) >= 2 && depositInstallment2) total += parseCurrencyToNumber(depositInstallment2);
       if (parseInt(depositInstallmentCount) === 3 && depositInstallment3) total += parseCurrencyToNumber(depositInstallment3);
@@ -521,6 +545,9 @@ export function RentalFormDialog({
   const propertiesToDisplay = rental ? properties : availableProperties;
   const tenantsToDisplay = rental ? tenants : availableTenants;
   const selectedProperty = getSelectedProperty();
+
+  // Se estiver carregando, mostra skeleton ou spinner
+  if (!open) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -682,16 +709,13 @@ export function RentalFormDialog({
 
             <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
               <div className="space-y-2 md:col-span-5">
-                <Label htmlFor="securityDeposit">
+                <Label htmlFor="depositAmount">
                   {isDepositInstallment ? "Valor Caução (1ª Parcela)" : "Valor Caução (À vista)"} *
                 </Label>
                 <Input
-                  id="securityDeposit"
-                  value={securityDeposit}
-                  onChange={(e) => {
-                    setSecurityDeposit(applyRealMask(e.target.value));
-                    setDepositInstallment1(applyRealMask(e.target.value));
-                  }}
+                  id="depositAmount"
+                  value={depositAmount}
+                  onChange={(e) => setDepositAmount(formatCurrency(e.target.value))}
                   placeholder="R$ 0,00"
                   disabled={!isEditing}
                 />
@@ -703,9 +727,7 @@ export function RentalFormDialog({
                   id="depositPaymentDate"
                   type="date"
                   value={depositPaymentDate}
-                  onChange={(e) => {
-                    setDepositPaymentDate(e.target.value);
-                  }}
+                  onChange={(e) => setDepositPaymentDate(e.target.value)}
                   disabled={!isEditing}
                 />
               </div>
@@ -715,9 +737,7 @@ export function RentalFormDialog({
                 <Input
                   id="depositPixCode"
                   value={depositPixCode}
-                  onChange={(e) => {
-                    setDepositPixCode(e.target.value);
-                  }}
+                  onChange={(e) => setDepositPixCode(e.target.value)}
                   placeholder="Código PIX"
                   disabled={!isEditing}
                 />

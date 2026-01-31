@@ -13,9 +13,11 @@ const mapRentalData = (data: any): Rental => {
     value: Number(data.value || data.monthly_rent || 0), // Fallback seguro
     depositAmount: data.deposit ? Number(data.deposit) : 0,
     status: data.status,
-    isActive: data.is_active !== false, // Default to true if undefined/null, strictly false only if false
+    isActive: data.is_active,
     attachments: (data.attachments as string[]) || [],
     contractAttachments: (data.contract_attachments as string[]) || [],
+    autoRenew: data.auto_renew,
+    pixCode: data.pix_code,
     
     // Mapeamento explícito dos novos campos
     hasGarage: Boolean(data.has_garage),
@@ -36,11 +38,8 @@ const mapRentalData = (data: any): Rental => {
     depositInstallment3PaymentDate: data.deposit_installment_3_payment_date,
     depositInstallment3PixCode: data.deposit_installment_3_pix_code,
 
-    autoRenew: false, // Campo obrigatório na interface Rental, default false se não existir no banco
-
-    // Joins
-    properties: data.properties,
-    tenants: data.tenants
+    // autoRenew removido daqui pois já existe acima no objeto
+    // tenants removido pois não existe na interface Rental
   };
 };
 

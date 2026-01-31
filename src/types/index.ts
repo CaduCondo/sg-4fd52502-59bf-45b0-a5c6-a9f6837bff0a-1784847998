@@ -154,53 +154,34 @@ export interface Rental {
   startDate: string;
   endDate?: string;
   paymentDay: number;
-  monthlyRent?: number; // Optional since value is used
-  value: number; // This seems to be the main rent value field now
-  depositAmount: number;
-  status: 'active' | 'terminated' | 'pending';
+  value: number;
+  monthlyRent?: number; // Para compatibilidade
+  depositAmount?: number;
+  status: "active" | "terminated" | "pending";
   isActive: boolean;
   attachments: string[];
   contractAttachments: string[];
   autoRenew: boolean;
+  pixCode?: string;
   
-  // Optional fields
+  // Novos campos
   hasGarage?: boolean;
   garageValue?: number;
   hasPartnerBroker?: boolean;
   
-  // Deposit Installments
+  // Campos de Caução Detalhada
   depositInstallments?: number;
   depositInstallment1?: number;
-  depositInstallment2?: number;
-  depositInstallment3?: number;
   depositPaymentDate?: string;
-  depositInstallment2PaymentDate?: string;
-  depositInstallment3PaymentDate?: string;
   depositPixCode?: string;
+  
+  depositInstallment2?: number;
+  depositInstallment2PaymentDate?: string;
   depositInstallment2PixCode?: string;
+  
+  depositInstallment3?: number;
+  depositInstallment3PaymentDate?: string;
   depositInstallment3PixCode?: string;
-  pixCode?: string;
-
-  // Legacy/Property mirror fields (sometimes used in contracts)
-  securityDeposit?: number; // Alias for depositAmount/depositInstallment1
-
-  // Dados aninhados do Supabase (joins)
-  properties?: {
-    id: string;
-    property_identifier?: string;
-    complement?: string;
-    value?: number;
-    locations?: {
-      id: string;
-      name: string;
-      city?: string;
-    };
-  };
-  tenants?: {
-    id: string;
-    name: string;
-    phone?: string;
-  };
 }
 
 export interface Payment {
