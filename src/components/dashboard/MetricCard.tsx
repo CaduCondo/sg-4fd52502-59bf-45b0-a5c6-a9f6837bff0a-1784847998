@@ -49,7 +49,7 @@ export function MetricCard({
             </div>
             
             <div className="flex-1 min-w-0">
-              <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+              <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1">
                 {title}
               </div>
               
@@ -93,7 +93,7 @@ export function MetricCard({
             )}>
               <Icon className={cn("h-5 w-5", iconColor)} />
             </div>
-            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex-1">
+            <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide flex-1">
               {title}
             </div>
           </div>

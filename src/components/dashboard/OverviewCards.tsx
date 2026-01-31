@@ -12,6 +12,7 @@ import {
   Clock,
 } from "lucide-react";
 import { MetricCard } from "./MetricCard";
+import { FinancialMetricCard } from "./FinancialMetricCard";
 import { PeriodSelector } from "./PeriodSelector";
 import Link from "next/link";
 
@@ -209,7 +210,7 @@ export function OverviewCards({ data, selectedMonth, selectedYear, onPeriodChang
         </h2>
         <div className="grid grid-cols-5 gap-3">
           <Link href="/payments?status=overdue">
-            <MetricCard
+            <FinancialMetricCard
               title="Total em Atraso"
               value={formatCurrency(data.overdueAmount)}
               subtitle="Valor acumulado"
@@ -217,13 +218,12 @@ export function OverviewCards({ data, selectedMonth, selectedYear, onPeriodChang
               iconColor="text-red-600"
               iconBgClass="bg-red-50 dark:bg-red-900/20"
               borderColorClass="border-l-red-500"
-              layout="horizontal"
               clickable
             />
           </Link>
 
           <Link href="/payments">
-            <MetricCard
+            <FinancialMetricCard
               title="Receita Esperada"
               value={formatCurrency(data.expectedAmount)}
               subtitle="Total de recebimentos"
@@ -231,13 +231,12 @@ export function OverviewCards({ data, selectedMonth, selectedYear, onPeriodChang
               iconColor="text-blue-600"
               iconBgClass="bg-blue-50 dark:bg-blue-900/20"
               borderColorClass="border-l-blue-500"
-              layout="horizontal"
               clickable
             />
           </Link>
 
           <Link href="/payments?status=paid">
-            <MetricCard
+            <FinancialMetricCard
               title="Receita Bruta Recebida"
               value={formatCurrency(data.grossRevenue)}
               subtitle="Pagamentos realizados"
@@ -245,13 +244,12 @@ export function OverviewCards({ data, selectedMonth, selectedYear, onPeriodChang
               iconColor="text-emerald-600"
               iconBgClass="bg-emerald-50 dark:bg-emerald-900/20"
               borderColorClass="border-l-emerald-500"
-              layout="horizontal"
               clickable
             />
           </Link>
 
           <Link href="/financial">
-            <MetricCard
+            <FinancialMetricCard
               title="Total Taxas e Contas"
               value={formatCurrency(data.totalFeesAndExpenses)}
               subtitle="Taxas + Contas a Pagar"
@@ -259,13 +257,12 @@ export function OverviewCards({ data, selectedMonth, selectedYear, onPeriodChang
               iconColor="text-orange-600"
               iconBgClass="bg-orange-50 dark:bg-orange-900/20"
               borderColorClass="border-l-orange-500"
-              layout="horizontal"
               clickable
             />
           </Link>
 
           <Link href="/financial">
-            <MetricCard
+            <FinancialMetricCard
               title="Receita Líquida"
               value={formatCurrency(data.netRevenue)}
               subtitle="Após taxas e despesas"
@@ -273,7 +270,6 @@ export function OverviewCards({ data, selectedMonth, selectedYear, onPeriodChang
               iconColor={data.netRevenue >= 0 ? "text-violet-600" : "text-red-600"}
               iconBgClass={data.netRevenue >= 0 ? "bg-violet-50 dark:bg-violet-900/20" : "bg-red-50 dark:bg-red-900/20"}
               borderColorClass={data.netRevenue >= 0 ? "border-l-violet-500" : "border-l-red-500"}
-              layout="horizontal"
               clickable
             />
           </Link>
