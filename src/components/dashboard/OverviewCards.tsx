@@ -104,26 +104,6 @@ export function OverviewCards({ data }: OverviewCardsProps) {
       {/* Segunda Linha - Contratos e Pagamentos */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <MetricCard
-          title="Total Inquilinos"
-          value={data.totalTenants}
-          subtitle="Inquilinos cadastrados"
-          icon={Users}
-          iconColor="text-cyan-600"
-          iconBgClass="bg-cyan-50"
-          borderColorClass="border-l-cyan-500"
-        />
-
-        <MetricCard
-          title="Contratos Vigentes"
-          value={data.activeContracts}
-          subtitle="Locações ativas"
-          icon={FileCheck}
-          iconColor="text-indigo-600"
-          iconBgClass="bg-indigo-50"
-          borderColorClass="border-l-indigo-500"
-        />
-
-        <MetricCard
           title="Aluguéis Atrasados"
           value={data.overduePayments}
           subtitle="Pagamentos em atraso"
@@ -151,6 +131,26 @@ export function OverviewCards({ data }: OverviewCardsProps) {
           iconColor="text-green-600"
           iconBgClass="bg-green-50"
           borderColorClass="border-l-green-500"
+        />
+
+        <MetricCard
+          title="Contratos Vigentes"
+          value={data.activeContracts}
+          subtitle="Locações ativas"
+          icon={FileCheck}
+          iconColor="text-indigo-600"
+          iconBgClass="bg-indigo-50"
+          borderColorClass="border-l-indigo-500"
+        />
+
+        <MetricCard
+          title="Total Inquilinos"
+          value={data.totalTenants}
+          subtitle="Inquilinos cadastrados"
+          icon={Users}
+          iconColor="text-cyan-600"
+          iconBgClass="bg-cyan-50"
+          borderColorClass="border-l-cyan-500"
         />
       </div>
 

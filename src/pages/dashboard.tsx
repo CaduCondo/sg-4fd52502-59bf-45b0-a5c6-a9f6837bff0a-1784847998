@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Layout } from "@/components/Layout";
 import { OverviewCards } from "@/components/dashboard/OverviewCards";
 import { AnalyticsCharts } from "@/components/dashboard/AnalyticsCharts";
+import { FinancialCharts } from "@/components/dashboard/FinancialCharts";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -13,7 +14,7 @@ import { WelcomeCard } from "@/components/dashboard/WelcomeCard";
 
 export default function Dashboard() {
   const currentDate = new Date();
-  const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth());
+  const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
   const { user } = useAuth();
 
@@ -64,7 +65,7 @@ export default function Dashboard() {
         {loading ? (
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-              {[...Array(10)].map((_, i) => (
+              {[...Array(15)].map((_, i) => (
                 <Skeleton key={i} className="h-32" />
               ))}
             </div>
@@ -77,13 +78,18 @@ export default function Dashboard() {
         ) : (
           <>
             <OverviewCards data={dashboardData} />
+            
             {/* Charts Section */}
             <AnalyticsCharts 
               revenueData={dashboardData?.revenueData}
               occupancyData={dashboardData?.occupancyData}
             />
 
-            {/* Recent Activity & Upcoming Payments */}
+            {/* Financial Charts - 6 Months */}
+            <FinancialCharts
+              monthlyRevenueData={dashboardData?.monthlyRevenueData}
+              monthlyExpensesData={dashboardData?.monthlyExpensesData}
+            />
           </>
         )}
       </div>

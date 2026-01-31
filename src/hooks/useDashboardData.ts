@@ -22,6 +22,8 @@ interface DashboardData {
   netRevenue: number;
   revenueData: any[];
   occupancyData: any[];
+  monthlyRevenueData: any[];
+  monthlyExpensesData: any[];
 }
 
 const DEFAULT_DATA: DashboardData = {
@@ -43,6 +45,8 @@ const DEFAULT_DATA: DashboardData = {
   netRevenue: 0,
   revenueData: [],
   occupancyData: [],
+  monthlyRevenueData: [],
+  monthlyExpensesData: [],
 };
 
 export function useDashboardData(month: number, year: number) {
@@ -103,7 +107,6 @@ export function useDashboardData(month: number, year: number) {
       const rentedProperties = properties?.filter(p => p.status === "occupied").length || 0;
       const unavailableProperties = properties?.filter(p => p.status === "unavailable").length || 0;
       
-      // Taxa de ocupação: imóveis ocupados / (imóveis disponíveis + ocupados)
       const totalAvailableForRent = availableProperties + rentedProperties;
       const occupancyRate = totalAvailableForRent > 0 
         ? (rentedProperties / totalAvailableForRent) * 100 
@@ -176,11 +179,18 @@ export function useDashboardData(month: number, year: number) {
 
       if (paymentsError) throw paymentsError;
 
-      const { data: expensesData, error: expensesError } = await supabase
+      // Buscar despesas do mês usando reference_month e reference_year
+      let expensesQuery = supabase
         .from("location_expenses")
         .select("amount")
         .eq("reference_month", month)
         .eq("reference_year", year);
+
+      if (allowedLocationIds) {
+        expensesQuery = expensesQuery.in("location_id", allowedLocationIds);
+      }
+
+      const { data: expensesData, error: expensesError } = await expensesQuery;
 
       if (expensesError) {
         console.error("Error fetching expenses:", expensesError);
@@ -248,6 +258,80 @@ export function useDashboardData(month: number, year: number) {
       const totalFeesAndExpenses = adminFeeTotal + managementFeeTotal + locationExpensesTotal;
       const netRevenue = grossRevenue - totalFeesAndExpenses;
 
+      // Dados dos últimos 6 meses para gráficos
+      const monthlyRevenueData = [];
+      const monthlyExpensesData = [];
+
+      for (let i = 5; i >= 0; i--) {
+        const targetDate = new Date(year, month - 1 - i, 1);
+        const targetMonth = targetDate.getMonth() + 1;
+        const targetYear = targetDate.getFullYear();
+
+        const monthStart = new Date(targetYear, targetMonth - 1, 1).toISOString();
+        const monthEnd = new Date(targetYear, targetMonth, 0, 23, 59, 59).toISOString();
+
+        let monthPaymentsQuery = supabase
+          .from("payments")
+          .select("status, paid_amount")
+          .gte("due_date", monthStart)
+          .lte("due_date", monthEnd)
+          .eq("status", "paid");
+
+        if (allowedLocationIds && propertyIds.length > 0) {
+          const { data: rentalIds } = await supabase
+            .from("rentals")
+            .select("id")
+            .in("property_id", propertyIds);
+
+          const validRentalIds = rentalIds?.map(r => r.id) || [];
+          if (validRentalIds.length > 0) {
+            monthPaymentsQuery = monthPaymentsQuery.in("rental_id", validRentalIds);
+          }
+        }
+
+        const { data: monthPayments } = await monthPaymentsQuery;
+
+        let monthExpensesQuery = supabase
+          .from("location_expenses")
+          .select("amount")
+          .eq("reference_month", targetMonth)
+          .eq("reference_year", targetYear);
+
+        if (allowedLocationIds) {
+          monthExpensesQuery = monthExpensesQuery.in("location_id", allowedLocationIds);
+        }
+
+        const { data: monthExpenses } = await monthExpensesQuery;
+
+        const monthGross = monthPayments?.reduce((sum, p) => sum + (Number(p.paid_amount) || 0), 0) || 0;
+        const monthExpensesTotal = monthExpenses?.reduce((sum, e) => sum + (Number(e.amount) || 0), 0) || 0;
+
+        let monthFees = 0;
+        monthPayments?.forEach((payment) => {
+          const paidAmount = Number(payment.paid_amount) || 0;
+          const adminFeeRate = configData ? (configData.admin_fee_percentage || 0) / 100 : 0.05;
+          const managementFeeRate = configData ? (configData.management_fee_percentage || 0) / 100 : 0;
+          monthFees += paidAmount * (adminFeeRate + managementFeeRate);
+        });
+
+        const monthTotal = monthFees + monthExpensesTotal;
+        const monthNet = monthGross - monthTotal;
+
+        const monthLabel = new Intl.DateTimeFormat('pt-BR', { month: 'short', year: '2-digit' }).format(targetDate);
+
+        monthlyRevenueData.push({
+          month: monthLabel,
+          bruta: monthGross,
+          liquida: monthNet,
+        });
+
+        monthlyExpensesData.push({
+          month: monthLabel,
+          taxas: monthFees,
+          contas: monthExpensesTotal,
+        });
+      }
+
       const occupancyData = [
         { name: "Ocupados", value: rentedProperties, color: "#4f46e5" },
         { name: "Disponíveis", value: availableProperties, color: "#22c55e" },
@@ -278,6 +362,8 @@ export function useDashboardData(month: number, year: number) {
         netRevenue,
         revenueData,
         occupancyData,
+        monthlyRevenueData,
+        monthlyExpensesData,
       });
 
     } catch (err: any) {
