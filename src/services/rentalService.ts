@@ -192,15 +192,15 @@ export const create = async (rental: Omit<Rental, "id">) => {
     start_date: rental.startDate,
     end_date: rental.endDate,
     payment_day: rental.paymentDay,
-    monthly_rent: rental.value, // Obrigatório pelo tipo do banco
+    monthly_rent: rental.value,
     value: rental.value,
-    deposit: rental.depositAmount ? String(rental.depositAmount) : null, // Convertendo para string (money type)
+    deposit: rental.depositAmount ? rental.depositAmount : null,
     status: rental.status,
     is_active: rental.isActive,
     attachments: rental.attachments,
     contract_attachments: rental.contractAttachments,
     has_garage: rental.hasGarage,
-    garage_value: rental.garageValue ? String(rental.garageValue) : null, // Convertendo para string
+    garage_value: rental.garageValue ? rental.garageValue : null,
     has_partner_broker: rental.hasPartnerBroker
   };
 
