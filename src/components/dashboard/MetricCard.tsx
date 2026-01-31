@@ -54,8 +54,9 @@ export function MetricCard({
               </div>
               
               <div className={cn(
-                "text-xl sm:text-2xl font-bold text-foreground leading-tight tracking-tight mb-0.5",
-                "break-words",
+                "font-bold text-foreground leading-tight tracking-tight mb-0.5",
+                "whitespace-nowrap overflow-hidden text-ellipsis",
+                "text-base sm:text-lg md:text-xl lg:text-2xl",
                 valueClassName
               )}>
                 {displayValue}
@@ -98,8 +99,10 @@ export function MetricCard({
               <Icon className={cn("h-4 w-4 sm:h-5 sm:w-5", iconColor)} />
             </div>
             <div className={cn(
-              "text-xl sm:text-2xl font-bold text-foreground leading-tight",
-              "break-words flex-1 min-w-0",
+              "font-bold text-foreground leading-tight",
+              "whitespace-nowrap overflow-hidden text-ellipsis",
+              "text-base sm:text-lg md:text-xl lg:text-2xl",
+              "flex-1 min-w-0",
               valueClassName
             )}>
               {displayValue}
