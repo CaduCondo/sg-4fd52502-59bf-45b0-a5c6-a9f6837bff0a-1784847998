@@ -9,15 +9,14 @@ const mapRentalData = (data: any): Rental => {
     tenantId: data.tenant_id,
     startDate: data.start_date,
     endDate: data.end_date,
-    rentAmount: data.rent_value || 0,
-    depositAmount: data.deposit_value || 0,
-    paymentDay: data.rent_due_day || 0,
+    value: data.value || data.monthly_rent || 0, // Prioridade para value
+    depositAmount: Number(data.deposit) || 0,
+    paymentDay: data.payment_day || 0,
     status: data.status,
     attachments: data.attachments || [],
     contractAttachments: data.contract_attachments || [],
-    value: data.rent_value || 0, // Compatibilidade
     isActive: data.status === 'active',
-    autoRenew: false, // Valor padrão se não existir no banco
+    autoRenew: false,
     
     // Propriedades aninhadas
     properties: data.properties,
@@ -116,19 +115,18 @@ export const rentalService = {
   },
 
   async create(rental: Partial<Rental>): Promise<Rental> {
-    // Mapear camelCase para snake_case para inserção
     const dbData = {
       property_id: rental.propertyId,
       tenant_id: rental.tenantId,
       start_date: rental.startDate,
       end_date: rental.endDate,
-      monthly_rent: rental.rentAmount, // Correct column name
-      payment_day: rental.paymentDay,  // Correct column name
-      deposit: rental.depositAmount ? String(rental.depositAmount) : null, // Correct column name
+      monthly_rent: rental.value, // Mapear value para monthly_rent no banco se necessário, ou usar value se a coluna existir
+      payment_day: rental.paymentDay,
+      deposit: rental.depositAmount ? String(rental.depositAmount) : null,
       status: rental.status,
       attachments: rental.attachments,
       contract_attachments: rental.contractAttachments,
-      value: rental.rentAmount // Ensure value is also set if needed or let DB handle it
+      value: rental.value
     };
 
     const { data, error } = await supabase
@@ -142,15 +140,17 @@ export const rentalService = {
   },
 
   async update(id: string, rental: Partial<Rental>): Promise<Rental> {
-    // Mapear camelCase para snake_case para atualização
     const dbData: any = {};
     if (rental.propertyId) dbData.property_id = rental.propertyId;
     if (rental.tenantId) dbData.tenant_id = rental.tenantId;
     if (rental.startDate) dbData.start_date = rental.startDate;
     if (rental.endDate) dbData.end_date = rental.endDate;
-    if (rental.rentAmount) dbData.monthly_rent = rental.rentAmount; // Correct column name
-    if (rental.paymentDay) dbData.payment_day = rental.paymentDay;   // Correct column name
-    if (rental.depositAmount) dbData.deposit = String(rental.depositAmount); // Correct column name
+    if (rental.value) {
+      dbData.monthly_rent = rental.value;
+      dbData.value = rental.value;
+    }
+    if (rental.paymentDay) dbData.payment_day = rental.paymentDay;
+    if (rental.depositAmount) dbData.deposit = String(rental.depositAmount);
     if (rental.status) dbData.status = rental.status;
     if (rental.attachments) dbData.attachments = rental.attachments;
     if (rental.contractAttachments) dbData.contract_attachments = rental.contractAttachments;
@@ -185,8 +185,63 @@ export const rentalService = {
 };
 
 // Aliases para compatibilidade com código existente que pode importar com nomes diferentes
-export const create = rentalService.create;
-export const update = rentalService.update;
+export const create = async (rental: Omit<Rental, "id">) => {
+  const { data, error } = await supabase
+    .from("rentals")
+    .insert([
+      {
+        property_id: rental.propertyId,
+        tenant_id: rental.tenantId,
+        start_date: rental.startDate,
+        end_date: rental.endDate,
+        payment_day: rental.paymentDay,
+        value: rental.value,
+        deposit: rental.depositAmount,
+        status: rental.status,
+        is_active: rental.isActive,
+        attachments: rental.attachments,
+        contract_attachments: rental.contractAttachments,
+        has_garage: rental.hasGarage,
+        garage_value: rental.garageValue,
+        has_partner_broker: rental.hasPartnerBroker
+      },
+    ])
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+};
+
+export const update = async (id: string, rental: Partial<Rental>) => {
+  const updateData: any = {
+    ...(rental.propertyId && { property_id: rental.propertyId }),
+    ...(rental.tenantId && { tenant_id: rental.tenantId }),
+    ...(rental.startDate && { start_date: rental.startDate }),
+    ...(rental.endDate && { end_date: rental.endDate }),
+    ...(rental.paymentDay && { payment_day: rental.paymentDay }),
+    ...(rental.value && { value: rental.value }),
+    ...(rental.depositAmount && { deposit: rental.depositAmount }),
+    ...(rental.status && { status: rental.status }),
+    ...(rental.isActive !== undefined && { is_active: rental.isActive }),
+    ...(rental.attachments && { attachments: rental.attachments }),
+    ...(rental.contractAttachments && { contract_attachments: rental.contractAttachments }),
+    ...(rental.hasGarage !== undefined && { has_garage: rental.hasGarage }),
+    ...(rental.garageValue !== undefined && { garage_value: rental.garageValue }),
+    ...(rental.hasPartnerBroker !== undefined && { has_partner_broker: rental.hasPartnerBroker }),
+  };
+
+  const { data, error } = await supabase
+    .from("rentals")
+    .update(updateData)
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+};
+
 export const getAll = rentalService.getAll;
 export const getById = rentalService.getById;
 export const remove = rentalService.remove;

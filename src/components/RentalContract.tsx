@@ -72,7 +72,7 @@ export function RentalContract({
                       </div>
                       <div>
                         <span className="text-muted-foreground">Valor do Aluguel:</span>
-                        <p className="font-medium">{formatCurrency(rental.rentAmount || rental.value)}</p>
+                        <p className="font-medium">{formatCurrency(rental.value)}</p>
                       </div>
                       {rental.hasGarage && (
                         <div>

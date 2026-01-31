@@ -196,7 +196,9 @@ export function useDashboardData(month: number, year: number) {
         console.error("Error fetching expenses:", expensesError);
       }
 
-      const locationExpensesTotal = expensesData?.reduce((sum, expense) => sum + (expense.amount || 0), 0) || 0;
+      // IMPORTANTE: Se expensesData for null, locationExpensesTotal será 0.
+      // Se tiver dados, soma os valores.
+      const locationExpensesTotal = expensesData?.reduce((sum, expense) => sum + (Number(expense.amount) || 0), 0) || 0;
 
       const { data: rentals } = await supabase
         .from("rentals")
@@ -255,7 +257,9 @@ export function useDashboardData(month: number, year: number) {
       });
 
       const grossRevenue = receivedAmount;
+      // Taxas calculadas sobre recebimentos + Contas a pagar (independente de recebimento)
       const totalFeesAndExpenses = adminFeeTotal + managementFeeTotal + locationExpensesTotal;
+      // Receita Líquida pode ser negativa se despesas > receitas
       const netRevenue = grossRevenue - totalFeesAndExpenses;
 
       // Dados dos últimos 6 meses para gráficos

@@ -142,17 +142,15 @@ export default function Payments() {
         id: rental.id,
         propertyId: rental.property_id,
         tenantId: rental.tenant_id,
-        startDate: rental.start_date,
-        endDate: rental.end_date,
-        rentAmount: rental.monthly_rent,
-        depositAmount: rental.deposit ? parseFloat(rental.deposit) : 0,
-        paymentDay: rental.payment_day,
-        status: (rental as any).status || "active", // Cast to any to bypass missing property error if schema inference is lagging
-        isActive: ((rental as any).status || "active") === 'active',
-        autoRenew: false,
-        value: rental.monthly_rent,
-        attachments: (rental.attachments as unknown as string[]) || [],
-        contractAttachments: (rental.contract_attachments as unknown as string[]) || []
+        startDate: "",
+        paymentDay: parseInt(dueDate.split("-")[2] || "1"),
+        value: amount,
+        depositAmount: 0,
+        status: "active",
+        isActive: true,
+        attachments: [],
+        contractAttachments: [],
+        autoRenew: false
       };
 
       const propertyForReceipt: Property = {

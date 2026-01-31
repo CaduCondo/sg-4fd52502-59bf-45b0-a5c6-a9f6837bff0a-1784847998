@@ -358,7 +358,6 @@ export function RentalFormDialog({
         }
         
         // Mapeamento manual do resultado do Supabase (snake_case) para a interface Rental (camelCase)
-        // Isso corrige os erros de TypeScript vistos anteriormente
         const mappedRental: Rental = {
           id: createdRental.id,
           propertyId: createdRental.property_id,

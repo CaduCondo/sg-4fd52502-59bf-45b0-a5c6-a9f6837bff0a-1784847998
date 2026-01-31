@@ -405,17 +405,15 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           id: rental.id,
           propertyId: rental.property_id,
           tenantId: rental.tenant_id,
-          startDate: rental.start_date,
-          endDate: rental.end_date,
-          rentAmount: rental.monthly_rent || rental.rentAmount, // Fallback
-          depositAmount: rental.deposit ? parseFloat(rental.deposit) : (rental.depositAmount || 0),
-          paymentDay: rental.payment_day || rental.paymentDay,
-          status: rental.status,
-          isActive: rental.status === 'active',
-          autoRenew: false,
-          value: rental.monthly_rent || rental.value || 0,
-          attachments: rental.attachments || [],
-          contractAttachments: rental.contract_attachments || []
+          startDate: "",
+          paymentDay: parseInt(formData.payment_date.split("-")[2] || "1"),
+          value: rentalValue, // Usar valor calculado
+          depositAmount: 0,
+          status: "active",
+          isActive: true,
+          attachments: [],
+          contractAttachments: [],
+          autoRenew: false
         };
 
         const propertyForReceipt: Property = {

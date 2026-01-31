@@ -128,33 +128,14 @@ export function RentalDetailsCard({ rental, property, tenant }: RentalDetailsCar
             Valores
           </div>
           <div className="ml-6 space-y-1">
-            <p className="text-sm">
-              <span className="text-muted-foreground">Aluguel Base:</span>{" "}
-              {formatCurrency(rental.rentAmount || rental.value || 0)}
-            </p>
-            {rental.hasGarage && rental.garageValue && rental.garageValue > 0 && (
-              <div className="flex items-center gap-2 text-sm">
-                <Car className="h-3 w-3 text-muted-foreground" />
-                <span className="text-muted-foreground">Vaga Garagem:</span>
-                <span>{formatCurrency(rental.garageValue)}</span>
-              </div>
-            )}
-            {rental.condominiumFee && rental.condominiumFee > 0 && (
-              <p className="text-sm">
-                <span className="text-muted-foreground">Condomínio:</span>{" "}
-                {formatCurrency(rental.condominiumFee)}
-              </p>
-            )}
-            {rental.iptuFee && rental.iptuFee > 0 && (
-              <p className="text-sm">
-                <span className="text-muted-foreground">IPTU:</span>{" "}
-                {formatCurrency(rental.iptuFee)}
-              </p>
-            )}
-            <p className="text-sm font-medium pt-1 border-t">
-              <span className="text-muted-foreground">Total Mensal:</span>{" "}
-              {formatCurrency(rental.value || 0)}
-            </p>
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">Valor do Aluguel</p>
+              <p className="font-medium">{formatCurrency(rental.value)}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">Dia do Vencimento</p>
+              <p className="font-medium">Dia {rental.paymentDay}</p>
+            </div>
           </div>
         </div>
 

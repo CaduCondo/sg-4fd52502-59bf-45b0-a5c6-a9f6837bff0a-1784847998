@@ -152,21 +152,23 @@ export interface Rental {
   propertyId: string;
   tenantId: string;
   startDate: string;
-  endDate: string;
-  rentAmount: number;
-  condominiumFee?: number;
-  iptuFee?: number;
-  depositAmount?: number;
+  endDate?: string;
   paymentDay: number;
-  autoRenew: boolean;
-  installments?: number;
-  status: "active" | "terminated" | "pending";
+  monthlyRent?: number; // Optional since value is used
+  value: number; // This seems to be the main rent value field now
+  depositAmount: number;
+  status: 'active' | 'terminated' | 'pending';
+  isActive: boolean;
   attachments: string[];
   contractAttachments: string[];
-  value: number; // For compatibility with existing code
-  isActive: boolean; // Computed property
+  autoRenew: boolean;
   
-  // New fields for Deposit Installments & Legacy support
+  // Optional fields
+  hasGarage?: boolean;
+  garageValue?: number;
+  hasPartnerBroker?: boolean;
+  
+  // Deposit Installments
   depositInstallments?: number;
   depositInstallment1?: number;
   depositInstallment2?: number;
@@ -180,9 +182,6 @@ export interface Rental {
   pixCode?: string;
 
   // Legacy/Property mirror fields (sometimes used in contracts)
-  hasGarage?: boolean;
-  garageValue?: number;
-  hasPartnerBroker?: boolean;
   securityDeposit?: number; // Alias for depositAmount/depositInstallment1
 
   // Dados aninhados do Supabase (joins)
