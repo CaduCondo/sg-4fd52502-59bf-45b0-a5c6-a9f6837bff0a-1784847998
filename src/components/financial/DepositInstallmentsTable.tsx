@@ -36,6 +36,7 @@ interface DepositInstallmentData {
   pix_code: string | null;
   partner_commission: number;
   internal_commission: number;
+  payment_date: string | null;
   rental: {
     has_partner_broker: boolean;
     security_deposit: number;
@@ -116,6 +117,7 @@ export function DepositInstallmentsTable({
           partner_commission,
           internal_commission,
           rental_id,
+          payment_date,
           rental:rentals(
             has_partner_broker,
             security_deposit,
@@ -316,6 +318,7 @@ export function DepositInstallmentsTable({
       "Valor Pg Corretagem Parceiro": item.partner_commission || 0,
       "Valor Pg Corretagem Interno": item.internal_commission || 0,
       Parcela: `${item.installment_number}/${item.total_installments}`,
+      "Data Pagamento": item.payment_date ? new Date(item.payment_date).toLocaleDateString("pt-BR") : "-",
       "Valor Parcela": item.amount,
       "Código PIX": item.pix_code || "-",
     }));
@@ -600,6 +603,9 @@ export function DepositInstallmentsTable({
                         <SortIcon field="installment" />
                       </div>
                     </TableHead>
+                    <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                      Data Pagamento
+                    </TableHead>
                     <TableHead 
                       className="text-xs font-semibold text-slate-500 uppercase tracking-wider text-right cursor-pointer hover:bg-slate-100"
                       onClick={() => handleSort("amount")}
@@ -752,6 +758,11 @@ export function DepositInstallmentsTable({
                         <TableCell className="font-medium text-slate-900">
                           {installment.installment_number}/{installment.total_installments}
                         </TableCell>
+                        <TableCell>
+                          {installment.payment_date 
+                            ? new Date(installment.payment_date).toLocaleDateString("pt-BR")
+                            : "-"}
+                        </TableCell>
                         <TableCell className="text-right font-medium text-slate-900">
                           {formatCurrency(installment.amount)}
                         </TableCell>
@@ -823,6 +834,7 @@ export function DepositInstallmentsTable({
                     <TableCell className="text-right text-slate-900 text-lg">
                       {formatCurrency(totalInternalCommission)}
                     </TableCell>
+                    <TableCell></TableCell>
                     <TableCell></TableCell>
                     <TableCell className="text-right text-slate-900 text-lg">
                       {formatCurrency(totalAmountColumn)}

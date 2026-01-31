@@ -454,9 +454,20 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel onClick={(e) => {
+              e.stopPropagation();
+              setExpenseToDelete(null);
+            }}>
+              Cancelar
+            </AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => expenseToDelete && handleDelete(expenseToDelete.id)}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (expenseToDelete) {
+                  handleDelete(expenseToDelete.id);
+                }
+              }}
               className="bg-red-600 hover:bg-red-700"
             >
               Excluir
