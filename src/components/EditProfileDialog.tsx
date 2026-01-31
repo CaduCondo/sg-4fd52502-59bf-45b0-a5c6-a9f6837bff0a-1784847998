@@ -13,7 +13,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 interface ExtendedSystemUser extends SystemUser {
   photo?: string;
-  document?: string;
+  cpf?: string;
   birthDate?: string;
   cep?: string;
   street?: string;
@@ -167,7 +167,7 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
         email: selectedUser.email,
         phone: selectedUser.phone,
         role: selectedUser.role,
-        document: selectedUser.document,
+        cpf: selectedUser.cpf,
         birthDate: selectedUser.birthDate,
         cep: selectedUser.cep,
         street: selectedUser.street,
@@ -281,14 +281,14 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="document" className="flex items-center gap-2">
+                <Label htmlFor="cpf" className="flex items-center gap-2">
                   <Shield className="h-4 w-4" />
                   CPF
                 </Label>
                 <Input
-                  id="document"
-                  value={selectedUser?.document ? applyCpfMask(selectedUser.document) : ""}
-                  onChange={(e) => handleInputChange("document", removeMask(e.target.value))}
+                  id="cpf"
+                  value={selectedUser?.cpf ? applyCpfMask(selectedUser.cpf) : ""}
+                  onChange={(e) => handleInputChange("cpf", removeMask(e.target.value))}
                   placeholder="000.000.000-00"
                   maxLength={14}
                 />
