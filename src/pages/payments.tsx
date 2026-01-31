@@ -621,7 +621,10 @@ export default function Payments() {
             <AlertDialogFooter>
               <AlertDialogCancel>Cancelar</AlertDialogCancel>
               <Button
-                onClick={handleConfirmCancelPayment}
+                onClick={async (e) => {
+                  (e.target as HTMLButtonElement).blur();
+                  await handleConfirmCancelPayment();
+                }}
                 className="bg-red-600 hover:bg-red-700"
               >
                 Sim, Cancelar Pagamento

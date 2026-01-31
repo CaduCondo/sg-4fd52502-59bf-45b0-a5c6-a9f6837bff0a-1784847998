@@ -1,5 +1,6 @@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Tenant } from "@/types";
+import { Button } from "@/components/ui/button";
 
 interface TenantDeleteAlertProps {
   open: boolean;
@@ -21,9 +22,9 @@ export function TenantDeleteAlert({ open, tenant, onConfirm, onCancel }: TenantD
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel onClick={onCancel}>Cancelar</AlertDialogCancel>
-          <AlertDialogAction onClick={(e) => { onConfirm(); (e.target as HTMLElement).blur(); }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+          <Button onClick={(e) => { onConfirm(); (e.target as HTMLElement).blur(); }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
             Excluir
-          </AlertDialogAction>
+          </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

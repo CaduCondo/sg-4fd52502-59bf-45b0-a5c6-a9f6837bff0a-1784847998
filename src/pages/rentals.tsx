@@ -573,7 +573,7 @@ export default function RentalsPage() {
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancelar</AlertDialogCancel>
-              <Button onClick={handleDeleteRental} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              <Button onClick={async (e) => { (e.target as HTMLButtonElement).blur(); await handleDeleteRental(); }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
                 Excluir
               </Button>
             </AlertDialogFooter>

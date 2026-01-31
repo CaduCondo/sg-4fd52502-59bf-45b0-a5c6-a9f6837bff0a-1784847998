@@ -1,5 +1,6 @@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { AlertCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface PropertyDeleteAlertProps {
   open: boolean;
@@ -28,9 +29,9 @@ export function PropertyDeleteAlert({
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel onClick={onCancel}>Cancelar</AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm} className="bg-red-600 hover:bg-red-700">
+          <Button onClick={(e) => { onConfirm(); (e.target as HTMLElement).blur(); }} className="bg-red-600 hover:bg-red-700">
             Sim, Excluir
-          </AlertDialogAction>
+          </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

@@ -126,7 +126,7 @@ export default function RentalDetailsPage() {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                      <Button onClick={handleTerminateRental} onBlur={() => {}}>
+                      <Button onClick={async (e) => { (e.target as HTMLButtonElement).blur(); await handleTerminateRental(); }}>
                         Confirmar
                       </Button>
                     </AlertDialogFooter>
