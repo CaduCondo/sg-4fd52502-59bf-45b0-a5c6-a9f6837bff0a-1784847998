@@ -7,22 +7,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { SystemUser } from "@/types";
 import { updateUser, resetPassword, unlockUser } from "@/services/systemUserService";
-import { User, Mail, Phone, MapPin, Calendar, Shield, Save, KeyRound, Unlock, Camera } from "lucide-react";
-import { applyCpfMask, applyPhoneMask, applyCepMask, removeMask } from "@/lib/masks";
+import { User, Mail, Phone, Shield, Save, KeyRound, Unlock, Camera } from "lucide-react";
+import { applyCpfMask, applyPhoneMask, removeMask } from "@/lib/masks";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-
-interface ExtendedSystemUser extends SystemUser {
-  photo?: string;
-  cpf?: string;
-  birthDate?: string;
-  cep?: string;
-  street?: string;
-  number?: string;
-  complement?: string;
-  neighborhood?: string;
-  city?: string;
-  state?: string;
-}
 
 interface EditProfileDialogProps {
   open: boolean;
@@ -33,49 +20,19 @@ interface EditProfileDialogProps {
 
 export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditProfileDialogProps) {
   const { toast } = useToast();
-  const [selectedUser, setSelectedUser] = useState<ExtendedSystemUser | null>(null);
+  const [selectedUser, setSelectedUser] = useState<SystemUser | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [isUnlocking, setIsUnlocking] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    password: "",
-    confirmPassword: "",
     newPassword: "",
   });
 
   useEffect(() => {
-    if (user) {
-      setFormData({
-        name: user.name || "",
-        email: user.email || "",
-        phone: user.phone || "",
-        password: "",
-        confirmPassword: "",
-        newPassword: "",
-      });
-    }
-  }, [user]);
-
-  useEffect(() => {
     if (open && user) {
-      const extendedUser: ExtendedSystemUser = {
-        ...user,
-        birthDate: (user as any).birthDate || "",
-        cep: (user as any).cep || "",
-        street: (user as any).street || "",
-        number: (user as any).number || "",
-        complement: (user as any).complement || "",
-        neighborhood: (user as any).neighborhood || "",
-        city: (user as any).city || "",
-        state: (user as any).state || "",
-        photo: (user as any).photo || null,
-      };
-      setSelectedUser(extendedUser);
-      setPhotoPreview((user as any).photo || null);
+      setSelectedUser(user);
+      setPhotoPreview(user.photo || null);
     }
   }, [open, user]);
 
@@ -88,7 +45,7 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
       
       toast({
         title: "Senha zerada com sucesso!",
-        description: `A senha do usuário ${selectedUser.name} foi redefinida.`,
+        description: `A senha do usuário ${selectedUser.name} foi redefinida para "mudar123".`,
       });
       
       onSuccess();
@@ -112,17 +69,17 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
       await unlockUser(selectedUser.id, !selectedUser.active);
       
       toast({
-        title: "Usuário desbloqueado!",
-        description: `O usuário ${selectedUser.name} foi desbloqueado com sucesso.`,
+        title: selectedUser.active ? "Usuário bloqueado!" : "Usuário desbloqueado!",
+        description: `O usuário ${selectedUser.name} foi ${selectedUser.active ? 'bloqueado' : 'desbloqueado'} com sucesso.`,
       });
       
       onSuccess();
       onOpenChange(false);
     } catch (error) {
-      console.error("Erro ao desbloquear usuário:", error);
+      console.error("Erro ao alterar status do usuário:", error);
       toast({
-        title: "Erro ao desbloquear usuário",
-        description: error instanceof Error ? error.message : "Não foi possível desbloquear o usuário.",
+        title: "Erro ao alterar status",
+        description: error instanceof Error ? error.message : "Não foi possível alterar o status do usuário.",
         variant: "destructive",
       });
     } finally {
@@ -168,14 +125,7 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
         phone: selectedUser.phone,
         role: selectedUser.role,
         cpf: selectedUser.cpf,
-        birthDate: selectedUser.birthDate,
-        cep: selectedUser.cep,
-        street: selectedUser.street,
-        number: selectedUser.number,
-        complement: selectedUser.complement,
-        neighborhood: selectedUser.neighborhood,
-        city: selectedUser.city,
-        state: selectedUser.state,
+        rg: selectedUser.rg,
         photo: selectedUser.photo,
       };
 
@@ -281,20 +231,6 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="cpf" className="flex items-center gap-2">
-                  <Shield className="h-4 w-4" />
-                  CPF
-                </Label>
-                <Input
-                  id="cpf"
-                  value={selectedUser?.cpf ? applyCpfMask(selectedUser.cpf) : ""}
-                  onChange={(e) => handleInputChange("cpf", removeMask(e.target.value))}
-                  placeholder="000.000.000-00"
-                  maxLength={14}
-                />
-              </div>
-
-              <div className="space-y-2">
                 <Label htmlFor="profile-email" className="flex items-center gap-2">
                   <Mail className="h-4 w-4" />
                   E-mail
@@ -302,7 +238,7 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
                 <Input
                   id="profile-email"
                   type="email"
-                  value={selectedUser?.email || ""}
+                  value={selectedUser.email || ""}
                   onChange={(e) => handleInputChange("email", e.target.value)}
                   placeholder="seu@email.com"
                 />
@@ -315,22 +251,33 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
                 </Label>
                 <Input
                   id="profile-phone"
-                  value={selectedUser?.phone ? applyPhoneMask(selectedUser.phone) : ""}
+                  value={selectedUser.phone ? applyPhoneMask(selectedUser.phone) : ""}
                   onChange={(e) => handleInputChange("phone", removeMask(e.target.value))}
                   placeholder="(00) 00000-0000"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="birthDate" className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
-                  Data de Nascimento
+                <Label htmlFor="cpf" className="flex items-center gap-2">
+                  <Shield className="h-4 w-4" />
+                  CPF
                 </Label>
                 <Input
-                  id="birthDate"
-                  type="date"
-                  value={selectedUser?.birthDate || ""}
-                  onChange={(e) => handleInputChange("birthDate", e.target.value)}
+                  id="cpf"
+                  value={selectedUser.cpf ? applyCpfMask(selectedUser.cpf) : ""}
+                  onChange={(e) => handleInputChange("cpf", removeMask(e.target.value))}
+                  placeholder="000.000.000-00"
+                  maxLength={14}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="rg">RG</Label>
+                <Input
+                  id="rg"
+                  value={selectedUser.rg || ""}
+                  onChange={(e) => handleInputChange("rg", e.target.value)}
+                  placeholder="00.000.000-0"
                 />
               </div>
 
@@ -366,86 +313,7 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
                     <SelectItem value="active">Ativo</SelectItem>
                     <SelectItem value="inactive">Inativo</SelectItem>
                   </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-
-          {/* Endereço */}
-          <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-              Endereço
-            </h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="cep" className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4" />
-                  CEP
-                </Label>
-                <Input
-                  id="cep"
-                  value={selectedUser?.cep ? applyCepMask(selectedUser.cep) : ""}
-                  onChange={(e) => handleInputChange("cep", removeMask(e.target.value))}
-                  placeholder="00000-000"
-                  maxLength={9}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="street">Rua</Label>
-                <Input
-                  id="street"
-                  value={selectedUser.street || ""}
-                  onChange={(e) => handleInputChange("street", e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="number">Número</Label>
-                <Input
-                  id="number"
-                  value={selectedUser.number || ""}
-                  onChange={(e) => handleInputChange("number", e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="complement">Complemento</Label>
-                <Input
-                  id="complement"
-                  value={selectedUser.complement || ""}
-                  onChange={(e) => handleInputChange("complement", e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="neighborhood">Bairro</Label>
-                <Input
-                  id="neighborhood"
-                  value={selectedUser.neighborhood || ""}
-                  onChange={(e) => handleInputChange("neighborhood", e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="city">Cidade</Label>
-                <Input
-                  id="city"
-                  value={selectedUser.city || ""}
-                  onChange={(e) => handleInputChange("city", e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="state">Estado</Label>
-                <Input
-                  id="state"
-                  value={selectedUser.state || ""}
-                  onChange={(e) => handleInputChange("state", e.target.value)}
-                  maxLength={2}
-                  placeholder="SP"
-                />
+                </SelectContent>
               </div>
             </div>
           </div>
@@ -489,11 +357,11 @@ export function EditProfileDialog({ open, onOpenChange, user, onSuccess }: EditP
               type="button"
               variant="outline"
               onClick={handleUnlockUser}
-              disabled={isUnlocking || isSubmitting || isResettingPassword || selectedUser.active}
+              disabled={isUnlocking || isSubmitting || isResettingPassword}
               className="flex-1"
             >
               <Unlock className="h-4 w-4 mr-2" />
-              {isUnlocking ? "Desbloqueando..." : selectedUser.active ? "Usuário Ativo" : "Desbloquear"}
+              {isUnlocking ? (selectedUser.active ? "Bloqueando..." : "Desbloqueando...") : (selectedUser.active ? "Bloquear Usuário" : "Desbloquear Usuário")}
             </Button>
 
             <Button
