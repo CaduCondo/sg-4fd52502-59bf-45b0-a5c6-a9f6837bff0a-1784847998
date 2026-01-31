@@ -11,6 +11,7 @@ import { SEO } from "@/components/SEO";
 import { PeriodSelector } from "@/components/dashboard/PeriodSelector";
 import { useAuth } from "@/contexts/AuthContext";
 import { WelcomeCard } from "@/components/dashboard/WelcomeCard";
+import { useMemo } from "react";
 
 export default function Dashboard() {
   const currentDate = new Date();
@@ -31,65 +32,66 @@ export default function Dashboard() {
     setSelectedYear(year);
   };
   
-  // Cálculos detalhados para o OverviewCards
-  const totalProperties = properties.length;
-  const availableProperties = properties.filter(p => p.status === 'available').length;
-  const rentedProperties = properties.filter(p => p.status === 'occupied').length;
-  const unavailableProperties = properties.filter(p => p.status === 'unavailable').length;
-  
-  const totalTenants = new Set(rentals.map(r => r.tenantId)).size;
-  const activeContracts = rentals.filter(r => r.isActive).length;
-  
-  const totalRevenue = payments.reduce((acc, p) => acc + (p.paidAmount || 0), 0);
-  // Receita líquida seria Receita - Despesas (mas não temos despesas aqui ainda, usando total por enquanto)
-  const netRevenue = totalRevenue; 
-  
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // Usar useMemo para evitar recálculo constante
+  const overviewData = useMemo(() => {
+    // Cálculos detalhados para o OverviewCards
+    const totalProperties = properties.length;
+    const availableProperties = properties.filter(p => p.status === 'available').length;
+    const rentedProperties = properties.filter(p => p.status === 'occupied').length;
+    const unavailableProperties = properties.filter(p => p.status === 'unavailable').length;
+    
+    const totalTenants = new Set(rentals.map(r => r.tenantId)).size;
+    const activeContracts = rentals.filter(r => r.isActive).length;
+    
+    const totalRevenue = payments.reduce((acc, p) => acc + (p.paidAmount || 0), 0);
+    const netRevenue = totalRevenue;
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-  const overduePaymentsList = payments.filter(p => {
-    if (p.status === 'paid') return false;
-    const dueDate = new Date(p.dueDate);
-    return dueDate < today;
-  });
+    const overduePaymentsList = payments.filter(p => {
+      if (p.status === 'paid') return false;
+      const dueDate = new Date(p.dueDate);
+      return dueDate < today;
+    });
 
-  const overduePayments = overduePaymentsList.length;
-  const overdueAmount = overduePaymentsList.reduce((acc, p) => acc + (p.expectedAmount || 0), 0);
+    const overduePayments = overduePaymentsList.length;
+    const overdueAmount = overduePaymentsList.reduce((acc, p) => acc + (p.expectedAmount || 0), 0);
 
-  const dueTodayPayments = payments.filter(p => {
-    if (p.status === 'paid') return false;
-    const dueDate = new Date(p.dueDate);
-    const pDate = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
-    return pDate.getTime() === today.getTime();
-  }).length;
+    const dueTodayPayments = payments.filter(p => {
+      if (p.status === 'paid') return false;
+      const dueDate = new Date(p.dueDate);
+      const pDate = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
+      return pDate.getTime() === today.getTime();
+    }).length;
 
-  const completedPayments = payments.filter(p => p.status === 'paid').length;
-  const expectedAmount = payments.reduce((acc, p) => acc + (p.expectedAmount || 0), 0);
+    const completedPayments = payments.filter(p => p.status === 'paid').length;
+    const expectedAmount = payments.reduce((acc, p) => acc + (p.expectedAmount || 0), 0);
 
-  const occupancyRate = totalProperties > 0 ? (rentedProperties / totalProperties) * 100 : 0;
+    const occupancyRate = totalProperties > 0 ? (rentedProperties / totalProperties) * 100 : 0;
 
-  const overviewData = {
-    totalProperties,
-    availableProperties,
-    rentedProperties,
-    unavailableProperties,
-    occupancyRate,
-    totalTenants,
-    activeContracts,
-    overduePayments,
-    overdueAmount,
-    dueTodayPayments,
-    completedPayments,
-    expectedAmount,
-    totalRevenue,
-    grossRevenue: totalRevenue, // Adicionado (igual ao totalRevenue por enquanto)
-    totalFeesAndExpenses: 0,    // Adicionado (placeholder)
-    netRevenue,
-    // Campos extras que podem ser úteis
-    payments,
-    properties,
-    rentals
-  };
+    return {
+      totalProperties,
+      availableProperties,
+      rentedProperties,
+      unavailableProperties,
+      occupancyRate,
+      totalTenants,
+      activeContracts,
+      overduePayments,
+      overdueAmount,
+      dueTodayPayments,
+      completedPayments,
+      expectedAmount,
+      totalRevenue,
+      grossRevenue: totalRevenue,
+      totalFeesAndExpenses: 0,
+      netRevenue,
+      payments,
+      properties,
+      rentals
+    };
+  }, [payments, properties, rentals]); // ✅ Dependências corretas
 
   return (
     <Layout>

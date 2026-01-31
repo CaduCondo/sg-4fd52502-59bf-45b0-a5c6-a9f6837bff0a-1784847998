@@ -118,30 +118,6 @@ export default function Financial() {
 
       setConfig(configData);
 
-      // Buscar despesas de locais para o período selecionado
-      const { data: expensesData, error: expensesError } = await supabase
-        .from("location_expenses")
-        .select("amount, status")
-        .eq("reference_month", parseInt(selectedMonth))
-        .eq("reference_year", parseInt(selectedYear));
-      
-      if (expensesError) {
-        console.error("Error fetching location expenses:", expensesError);
-      }
-      
-      const totalExpenses = expensesData
-        ? expensesData.reduce((sum, e) => sum + (e.amount || 0), 0)
-        : 0;
-      
-      console.log("💰 Contas a Pagar carregadas:", {
-        month: parseInt(selectedMonth),
-        year: parseInt(selectedYear),
-        totalExpenses,
-        count: expensesData?.length || 0
-      });
-      
-      setLocationExpenses(totalExpenses);
-
       // Buscar permissões de locais do usuário logado
       let allowedLocations: string[] = [];
       if (user) {
@@ -168,6 +144,39 @@ export default function Financial() {
           setAllowedLocationIds([]);
         }
       }
+
+      // Buscar despesas de locais para o período selecionado
+      let expensesQuery = supabase
+        .from("location_expenses")
+        .select("amount, status, location_id")
+        .eq("reference_month", parseInt(selectedMonth))
+        .eq("reference_year", parseInt(selectedYear));
+      
+      // ✅ Filtrar despesas por locais permitidos se for usuário financeiro
+      if (user?.role === "financial" && allowedLocations.length > 0) {
+        expensesQuery = expensesQuery.in("location_id", allowedLocations);
+      }
+      
+      const { data: expensesData, error: expensesError } = await expensesQuery;
+      
+      if (expensesError) {
+        console.error("Error fetching location expenses:", expensesError);
+      }
+      
+      const totalExpenses = expensesData
+        ? expensesData.reduce((sum, e) => sum + (e.amount || 0), 0)
+        : 0;
+      
+      console.log("💰 Contas a Pagar carregadas:", {
+        month: parseInt(selectedMonth),
+        year: parseInt(selectedYear),
+        userRole: user?.role,
+        allowedLocations: allowedLocations.length > 0 ? allowedLocations : "Todos",
+        totalExpenses,
+        count: expensesData?.length || 0
+      });
+      
+      setLocationExpenses(totalExpenses);
 
       // Filtrar properties por permissões de local (apenas para usuários financeiros)
       let filteredProperties = propertiesData;
