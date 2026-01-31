@@ -59,7 +59,9 @@ export async function unlockUser(userId: string, active: boolean): Promise<void>
   const { error } = await supabase
     .from("system_users")
     .update({ active })
-    .eq("id", userId);
+    .eq("id", userId)
+    .select("*")
+    .maybeSingle();
 
   if (error) throw error;
 }
@@ -69,7 +71,9 @@ export async function resetPassword(userId: string): Promise<void> {
   const { error } = await supabase
     .from("system_users")
     .update({ password: "mudar123" })
-    .eq("id", userId);
+    .eq("id", userId)
+    .select("*")
+    .maybeSingle();
 
   if (error) throw error;
 }
