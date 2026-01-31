@@ -64,6 +64,10 @@ export async function updateSingle<T>(
   updates: Partial<T>,
   options: QueryOptions = { throwOnNotFound: true }
 ): Promise<T> {
+  console.log(`🔄 updateSingle: Atualizando ${table}`);
+  console.log(`   ID: ${id}`);
+  console.log(`   Updates:`, updates);
+
   // PASSO 1: Fazer UPDATE sem tentar buscar resultado (evita erro 406)
   const { error: updateError } = await supabase
     .from(table as any)

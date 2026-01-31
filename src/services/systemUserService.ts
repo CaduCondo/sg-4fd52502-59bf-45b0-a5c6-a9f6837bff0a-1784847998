@@ -52,7 +52,15 @@ export async function updateUser(id: string, user: Partial<SystemUser>): Promise
   console.log("Dados antes da atualização:", user);
   console.log("Dados após a conversão para snake_case:", dbUser);
   
-  return updateSingle<SystemUser>(TABLE, id, dbUser);
+  try {
+    console.log("📝 Dados após conversão para snake_case:", dbUser);
+    console.log("🚀 Chamando updateSingle...");
+    
+    const updatedUser = await updateSingle<SystemUser>(TABLE, id, dbUser);
+    return updatedUser;
+  } catch (error) {
+    throw error;
+  }
 }
 
 export async function deleteUser(id: string): Promise<void> {
