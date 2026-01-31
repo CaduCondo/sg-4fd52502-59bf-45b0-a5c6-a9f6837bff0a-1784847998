@@ -293,17 +293,17 @@ export function RentalFormDialog({
         await updateDepositInstallments(rental.id, depositData);
 
         // Remover redeclaração, usar atribuição se necessário ou apenas usar o valor
-        const finalStatus = updatedRental.status as "active" | "terminated" | "pending";
-        updatedRental.status = finalStatus;
+        const finalStatus = (updatedRental.status || "active") as "active" | "terminated" | "pending";
+        // updatedRental.status = finalStatus; // Removida atribuição direta para evitar erro
 
         if (isViewMode) {
-          updatedRental.status = "active" as "active" | "terminated" | "pending";
+          // updatedRental.status = "active"; // Removida atribuição direta
         }
 
         const mergedRental: Rental = {
           ...rental,
           ...updatedRental,
-          status: updatedRental.status,
+          status: isViewMode ? "active" : finalStatus,
           attachments: (updatedRental.attachments as unknown as string[]) || [],
           contractAttachments: (updatedRental.contract_attachments as unknown as string[]) || [],
           value: Number(updatedRental.value || updatedRental.monthly_rent || rental.value),
