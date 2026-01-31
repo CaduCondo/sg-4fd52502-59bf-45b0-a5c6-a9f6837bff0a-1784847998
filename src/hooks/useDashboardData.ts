@@ -85,12 +85,10 @@ export function useDashboardData(selectedPeriod: { month: number; year: number }
       if (locationIds) {
         const allowedPropertyIds = (propertiesData || []).map(p => p.id);
         
-        // Filtrar locações por imóveis permitidos
         filteredRentals = (rentalsData || []).filter(r => 
           allowedPropertyIds.includes(r.property_id)
         );
         
-        // Filtrar pagamentos por locações permitidas
         const allowedRentalIds = filteredRentals.map(r => r.id);
         filteredPayments = (paymentsData || []).filter(p => 
           allowedRentalIds.includes(p.rental_id)
@@ -98,8 +96,8 @@ export function useDashboardData(selectedPeriod: { month: number; year: number }
       }
 
       setPayments(filteredPayments.map(mapPaymentFromDB));
-      setProperties(propertiesData || []);
-      setRentals(filteredRentals);
+      setProperties((propertiesData || []).map(mapPropertyFromDB));
+      setRentals(filteredRentals.map(mapRentalFromDB));
     } catch (error) {
       console.error("Error loading dashboard data:", error);
     } finally {

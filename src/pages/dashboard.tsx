@@ -18,34 +18,28 @@ export default function Dashboard() {
   const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
   const { user } = useAuth();
 
-  const { dashboardData, loading, error, refresh } = useDashboardData(selectedMonth, selectedYear);
+  const { 
+    payments, 
+    properties, 
+    rentals, 
+    allowedLocationIds,
+    loading 
+  } = useDashboardData({ month: selectedMonth, year: selectedYear });
 
   const handlePeriodChange = (month: number, year: number) => {
     setSelectedMonth(month);
     setSelectedYear(year);
   };
-
-  if (error) {
-    return (
-      <Layout>
-        <SEO title="Dashboard - Gerenciador de Locações" />
-        <div className="p-6">
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              Erro ao carregar dados do dashboard: {error}
-            </AlertDescription>
-          </Alert>
-          <button 
-            onClick={refresh}
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-          >
-            Tentar Novamente
-          </button>
-        </div>
-      </Layout>
-    );
-  }
+  
+  const overviewData = {
+    totalRevenue: payments.reduce((acc, p) => acc + (p.paidAmount || 0), 0),
+    totalProperties: properties.length,
+    occupiedProperties: rentals.filter(r => r.isActive).length,
+    totalTenants: new Set(rentals.map(r => r.tenantId)).size,
+    payments,
+    properties,
+    rentals
+  };
 
   return (
     <Layout>
@@ -79,17 +73,15 @@ export default function Dashboard() {
           <>
             <OverviewCards data={overviewData} />
             
-            {/* Charts Section */}
             <AnalyticsCharts 
-              revenueData={[]} // TODO: Processar dados reais para o gráfico
-              occupancyData={[]} // TODO: Processar dados reais
+              revenueData={[]} 
+              occupancyData={[]} 
             />
 
-            {/* Financial Charts - 6 Months */}
             <FinancialCharts
-              monthlyRevenueData={[]} // TODO: Processar dados reais
-              monthlyExpensesData={[]} // TODO: Processar dados reais
-              occupancyData={[]} // TODO: Processar dados reais
+              monthlyRevenueData={[]} 
+              monthlyExpensesData={[]} 
+              occupancyData={[]} 
             />
           </>
         )}

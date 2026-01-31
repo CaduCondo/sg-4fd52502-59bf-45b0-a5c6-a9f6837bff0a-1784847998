@@ -355,3 +355,29 @@ export function getRoleLabel(role: string | undefined | null): string {
       return "Desconhecido";
   }
 }
+
+import { supabase } from "@/integrations/supabase/client";
+
+export async function checkUserPermission(
+  userId: string,
+  resource: string,
+  action: string
+): Promise<boolean> {
+  try {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', userId)
+      .single();
+
+    const userRole = profile?.role || 'broker';
+
+    if (userRole === 'admin') return true;
+    if (userRole === 'financial') return false;
+
+    return false;
+  } catch (error) {
+    console.error("Erro ao verificar permissão:", error);
+    return false;
+  }
+}
