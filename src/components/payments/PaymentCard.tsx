@@ -35,17 +35,16 @@ export function PaymentCard({
   const getStatusBadge = (status: Payment["status"]) => {
     switch (status) {
       case "paid":
-        return <Badge className="bg-green-500">Pago</Badge>;
+        return <Badge className="bg-green-500 text-white text-xs">Pago</Badge>;
       case "partial":
-        return <Badge className="bg-yellow-500">Parcial</Badge>;
+        return <Badge className="bg-yellow-500 text-white text-xs">Parcial</Badge>;
       case "overdue":
-        return <Badge className="bg-red-500">Atrasado</Badge>;
+        return <Badge className="bg-red-500 text-white text-xs">Atrasado</Badge>;
       default:
-        return <Badge className="bg-gray-500">Pendente</Badge>;
+        return <Badge className="bg-gray-500 text-white text-xs">Pendente</Badge>;
     }
   };
 
-  // Calcular valor restante para pagamentos parciais
   const isPartial = payment.status === "partial";
   const remainingAmount = isPartial ? expectedAmount - payment.paidAmount : expectedAmount;
   const displayAmount = isPaid ? payment.paidAmount : remainingAmount;
@@ -85,104 +84,106 @@ export function PaymentCard({
   if (viewMode === "grid") {
     return (
       <Card
-        className={`hover:shadow-lg transition-shadow cursor-pointer border-l-4 ${colors.border}`}
+        className={`hover:shadow-lg transition-all duration-200 cursor-pointer border-l-4 ${colors.border} active:scale-[0.98] touch-target`}
         onClick={() => onCardClick(payment.id)}
       >
-        <CardHeader className="pb-2 p-3">
-          <div className="flex items-start justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <Home className="w-4 h-4 text-muted-foreground" />
-              <div>
-                <span className={`font-medium text-sm ${!isPaid ? colors.icon : ''}`}>
+        <CardHeader className="pb-3 p-4">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <Home className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+              <div className="min-w-0 flex-1">
+                <span className={`font-semibold text-sm sm:text-base ${!isPaid ? colors.icon : ''} block truncate`}>
                   {property?.location || "Imóvel não encontrado"}
                 </span>
                 {property?.complement && (
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground truncate mt-0.5">
                     {property.complement}
                   </p>
                 )}
               </div>
             </div>
-            <div className="flex flex-col items-end gap-1">
-              <span className="text-xs text-muted-foreground">
+            <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+              <span className="text-xs text-muted-foreground whitespace-nowrap">
                 {getMonthName(payment.referenceMonth)}/{payment.referenceYear}
               </span>
               {getStatusBadge(payment.status)}
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-2 p-3 pt-0">
-          <div className="flex items-start gap-1.5">
-            <User className="h-3.5 w-3.5 text-muted-foreground mt-0.5" />
-            <div>
-              <p className="text-xs font-medium">{tenant?.name || "N/A"}</p>
-              <p className="text-[10px] text-muted-foreground">
+        <CardContent className="space-y-3 p-4 pt-0">
+          <div className="flex items-start gap-2">
+            <User className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium truncate">{tenant?.name || "N/A"}</p>
+              <p className="text-xs text-muted-foreground truncate">
                 {tenant?.document || "N/A"}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5">
-            <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-            <p className="text-xs">
-              {isPaid ? "Pago em: " : "Vencimento: "}
-              {isPaid 
-                ? (payment.paymentDate ? new Date(payment.paymentDate + "T12:00:00").toLocaleDateString("pt-BR") : "N/A")
-                : new Date(new Date(payment.dueDate).getTime() + 24 * 60 * 60 * 1000).toLocaleDateString("pt-BR")
-              }
-            </p>
-            <span className="ml-auto text-xs font-semibold text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm truncate">
+                {isPaid ? "Pago em: " : "Vencimento: "}
+                {isPaid 
+                  ? (payment.paymentDate ? new Date(payment.paymentDate + "T12:00:00").toLocaleDateString("pt-BR") : "N/A")
+                  : new Date(new Date(payment.dueDate).getTime() + 24 * 60 * 60 * 1000).toLocaleDateString("pt-BR")
+                }
+              </p>
+            </div>
+            <span className="text-xs font-semibold text-muted-foreground whitespace-nowrap">
               Parcela {installment}
             </span>
           </div>
 
-          <div className="pt-2 border-t">
-            <p className="text-[10px] text-muted-foreground mb-1">
+          <div className="pt-3 border-t">
+            <p className="text-xs text-muted-foreground mb-1.5">
               {isPaid ? "Valor Pago" : (isPartial ? "Valor Restante" : "Valor Esperado")}
             </p>
-            <p className={`text-lg font-bold ${colors.amount}`}>
+            <p className={`text-2xl sm:text-3xl font-bold ${colors.amount}`}>
               {formatCurrency(displayAmount)}
             </p>
           </div>
 
           {isPartial && payment.paidAmount > 0 && (
-            <div className="pt-1 border-t">
-              <p className="text-[10px] text-muted-foreground mb-1">Valor Já Pago</p>
-              <p className="text-base font-semibold text-green-600">
+            <div className="pt-2 border-t">
+              <p className="text-xs text-muted-foreground mb-1">Valor Já Pago</p>
+              <p className="text-lg font-semibold text-green-600">
                 {formatCurrency(payment.paidAmount)}
               </p>
             </div>
           )}
 
           {!isPaid && !isPartial && payment.paidAmount > 0 && (
-            <div className="pt-1 border-t">
-              <p className="text-[10px] text-muted-foreground mb-1">Valor Pago</p>
-              <p className="text-base font-semibold text-yellow-600">
+            <div className="pt-2 border-t">
+              <p className="text-xs text-muted-foreground mb-1">Valor Pago</p>
+              <p className="text-lg font-semibold text-yellow-600">
                 {formatCurrency(payment.paidAmount)}
               </p>
             </div>
           )}
 
           {isPaid && onCancelPayment && (
-            <div className="pt-2">
+            <div className="pt-3 space-y-2">
               {onViewReceipt && (
                 <Button
                   variant="outline"
                   size="sm"
-                  className="w-full text-blue-600 hover:text-blue-700 hover:bg-blue-50 h-7 text-xs mb-2"
+                  className="w-full text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 h-11 sm:h-9 touch-target"
                   onClick={(e) => onViewReceipt(payment.id, e)}
                 >
-                  <FileText className="h-3 w-3 mr-1" />
+                  <FileText className="h-4 w-4 mr-2" />
                   Ver Recibo
                 </Button>
               )}
               <Button
                 variant="outline"
                 size="sm"
-                className="w-full text-red-600 hover:text-red-700 hover:bg-red-50 h-7 text-xs"
+                className="w-full text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 h-11 sm:h-9 touch-target"
                 onClick={(e) => onCancelPayment(payment.id, e)}
               >
-                <X className="h-3 w-3 mr-1" />
+                <X className="h-4 w-4 mr-2" />
                 Cancelar Pagamento
               </Button>
             </div>
@@ -192,18 +193,19 @@ export function PaymentCard({
     );
   }
 
-  // List view
+  // List view - otimizado para mobile
   return (
     <Card
-      className={`hover:shadow-lg transition-shadow cursor-pointer border-l-4 ${colors.border}`}
+      className={`hover:shadow-lg transition-all duration-200 cursor-pointer border-l-4 ${colors.border} active:scale-[0.98]`}
       onClick={() => onCardClick(payment.id)}
     >
-      <CardContent className="py-2 px-3">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3 flex-1 min-w-0">
-            <Home className={`h-5 w-5 ${colors.icon} flex-shrink-0`} />
+      <CardContent className="py-3 px-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          {/* Mobile: Stack vertical */}
+          <div className="flex items-start gap-3 flex-1 min-w-0">
+            <Home className={`h-6 w-6 ${colors.icon} flex-shrink-0 mt-1`} />
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
+              <div className="flex flex-wrap items-center gap-2 mb-1.5">
                 <span className="text-xs text-muted-foreground">
                   {getMonthName(payment.referenceMonth)}/{payment.referenceYear}
                 </span>
@@ -213,85 +215,88 @@ export function PaymentCard({
                 </span>
               </div>
               {property ? (
-                <div className="flex flex-col">
-                  <span className="text-lg font-bold text-blue-600">
+                <div className="space-y-0.5">
+                  <span className="text-base sm:text-lg font-bold text-blue-600 dark:text-blue-400 block">
                     {property.location || "Local não informado"}
                   </span>
                   {property.complement && (
-                    <span className="text-sm text-muted-foreground">
+                    <span className="text-sm text-muted-foreground block">
                       {property.complement}
                     </span>
                   )}
                 </div>
               ) : (
-                <span className="text-lg font-semibold">Imóvel não encontrado</span>
+                <span className="text-base sm:text-lg font-semibold">Imóvel não encontrado</span>
               )}
             </div>
           </div>
           
-          <div className="flex items-center gap-4">
-            <div className="text-right">
-              <p className="text-xs text-muted-foreground">Inquilino</p>
-              <p className="text-sm font-medium">{tenant?.name || "N/A"}</p>
+          {/* Desktop: lado a lado */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
+            <div className="grid grid-cols-2 sm:flex sm:gap-4">
+              <div className="text-left sm:text-right">
+                <p className="text-xs text-muted-foreground">Inquilino</p>
+                <p className="text-sm font-medium truncate">{tenant?.name || "N/A"}</p>
+              </div>
+              
+              <div className="text-right">
+                <p className="text-xs text-muted-foreground">
+                  {isPaid ? "Pago em" : "Vencimento"}
+                </p>
+                <p className="text-sm font-medium">
+                  {isPaid 
+                    ? (payment.paymentDate ? new Date(payment.paymentDate + "T12:00:00").toLocaleDateString("pt-BR") : "N/A")
+                    : new Date(new Date(payment.dueDate).getTime() + 24 * 60 * 60 * 1000).toLocaleDateString("pt-BR")
+                  }
+                </p>
+                {isPaid && payment.paymentMethod && (
+                  <p className="text-xs text-muted-foreground capitalize">{payment.paymentMethod}</p>
+                )}
+              </div>
             </div>
             
-            <div className="text-right">
-              <p className="text-xs text-muted-foreground">
-                {isPaid ? "Pago em" : "Vencimento"}
-              </p>
-              <p className="text-sm">
-                {isPaid 
-                  ? (payment.paymentDate ? new Date(payment.paymentDate + "T12:00:00").toLocaleDateString("pt-BR") : "N/A")
-                  : new Date(new Date(payment.dueDate).getTime() + 24 * 60 * 60 * 1000).toLocaleDateString("pt-BR")
-                }
-              </p>
-              {isPaid && payment.paymentMethod && (
-                <p className="text-xs text-muted-foreground capitalize">{payment.paymentMethod}</p>
-              )}
-            </div>
-            
-            <div className="text-right min-w-[100px]">
-              <p className="text-xs text-muted-foreground">
+            <div className="text-left sm:text-right sm:min-w-[120px]">
+              <p className="text-xs text-muted-foreground mb-1">
                 {isPaid ? "Valor Pago" : (isPartial ? "Valor Restante" : "Valor Esperado")}
               </p>
-              <p className={`text-base font-bold ${colors.amount}`}>
+              <p className={`text-xl sm:text-2xl font-bold ${colors.amount}`}>
                 {formatCurrency(displayAmount)}
               </p>
               {isPartial && payment.paidAmount > 0 && (
-                <p className="text-xs text-green-600 font-semibold">
+                <p className="text-xs text-green-600 font-semibold mt-1">
                   Já pago: {formatCurrency(payment.paidAmount)}
                 </p>
               )}
               {!isPaid && !isPartial && payment.paidAmount > 0 && (
-                <p className="text-xs text-yellow-600 font-semibold">
+                <p className="text-xs text-yellow-600 font-semibold mt-1">
                   Pago: {formatCurrency(payment.paidAmount)}
                 </p>
               )}
             </div>
             
             {isPaid && onCancelPayment && (
-              <>
+              <div className="flex flex-col gap-2 sm:flex-shrink-0">
                 {onViewReceipt && (
                   <Button
                     variant="outline"
                     size="sm"
-                    className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 h-7 text-xs"
+                    className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 h-11 sm:h-9 touch-target"
                     onClick={(e) => onViewReceipt(payment.id, e)}
                   >
-                    <FileText className="h-3 w-3 mr-1" />
-                    Ver Recibo
+                    <FileText className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Ver Recibo</span>
                   </Button>
                 )}
                 <Button
                   variant="outline"
                   size="sm"
-                  className="text-red-600 hover:text-red-700 hover:bg-red-50 h-7 text-xs"
+                  className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 h-11 sm:h-9 touch-target"
                   onClick={(e) => onCancelPayment(payment.id, e)}
                 >
-                  <X className="h-3 w-3 mr-1" />
-                  Cancelar
+                  <X className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Cancelar</span>
                 </Button>
-              </>
+              </div>
             )}
           </div>
         </div>

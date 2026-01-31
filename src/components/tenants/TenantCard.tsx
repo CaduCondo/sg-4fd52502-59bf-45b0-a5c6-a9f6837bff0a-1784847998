@@ -40,39 +40,49 @@ export function TenantCard({ tenant, onClick, onDelete, viewMode = "grid" }: Ten
 
   if (viewMode === "list") {
     return (
-      <Card className="hover:shadow-md transition-shadow cursor-pointer bg-white dark:bg-gray-800" onClick={onClick}>
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-6 flex-1">
-              <User className="h-10 w-10 text-gray-400" strokeWidth={1.5} />
+      <Card 
+        className="card-hover-effect touch-target-card bg-white dark:bg-slate-800" 
+        onClick={onClick}
+      >
+        <CardContent className="p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-full p-2.5 sm:p-3 flex-shrink-0">
+                <User className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 dark:text-blue-400" strokeWidth={1.5} />
+              </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-3 mb-3">
-                  <h3 className="text-xl font-medium text-blue-600">{tenant.name}</h3>
+                <div className="flex items-center gap-2 mb-2">
+                  <h3 className="text-base sm:text-lg font-semibold text-blue-600 dark:text-blue-400 truncate">
+                    {tenant.name}
+                  </h3>
+                  <Badge className={`${getStatusColor(tenant.status)} text-white px-2 sm:px-3 py-0.5 sm:py-1 text-xs font-medium rounded-md flex-shrink-0 sm:hidden`}>
+                    {getStatusLabel(tenant.status)}
+                  </Badge>
                 </div>
-                <div className="flex items-center gap-6 text-sm text-gray-600 dark:text-gray-400">
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-gray-400" />
-                    <span>CPF: {tenant.document || tenant.cpf || "N/A"}</span>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 text-xs sm:text-sm text-slate-600 dark:text-slate-400">
+                  <div className="flex items-center gap-2 truncate">
+                    <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-400 flex-shrink-0" />
+                    <span className="truncate">CPF: {tenant.document || tenant.cpf || "N/A"}</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Mail className="h-4 w-4 text-gray-400" />
-                    <span className="truncate max-w-[200px]">{tenant.email || "N/A"}</span>
+                  <div className="flex items-center gap-2 truncate">
+                    <Mail className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-400 flex-shrink-0" />
+                    <span className="truncate">{tenant.email || "N/A"}</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Phone className="h-4 w-4 text-gray-400" />
-                    <span>{tenant.phone || "N/A"}</span>
+                  <div className="flex items-center gap-2 truncate">
+                    <Phone className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-400 flex-shrink-0" />
+                    <span className="truncate">{tenant.phone || "N/A"}</span>
                   </div>
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <Badge className={`${getStatusColor(tenant.status)} text-white px-4 py-1.5 text-sm font-medium rounded-md`}>
+            <div className="flex items-center justify-between sm:justify-end gap-3 flex-shrink-0">
+              <Badge className={`${getStatusColor(tenant.status)} text-white px-3 sm:px-4 py-1 sm:py-1.5 text-xs sm:text-sm font-medium rounded-md hidden sm:inline-flex`}>
                 {getStatusLabel(tenant.status)}
               </Badge>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-10 w-10 bg-red-500 hover:bg-red-600 text-white rounded-md"
+                className="h-10 w-10 bg-red-500 hover:bg-red-600 text-white rounded-md flex-shrink-0 touch-target"
                 onClick={(e) => {
                   e.stopPropagation();
                   onDelete();
@@ -88,41 +98,48 @@ export function TenantCard({ tenant, onClick, onDelete, viewMode = "grid" }: Ten
   }
 
   return (
-    <Card className="hover:shadow-md transition-shadow cursor-pointer bg-white dark:bg-gray-800 relative" onClick={onClick}>
+    <Card 
+      className="card-hover-effect touch-target-card bg-white dark:bg-slate-800 relative" 
+      onClick={onClick}
+    >
       <CardContent className="p-4">
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <User className="h-5 w-5 text-gray-400" strokeWidth={1.5} />
-            <h3 className="text-base font-medium text-blue-600">{tenant.name}</h3>
+        <div className="flex items-start justify-between mb-3 gap-2">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-full p-2 flex-shrink-0">
+              <User className="h-4 w-4 text-blue-600 dark:text-blue-400" strokeWidth={1.5} />
+            </div>
+            <h3 className="text-sm sm:text-base font-semibold text-blue-600 dark:text-blue-400 truncate">
+              {tenant.name}
+            </h3>
           </div>
-          <Badge className={`${getStatusColor(tenant.status)} text-white px-3 py-1 text-xs font-medium rounded-md`}>
+          <Badge className={`${getStatusColor(tenant.status)} text-white px-2 sm:px-3 py-0.5 sm:py-1 text-xs font-medium rounded-md flex-shrink-0`}>
             {getStatusLabel(tenant.status)}
           </Badge>
         </div>
         
-        <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+        <div className="space-y-2 text-xs sm:text-sm text-slate-600 dark:text-slate-400">
           <div className="flex items-center gap-2">
-            <FileText className="h-4 w-4 text-gray-400" strokeWidth={1.5} />
-            <span>CPF: {tenant.document || tenant.cpf || "N/A"}</span>
+            <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-400 flex-shrink-0" strokeWidth={1.5} />
+            <span className="truncate">CPF: {tenant.document || tenant.cpf || "N/A"}</span>
           </div>
           <div className="flex items-center gap-2">
-            <CreditCard className="h-4 w-4 text-gray-400" strokeWidth={1.5} />
-            <span>RG: {tenant.rg || "N/A"}</span>
+            <CreditCard className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-400 flex-shrink-0" strokeWidth={1.5} />
+            <span className="truncate">RG: {tenant.rg || "N/A"}</span>
           </div>
           <div className="flex items-center gap-2">
-            <Mail className="h-4 w-4 text-gray-400" strokeWidth={1.5} />
+            <Mail className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-400 flex-shrink-0" strokeWidth={1.5} />
             <span className="truncate">{tenant.email || "N/A"}</span>
           </div>
           <div className="flex items-center gap-2">
-            <Phone className="h-4 w-4 text-gray-400" strokeWidth={1.5} />
-            <span>{tenant.phone || "N/A"}</span>
+            <Phone className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-400 flex-shrink-0" strokeWidth={1.5} />
+            <span className="truncate">{tenant.phone || "N/A"}</span>
           </div>
         </div>
         
         <Button
           variant="ghost"
           size="icon"
-          className="absolute bottom-3 right-3 h-10 w-10 bg-red-500 hover:bg-red-600 text-white rounded-md"
+          className="absolute bottom-3 right-3 h-9 w-9 sm:h-10 sm:w-10 bg-red-500 hover:bg-red-600 text-white rounded-md touch-target"
           onClick={(e) => {
             e.stopPropagation();
             onDelete();

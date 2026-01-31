@@ -37,14 +37,18 @@ export function PaymentFilters({
   const years = Array.from({ length: 5 }, (_, i) => (currentYear - 2 + i).toString());
 
   return (
-    <div className="flex gap-2 items-center">
+    <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 items-stretch sm:items-center w-full sm:w-auto">
       <Select value={selectedMonth} onValueChange={onMonthChange}>
-        <SelectTrigger className="w-[150px]">
+        <SelectTrigger className="w-full sm:w-[180px] h-11 sm:h-10 touch-target">
           <SelectValue placeholder="Todos os meses" />
         </SelectTrigger>
         <SelectContent>
           {months.map((month) => (
-            <SelectItem key={month.value} value={month.value}>
+            <SelectItem 
+              key={month.value} 
+              value={month.value}
+              className="touch-target"
+            >
               {month.label}
             </SelectItem>
           ))}
@@ -52,13 +56,17 @@ export function PaymentFilters({
       </Select>
       
       <Select value={selectedYear} onValueChange={onYearChange}>
-        <SelectTrigger className="w-[120px]">
+        <SelectTrigger className="w-full sm:w-[140px] h-11 sm:h-10 touch-target">
           <SelectValue placeholder="Todos os anos" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">Todos os anos</SelectItem>
+          <SelectItem value="all" className="touch-target">Todos os anos</SelectItem>
           {years.map((year) => (
-            <SelectItem key={year} value={year}>
+            <SelectItem 
+              key={year} 
+              value={year}
+              className="touch-target"
+            >
               {year}
             </SelectItem>
           ))}

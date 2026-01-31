@@ -144,24 +144,24 @@ export function TenantFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>
+      <DialogContent className="max-w-2xl max-h-[90vh] sm:max-h-[85vh] overflow-y-auto p-4 sm:p-6">
+        <DialogHeader className="space-y-2 pb-3">
+          <DialogTitle className="text-base sm:text-lg font-bold">
             {tenant && isViewMode && !isEditing
               ? "Visualização do Inquilino"
               : tenant && isEditing
               ? "Editar Inquilino"
               : "Novo Inquilino"}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-xs sm:text-sm">
             {tenant ? "Atualize as informações do inquilino" : "Preencha os dados do novo inquilino"}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label htmlFor="name" className="text-xs">Nome Completo *</Label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="name" className="text-sm font-medium">Nome Completo *</Label>
               <Input
                 id="name"
                 value={formData.name}
@@ -169,12 +169,12 @@ export function TenantFormDialog({
                 placeholder="Nome completo"
                 required
                 disabled={!isEditing}
-                className="h-8 text-sm"
+                className="h-11 sm:h-10 text-sm mobile-input"
               />
             </div>
 
-            <div className="space-y-1">
-              <Label htmlFor="document" className="text-xs">CPF/CNPJ *</Label>
+            <div className="space-y-2">
+              <Label htmlFor="document" className="text-sm font-medium">CPF/CNPJ *</Label>
               <Input
                 id="document"
                 value={documentType === "cpf" ? formData.cpf : formData.cnpj}
@@ -182,12 +182,12 @@ export function TenantFormDialog({
                 placeholder={documentType === "cpf" ? "000.000.000-00" : "00.000.000/0000-00"}
                 required
                 disabled={!isEditing}
-                className="h-8 text-sm"
+                className="h-11 sm:h-10 text-sm mobile-input"
               />
             </div>
 
-            <div className="space-y-1">
-              <Label htmlFor="phone" className="text-xs">Telefone *</Label>
+            <div className="space-y-2">
+              <Label htmlFor="phone" className="text-sm font-medium">Telefone *</Label>
               <Input
                 id="phone"
                 value={formData.phone}
@@ -195,12 +195,12 @@ export function TenantFormDialog({
                 placeholder="(00) 00000-0000"
                 required
                 disabled={!isEditing}
-                className="h-8 text-sm"
+                className="h-11 sm:h-10 text-sm mobile-input"
               />
             </div>
 
-            <div className="space-y-1">
-              <Label htmlFor="email" className="text-xs">E-mail *</Label>
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-sm font-medium">E-mail *</Label>
               <Input
                 id="email"
                 type="email"
@@ -209,45 +209,62 @@ export function TenantFormDialog({
                 placeholder="email@exemplo.com"
                 required
                 disabled={!isEditing}
-                className="h-8 text-sm"
+                className="h-11 sm:h-10 text-sm mobile-input"
               />
             </div>
           </div>
 
-          <div className="space-y-1">
-            <Label htmlFor="notes" className="text-xs">Observações</Label>
+          <div className="space-y-2">
+            <Label htmlFor="notes" className="text-sm font-medium">Observações</Label>
             <Textarea
               id="notes"
               value={formData.notes || ""}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               placeholder="Observações adicionais"
-              rows={2}
+              rows={3}
               disabled={!isEditing}
-              className="resize-none text-sm min-h-[60px]"
+              className="resize-none text-sm min-h-[80px] mobile-input"
             />
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2 pt-3 border-t">
             {isViewMode && !isEditing ? (
               <>
-                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => onOpenChange(false)}
+                  className="h-11 sm:h-10 touch-target"
+                >
                   Fechar
                 </Button>
-                <Button type="button" onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setIsEditing(true);
-                }}>
+                <Button 
+                  type="button" 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsEditing(true);
+                  }}
+                  className="h-11 sm:h-10 touch-target"
+                >
                   <Pencil className="h-4 w-4 mr-2" />
                   Editar
                 </Button>
               </>
             ) : (
               <>
-                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => onOpenChange(false)}
+                  className="h-11 sm:h-10 touch-target"
+                >
                   Cancelar
                 </Button>
-                <Button type="submit">
+                <Button 
+                  type="submit"
+                  className="h-11 sm:h-10 touch-target"
+                >
                   {tenant ? "Atualizar" : "Criar"}
                 </Button>
               </>
