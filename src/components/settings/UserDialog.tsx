@@ -68,7 +68,7 @@ export function UserDialog({ open, onOpenChange, user, onSave }: UserDialogProps
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[600px] max-w-[95vw] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{user ? "Editar Usuário" : "Novo Usuário"}</DialogTitle>
           <DialogDescription>
@@ -79,7 +79,7 @@ export function UserDialog({ open, onOpenChange, user, onSave }: UserDialogProps
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Nome Completo</Label>
                 <Input
@@ -89,6 +89,7 @@ export function UserDialog({ open, onOpenChange, user, onSave }: UserDialogProps
                     setFormData({ ...formData, name: e.target.value })
                   }
                   required
+                  className="h-11"
                 />
               </div>
               <div className="space-y-2">
@@ -101,11 +102,12 @@ export function UserDialog({ open, onOpenChange, user, onSave }: UserDialogProps
                     setFormData({ ...formData, email: e.target.value })
                   }
                   required
+                  className="h-11"
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="phone">Telefone</Label>
                 <Input
@@ -115,6 +117,7 @@ export function UserDialog({ open, onOpenChange, user, onSave }: UserDialogProps
                     setFormData({ ...formData, phone: e.target.value })
                   }
                   placeholder="(00) 00000-0000"
+                  className="h-11"
                 />
               </div>
               <div className="space-y-2">
@@ -127,11 +130,12 @@ export function UserDialog({ open, onOpenChange, user, onSave }: UserDialogProps
                   }
                   placeholder="usuario.login"
                   required
+                  className="h-11"
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="role">Perfil</Label>
                 <Select
@@ -140,7 +144,7 @@ export function UserDialog({ open, onOpenChange, user, onSave }: UserDialogProps
                     setFormData({ ...formData, role: value })
                   }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="h-11">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -151,10 +155,10 @@ export function UserDialog({ open, onOpenChange, user, onSave }: UserDialogProps
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">
+                <Label htmlFor="password" className="text-sm">
                   Senha Temporária
                   {user && (
-                    <span className="text-muted-foreground text-xs ml-1">
+                    <span className="block text-muted-foreground text-xs mt-1">
                       (deixe em branco para manter a senha atual)
                     </span>
                   )}
@@ -170,15 +174,16 @@ export function UserDialog({ open, onOpenChange, user, onSave }: UserDialogProps
                     user ? "Deixe em branco para não alterar" : "Senha de acesso"
                   }
                   required={!user}
+                  className="h-11"
                 />
               </div>
             </div>
           </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <DialogFooter className="flex-col-reverse sm:flex-row gap-2 sm:gap-0">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto h-11">
               Cancelar
             </Button>
-            <Button type="submit">Salvar Usuário</Button>
+            <Button type="submit" className="w-full sm:w-auto h-11">Salvar Usuário</Button>
           </DialogFooter>
         </form>
       </DialogContent>
