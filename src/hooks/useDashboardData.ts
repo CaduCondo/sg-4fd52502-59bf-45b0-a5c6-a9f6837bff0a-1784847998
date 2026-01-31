@@ -143,7 +143,7 @@ export function useDashboardData(selectedPeriod: { month: number; year: number }
       description: data.description,
       area: Number(data.area),
       bathrooms: Number(data.bathrooms),
-      garage: Number(data.garage_value),
+      // garage: Number(data.garage_value), // Propriedade não existe no tipo Property
       hasGarage: data.has_garage,
       acceptsPets: data.accepts_pets,
       hasFurniture: data.has_furniture,
@@ -153,7 +153,7 @@ export function useDashboardData(selectedPeriod: { month: number; year: number }
       createdAt: data.created_at,
       updatedAt: data.updated_at,
       // Campos opcionais que podem não vir do banco diretamente dessa forma
-      photos: data.photos || [],
+      images: data.photos || [],
       features: data.features || [],
     };
   }

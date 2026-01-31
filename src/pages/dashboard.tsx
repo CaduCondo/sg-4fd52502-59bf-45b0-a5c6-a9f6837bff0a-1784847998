@@ -31,11 +31,59 @@ export default function Dashboard() {
     setSelectedYear(year);
   };
   
+  // Cálculos detalhados para o OverviewCards
+  const totalProperties = properties.length;
+  const availableProperties = properties.filter(p => p.status === 'available').length;
+  const rentedProperties = properties.filter(p => p.status === 'occupied').length;
+  const unavailableProperties = properties.filter(p => p.status === 'unavailable').length;
+  
+  const totalTenants = new Set(rentals.map(r => r.tenantId)).size;
+  const activeContracts = rentals.filter(r => r.isActive).length;
+  
+  const totalRevenue = payments.reduce((acc, p) => acc + (p.paidAmount || 0), 0);
+  // Receita líquida seria Receita - Despesas (mas não temos despesas aqui ainda, usando total por enquanto)
+  const netRevenue = totalRevenue; 
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const overduePaymentsList = payments.filter(p => {
+    if (p.status === 'paid') return false;
+    const dueDate = new Date(p.dueDate);
+    return dueDate < today;
+  });
+
+  const overduePayments = overduePaymentsList.length;
+  const overdueAmount = overduePaymentsList.reduce((acc, p) => acc + (p.expectedAmount || 0), 0);
+
+  const dueTodayPayments = payments.filter(p => {
+    if (p.status === 'paid') return false;
+    const dueDate = new Date(p.dueDate);
+    const pDate = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
+    return pDate.getTime() === today.getTime();
+  }).length;
+
+  const completedPayments = payments.filter(p => p.status === 'paid').length;
+  const expectedAmount = payments.reduce((acc, p) => acc + (p.expectedAmount || 0), 0);
+
+  const occupancyRate = totalProperties > 0 ? (rentedProperties / totalProperties) * 100 : 0;
+
   const overviewData = {
-    totalRevenue: payments.reduce((acc, p) => acc + (p.paidAmount || 0), 0),
-    totalProperties: properties.length,
-    occupiedProperties: rentals.filter(r => r.isActive).length,
-    totalTenants: new Set(rentals.map(r => r.tenantId)).size,
+    totalProperties,
+    availableProperties,
+    rentedProperties,
+    unavailableProperties,
+    occupancyRate,
+    totalTenants,
+    activeContracts,
+    overduePayments,
+    overdueAmount,
+    dueTodayPayments,
+    completedPayments,
+    expectedAmount,
+    totalRevenue,
+    netRevenue,
+    // Campos extras que podem ser úteis
     payments,
     properties,
     rentals

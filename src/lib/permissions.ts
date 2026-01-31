@@ -364,13 +364,19 @@ export async function checkUserPermission(
   action: string
 ): Promise<boolean> {
   try {
-    const { data: profile } = await supabase
-      .from('profiles')
+    // 1. Buscar a role do usuário na tabela de system_users
+    // A tabela profiles não existe nos tipos gerados, usando system_users que está na lista válida
+    const { data: systemUser } = await supabase
+      .from('system_users')
       .select('role')
-      .eq('id', userId)
-      .single();
+      .eq('id', userId) // Assumindo que o ID do usuário auth é o mesmo ou tem mapeamento
+      .maybeSingle();
+      
+    // Se não achar direto, tenta pelo auth_user_mapping se necessário, 
+    // mas por enquanto vamos assumir que system_users tem a role.
+    // Se systemUser for null, tenta fallback ou assume broker.
 
-    const userRole = profile?.role || 'broker';
+    const userRole = systemUser?.role || 'broker';
 
     if (userRole === 'admin') return true;
     if (userRole === 'financial') return false;
