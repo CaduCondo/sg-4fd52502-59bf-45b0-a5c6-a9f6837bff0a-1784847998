@@ -109,12 +109,14 @@ export function DepositInstallmentsTable({
   const isAdmin = userRole === "admin";
 
   useEffect(() => {
-    fetchData();
-  }, [statusFilter, JSON.stringify(allowedLocationIds)]);
+    if (isAdmin) {
+      fetchData();
+    }
+  }, [statusFilter, isAdmin, JSON.stringify(allowedLocationIds)]);
 
   const fetchData = async () => {
     try {
-      console.log("🔄 fetchData iniciado:", {
+      console.log("🔄 fetchData iniciado (Cauções - SEM filtro de período):", {
         statusFilter,
         isAdmin,
         allowedLocationIds
@@ -176,7 +178,7 @@ export function DepositInstallmentsTable({
         );
       }
 
-      console.log("📊 Dados após filtros:", {
+      console.log("📊 Dados após filtros (Cauções):", {
         totalRecords: filteredData.length,
         isAdmin,
         statusFilter,
@@ -185,14 +187,14 @@ export function DepositInstallmentsTable({
 
       setData(filteredData);
     } catch (error) {
-      console.error("❌ Erro ao buscar dados:", error);
+      console.error("❌ Erro ao buscar dados de cauções:", error);
       toast({
         title: "Erro ao carregar dados",
         description: "Não foi possível carregar os dados de caução.",
         variant: "destructive",
       });
     } finally {
-      console.log("🏁 fetchData finalizado, setLoading(false)");
+      console.log("🏁 fetchData finalizado (Cauções), setLoading(false)");
       setLoading(false);
     }
   };
@@ -428,7 +430,7 @@ export function DepositInstallmentsTable({
   
   const netRevenue = totalReceived - adminFee;
 
-  console.log("📋 Dados para renderização da tabela:", {
+  console.log("📋 Dados para renderização da tabela (Cauções):", {
     sortedDataLength: sortedData.length,
     groupedByRentalKeys: Object.keys(groupedByRental).length,
     uniqueRentalsLength: uniqueRentals.length,
@@ -569,111 +571,109 @@ export function DepositInstallmentsTable({
             </div>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-slate-50/50 hover:bg-slate-50/50">
-                    <TableHead 
-                      className="text-sm font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
-                      onClick={() => handleSort("location")}
-                    >
-                      <div className="flex items-center">
-                        Local
-                        <SortIcon field="location" />
-                      </div>
-                    </TableHead>
-                    <TableHead 
-                      className="text-sm font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
-                      onClick={() => handleSort("complement")}
-                    >
-                      <div className="flex items-center">
-                        Complemento
-                        <SortIcon field="complement" />
-                      </div>
-                    </TableHead>
-                    <TableHead 
-                      className="text-sm font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
-                      onClick={() => handleSort("tenant")}
-                    >
-                      <div className="flex items-center">
-                        Inquilino
-                        <SortIcon field="tenant" />
-                      </div>
-                    </TableHead>
-                    <TableHead 
-                      className="text-sm font-semibold text-slate-500 uppercase tracking-wider text-right cursor-pointer hover:bg-slate-100"
-                      onClick={() => handleSort("rentalAmount")}
-                    >
-                      <div className="flex items-center justify-end">
-                        Valor Aluguel
-                        <SortIcon field="rentalAmount" />
-                      </div>
-                    </TableHead>
-                    <TableHead 
-                      className="text-sm font-semibold text-slate-500 uppercase tracking-wider text-right cursor-pointer hover:bg-slate-100"
-                      onClick={() => handleSort("securityDeposit")}
-                    >
-                      <div className="flex items-center justify-end">
-                        Valor Total Caução
-                        <SortIcon field="securityDeposit" />
-                      </div>
-                    </TableHead>
-                    <TableHead 
-                      className="text-sm font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
-                      onClick={() => handleSort("hasPartner")}
-                    >
-                      <div className="flex items-center">
-                        Corretor Parceiro
-                        <SortIcon field="hasPartner" />
-                      </div>
-                    </TableHead>
-                    <TableHead className="text-sm font-semibold text-slate-500 uppercase tracking-wider text-right">
-                      Valor Pg Corretagem Parceiro
-                    </TableHead>
-                    <TableHead className="text-sm font-semibold text-slate-500 uppercase tracking-wider text-right">
-                      Valor Pg Corretagem Interno
-                    </TableHead>
-                    <TableHead 
-                      className="text-sm font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
-                      onClick={() => handleSort("installment")}
-                    >
-                      <div className="flex items-center">
-                        Parcela
-                        <SortIcon field="installment" />
-                      </div>
-                    </TableHead>
-                    <TableHead className="text-sm font-semibold text-slate-500 uppercase tracking-wider">
-                      Data Pagamento
-                    </TableHead>
-                    <TableHead 
-                      className="text-sm font-semibold text-slate-500 uppercase tracking-wider text-right cursor-pointer hover:bg-slate-100"
-                      onClick={() => handleSort("amount")}
-                    >
-                      <div className="flex items-center justify-end">
-                        Valor Parcela
-                        <SortIcon field="amount" />
-                      </div>
-                    </TableHead>
-                    <TableHead 
-                      className="text-sm font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
-                      onClick={() => handleSort("pixCode")}
-                    >
-                      <div className="flex items-center">
-                        Código PIX
-                        <SortIcon field="pixCode" />
-                      </div>
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {Object.keys(groupedByRental).length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={12} className="text-center py-8 text-slate-500">
-                        Nenhum dado de caução encontrado para o filtro selecionado.
-                      </TableCell>
+            {Object.keys(groupedByRental).length === 0 ? (
+              <div className="p-8 text-center text-slate-500">
+                Nenhum dado de caução encontrado para o filtro selecionado.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-slate-50/50 hover:bg-slate-50/50">
+                      <TableHead 
+                        className="text-sm font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
+                        onClick={() => handleSort("location")}
+                      >
+                        <div className="flex items-center">
+                          Local
+                          <SortIcon field="location" />
+                        </div>
+                      </TableHead>
+                      <TableHead 
+                        className="text-sm font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
+                        onClick={() => handleSort("complement")}
+                      >
+                        <div className="flex items-center">
+                          Complemento
+                          <SortIcon field="complement" />
+                        </div>
+                      </TableHead>
+                      <TableHead 
+                        className="text-sm font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
+                        onClick={() => handleSort("tenant")}
+                      >
+                        <div className="flex items-center">
+                          Inquilino
+                          <SortIcon field="tenant" />
+                        </div>
+                      </TableHead>
+                      <TableHead 
+                        className="text-sm font-semibold text-slate-500 uppercase tracking-wider text-right cursor-pointer hover:bg-slate-100"
+                        onClick={() => handleSort("rentalAmount")}
+                      >
+                        <div className="flex items-center justify-end">
+                          Valor Aluguel
+                          <SortIcon field="rentalAmount" />
+                        </div>
+                      </TableHead>
+                      <TableHead 
+                        className="text-sm font-semibold text-slate-500 uppercase tracking-wider text-right cursor-pointer hover:bg-slate-100"
+                        onClick={() => handleSort("securityDeposit")}
+                      >
+                        <div className="flex items-center justify-end">
+                          Valor Total Caução
+                          <SortIcon field="securityDeposit" />
+                        </div>
+                      </TableHead>
+                      <TableHead 
+                        className="text-sm font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
+                        onClick={() => handleSort("hasPartner")}
+                      >
+                        <div className="flex items-center">
+                          Corretor Parceiro
+                          <SortIcon field="hasPartner" />
+                        </div>
+                      </TableHead>
+                      <TableHead className="text-sm font-semibold text-slate-500 uppercase tracking-wider text-right">
+                        Valor Pg Corretagem Parceiro
+                      </TableHead>
+                      <TableHead className="text-sm font-semibold text-slate-500 uppercase tracking-wider text-right">
+                        Valor Pg Corretagem Interno
+                      </TableHead>
+                      <TableHead 
+                        className="text-sm font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
+                        onClick={() => handleSort("installment")}
+                      >
+                        <div className="flex items-center">
+                          Parcela
+                          <SortIcon field="installment" />
+                        </div>
+                      </TableHead>
+                      <TableHead className="text-sm font-semibold text-slate-500 uppercase tracking-wider">
+                        Data Pagamento
+                      </TableHead>
+                      <TableHead 
+                        className="text-sm font-semibold text-slate-500 uppercase tracking-wider text-right cursor-pointer hover:bg-slate-100"
+                        onClick={() => handleSort("amount")}
+                      >
+                        <div className="flex items-center justify-end">
+                          Valor Parcela
+                          <SortIcon field="amount" />
+                        </div>
+                      </TableHead>
+                      <TableHead 
+                        className="text-sm font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
+                        onClick={() => handleSort("pixCode")}
+                      >
+                        <div className="flex items-center">
+                          Código PIX
+                          <SortIcon field="pixCode" />
+                        </div>
+                      </TableHead>
                     </TableRow>
-                  ) : (
-                    Object.entries(groupedByRental).map(([rentalId, installments]) => {
+                  </TableHeader>
+                  <TableBody>
+                    {Object.entries(groupedByRental).map(([rentalId, installments]) => {
                       const firstInstallment = installments[0];
                       const rowSpan = installments.length;
                       const totalCaucaoValue = installments.reduce((sum, inst) => sum + inst.amount, 0);
@@ -870,11 +870,11 @@ export function DepositInstallmentsTable({
                           </TableRow>
                         );
                       });
-                    })
-                  )}
-                </TableBody>
-              </Table>
-            </div>
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
           </CardContent>
         </Card>
       </ScrollReveal>
