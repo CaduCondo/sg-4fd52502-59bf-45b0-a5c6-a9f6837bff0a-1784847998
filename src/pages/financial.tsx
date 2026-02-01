@@ -1,6 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Layout } from "@/components/Layout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PeriodSelector } from "@/components/dashboard/PeriodSelector";
+import { FinancialMetricCard } from "@/components/dashboard/FinancialMetricCard";
+import { ScrollReveal } from "@/components/animations/ScrollReveal";
+import { useDashboardData } from "@/hooks/useDashboardData";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -11,59 +15,20 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { 
-  BarChart3, 
-  DollarSign, 
-  HeartHandshake, 
-  Target, 
-  FileText, 
-  Save,
-  QrCode,
-  TrendingUp,
-  Printer,
-  FileSpreadsheet,
-  ArrowUpDown,
-  ArrowUp,
-  ArrowDown,
-  Edit2,
-  Check,
-  X,
-  Percent,
-  Wallet
-} from "lucide-react";
-import { Payment, Property, Rental, Tenant, User } from "@/types";
-import { format, differenceInMonths } from "date-fns";
+import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { getAll as getAllPayments } from "@/services/paymentService";
-import { getAll as getAllProperties } from "@/services/propertyService";
-import { getAll as getAllTenants } from "@/services/tenantService";
-import { getAll as getAllRentals, update as updateRental } from "@/services/rentalService";
-import { getUserLocationPermissions } from "@/services/userLocationPermissionService";
-import { userStorage } from "@/lib/storage";
-import { locationExpenseService } from "@/services/locationExpenseService";
-import { hasPermission } from "@/lib/permissions";
-import { ScrollReveal } from "@/components/animations/ScrollReveal";
-import { useRouter } from "next/navigation";
-import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/contexts/AuthContext";
-import { getConfig } from "@/services/configService";
-import { supabase } from "@/integrations/supabase/client";
-import { ManagePaymentForm } from "@/components/payments/ManagePaymentForm";
+import { FileText, Download } from "lucide-react";
 import { DepositInstallmentsTable } from "@/components/financial/DepositInstallmentsTable";
-import * as XLSX from "xlsx";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAuth } from "@/contexts/AuthContext";
 
 type SortField = "paymentNumber" | "local" | "complement" | "status" | "dueDate" | "paymentDate" | "expectedAmount" | "paidAmount";
 type SortDirection = "asc" | "desc" | null;
 
 export default function Financial() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin" || user?.role === "broker";
+
   const [payments, setPayments] = useState<Payment[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [rentals, setRentals] = useState<Rental[]>([]);
@@ -88,10 +53,6 @@ export default function Financial() {
   // Sorting state
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
-
-  const router = useRouter();
-  const { user } = useAuth();
-  const { toast } = useToast();
 
   useEffect(() => {
     setMounted(true);
@@ -585,423 +546,243 @@ export default function Financial() {
 
   return (
     <Layout>
-      <div className="space-y-6">
-        {/* Header Title */}
+      <div className="container mx-auto py-8 space-y-8">
         <ScrollReveal>
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-medium text-slate-500">
-              {months[parseInt(selectedMonth) - 1].label} de {selectedYear}
-            </h1>
+          <div className="flex flex-col gap-4">
+            <h1 className="text-3xl font-bold">Financeiro</h1>
+            <p className="text-muted-foreground">
+              Acompanhe suas receitas, despesas e fluxo de caixa
+            </p>
           </div>
         </ScrollReveal>
 
-        {/* Filters Card */}
-        <ScrollReveal delay={0.1}>
-          <Card className="bg-white border-slate-200 shadow-sm">
-            <CardContent className="p-4 flex gap-4">
-              <div className="w-[200px]">
-                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                  <SelectTrigger className="bg-slate-50 border-slate-200">
-                    <SelectValue placeholder="Mês" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {months.map((month) => (
-                      <SelectItem key={month.value} value={month.value}>
-                        {month.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="w-[120px]">
-                <Select value={selectedYear} onValueChange={setSelectedYear}>
-                  <SelectTrigger className="bg-slate-50 border-slate-200">
-                    <SelectValue placeholder="Ano" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {years.map((year) => (
-                      <SelectItem key={year} value={year}>
-                        {year}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
-        </ScrollReveal>
+        <Tabs defaultValue="rentals" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 max-w-md">
+            <TabsTrigger value="rentals">Detalhamento de Locações</TabsTrigger>
+            {isAdmin && (
+              <TabsTrigger value="deposits">Detalhamento de Cauções</TabsTrigger>
+            )}
+          </TabsList>
 
-        {/* KPI Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-green-900">Receita Bruta</CardTitle>
-              <DollarSign className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-700">{formatCurrency(totals.gross)}</div>
-              <p className="text-xs text-green-600">
-                Total recebido no período
-              </p>
-            </CardContent>
-          </Card>
-          
-          <Card className="bg-gradient-to-br from-red-50 to-pink-50 border-red-200">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-red-900">Taxa de Administração</CardTitle>
-              <Percent className="h-4 w-4 text-red-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-red-700">
-                {totals.adminFee > 0 ? `- ${formatCurrency(totals.adminFee)}` : formatCurrency(0)}
-              </div>
-              <p className="text-xs text-red-600">
-                {config?.admin_fee_percentage || 0}% sobre a receita bruta
-              </p>
-            </CardContent>
-          </Card>
+          <TabsContent value="rentals" className="space-y-8 mt-8">
+            <ScrollReveal delay={0.1}>
+              <PeriodSelector
+                selectedMonth={selectedMonth}
+                selectedYear={selectedYear}
+                filterMonth={filterMonth}
+                filterYear={filterYear}
+                onMonthChange={setSelectedMonth}
+                onYearChange={setSelectedYear}
+                onFilterMonthChange={setFilterMonth}
+                onFilterYearChange={setFilterYear}
+              />
+            </ScrollReveal>
 
-          {user?.role === "admin" && (
-            <Card className="bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-200">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-blue-900">Taxa de Gerenciamento</CardTitle>
-                <Wallet className="h-4 w-4 text-blue-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-blue-700">
-                  {totals.managementFee > 0 ? `- ${formatCurrency(totals.managementFee)}` : formatCurrency(0)}
-                </div>
-                <p className="text-xs text-blue-600">
-                  {config?.management_fee_percentage || 0}% sobre a receita bruta
-                </p>
-              </CardContent>
-            </Card>
-          )}
+            {/* Cards de Métricas - Locações */}
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <ScrollReveal delay={0.2}>
+                <FinancialMetricCard
+                  title="Receita Bruta"
+                  value={kpiData.totalRevenue}
+                  icon="💰"
+                  trend={kpiData.revenueTrend}
+                />
+              </ScrollReveal>
+              <ScrollReveal delay={0.3}>
+                <FinancialMetricCard
+                  title="Taxa de Administração"
+                  value={kpiData.adminFees}
+                  icon="🏢"
+                />
+              </ScrollReveal>
+              <ScrollReveal delay={0.4}>
+                <FinancialMetricCard
+                  title="Taxa de Gerenciamento"
+                  value={kpiData.managementFees}
+                  icon="⚙️"
+                />
+              </ScrollReveal>
+              <ScrollReveal delay={0.5}>
+                <FinancialMetricCard
+                  title="Receita Líquida"
+                  value={kpiData.netRevenue}
+                  icon="🎯"
+                  trend={kpiData.revenueTrend}
+                />
+              </ScrollReveal>
+            </div>
 
-          <Card className="bg-gradient-to-br from-orange-50 to-amber-50 border-orange-200">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-orange-900">Contas do Mês</CardTitle>
-              <Wallet className="h-4 w-4 text-orange-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-xl font-bold text-orange-700 break-words">
-                {locationExpenses > 0 ? `- ${formatCurrency(locationExpenses)}` : formatCurrency(0)}
-              </div>
-              <p className="text-xs text-orange-600">
-                Água, luz e outras despesas dos locais
-              </p>
-            </CardContent>
-          </Card>
+            {/* Tabela de Locações */}
+            <ScrollReveal delay={0.6}>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h2 className="text-2xl font-bold">
+                        Detalhamento de Locações
+                      </h2>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {format(
+                          new Date(filterYear, filterMonth - 1),
+                          "MMMM 'de' yyyy",
+                          { locale: ptBR }
+                        )}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handlePrint}
+                        className="flex items-center gap-2"
+                      >
+                        <FileText className="h-4 w-4" />
+                        Imprimir
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleExport}
+                        className="flex items-center gap-2"
+                      >
+                        <Download className="h-4 w-4" />
+                        Exportar Excel
+                      </Button>
+                    </div>
+                  </div>
 
-          <Card className="bg-gradient-to-br from-purple-50 to-violet-50 border-purple-200">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-purple-900">Receita Líquida</CardTitle>
-              <TrendingUp className="h-4 w-4 text-purple-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-purple-700">
-                {formatCurrency(netRevenue)}
-              </div>
-              <p className="text-xs text-purple-600">
-                Valor após subtração das taxas e contas
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Detailed Table */}
-        <ScrollReveal delay={0.6}>
-          <Card className="border-slate-200 shadow-sm overflow-hidden">
-            <CardHeader className="border-b border-slate-100 bg-white pb-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-slate-400" />
-                  <CardTitle className="text-xl font-semibold text-slate-800">
-                    Detalhamento de Locações - {months[parseInt(selectedMonth) - 1].label} {selectedYear}
-                  </CardTitle>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handlePrint}
-                    className="text-slate-600 hover:text-slate-900"
-                  >
-                    <Printer className="h-4 w-4 mr-2" />
-                    Imprimir
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleExportExcel}
-                    className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                  >
-                    <FileSpreadsheet className="h-4 w-4 mr-2" />
-                    Exportar Excel
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-slate-50/50 hover:bg-slate-50/50">
-                    <TableHead 
-                      className="w-[80px] text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
-                      onClick={() => handleSort("paymentNumber")}
-                    >
-                      <div className="flex items-center">
-                        Parcela
-                        <SortIcon field="paymentNumber" />
-                      </div>
-                    </TableHead>
-                    <TableHead 
-                      className="w-[150px] text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
-                      onClick={() => handleSort("local")}
-                    >
-                      <div className="flex items-center">
-                        Local
-                        <SortIcon field="local" />
-                      </div>
-                    </TableHead>
-                    <TableHead 
-                      className="text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
-                      onClick={() => handleSort("complement")}
-                    >
-                      <div className="flex items-center">
-                        Complemento
-                        <SortIcon field="complement" />
-                      </div>
-                    </TableHead>
-                    <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Inquilino</TableHead>
-                    <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Ano</TableHead>
-                    <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Mês</TableHead>
-                    <TableHead 
-                      className="text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
-                      onClick={() => handleSort("status")}
-                    >
-                      <div className="flex items-center">
-                        Status
-                        <SortIcon field="status" />
-                      </div>
-                    </TableHead>
-                    <TableHead 
-                      className="text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
-                      onClick={() => handleSort("dueDate")}
-                    >
-                      <div className="flex items-center">
-                        Data Vencimento
-                        <SortIcon field="dueDate" />
-                      </div>
-                    </TableHead>
-                    <TableHead 
-                      className="text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
-                      onClick={() => handleSort("paymentDate")}
-                    >
-                      <div className="flex items-center">
-                        Data Recebida
-                        <SortIcon field="paymentDate" />
-                      </div>
-                    </TableHead>
-                    <TableHead 
-                      className="text-xs font-semibold text-slate-500 uppercase tracking-wider text-right cursor-pointer hover:bg-slate-100"
-                      onClick={() => handleSort("expectedAmount")}
-                    >
-                      <div className="flex items-center justify-end">
-                        Valor Esperado
-                        <SortIcon field="expectedAmount" />
-                      </div>
-                    </TableHead>
-                    <TableHead 
-                      className="text-xs font-semibold text-slate-500 uppercase tracking-wider text-right cursor-pointer hover:bg-slate-100"
-                      onClick={() => handleSort("paidAmount")}
-                    >
-                      <div className="flex items-center justify-end">
-                        Valor Pago
-                        <SortIcon field="paidAmount" />
-                      </div>
-                    </TableHead>
-                    <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Código PIX</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
                   {loading ? (
-                    <TableRow>
-                      <TableCell colSpan={12} className="h-24 text-center text-slate-500">
-                        Carregando...
-                      </TableCell>
-                    </TableRow>
-                  ) : sortedPayments.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={12} className="h-24 text-center text-slate-500">
-                        Nenhum registro encontrado para este período.
-                      </TableCell>
-                    </TableRow>
+                    <div className="flex items-center justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+                    </div>
+                  ) : filteredPayments.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      Nenhum pagamento encontrado para o período selecionado
+                    </div>
                   ) : (
-                    <>
-                      {sortedPayments.map((payment) => {
-                        const details = getPaymentDetails(payment);
-                        const monthName = months[parseInt(selectedMonth) - 1].label;
-                        const paymentNumber = calculatePaymentNumber(payment, details.rental);
-                        
-                        return (
-                          <TableRow key={payment.id} className="hover:bg-slate-50 transition-colors">
-                            <TableCell className="font-medium text-slate-900">
-                              {paymentNumber}
-                            </TableCell>
-                            <TableCell className="font-medium text-slate-900">
-                              {details.local}
-                            </TableCell>
-                            <TableCell className="text-slate-600">
-                              {details.complemento}
-                            </TableCell>
-                            <TableCell className="text-slate-600">
-                              {details.tenantName}
-                            </TableCell>
-                            <TableCell className="text-slate-600">
-                              {selectedYear}
-                            </TableCell>
-                            <TableCell className="text-slate-600">
-                              {monthName}
-                            </TableCell>
-                            <TableCell>
-                              {getStatusBadge(payment.status)}
-                            </TableCell>
-                            <TableCell className="text-slate-600">
-                              {format(new Date(payment.dueDate), "dd/MM/yyyy")}
-                            </TableCell>
-                            <TableCell className="text-slate-600">
-                              {payment.paymentDate 
-                                ? format(new Date(payment.paymentDate), "dd/MM/yyyy")
-                                : "-"}
-                            </TableCell>
-                            <TableCell className="text-right font-medium text-slate-900">
-                              {formatCurrency(payment.expectedAmount)}
-                            </TableCell>
-                            <TableCell className="text-right font-bold text-green-600">
-                              {formatCurrency(payment.paidAmount || 0)}
-                            </TableCell>
-                            <TableCell>
-                              {editingPixCode[details.rental?.id || ""] !== undefined ? (
-                                <div className="flex items-center gap-3">
-                                  <Input
-                                    value={editingPixCode[details.rental?.id || ""]}
-                                    onChange={(e) => {
-                                      if (details.rental?.id) {
-                                        setEditingPixCode({
-                                          ...editingPixCode,
-                                          [details.rental.id]: e.target.value
-                                        });
-                                      }
-                                    }}
-                                    placeholder="Digite o código PIX"
-                                    className="h-9 text-sm border-2 border-blue-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all min-w-[250px]"
-                                    autoFocus
-                                  />
-                                  <Button
-                                    size="default"
-                                    variant="ghost"
-                                    onClick={() => details.rental?.id && handleSavePixCode(details.rental.id)}
-                                    disabled={savingPixCode === details.rental?.id}
-                                    className="h-9 w-9 p-0 hover:bg-green-100 transition-colors"
-                                    title="Salvar código PIX"
-                                  >
-                                    <Check className="h-5 w-5 text-green-600" />
-                                  </Button>
-                                  <Button
-                                    size="default"
-                                    variant="ghost"
-                                    onClick={() => {
-                                      if (details.rental?.id) {
-                                        const newEditingState = { ...editingPixCode };
-                                        delete newEditingState[details.rental.id];
-                                        setEditingPixCode(newEditingState);
-                                      }
-                                    }}
-                                    className="h-9 w-9 p-0 hover:bg-red-100 transition-colors"
-                                    title="Cancelar edição"
-                                  >
-                                    <X className="h-5 w-5 text-red-600" />
-                                  </Button>
-                                </div>
-                              ) : (
-                                <div className="flex items-center gap-3">
-                                  <span className="text-slate-600 max-w-xs truncate text-sm">
-                                    {details.pixCode || "-"}
-                                  </span>
-                                  <Button
-                                    size="default"
-                                    variant="ghost"
-                                    onClick={() => {
-                                      if (details.rental?.id) {
-                                        setEditingPixCode({
-                                          ...editingPixCode,
-                                          [details.rental.id]: details.pixCode || ""
-                                        });
-                                      }
-                                    }}
-                                    className="h-9 w-9 p-0 hover:bg-slate-100 transition-colors"
-                                    title="Editar código PIX"
-                                  >
-                                    <Edit2 className="h-5 w-5 text-slate-600" />
-                                  </Button>
-                                </div>
-                              )}
-                            </TableCell>
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Parcela</TableHead>
+                            <TableHead>Local</TableHead>
+                            <TableHead>Inquilino</TableHead>
+                            <TableHead>Vencimento</TableHead>
+                            <TableHead>Valor</TableHead>
+                            <TableHead>Taxa Admin</TableHead>
+                            <TableHead>Taxa Gerenc.</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Pago em</TableHead>
                           </TableRow>
-                        );
-                      })}
-                      {/* Linha de Totais */}
-                      <TableRow className="bg-slate-100 font-bold border-t-2 border-slate-300">
-                        <TableCell colSpan={9} className="text-right text-slate-900 uppercase tracking-wide">
-                          Total:
-                        </TableCell>
-                        <TableCell className="text-right text-slate-900 text-lg">
-                          {formatCurrency(sortedPayments.reduce((sum, p) => sum + p.expectedAmount, 0))}
-                        </TableCell>
-                        <TableCell className="text-right text-green-700 text-lg">
-                          {formatCurrency(sortedPayments.reduce((sum, p) => sum + (p.paidAmount || 0), 0))}
-                        </TableCell>
-                        <TableCell></TableCell>
-                      </TableRow>
-                    </>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredPayments.map((payment) => (
+                            <TableRow key={payment.id}>
+                              <TableCell>
+                                {payment.installment_number}/{payment.total_installments}
+                              </TableCell>
+                              <TableCell>
+                                <div className="max-w-[200px]">
+                                  <div className="font-medium truncate">
+                                    {payment.rentals?.properties?.type || "N/A"}
+                                  </div>
+                                  <div className="text-sm text-muted-foreground truncate">
+                                    {payment.rentals?.properties?.complement || ""}
+                                  </div>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                {payment.rentals?.tenants?.full_name || "N/A"}
+                              </TableCell>
+                              <TableCell>
+                                {format(new Date(payment.due_date), "dd/MM/yyyy")}
+                              </TableCell>
+                              <TableCell>
+                                {new Intl.NumberFormat("pt-BR", {
+                                  style: "currency",
+                                  currency: "BRL",
+                                }).format(payment.amount)}
+                              </TableCell>
+                              <TableCell>
+                                {new Intl.NumberFormat("pt-BR", {
+                                  style: "currency",
+                                  currency: "BRL",
+                                }).format(payment.admin_fee || 0)}
+                              </TableCell>
+                              <TableCell>
+                                {new Intl.NumberFormat("pt-BR", {
+                                  style: "currency",
+                                  currency: "BRL",
+                                }).format(payment.management_fee || 0)}
+                              </TableCell>
+                              <TableCell>
+                                <Badge
+                                  variant={
+                                    payment.status === "paid"
+                                      ? "default"
+                                      : payment.status === "pending"
+                                      ? "secondary"
+                                      : "destructive"
+                                  }
+                                >
+                                  {payment.status === "paid"
+                                    ? "Pago"
+                                    : payment.status === "pending"
+                                    ? "Pendente"
+                                    : "Atrasado"}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                {payment.paid_at
+                                  ? format(new Date(payment.paid_at), "dd/MM/yyyy")
+                                  : "-"}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
                   )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </ScrollReveal>
 
-        {(user?.role === "admin") && (
-          <DepositInstallmentsTable 
-            userRole={user?.role || ""}
-            allowedLocationIds={allowedLocationIds}
-          />
-        )}
+                  <div className="mt-6 pt-4 border-t">
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex gap-8">
+                        <div>
+                          <span className="text-muted-foreground">Total Esperado: </span>
+                          <span className="font-semibold">
+                            {new Intl.NumberFormat("pt-BR", {
+                              style: "currency",
+                              currency: "BRL",
+                            }).format(totalExpected)}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Total Pago: </span>
+                          <span className="font-semibold text-green-600">
+                            {new Intl.NumberFormat("pt-BR", {
+                              style: "currency",
+                              currency: "BRL",
+                            }).format(totalPaid)}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-muted-foreground">
+                        {filteredPayments.length} pagamento(s) no período
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </ScrollReveal>
+          </TabsContent>
+
+          {isAdmin && (
+            <TabsContent value="deposits" className="space-y-8 mt-8">
+              <DepositInstallmentsTable />
+            </TabsContent>
+          )}
+        </Tabs>
       </div>
-
-      {/* Print styles */}
-      <style jsx global>{`
-        @media print {
-          body * {
-            visibility: hidden;
-          }
-          .print-area,
-          .print-area * {
-            visibility: visible;
-          }
-          .print-area {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-          }
-          button,
-          .no-print {
-            display: none !important;
-          }
-        }
-      `}</style>
     </Layout>
   );
 }
