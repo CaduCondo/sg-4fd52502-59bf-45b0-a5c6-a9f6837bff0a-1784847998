@@ -3,6 +3,7 @@ import { Layout } from "@/components/Layout";
 import { PeriodSelector } from "@/components/dashboard/PeriodSelector";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -25,7 +26,10 @@ import {
   Percent,
   Settings,
   Receipt,
-  TrendingUp
+  TrendingUp,
+  Check,
+  X,
+  Edit2
 } from "lucide-react";
 import { DepositInstallmentsTable } from "@/components/financial/DepositInstallmentsTable";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -82,6 +86,11 @@ export default function Financial() {
       loadData();
     }
   }, [user, filterMonth, filterYear]);
+  
+  const [editingPixCode, setEditingPixCode] = useState<{
+    id: string;
+    value: string;
+  } | null>(null);
 
   const loadData = async () => {
     try {
@@ -304,6 +313,36 @@ export default function Financial() {
 
   const handlePrint = () => {
     window.print();
+  };
+  
+  const handleEditPixCode = async (paymentId: string, pixCode: string) => {
+    try {
+      const { error } = await supabase
+        .from("payments")
+        .update({ pix_code: pixCode })
+        .eq("id", paymentId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Sucesso",
+        description: "Código PIX atualizado com sucesso!",
+      });
+
+      setPayments(prevPayments =>
+        prevPayments.map(p =>
+          p.id === paymentId ? { ...p, pixCode: pixCode } : p
+        )
+      );
+      setEditingPixCode(null);
+    } catch (error) {
+      console.error("Erro ao atualizar código PIX:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar o código PIX.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleExport = () => {
@@ -718,8 +757,61 @@ export default function Financial() {
                                     currency: "BRL",
                                   }).format(payment.paidAmount || 0)}
                                 </TableCell>
-                                <TableCell className="font-mono text-xs">
-                                  {details.pixCode || "-"}
+                                <TableCell>
+                                  {editingPixCode?.id === payment.id ? (
+                                    <div className="flex items-center gap-3">
+                                      <Input
+                                        value={editingPixCode.value}
+                                        onChange={(e) => {
+                                          setEditingPixCode({
+                                            ...editingPixCode,
+                                            value: e.target.value
+                                          });
+                                        }}
+                                        placeholder="Digite o código PIX"
+                                        className="h-9 text-sm border-2 border-blue-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all min-w-[250px] bg-white"
+                                        autoFocus
+                                      />
+                                      <Button
+                                        size="default"
+                                        variant="ghost"
+                                        onClick={() => handleEditPixCode(payment.id, editingPixCode.value)}
+                                        className="h-9 w-9 p-0 hover:bg-green-100 transition-colors"
+                                        title="Salvar código PIX"
+                                      >
+                                        <Check className="h-5 w-5 text-green-600" />
+                                      </Button>
+                                      <Button
+                                        size="default"
+                                        variant="ghost"
+                                        onClick={() => setEditingPixCode(null)}
+                                        className="h-9 w-9 p-0 hover:bg-red-100 transition-colors"
+                                        title="Cancelar edição"
+                                      >
+                                        <X className="h-5 w-5 text-red-600" />
+                                      </Button>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center gap-3">
+                                      <span className="text-slate-600 max-w-xs truncate text-sm font-mono">
+                                        {details.pixCode || "-"}
+                                      </span>
+                                      <Button
+                                        size="default"
+                                        variant="ghost"
+                                        onClick={() => {
+                                          setEditingPixCode({
+                                            id: payment.id,
+                                            value: details.pixCode || ""
+                                          });
+                                        }}
+                                        className="h-9 w-9 p-0 hover:bg-slate-100 transition-colors"
+                                        title="Editar código PIX"
+                                      >
+                                        <Edit2 className="h-5 w-5 text-slate-600" />
+                                      </Button>
+                                    </div>
+                                  )}
                                 </TableCell>
                               </TableRow>
                             );

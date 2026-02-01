@@ -713,7 +713,7 @@ export function DepositInstallmentsTable({
                                           const masked = applyMoneyMask(e.target.value);
                                           setEditingCommission({ ...editingCommission, value: masked });
                                         }}
-                                        className="h-9 text-sm text-right"
+                                        className="h-9 text-sm text-right min-w-[200px]"
                                         autoFocus
                                       />
                                       <Button
@@ -761,7 +761,7 @@ export function DepositInstallmentsTable({
                                           const masked = applyMoneyMask(e.target.value);
                                           setEditingCommission({ ...editingCommission, value: masked });
                                         }}
-                                        className="h-9 text-sm text-right"
+                                        className="h-9 text-sm text-right min-w-[200px]"
                                         autoFocus
                                       />
                                       <Button
