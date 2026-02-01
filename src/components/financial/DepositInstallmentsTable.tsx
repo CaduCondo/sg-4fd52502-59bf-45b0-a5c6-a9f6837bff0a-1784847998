@@ -428,6 +428,17 @@ export function DepositInstallmentsTable({
   
   const netRevenue = totalReceived - adminFee;
 
+  console.log("📋 Dados para renderização da tabela:", {
+    sortedDataLength: sortedData.length,
+    groupedByRentalKeys: Object.keys(groupedByRental).length,
+    uniqueRentalsLength: uniqueRentals.length,
+    totalAmountColumn: totalExpected,
+    totalReceivedAmount: totalReceived,
+    adminFeeTotal: adminFee,
+    netRevenueTotal: netRevenue,
+    hasData: sortedData.length > 0
+  });
+
   return (
     <div className="space-y-6">
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">

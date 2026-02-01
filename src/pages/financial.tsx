@@ -326,6 +326,18 @@ export default function Financial() {
     .filter((p) => p.status === "paid" || p.status === "partial")
     .reduce((sum, p) => sum + (p.paidAmount || 0), 0);
 
+  console.log("💰 KPI Debug:", {
+    paymentsCount: payments.length,
+    totalExpected,
+    totalReceived,
+    payments: payments.map(p => ({
+      id: p.id,
+      status: p.status,
+      expectedAmount: p.expectedAmount,
+      paidAmount: p.paidAmount
+    }))
+  });
+
   // Calcular taxa adm considerando isenções
   const adminFee = payments
     .filter((p) => p.status === "paid" || p.status === "partial")
