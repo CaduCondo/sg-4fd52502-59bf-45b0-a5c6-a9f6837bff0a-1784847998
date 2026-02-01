@@ -112,6 +112,14 @@ export function DepositInstallmentsTable({
 
   const isAdmin = userRole === "admin";
 
+  console.log("🔍 DepositInstallmentsTable - Debug:", {
+    userRole,
+    isAdmin,
+    allowedLocationIds,
+    dataLength: data.length,
+    loading
+  });
+
   useEffect(() => {
     fetchData();
   }, [statusFilter, JSON.stringify(allowedLocationIds)]);
@@ -406,13 +414,24 @@ export function DepositInstallmentsTable({
     return (
       <ScrollReveal delay={0.6}>
         <Card className="border-slate-200 shadow-sm">
+          <CardHeader className="border-b border-slate-100 bg-white pb-4">
+            <CardTitle className="text-xl font-semibold text-slate-800">
+              Detalhamento dos Cauções
+            </CardTitle>
+          </CardHeader>
           <CardContent className="p-6">
-            <p className="text-center text-muted-foreground">Carregando...</p>
+            <p className="text-center text-muted-foreground">Carregando dados dos cauções...</p>
           </CardContent>
         </Card>
       </ScrollReveal>
     );
   }
+
+  console.log("✅ DepositInstallmentsTable renderizando com:", {
+    totalRecords: data.length,
+    statusFilter,
+    isAdmin
+  });
 
   return (
     <div className="space-y-6">
