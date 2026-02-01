@@ -124,26 +124,53 @@ export function PaymentReceipt({
   const referenceMonthName = monthNames[(payment.referenceMonth || 1) - 1];
 
   const safeDate = (dateString: string | undefined | null): Date => {
-    if (!dateString) return new Date();
-    const date = new Date(dateString + "T00:00:00");
-    return isNaN(date.getTime()) ? new Date() : date;
+    if (!dateString) {
+      console.warn("⚠️ Data ausente, usando data atual");
+      return new Date();
+    }
+    
+    try {
+      // Remove timezone para evitar problemas de conversão
+      const date = new Date(dateString.split('T')[0] + 'T12:00:00');
+      
+      if (isNaN(date.getTime())) {
+        console.error("❌ Data inválida:", dateString);
+        return new Date();
+      }
+      
+      return date;
+    } catch (error) {
+      console.error("❌ Erro ao processar data:", dateString, error);
+      return new Date();
+    }
   };
 
   const formatSafeDate = (date: Date | string | undefined | null, formatStr: string): string => {
     try {
-      if (!date) return "Data não disponível";
+      if (!date) {
+        console.warn("⚠️ Data ausente em formatSafeDate");
+        return format(new Date(), formatStr, { locale: ptBR });
+      }
       
-      const dateObj = typeof date === "string" ? new Date(date + "T00:00:00") : date;
+      let dateObj: Date;
+      
+      if (typeof date === "string") {
+        // Remove timezone para evitar problemas
+        const cleanDate = date.split('T')[0] + 'T12:00:00';
+        dateObj = new Date(cleanDate);
+      } else {
+        dateObj = date;
+      }
       
       if (isNaN(dateObj.getTime())) {
-        console.error("Data inválida:", date);
-        return "Data inválida";
+        console.error("❌ Data inválida em formatSafeDate:", date);
+        return format(new Date(), formatStr, { locale: ptBR });
       }
       
       return format(dateObj, formatStr, { locale: ptBR });
     } catch (error) {
-      console.error("Erro ao formatar data:", date, error);
-      return "Data inválida";
+      console.error("❌ Erro ao formatar data:", date, error);
+      return format(new Date(), formatStr, { locale: ptBR });
     }
   };
 
@@ -178,15 +205,6 @@ export function PaymentReceipt({
       currentPaymentNumber = 1;
     }
   }
-
-  const formatDate = (date: Date): string => {
-    try {
-      return format(date, "dd/MM/yyyy", { locale: ptBR });
-    } catch (error) {
-      console.error("Erro ao formatar data:", error);
-      return "Data inválida";
-    }
-  };
 
   const handleDownloadPDF = () => {
     setLoading(true);
@@ -307,7 +325,7 @@ export function PaymentReceipt({
 
               <div className="space-y-3 sm:space-y-4 text-xs sm:text-sm leading-relaxed text-justify">
                 <p>
-                  Recebi dos Srs. <span className="font-semibold uppercase">{tenant.name}</span>, a importância de <span className="font-semibold uppercase">{numberToWords(totalAmount)}</span>, proveniente ao depósito de aluguel referente ao mês de <span className="font-semibold">{referenceMonthName} de {payment.referenceYear}</span>, tendo seu vencimento em <span className="font-semibold">{format(dueDate, "dd/MM/yyyy", { locale: ptBR })}</span>, do imóvel situado em <span className="font-semibold uppercase">{fullAddress}</span>, após a apresentação dos comprovantes de depósito bancário e contas de água e luz do mês anterior pagas, sendo este vinculado ao INSTRUMENTO PARTICULAR DE CONTRATO DE LOCAÇÃO PARA FIM RESIDENCIAL, assinado entre as partes em <span className="font-semibold">{format(new Date(rental.startDate + "T00:00:00"), "dd/MM/yyyy", { locale: ptBR })}</span>.
+                  Recebi dos Srs. <span className="font-semibold uppercase">{tenant.name}</span>, a importância de <span className="font-semibold uppercase">{numberToWords(totalAmount)}</span>, proveniente ao depósito de aluguel referente ao mês de <span className="font-semibold">{referenceMonthName} de {payment.referenceYear}</span>, tendo seu vencimento em <span className="font-semibold">{formatSafeDate(dueDate, "dd/MM/yyyy")}</span>, do imóvel situado em <span className="font-semibold uppercase">{fullAddress}</span>, após a apresentação dos comprovantes de depósito bancário e contas de água e luz do mês anterior pagas, sendo este vinculado ao INSTRUMENTO PARTICULAR DE CONTRATO DE LOCAÇÃO PARA FIM RESIDENCIAL, assinado entre as partes em <span className="font-semibold">{formatSafeDate(rental.startDate, "dd/MM/yyyy")}</span>.
                 </p>
               </div>
 
