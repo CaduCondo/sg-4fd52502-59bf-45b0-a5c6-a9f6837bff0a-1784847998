@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Layout } from "@/components/Layout";
 import { PeriodSelector } from "@/components/dashboard/PeriodSelector";
-import { FinancialMetricCard } from "@/components/dashboard/FinancialMetricCard";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -23,9 +22,10 @@ import {
   ArrowUp, 
   ArrowDown,
   DollarSign,
-  Building,
+  Percent,
   Settings,
-  Target
+  Receipt,
+  TrendingUp
 } from "lucide-react";
 import { DepositInstallmentsTable } from "@/components/financial/DepositInstallmentsTable";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -34,7 +34,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
 
-// Importações diretas dos serviços para evitar erros de exportação
+// Importações diretas dos serviços
 import { getAll as getAllPayments } from "@/services/paymentService";
 import { getAll as getAllProperties } from "@/services/propertyService";
 import { getAll as getAllTenants } from "@/services/tenantService";
@@ -61,7 +61,7 @@ export default function Financial() {
   const [config, setConfig] = useState<any>(null);
   const [mounted, setMounted] = useState(false);
 
-  // Date State - Tipagem corrigida para number para compatibilidade com PeriodSelector
+  // Date State
   const now = new Date();
   const [selectedMonth, setSelectedMonth] = useState<number>(now.getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState<number>(now.getFullYear());
@@ -86,12 +86,6 @@ export default function Financial() {
   const loadData = async () => {
     try {
       setLoading(true);
-      
-      console.log("🔄 Financeiro: Carregando dados...", { 
-        filterMonth,
-        filterYear,
-        userRole: user?.role 
-      });
       
       const [
         paymentsData, 
@@ -321,11 +315,11 @@ export default function Financial() {
       const paymentNumber = calculatePaymentNumber(payment, details.rental);
       
       return {
-        "Nº": paymentNumber,
+        "Parcela": paymentNumber,
         "Local": details.local,
         "Complemento": details.complemento,
         "Inquilino": details.tenantName,
-        "Ano": selectedYear,
+        "Ano": filterYear,
         "Mês": monthName,
         "Status": payment.status === "paid" ? "Pago" : 
                  payment.status === "pending" ? "Pendente" :
@@ -347,8 +341,8 @@ export default function Financial() {
     ];
 
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, `${monthName} ${selectedYear}`);
-    XLSX.writeFile(wb, `Financeiro_${monthName}_${selectedYear}.xlsx`);
+    XLSX.utils.book_append_sheet(wb, ws, `${monthName} ${filterYear}`);
+    XLSX.writeFile(wb, `Financeiro_${monthName}_${filterYear}.xlsx`);
 
     toast({
       title: "Sucesso!",
@@ -357,7 +351,6 @@ export default function Financial() {
   };
 
   // KPI Calculations
-  const totalExpected = payments.reduce((sum, p) => sum + p.expectedAmount, 0);
   const totalReceived = payments
     .filter((p) => p.status === "paid" || p.status === "partial")
     .reduce((sum, p) => sum + (p.paidAmount || 0), 0);
@@ -374,7 +367,9 @@ export default function Financial() {
       return sum + ((p.paidAmount || 0) * feeRate);
     }, 0);
     
-  const managementFee = payments.reduce((sum, p) => {
+  const managementFee = payments
+    .filter((p) => p.status === "paid" || p.status === "partial")
+    .reduce((sum, p) => {
        const rental = rentals.find(r => r.id === p.rentalId);
        const property = properties.find(prop => prop.id === rental?.propertyId);
        if (property && exemptLocationIds.includes(property.locationId)) return sum;
@@ -385,6 +380,7 @@ export default function Financial() {
 
   const netRevenue = totalReceived - adminFee - managementFee - locationExpenses;
   
+  const totalExpected = payments.reduce((sum, p) => sum + p.expectedAmount, 0);
   const totalPaid = payments
     .filter(p => p.status === "paid" || p.status === "partial")
     .reduce((sum, p) => sum + (p.paidAmount || 0), 0);
@@ -428,65 +424,142 @@ export default function Financial() {
             </ScrollReveal>
 
             {/* Cards de Métricas - Locações */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
               <ScrollReveal delay={0.2}>
-                <FinancialMetricCard
-                  title="Receita Bruta"
-                  value={totalReceived}
-                  icon={DollarSign}
-                  iconColor="text-green-600"
-                  iconBgClass="bg-green-100"
-                  borderColorClass="border-l-green-600"
-                />
+                <Card className="border-l-4 border-l-green-500">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                          <DollarSign className="h-4 w-4 text-green-600" />
+                          Receita Bruta
+                        </p>
+                        <p className="text-2xl font-bold text-green-600">
+                          {new Intl.NumberFormat("pt-BR", {
+                            style: "currency",
+                            currency: "BRL",
+                          }).format(totalReceived)}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Total recebido no período
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               </ScrollReveal>
+
               <ScrollReveal delay={0.3}>
-                <FinancialMetricCard
-                  title="Taxa de Administração"
-                  value={adminFee}
-                  icon={Building}
-                  iconColor="text-blue-600"
-                  iconBgClass="bg-blue-100"
-                  borderColorClass="border-l-blue-600"
-                />
+                <Card className="border-l-4 border-l-red-500">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                          <Percent className="h-4 w-4 text-red-600" />
+                          Taxa de Administração
+                        </p>
+                        <p className="text-2xl font-bold text-red-600">
+                          {new Intl.NumberFormat("pt-BR", {
+                            style: "currency",
+                            currency: "BRL",
+                          }).format(adminFee)}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {config ? config.admin_fee_percentage : 5}% sobre a receita bruta
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               </ScrollReveal>
+
               <ScrollReveal delay={0.4}>
-                <FinancialMetricCard
-                  title="Taxa de Gerenciamento"
-                  value={managementFee}
-                  icon={Settings}
-                  iconColor="text-purple-600"
-                  iconBgClass="bg-purple-100"
-                  borderColorClass="border-l-purple-600"
-                />
+                <Card className="border-l-4 border-l-blue-500">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                          <Settings className="h-4 w-4 text-blue-600" />
+                          Taxa de Gerenciamento
+                        </p>
+                        <p className="text-2xl font-bold text-blue-600">
+                          {new Intl.NumberFormat("pt-BR", {
+                            style: "currency",
+                            currency: "BRL",
+                          }).format(managementFee)}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {config ? config.management_fee_percentage : 3}% sobre a receita bruta
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               </ScrollReveal>
+
               <ScrollReveal delay={0.5}>
-                <FinancialMetricCard
-                  title="Receita Líquida"
-                  value={netRevenue}
-                  icon={Target}
-                  iconColor="text-indigo-600"
-                  iconBgClass="bg-indigo-100"
-                  borderColorClass="border-l-indigo-600"
-                />
+                <Card className="border-l-4 border-l-orange-500">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                          <Receipt className="h-4 w-4 text-orange-600" />
+                          Contas do Mês
+                        </p>
+                        <p className="text-2xl font-bold text-orange-600">
+                          {new Intl.NumberFormat("pt-BR", {
+                            style: "currency",
+                            currency: "BRL",
+                          }).format(locationExpenses)}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Água, luz e outras despesas dos locais
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </ScrollReveal>
+
+              <ScrollReveal delay={0.6}>
+                <Card className="border-l-4 border-l-purple-500">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                          <TrendingUp className="h-4 w-4 text-purple-600" />
+                          Receita Líquida
+                        </p>
+                        <p className="text-2xl font-bold text-purple-600">
+                          {new Intl.NumberFormat("pt-BR", {
+                            style: "currency",
+                            currency: "BRL",
+                          }).format(netRevenue)}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Valor após subtração das taxas e contas
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               </ScrollReveal>
             </div>
 
             {/* Tabela de Locações */}
-            <ScrollReveal delay={0.6}>
+            <ScrollReveal delay={0.7}>
               <Card>
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between mb-6">
                     <div>
-                      <h2 className="text-2xl font-bold">
-                        Detalhamento de Locações
-                      </h2>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {format(
+                      <h2 className="text-2xl font-bold flex items-center gap-2">
+                        <FileText className="h-6 w-6" />
+                        Detalhamento de Locações - {format(
                           new Date(filterYear, filterMonth - 1),
-                          "MMMM 'de' yyyy",
+                          "MMMM yyyy",
                           { locale: ptBR }
                         )}
-                      </p>
+                      </h2>
                     </div>
                     <div className="flex gap-2">
                       <Button
@@ -524,41 +597,63 @@ export default function Financial() {
                         <TableHeader>
                           <TableRow>
                             <TableHead className="cursor-pointer" onClick={() => handleSort("paymentNumber")}>
-                              Parcela <SortIcon field="paymentNumber" />
+                              <div className="flex items-center">
+                                Parcela
+                                <SortIcon field="paymentNumber" />
+                              </div>
                             </TableHead>
                             <TableHead className="cursor-pointer" onClick={() => handleSort("local")}>
-                              Local <SortIcon field="local" />
+                              <div className="flex items-center">
+                                Local
+                                <SortIcon field="local" />
+                              </div>
                             </TableHead>
                             <TableHead className="cursor-pointer" onClick={() => handleSort("complement")}>
-                              Complemento <SortIcon field="complement" />
+                              <div className="flex items-center">
+                                Complemento
+                                <SortIcon field="complement" />
+                              </div>
                             </TableHead>
                             <TableHead>Inquilino</TableHead>
-                            <TableHead className="cursor-pointer" onClick={() => handleSort("dueDate")}>
-                              Vencimento <SortIcon field="dueDate" />
-                            </TableHead>
-                            <TableHead className="cursor-pointer" onClick={() => handleSort("expectedAmount")}>
-                              Valor <SortIcon field="expectedAmount" />
-                            </TableHead>
-                            <TableHead>Taxa Admin</TableHead>
-                            <TableHead>Taxa Gerenc.</TableHead>
+                            <TableHead>Ano</TableHead>
+                            <TableHead>Mês</TableHead>
                             <TableHead className="cursor-pointer" onClick={() => handleSort("status")}>
-                              Status <SortIcon field="status" />
+                              <div className="flex items-center">
+                                Status
+                                <SortIcon field="status" />
+                              </div>
+                            </TableHead>
+                            <TableHead className="cursor-pointer" onClick={() => handleSort("dueDate")}>
+                              <div className="flex items-center">
+                                Data Vencimento
+                                <SortIcon field="dueDate" />
+                              </div>
                             </TableHead>
                             <TableHead className="cursor-pointer" onClick={() => handleSort("paymentDate")}>
-                              Pago em <SortIcon field="paymentDate" />
+                              <div className="flex items-center">
+                                Data Recebida
+                                <SortIcon field="paymentDate" />
+                              </div>
                             </TableHead>
+                            <TableHead className="cursor-pointer text-right" onClick={() => handleSort("expectedAmount")}>
+                              <div className="flex items-center justify-end">
+                                Valor Esperado
+                                <SortIcon field="expectedAmount" />
+                              </div>
+                            </TableHead>
+                            <TableHead className="cursor-pointer text-right" onClick={() => handleSort("paidAmount")}>
+                              <div className="flex items-center justify-end">
+                                Valor Pago
+                                <SortIcon field="paidAmount" />
+                              </div>
+                            </TableHead>
+                            <TableHead>Código PIX</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {filteredPayments.map((payment) => {
                             const details = getPaymentDetails(payment);
-                            const feeRate = config ? (config.admin_fee_percentage || 0) / 100 : 0.05;
-                            const mgmtRate = config ? (config.management_fee_percentage || 0) / 100 : 0;
-                            const property = properties.find(p => p.id === details.rental?.propertyId);
-                            const isExempt = property && exemptLocationIds.includes(property.locationId);
-                            
-                            const paymentAdminFee = isExempt ? 0 : (payment.paidAmount || 0) * feeRate;
-                            const paymentMgmtFee = isExempt ? 0 : (payment.paidAmount || 0) * mgmtRate;
+                            const monthName = format(new Date(payment.referenceYear || 0, (payment.referenceMonth || 1) - 1), "MMMM", { locale: ptBR });
 
                             return (
                               <TableRow key={payment.id}>
@@ -580,27 +675,8 @@ export default function Financial() {
                                 <TableCell>
                                   {details.tenantName}
                                 </TableCell>
-                                <TableCell>
-                                  {format(new Date(payment.dueDate), "dd/MM/yyyy")}
-                                </TableCell>
-                                <TableCell>
-                                  {new Intl.NumberFormat("pt-BR", {
-                                    style: "currency",
-                                    currency: "BRL",
-                                  }).format(payment.expectedAmount)}
-                                </TableCell>
-                                <TableCell>
-                                  {new Intl.NumberFormat("pt-BR", {
-                                    style: "currency",
-                                    currency: "BRL",
-                                  }).format(paymentAdminFee)}
-                                </TableCell>
-                                <TableCell>
-                                  {new Intl.NumberFormat("pt-BR", {
-                                    style: "currency",
-                                    currency: "BRL",
-                                  }).format(paymentMgmtFee)}
-                                </TableCell>
+                                <TableCell>{payment.referenceYear}</TableCell>
+                                <TableCell className="capitalize">{monthName}</TableCell>
                                 <TableCell>
                                   <Badge
                                     variant={
@@ -608,56 +684,69 @@ export default function Financial() {
                                         ? "default"
                                         : payment.status === "pending"
                                         ? "secondary"
-                                        : "destructive"
+                                        : payment.status === "overdue"
+                                        ? "destructive"
+                                        : "outline"
                                     }
                                   >
                                     {payment.status === "paid"
                                       ? "Pago"
                                       : payment.status === "pending"
                                       ? "Pendente"
-                                      : "Atrasado"}
+                                      : payment.status === "overdue"
+                                      ? "Atrasado"
+                                      : "Parcial"}
                                   </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  {format(new Date(payment.dueDate), "dd/MM/yyyy")}
                                 </TableCell>
                                 <TableCell>
                                   {payment.paymentDate
                                     ? format(new Date(payment.paymentDate), "dd/MM/yyyy")
                                     : "-"}
                                 </TableCell>
+                                <TableCell className="text-right">
+                                  {new Intl.NumberFormat("pt-BR", {
+                                    style: "currency",
+                                    currency: "BRL",
+                                  }).format(payment.expectedAmount)}
+                                </TableCell>
+                                <TableCell className="text-right font-semibold text-green-600">
+                                  {new Intl.NumberFormat("pt-BR", {
+                                    style: "currency",
+                                    currency: "BRL",
+                                  }).format(payment.paidAmount || 0)}
+                                </TableCell>
+                                <TableCell className="font-mono text-xs">
+                                  {details.pixCode || "-"}
+                                </TableCell>
                               </TableRow>
                             );
                           })}
+                          {/* Linha de Totais */}
+                          <TableRow className="bg-muted/50 font-bold">
+                            <TableCell colSpan={9} className="text-right">
+                              Totais:
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {new Intl.NumberFormat("pt-BR", {
+                                style: "currency",
+                                currency: "BRL",
+                              }).format(totalExpected)}
+                            </TableCell>
+                            <TableCell className="text-right text-green-600">
+                              {new Intl.NumberFormat("pt-BR", {
+                                style: "currency",
+                                currency: "BRL",
+                              }).format(totalPaid)}
+                            </TableCell>
+                            <TableCell></TableCell>
+                          </TableRow>
                         </TableBody>
                       </Table>
                     </div>
                   )}
-
-                  <div className="mt-6 pt-4 border-t">
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="flex gap-8">
-                        <div>
-                          <span className="text-muted-foreground">Total Esperado: </span>
-                          <span className="font-semibold">
-                            {new Intl.NumberFormat("pt-BR", {
-                              style: "currency",
-                              currency: "BRL",
-                            }).format(totalExpected)}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Total Pago: </span>
-                          <span className="font-semibold text-green-600">
-                            {new Intl.NumberFormat("pt-BR", {
-                              style: "currency",
-                              currency: "BRL",
-                            }).format(totalPaid)}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="text-muted-foreground">
-                        {filteredPayments.length} pagamento(s) no período
-                      </div>
-                    </div>
-                  </div>
                 </CardContent>
               </Card>
             </ScrollReveal>

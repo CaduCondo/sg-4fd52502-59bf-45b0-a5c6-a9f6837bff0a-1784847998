@@ -871,6 +871,40 @@ export function DepositInstallmentsTable({
                         );
                       });
                     })}
+                    {/* Linha de Totais */}
+                    <TableRow className="bg-slate-100 font-bold border-t-2 border-slate-300">
+                      <TableCell colSpan={4} className="text-right text-slate-700 uppercase text-sm">
+                        Totais:
+                      </TableCell>
+                      <TableCell className="text-right text-slate-900">
+                        {formatCurrency(
+                          uniqueRentals.reduce((sum, item) => {
+                            const rentalInstallments = groupedByRental[item.rental_id] || [];
+                            const totalCaucao = rentalInstallments.reduce((s, inst) => s + inst.amount, 0);
+                            return sum + totalCaucao;
+                          }, 0)
+                        )}
+                      </TableCell>
+                      <TableCell className="text-slate-600"></TableCell>
+                      <TableCell className="text-right text-slate-900">
+                        {formatCurrency(
+                          uniqueRentals.reduce((sum, item) => sum + (item.partner_commission || 0), 0)
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right text-slate-900">
+                        {formatCurrency(
+                          uniqueRentals.reduce((sum, item) => sum + (item.internal_commission || 0), 0)
+                        )}
+                      </TableCell>
+                      <TableCell className="text-slate-600"></TableCell>
+                      <TableCell className="text-slate-600"></TableCell>
+                      <TableCell className="text-right text-slate-900">
+                        {formatCurrency(
+                          sortedData.reduce((sum, item) => sum + item.amount, 0)
+                        )}
+                      </TableCell>
+                      <TableCell className="text-slate-600"></TableCell>
+                    </TableRow>
                   </TableBody>
                 </Table>
               </div>
