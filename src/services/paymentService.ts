@@ -528,3 +528,175 @@ export async function migrateProportionalFirstPayments(): Promise<{
 
   return result;
 }
+
+/**
+ * NOVA FUNÇÃO - Atualiza recebimentos pendentes quando locação é editada
+ * Atualiza valores, datas, e sincroniza com mudanças no contrato
+ */
+export async function updatePendingPaymentsOnRentalEdit(rental: any): Promise<void> {
+  console.log("=== INICIO updatePendingPaymentsOnRentalEdit ===");
+  console.log("Rental ID:", rental.id);
+
+  const startDate = new Date(rental.startDate || rental.start_date);
+  const endDate = rental.endDate || rental.end_date 
+    ? new Date(rental.endDate || rental.end_date) 
+    : new Date(startDate.getFullYear() + 1, startDate.getMonth(), startDate.getDate());
+  
+  const paymentDay = Number(rental.paymentDay || rental.payment_day);
+  const monthlyValue = Number(rental.value || rental.monthly_rent);
+
+  // 1. Buscar recebimentos pendentes existentes
+  const { data: existingPayments, error: fetchError } = await supabase
+    .from("payments")
+    .select("*")
+    .eq("rental_id", rental.id)
+    .eq("status", "pending")
+    .order("due_date", { ascending: true });
+
+  if (fetchError) {
+    console.error("Erro ao buscar recebimentos pendentes:", fetchError);
+    throw fetchError;
+  }
+
+  console.log(`📋 Encontrados ${existingPayments?.length || 0} recebimentos pendentes`);
+
+  // 2. Calcular recebimentos esperados
+  const expectedPayments = [];
+  const startDateStr = startDate.toISOString().split('T')[0];
+  const isFirstProportional = shouldUseProportionalRent(startDateStr, paymentDay);
+
+  let currentMonth = startDate.getMonth();
+  let currentYear = startDate.getFullYear();
+
+  // Primeira parcela (proporcional ou integral)
+  if (isFirstProportional) {
+    const firstPaymentValue = calculateProportionalRent(monthlyValue, startDateStr, paymentDay);
+    let firstDueDate = new Date(currentYear, currentMonth, paymentDay);
+    
+    if (firstDueDate <= startDate) {
+      currentMonth++;
+      if (currentMonth > 11) {
+        currentMonth = 0;
+        currentYear++;
+      }
+      firstDueDate = new Date(currentYear, currentMonth, paymentDay);
+    }
+    
+    if (firstDueDate.getMonth() !== currentMonth) {
+      firstDueDate = new Date(currentYear, currentMonth + 1, 0);
+    }
+
+    expectedPayments.push({
+      due_date: firstDueDate.toISOString().split('T')[0],
+      expected_amount: firstPaymentValue,
+      reference_month: currentMonth + 1,
+      reference_year: currentYear,
+    });
+
+    currentMonth++;
+    if (currentMonth > 11) {
+      currentMonth = 0;
+      currentYear++;
+    }
+  } else {
+    const firstDueDate = new Date(currentYear, currentMonth, paymentDay);
+    if (firstDueDate < startDate) {
+      currentMonth++;
+      if (currentMonth > 11) {
+        currentMonth = 0;
+        currentYear++;
+      }
+    }
+  }
+
+  // Parcelas mensais integrais
+  while (true) {
+    let dueDate = new Date(currentYear, currentMonth, paymentDay);
+    
+    if (dueDate.getMonth() !== currentMonth) {
+      dueDate = new Date(currentYear, currentMonth + 1, 0);
+    }
+
+    if (dueDate > endDate) {
+      break;
+    }
+
+    expectedPayments.push({
+      due_date: dueDate.toISOString().split('T')[0],
+      expected_amount: monthlyValue,
+      reference_month: currentMonth + 1,
+      reference_year: currentYear,
+    });
+
+    currentMonth++;
+    if (currentMonth > 11) {
+      currentMonth = 0;
+      currentYear++;
+    }
+  }
+
+  console.log(`📊 Recebimentos esperados: ${expectedPayments.length}`);
+
+  // 3. Atualizar recebimentos existentes
+  for (let i = 0; i < Math.min(existingPayments?.length || 0, expectedPayments.length); i++) {
+    const existing = existingPayments![i];
+    const expected = expectedPayments[i];
+
+    const { error: updateError } = await supabase
+      .from("payments")
+      .update({
+        due_date: expected.due_date,
+        expected_amount: expected.expected_amount,
+        reference_month: expected.reference_month,
+        reference_year: expected.reference_year,
+      })
+      .eq("id", existing.id);
+
+    if (updateError) {
+      console.error(`Erro ao atualizar pagamento ${existing.id}:`, updateError);
+      throw updateError;
+    }
+
+    console.log(`✅ Pagamento ${i + 1} atualizado: ${expected.due_date} - R$ ${expected.expected_amount.toFixed(2)}`);
+  }
+
+  // 4. Criar novos recebimentos se necessário
+  if (expectedPayments.length > (existingPayments?.length || 0)) {
+    const newPayments = expectedPayments.slice(existingPayments?.length || 0).map(p => ({
+      ...p,
+      rental_id: rental.id,
+      status: 'pending',
+    }));
+
+    const { error: insertError } = await supabase
+      .from("payments")
+      .insert(newPayments);
+
+    if (insertError) {
+      console.error("Erro ao criar novos pagamentos:", insertError);
+      throw insertError;
+    }
+
+    console.log(`✅ Criados ${newPayments.length} novos pagamentos`);
+  }
+
+  // 5. Deletar recebimentos pendentes excedentes
+  if ((existingPayments?.length || 0) > expectedPayments.length) {
+    const toDelete = existingPayments!.slice(expectedPayments.length);
+    const idsToDelete = toDelete.map(p => p.id);
+
+    const { error: deleteError } = await supabase
+      .from("payments")
+      .delete()
+      .in("id", idsToDelete);
+
+    if (deleteError) {
+      console.error("Erro ao deletar pagamentos excedentes:", deleteError);
+      throw deleteError;
+    }
+
+    console.log(`✅ Deletados ${toDelete.length} pagamentos excedentes`);
+  }
+
+  console.log("=== FIM updatePendingPaymentsOnRentalEdit ===");
+}

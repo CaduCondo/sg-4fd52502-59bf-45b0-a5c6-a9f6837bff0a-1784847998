@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { Rental } from "@/types";
 import { depositInstallmentService } from "./depositInstallmentService";
+import { updatePendingPaymentsOnRentalEdit } from "./paymentService";
 
 // Helper para mapear dados do banco para o tipo Rental
 const mapRentalData = (data: any): Rental => {
@@ -265,6 +266,15 @@ export const rentalService = {
       );
     }
 
+    // Atualizar recebimentos pendentes com as mudanças da locação
+    await updatePendingPaymentsOnRentalEdit({
+      id,
+      startDate: data.start_date,
+      endDate: data.end_date,
+      paymentDay: data.payment_day,
+      value: data.value || data.monthly_rent,
+    });
+
     return mapRentalData(data);
   },
 
@@ -409,6 +419,15 @@ export const update = async (id: string, rental: Partial<Rental>) => {
       rental.hasPartnerBroker || data.has_partner_broker || false
     );
   }
+
+  // Atualizar recebimentos pendentes com as mudanças da locação
+  await updatePendingPaymentsOnRentalEdit({
+    id,
+    startDate: data.start_date,
+    endDate: data.end_date,
+    paymentDay: data.payment_day,
+    value: data.value || data.monthly_rent,
+  });
 
   return data;
 };
