@@ -530,8 +530,9 @@ export default function Financial() {
                               Local <SortIcon field="local" />
                             </TableHead>
                             <TableHead className="cursor-pointer" onClick={() => handleSort("complement")}>
-                              Inquilino <SortIcon field="complement" />
+                              Complemento <SortIcon field="complement" />
                             </TableHead>
+                            <TableHead>Inquilino</TableHead>
                             <TableHead className="cursor-pointer" onClick={() => handleSort("dueDate")}>
                               Vencimento <SortIcon field="dueDate" />
                             </TableHead>
@@ -569,9 +570,11 @@ export default function Financial() {
                                     <div className="font-medium truncate">
                                       {details.local}
                                     </div>
-                                    <div className="text-sm text-muted-foreground truncate">
-                                      {details.complemento}
-                                    </div>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="text-sm text-muted-foreground truncate">
+                                    {details.complemento}
                                   </div>
                                 </TableCell>
                                 <TableCell>
