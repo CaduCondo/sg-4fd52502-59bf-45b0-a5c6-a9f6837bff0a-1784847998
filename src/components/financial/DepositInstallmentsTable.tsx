@@ -447,6 +447,15 @@ export function DepositInstallmentsTable({
     isAdmin
   });
 
+  console.log("📋 Dados para renderização da tabela:", {
+    sortedDataLength: sortedData.length,
+    groupedByRentalKeys: Object.keys(groupedByRental).length,
+    uniqueRentalsLength: uniqueRentals.length,
+    totalAmountColumn,
+    totalSecurityDeposit,
+    hasData: sortedData.length > 0
+  });
+
   return (
     <div className="space-y-6">
       {isAdmin && (
@@ -676,230 +685,223 @@ export function DepositInstallmentsTable({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {Object.entries(groupedByRental).map(([rentalId, installments]) => {
-                    const firstInstallment = installments[0];
-                    const rowSpan = installments.length;
-                    const totalCaucaoValue = installments.reduce((sum, inst) => sum + inst.amount, 0);
+                  {Object.keys(groupedByRental).length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={12} className="text-center py-8 text-slate-500">
+                        Nenhum dado de caução encontrado para o filtro selecionado.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    <>
+                      {Object.entries(groupedByRental).map(([rentalId, installments]) => {
+                        const firstInstallment = installments[0];
+                        const rowSpan = installments.length;
+                        const totalCaucaoValue = installments.reduce((sum, inst) => sum + inst.amount, 0);
 
-                    return installments.map((installment, index) => {
-                      const isPaid = installment.pix_code && installment.pix_code.trim() !== "";
-                      const rowBgClass = isPaid ? "bg-green-100/60" : "bg-red-100/60";
-                      
-                      return (
-                        <TableRow key={installment.id} className="hover:bg-slate-50 transition-colors">
-                          {index === 0 && (
-                            <>
-                              <TableCell rowSpan={rowSpan} className="font-medium text-slate-900 border-r border-slate-100 text-sm">
-                                {firstInstallment.rental?.property?.location?.name || "-"}
+                        return installments.map((installment, index) => {
+                          const isPaid = installment.pix_code && installment.pix_code.trim() !== "";
+                          const rowBgClass = isPaid ? "bg-green-100/60" : "bg-red-100/60";
+                          
+                          return (
+                            <TableRow key={installment.id} className="hover:bg-slate-50 transition-colors">
+                              {index === 0 && (
+                                <>
+                                  <TableCell rowSpan={rowSpan} className="font-medium text-slate-900 border-r border-slate-100 text-sm">
+                                    {firstInstallment.rental?.property?.location?.name || "-"}
+                                  </TableCell>
+                                  <TableCell rowSpan={rowSpan} className="text-slate-600 border-r border-slate-100 text-sm">
+                                    {firstInstallment.rental?.property?.complement || "-"}
+                                  </TableCell>
+                                  <TableCell rowSpan={rowSpan} className="text-slate-600 border-r border-slate-100 text-sm">
+                                    {firstInstallment.rental?.tenant?.name || "-"}
+                                  </TableCell>
+                                  <TableCell rowSpan={rowSpan} className="text-right font-medium text-slate-900 border-r border-slate-100 text-sm">
+                                    {formatCurrency((firstInstallment.rental?.monthly_rent || 0) + (firstInstallment.rental?.garage_value || 0))}
+                                  </TableCell>
+                                  <TableCell rowSpan={rowSpan} className="text-right font-medium text-slate-900 border-r border-slate-100 text-sm">
+                                    {formatCurrency(totalCaucaoValue)}
+                                  </TableCell>
+                                  <TableCell rowSpan={rowSpan} className="text-slate-600 border-r border-slate-100 text-sm">
+                                    {firstInstallment.rental?.has_partner_broker ? "Sim" : "Não"}
+                                  </TableCell>
+                                  <TableCell rowSpan={rowSpan} className="text-right border-r border-slate-100">
+                                    {editingCommission?.id === firstInstallment.id && editingCommission?.field === "partner" ? (
+                                      <div className="flex items-center gap-2">
+                                        <Input
+                                          value={editingCommission.value}
+                                          onChange={(e) => {
+                                            const masked = applyMoneyMask(e.target.value);
+                                            setEditingCommission({ ...editingCommission, value: masked });
+                                          }}
+                                          className="h-9 text-sm text-right"
+                                          autoFocus
+                                        />
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={() => handleEditCommission(firstInstallment.id, "partner", editingCommission.value)}
+                                        >
+                                          <Check className="h-4 w-4 text-green-600" />
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={() => setEditingCommission(null)}
+                                        >
+                                          <X className="h-4 w-4 text-red-600" />
+                                        </Button>
+                                      </div>
+                                    ) : (
+                                      <div className="flex items-center justify-end gap-2">
+                                        <span className="text-slate-900 font-medium text-sm">
+                                          {formatCurrency(firstInstallment.partner_commission || 0)}
+                                        </span>
+                                        {isAdmin && (
+                                          <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            onClick={() => {
+                                              setEditingCommission({
+                                                id: firstInstallment.id,
+                                                field: "partner",
+                                                value: applyMoneyMask(String(firstInstallment.partner_commission || 0))
+                                              });
+                                            }}
+                                          >
+                                            <Edit2 className="h-4 w-4 text-slate-600" />
+                                          </Button>
+                                        )}
+                                      </div>
+                                    )}
+                                  </TableCell>
+                                  <TableCell rowSpan={rowSpan} className="text-right border-r border-slate-100">
+                                    {editingCommission?.id === firstInstallment.id && editingCommission?.field === "internal" ? (
+                                      <div className="flex items-center gap-2">
+                                        <Input
+                                          value={editingCommission.value}
+                                          onChange={(e) => {
+                                            const masked = applyMoneyMask(e.target.value);
+                                            setEditingCommission({ ...editingCommission, value: masked });
+                                          }}
+                                          className="h-9 text-sm text-right"
+                                          autoFocus
+                                        />
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={() => handleEditCommission(firstInstallment.id, "internal", editingCommission.value)}
+                                        >
+                                          <Check className="h-4 w-4 text-green-600" />
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={() => setEditingCommission(null)}
+                                        >
+                                          <X className="h-4 w-4 text-red-600" />
+                                        </Button>
+                                      </div>
+                                    ) : (
+                                      <div className="flex items-center justify-end gap-2">
+                                        <span className="text-slate-900 font-medium text-sm">
+                                          {formatCurrency(firstInstallment.internal_commission || 0)}
+                                        </span>
+                                        {isAdmin && (
+                                          <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            onClick={() => {
+                                              setEditingCommission({
+                                                id: firstInstallment.id,
+                                                field: "internal",
+                                                value: applyMoneyMask(String(firstInstallment.internal_commission || 0))
+                                              });
+                                            }}
+                                          >
+                                            <Edit2 className="h-4 w-4 text-slate-600" />
+                                          </Button>
+                                        )}
+                                      </div>
+                                    )}
+                                  </TableCell>
+                                </>
+                              )}
+                              <TableCell className={`font-medium text-slate-900 text-sm ${rowBgClass}`}>
+                                {installment.installment_number}/{installment.total_installments}
                               </TableCell>
-                              <TableCell rowSpan={rowSpan} className="text-slate-600 border-r border-slate-100 text-sm">
-                                {firstInstallment.rental?.property?.complement || "-"}
+                              <TableCell className={`text-sm ${rowBgClass}`}>
+                                {formatDateWithoutTimezone(installment.payment_date)}
                               </TableCell>
-                              <TableCell rowSpan={rowSpan} className="text-slate-600 border-r border-slate-100 text-sm">
-                                {firstInstallment.rental?.tenant?.name || "-"}
+                              <TableCell className={`text-right font-medium text-slate-900 text-sm ${rowBgClass}`}>
+                                {formatCurrency(installment.amount)}
                               </TableCell>
-                              <TableCell rowSpan={rowSpan} className="text-right font-medium text-slate-900 border-r border-slate-100 text-sm">
-                                {formatCurrency((firstInstallment.rental?.monthly_rent || 0) + (firstInstallment.rental?.garage_value || 0))}
-                              </TableCell>
-                              <TableCell rowSpan={rowSpan} className="text-right font-medium text-slate-900 border-r border-slate-100 text-sm">
-                                {formatCurrency(totalCaucaoValue)}
-                              </TableCell>
-                              <TableCell rowSpan={rowSpan} className="text-slate-600 border-r border-slate-100 text-sm">
-                                {firstInstallment.rental?.has_partner_broker ? "Sim" : "Não"}
-                              </TableCell>
-                              <TableCell rowSpan={rowSpan} className="text-right border-r border-slate-100">
-                                {editingCommission?.id === firstInstallment.id && editingCommission?.field === "partner" ? (
-                                  <div className="flex items-center gap-2">
+                              <TableCell className={rowBgClass}>
+                                {editingPixCode?.id === installment.id ? (
+                                  <div className="flex items-center gap-3">
                                     <Input
-                                      value={editingCommission.value}
+                                      value={editingPixCode.value}
                                       onChange={(e) => {
-                                        const masked = applyMoneyMask(e.target.value);
-                                        setEditingCommission({ ...editingCommission, value: masked });
+                                        setEditingPixCode({
+                                          ...editingPixCode,
+                                          value: e.target.value
+                                        });
                                       }}
-                                      className="h-9 text-sm text-right"
+                                      placeholder="Digite o código PIX"
+                                      className="h-9 text-sm border-2 border-blue-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all min-w-[250px] bg-white"
                                       autoFocus
                                     />
                                     <Button
-                                      size="sm"
+                                      size="default"
                                       variant="ghost"
-                                      onClick={() => handleEditCommission(firstInstallment.id, "partner", editingCommission.value)}
+                                      onClick={() => handleEditPixCode(installment.id, editingPixCode.value)}
+                                      className="h-9 w-9 p-0 hover:bg-green-100 transition-colors"
+                                      title="Salvar código PIX"
                                     >
-                                      <Check className="h-4 w-4 text-green-600" />
+                                      <Check className="h-5 w-5 text-green-600" />
                                     </Button>
                                     <Button
-                                      size="sm"
+                                      size="default"
                                       variant="ghost"
-                                      onClick={() => setEditingCommission(null)}
+                                      onClick={() => setEditingPixCode(null)}
+                                      className="h-9 w-9 p-0 hover:bg-red-100 transition-colors"
+                                      title="Cancelar edição"
                                     >
-                                      <X className="h-4 w-4 text-red-600" />
+                                      <X className="h-5 w-5 text-red-600" />
                                     </Button>
                                   </div>
                                 ) : (
-                                  <div className="flex items-center justify-end gap-2">
-                                    <span className="text-slate-900 font-medium text-sm">
-                                      {formatCurrency(firstInstallment.partner_commission || 0)}
+                                  <div className="flex items-center gap-3">
+                                    <span className="text-slate-600 max-w-xs truncate text-sm">
+                                      {installment.pix_code || "-"}
                                     </span>
-                                    {isAdmin && (
-                                      <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        onClick={() => {
-                                          setEditingCommission({
-                                            id: firstInstallment.id,
-                                            field: "partner",
-                                            value: applyMoneyMask(String(firstInstallment.partner_commission || 0))
-                                          });
-                                        }}
-                                      >
-                                        <Edit2 className="h-4 w-4 text-slate-600" />
-                                      </Button>
-                                    )}
-                                  </div>
-                                )}
-                              </TableCell>
-                              <TableCell rowSpan={rowSpan} className="text-right border-r border-slate-100">
-                                {editingCommission?.id === firstInstallment.id && editingCommission?.field === "internal" ? (
-                                  <div className="flex items-center gap-2">
-                                    <Input
-                                      value={editingCommission.value}
-                                      onChange={(e) => {
-                                        const masked = applyMoneyMask(e.target.value);
-                                        setEditingCommission({ ...editingCommission, value: masked });
+                                    <Button
+                                      size="default"
+                                      variant="ghost"
+                                      onClick={() => {
+                                        setEditingPixCode({
+                                          id: installment.id,
+                                          value: installment.pix_code || ""
+                                        });
                                       }}
-                                      className="h-9 text-sm text-right"
-                                      autoFocus
-                                    />
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      onClick={() => handleEditCommission(firstInstallment.id, "internal", editingCommission.value)}
+                                      className="h-9 w-9 p-0 hover:bg-slate-100 transition-colors"
+                                      title="Editar código PIX"
                                     >
-                                      <Check className="h-4 w-4 text-green-600" />
+                                      <Edit2 className="h-5 w-5 text-slate-600" />
                                     </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      onClick={() => setEditingCommission(null)}
-                                    >
-                                      <X className="h-4 w-4 text-red-600" />
-                                    </Button>
-                                  </div>
-                                ) : (
-                                  <div className="flex items-center justify-end gap-2">
-                                    <span className="text-slate-900 font-medium text-sm">
-                                      {formatCurrency(firstInstallment.internal_commission || 0)}
-                                    </span>
-                                    {isAdmin && (
-                                      <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        onClick={() => {
-                                          setEditingCommission({
-                                            id: firstInstallment.id,
-                                            field: "internal",
-                                            value: applyMoneyMask(String(firstInstallment.internal_commission || 0))
-                                          });
-                                        }}
-                                      >
-                                        <Edit2 className="h-4 w-4 text-slate-600" />
-                                      </Button>
-                                    )}
                                   </div>
                                 )}
                               </TableCell>
-                            </>
-                          )}
-                          <TableCell className={`font-medium text-slate-900 text-sm ${rowBgClass}`}>
-                            {installment.installment_number}/{installment.total_installments}
-                          </TableCell>
-                          <TableCell className={`text-sm ${rowBgClass}`}>
-                            {formatDateWithoutTimezone(installment.payment_date)}
-                          </TableCell>
-                          <TableCell className={`text-right font-medium text-slate-900 text-sm ${rowBgClass}`}>
-                            {formatCurrency(installment.amount)}
-                          </TableCell>
-                          <TableCell className={rowBgClass}>
-                            {editingPixCode?.id === installment.id ? (
-                              <div className="flex items-center gap-3">
-                                <Input
-                                  value={editingPixCode.value}
-                                  onChange={(e) => {
-                                    setEditingPixCode({
-                                      ...editingPixCode,
-                                      value: e.target.value
-                                    });
-                                  }}
-                                  placeholder="Digite o código PIX"
-                                  className="h-9 text-sm border-2 border-blue-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all min-w-[250px] bg-white"
-                                  autoFocus
-                                />
-                                <Button
-                                  size="default"
-                                  variant="ghost"
-                                  onClick={() => handleEditPixCode(installment.id, editingPixCode.value)}
-                                  className="h-9 w-9 p-0 hover:bg-green-100 transition-colors"
-                                  title="Salvar código PIX"
-                                >
-                                  <Check className="h-5 w-5 text-green-600" />
-                                </Button>
-                                <Button
-                                  size="default"
-                                  variant="ghost"
-                                  onClick={() => setEditingPixCode(null)}
-                                  className="h-9 w-9 p-0 hover:bg-red-100 transition-colors"
-                                  title="Cancelar edição"
-                                >
-                                  <X className="h-5 w-5 text-red-600" />
-                                </Button>
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-3">
-                                <span className="text-slate-600 max-w-xs truncate text-sm">
-                                  {installment.pix_code || "-"}
-                                </span>
-                                <Button
-                                  size="default"
-                                  variant="ghost"
-                                  onClick={() => {
-                                    setEditingPixCode({
-                                      id: installment.id,
-                                      value: installment.pix_code || ""
-                                    });
-                                  }}
-                                  className="h-9 w-9 p-0 hover:bg-slate-100 transition-colors"
-                                  title="Editar código PIX"
-                                >
-                                  <Edit2 className="h-5 w-5 text-slate-600" />
-                                </Button>
-                              </div>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    });
-                  })}
-                  <TableRow className="bg-slate-100 font-bold border-t-2 border-slate-300">
-                    <TableCell colSpan={3} className="text-right text-slate-900 uppercase tracking-wide text-sm">
-                      Total:
-                    </TableCell>
-                    <TableCell className="text-right text-slate-900 text-sm"></TableCell>
-                    <TableCell className="text-right text-slate-900 text-lg">
-                      {formatCurrency(totalSecurityDeposit)}
-                    </TableCell>
-                    <TableCell></TableCell>
-                    <TableCell className="text-right text-slate-900 text-lg">
-                      {formatCurrency(totalPartnerCommission)}
-                    </TableCell>
-                    <TableCell className="text-right text-slate-900 text-lg">
-                      {formatCurrency(totalInternalCommission)}
-                    </TableCell>
-                    <TableCell></TableCell>
-                    <TableCell></TableCell>
-                    <TableCell className="text-right text-slate-900 text-lg">
-                      {formatCurrency(totalAmountColumn)}
-                    </TableCell>
-                    <TableCell></TableCell>
-                  </TableRow>
+                            </TableRow>
+                          );
+                        });
+                      })}
+                      <TableRow className="bg-slate-100 font-bold border-t-2 border-slate-300">
+                        <TableCell colSpan={12} className="text-center py-8 text-slate-500">
+                          Nenhum dado de caução encontrado para o filtro selecionado.
+                        </TableCell>
+                      </TableRow>
+                    </>
+                  )}
                 </TableBody>
               </Table>
             </div>
