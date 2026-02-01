@@ -1,5 +1,5 @@
-import { motion, useInView } from "framer-motion";
-import { useRef, ReactNode } from "react";
+import { motion, useInView, useScroll, useTransform } from "framer-motion";
+import { useRef, ReactNode, useState, useEffect } from "react";
 
 interface ScrollRevealProps {
   children: ReactNode;
@@ -18,6 +18,11 @@ export function ScrollReveal({
 }: ScrollRevealProps) {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const variants = {
     hidden: {
@@ -36,6 +41,11 @@ export function ScrollReveal({
       },
     },
   };
+
+  // Renderiza placeholder durante SSR para evitar hydration mismatch
+  if (!mounted) {
+    return <div ref={ref} className={className}>{children}</div>;
+  }
 
   return (
     <motion.div
@@ -63,6 +73,11 @@ export function StaggerContainer({
 }: StaggerContainerProps) {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-50px" });
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -73,6 +88,11 @@ export function StaggerContainer({
       },
     },
   };
+
+  // Renderiza placeholder durante SSR
+  if (!mounted) {
+    return <div ref={ref} className={className}>{children}</div>;
+  }
 
   return (
     <motion.div
@@ -138,6 +158,16 @@ interface ScaleOnScrollProps {
 export function ScaleOnScroll({ children, className = "" }: ScaleOnScrollProps) {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Renderiza placeholder durante SSR
+  if (!mounted) {
+    return <div ref={ref} className={className}>{children}</div>;
+  }
 
   return (
     <motion.div
@@ -151,6 +181,3 @@ export function ScaleOnScroll({ children, className = "" }: ScaleOnScrollProps) 
     </motion.div>
   );
 }
-
-// Missing import
-import { useScroll, useTransform } from "framer-motion";
