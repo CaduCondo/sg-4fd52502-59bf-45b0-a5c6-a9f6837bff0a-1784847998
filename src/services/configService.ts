@@ -23,8 +23,8 @@ export const siteConfig = {
   name: "D'Uvo Enterprise",
   description: "Encontre o imóvel perfeito para você",
   contact: {
-    phone: "(11) 97654-3210",
-    whatsapp: "5511976543210",
+    phone: "(11) 99680-3386",
+    whatsapp: "5511996803386",
     email: "carlos.uva@terra.com.br",
     address: "São Paulo, SP",
   },
