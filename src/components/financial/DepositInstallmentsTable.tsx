@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Table,
   TableBody,
@@ -108,13 +108,7 @@ export function DepositInstallmentsTable({
 
   const isAdmin = userRole === "admin";
 
-  useEffect(() => {
-    if (isAdmin) {
-      fetchData();
-    }
-  }, [statusFilter, isAdmin, JSON.stringify(allowedLocationIds)]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       console.log("🔄 fetchData iniciado (Cauções - SEM filtro de período):", {
         statusFilter,
@@ -197,7 +191,13 @@ export function DepositInstallmentsTable({
       console.log("🏁 fetchData finalizado (Cauções), setLoading(false)");
       setLoading(false);
     }
-  };
+  }, [statusFilter, isAdmin, allowedLocationIds]);
+
+  useEffect(() => {
+    if (isAdmin) {
+      fetchData();
+    }
+  }, [isAdmin, fetchData]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
