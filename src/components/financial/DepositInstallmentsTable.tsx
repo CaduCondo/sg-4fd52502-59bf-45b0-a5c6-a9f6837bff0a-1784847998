@@ -126,6 +126,12 @@ export function DepositInstallmentsTable({
 
   const fetchData = async () => {
     try {
+      console.log("🔄 fetchData iniciado:", {
+        statusFilter,
+        isAdmin,
+        allowedLocationIds
+      });
+      
       setLoading(true);
 
       const query = supabase
@@ -182,15 +188,23 @@ export function DepositInstallmentsTable({
         );
       }
 
+      console.log("📊 Dados após filtros:", {
+        totalRecords: filteredData.length,
+        isAdmin,
+        statusFilter,
+        hasLocationFilter: !isAdmin && allowedLocationIds && allowedLocationIds.length > 0
+      });
+
       setData(filteredData);
     } catch (error) {
-      console.error("Erro ao buscar dados:", error);
+      console.error("❌ Erro ao buscar dados:", error);
       toast({
         title: "Erro ao carregar dados",
         description: "Não foi possível carregar os dados de caução.",
         variant: "destructive",
       });
     } finally {
+      console.log("🏁 fetchData finalizado, setLoading(false)");
       setLoading(false);
     }
   };
