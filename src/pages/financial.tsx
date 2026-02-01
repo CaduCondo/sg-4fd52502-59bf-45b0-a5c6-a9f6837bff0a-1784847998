@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Layout } from "@/components/Layout";
 import { PeriodSelector } from "@/components/dashboard/PeriodSelector";
 import { FinancialMetricCard } from "@/components/dashboard/FinancialMetricCard";
@@ -15,20 +15,33 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { format } from "date-fns";
+import { format, differenceInMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { FileText, Download } from "lucide-react";
+import { FileText, Download, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { DepositInstallmentsTable } from "@/components/financial/DepositInstallmentsTable";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import * as XLSX from "xlsx";
+import { 
+  getAllPayments, 
+  getAllProperties, 
+  getAllTenants, 
+  getAllRentals, 
+  getConfig 
+} from "@/services";
+import { Payment, Property, Rental, Tenant } from "@/types";
 
 type SortField = "paymentNumber" | "local" | "complement" | "status" | "dueDate" | "paymentDate" | "expectedAmount" | "paidAmount";
 type SortDirection = "asc" | "desc" | null;
 
 export default function Financial() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const isAdmin = user?.role === "admin" || user?.role === "broker";
-
+  
+  // Data fetching state
   const [payments, setPayments] = useState<Payment[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [rentals, setRentals] = useState<Rental[]>([]);
@@ -36,7 +49,6 @@ export default function Financial() {
   const [loading, setLoading] = useState(true);
   const [allowedLocationIds, setAllowedLocationIds] = useState<string[]>([]);
   const [exemptLocationIds, setExemptLocationIds] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [config, setConfig] = useState<any>(null);
   const [mounted, setMounted] = useState(false);
 
@@ -44,11 +56,9 @@ export default function Financial() {
   const now = new Date();
   const [selectedMonth, setSelectedMonth] = useState((now.getMonth() + 1).toString());
   const [selectedYear, setSelectedYear] = useState(now.getFullYear().toString());
+  const [filterMonth, setFilterMonth] = useState<number>(now.getMonth() + 1);
+  const [filterYear, setFilterYear] = useState<number>(now.getFullYear());
   const [locationExpenses, setLocationExpenses] = useState<number>(0);
-
-  // PIX Code editing state
-  const [editingPixCode, setEditingPixCode] = useState<{ [key: string]: string }>({});
-  const [savingPixCode, setSavingPixCode] = useState<string | null>(null);
 
   // Sorting state
   const [sortField, setSortField] = useState<SortField | null>(null);
@@ -62,19 +72,13 @@ export default function Financial() {
     if (user) {
       loadData();
     }
-  }, [user, selectedMonth, selectedYear]);
+  }, [user, filterMonth, filterYear]);
 
   const loadData = async () => {
     try {
-      setIsLoading(true);
-      
-      // Converter selectedMonth para número (1-12)
-      const filterMonth = parseInt(selectedMonth);
-      const filterYear = parseInt(selectedYear);
+      setLoading(true);
       
       console.log("🔄 Financeiro: Carregando dados...", { 
-        selectedMonth, 
-        selectedYear,
         filterMonth,
         filterYear,
         userRole: user?.role 
@@ -107,7 +111,6 @@ export default function Financial() {
         
         const exemptIds = exemptions?.map(e => e.location_id) || [];
         setExemptLocationIds(exemptIds);
-        console.log("🎁 Locais com isenção de taxa:", exemptIds);
 
         // Buscar permissões de local (para usuários financeiros)
         if (user.role === "financial") {
@@ -118,11 +121,8 @@ export default function Financial() {
           
           allowedLocations = permissions?.map(p => p.location_id) || [];
           setAllowedLocationIds(allowedLocations);
-          console.log("🔐 Locais permitidos para usuário Financial:", allowedLocations);
         } else {
-          // Admin e outros veem tudo
           setAllowedLocationIds([]);
-          console.log("👑 Usuário Admin/Broker: acesso a todos os locais");
         }
       }
 
@@ -133,10 +133,8 @@ export default function Financial() {
         .eq("reference_month", filterMonth)
         .eq("reference_year", filterYear);
       
-      // ✅ Filtrar despesas por locais permitidos se for usuário financeiro
       if (user?.role === "financial" && allowedLocations.length > 0) {
         expensesQuery = expensesQuery.in("location_id", allowedLocations);
-        console.log("💸 Filtrando despesas por locais permitidos");
       }
       
       const { data: expensesData, error: expensesError } = await expensesQuery;
@@ -149,44 +147,31 @@ export default function Financial() {
         ? expensesData.reduce((sum, e) => sum + (e.amount || 0), 0)
         : 0;
       
-      console.log("💰 Contas a Pagar carregadas:", {
-        month: filterMonth,
-        year: filterYear,
-        userRole: user?.role,
-        allowedLocations: allowedLocations.length > 0 ? allowedLocations : "Todos",
-        totalExpenses,
-        count: expensesData?.length || 0
-      });
-      
       setLocationExpenses(totalExpenses);
 
-      // Filtrar properties por permissões de local (apenas para usuários financeiros)
+      // Filtrar properties e rentals por permissões
       let filteredProperties = propertiesData;
       if (user?.role === "financial" && allowedLocations.length > 0) {
         filteredProperties = propertiesData.filter(p => 
           allowedLocations.includes(p.locationId)
         );
-        console.log(`🏢 Properties filtrados: ${filteredProperties.length} de ${propertiesData.length}`);
       }
 
-      // Filtrar rentals que usam properties permitidas
       const allowedPropertyIds = filteredProperties.map(p => p.id);
       let filteredRentals = rentalsData;
       if (user?.role === "financial" && allowedLocations.length > 0) {
         filteredRentals = rentalsData.filter(r => 
           allowedPropertyIds.includes(r.propertyId)
         );
-        console.log(`🏠 Rentals filtrados: ${filteredRentals.length} de ${rentalsData.length}`);
       }
 
       setProperties(filteredProperties);
       setRentals(filteredRentals);
       setTenants(tenantsData);
 
-      // Filtrar pagamentos pelo mês/ano selecionado E por rentals permitidos
+      // Filtrar pagamentos
       const allowedRentalIds = filteredRentals.map(r => r.id);
-      const filteredPayments = paymentsData.filter((payment) => {
-        // ✅ Filtro de data: Usa reference_month e reference_year (1-12)
+      const filteredPaymentsData = paymentsData.filter((payment) => {
         const matchesDate = 
           payment.referenceMonth === filterMonth &&
           payment.referenceYear === filterYear;
@@ -199,19 +184,7 @@ export default function Financial() {
         return matchesDate && matchesPermission;
       });
       
-      console.log(`💵 Payments filtrados: ${filteredPayments.length} de ${paymentsData.length}`);
-      console.log("📋 IDs dos rentals permitidos:", allowedRentalIds);
-      console.log("📋 Payments filtrados detalhados:", filteredPayments.map(p => ({
-        id: p.id,
-        referenceMonth: p.referenceMonth,
-        referenceYear: p.referenceYear,
-        rentalId: p.rentalId,
-        expectedAmount: p.expectedAmount,
-        status: p.status
-      })));
-      console.log("✅ Financeiro: Dados carregados com sucesso");
-      
-      setPayments(filteredPayments);
+      setPayments(filteredPaymentsData);
 
     } catch (error) {
       console.error("❌ Error loading financial data:", error);
@@ -222,125 +195,7 @@ export default function Financial() {
       });
     } finally {
       setLoading(false);
-      setIsLoading(false);
     }
-  };
-
-  const handleSavePixCode = async (rentalId: string) => {
-    const newPixCode = editingPixCode[rentalId];
-    if (newPixCode === undefined) return;
-
-    setSavingPixCode(rentalId);
-    try {
-      const { error } = await supabase
-        .from("rentals")
-        .update({ pix_code: newPixCode })
-        .eq("id", rentalId);
-
-      if (error) throw error;
-
-      // Update local state
-      setRentals(rentals.map(r => r.id === rentalId ? { ...r, pixCode: newPixCode } : r));
-      
-      // Clear editing state
-      const newEditingState = { ...editingPixCode };
-      delete newEditingState[rentalId];
-      setEditingPixCode(newEditingState);
-
-      toast({
-        title: "Sucesso!",
-        description: "Código PIX atualizado com sucesso.",
-      });
-    } catch (error) {
-      console.error("Error saving PIX code:", error);
-      toast({
-        title: "Erro",
-        description: "Erro ao salvar código PIX",
-        variant: "destructive",
-      });
-    } finally {
-      setSavingPixCode(null);
-    }
-  };
-
-  const months = [
-    { value: "1", label: "Janeiro" },
-    { value: "2", label: "Fevereiro" },
-    { value: "3", label: "Março" },
-    { value: "4", label: "Abril" },
-    { value: "5", label: "Maio" },
-    { value: "6", label: "Junho" },
-    { value: "7", label: "Julho" },
-    { value: "8", label: "Agosto" },
-    { value: "9", label: "Setembro" },
-    { value: "10", label: "Outubro" },
-    { value: "11", label: "Novembro" },
-    { value: "12", label: "Dezembro" },
-  ];
-
-  const years = ["2024", "2025", "2026", "2027"];
-
-  // KPI Calculations - usar 'payments' que já está filtrado corretamente
-  const totalExpected = payments.reduce((sum, p) => sum + p.expectedAmount, 0);
-  
-  const totalReceived = payments
-    .filter((p) => p.status === "paid" || p.status === "partial")
-    .reduce((sum, p) => sum + (p.paidAmount || 0), 0);
-
-  console.log("💰 KPI Debug:", {
-    paymentsCount: payments.length,
-    totalExpected,
-    totalReceived,
-    payments: payments.map(p => ({
-      id: p.id,
-      status: p.status,
-      expectedAmount: p.expectedAmount,
-      paidAmount: p.paidAmount
-    }))
-  });
-
-  // Calcular taxa adm considerando isenções
-  const adminFee = payments
-    .filter((p) => p.status === "paid" || p.status === "partial")
-    .reduce((sum, p) => {
-      const rental = rentals.find(r => r.id === p.rentalId);
-      const property = properties.find(prop => prop.id === rental?.propertyId);
-      
-      if (property && exemptLocationIds.includes(property.locationId)) {
-        return sum;
-      }
-      
-      const feeRate = config ? (config.admin_fee_percentage || 0) / 100 : 0.05;
-      return sum + ((p.paidAmount || 0) * feeRate);
-    }, 0);
-  
-  // Totals object for the cards
-  const totals = {
-    gross: totalReceived,
-    expected: totalExpected,
-    adminFee: adminFee,
-    managementFee: payments.reduce((sum, p) => {
-       const rental = rentals.find(r => r.id === p.rentalId);
-       const property = properties.find(prop => prop.id === rental?.propertyId);
-       if (property && exemptLocationIds.includes(property.locationId)) return sum;
-       
-       const mgmtRate = config ? (config.management_fee_percentage || 0) / 100 : 0;
-       return sum + ((p.paidAmount || 0) * mgmtRate);
-    }, 0),
-    net: 0 // Will be calculated below
-  };
-  
-  totals.net = totals.gross - totals.adminFee - totals.managementFee;
-  const netRevenue = totalReceived - adminFee - totals.managementFee - locationExpenses;
-
-  const getStatusBadge = (status: string) => {
-    const badges = {
-      paid: <Badge className="bg-green-100 text-green-700 hover:bg-green-200 border-green-200">Pago</Badge>,
-      pending: <Badge className="bg-yellow-100 text-yellow-700 hover:bg-yellow-200 border-yellow-200">Pendente</Badge>,
-      overdue: <Badge className="bg-red-100 text-red-700 hover:bg-red-200 border-red-200">Atrasado</Badge>,
-      partial: <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200 border-blue-200">Parcial</Badge>,
-    };
-    return badges[status as keyof typeof badges] || <Badge variant="outline">{status}</Badge>;
   };
 
   const getPaymentDetails = (payment: Payment) => {
@@ -370,17 +225,8 @@ export default function Financial() {
     return `${currentPaymentNumber}/${totalMonths}`;
   };
 
-  const formatCurrency = (value: number) => {
-    return value.toLocaleString("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    });
-  };
-
-  // Sorting function
   const handleSort = (field: SortField) => {
     if (sortField === field) {
-      // Toggle direction
       if (sortDirection === "asc") {
         setSortDirection("desc");
       } else if (sortDirection === "desc") {
@@ -395,7 +241,6 @@ export default function Financial() {
     }
   };
 
-  // Get sorted payments
   const getSortedPayments = () => {
     if (!sortField || !sortDirection) return payments;
 
@@ -448,31 +293,20 @@ export default function Financial() {
     });
   };
 
-  // Sort icon component
   const SortIcon = ({ field }: { field: SortField }) => {
-    if (sortField !== field) {
-      return <ArrowUpDown className="h-4 w-4 ml-1 text-slate-400" />;
-    }
-    if (sortDirection === "asc") {
-      return <ArrowUp className="h-4 w-4 ml-1 text-blue-600" />;
-    }
-    if (sortDirection === "desc") {
-      return <ArrowDown className="h-4 w-4 ml-1 text-blue-600" />;
-    }
-    return <ArrowUpDown className="h-4 w-4 ml-1 text-slate-400" />;
+    if (sortField !== field) return <ArrowUpDown className="h-4 w-4 ml-1 text-slate-400" />;
+    if (sortDirection === "asc") return <ArrowUp className="h-4 w-4 ml-1 text-blue-600" />;
+    return <ArrowDown className="h-4 w-4 ml-1 text-blue-600" />;
   };
 
-  // Print function
   const handlePrint = () => {
     window.print();
   };
 
-  // Export to Excel function
-  const handleExportExcel = () => {
+  const handleExport = () => {
     const sortedPayments = getSortedPayments();
-    const monthName = months[parseInt(selectedMonth) - 1].label;
+    const monthName = format(new Date(filterYear, filterMonth - 1), "MMMM", { locale: ptBR });
 
-    // Prepare data for Excel
     const excelData = sortedPayments.map(payment => {
       const details = getPaymentDetails(payment);
       const paymentNumber = calculatePaymentNumber(payment, details.rental);
@@ -495,34 +329,17 @@ export default function Financial() {
       };
     });
 
-    // Create worksheet
     const ws = XLSX.utils.json_to_sheet(excelData);
     
-    // Set column widths
     ws["!cols"] = [
-      { wch: 8 },  // Nº
-      { wch: 20 }, // Local
-      { wch: 15 }, // Complemento
-      { wch: 15 }, // Inquilino
-      { wch: 8 },  // Ano
-      { wch: 12 }, // Mês
-      { wch: 12 }, // Status
-      { wch: 15 }, // Data Vencimento
-      { wch: 15 }, // Data Recebida
-      { wch: 15 }, // Valor Esperado
-      { wch: 15 }, // Valor Pago
-      { wch: 20 }, // Código PIX
+      { wch: 8 }, { wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 8 }, 
+      { wch: 12 }, { wch: 12 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, 
+      { wch: 15 }, { wch: 20 }
     ];
 
-    // Create workbook
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, `${monthName} ${selectedYear}`);
-
-    // Generate file name
-    const fileName = `Financeiro_${monthName}_${selectedYear}.xlsx`;
-
-    // Save file
-    XLSX.writeFile(wb, fileName);
+    XLSX.writeFile(wb, `Financeiro_${monthName}_${selectedYear}.xlsx`);
 
     toast({
       title: "Sucesso!",
@@ -530,19 +347,42 @@ export default function Financial() {
     });
   };
 
-  const sortedPayments = getSortedPayments();
+  // KPI Calculations
+  const totalExpected = payments.reduce((sum, p) => sum + p.expectedAmount, 0);
+  const totalReceived = payments
+    .filter((p) => p.status === "paid" || p.status === "partial")
+    .reduce((sum, p) => sum + (p.paidAmount || 0), 0);
+  
+  const adminFee = payments
+    .filter((p) => p.status === "paid" || p.status === "partial")
+    .reduce((sum, p) => {
+      const rental = rentals.find(r => r.id === p.rentalId);
+      const property = properties.find(prop => prop.id === rental?.propertyId);
+      
+      if (property && exemptLocationIds.includes(property.locationId)) return sum;
+      
+      const feeRate = config ? (config.admin_fee_percentage || 0) / 100 : 0.05;
+      return sum + ((p.paidAmount || 0) * feeRate);
+    }, 0);
+    
+  const managementFee = payments.reduce((sum, p) => {
+       const rental = rentals.find(r => r.id === p.rentalId);
+       const property = properties.find(prop => prop.id === rental?.propertyId);
+       if (property && exemptLocationIds.includes(property.locationId)) return sum;
+       
+       const mgmtRate = config ? (config.management_fee_percentage || 0) / 100 : 0;
+       return sum + ((p.paidAmount || 0) * mgmtRate);
+  }, 0);
 
-  if (!mounted) {
-    return (
-      <Layout>
-        <div className="space-y-6">
-          <div className="flex items-center justify-center h-64">
-            <p className="text-slate-500">Carregando...</p>
-          </div>
-        </div>
-      </Layout>
-    );
-  }
+  const netRevenue = totalReceived - adminFee - managementFee - locationExpenses;
+  
+  const totalPaid = payments
+    .filter(p => p.status === "paid" || p.status === "partial")
+    .reduce((sum, p) => sum + (p.paidAmount || 0), 0);
+
+  const filteredPayments = getSortedPayments();
+
+  if (!mounted) return null;
 
   return (
     <Layout>
@@ -583,31 +423,29 @@ export default function Financial() {
               <ScrollReveal delay={0.2}>
                 <FinancialMetricCard
                   title="Receita Bruta"
-                  value={kpiData.totalRevenue}
+                  value={totalReceived}
                   icon="💰"
-                  trend={kpiData.revenueTrend}
                 />
               </ScrollReveal>
               <ScrollReveal delay={0.3}>
                 <FinancialMetricCard
                   title="Taxa de Administração"
-                  value={kpiData.adminFees}
+                  value={adminFee}
                   icon="🏢"
                 />
               </ScrollReveal>
               <ScrollReveal delay={0.4}>
                 <FinancialMetricCard
                   title="Taxa de Gerenciamento"
-                  value={kpiData.managementFees}
+                  value={managementFee}
                   icon="⚙️"
                 />
               </ScrollReveal>
               <ScrollReveal delay={0.5}>
                 <FinancialMetricCard
                   title="Receita Líquida"
-                  value={kpiData.netRevenue}
+                  value={netRevenue}
                   icon="🎯"
-                  trend={kpiData.revenueTrend}
                 />
               </ScrollReveal>
             </div>
@@ -664,81 +502,106 @@ export default function Financial() {
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead>Parcela</TableHead>
-                            <TableHead>Local</TableHead>
-                            <TableHead>Inquilino</TableHead>
-                            <TableHead>Vencimento</TableHead>
-                            <TableHead>Valor</TableHead>
+                            <TableHead className="cursor-pointer" onClick={() => handleSort("paymentNumber")}>
+                              Parcela <SortIcon field="paymentNumber" />
+                            </TableHead>
+                            <TableHead className="cursor-pointer" onClick={() => handleSort("local")}>
+                              Local <SortIcon field="local" />
+                            </TableHead>
+                            <TableHead className="cursor-pointer" onClick={() => handleSort("complement")}>
+                              Inquilino <SortIcon field="complement" />
+                            </TableHead>
+                            <TableHead className="cursor-pointer" onClick={() => handleSort("dueDate")}>
+                              Vencimento <SortIcon field="dueDate" />
+                            </TableHead>
+                            <TableHead className="cursor-pointer" onClick={() => handleSort("expectedAmount")}>
+                              Valor <SortIcon field="expectedAmount" />
+                            </TableHead>
                             <TableHead>Taxa Admin</TableHead>
                             <TableHead>Taxa Gerenc.</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead>Pago em</TableHead>
+                            <TableHead className="cursor-pointer" onClick={() => handleSort("status")}>
+                              Status <SortIcon field="status" />
+                            </TableHead>
+                            <TableHead className="cursor-pointer" onClick={() => handleSort("paymentDate")}>
+                              Pago em <SortIcon field="paymentDate" />
+                            </TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {filteredPayments.map((payment) => (
-                            <TableRow key={payment.id}>
-                              <TableCell>
-                                {payment.installment_number}/{payment.total_installments}
-                              </TableCell>
-                              <TableCell>
-                                <div className="max-w-[200px]">
-                                  <div className="font-medium truncate">
-                                    {payment.rentals?.properties?.type || "N/A"}
+                          {filteredPayments.map((payment) => {
+                            const details = getPaymentDetails(payment);
+                            const feeRate = config ? (config.admin_fee_percentage || 0) / 100 : 0.05;
+                            const mgmtRate = config ? (config.management_fee_percentage || 0) / 100 : 0;
+                            const property = properties.find(p => p.id === details.rental?.propertyId);
+                            const isExempt = property && exemptLocationIds.includes(property.locationId);
+                            
+                            const paymentAdminFee = isExempt ? 0 : (payment.paidAmount || 0) * feeRate;
+                            const paymentMgmtFee = isExempt ? 0 : (payment.paidAmount || 0) * mgmtRate;
+
+                            return (
+                              <TableRow key={payment.id}>
+                                <TableCell>
+                                  {calculatePaymentNumber(payment, details.rental)}
+                                </TableCell>
+                                <TableCell>
+                                  <div className="max-w-[200px]">
+                                    <div className="font-medium truncate">
+                                      {details.local}
+                                    </div>
+                                    <div className="text-sm text-muted-foreground truncate">
+                                      {details.complemento}
+                                    </div>
                                   </div>
-                                  <div className="text-sm text-muted-foreground truncate">
-                                    {payment.rentals?.properties?.complement || ""}
-                                  </div>
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                {payment.rentals?.tenants?.full_name || "N/A"}
-                              </TableCell>
-                              <TableCell>
-                                {format(new Date(payment.due_date), "dd/MM/yyyy")}
-                              </TableCell>
-                              <TableCell>
-                                {new Intl.NumberFormat("pt-BR", {
-                                  style: "currency",
-                                  currency: "BRL",
-                                }).format(payment.amount)}
-                              </TableCell>
-                              <TableCell>
-                                {new Intl.NumberFormat("pt-BR", {
-                                  style: "currency",
-                                  currency: "BRL",
-                                }).format(payment.admin_fee || 0)}
-                              </TableCell>
-                              <TableCell>
-                                {new Intl.NumberFormat("pt-BR", {
-                                  style: "currency",
-                                  currency: "BRL",
-                                }).format(payment.management_fee || 0)}
-                              </TableCell>
-                              <TableCell>
-                                <Badge
-                                  variant={
-                                    payment.status === "paid"
-                                      ? "default"
+                                </TableCell>
+                                <TableCell>
+                                  {details.tenantName}
+                                </TableCell>
+                                <TableCell>
+                                  {format(new Date(payment.dueDate), "dd/MM/yyyy")}
+                                </TableCell>
+                                <TableCell>
+                                  {new Intl.NumberFormat("pt-BR", {
+                                    style: "currency",
+                                    currency: "BRL",
+                                  }).format(payment.expectedAmount)}
+                                </TableCell>
+                                <TableCell>
+                                  {new Intl.NumberFormat("pt-BR", {
+                                    style: "currency",
+                                    currency: "BRL",
+                                  }).format(paymentAdminFee)}
+                                </TableCell>
+                                <TableCell>
+                                  {new Intl.NumberFormat("pt-BR", {
+                                    style: "currency",
+                                    currency: "BRL",
+                                  }).format(paymentMgmtFee)}
+                                </TableCell>
+                                <TableCell>
+                                  <Badge
+                                    variant={
+                                      payment.status === "paid"
+                                        ? "default"
+                                        : payment.status === "pending"
+                                        ? "secondary"
+                                        : "destructive"
+                                    }
+                                  >
+                                    {payment.status === "paid"
+                                      ? "Pago"
                                       : payment.status === "pending"
-                                      ? "secondary"
-                                      : "destructive"
-                                  }
-                                >
-                                  {payment.status === "paid"
-                                    ? "Pago"
-                                    : payment.status === "pending"
-                                    ? "Pendente"
-                                    : "Atrasado"}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
-                                {payment.paid_at
-                                  ? format(new Date(payment.paid_at), "dd/MM/yyyy")
-                                  : "-"}
-                              </TableCell>
-                            </TableRow>
-                          ))}
+                                      ? "Pendente"
+                                      : "Atrasado"}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  {payment.paymentDate
+                                    ? format(new Date(payment.paymentDate), "dd/MM/yyyy")
+                                    : "-"}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
                         </TableBody>
                       </Table>
                     </div>
