@@ -73,6 +73,7 @@ export default function Financial() {
   const [exemptLocationIds, setExemptLocationIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [config, setConfig] = useState<any>(null);
+  const [mounted, setMounted] = useState(false);
 
   // Date State
   const now = new Date();
@@ -91,6 +92,10 @@ export default function Financial() {
   const router = useRouter();
   const { user } = useAuth();
   const { toast } = useToast();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -553,6 +558,18 @@ export default function Financial() {
   };
 
   const sortedPayments = getSortedPayments();
+
+  if (!mounted) {
+    return (
+      <Layout>
+        <div className="space-y-6">
+          <div className="flex items-center justify-center h-64">
+            <p className="text-slate-500">Carregando...</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
