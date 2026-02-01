@@ -108,6 +108,7 @@ export function DepositInstallmentsTable({
 
   const isAdmin = userRole === "admin";
 
+  // Fetch data
   useEffect(() => {
     let isMounted = true;
 
@@ -118,12 +119,6 @@ export function DepositInstallmentsTable({
       }
 
       try {
-        console.log("🔄 fetchData iniciado (Cauções - SEM filtro de período):", {
-          statusFilter,
-          isAdmin,
-          allowedLocationIds
-        });
-        
         if (isMounted) setLoading(true);
 
         const query = supabase
@@ -180,15 +175,9 @@ export function DepositInstallmentsTable({
           );
         }
 
-        console.log("📊 Dados após filtros (Cauções):", {
-          totalRecords: filteredData.length,
-          isAdmin,
-          statusFilter,
-          hasLocationFilter: !isAdmin && allowedLocationIds.length > 0
-        });
-
         if (isMounted) {
           setData(filteredData);
+          setLoading(false);
         }
       } catch (error) {
         console.error("❌ Erro ao buscar dados de cauções:", error);
@@ -198,10 +187,8 @@ export function DepositInstallmentsTable({
             description: "Não foi possível carregar os dados de caução.",
             variant: "destructive",
           });
+          setLoading(false);
         }
-      } finally {
-        console.log("🏁 fetchData finalizado (Cauções), setLoading(false)");
-        if (isMounted) setLoading(false);
       }
     };
 
@@ -210,7 +197,7 @@ export function DepositInstallmentsTable({
     return () => {
       isMounted = false;
     };
-  }, [statusFilter, isAdmin, allowedLocationIds.join(","), toast]);
+  }, [statusFilter, isAdmin, toast]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -404,6 +391,7 @@ export function DepositInstallmentsTable({
     return <ArrowUpDown className="h-4 w-4 ml-1 text-slate-400" />;
   };
 
+  // Early returns for loading/permissions
   if (loading) {
     return (
       <ScrollReveal delay={0.6}>
@@ -425,8 +413,8 @@ export function DepositInstallmentsTable({
     return null;
   }
 
+  // Prepare data for rendering (MOVED OUTSIDE JSX)
   const sortedData = getSortedData();
-
   const groupedByRental = sortedData.reduce((acc, item) => {
     if (!acc[item.rental_id]) {
       acc[item.rental_id] = [];
@@ -452,25 +440,6 @@ export function DepositInstallmentsTable({
   );
   
   const netRevenue = totalReceived - adminFee;
-
-  console.log("📋 Dados para renderização da tabela (Cauções):", {
-    sortedDataLength: sortedData.length,
-    groupedByRentalKeys: Object.keys(groupedByRental).length,
-    uniqueRentalsLength: uniqueRentals.length,
-    totalAmountColumn: totalExpected,
-    totalReceivedAmount: totalReceived,
-    adminFeeTotal: adminFee,
-    netRevenueTotal: netRevenue,
-    hasData: sortedData.length > 0
-  });
-
-  console.log("🔍 DEBUG TABELA - Verificando condições:", {
-    "Object.keys(groupedByRental).length": Object.keys(groupedByRental).length,
-    "groupedByRental": groupedByRental,
-    "sortedData.length": sortedData.length,
-    "isAdmin": isAdmin,
-    "loading": loading
-  });
 
   return (
     <div className="space-y-6">
