@@ -3,7 +3,6 @@ import { Layout } from "@/components/Layout";
 import { PeriodSelector } from "@/components/dashboard/PeriodSelector";
 import { FinancialMetricCard } from "@/components/dashboard/FinancialMetricCard";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
-import { useDashboardData } from "@/hooks/useDashboardData";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
@@ -17,20 +16,30 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { format, differenceInMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { FileText, Download, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { 
+  FileText, 
+  Download, 
+  ArrowUpDown, 
+  ArrowUp, 
+  ArrowDown,
+  DollarSign,
+  Building,
+  Settings,
+  Target
+} from "lucide-react";
 import { DepositInstallmentsTable } from "@/components/financial/DepositInstallmentsTable";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
-import { 
-  getAllPayments, 
-  getAllProperties, 
-  getAllTenants, 
-  getAllRentals, 
-  getConfig 
-} from "@/services";
+
+// Importações diretas dos serviços para evitar erros de exportação
+import { getAll as getAllPayments } from "@/services/paymentService";
+import { getAll as getAllProperties } from "@/services/propertyService";
+import { getAll as getAllTenants } from "@/services/tenantService";
+import { getAll as getAllRentals } from "@/services/rentalService";
+import { getConfig } from "@/services/configService";
 import { Payment, Property, Rental, Tenant } from "@/types";
 
 type SortField = "paymentNumber" | "local" | "complement" | "status" | "dueDate" | "paymentDate" | "expectedAmount" | "paidAmount";
@@ -52,10 +61,10 @@ export default function Financial() {
   const [config, setConfig] = useState<any>(null);
   const [mounted, setMounted] = useState(false);
 
-  // Date State
+  // Date State - Tipagem corrigida para number para compatibilidade com PeriodSelector
   const now = new Date();
-  const [selectedMonth, setSelectedMonth] = useState((now.getMonth() + 1).toString());
-  const [selectedYear, setSelectedYear] = useState(now.getFullYear().toString());
+  const [selectedMonth, setSelectedMonth] = useState<number>(now.getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState<number>(now.getFullYear());
   const [filterMonth, setFilterMonth] = useState<number>(now.getMonth() + 1);
   const [filterYear, setFilterYear] = useState<number>(now.getFullYear());
   const [locationExpenses, setLocationExpenses] = useState<number>(0);
@@ -424,28 +433,40 @@ export default function Financial() {
                 <FinancialMetricCard
                   title="Receita Bruta"
                   value={totalReceived}
-                  icon="💰"
+                  icon={DollarSign}
+                  iconColor="text-green-600"
+                  iconBgClass="bg-green-100"
+                  borderColorClass="border-l-green-600"
                 />
               </ScrollReveal>
               <ScrollReveal delay={0.3}>
                 <FinancialMetricCard
                   title="Taxa de Administração"
                   value={adminFee}
-                  icon="🏢"
+                  icon={Building}
+                  iconColor="text-blue-600"
+                  iconBgClass="bg-blue-100"
+                  borderColorClass="border-l-blue-600"
                 />
               </ScrollReveal>
               <ScrollReveal delay={0.4}>
                 <FinancialMetricCard
                   title="Taxa de Gerenciamento"
                   value={managementFee}
-                  icon="⚙️"
+                  icon={Settings}
+                  iconColor="text-purple-600"
+                  iconBgClass="bg-purple-100"
+                  borderColorClass="border-l-purple-600"
                 />
               </ScrollReveal>
               <ScrollReveal delay={0.5}>
                 <FinancialMetricCard
                   title="Receita Líquida"
                   value={netRevenue}
-                  icon="🎯"
+                  icon={Target}
+                  iconColor="text-indigo-600"
+                  iconBgClass="bg-indigo-100"
+                  borderColorClass="border-l-indigo-600"
                 />
               </ScrollReveal>
             </div>
@@ -641,7 +662,10 @@ export default function Financial() {
 
           {isAdmin && (
             <TabsContent value="deposits" className="space-y-8 mt-8">
-              <DepositInstallmentsTable />
+              <DepositInstallmentsTable 
+                userRole={user?.role || "user"}
+                allowedLocationIds={allowedLocationIds}
+              />
             </TabsContent>
           )}
         </Tabs>
