@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import {
   Table,
   TableBody,
@@ -88,7 +88,7 @@ interface DepositInstallmentsTableProps {
 
 export function DepositInstallmentsTable({
   userRole,
-  allowedLocationIds,
+  allowedLocationIds = [],
 }: DepositInstallmentsTableProps) {
   const [data, setData] = useState<DepositInstallmentData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -108,96 +108,109 @@ export function DepositInstallmentsTable({
 
   const isAdmin = userRole === "admin";
 
-  const fetchData = useCallback(async () => {
-    try {
-      console.log("🔄 fetchData iniciado (Cauções - SEM filtro de período):", {
-        statusFilter,
-        isAdmin,
-        allowedLocationIds
-      });
-      
-      setLoading(true);
-
-      const query = supabase
-        .from("deposit_installments")
-        .select(
-          `
-          id,
-          installment_number,
-          total_installments,
-          installment_total,
-          amount,
-          pix_code,
-          partner_commission,
-          internal_commission,
-          rental_id,
-          payment_date,
-          rental:rentals(
-            has_partner_broker,
-            security_deposit,
-            is_active,
-            property_id,
-            monthly_rent,
-            garage_value,
-            tenant:tenants(name),
-            property:properties(
-              complement,
-              location_id,
-              location:locations(name)
-            )
-          )
-        `
-        )
-        .order("created_at", { ascending: false });
-
-      const { data: installments, error } = await query;
-
-      if (error) throw error;
-
-      let filteredData = installments || [];
-
-      if (statusFilter === "active") {
-        filteredData = filteredData.filter(
-          (item: DepositInstallmentData) => item.rental?.is_active === true
-        );
-      } else if (statusFilter === "inactive") {
-        filteredData = filteredData.filter(
-          (item: DepositInstallmentData) => item.rental?.is_active === false
-        );
-      }
-
-      if (!isAdmin && allowedLocationIds && allowedLocationIds.length > 0) {
-        filteredData = filteredData.filter((item: DepositInstallmentData) =>
-          allowedLocationIds.includes(item.rental?.property?.location_id)
-        );
-      }
-
-      console.log("📊 Dados após filtros (Cauções):", {
-        totalRecords: filteredData.length,
-        isAdmin,
-        statusFilter,
-        hasLocationFilter: !isAdmin && allowedLocationIds && allowedLocationIds.length > 0
-      });
-
-      setData(filteredData);
-    } catch (error) {
-      console.error("❌ Erro ao buscar dados de cauções:", error);
-      toast({
-        title: "Erro ao carregar dados",
-        description: "Não foi possível carregar os dados de caução.",
-        variant: "destructive",
-      });
-    } finally {
-      console.log("🏁 fetchData finalizado (Cauções), setLoading(false)");
-      setLoading(false);
-    }
-  }, [statusFilter, isAdmin, allowedLocationIds]);
-
   useEffect(() => {
-    if (isAdmin) {
-      fetchData();
-    }
-  }, [isAdmin, fetchData]);
+    let isMounted = true;
+
+    const fetchData = async () => {
+      if (!isAdmin) {
+        if (isMounted) setLoading(false);
+        return;
+      }
+
+      try {
+        console.log("🔄 fetchData iniciado (Cauções - SEM filtro de período):", {
+          statusFilter,
+          isAdmin,
+          allowedLocationIds
+        });
+        
+        if (isMounted) setLoading(true);
+
+        const query = supabase
+          .from("deposit_installments")
+          .select(
+            `
+            id,
+            installment_number,
+            total_installments,
+            installment_total,
+            amount,
+            pix_code,
+            partner_commission,
+            internal_commission,
+            rental_id,
+            payment_date,
+            rental:rentals(
+              has_partner_broker,
+              security_deposit,
+              is_active,
+              property_id,
+              monthly_rent,
+              garage_value,
+              tenant:tenants(name),
+              property:properties(
+                complement,
+                location_id,
+                location:locations(name)
+              )
+            )
+          `
+          )
+          .order("created_at", { ascending: false });
+
+        const { data: installments, error } = await query;
+
+        if (error) throw error;
+
+        let filteredData = installments || [];
+
+        if (statusFilter === "active") {
+          filteredData = filteredData.filter(
+            (item: DepositInstallmentData) => item.rental?.is_active === true
+          );
+        } else if (statusFilter === "inactive") {
+          filteredData = filteredData.filter(
+            (item: DepositInstallmentData) => item.rental?.is_active === false
+          );
+        }
+
+        if (!isAdmin && allowedLocationIds.length > 0) {
+          filteredData = filteredData.filter((item: DepositInstallmentData) =>
+            allowedLocationIds.includes(item.rental?.property?.location_id)
+          );
+        }
+
+        console.log("📊 Dados após filtros (Cauções):", {
+          totalRecords: filteredData.length,
+          isAdmin,
+          statusFilter,
+          hasLocationFilter: !isAdmin && allowedLocationIds.length > 0
+        });
+
+        if (isMounted) {
+          setData(filteredData);
+        }
+      } catch (error) {
+        console.error("❌ Erro ao buscar dados de cauções:", error);
+        if (isMounted) {
+          toast({
+            title: "Erro ao carregar dados",
+            description: "Não foi possível carregar os dados de caução.",
+            variant: "destructive",
+          });
+        }
+      } finally {
+        console.log("🏁 fetchData finalizado (Cauções), setLoading(false)");
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    fetchData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [statusFilter, isAdmin, allowedLocationIds.join(","), toast]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -295,7 +308,13 @@ export function DepositInstallmentsTable({
         description: "Comissão atualizada com sucesso!",
       });
 
-      fetchData();
+      setData(prevData =>
+        prevData.map(item =>
+          item.id === id
+            ? { ...item, [updateField]: numericValue }
+            : item
+        )
+      );
       setEditingCommission(null);
     } catch (error) {
       console.error("Erro ao atualizar comissão:", error);
@@ -321,7 +340,11 @@ export function DepositInstallmentsTable({
         description: "Código PIX atualizado com sucesso!",
       });
 
-      fetchData();
+      setData(prevData =>
+        prevData.map(item =>
+          item.id === id ? { ...item, pix_code: value } : item
+        )
+      );
       setEditingPixCode(null);
     } catch (error) {
       console.error("Erro ao atualizar código PIX:", error);
