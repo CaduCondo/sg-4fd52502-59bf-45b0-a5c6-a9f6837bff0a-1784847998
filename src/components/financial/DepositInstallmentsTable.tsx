@@ -464,6 +464,14 @@ export function DepositInstallmentsTable({
     hasData: sortedData.length > 0
   });
 
+  console.log("🔍 DEBUG TABELA - Verificando condições:", {
+    "Object.keys(groupedByRental).length": Object.keys(groupedByRental).length,
+    "groupedByRental": groupedByRental,
+    "sortedData.length": sortedData.length,
+    "isAdmin": isAdmin,
+    "loading": loading
+  });
+
   return (
     <div className="space-y-6">
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
