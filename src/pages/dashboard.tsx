@@ -16,7 +16,7 @@ export default function Dashboard() {
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
   const { user } = useAuth();
 
-  const { loading, payments, properties, rentals, allowedLocationIds, locationExpenses } = useDashboardData(
+  const { loading, payments, properties, rentals, allowedLocationIds, locationExpenses, exemptLocationIds } = useDashboardData(
     selectedMonth,
     selectedYear,
     user?.id,
@@ -133,6 +133,7 @@ export default function Dashboard() {
               selectedMonth={selectedMonth}
               selectedYear={selectedYear}
               onPeriodChange={handlePeriodChange}
+              exemptLocationIds={exemptLocationIds}
             />
             
             <AnalyticsCharts 

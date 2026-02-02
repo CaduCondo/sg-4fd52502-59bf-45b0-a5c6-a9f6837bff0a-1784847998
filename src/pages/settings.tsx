@@ -134,7 +134,7 @@ export default function Settings() {
     saveLocationPermissions, 
     saveFeeExemptions,
     getUserLocationPermissions,
-    getUserFeeExemptions
+    getFeeExemptions
   } = usePermissions();
 
   const { 
@@ -704,7 +704,7 @@ export default function Settings() {
               onSaveLocationPermissions={saveLocationPermissions}
               onSaveFeeExemptions={saveFeeExemptions}
               getUserLocationPermissions={getUserLocationPermissions}
-              getUserFeeExemptions={getUserFeeExemptions}
+              getFeeExemptions={getFeeExemptions}
             />
           </TabsContent>
 

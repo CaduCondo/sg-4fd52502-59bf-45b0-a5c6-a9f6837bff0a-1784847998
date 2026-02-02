@@ -114,15 +114,20 @@ export default function Financial() {
 
       // Buscar permissões de locais do usuário logado
       let allowedLocations: string[] = [];
+      
       if (user) {
-        // Buscar isenções de taxa
-        const { data: exemptions } = await supabase
-          .from("user_fee_exemptions")
-          .select("location_id")
-          .eq("user_id", user.id);
+        // Buscar isenções de taxa de administração (GLOBAL - por local, não por usuário)
+        const { data: exemptions, error: exemptError } = await supabase
+          .from("admin_fee_exempt_locations")
+          .select("location_id");
         
-        const exemptIds = exemptions?.map(e => e.location_id) || [];
-        setExemptLocationIds(exemptIds);
+        if (exemptError) {
+          console.error("❌ Erro ao buscar locais isentos:", exemptError);
+        } else {
+          const exemptIds = exemptions?.map(e => e.location_id) || [];
+          console.log("🔐 Locais isentos de taxa de administração:", exemptIds);
+          setExemptLocationIds(exemptIds);
+        }
 
         // Buscar permissões de local (para usuários financeiros)
         if (user.role === "financial") {

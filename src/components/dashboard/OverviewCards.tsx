@@ -30,6 +30,7 @@ interface OverviewCardsProps {
     dueTodayPayments: number;
     completedPayments: number;
     expectedAmount: number;
+    totalRevenue: number;
     grossRevenue: number;
     totalFeesAndExpenses: number;
     netRevenue: number;
@@ -37,6 +38,7 @@ interface OverviewCardsProps {
   selectedMonth: number;
   selectedYear: number;
   onPeriodChange: (month: number, year: number) => void;
+  exemptLocationIds?: string[];
 }
 
 export function OverviewCards({ data, selectedMonth, selectedYear, onPeriodChange }: OverviewCardsProps) {

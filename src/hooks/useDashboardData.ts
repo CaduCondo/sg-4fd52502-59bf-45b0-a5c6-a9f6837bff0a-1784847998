@@ -9,6 +9,7 @@ export function useDashboardData(month: number, year: number, userId: string | u
   const [rentals, setRentals] = useState<Rental[]>([]);
   const [allowedLocationIds, setAllowedLocationIds] = useState<string[]>([]);
   const [locationExpenses, setLocationExpenses] = useState<number>(0);
+  const [exemptLocationIds, setExemptLocationIds] = useState<string[]>([]);
 
   // Memoizar as funções de mapeamento para evitar recriação
   const mapPaymentFromDB = useCallback((data: any): Payment => {
@@ -99,7 +100,22 @@ export function useDashboardData(month: number, year: number, userId: string | u
         
         console.log("🔄 Dashboard: Carregando dados...", { month, year, userId, userRole });
 
-        // 1. Buscar locais permitidos para usuários Financial
+        // 1. Buscar locais isentos de taxa de administração (GLOBAL)
+        const { data: exemptLocations, error: exemptError } = await supabase
+          .from("admin_fee_exempt_locations")
+          .select("location_id");
+
+        if (exemptError) {
+          console.error("❌ Erro ao buscar locais isentos:", exemptError);
+        } else {
+          const exemptIds = exemptLocations?.map(e => e.location_id) || [];
+          console.log("🔐 Locais isentos de taxa de administração:", exemptIds);
+          if (isMounted) {
+            setExemptLocationIds(exemptIds);
+          }
+        }
+
+        // 2. Buscar locais permitidos para usuários Financial
         let allowedLocations: string[] = [];
         
         if (userRole === "financial") {
@@ -125,7 +141,7 @@ export function useDashboardData(month: number, year: number, userId: string | u
           }
         }
 
-        // 2. Buscar imóveis (filtrados por local se Financial)
+        // 3. Buscar imóveis (filtrados por local se Financial)
         let propertiesQuery = supabase.from("properties").select("*");
         
         if (userRole === "financial" && allowedLocations.length > 0) {
@@ -141,7 +157,7 @@ export function useDashboardData(month: number, year: number, userId: string | u
           console.log(`✅ Properties carregados: ${propertiesData?.length || 0}`);
         }
 
-        // 3. Buscar locações (filtradas pelos imóveis permitidos)
+        // 4. Buscar locações (filtradas pelos imóveis permitidos)
         const allowedPropertyIds = (propertiesData || []).map((p: any) => p.id);
         
         let rentalsQuery = supabase
@@ -172,7 +188,7 @@ export function useDashboardData(month: number, year: number, userId: string | u
           console.log(`✅ Rentals carregados: ${rentalsData?.length || 0}`);
         }
 
-        // 4. Buscar pagamentos do período (filtrados pelos rentals permitidos)
+        // 5. Buscar pagamentos do período (filtrados pelos rentals permitidos)
         const allowedRentalIds = (rentalsData || []).map((r: any) => r.id);
         
         let paymentsQuery = supabase
@@ -204,7 +220,7 @@ export function useDashboardData(month: number, year: number, userId: string | u
           console.log(`✅ Payments carregados: ${paymentsData?.length || 0}`);
         }
 
-        // 5. Buscar despesas de locais para o período selecionado (CONTAS A PAGAR)
+        // 6. Buscar despesas de locais para o período selecionado (CONTAS A PAGAR)
         let expensesQuery = supabase
           .from("location_expenses")
           .select("amount, status, location_id")
@@ -268,5 +284,5 @@ export function useDashboardData(month: number, year: number, userId: string | u
     };
   }, [month, year, userId, userRole, mapPaymentFromDB, mapPropertyFromDB, mapRentalFromDB]);
 
-  return { loading, payments, properties, rentals, allowedLocationIds, locationExpenses };
+  return { loading, payments, properties, rentals, allowedLocationIds, locationExpenses, exemptLocationIds };
 }
