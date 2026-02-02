@@ -74,19 +74,21 @@ export default function Dashboard() {
 
     const grossRevenue = payments.reduce((sum, p) => sum + (p.paidAmount || 0), 0);
 
-    const totalFees = payments.reduce((sum, p) => {
-      const rental = rentals.find(r => r.id === p.rentalId);
-      const property = properties.find(prop => prop.id === rental?.propertyId);
-      
-      // Taxa de Administração: 5% (isenta para locais marcados)
-      const isExempt = property?.locationId && exemptLocationIds.includes(property.locationId);
-      const adminFee = isExempt ? 0 : (p.expectedAmount || 0) * 0.05;
-      
-      // Taxa de Gerenciamento: 3% (SEMPRE cobra, sem isenção)
-      const managementFee = (p.expectedAmount || 0) * 0.03;
-      
-      return sum + adminFee + managementFee;
-    }, 0);
+    const totalFees = payments
+      .filter(p => p.status === 'paid')
+      .reduce((sum, p) => {
+        const rental = rentals.find(r => r.id === p.rentalId);
+        const property = properties.find(prop => prop.id === rental?.propertyId);
+        
+        // Taxa de Administração: 5% (isenta para locais marcados)
+        const isExempt = property?.locationId && exemptLocationIds.includes(property.locationId);
+        const adminFee = isExempt ? 0 : (p.paidAmount || 0) * 0.05;
+        
+        // Taxa de Gerenciamento: 3% (SEMPRE cobra, sem isenção)
+        const managementFee = (p.paidAmount || 0) * 0.03;
+        
+        return sum + adminFee + managementFee;
+      }, 0);
 
     const totalFeesAndExpenses = totalFees + locationExpenses;
     const netRevenue = grossRevenue - totalFeesAndExpenses;
