@@ -409,6 +409,7 @@ export default function Financial() {
       const rental = rentals.find(r => r.id === p.rentalId);
       const property = properties.find(prop => prop.id === rental?.propertyId);
       
+      // ISENÇÃO APENAS PARA TAXA DE ADMINISTRAÇÃO
       if (property && exemptLocationIds.includes(property.locationId)) return sum;
       
       const feeRate = config ? (config.admin_fee_percentage || 0) / 100 : 0.05;
@@ -418,10 +419,7 @@ export default function Financial() {
   const managementFee = payments
     .filter((p) => p.status === "paid" || p.status === "partial")
     .reduce((sum, p) => {
-       const rental = rentals.find(r => r.id === p.rentalId);
-       const property = properties.find(prop => prop.id === rental?.propertyId);
-       if (property && exemptLocationIds.includes(property.locationId)) return sum;
-       
+       // TAXA DE GERENCIAMENTO SEMPRE É COBRADA - SEM VERIFICAÇÃO DE ISENÇÃO
        const mgmtRate = config ? (config.management_fee_percentage || 0) / 100 : 0;
        return sum + ((p.paidAmount || 0) * mgmtRate);
   }, 0);
