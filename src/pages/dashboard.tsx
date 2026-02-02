@@ -78,8 +78,12 @@ export default function Dashboard() {
       const rental = rentals.find(r => r.id === p.rentalId);
       const property = properties.find(prop => prop.id === rental?.propertyId);
       
-      const adminFee = (p.paidAmount || 0) * 0.05;
-      const managementFee = (p.paidAmount || 0) * 0.03;
+      // Taxa de Administração: 5% (isenta para locais marcados)
+      const isExempt = property?.locationId && exemptLocationIds.includes(property.locationId);
+      const adminFee = isExempt ? 0 : (p.expectedAmount || 0) * 0.05;
+      
+      // Taxa de Gerenciamento: 3% (SEMPRE cobra, sem isenção)
+      const managementFee = (p.expectedAmount || 0) * 0.03;
       
       return sum + adminFee + managementFee;
     }, 0);
