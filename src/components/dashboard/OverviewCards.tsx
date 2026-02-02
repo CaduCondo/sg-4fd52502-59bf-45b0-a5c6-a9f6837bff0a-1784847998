@@ -208,7 +208,7 @@ export function OverviewCards({ data, selectedMonth, selectedYear, onPeriodChang
         <h2 className="text-sm font-semibold text-foreground mb-3 px-1">
           💰 Resumo Financeiro
         </h2>
-        <div className="grid grid-cols-5 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           <Link href="/payments?status=overdue">
             <FinancialMetricCard
               title="Total em Atraso"

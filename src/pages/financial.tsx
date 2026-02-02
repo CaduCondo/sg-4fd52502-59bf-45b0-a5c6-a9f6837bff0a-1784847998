@@ -184,9 +184,13 @@ export default function Financial() {
       // Filtrar pagamentos
       const allowedRentalIds = filteredRentals.map(r => r.id);
       const filteredPaymentsData = paymentsData.filter((payment) => {
+        // Converter para número para garantir comparação correta
+        const paymentMonth = Number(payment.referenceMonth);
+        const paymentYear = Number(payment.referenceYear);
+        
         const matchesDate = 
-          payment.referenceMonth === filterMonth &&
-          payment.referenceYear === filterYear;
+          paymentMonth === filterMonth &&
+          paymentYear === filterYear;
         
         const matchesPermission = 
           user?.role !== "financial" || 
@@ -220,7 +224,7 @@ export default function Financial() {
       complemento: property?.complement || "N/A",
       tenantName: tenant?.name || "N/A",
       rental: rental,
-      pixCode: rental?.pixCode || "",
+      pixCode: payment.paymentCode || rental?.pixCode || "",
     };
   };
 
@@ -319,7 +323,7 @@ export default function Financial() {
     try {
       const { error } = await supabase
         .from("payments")
-        .update({ pix_code: pixCode })
+        .update({ payment_code: pixCode })
         .eq("id", paymentId);
 
       if (error) throw error;
@@ -331,7 +335,7 @@ export default function Financial() {
 
       setPayments(prevPayments =>
         prevPayments.map(p =>
-          p.id === paymentId ? { ...p, pixCode: pixCode } : p
+          p.id === paymentId ? { ...p, paymentCode: pixCode } : p
         )
       );
       setEditingPixCode(null);
@@ -846,10 +850,12 @@ export default function Financial() {
 
           {isAdmin && (
             <TabsContent value="deposits" className="space-y-8 mt-8">
-              <DepositInstallmentsTable 
-                userRole={user?.role || "user"}
-                allowedLocationIds={allowedLocationIds}
-              />
+              <div className="overflow-x-auto">
+                <DepositInstallmentsTable 
+                  userRole={user?.role || "user"}
+                  allowedLocationIds={allowedLocationIds}
+                />
+              </div>
             </TabsContent>
           )}
         </Tabs>
