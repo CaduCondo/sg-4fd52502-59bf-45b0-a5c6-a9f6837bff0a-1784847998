@@ -29,7 +29,8 @@ import {
   TrendingUp,
   Check,
   X,
-  Edit2
+  Edit2,
+  Wallet
 } from "lucide-react";
 import { DepositInstallmentsTable } from "@/components/financial/DepositInstallmentsTable";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -53,6 +54,7 @@ export default function Financial() {
   const { user } = useAuth();
   const { toast } = useToast();
   const isAdmin = user?.role === "admin" || user?.role === "broker";
+  const isFinancial = user?.role === "financial";
   
   // Data fetching state
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -399,6 +401,8 @@ export default function Financial() {
   };
 
   // KPI Calculations
+  const totalExpected = payments.reduce((sum, p) => sum + p.expectedAmount, 0);
+  
   const totalReceived = payments
     .filter((p) => p.status === "paid" || p.status === "partial")
     .reduce((sum, p) => sum + (p.paidAmount || 0), 0);
@@ -426,7 +430,6 @@ export default function Financial() {
 
   const netRevenue = totalReceived - adminFee - managementFee - locationExpenses;
   
-  const totalExpected = payments.reduce((sum, p) => sum + p.expectedAmount, 0);
   const totalPaid = payments
     .filter(p => p.status === "paid" || p.status === "partial")
     .reduce((sum, p) => sum + (p.paidAmount || 0), 0);
@@ -470,59 +473,131 @@ export default function Financial() {
             </ScrollReveal>
 
             {/* Cards de Métricas - Locações */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-              <ScrollReveal delay={0.2}>
-                <Card className="border-l-4 border-l-green-500">
-                  <CardContent className="pt-6">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                          <DollarSign className="h-4 w-4 text-green-600" />
-                          Receita Bruta
-                        </p>
-                        <p className="text-2xl font-bold text-green-600">
-                          {new Intl.NumberFormat("pt-BR", {
-                            style: "currency",
-                            currency: "BRL",
-                          }).format(totalReceived)}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          Total recebido no período
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </ScrollReveal>
-
-              {user?.role === "financial" ? (
-                // Card único para perfil financeiro
-                <ScrollReveal delay={0.3}>
-                  <Card className="border-l-4 border-l-orange-500">
-                    <CardContent className="pt-6">
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-1">
-                          <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                            <Receipt className="h-4 w-4 text-orange-600" />
-                            Taxas e Contas
-                          </p>
-                          <p className="text-2xl font-bold text-orange-600">
-                            {new Intl.NumberFormat("pt-BR", {
-                              style: "currency",
-                              currency: "BRL",
-                            }).format(adminFee + managementFee + locationExpenses)}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            Taxas de administração, gerenciamento e contas do mês
-                          </p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </ScrollReveal>
-              ) : (
-                // Cards separados para admin/broker
+            <div className={`grid gap-4 ${isFinancial ? 'grid-cols-1 md:grid-cols-4' : 'md:grid-cols-2 lg:grid-cols-5'}`}>
+              {isFinancial ? (
                 <>
+                  <ScrollReveal delay={0.2}>
+                    <Card className="border-l-4 border-l-blue-500">
+                      <CardContent className="pt-6">
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-1">
+                            <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                              <Wallet className="h-4 w-4 text-blue-600" />
+                              Receita Bruta Esperada
+                            </p>
+                            <p className="text-2xl font-bold text-blue-600">
+                              {new Intl.NumberFormat("pt-BR", {
+                                style: "currency",
+                                currency: "BRL",
+                              }).format(totalExpected)}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Total de aluguéis esperados no período
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </ScrollReveal>
+
+                  <ScrollReveal delay={0.3}>
+                    <Card className="border-l-4 border-l-green-500">
+                      <CardContent className="pt-6">
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-1">
+                            <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                              <DollarSign className="h-4 w-4 text-green-600" />
+                              Receita Bruta
+                            </p>
+                            <p className="text-2xl font-bold text-green-600">
+                              {new Intl.NumberFormat("pt-BR", {
+                                style: "currency",
+                                currency: "BRL",
+                              }).format(totalReceived)}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Total recebido no período
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </ScrollReveal>
+
+                  <ScrollReveal delay={0.4}>
+                    <Card className="border-l-4 border-l-orange-500">
+                      <CardContent className="pt-6">
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-1">
+                            <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                              <Receipt className="h-4 w-4 text-orange-600" />
+                              Taxas e Contas
+                            </p>
+                            <p className="text-2xl font-bold text-orange-600">
+                              {new Intl.NumberFormat("pt-BR", {
+                                style: "currency",
+                                currency: "BRL",
+                              }).format(adminFee + managementFee + locationExpenses)}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Taxas e contas a pagar do mês
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </ScrollReveal>
+
+                  <ScrollReveal delay={0.5}>
+                    <Card className="border-l-4 border-l-purple-500">
+                      <CardContent className="pt-6">
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-1">
+                            <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                              <TrendingUp className="h-4 w-4 text-purple-600" />
+                              Receita Líquida
+                            </p>
+                            <p className="text-2xl font-bold text-purple-600">
+                              {new Intl.NumberFormat("pt-BR", {
+                                style: "currency",
+                                currency: "BRL",
+                              }).format(netRevenue)}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Valor após subtração das taxas e contas
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </ScrollReveal>
+                </>
+              ) : (
+                <>
+                  <ScrollReveal delay={0.2}>
+                    <Card className="border-l-4 border-l-green-500">
+                      <CardContent className="pt-6">
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-1">
+                            <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                              <DollarSign className="h-4 w-4 text-green-600" />
+                              Receita Bruta
+                            </p>
+                            <p className="text-2xl font-bold text-green-600">
+                              {new Intl.NumberFormat("pt-BR", {
+                                style: "currency",
+                                currency: "BRL",
+                              }).format(totalReceived)}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Total recebido no período
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </ScrollReveal>
+
                   <ScrollReveal delay={0.3}>
                     <Card className="border-l-4 border-l-red-500">
                       <CardContent className="pt-6">
@@ -594,32 +669,32 @@ export default function Financial() {
                       </CardContent>
                     </Card>
                   </ScrollReveal>
+
+                  <ScrollReveal delay={0.6}>
+                    <Card className="border-l-4 border-l-purple-500">
+                      <CardContent className="pt-6">
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-1">
+                            <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                              <TrendingUp className="h-4 w-4 text-purple-600" />
+                              Receita Líquida
+                            </p>
+                            <p className="text-2xl font-bold text-purple-600">
+                              {new Intl.NumberFormat("pt-BR", {
+                                style: "currency",
+                                currency: "BRL",
+                              }).format(netRevenue)}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Valor após subtração das taxas e contas
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </ScrollReveal>
                 </>
               )}
-
-              <ScrollReveal delay={0.6}>
-                <Card className="border-l-4 border-l-purple-500">
-                  <CardContent className="pt-6">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                          <TrendingUp className="h-4 w-4 text-purple-600" />
-                          Receita Líquida
-                        </p>
-                        <p className="text-2xl font-bold text-purple-600">
-                          {new Intl.NumberFormat("pt-BR", {
-                            style: "currency",
-                            currency: "BRL",
-                          }).format(netRevenue)}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          Valor após subtração das taxas e contas
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </ScrollReveal>
             </div>
 
             {/* Tabela de Locações */}
