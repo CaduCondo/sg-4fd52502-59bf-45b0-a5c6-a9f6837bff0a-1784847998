@@ -7,11 +7,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency } from "@/lib/masks";
 import { Button } from "@/components/ui/button";
-import { Download, Printer, ArrowUpDown, ArrowUp, ArrowDown, Edit2, Check, X, BarChart3, DollarSign, HeartHandshake, Target } from "lucide-react";
+import { Download, Printer, ArrowUpDown, ArrowUp, ArrowDown, Edit2, Check, X, BarChart3, DollarSign, HeartHandshake, Target, FileText } from "lucide-react";
 import * as XLSX from "xlsx";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
@@ -393,13 +393,8 @@ export function DepositInstallmentsTable({
   if (loading) {
     return (
       <ScrollReveal delay={0.6}>
-        <Card className="border-slate-200 shadow-sm">
-          <CardHeader className="border-b border-slate-100 bg-white pb-4">
-            <CardTitle className="text-2xl font-bold text-slate-800">
-              Detalhamento dos Cauções
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-6">
+        <Card>
+          <CardContent className="pt-6">
             <p className="text-center text-muted-foreground">Carregando dados dos cauções...</p>
           </CardContent>
         </Card>
@@ -440,78 +435,86 @@ export function DepositInstallmentsTable({
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <ScrollReveal delay={0.2}>
-          <Card className="border-blue-100 bg-blue-50/30 shadow-sm h-full">
-            <CardContent className="p-6 space-y-4">
-              <div className="flex items-center gap-2">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <BarChart3 className="h-5 w-5 text-blue-600" />
+          <Card className="border-l-4 border-l-blue-500">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                    <BarChart3 className="h-4 w-4 text-blue-600" />
+                    Valor Bruto Esperado
+                  </p>
+                  <p className="text-2xl font-bold text-blue-600">
+                    {formatCurrency(totalExpected)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Soma de todos os recebimentos
+                  </p>
                 </div>
-                <span className="text-sm font-medium text-slate-600">Valor Bruto Esperado</span>
-              </div>
-              <div>
-                <div className="text-3xl font-bold text-slate-900">
-                  {formatCurrency(totalExpected)}
-                </div>
-                <p className="text-xs text-blue-500 mt-1">Soma de todos os recebimentos</p>
               </div>
             </CardContent>
           </Card>
         </ScrollReveal>
 
         <ScrollReveal delay={0.3}>
-          <Card className="border-green-100 bg-green-50/30 shadow-sm h-full">
-            <CardContent className="p-6 space-y-4">
-              <div className="flex items-center gap-2">
-                <div className="p-2 bg-green-100 rounded-lg">
-                  <DollarSign className="h-5 w-5 text-green-600" />
+          <Card className="border-l-4 border-l-green-500">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                    <DollarSign className="h-4 w-4 text-green-600" />
+                    Valor Bruto Recebido
+                  </p>
+                  <p className="text-2xl font-bold text-green-600">
+                    {formatCurrency(totalReceived)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Todos os pagamentos recebidos
+                  </p>
                 </div>
-                <span className="text-sm font-medium text-slate-600">Valor Bruto Recebido</span>
-              </div>
-              <div>
-                <div className="text-3xl font-bold text-slate-900">
-                  {formatCurrency(totalReceived)}
-                </div>
-                <p className="text-xs text-green-600 mt-1">Todos os pagamentos recebidos</p>
               </div>
             </CardContent>
           </Card>
         </ScrollReveal>
 
         <ScrollReveal delay={0.4}>
-          <Card className="border-purple-100 bg-purple-50/30 shadow-sm h-full">
-            <CardContent className="p-6 space-y-4">
-              <div className="flex items-center gap-2">
-                <div className="p-2 bg-purple-100 rounded-lg">
-                  <HeartHandshake className="h-5 w-5 text-purple-600" />
+          <Card className="border-l-4 border-l-red-500">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                    <HeartHandshake className="h-4 w-4 text-red-600" />
+                    Comissão
+                  </p>
+                  <p className="text-2xl font-bold text-red-600">
+                    {formatCurrency(adminFee)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Soma das comissões parceiro + interno
+                  </p>
                 </div>
-                <span className="text-sm font-medium text-slate-600">Comissão</span>
-              </div>
-              <div>
-                <div className="text-3xl font-bold text-purple-900">
-                  {formatCurrency(adminFee)}
-                </div>
-                <p className="text-xs text-purple-600 mt-1">Soma das comissões parceiro + interno</p>
               </div>
             </CardContent>
           </Card>
         </ScrollReveal>
 
         <ScrollReveal delay={0.5}>
-          <Card className="border-indigo-100 bg-indigo-50/30 shadow-sm h-full">
-            <CardContent className="p-6 space-y-4">
-              <div className="flex items-center gap-2">
-                <div className="p-2 bg-indigo-100 rounded-lg">
-                  <Target className="h-5 w-5 text-indigo-600" />
+          <Card className="border-l-4 border-l-purple-500">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                    <Target className="h-4 w-4 text-purple-600" />
+                    Receita Líquida
+                  </p>
+                  <p className="text-2xl font-bold text-purple-600">
+                    {formatCurrency(netRevenue)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Receita após taxa administrativa
+                  </p>
                 </div>
-                <span className="text-sm font-medium text-slate-600">Receita Líquida</span>
-              </div>
-              <div>
-                <div className="text-3xl font-bold text-indigo-900">
-                  {formatCurrency(netRevenue)}
-                </div>
-                <p className="text-xs text-indigo-600 mt-1">Receita após taxa administrativa</p>
               </div>
             </CardContent>
           </Card>
@@ -519,15 +522,18 @@ export function DepositInstallmentsTable({
       </div>
 
       <ScrollReveal delay={0.6}>
-        <Card className="border-slate-200 shadow-sm overflow-hidden">
-          <CardHeader className="border-b border-slate-100 bg-white pb-4">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <CardTitle className="text-2xl font-bold text-slate-800">
-                Detalhamento dos Cauções
-              </CardTitle>
-              <div className="flex flex-wrap gap-4 items-end">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-2xl font-bold flex items-center gap-2">
+                  <FileText className="h-6 w-6" />
+                  Detalhamento dos Cauções
+                </h2>
+              </div>
+              <div className="flex items-center gap-4">
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="status-filter" className="text-sm font-medium text-slate-700">
+                  <Label htmlFor="status-filter" className="text-sm font-medium">
                     Status Locação
                   </Label>
                   <Select
@@ -545,40 +551,39 @@ export function DepositInstallmentsTable({
                   </Select>
                 </div>
                 <div className="flex gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={handlePrint}
-                    className="text-slate-600 hover:text-slate-900"
+                    className="flex items-center gap-2"
                   >
-                    <Printer className="h-4 w-4 mr-2" />
+                    <Printer className="h-4 w-4" />
                     Imprimir
                   </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={exportToExcel}
-                    className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                    className="flex items-center gap-2"
                   >
-                    <Download className="h-4 w-4 mr-2" />
+                    <Download className="h-4 w-4" />
                     Exportar Excel
                   </Button>
                 </div>
               </div>
             </div>
-          </CardHeader>
-          <CardContent className="p-0">
+
             {Object.keys(groupedByRental).length === 0 ? (
-              <div className="p-8 text-center text-slate-500">
+              <div className="text-center py-8 text-muted-foreground">
                 Nenhum dado de caução encontrado para o filtro selecionado.
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow className="bg-slate-50/50 hover:bg-slate-50/50">
+                    <TableRow>
                       <TableHead 
-                        className="text-sm font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
+                        className="cursor-pointer"
                         onClick={() => handleSort("location")}
                       >
                         <div className="flex items-center">
@@ -587,7 +592,7 @@ export function DepositInstallmentsTable({
                         </div>
                       </TableHead>
                       <TableHead 
-                        className="text-sm font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
+                        className="cursor-pointer"
                         onClick={() => handleSort("complement")}
                       >
                         <div className="flex items-center">
@@ -596,7 +601,7 @@ export function DepositInstallmentsTable({
                         </div>
                       </TableHead>
                       <TableHead 
-                        className="text-sm font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
+                        className="cursor-pointer"
                         onClick={() => handleSort("tenant")}
                       >
                         <div className="flex items-center">
@@ -605,7 +610,7 @@ export function DepositInstallmentsTable({
                         </div>
                       </TableHead>
                       <TableHead 
-                        className="text-sm font-semibold text-slate-500 uppercase tracking-wider text-right cursor-pointer hover:bg-slate-100"
+                        className="cursor-pointer text-right"
                         onClick={() => handleSort("rentalAmount")}
                       >
                         <div className="flex items-center justify-end">
@@ -614,7 +619,7 @@ export function DepositInstallmentsTable({
                         </div>
                       </TableHead>
                       <TableHead 
-                        className="text-sm font-semibold text-slate-500 uppercase tracking-wider text-right cursor-pointer hover:bg-slate-100"
+                        className="cursor-pointer text-right"
                         onClick={() => handleSort("securityDeposit")}
                       >
                         <div className="flex items-center justify-end">
@@ -623,7 +628,7 @@ export function DepositInstallmentsTable({
                         </div>
                       </TableHead>
                       <TableHead 
-                        className="text-sm font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
+                        className="cursor-pointer"
                         onClick={() => handleSort("hasPartner")}
                       >
                         <div className="flex items-center">
@@ -631,14 +636,14 @@ export function DepositInstallmentsTable({
                           <SortIcon field="hasPartner" />
                         </div>
                       </TableHead>
-                      <TableHead className="text-sm font-semibold text-slate-500 uppercase tracking-wider text-right">
+                      <TableHead className="text-right">
                         Valor Pg Corretagem Parceiro
                       </TableHead>
-                      <TableHead className="text-sm font-semibold text-slate-500 uppercase tracking-wider text-right">
+                      <TableHead className="text-right">
                         Valor Pg Corretagem Interno
                       </TableHead>
                       <TableHead 
-                        className="text-sm font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
+                        className="cursor-pointer"
                         onClick={() => handleSort("installment")}
                       >
                         <div className="flex items-center">
@@ -646,11 +651,11 @@ export function DepositInstallmentsTable({
                           <SortIcon field="installment" />
                         </div>
                       </TableHead>
-                      <TableHead className="text-sm font-semibold text-slate-500 uppercase tracking-wider">
+                      <TableHead>
                         Data Pagamento
                       </TableHead>
                       <TableHead 
-                        className="text-sm font-semibold text-slate-500 uppercase tracking-wider text-right cursor-pointer hover:bg-slate-100"
+                        className="cursor-pointer text-right"
                         onClick={() => handleSort("amount")}
                       >
                         <div className="flex items-center justify-end">
@@ -659,7 +664,7 @@ export function DepositInstallmentsTable({
                         </div>
                       </TableHead>
                       <TableHead 
-                        className="text-sm font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
+                        className="cursor-pointer"
                         onClick={() => handleSort("pixCode")}
                       >
                         <div className="flex items-center">
@@ -677,33 +682,39 @@ export function DepositInstallmentsTable({
 
                       return installments.map((installment, index) => {
                         const isPaid = installment.pix_code && installment.pix_code.trim() !== "";
-                        const rowBgClass = isPaid ? "bg-green-100/60" : "bg-red-100/60";
+                        const rowBgClass = isPaid ? "bg-green-50" : "bg-red-50";
                         
                         return (
-                          <TableRow key={installment.id} className="hover:bg-slate-50 transition-colors">
+                          <TableRow key={installment.id}>
                             {index === 0 && (
                               <>
-                                <TableCell rowSpan={rowSpan} className="font-medium text-slate-900 border-r border-slate-100 text-sm">
-                                  {firstInstallment.rental?.property?.location?.name || "-"}
+                                <TableCell rowSpan={rowSpan} className="font-medium">
+                                  <div className="max-w-[200px]">
+                                    <div className="font-medium truncate">
+                                      {firstInstallment.rental?.property?.location?.name || "-"}
+                                    </div>
+                                  </div>
                                 </TableCell>
-                                <TableCell rowSpan={rowSpan} className="text-slate-600 border-r border-slate-100 text-sm">
-                                  {firstInstallment.rental?.property?.complement || "-"}
+                                <TableCell rowSpan={rowSpan}>
+                                  <div className="text-sm text-muted-foreground truncate">
+                                    {firstInstallment.rental?.property?.complement || "-"}
+                                  </div>
                                 </TableCell>
-                                <TableCell rowSpan={rowSpan} className="text-slate-600 border-r border-slate-100 text-sm">
+                                <TableCell rowSpan={rowSpan}>
                                   {firstInstallment.rental?.tenant?.name || "-"}
                                 </TableCell>
-                                <TableCell rowSpan={rowSpan} className="text-right font-medium text-slate-900 border-r border-slate-100 text-sm">
+                                <TableCell rowSpan={rowSpan} className="text-right">
                                   {formatCurrency((firstInstallment.rental?.monthly_rent || 0) + (firstInstallment.rental?.garage_value || 0))}
                                 </TableCell>
-                                <TableCell rowSpan={rowSpan} className="text-right font-medium text-slate-900 border-r border-slate-100 text-sm">
+                                <TableCell rowSpan={rowSpan} className="text-right">
                                   {formatCurrency(totalCaucaoValue)}
                                 </TableCell>
-                                <TableCell rowSpan={rowSpan} className="text-slate-600 border-r border-slate-100 text-sm">
+                                <TableCell rowSpan={rowSpan}>
                                   {firstInstallment.rental?.has_partner_broker ? "Sim" : "Não"}
                                 </TableCell>
-                                <TableCell rowSpan={rowSpan} className="text-right border-r border-slate-100">
+                                <TableCell rowSpan={rowSpan} className="text-right">
                                   {editingCommission?.id === firstInstallment.id && editingCommission?.field === "partner" ? (
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-3">
                                       <Input
                                         value={editingCommission.value}
                                         onChange={(e) => {
@@ -714,27 +725,31 @@ export function DepositInstallmentsTable({
                                         autoFocus
                                       />
                                       <Button
-                                        size="sm"
+                                        size="default"
                                         variant="ghost"
                                         onClick={() => handleEditCommission(firstInstallment.id, "partner", editingCommission.value)}
+                                        className="h-9 w-9 p-0 hover:bg-green-100 transition-colors"
+                                        title="Salvar comissão"
                                       >
-                                        <Check className="h-4 w-4 text-green-600" />
+                                        <Check className="h-5 w-5 text-green-600" />
                                       </Button>
                                       <Button
-                                        size="sm"
+                                        size="default"
                                         variant="ghost"
                                         onClick={() => setEditingCommission(null)}
+                                        className="h-9 w-9 p-0 hover:bg-red-100 transition-colors"
+                                        title="Cancelar edição"
                                       >
-                                        <X className="h-4 w-4 text-red-600" />
+                                        <X className="h-5 w-5 text-red-600" />
                                       </Button>
                                     </div>
                                   ) : (
-                                    <div className="flex items-center justify-end gap-2">
-                                      <span className="text-slate-900 font-medium text-sm">
+                                    <div className="flex items-center justify-end gap-3">
+                                      <span className="font-medium">
                                         {formatCurrency(firstInstallment.partner_commission || 0)}
                                       </span>
                                       <Button
-                                        size="sm"
+                                        size="default"
                                         variant="ghost"
                                         onClick={() => {
                                           setEditingCommission({
@@ -743,15 +758,17 @@ export function DepositInstallmentsTable({
                                             value: applyMoneyMask(String(firstInstallment.partner_commission || 0))
                                           });
                                         }}
+                                        className="h-9 w-9 p-0 hover:bg-slate-100 transition-colors"
+                                        title="Editar comissão"
                                       >
-                                        <Edit2 className="h-4 w-4 text-slate-600" />
+                                        <Edit2 className="h-5 w-5 text-slate-600" />
                                       </Button>
                                     </div>
                                   )}
                                 </TableCell>
-                                <TableCell rowSpan={rowSpan} className="text-right border-r border-slate-100">
+                                <TableCell rowSpan={rowSpan} className="text-right">
                                   {editingCommission?.id === firstInstallment.id && editingCommission?.field === "internal" ? (
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-3">
                                       <Input
                                         value={editingCommission.value}
                                         onChange={(e) => {
@@ -762,27 +779,31 @@ export function DepositInstallmentsTable({
                                         autoFocus
                                       />
                                       <Button
-                                        size="sm"
+                                        size="default"
                                         variant="ghost"
                                         onClick={() => handleEditCommission(firstInstallment.id, "internal", editingCommission.value)}
+                                        className="h-9 w-9 p-0 hover:bg-green-100 transition-colors"
+                                        title="Salvar comissão"
                                       >
-                                        <Check className="h-4 w-4 text-green-600" />
+                                        <Check className="h-5 w-5 text-green-600" />
                                       </Button>
                                       <Button
-                                        size="sm"
+                                        size="default"
                                         variant="ghost"
                                         onClick={() => setEditingCommission(null)}
+                                        className="h-9 w-9 p-0 hover:bg-red-100 transition-colors"
+                                        title="Cancelar edição"
                                       >
-                                        <X className="h-4 w-4 text-red-600" />
+                                        <X className="h-5 w-5 text-red-600" />
                                       </Button>
                                     </div>
                                   ) : (
-                                    <div className="flex items-center justify-end gap-2">
-                                      <span className="text-slate-900 font-medium text-sm">
+                                    <div className="flex items-center justify-end gap-3">
+                                      <span className="font-medium">
                                         {formatCurrency(firstInstallment.internal_commission || 0)}
                                       </span>
                                       <Button
-                                        size="sm"
+                                        size="default"
                                         variant="ghost"
                                         onClick={() => {
                                           setEditingCommission({
@@ -791,21 +812,23 @@ export function DepositInstallmentsTable({
                                             value: applyMoneyMask(String(firstInstallment.internal_commission || 0))
                                           });
                                         }}
+                                        className="h-9 w-9 p-0 hover:bg-slate-100 transition-colors"
+                                        title="Editar comissão"
                                       >
-                                        <Edit2 className="h-4 w-4 text-slate-600" />
+                                        <Edit2 className="h-5 w-5 text-slate-600" />
                                       </Button>
                                     </div>
                                   )}
                                 </TableCell>
                               </>
                             )}
-                            <TableCell className={`font-medium text-slate-900 text-sm ${rowBgClass}`}>
+                            <TableCell className={rowBgClass}>
                               {installment.installment_number}/{installment.total_installments}
                             </TableCell>
-                            <TableCell className={`text-sm ${rowBgClass}`}>
+                            <TableCell className={rowBgClass}>
                               {formatDateWithoutTimezone(installment.payment_date)}
                             </TableCell>
-                            <TableCell className={`text-right font-medium text-slate-900 text-sm ${rowBgClass}`}>
+                            <TableCell className={`text-right font-semibold text-green-600 ${rowBgClass}`}>
                               {formatCurrency(installment.amount)}
                             </TableCell>
                             <TableCell className={rowBgClass}>
@@ -844,7 +867,7 @@ export function DepositInstallmentsTable({
                                 </div>
                               ) : (
                                 <div className="flex items-center gap-3">
-                                  <span className="text-slate-600 max-w-xs truncate text-sm">
+                                  <span className="text-slate-600 max-w-xs truncate text-sm font-mono">
                                     {installment.pix_code || "-"}
                                   </span>
                                   <Button
@@ -868,11 +891,11 @@ export function DepositInstallmentsTable({
                         );
                       });
                     })}
-                    <TableRow className="bg-slate-100 font-bold border-t-2 border-slate-300">
-                      <TableCell colSpan={4} className="text-right text-slate-700 uppercase text-sm">
+                    <TableRow className="bg-muted/50 font-bold">
+                      <TableCell colSpan={4} className="text-right">
                         Totais:
                       </TableCell>
-                      <TableCell className="text-right text-slate-900">
+                      <TableCell className="text-right">
                         {formatCurrency(
                           uniqueRentals.reduce((sum, item) => {
                             const rentalInstallments = groupedByRental[item.rental_id] || [];
@@ -881,25 +904,25 @@ export function DepositInstallmentsTable({
                           }, 0)
                         )}
                       </TableCell>
-                      <TableCell className="text-slate-600"></TableCell>
-                      <TableCell className="text-right text-slate-900">
+                      <TableCell></TableCell>
+                      <TableCell className="text-right">
                         {formatCurrency(
                           uniqueRentals.reduce((sum, item) => sum + (item.partner_commission || 0), 0)
                         )}
                       </TableCell>
-                      <TableCell className="text-right text-slate-900">
+                      <TableCell className="text-right">
                         {formatCurrency(
                           uniqueRentals.reduce((sum, item) => sum + (item.internal_commission || 0), 0)
                         )}
                       </TableCell>
-                      <TableCell className="text-slate-600"></TableCell>
-                      <TableCell className="text-slate-600"></TableCell>
-                      <TableCell className="text-right text-slate-900">
+                      <TableCell></TableCell>
+                      <TableCell></TableCell>
+                      <TableCell className="text-right text-green-600">
                         {formatCurrency(
                           sortedData.reduce((sum, item) => sum + item.amount, 0)
                         )}
                       </TableCell>
-                      <TableCell className="text-slate-600"></TableCell>
+                      <TableCell></TableCell>
                     </TableRow>
                   </TableBody>
                 </Table>
