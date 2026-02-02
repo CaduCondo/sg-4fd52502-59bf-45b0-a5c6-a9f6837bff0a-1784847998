@@ -370,7 +370,7 @@ export function PaymentReceipt({
                       />
                     </div>
                     <div className="border-t-2 border-gray-400 w-64 sm:w-80 mb-2"></div>
-                    <p className="font-semibold uppercase text-xs sm:text-sm">{user?.name || "Administrador"}</p>
+                    <p className="font-semibold uppercase text-xs sm:text-sm">Carlos Aparecido D'Uvo</p>
                   </div>
                 </div>
               </div>
