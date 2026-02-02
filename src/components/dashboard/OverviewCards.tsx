@@ -10,6 +10,11 @@ import {
   TrendingUp,
   Wallet,
   Clock,
+  Building,
+  Home as HomeIcon,
+  Key,
+  XCircle,
+  FileText,
 } from "lucide-react";
 import { MetricCard } from "./MetricCard";
 import { FinancialMetricCard } from "./FinancialMetricCard";
@@ -38,10 +43,19 @@ interface OverviewCardsProps {
   selectedMonth: number;
   selectedYear: number;
   onPeriodChange: (month: number, year: number) => void;
-  exemptLocationIds?: string[];
+  exemptLocationIds: string[];
+  userRole?: string;
 }
 
-export function OverviewCards({ data, selectedMonth, selectedYear, onPeriodChange }: OverviewCardsProps) {
+export function OverviewCards({ 
+  data, 
+  selectedMonth, 
+  selectedYear, 
+  onPeriodChange, 
+  exemptLocationIds,
+  userRole
+}: OverviewCardsProps) {
+  const isFinancial = userRole === "financial";
   const formatCurrency = (value: number) => {
     return value.toLocaleString("pt-BR", {
       style: "currency",
@@ -53,6 +67,14 @@ export function OverviewCards({ data, selectedMonth, selectedYear, onPeriodChang
     return `${value.toFixed(1)}%`;
   };
 
+  // Componente auxiliar para renderizar card com ou sem link
+  const CardWrapper = ({ href, children, disabled }: { href: string; children: React.ReactNode; disabled?: boolean }) => {
+    if (disabled || isFinancial) {
+      return <>{children}</>;
+    }
+    return <Link href={href}>{children}</Link>;
+  };
+
   return (
     <div className="space-y-5">
       {/* Primeira Linha - Imóveis (sem período) */}
@@ -61,7 +83,7 @@ export function OverviewCards({ data, selectedMonth, selectedYear, onPeriodChang
           📊 Visão Geral dos Imóveis
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-          <Link href="/properties">
+          <CardWrapper href="/properties">
             <MetricCard
               title="Imóveis Cadastrados"
               value={data.totalProperties}
@@ -70,11 +92,11 @@ export function OverviewCards({ data, selectedMonth, selectedYear, onPeriodChang
               iconColor="text-blue-600"
               iconBgClass="bg-blue-50 dark:bg-blue-900/20"
               borderColorClass="border-l-blue-500"
-              clickable
+              clickable={!isFinancial}
             />
-          </Link>
+          </CardWrapper>
 
-          <Link href="/properties?status=available">
+          <CardWrapper href="/properties?status=available">
             <MetricCard
               title="Imóveis Disponíveis"
               value={data.availableProperties}
@@ -83,11 +105,11 @@ export function OverviewCards({ data, selectedMonth, selectedYear, onPeriodChang
               iconColor="text-green-600"
               iconBgClass="bg-green-50 dark:bg-green-900/20"
               borderColorClass="border-l-green-500"
-              clickable
+              clickable={!isFinancial}
             />
-          </Link>
+          </CardWrapper>
 
-          <Link href="/properties?status=occupied">
+          <CardWrapper href="/properties?status=occupied">
             <MetricCard
               title="Imóveis Alugados"
               value={data.rentedProperties}
@@ -96,11 +118,11 @@ export function OverviewCards({ data, selectedMonth, selectedYear, onPeriodChang
               iconColor="text-indigo-600"
               iconBgClass="bg-indigo-50 dark:bg-indigo-900/20"
               borderColorClass="border-l-indigo-500"
-              clickable
+              clickable={!isFinancial}
             />
-          </Link>
+          </CardWrapper>
 
-          <Link href="/properties?status=unavailable">
+          <CardWrapper href="/properties?status=unavailable">
             <MetricCard
               title="Imóveis Indisponíveis"
               value={data.unavailableProperties}
@@ -109,9 +131,9 @@ export function OverviewCards({ data, selectedMonth, selectedYear, onPeriodChang
               iconColor="text-orange-600"
               iconBgClass="bg-orange-50 dark:bg-orange-900/20"
               borderColorClass="border-l-orange-500"
-              clickable
+              clickable={!isFinancial}
             />
-          </Link>
+          </CardWrapper>
 
           <MetricCard
             title="Taxa de Ocupação"
@@ -138,7 +160,7 @@ export function OverviewCards({ data, selectedMonth, selectedYear, onPeriodChang
           />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-          <Link href="/payments?status=overdue">
+          <CardWrapper href="/payments?status=overdue">
             <MetricCard
               title="Aluguéis Atrasados"
               value={data.overduePayments}
@@ -147,11 +169,11 @@ export function OverviewCards({ data, selectedMonth, selectedYear, onPeriodChang
               iconColor="text-red-600"
               iconBgClass="bg-red-50 dark:bg-red-900/20"
               borderColorClass="border-l-red-500"
-              clickable
+              clickable={!isFinancial}
             />
-          </Link>
+          </CardWrapper>
 
-          <Link href="/payments?status=due-today">
+          <CardWrapper href="/payments?status=due-today">
             <MetricCard
               title="Aluguéis Vencem Hoje"
               value={data.dueTodayPayments}
@@ -160,11 +182,11 @@ export function OverviewCards({ data, selectedMonth, selectedYear, onPeriodChang
               iconColor="text-amber-600"
               iconBgClass="bg-amber-50 dark:bg-amber-900/20"
               borderColorClass="border-l-amber-500"
-              clickable
+              clickable={!isFinancial}
             />
-          </Link>
+          </CardWrapper>
 
-          <Link href="/payments?status=paid">
+          <CardWrapper href="/payments?status=paid">
             <MetricCard
               title="Aluguéis Recebidos"
               value={data.completedPayments}
@@ -173,11 +195,11 @@ export function OverviewCards({ data, selectedMonth, selectedYear, onPeriodChang
               iconColor="text-green-600"
               iconBgClass="bg-green-50 dark:bg-green-900/20"
               borderColorClass="border-l-green-500"
-              clickable
+              clickable={!isFinancial}
             />
-          </Link>
+          </CardWrapper>
 
-          <Link href="/rentals?status=active">
+          <CardWrapper href="/rentals?status=active">
             <MetricCard
               title="Contratos Vigentes"
               value={data.activeContracts}
@@ -186,11 +208,11 @@ export function OverviewCards({ data, selectedMonth, selectedYear, onPeriodChang
               iconColor="text-indigo-600"
               iconBgClass="bg-indigo-50 dark:bg-indigo-900/20"
               borderColorClass="border-l-indigo-500"
-              clickable
+              clickable={!isFinancial}
             />
-          </Link>
+          </CardWrapper>
 
-          <Link href="/tenants">
+          <CardWrapper href="/tenants">
             <MetricCard
               title="Total Inquilinos"
               value={data.totalTenants}
@@ -199,9 +221,9 @@ export function OverviewCards({ data, selectedMonth, selectedYear, onPeriodChang
               iconColor="text-cyan-600"
               iconBgClass="bg-cyan-50 dark:bg-cyan-900/20"
               borderColorClass="border-l-cyan-500"
-              clickable
+              clickable={!isFinancial}
             />
-          </Link>
+          </CardWrapper>
         </div>
       </div>
 

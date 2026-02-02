@@ -270,6 +270,7 @@ export default function Dashboard() {
               selectedYear={selectedYear}
               onPeriodChange={handlePeriodChange}
               exemptLocationIds={exemptLocationIds}
+              userRole={user?.role}
             />
             
             <AnalyticsCharts 

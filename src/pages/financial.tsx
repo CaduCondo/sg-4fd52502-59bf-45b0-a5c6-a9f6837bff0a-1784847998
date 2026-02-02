@@ -495,77 +495,107 @@ export default function Financial() {
                 </Card>
               </ScrollReveal>
 
-              <ScrollReveal delay={0.3}>
-                <Card className="border-l-4 border-l-red-500">
-                  <CardContent className="pt-6">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                          <Percent className="h-4 w-4 text-red-600" />
-                          Taxa de Administração
-                        </p>
-                        <p className="text-2xl font-bold text-red-600">
-                          {new Intl.NumberFormat("pt-BR", {
-                            style: "currency",
-                            currency: "BRL",
-                          }).format(adminFee)}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {config ? config.admin_fee_percentage : 5}% sobre a receita bruta
-                        </p>
+              {user?.role === "financial" ? (
+                // Card único para perfil financeiro
+                <ScrollReveal delay={0.3}>
+                  <Card className="border-l-4 border-l-orange-500">
+                    <CardContent className="pt-6">
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-1">
+                          <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                            <Receipt className="h-4 w-4 text-orange-600" />
+                            Taxas e Contas
+                          </p>
+                          <p className="text-2xl font-bold text-orange-600">
+                            {new Intl.NumberFormat("pt-BR", {
+                              style: "currency",
+                              currency: "BRL",
+                            }).format(adminFee + managementFee + locationExpenses)}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Taxas de administração, gerenciamento e contas do mês
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </ScrollReveal>
+                    </CardContent>
+                  </Card>
+                </ScrollReveal>
+              ) : (
+                // Cards separados para admin/broker
+                <>
+                  <ScrollReveal delay={0.3}>
+                    <Card className="border-l-4 border-l-red-500">
+                      <CardContent className="pt-6">
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-1">
+                            <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                              <Percent className="h-4 w-4 text-red-600" />
+                              Taxa de Administração
+                            </p>
+                            <p className="text-2xl font-bold text-red-600">
+                              {new Intl.NumberFormat("pt-BR", {
+                                style: "currency",
+                                currency: "BRL",
+                              }).format(adminFee)}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {config ? config.admin_fee_percentage : 5}% sobre a receita bruta
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </ScrollReveal>
 
-              <ScrollReveal delay={0.4}>
-                <Card className="border-l-4 border-l-blue-500">
-                  <CardContent className="pt-6">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                          <Settings className="h-4 w-4 text-blue-600" />
-                          Taxa de Gerenciamento
-                        </p>
-                        <p className="text-2xl font-bold text-blue-600">
-                          {new Intl.NumberFormat("pt-BR", {
-                            style: "currency",
-                            currency: "BRL",
-                          }).format(managementFee)}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {config ? config.management_fee_percentage : 3}% sobre a receita bruta
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </ScrollReveal>
+                  <ScrollReveal delay={0.4}>
+                    <Card className="border-l-4 border-l-blue-500">
+                      <CardContent className="pt-6">
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-1">
+                            <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                              <Settings className="h-4 w-4 text-blue-600" />
+                              Taxa de Gerenciamento
+                            </p>
+                            <p className="text-2xl font-bold text-blue-600">
+                              {new Intl.NumberFormat("pt-BR", {
+                                style: "currency",
+                                currency: "BRL",
+                              }).format(managementFee)}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {config ? config.management_fee_percentage : 3}% sobre a receita bruta
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </ScrollReveal>
 
-              <ScrollReveal delay={0.5}>
-                <Card className="border-l-4 border-l-orange-500">
-                  <CardContent className="pt-6">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                          <Receipt className="h-4 w-4 text-orange-600" />
-                          Contas do Mês
-                        </p>
-                        <p className="text-2xl font-bold text-orange-600">
-                          {new Intl.NumberFormat("pt-BR", {
-                            style: "currency",
-                            currency: "BRL",
-                          }).format(locationExpenses)}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          Água, luz e outras despesas dos locais
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </ScrollReveal>
+                  <ScrollReveal delay={0.5}>
+                    <Card className="border-l-4 border-l-orange-500">
+                      <CardContent className="pt-6">
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-1">
+                            <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                              <Receipt className="h-4 w-4 text-orange-600" />
+                              Contas do Mês
+                            </p>
+                            <p className="text-2xl font-bold text-orange-600">
+                              {new Intl.NumberFormat("pt-BR", {
+                                style: "currency",
+                                currency: "BRL",
+                              }).format(locationExpenses)}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Água, luz e outras despesas dos locais
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </ScrollReveal>
+                </>
+              )}
 
               <ScrollReveal delay={0.6}>
                 <Card className="border-l-4 border-l-purple-500">
