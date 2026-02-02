@@ -15,6 +15,35 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_fee_exempt_locations: {
+        Row: {
+          created_at: string | null
+          id: string
+          location_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          location_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          location_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_fee_exempt_locations_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: true
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       auth_user_mapping: {
         Row: {
           auth_user_id: string
