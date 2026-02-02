@@ -108,7 +108,6 @@ export function DepositInstallmentsTable({
 
   const isAdmin = userRole === "admin";
 
-  // Fetch data
   useEffect(() => {
     let isMounted = true;
 
@@ -391,13 +390,12 @@ export function DepositInstallmentsTable({
     return <ArrowUpDown className="h-4 w-4 ml-1 text-slate-400" />;
   };
 
-  // Early returns for loading/permissions
   if (loading) {
     return (
       <ScrollReveal delay={0.6}>
         <Card className="border-slate-200 shadow-sm">
           <CardHeader className="border-b border-slate-100 bg-white pb-4">
-            <CardTitle className="text-xl font-semibold text-slate-800">
+            <CardTitle className="text-2xl font-bold text-slate-800">
               Detalhamento dos Cauções
             </CardTitle>
           </CardHeader>
@@ -413,7 +411,6 @@ export function DepositInstallmentsTable({
     return null;
   }
 
-  // Prepare data for rendering (MOVED OUTSIDE JSX)
   const sortedData = getSortedData();
   const groupedByRental = sortedData.reduce((acc, item) => {
     if (!acc[item.rental_id]) {
@@ -871,7 +868,6 @@ export function DepositInstallmentsTable({
                         );
                       });
                     })}
-                    {/* Linha de Totais */}
                     <TableRow className="bg-slate-100 font-bold border-t-2 border-slate-300">
                       <TableCell colSpan={4} className="text-right text-slate-700 uppercase text-sm">
                         Totais:
