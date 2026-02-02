@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Layout } from "@/components/Layout";
 import { PeriodSelector } from "@/components/dashboard/PeriodSelector";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
@@ -79,6 +79,15 @@ export default function Financial() {
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
 
+  // Ref para controlar execuções simultâneas
+  const loadingRef = useRef(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  
+  const [editingPixCode, setEditingPixCode] = useState<{
+    id: string;
+    value: string;
+  } | null>(null);
+
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -88,11 +97,6 @@ export default function Financial() {
       loadData();
     }
   }, [user, filterMonth, filterYear]);
-  
-  const [editingPixCode, setEditingPixCode] = useState<{
-    id: string;
-    value: string;
-  } | null>(null);
 
   const loadData = async () => {
     try {
@@ -209,7 +213,13 @@ export default function Financial() {
       
       setPayments(filteredPaymentsData);
 
-    } catch (error) {
+    } catch (error: any) {
+      // Ignorar erros de abort
+      if (error?.name === 'AbortError') {
+        console.log("🚫 Requisição cancelada");
+        return;
+      }
+      
       console.error("❌ Error loading financial data:", error);
       toast({
         title: "Erro",
@@ -473,7 +483,7 @@ export default function Financial() {
             </ScrollReveal>
 
             {/* Cards de Métricas - Locações */}
-            <div className={`grid gap-4 ${isFinancial ? 'grid-cols-1 md:grid-cols-4' : 'md:grid-cols-2 lg:grid-cols-5'}`}>
+            <div className={`grid gap-4 ${isFinancial ? 'grid-cols-1 md:grid-cols-4' : user?.role === "broker" ? 'md:grid-cols-2 lg:grid-cols-4' : 'md:grid-cols-2 lg:grid-cols-5'}`}>
               {isFinancial ? (
                 <>
                   <ScrollReveal delay={0.2}>
@@ -622,7 +632,7 @@ export default function Financial() {
                     </Card>
                   </ScrollReveal>
 
-                  {!isAdmin && user?.role === "broker" ? null : (
+                  {user?.role !== "broker" && (
                     <ScrollReveal delay={0.4}>
                       <Card className="border-l-4 border-l-blue-500">
                         <CardContent className="pt-6">
