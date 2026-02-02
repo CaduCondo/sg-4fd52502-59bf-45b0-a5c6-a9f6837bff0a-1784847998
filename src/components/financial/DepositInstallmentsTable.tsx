@@ -525,7 +525,7 @@ export function DepositInstallmentsTable({
         <Card className="border-slate-200 shadow-sm overflow-hidden">
           <CardHeader className="border-b border-slate-100 bg-white pb-4">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <CardTitle className="text-xl font-semibold text-slate-800">
+              <CardTitle className="text-2xl font-bold text-slate-800">
                 Detalhamento dos Cauções
               </CardTitle>
               <div className="flex flex-wrap gap-4 items-end">

@@ -123,7 +123,7 @@ export function TenantFormDialog({
       email: formData.email,
       phone: formData.phone,
       documentType: documentType,
-      status: "active",
+      status: tenant?.status || "active",
       notes: formData.notes,
     };
 
