@@ -104,5 +104,7 @@ export async function getActive(): Promise<Tenant[]> {
     throw error;
   }
 
-  return data || [];
+  // Casting para Tenant[] pois estamos retornando apenas os campos necessários para a UI
+  // para otimização de performance, conforme solicitado
+  return (data || []) as unknown as Tenant[];
 }
