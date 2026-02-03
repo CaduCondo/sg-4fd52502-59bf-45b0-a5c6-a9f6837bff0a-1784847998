@@ -242,6 +242,8 @@ export function RentalFormDialog({
       if (rental) {
         const updateData = { ...commonData };
         
+        console.log("📤 Atualizando locação com dados:", updateData);
+        
         const updatedRental = await updateRentalService(rental.id, updateData);
         await updateFuturePayments(rental.id, totalValue);
 

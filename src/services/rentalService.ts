@@ -225,20 +225,25 @@ export const rentalService = {
   },
 
   async update(id: string, rental: Partial<Rental>): Promise<Rental> {
+    console.log("🔧 rentalService.update - Dados recebidos:", rental);
+    
     const dbData: any = {};
-    if (rental.propertyId) dbData.property_id = rental.propertyId;
-    if (rental.tenantId) dbData.tenant_id = rental.tenantId;
-    if (rental.startDate) dbData.start_date = rental.startDate;
-    if (rental.endDate !== undefined) dbData.end_date = rental.endDate; // CRÍTICO: usar !== undefined para permitir null
-    if (rental.value) {
+    if (rental.propertyId !== undefined) dbData.property_id = rental.propertyId;
+    if (rental.tenantId !== undefined) dbData.tenant_id = rental.tenantId;
+    if (rental.startDate !== undefined) dbData.start_date = rental.startDate;
+    if (rental.endDate !== undefined) dbData.end_date = rental.endDate;
+    if (rental.value !== undefined) {
       dbData.monthly_rent = rental.value;
       dbData.value = rental.value;
     }
-    if (rental.paymentDay) dbData.payment_day = rental.paymentDay;
-    if (rental.depositAmount) dbData.deposit = String(rental.depositAmount);
-    if (rental.status) dbData.status = rental.status;
-    if (rental.attachments) dbData.attachments = rental.attachments;
-    if (rental.contractAttachments) dbData.contract_attachments = rental.contractAttachments;
+    if (rental.paymentDay !== undefined) dbData.payment_day = rental.paymentDay;
+    if (rental.depositAmount !== undefined) dbData.deposit = String(rental.depositAmount);
+    if (rental.status !== undefined) dbData.status = rental.status;
+    if (rental.attachments !== undefined) dbData.attachments = rental.attachments;
+    if (rental.contractAttachments !== undefined) dbData.contract_attachments = rental.contractAttachments;
+    if (rental.hasGarage !== undefined) dbData.has_garage = rental.hasGarage;
+    if (rental.garageValue !== undefined) dbData.garage_value = rental.garageValue;
+    if (rental.hasPartnerBroker !== undefined) dbData.has_partner_broker = rental.hasPartnerBroker;
 
     // Campos do caução
     if (rental.depositInstallments !== undefined) dbData.deposit_installments = rental.depositInstallments;
@@ -251,7 +256,8 @@ export const rentalService = {
     if (rental.depositInstallment3 !== undefined) dbData.deposit_installment_3 = rental.depositInstallment3;
     if (rental.depositInstallment3PaymentDate !== undefined) dbData.deposit_installment_3_payment_date = rental.depositInstallment3PaymentDate;
     if (rental.depositInstallment3PixCode !== undefined) dbData.deposit_installment_3_pix_code = rental.depositInstallment3PixCode;
-    if (rental.hasPartnerBroker !== undefined) dbData.has_partner_broker = rental.hasPartnerBroker;
+
+    console.log("📤 rentalService.update - Enviando para banco:", dbData);
 
     const { data, error } = await supabase
       .from("rentals")
@@ -260,7 +266,12 @@ export const rentalService = {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error("❌ rentalService.update - Erro:", error);
+      throw error;
+    }
+
+    console.log("✅ rentalService.update - Locação atualizada:", data);
 
     // Sincronizar parcelas do caução se houver mudanças
     if (rental.depositInstallments !== undefined) {
@@ -312,143 +323,16 @@ export const rentalService = {
   }
 };
 
-// Aliases para compatibilidade com código existente que pode importar com nomes diferentes
-export const create = async (rental: Omit<Rental, "id">) => {
-  const insertData = {
-    property_id: rental.propertyId,
-    tenant_id: rental.tenantId,
-    start_date: rental.startDate,
-    end_date: rental.endDate,
-    payment_day: rental.paymentDay,
-    monthly_rent: rental.value,
-    value: rental.value,
-    deposit: rental.depositAmount ? String(rental.depositAmount) : null,
-    status: rental.status,
-    is_active: rental.isActive,
-    attachments: rental.attachments,
-    contract_attachments: rental.contractAttachments,
-    
-    // Campos críticos que estavam faltando ou com problemas
-    has_garage: rental.hasGarage,
-    garage_value: rental.garageValue,
-    has_partner_broker: rental.hasPartnerBroker,
-    
-    // Parcelamento da caução
-    deposit_installments: rental.depositInstallments,
-    deposit_installment_1: rental.depositInstallment1,
-    deposit_payment_date: rental.depositPaymentDate,
-    deposit_pix_code: rental.depositPixCode,
-    
-    deposit_installment_2: rental.depositInstallment2,
-    deposit_installment_2_payment_date: rental.depositInstallment2PaymentDate,
-    deposit_installment_2_pix_code: rental.depositInstallment2PixCode,
-    
-    deposit_installment_3: rental.depositInstallment3,
-    deposit_installment_3_payment_date: rental.depositInstallment3PaymentDate,
-    deposit_installment_3_pix_code: rental.depositInstallment3PixCode
-  };
-
-  const { data, error } = await supabase
-    .from("rentals")
-    .insert([insertData])
-    .select()
-    .single();
-
-  if (error) throw error;
-  
-  // Sincronizar parcelas do caução
-  if (rental.depositInstallments && rental.depositInstallments > 0) {
-    await depositInstallmentService.syncDepositInstallments(
-      data.id,
-      rental.depositInstallments,
-      {
-        installment1: rental.depositInstallment1,
-        paymentDate1: rental.depositPaymentDate,
-        pixCode1: rental.depositPixCode,
-        installment2: rental.depositInstallment2,
-        paymentDate2: rental.depositInstallment2PaymentDate,
-        pixCode2: rental.depositInstallment2PixCode,
-        installment3: rental.depositInstallment3,
-        paymentDate3: rental.depositInstallment3PaymentDate,
-        pixCode3: rental.depositInstallment3PixCode,
-      },
-      rental.hasPartnerBroker || false
-    );
-  }
-  
-  return mapRentalData(data);
-};
-
-export const update = async (id: string, rental: Partial<Rental>) => {
-  const updateData: any = {
-    ...(rental.propertyId && { property_id: rental.propertyId }),
-    ...(rental.tenantId && { tenant_id: rental.tenantId }),
-    ...(rental.startDate && { start_date: rental.startDate }),
-    ...(rental.endDate && { end_date: rental.endDate }),
-    ...(rental.paymentDay && { payment_day: rental.paymentDay }),
-    ...(rental.value && { value: rental.value }),
-    ...(rental.depositAmount && { deposit: rental.depositAmount }),
-    ...(rental.status && { status: rental.status }),
-    ...(rental.isActive !== undefined && { is_active: rental.isActive }),
-    ...(rental.attachments && { attachments: rental.attachments }),
-    ...(rental.contractAttachments && { contract_attachments: rental.contractAttachments }),
-    ...(rental.hasGarage !== undefined && { has_garage: rental.hasGarage }),
-    ...(rental.garageValue !== undefined && { garage_value: rental.garageValue }),
-    ...(rental.hasPartnerBroker !== undefined && { has_partner_broker: rental.hasPartnerBroker }),
-    ...(rental.depositInstallments !== undefined && { deposit_installments: rental.depositInstallments }),
-    ...(rental.depositInstallment1 !== undefined && { deposit_installment_1: rental.depositInstallment1 }),
-    ...(rental.depositPaymentDate !== undefined && { deposit_payment_date: rental.depositPaymentDate }),
-    ...(rental.depositPixCode !== undefined && { deposit_pix_code: rental.depositPixCode }),
-    ...(rental.depositInstallment2 !== undefined && { deposit_installment_2: rental.depositInstallment2 }),
-    ...(rental.depositInstallment2PaymentDate !== undefined && { deposit_installment_2_payment_date: rental.depositInstallment2PaymentDate }),
-    ...(rental.depositInstallment2PixCode !== undefined && { deposit_installment_2_pix_code: rental.depositInstallment2PixCode }),
-    ...(rental.depositInstallment3 !== undefined && { deposit_installment_3: rental.depositInstallment3 }),
-    ...(rental.depositInstallment3PaymentDate !== undefined && { deposit_installment_3_payment_date: rental.depositInstallment3PaymentDate }),
-    ...(rental.depositInstallment3PixCode !== undefined && { deposit_installment_3_pix_code: rental.depositInstallment3PixCode }),
-  };
-
-  const { data, error } = await supabase
-    .from("rentals")
-    .update(updateData)
-    .eq("id", id)
-    .select()
-    .single();
-
-  if (error) throw error;
-
-  // Sincronizar parcelas do caução se houver mudanças
-  if (rental.depositInstallments !== undefined) {
-    await depositInstallmentService.syncDepositInstallments(
-      id,
-      rental.depositInstallments || null,
-      {
-        installment1: rental.depositInstallment1,
-        paymentDate1: rental.depositPaymentDate,
-        pixCode1: rental.depositPixCode,
-        installment2: rental.depositInstallment2,
-        paymentDate2: rental.depositInstallment2PaymentDate,
-        pixCode2: rental.depositInstallment2PixCode,
-        installment3: rental.depositInstallment3,
-        paymentDate3: rental.depositInstallment3PaymentDate,
-        pixCode3: rental.depositInstallment3PixCode,
-      },
-      rental.hasPartnerBroker || data.has_partner_broker || false
-    );
-  }
-
-  // Atualizar recebimentos pendentes com as mudanças da locação
-  await updatePendingPaymentsOnRentalEdit({
-    id,
-    startDate: data.start_date,
-    endDate: data.end_date,
-    paymentDay: data.payment_day,
-    value: data.value || data.monthly_rent,
-  });
-
-  return data;
-};
-
+// Aliases para compatibilidade com código existente
 export const getAll = rentalService.getAll;
 export const getById = rentalService.getById;
 export const remove = rentalService.remove;
 export const terminateContract = rentalService.terminateContract;
+
+export const create = async (rental: Omit<Rental, "id">) => {
+  return rentalService.create(rental);
+};
+
+export const update = async (id: string, rental: Partial<Rental>) => {
+  return rentalService.update(id, rental);
+};
