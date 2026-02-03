@@ -116,9 +116,15 @@ export function useRentalForm({
         setIsDepositInstallment(hasInstallments);
         setDepositInstallmentCount(rental.depositInstallments ? rental.depositInstallments.toString() : "");
         
+        // CRÍTICO: Garantir que depositPaymentDate e depositPixCode sejam inicializados
+        console.log("📅 depositPaymentDate do rental:", rental.depositPaymentDate);
+        console.log("🔑 depositPixCode do rental:", rental.depositPixCode);
+        
         setDepositPaymentDate(
           rental.depositPaymentDate 
-            ? new Date(rental.depositPaymentDate + 'T00:00:00').toISOString().split('T')[0]
+            ? (typeof rental.depositPaymentDate === 'string' 
+                ? rental.depositPaymentDate.split('T')[0] 
+                : new Date(rental.depositPaymentDate).toISOString().split('T')[0])
             : ""
         );
         setDepositPixCode(rental.depositPixCode || "");
@@ -129,12 +135,16 @@ export function useRentalForm({
         
         setDepositInstallment2PaymentDate(
           rental.depositInstallment2PaymentDate 
-            ? new Date(rental.depositInstallment2PaymentDate + 'T00:00:00').toISOString().split('T')[0] 
+            ? (typeof rental.depositInstallment2PaymentDate === 'string'
+                ? rental.depositInstallment2PaymentDate.split('T')[0]
+                : new Date(rental.depositInstallment2PaymentDate).toISOString().split('T')[0])
             : ""
         );
         setDepositInstallment3PaymentDate(
           rental.depositInstallment3PaymentDate 
-            ? new Date(rental.depositInstallment3PaymentDate + 'T00:00:00').toISOString().split('T')[0] 
+            ? (typeof rental.depositInstallment3PaymentDate === 'string'
+                ? rental.depositInstallment3PaymentDate.split('T')[0]
+                : new Date(rental.depositInstallment3PaymentDate).toISOString().split('T')[0])
             : ""
         );
         
