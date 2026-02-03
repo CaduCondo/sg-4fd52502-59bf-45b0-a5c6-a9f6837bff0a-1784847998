@@ -95,7 +95,7 @@ export const remove = deleteTenant;
 export async function getActive(): Promise<Tenant[]> {
   const { data, error } = await supabase
     .from("tenants")
-    .select("id, name, status, location_id")
+    .select("id, name, status")
     .eq("status", "active")
     .order("name");
 
