@@ -12,18 +12,21 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { useToast } from "@/hooks/use-toast";
 import { login } from "@/lib/auth";
 import Head from "next/head";
+import { checkSupabaseHealth } from "@/integrations/supabase/client";
 
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
 
 export default function Login() {
   const router = useRouter();
+  const { toast } = useToast();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
+  const [supabaseStatus, setSupabaseStatus] = useState<'checking' | 'healthy' | 'unhealthy'>('checking');
   
   // Forgot Password State
   const [showForgotPassword, setShowForgotPassword] = useState(false);
@@ -36,10 +39,31 @@ export default function Login() {
     initializeStorage();
     checkLockout();
     
+    // Verificar saúde do Supabase
+    const checkHealth = async () => {
+      const health = await checkSupabaseHealth();
+      
+      if (!health.healthy) {
+        setSupabaseStatus('unhealthy');
+        setError(health.message);
+        
+        toast({
+          title: "⚠️ Problema de Conexão",
+          description: health.message,
+          variant: "destructive",
+          duration: 10000,
+        });
+      } else {
+        setSupabaseStatus('healthy');
+      }
+    };
+    
+    checkHealth();
+    
     if (isAuthenticated()) {
       router.push("/dashboard");
     }
-  }, [router]);
+  }, [router, toast]);
 
   const checkLockout = () => {
     const lockoutTime = parseInt(localStorage.getItem("lockoutTime") || "0");
@@ -72,6 +96,16 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isLocked) return;
+    
+    // Verificar saúde do Supabase antes de tentar login
+    if (supabaseStatus === 'unhealthy') {
+      toast({
+        title: "❌ Não foi possível conectar",
+        description: "O serviço está temporariamente indisponível. Tente novamente em alguns minutos.",
+        variant: "destructive",
+      });
+      return;
+    }
     
     setError("");
     setLoading(true);
@@ -221,9 +255,25 @@ export default function Login() {
               <Button 
                 type="submit" 
                 className="w-full h-11 text-base bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg"
-                disabled={loading || isLocked}
+                disabled={loading || isLocked || supabaseStatus === 'unhealthy'}
               >
-                {loading ? "Entrando..." : isLocked ? "Conta Bloqueada" : "Entrar"}
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Entrando...
+                  </>
+                ) : isLocked ? (
+                  "Conta Bloqueada"
+                ) : supabaseStatus === 'unhealthy' ? (
+                  "Serviço Indisponível"
+                ) : supabaseStatus === 'checking' ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Verificando conexão...
+                  </>
+                ) : (
+                  "Entrar"
+                )}
               </Button>
               
               <div className="text-center mt-4">

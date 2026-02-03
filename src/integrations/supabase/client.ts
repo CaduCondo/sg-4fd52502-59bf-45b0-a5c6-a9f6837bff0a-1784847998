@@ -69,3 +69,69 @@ export const getSupabaseSession = async () => {
     return null;
   }
 };
+
+// Health check aprimorado para detectar projeto pausado
+export const checkSupabaseHealth = async (): Promise<{
+  healthy: boolean;
+  status: 'healthy' | 'paused' | 'unhealthy' | 'network_error';
+  message: string;
+}> => {
+  try {
+    console.log('🏥 Verificando saúde do Supabase...');
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    
+    const { data, error } = await supabase
+      .from('system_users')
+      .select('id')
+      .limit(1)
+      .abortSignal(controller.signal);
+    
+    clearTimeout(timeoutId);
+    
+    if (error) {
+      console.error('❌ Erro no health check:', error);
+      
+      // Detectar projeto pausado
+      if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError')) {
+        return {
+          healthy: false,
+          status: 'paused',
+          message: '🛑 Projeto Supabase pausado ou offline. Acesse o dashboard do Supabase para reativá-lo.'
+        };
+      }
+      
+      return {
+        healthy: false,
+        status: 'unhealthy',
+        message: `⚠️ Serviço do Supabase com problemas: ${error.message}`
+      };
+    }
+    
+    console.log('✅ Supabase funcionando normalmente');
+    return {
+      healthy: true,
+      status: 'healthy',
+      message: '✅ Conexão estabelecida com sucesso'
+    };
+    
+  } catch (err: any) {
+    console.error('❌ Erro crítico no health check:', err);
+    
+    // Detectar erro de rede/projeto pausado
+    if (err.name === 'AbortError' || err.message?.includes('fetch')) {
+      return {
+        healthy: false,
+        status: 'paused',
+        message: '🛑 Não foi possível conectar ao Supabase. O projeto pode estar pausado ou offline.'
+      };
+    }
+    
+    return {
+      healthy: false,
+      status: 'network_error',
+      message: '❌ Erro de rede ou conexão. Verifique sua internet e o status do Supabase.'
+    };
+  }
+};
