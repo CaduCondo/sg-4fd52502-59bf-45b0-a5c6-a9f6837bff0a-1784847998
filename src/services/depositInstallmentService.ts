@@ -171,7 +171,7 @@ export const depositInstallmentService = {
           rental_id: rentalId,
           installment_number: installmentData.installment_number,
           total_installments: depositInstallments,
-          installment_total: totalDeposit,
+          installment_total: Math.round(totalDeposit),
           amount: installmentData.amount,
           pix_code: installmentData.pix_code,
           payment_date: installmentData.payment_date,
@@ -194,6 +194,7 @@ export const depositInstallmentService = {
           if (updateError) {
             console.error(`❌ Erro ao atualizar parcela ${installmentData.installment_number}:`, updateError);
             console.error("   - Dados que causaram erro:", installmentRecord);
+            console.error("   - Erro detalhado:", JSON.stringify(updateError, null, 2));
             throw updateError;
           }
 
@@ -207,6 +208,7 @@ export const depositInstallmentService = {
           if (insertError) {
             console.error(`❌ Erro ao criar parcela ${installmentData.installment_number}:`, insertError);
             console.error("   - Dados que causaram erro:", installmentRecord);
+            console.error("   - Erro detalhado:", JSON.stringify(insertError, null, 2));
             throw insertError;
           }
 
