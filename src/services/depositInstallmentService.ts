@@ -11,7 +11,12 @@ const normalizeDate = (date: string | Date | null): string | null => {
     return date;
   }
   
-  // Se for objeto Date ou string ISO completa
+  // Se for string ISO completa (com hora), extrair apenas a parte da data
+  if (typeof date === 'string' && date.includes('T')) {
+    return date.split('T')[0];
+  }
+  
+  // Se for objeto Date ou string em outro formato
   const d = new Date(date);
   if (isNaN(d.getTime())) return null;
   
@@ -174,7 +179,10 @@ export const depositInstallmentService = {
           internal_commission: commissions.internal_commission,
         };
 
-        console.log(`💾 Salvando parcela ${installmentData.installment_number} com payment_date:`, installmentData.payment_date);
+        console.log(`💾 Salvando parcela ${installmentData.installment_number}:`);
+        console.log("   - payment_date original:", installmentData.payment_date);
+        console.log("   - payment_date normalizada:", installmentRecord.payment_date);
+        console.log("   - Dados completos:", installmentRecord);
 
         if (existingInstallment) {
           // ATUALIZAR parcela existente
@@ -184,7 +192,8 @@ export const depositInstallmentService = {
             .eq("id", existingInstallment.id);
 
           if (updateError) {
-            console.error(`Erro ao atualizar parcela ${installmentData.installment_number}:`, updateError);
+            console.error(`❌ Erro ao atualizar parcela ${installmentData.installment_number}:`, updateError);
+            console.error("   - Dados que causaram erro:", installmentRecord);
             throw updateError;
           }
 
@@ -196,7 +205,8 @@ export const depositInstallmentService = {
             .insert([installmentRecord]);
 
           if (insertError) {
-            console.error(`Erro ao criar parcela ${installmentData.installment_number}:`, insertError);
+            console.error(`❌ Erro ao criar parcela ${installmentData.installment_number}:`, insertError);
+            console.error("   - Dados que causaram erro:", installmentRecord);
             throw insertError;
           }
 
