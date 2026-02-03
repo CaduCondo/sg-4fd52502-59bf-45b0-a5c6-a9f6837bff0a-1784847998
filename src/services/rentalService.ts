@@ -12,7 +12,7 @@ const mapRentalData = (data: any): Rental => {
     startDate: data.start_date,
     endDate: data.end_date,
     paymentDay: data.payment_day,
-    value: Number(data.value || data.monthly_rent || 0), // Fallback seguro
+    value: Number(data.value || data.monthly_rent || 0),
     depositAmount: data.deposit ? Number(data.deposit) : 0,
     status: data.status,
     isActive: data.is_active,
@@ -21,12 +21,10 @@ const mapRentalData = (data: any): Rental => {
     autoRenew: data.auto_renew,
     pixCode: data.pix_code,
     
-    // Mapeamento explícito dos novos campos
     hasGarage: Boolean(data.has_garage),
     garageValue: data.garage_value ? Number(data.garage_value) : undefined,
     hasPartnerBroker: data.has_partner_broker || false,
     
-    // Campos de parcelamento da caução
     depositInstallments: data.deposit_installments,
     depositInstallment1: data.deposit_installment_1 ? Number(data.deposit_installment_1) : undefined,
     depositPaymentDate: data.deposit_payment_date,
@@ -40,8 +38,22 @@ const mapRentalData = (data: any): Rental => {
     depositInstallment3PaymentDate: data.deposit_installment_3_payment_date,
     depositInstallment3PixCode: data.deposit_installment_3_pix_code,
 
-    // autoRenew removido daqui pois já existe acima no objeto
-    // tenants removido pois não existe na interface Rental
+    // Incluir dados relacionados para facilitar renderização
+    property: data.properties ? {
+      id: data.properties.id,
+      locationId: data.properties.location_id,
+      propertyIdentifier: data.properties.property_identifier,
+      complement: data.properties.complement,
+      value: data.properties.value,
+      location: data.properties.locations?.name || '',
+      locationName: data.properties.locations?.name || '',
+    } : undefined,
+    
+    tenant: data.tenants ? {
+      id: data.tenants.id,
+      name: data.tenants.name,
+      phone: data.tenants.phone,
+    } : undefined,
   };
 };
 
@@ -60,13 +72,13 @@ export const rentalService = {
         ),
         properties!rentals_property_id_fkey (
           id,
+          location_id,
           property_identifier,
           complement,
           value,
           locations!properties_location_id_fkey (
             id,
-            name,
-            city
+            name
           )
         )
       `)
@@ -81,11 +93,11 @@ export const rentalService = {
 
     console.log("✅ Rentals fetched:", data?.length, "records");
     if (data && data.length > 0) {
-      console.log("📊 First rental value check:", {
+      console.log("📊 First rental data check:", {
         id: data[0].id,
         value: data[0].value,
-        monthly_rent: data[0].monthly_rent,
-        mapped_value: Number(data[0].value || data[0].monthly_rent || 0)
+        property: data[0].properties,
+        tenant: data[0].tenants
       });
     }
 

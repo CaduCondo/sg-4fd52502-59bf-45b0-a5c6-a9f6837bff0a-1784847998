@@ -86,10 +86,6 @@ export default function RentalsPage() {
   const inactiveRentals = rentals.filter((r) => !r.isActive);
   const canCreateRental = availableProperties.length > 0 && availableTenants.length > 0;
 
-  const getPropertyByRental = (rental: Rental) => {
-    return availableProperties.find((p) => p.id === rental.propertyId);
-  };
-
   const formatDate = (dateString: string) => {
     if (!dateString) return "-";
     const date = new Date(dateString);
@@ -295,9 +291,6 @@ export default function RentalsPage() {
                 {viewMode === "grid" ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {activeRentals.map((rental) => {
-                      const property = getPropertyByRental(rental);
-                      const location = property ? locations.find((loc) => loc.id === property.locationId) : null;
-                      const tenant = availableTenants.find((t) => t.id === rental.tenantId);
                       const alert = calculateContractAlert(rental.endDate);
                       const alertClasses = getAlertClasses(alert.level);
                       const badgeClasses = getAlertBadgeClasses(alert.level);
@@ -311,7 +304,7 @@ export default function RentalsPage() {
                           <CardContent className="p-4">
                             <div className="flex items-start justify-between mb-3">
                               <h3 className="text-lg font-semibold text-blue-600">
-                                {location?.name || property?.location || "Local não encontrado"}
+                                {rental.property?.location || "Local não encontrado"}
                               </h3>
                               <div className="flex flex-col gap-1 items-end">
                                 <Badge className={`${badgeClasses} px-3 py-1 text-xs font-medium rounded-md`}>
@@ -330,15 +323,15 @@ export default function RentalsPage() {
                               </div>
                             </div>
 
-                            {property?.complement && (
+                            {rental.property?.complement && (
                               <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                                {property.complement}
+                                {rental.property.complement}
                               </p>
                             )}
 
                             <div className="mb-3">
                               <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Inquilino:</p>
-                              <p className="text-sm text-gray-600 dark:text-gray-400">{tenant?.name || "-"}</p>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">{rental.tenant?.name || "-"}</p>
                             </div>
 
                             <div className="flex items-end justify-between">
@@ -395,9 +388,6 @@ export default function RentalsPage() {
                       </TableHeader>
                       <TableBody>
                         {activeRentals.map((rental) => {
-                          const property = getPropertyByRental(rental);
-                          const location = property ? locations.find((loc) => loc.id === property.locationId) : null;
-                          const tenant = availableTenants.find((t) => t.id === rental.tenantId);
                           const alert = calculateContractAlert(rental.endDate);
                           const alertClasses = getAlertClasses(alert.level);
                           const badgeClasses = getAlertBadgeClasses(alert.level);
@@ -409,10 +399,10 @@ export default function RentalsPage() {
                               onClick={() => handleViewRental(rental)}
                             >
                               <TableCell className="font-medium text-blue-600">
-                                {location?.name || property?.location || "Local não encontrado"}
+                                {rental.property?.location || "Local não encontrado"}
                               </TableCell>
-                              <TableCell>{property?.complement || "-"}</TableCell>
-                              <TableCell>{tenant?.name || "-"}</TableCell>
+                              <TableCell>{rental.property?.complement || "-"}</TableCell>
+                              <TableCell>{rental.tenant?.name || "-"}</TableCell>
                               <TableCell className="font-bold text-emerald-600">
                                 {formatCurrency(rental.value || 0)}
                               </TableCell>
@@ -486,31 +476,27 @@ export default function RentalsPage() {
                   {viewMode === "grid" ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {inactiveRentals.map((rental) => {
-                        const property = getPropertyByRental(rental);
-                        const location = property ? locations.find((loc) => loc.id === property.locationId) : null;
-                        const tenant = availableTenants.find((t) => t.id === rental.tenantId);
-
                         return (
                           <Card key={rental.id} className="opacity-75">
                             <CardContent className="p-4">
                               <div className="flex items-start justify-between mb-3">
                                 <h3 className="text-lg font-semibold text-blue-600">
-                                  {location?.name || property?.location || "Local não encontrado"}
+                                  {rental.property?.location || "Local não encontrado"}
                                 </h3>
                                 <Badge className="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 text-xs font-medium rounded-md">
                                   Inativa
                                 </Badge>
                               </div>
 
-                              {property?.complement && (
+                              {rental.property?.complement && (
                                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                                  {property.complement}
+                                  {rental.property.complement}
                                 </p>
                               )}
 
                               <div className="mb-3">
                                 <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Inquilino:</p>
-                                <p className="text-sm text-gray-600 dark:text-gray-400">{tenant?.name || "-"}</p>
+                                <p className="text-sm text-gray-600 dark:text-gray-400">{rental.tenant?.name || "-"}</p>
                               </div>
 
                               <div className="flex items-end justify-between">
@@ -544,17 +530,13 @@ export default function RentalsPage() {
                         </TableHeader>
                         <TableBody>
                           {inactiveRentals.map((rental) => {
-                            const property = getPropertyByRental(rental);
-                            const location = property ? locations.find((loc) => loc.id === property.locationId) : null;
-                            const tenant = availableTenants.find((t) => t.id === rental.tenantId);
-
                             return (
                               <TableRow key={rental.id} className="opacity-75">
                                 <TableCell className="font-medium text-blue-600">
-                                  {location?.name || property?.location || "Local não encontrado"}
+                                  {rental.property?.location || "Local não encontrado"}
                                 </TableCell>
-                                <TableCell>{property?.complement || "-"}</TableCell>
-                                <TableCell>{tenant?.name || "-"}</TableCell>
+                                <TableCell>{rental.property?.complement || "-"}</TableCell>
+                                <TableCell>{rental.tenant?.name || "-"}</TableCell>
                                 <TableCell className="font-bold text-gray-600">
                                   {formatCurrency(rental.value || 0)}
                                 </TableCell>
