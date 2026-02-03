@@ -196,22 +196,22 @@ export function RentalFormDialog({
       const propertyId = String(selectedPropertyId);
       const tenantId = String(selectedTenantId);
       
+      // CRÍTICO: Usar camelCase para compatibilidade com a interface Rental e o serviço update
       const commonData = {
-        property_id: propertyId,
-        tenant_id: tenantId,
-        start_date: startDate,
-        end_date: endDate || null,
-        payment_day: parseInt(paymentDay),
-        monthly_rent: totalValue,
+        propertyId: propertyId,
+        tenantId: tenantId,
+        startDate: startDate,
+        endDate: endDate || null,
+        paymentDay: parseInt(paymentDay),
         value: totalValue,
-        deposit: parseCurrencyToNumber(depositAmount) || 0,
+        depositAmount: parseCurrencyToNumber(depositAmount) || 0,
         status: "active" as const,
-        is_active: true,
-        attachments: attachments.length > 0 ? attachments : null,
-        contract_attachments: null,
-        has_garage: hasGarage,
-        garage_value: hasGarage && garageValue ? parseCurrencyToNumber(garageValue) : null,
-        has_partner_broker: hasPartnerBroker,
+        isActive: true,
+        attachments: attachments.length > 0 ? attachments : [],
+        contractAttachments: [],
+        hasGarage: hasGarage,
+        garageValue: hasGarage && garageValue ? parseCurrencyToNumber(garageValue) : undefined,
+        hasPartnerBroker: hasPartnerBroker,
       };
       
       const depositData: any = {
@@ -237,14 +237,15 @@ export function RentalFormDialog({
         }
       }
 
-      console.log("📤 ENVIANDO DADOS PARA SUPABASE:", commonData);
+      // Merge commonData with depositData for complete update payload
+      const fullUpdateData = { ...commonData, ...depositData };
+
+      console.log("📤 ENVIANDO DADOS PARA SUPABASE:", fullUpdateData);
 
       if (rental) {
-        const updateData = { ...commonData };
+        console.log("📤 Atualizando locação com dados:", fullUpdateData);
         
-        console.log("📤 Atualizando locação com dados:", updateData);
-        
-        const updatedRental = await updateRentalService(rental.id, updateData);
+        const updatedRental = await updateRentalService(rental.id, fullUpdateData);
         await updateFuturePayments(rental.id, totalValue);
 
         if (rental.paymentDay !== parseInt(paymentDay)) {
@@ -259,13 +260,15 @@ export function RentalFormDialog({
           ...rental,
           ...updatedRental,
           status: isViewMode ? "active" : finalStatus,
-          attachments: (updatedRental.attachments as unknown as string[]) || [],
-          contractAttachments: (updatedRental.contract_attachments as unknown as string[]) || [],
-          value: Number(updatedRental.value || updatedRental.monthly_rent || rental.value),
-          isActive: Boolean(updatedRental.is_active),
-          hasGarage: Boolean(updatedRental.has_garage),
-          garageValue: updatedRental.garage_value ? Number(updatedRental.garage_value) : undefined,
-          hasPartnerBroker: Boolean(updatedRental.has_partner_broker),
+          // Corrigido acesso para camelCase
+          attachments: updatedRental.attachments || [],
+          contractAttachments: updatedRental.contractAttachments || [],
+          value: Number(updatedRental.value || 0),
+          isActive: Boolean(updatedRental.isActive),
+          hasGarage: Boolean(updatedRental.hasGarage),
+          garageValue: updatedRental.garageValue ? Number(updatedRental.garageValue) : undefined,
+          hasPartnerBroker: Boolean(updatedRental.hasPartnerBroker),
+          
           depositInstallments: Number(depositData.depositInstallments),
           depositInstallment1: Number(depositData.depositInstallment1),
           depositInstallment2: depositData.depositInstallment2 ? Number(depositData.depositInstallment2) : undefined,
@@ -302,6 +305,7 @@ export function RentalFormDialog({
 
         setShowContract(true);
       } else {
+        // Mapear camelCase para snake_case para inserção direta no Supabase (create case)
         const insertPayload: any = {
             property_id: propertyId,
             tenant_id: tenantId,
