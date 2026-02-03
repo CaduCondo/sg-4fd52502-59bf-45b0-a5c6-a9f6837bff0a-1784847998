@@ -64,7 +64,19 @@ export const rentalService = {
     const { data, error } = await supabase
       .from("rentals")
       .select(`
-        *,
+        id,
+        property_id,
+        tenant_id,
+        start_date,
+        end_date,
+        payment_day,
+        value,
+        deposit,
+        status,
+        is_active,
+        has_garage,
+        garage_value,
+        has_partner_broker,
         tenants!rentals_tenant_id_fkey (
           id,
           name,
@@ -92,14 +104,6 @@ export const rentalService = {
     }
 
     console.log("✅ Rentals fetched:", data?.length, "records");
-    if (data && data.length > 0) {
-      console.log("📊 First rental data check:", {
-        id: data[0].id,
-        value: data[0].value,
-        property: data[0].properties,
-        tenant: data[0].tenants
-      });
-    }
 
     return (data || []).map(mapRentalData);
   },

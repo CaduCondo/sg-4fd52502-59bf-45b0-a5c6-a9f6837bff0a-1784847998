@@ -75,6 +75,8 @@ export function useRentalForm({
   useEffect(() => {
     if (open && !initializedRef.current) {
       initializedRef.current = true;
+      
+      // Define se inicia em modo de edição ou visualização
       setIsEditing(!isViewMode);
 
       if (rental) {
@@ -93,10 +95,6 @@ export function useRentalForm({
           rental.depositAmount ? formatCurrency(rental.depositAmount) : ""
         );
         setAttachments(rental.contractAttachments || rental.attachments || []);
-        console.log("✅ Campos populados:", {
-          propertyId: rental.propertyId,
-          tenantId: rental.tenantId,
-        });
       } else {
         resetForm();
       }
@@ -105,6 +103,7 @@ export function useRentalForm({
     if (!open) {
       initializedRef.current = false;
       resetForm();
+      setIsEditing(false); // Resetar para modo visualização ao fechar
     }
   }, [open, rental, isViewMode]);
 

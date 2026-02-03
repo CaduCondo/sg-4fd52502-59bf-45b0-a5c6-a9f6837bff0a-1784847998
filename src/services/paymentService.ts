@@ -530,26 +530,32 @@ export async function migrateProportionalFirstPayments(): Promise<{
 }
 
 /**
- * NOVA FUNÇÃO - Atualiza recebimentos pendentes quando locação é editada
+ * Atualiza recebimentos pendentes quando locação é editada
  * Atualiza valores, datas, e sincroniza com mudanças no contrato
  */
-export async function updatePendingPaymentsOnRentalEdit(rental: any): Promise<void> {
+export async function updatePendingPaymentsOnRentalEdit(rentalData: {
+  id: string;
+  startDate: string;
+  endDate: string | null;
+  paymentDay: number;
+  value: number;
+}): Promise<void> {
   console.log("=== INICIO updatePendingPaymentsOnRentalEdit ===");
-  console.log("Rental ID:", rental.id);
+  console.log("Rental ID:", rentalData.id);
 
-  const startDate = new Date(rental.startDate || rental.start_date);
-  const endDate = rental.endDate || rental.end_date 
-    ? new Date(rental.endDate || rental.end_date) 
+  const startDate = new Date(rentalData.startDate);
+  const endDate = rentalData.endDate 
+    ? new Date(rentalData.endDate) 
     : new Date(startDate.getFullYear() + 1, startDate.getMonth(), startDate.getDate());
   
-  const paymentDay = Number(rental.paymentDay || rental.payment_day);
-  const monthlyValue = Number(rental.value || rental.monthly_rent);
+  const paymentDay = rentalData.paymentDay;
+  const monthlyValue = rentalData.value;
 
   // 1. Buscar recebimentos pendentes existentes
   const { data: existingPayments, error: fetchError } = await supabase
     .from("payments")
     .select("*")
-    .eq("rental_id", rental.id)
+    .eq("rental_id", rentalData.id)
     .eq("status", "pending")
     .order("due_date", { ascending: true });
 
@@ -664,7 +670,7 @@ export async function updatePendingPaymentsOnRentalEdit(rental: any): Promise<vo
   if (expectedPayments.length > (existingPayments?.length || 0)) {
     const newPayments = expectedPayments.slice(existingPayments?.length || 0).map(p => ({
       ...p,
-      rental_id: rental.id,
+      rental_id: rentalData.id,
       status: 'pending',
     }));
 
