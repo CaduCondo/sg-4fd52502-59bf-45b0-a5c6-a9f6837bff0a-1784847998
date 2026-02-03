@@ -308,32 +308,33 @@ export default function RentalsPage() {
                           onClick={() => handleViewRental(rental)}
                         >
                           <CardContent className="p-4">
-                            <div className="flex items-start justify-between mb-3">
-                              <h3 className="text-lg font-semibold text-blue-600">
-                                {rental.property?.location || "Local não encontrado"}
-                              </h3>
-                              <div className="flex flex-col gap-1 items-end">
-                                <Badge className={`${badgeClasses} px-3 py-1 text-xs font-medium rounded-md`}>
+                            <div className="flex items-start justify-between gap-3 mb-3">
+                              <div className="flex-1 min-w-0">
+                                <h3 className="text-lg font-semibold text-blue-600 truncate">
+                                  {rental.property?.location || "Local não encontrado"}
+                                </h3>
+                                {rental.property?.complement && (
+                                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                                    {rental.property.complement}
+                                  </p>
+                                )}
+                              </div>
+                              <div className="flex flex-col gap-1.5 items-end flex-shrink-0">
+                                <Badge className={`${badgeClasses} px-3 py-1 text-xs font-medium rounded-md whitespace-nowrap`}>
                                   Ativa
                                 </Badge>
                                 {alert.level !== "normal" && (
-                                  <Badge variant="outline" className={`text-xs ${
+                                  <Badge variant="outline" className={`text-xs whitespace-nowrap ${
                                     alert.level === "critical" 
                                       ? "border-red-500 text-red-700 bg-red-50" 
                                       : "border-yellow-500 text-yellow-700 bg-yellow-50"
                                   }`}>
-                                    <AlertTriangle className="h-3 w-3 mr-1" />
-                                    {alert.message}
+                                    <AlertTriangle className="h-3 w-3 mr-1 flex-shrink-0" />
+                                    <span>{alert.message}</span>
                                   </Badge>
                                 )}
                               </div>
                             </div>
-
-                            {rental.property?.complement && (
-                              <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                                {rental.property.complement}
-                              </p>
-                            )}
 
                             <div className="mb-3">
                               <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Inquilino:</p>
