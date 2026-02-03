@@ -6,6 +6,7 @@ import {
   updateSingle, 
   deleteSingle 
 } from "@/lib/supabaseHelpers";
+import { supabase } from "@/integrations/supabase/client";
 
 const TABLE = "tenants";
 
@@ -90,3 +91,18 @@ export async function deleteTenant(id: string): Promise<void> {
 
 // Alias
 export const remove = deleteTenant;
+
+export async function getActive(): Promise<Tenant[]> {
+  const { data, error } = await supabase
+    .from("tenants")
+    .select("id, name, status, location_id")
+    .eq("status", "active")
+    .order("name");
+
+  if (error) {
+    console.error("Error fetching active tenants:", error);
+    throw error;
+  }
+
+  return data || [];
+}

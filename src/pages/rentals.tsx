@@ -5,10 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Home, Plus, User, ChevronDown, ChevronUp, Trash2, XCircle, Grid3x3, List } from "lucide-react";
+import { Home, Plus, User, ChevronDown, ChevronUp, Trash2, XCircle, Grid3x3, List, AlertTriangle } from "lucide-react";
 import { getAll as getAllRentals, remove as deleteRental, terminateContract } from "@/services/rentalService";
-import { getAll as getAllProperties, update as updateProperty } from "@/services/propertyService";
-import { getAll as getAllTenants, update as updateTenant } from "@/services/tenantService";
+import { getAvailable as getAvailableProperties, update as updateProperty } from "@/services/propertyService";
+import { getActive as getActiveTenants, update as updateTenant } from "@/services/tenantService";
 import { getAll as getAllLocations } from "@/services/locationService";
 import { RentalFormDialog } from "@/components/rentals/RentalFormDialog";
 import type { Rental, Property, Tenant, Location } from "@/types";
@@ -24,14 +24,16 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { calculateContractAlert, getAlertClasses, getAlertBadgeClasses } from "@/lib/contractAlerts";
 
 export default function RentalsPage() {
   const { toast } = useToast();
   const [rentals, setRentals] = useState<Rental[]>([]);
-  const [properties, setProperties] = useState<Property[]>([]);
-  const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [availableProperties, setAvailableProperties] = useState<Property[]>([]);
+  const [availableTenants, setAvailableTenants] = useState<Tenant[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingAvailable, setLoadingAvailable] = useState(true);
   const [isRentalDialogOpen, setIsRentalDialogOpen] = useState(false);
   const [selectedRental, setSelectedRental] = useState<Rental | null>(null);
   const [isViewMode, setIsViewMode] = useState(false);
@@ -40,18 +42,16 @@ export default function RentalsPage() {
   const [showInactive, setShowInactive] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
 
-  const loadData = async () => {
+  const loadRentalsData = async () => {
     try {
       setLoading(true);
       const rentalsData = await getAllRentals();
       setRentals(rentalsData);
-      
-      loadAuxiliaryData();
     } catch (error) {
-      console.error("Erro ao carregar dados:", error);
+      console.error("Erro ao carregar locações:", error);
       toast({
         title: "Erro",
-        description: "Não foi possível carregar os dados.",
+        description: "Não foi possível carregar as locações.",
         variant: "destructive",
       });
     } finally {
@@ -59,34 +59,35 @@ export default function RentalsPage() {
     }
   };
 
-  const loadAuxiliaryData = async () => {
+  const loadAvailableData = async () => {
     try {
+      setLoadingAvailable(true);
       const [propertiesData, tenantsData, locationsData] = await Promise.all([
-        getAllProperties(),
-        getAllTenants(),
+        getAvailableProperties(),
+        getActiveTenants(),
         getAllLocations(),
       ]);
-      setProperties(propertiesData);
-      setTenants(tenantsData);
+      setAvailableProperties(propertiesData);
+      setAvailableTenants(tenantsData);
       setLocations(locationsData);
-    } catch (err) {
-      console.error("Background data load failed", err);
+    } catch (error) {
+      console.error("Erro ao carregar dados disponíveis:", error);
+    } finally {
+      setLoadingAvailable(false);
     }
   };
 
   useEffect(() => {
-    loadData();
+    loadRentalsData();
+    loadAvailableData();
   }, []);
 
-  const availableProperties = properties.filter((p) => p.status === "available");
-  const availableTenants = tenants.filter((t) => t.status === "active");
-  const vacantProperties = properties.filter((p) => p.status === "available");
   const activeRentals = rentals.filter((r) => r.isActive);
   const inactiveRentals = rentals.filter((r) => !r.isActive);
   const canCreateRental = availableProperties.length > 0 && availableTenants.length > 0;
 
   const getPropertyByRental = (rental: Rental) => {
-    return properties.find((p) => p.id === rental.propertyId);
+    return availableProperties.find((p) => p.id === rental.propertyId);
   };
 
   const formatDate = (dateString: string) => {
@@ -117,7 +118,8 @@ export default function RentalsPage() {
       });
       
       setRentalToEnd(null);
-      loadData();
+      await loadRentalsData();
+      await loadAvailableData();
     } catch (error) {
       console.error("Error ending contract:", error);
       toast({
@@ -140,7 +142,8 @@ export default function RentalsPage() {
         description: "Locação removida com sucesso.",
       });
       setRentalToDelete(null);
-      loadData();
+      await loadRentalsData();
+      await loadAvailableData();
     } catch (error) {
       console.error("Erro ao deletar locação:", error);
       toast({
@@ -161,6 +164,11 @@ export default function RentalsPage() {
     setSelectedRental(null);
     setIsViewMode(false);
     setIsRentalDialogOpen(true);
+  };
+
+  const handleDialogSuccess = async () => {
+    await loadRentalsData();
+    await loadAvailableData();
   };
 
   return (
@@ -194,7 +202,7 @@ export default function RentalsPage() {
                   Lista
                 </Button>
               </div>
-              <Button onClick={handleCreateNew}>
+              <Button onClick={handleCreateNew} disabled={!canCreateRental}>
                 <Plus className="mr-2 h-4 w-4" />
                 Nova Locação
               </Button>
@@ -206,15 +214,21 @@ export default function RentalsPage() {
               <CardHeader className="pb-2">
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Home className="h-4 w-4" />
-                  Imóveis Vagos ({vacantProperties.length})
+                  Imóveis Vagos ({loadingAvailable ? "..." : availableProperties.length})
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {vacantProperties.length === 0 ? (
+                {loadingAvailable ? (
+                  <div className="space-y-2">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="h-12 bg-muted animate-pulse rounded-lg" />
+                    ))}
+                  </div>
+                ) : availableProperties.length === 0 ? (
                   <p className="text-sm text-muted-foreground">Nenhum imóvel disponível</p>
                 ) : (
-                  <div className="space-y-2">
-                    {vacantProperties.map((property) => {
+                  <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                    {availableProperties.map((property) => {
                       const location = locations.find(loc => loc.id === property.locationId);
                       return (
                         <div
@@ -224,12 +238,12 @@ export default function RentalsPage() {
                           <div className="flex items-center gap-2 flex-1 min-w-0">
                             <Home className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                             <span className="text-sm font-medium truncate">
-                              {location?.name || "Local não encontrado"}
+                              {location?.name || property.location || "Local não encontrado"}
                               {property.complement && ` - ${property.complement}`}
                             </span>
                           </div>
                           <span className="text-sm font-semibold text-emerald-600 whitespace-nowrap ml-2">
-                            {formatCurrency(property.value || 0)}
+                            {formatCurrency(property.value || property.monthlyRent || 0)}
                           </span>
                         </div>
                       );
@@ -240,17 +254,23 @@ export default function RentalsPage() {
             </Card>
 
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <User className="h-5 w-5" />
-                  Inquilinos Disponíveis ({availableTenants.length})
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <User className="h-4 w-4" />
+                  Inquilinos Disponíveis ({loadingAvailable ? "..." : availableTenants.length})
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {availableTenants.length === 0 ? (
+                {loadingAvailable ? (
+                  <div className="space-y-2">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="h-12 bg-muted animate-pulse rounded-lg" />
+                    ))}
+                  </div>
+                ) : availableTenants.length === 0 ? (
                   <p className="text-sm text-muted-foreground">Nenhum inquilino disponível</p>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-2 max-h-[300px] overflow-y-auto">
                     {availableTenants.map((tenant) => (
                       <div
                         key={tenant.id}
@@ -277,22 +297,37 @@ export default function RentalsPage() {
                     {activeRentals.map((rental) => {
                       const property = getPropertyByRental(rental);
                       const location = property ? locations.find((loc) => loc.id === property.locationId) : null;
-                      const tenant = tenants.find((t) => t.id === rental.tenantId);
+                      const tenant = availableTenants.find((t) => t.id === rental.tenantId);
+                      const alert = calculateContractAlert(rental.endDate);
+                      const alertClasses = getAlertClasses(alert.level);
+                      const badgeClasses = getAlertBadgeClasses(alert.level);
 
                       return (
                         <Card
                           key={rental.id}
-                          className="hover:shadow-lg transition-shadow cursor-pointer"
+                          className={`hover:shadow-lg transition-shadow cursor-pointer border-2 ${alertClasses}`}
                           onClick={() => handleViewRental(rental)}
                         >
                           <CardContent className="p-4">
                             <div className="flex items-start justify-between mb-3">
                               <h3 className="text-lg font-semibold text-blue-600">
-                                {location?.name || "Local não encontrado"}
+                                {location?.name || property?.location || "Local não encontrado"}
                               </h3>
-                              <Badge className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 text-xs font-medium rounded-md">
-                                Ativa
-                              </Badge>
+                              <div className="flex flex-col gap-1 items-end">
+                                <Badge className={`${badgeClasses} px-3 py-1 text-xs font-medium rounded-md`}>
+                                  Ativa
+                                </Badge>
+                                {alert.level !== "normal" && (
+                                  <Badge variant="outline" className={`text-xs ${
+                                    alert.level === "critical" 
+                                      ? "border-red-500 text-red-700 bg-red-50" 
+                                      : "border-yellow-500 text-yellow-700 bg-yellow-50"
+                                  }`}>
+                                    <AlertTriangle className="h-3 w-3 mr-1" />
+                                    {alert.message}
+                                  </Badge>
+                                )}
+                              </div>
                             </div>
 
                             {property?.complement && (
@@ -362,16 +397,19 @@ export default function RentalsPage() {
                         {activeRentals.map((rental) => {
                           const property = getPropertyByRental(rental);
                           const location = property ? locations.find((loc) => loc.id === property.locationId) : null;
-                          const tenant = tenants.find((t) => t.id === rental.tenantId);
+                          const tenant = availableTenants.find((t) => t.id === rental.tenantId);
+                          const alert = calculateContractAlert(rental.endDate);
+                          const alertClasses = getAlertClasses(alert.level);
+                          const badgeClasses = getAlertBadgeClasses(alert.level);
 
                           return (
                             <TableRow
                               key={rental.id}
-                              className="cursor-pointer"
+                              className={`cursor-pointer ${alertClasses}`}
                               onClick={() => handleViewRental(rental)}
                             >
                               <TableCell className="font-medium text-blue-600">
-                                {location?.name || "Local não encontrado"}
+                                {location?.name || property?.location || "Local não encontrado"}
                               </TableCell>
                               <TableCell>{property?.complement || "-"}</TableCell>
                               <TableCell>{tenant?.name || "-"}</TableCell>
@@ -380,9 +418,21 @@ export default function RentalsPage() {
                               </TableCell>
                               <TableCell>{formatDate(rental.startDate)}</TableCell>
                               <TableCell>
-                                <Badge className="bg-green-500 hover:bg-green-600 text-white">
-                                  Ativa
-                                </Badge>
+                                <div className="flex flex-col gap-1">
+                                  <Badge className={badgeClasses}>
+                                    Ativa
+                                  </Badge>
+                                  {alert.level !== "normal" && (
+                                    <Badge variant="outline" className={`text-xs ${
+                                      alert.level === "critical" 
+                                        ? "border-red-500 text-red-700" 
+                                        : "border-yellow-500 text-yellow-700"
+                                    }`}>
+                                      <AlertTriangle className="h-3 w-3 mr-1" />
+                                      {alert.message}
+                                    </Badge>
+                                  )}
+                                </div>
                               </TableCell>
                               <TableCell className="text-right">
                                 <div className="flex justify-end gap-2">
@@ -438,14 +488,14 @@ export default function RentalsPage() {
                       {inactiveRentals.map((rental) => {
                         const property = getPropertyByRental(rental);
                         const location = property ? locations.find((loc) => loc.id === property.locationId) : null;
-                        const tenant = tenants.find((t) => t.id === rental.tenantId);
+                        const tenant = availableTenants.find((t) => t.id === rental.tenantId);
 
                         return (
                           <Card key={rental.id} className="opacity-75">
                             <CardContent className="p-4">
                               <div className="flex items-start justify-between mb-3">
                                 <h3 className="text-lg font-semibold text-blue-600">
-                                  {location?.name || "Local não encontrado"}
+                                  {location?.name || property?.location || "Local não encontrado"}
                                 </h3>
                                 <Badge className="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 text-xs font-medium rounded-md">
                                   Inativa
@@ -496,12 +546,12 @@ export default function RentalsPage() {
                           {inactiveRentals.map((rental) => {
                             const property = getPropertyByRental(rental);
                             const location = property ? locations.find((loc) => loc.id === property.locationId) : null;
-                            const tenant = tenants.find((t) => t.id === rental.tenantId);
+                            const tenant = availableTenants.find((t) => t.id === rental.tenantId);
 
                             return (
                               <TableRow key={rental.id} className="opacity-75">
                                 <TableCell className="font-medium text-blue-600">
-                                  {location?.name || "Local não encontrado"}
+                                  {location?.name || property?.location || "Local não encontrado"}
                                 </TableCell>
                                 <TableCell>{property?.complement || "-"}</TableCell>
                                 <TableCell>{tenant?.name || "-"}</TableCell>
@@ -548,9 +598,9 @@ export default function RentalsPage() {
           onOpenChange={setIsRentalDialogOpen}
           availableProperties={availableProperties}
           availableTenants={availableTenants}
-          properties={properties}
-          tenants={tenants}
-          onSuccess={loadData}
+          properties={availableProperties}
+          tenants={availableTenants}
+          onSuccess={handleDialogSuccess}
           rental={selectedRental}
           isViewMode={isViewMode}
         />

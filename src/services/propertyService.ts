@@ -311,3 +311,32 @@ export const remove = async (id: string): Promise<void> => {
   cacheService.remove("properties_all");
   cacheService.remove(`property_${id}`);
 };
+
+export async function getAvailable(): Promise<Property[]> {
+  const { data, error } = await supabase
+    .from("properties")
+    .select(`
+      id,
+      location_id,
+      property_identifier,
+      complement,
+      value,
+      status,
+      locations!properties_location_id_fkey(id, name)
+    `)
+    .eq("status", "available")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching available properties:", error);
+    throw error;
+  }
+
+  return (data || []).map((property: any) => ({
+    ...property,
+    monthlyRent: property.value,
+    locationId: property.location_id,
+    location: property.locations?.name || "",
+    locationName: property.locations?.name || "",
+  })) as Property[];
+}
