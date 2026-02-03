@@ -60,18 +60,6 @@ export function RentalFormDialog({
 
   const [isDepositInstallment, setIsDepositInstallment] = useState(false);
   const [depositInstallmentCount, setDepositInstallmentCount] = useState<string>("");
-  
-  const [depositInstallment1, setDepositInstallment1] = useState("");
-  const [depositInstallment2, setDepositInstallment2] = useState("");
-  const [depositInstallment3, setDepositInstallment3] = useState("");
-  
-  const [depositPaymentDate, setDepositPaymentDate] = useState("");
-  const [depositInstallment2PaymentDate, setDepositInstallment2PaymentDate] = useState("");
-  const [depositInstallment3PaymentDate, setDepositInstallment3PaymentDate] = useState("");
-  
-  const [depositPixCode, setDepositPixCode] = useState("");
-  const [depositInstallment2PixCode, setDepositInstallment2PixCode] = useState("");
-  const [depositInstallment3PixCode, setDepositInstallment3PixCode] = useState("");
 
   const {
     isEditing,
@@ -94,6 +82,10 @@ export function RentalFormDialog({
     setHasPartnerBroker,
     depositAmount,
     setDepositAmount,
+    depositPaymentDate,
+    setDepositPaymentDate,
+    depositPixCode,
+    setDepositPixCode,
     attachments,
     setAttachments,
     proportionalRentInfo,
@@ -117,18 +109,6 @@ export function RentalFormDialog({
   // Effect para popular o formulário quando o rental muda
   useEffect(() => {
     if (rental) {
-      // O hook useRentalForm já gerencia o estado do formulário através das variáveis de estado
-      // (startDate, endDate, etc) que são inicializadas com os valores do rental.
-      // Portanto, não precisamos chamar form.reset() aqui, pois os inputs são controlados
-      // pelos estados expostos pelo hook.
-      
-      // Apenas garantimos que o estado de edição/visualização esteja correto
-      if (isViewMode) {
-        setIsEditing(false);
-      } else {
-        setIsEditing(true);
-      }
-
       // Configurar estados locais específicos deste componente que não estão no hook
       setIsDepositInstallment(rental.depositInstallments ? rental.depositInstallments > 1 : false);
       setDepositInstallmentCount(rental.depositInstallments ? rental.depositInstallments.toString() : "");
@@ -137,11 +117,9 @@ export function RentalFormDialog({
       setDepositInstallment2(rental.depositInstallment2 ? formatCurrency(rental.depositInstallment2) : "");
       setDepositInstallment3(rental.depositInstallment3 ? formatCurrency(rental.depositInstallment3) : "");
       
-      setDepositPaymentDate(rental.depositPaymentDate ? new Date(rental.depositPaymentDate).toISOString().split('T')[0] : "");
       setDepositInstallment2PaymentDate(rental.depositInstallment2PaymentDate ? new Date(rental.depositInstallment2PaymentDate).toISOString().split('T')[0] : "");
       setDepositInstallment3PaymentDate(rental.depositInstallment3PaymentDate ? new Date(rental.depositInstallment3PaymentDate).toISOString().split('T')[0] : "");
       
-      setDepositPixCode(rental.depositPixCode || "");
       setDepositInstallment2PixCode(rental.depositInstallment2PixCode || "");
       setDepositInstallment3PixCode(rental.depositInstallment3PixCode || "");
 
@@ -522,7 +500,7 @@ export function RentalFormDialog({
   const tenantsToDisplay = rental ? tenants : availableTenants;
   const selectedProperty = getSelectedProperty();
 
-  const isFieldDisabled = rental ? !isEditing : false;
+  const isFieldDisabled = isViewMode && !isEditing;
 
   if (!open) return null;
 

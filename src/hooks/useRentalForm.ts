@@ -32,6 +32,10 @@ export function useRentalForm({
   const [depositAmount, setDepositAmount] = useState("");
   const [attachments, setAttachments] = useState<string[]>([]);
   
+  // Estados para caução parcelado
+  const [depositPaymentDate, setDepositPaymentDate] = useState("");
+  const [depositPixCode, setDepositPixCode] = useState("");
+  
   // Estado para valor proporcional
   const [proportionalRentInfo, setProportionalRentInfo] = useState<{
     isProportional: boolean;
@@ -94,6 +98,12 @@ export function useRentalForm({
         setDepositAmount(
           rental.depositAmount ? formatCurrency(rental.depositAmount) : ""
         );
+        setDepositPaymentDate(
+          rental.depositPaymentDate 
+            ? new Date(rental.depositPaymentDate + 'T00:00:00').toISOString().split('T')[0]
+            : ""
+        );
+        setDepositPixCode(rental.depositPixCode || "");
         setAttachments(rental.contractAttachments || rental.attachments || []);
       } else {
         resetForm();
@@ -126,6 +136,8 @@ export function useRentalForm({
     setGarageValue("");
     setHasPartnerBroker(false);
     setDepositAmount("");
+    setDepositPaymentDate("");
+    setDepositPixCode("");
     setAttachments([]);
     setProportionalRentInfo({
       isProportional: false,
@@ -210,6 +222,10 @@ export function useRentalForm({
     setHasPartnerBroker,
     depositAmount,
     setDepositAmount,
+    depositPaymentDate,
+    setDepositPaymentDate,
+    depositPixCode,
+    setDepositPixCode,
     attachments,
     setAttachments,
     proportionalRentInfo,
