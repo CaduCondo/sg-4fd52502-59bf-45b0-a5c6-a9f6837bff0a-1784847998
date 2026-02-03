@@ -157,6 +157,7 @@ export default function Payments() {
         propertyId: rental.property_id,
         tenantId: rental.tenant_id,
         startDate: "",
+        endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString(),
         paymentDay: parseInt(dueDate.split("-")[2] || "1"),
         value: amount,
         depositAmount: 0,

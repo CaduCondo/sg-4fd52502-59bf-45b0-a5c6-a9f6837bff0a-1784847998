@@ -78,6 +78,7 @@ export function useRentalForm({
       setIsEditing(!isViewMode);
 
       if (rental) {
+        console.log("🔧 Inicializando formulário com rental:", rental);
         setSelectedPropertyId(rental.propertyId || "");
         setSelectedTenantId(rental.tenantId || "");
         setStartDate(rental.startDate || "");
@@ -92,6 +93,10 @@ export function useRentalForm({
           rental.depositAmount ? formatCurrency(rental.depositAmount) : ""
         );
         setAttachments(rental.contractAttachments || rental.attachments || []);
+        console.log("✅ Campos populados:", {
+          propertyId: rental.propertyId,
+          tenantId: rental.tenantId,
+        });
       } else {
         resetForm();
       }
@@ -102,6 +107,15 @@ export function useRentalForm({
       resetForm();
     }
   }, [open, rental, isViewMode]);
+
+  // Effect adicional para forçar atualização quando rental mudar
+  useEffect(() => {
+    if (rental && open) {
+      console.log("🔄 Rental mudou, atualizando campos:", rental);
+      setSelectedPropertyId(rental.propertyId || "");
+      setSelectedTenantId(rental.tenantId || "");
+    }
+  }, [rental?.id, open]);
 
   const resetForm = () => {
     setSelectedPropertyId("");

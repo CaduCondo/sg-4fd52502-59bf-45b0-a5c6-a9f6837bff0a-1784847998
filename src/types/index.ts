@@ -162,24 +162,18 @@ export interface Rental {
   propertyId: string;
   tenantId: string;
   startDate: string;
-  endDate?: string;
+  endDate: string;
   paymentDay: number;
   value: number;
-  monthlyRent?: number; // Para compatibilidade
-  depositAmount?: number;
-  status: "active" | "terminated" | "pending";
+  depositAmount: number;
+  status: "active" | "inactive" | "terminated" | "pending";
   isActive: boolean;
   attachments: string[];
   contractAttachments: string[];
   autoRenew: boolean;
   pixCode?: string;
-  
-  // Novos campos
-  hasGarage?: boolean;
-  garageValue?: number;
-  hasPartnerBroker?: boolean;
-  
-  // Campos de Caução Detalhada
+
+  // Campos para parcelamento do caução
   depositInstallments?: number;
   depositInstallment1?: number;
   depositPaymentDate?: string;
@@ -192,6 +186,28 @@ export interface Rental {
   depositInstallment3?: number;
   depositInstallment3PaymentDate?: string;
   depositInstallment3PixCode?: string;
+
+  // Dados relacionados (JOINs)
+  property?: {
+    id: string;
+    locationId: string;
+    propertyIdentifier: string;
+    complement?: string;
+    value: number;
+    location: string;
+    locationName: string;
+  };
+  
+  tenant?: {
+    id: string;
+    name: string;
+    phone?: string;
+  };
+
+  // Novos campos adicionados
+  hasGarage?: boolean;
+  garageValue?: number;
+  hasPartnerBroker?: boolean;
 }
 
 export interface Payment {

@@ -402,13 +402,16 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           interest: removeFees ? 0 : calculatedValues.juros,
         };
 
-        const rentalForReceipt: Rental = {
-          id: rental.id,
-          propertyId: rental.property_id,
-          tenantId: rental.tenant_id,
-          startDate: "",
-          paymentDay: parseInt(formData.payment_date.split("-")[2] || "1"),
-          value: rentalValue, // Usar valor calculado
+        // Create a mock rental object since we don't have the full rental data here
+        // but we need it for the PaymentReceipt component
+        const mockRental: Rental = {
+          id: payment.rentalId,
+          propertyId: payment.propertyId || "",
+          tenantId: payment.tenantId || "",
+          startDate: new Date().toISOString(),
+          endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString(), // Mock date
+          paymentDay: 1,
+          value: payment.expectedAmount,
           depositAmount: 0,
           status: "active",
           isActive: true,
@@ -448,13 +451,13 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           active: true,
         };
 
-        console.log("📦 Dados sendo enviados para callback:", { paymentForReceipt, rentalForReceipt, propertyForReceipt, tenantForReceipt });
+        console.log("📦 Dados sendo enviados para callback:", { paymentForReceipt, mockRental, propertyForReceipt, tenantForReceipt });
 
         if (onSuccess) {
           console.log("✅ onSuccess existe! Chamando agora...");
           onSuccess({
             payment: paymentForReceipt,
-            rental: rentalForReceipt,
+            rental: mockRental,
             property: propertyForReceipt,
             tenant: tenantForReceipt,
           });

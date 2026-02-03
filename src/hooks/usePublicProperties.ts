@@ -34,11 +34,11 @@ export function usePublicProperties(options: UsePublicPropertiesOptions = {}) {
     setLoading(true);
     setError(null);
 
-    console.log("[usePublicProperties] 🚀 Iniciando busca com JOIN de locations...");
+    console.log("[usePublicProperties] 🚀 Iniciando busca otimizada...");
     const startTime = performance.now();
 
     try {
-      // Query com JOIN para buscar dados da localização
+      // Query otimizada com apenas campos essenciais
       let query = supabase
         .from("properties")
         .select(`
@@ -54,7 +54,6 @@ export function usePublicProperties(options: UsePublicPropertiesOptions = {}) {
           has_furniture,
           accepts_pets,
           description,
-          status,
           images,
           property_identifier,
           created_at,
@@ -62,9 +61,7 @@ export function usePublicProperties(options: UsePublicPropertiesOptions = {}) {
             id,
             name,
             city,
-            state,
-            neighborhood,
-            street
+            neighborhood
           )
         `)
         .eq("status", "available");
@@ -111,7 +108,6 @@ export function usePublicProperties(options: UsePublicPropertiesOptions = {}) {
           location: location?.name || "",
           city: location?.city || "",
           neighborhood: location?.neighborhood || "",
-          street: location?.street || "",
           complement: prop.complement || "",
           rooms: prop.rooms || 0,
           bathrooms: prop.bathrooms || 0,
@@ -132,9 +128,7 @@ export function usePublicProperties(options: UsePublicPropertiesOptions = {}) {
             id: location.id,
             name: location.name,
             city: location.city,
-            state: location.state,
             neighborhood: location.neighborhood,
-            street: location.street,
           } : undefined,
         };
       });

@@ -114,8 +114,22 @@ export function RentalFormDialog({
     loadLocations();
   }, []);
 
+  // Effect para popular o formulário quando o rental muda
   useEffect(() => {
-    if (rental && isViewMode) {
+    if (rental) {
+      // O hook useRentalForm já gerencia o estado do formulário através das variáveis de estado
+      // (startDate, endDate, etc) que são inicializadas com os valores do rental.
+      // Portanto, não precisamos chamar form.reset() aqui, pois os inputs são controlados
+      // pelos estados expostos pelo hook.
+      
+      // Apenas garantimos que o estado de edição/visualização esteja correto
+      if (isViewMode) {
+        setIsEditing(false);
+      } else {
+        setIsEditing(true);
+      }
+
+      // Configurar estados locais específicos deste componente que não estão no hook
       setIsDepositInstallment(rental.depositInstallments ? rental.depositInstallments > 1 : false);
       setDepositInstallmentCount(rental.depositInstallments ? rental.depositInstallments.toString() : "");
       
@@ -123,26 +137,16 @@ export function RentalFormDialog({
       setDepositInstallment2(rental.depositInstallment2 ? formatCurrency(rental.depositInstallment2) : "");
       setDepositInstallment3(rental.depositInstallment3 ? formatCurrency(rental.depositInstallment3) : "");
       
-      setDepositPaymentDate(rental.depositPaymentDate || "");
-      setDepositInstallment2PaymentDate(rental.depositInstallment2PaymentDate || "");
-      setDepositInstallment3PaymentDate(rental.depositInstallment3PaymentDate || "");
+      setDepositPaymentDate(rental.depositPaymentDate ? new Date(rental.depositPaymentDate).toISOString().split('T')[0] : "");
+      setDepositInstallment2PaymentDate(rental.depositInstallment2PaymentDate ? new Date(rental.depositInstallment2PaymentDate).toISOString().split('T')[0] : "");
+      setDepositInstallment3PaymentDate(rental.depositInstallment3PaymentDate ? new Date(rental.depositInstallment3PaymentDate).toISOString().split('T')[0] : "");
       
       setDepositPixCode(rental.depositPixCode || "");
-    } else if (open && rental) {
-      setIsDepositInstallment(rental.depositInstallments ? rental.depositInstallments > 1 : false);
-      setDepositInstallmentCount(rental.depositInstallments ? rental.depositInstallments.toString() : "");
-      
-      setDepositInstallment1(rental.depositInstallment1 ? formatCurrency(rental.depositInstallment1) : "");
-      setDepositInstallment2(rental.depositInstallment2 ? formatCurrency(rental.depositInstallment2) : "");
-      setDepositInstallment3(rental.depositInstallment3 ? formatCurrency(rental.depositInstallment3) : "");
-      
-      setDepositPaymentDate(rental.depositPaymentDate || "");
-      setDepositInstallment2PaymentDate(rental.depositInstallment2PaymentDate || "");
-      setDepositInstallment3PaymentDate(rental.depositInstallment3PaymentDate || "");
-      
-      setDepositPixCode(rental.depositPixCode || "");
-      setIsEditing(true);
+      setDepositInstallment2PixCode(rental.depositInstallment2PixCode || "");
+      setDepositInstallment3PixCode(rental.depositInstallment3PixCode || "");
+
     } else if (!open) {
+      // Resetar estados locais
       setIsDepositInstallment(false);
       setDepositInstallmentCount("");
       setDepositInstallment1("");
@@ -152,10 +156,13 @@ export function RentalFormDialog({
       setDepositInstallment2PaymentDate("");
       setDepositInstallment3PaymentDate("");
       setDepositPixCode("");
+      setDepositInstallment2PixCode("");
+      setDepositInstallment3PixCode("");
+      
       setIsEditing(false);
       resetForm();
     }
-  }, [open, rental, selectedPropertyId]);
+  }, [rental, open, isViewMode, resetForm, setIsEditing]);
 
   const loadLocations = async () => {
     try {

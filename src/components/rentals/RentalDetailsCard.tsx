@@ -116,7 +116,7 @@ export function RentalDetailsCard({ rental, property, tenant }: RentalDetailsCar
             <div>
               <p className="text-muted-foreground">Valor do Aluguel</p>
               <p className="text-lg font-bold text-green-600">
-                {formatCurrency(rental.value || rental.monthlyRent || 0)}
+                {formatCurrency(rental.value || 0)}
               </p>
             </div>
             <div>
