@@ -532,6 +532,7 @@ export async function migrateProportionalFirstPayments(): Promise<{
 /**
  * Atualiza recebimentos pendentes quando locação é editada
  * Atualiza valores, datas, e sincroniza com mudanças no contrato
+ * GERENCIA criação/deleção de recebimentos ao alterar período do contrato
  */
 export async function updatePendingPaymentsOnRentalEdit(rentalData: {
   id: string;
@@ -541,7 +542,7 @@ export async function updatePendingPaymentsOnRentalEdit(rentalData: {
   value: number;
 }): Promise<void> {
   console.log("=== INICIO updatePendingPaymentsOnRentalEdit ===");
-  console.log("Rental ID:", rentalData.id);
+  console.log("Rental data:", rentalData);
 
   const startDate = new Date(rentalData.startDate);
   const endDate = rentalData.endDate 
@@ -551,22 +552,27 @@ export async function updatePendingPaymentsOnRentalEdit(rentalData: {
   const paymentDay = rentalData.paymentDay;
   const monthlyValue = rentalData.value;
 
-  // 1. Buscar recebimentos pendentes existentes
+  console.log("Período do contrato:", {
+    inicio: startDate.toISOString().split('T')[0],
+    fim: endDate.toISOString().split('T')[0]
+  });
+
+  // 1. Buscar TODOS recebimentos pendentes/atrasados/parciais (não apenas pending)
   const { data: existingPayments, error: fetchError } = await supabase
     .from("payments")
     .select("*")
     .eq("rental_id", rentalData.id)
-    .eq("status", "pending")
+    .in("status", ["pending", "overdue", "partial"])
     .order("due_date", { ascending: true });
 
   if (fetchError) {
-    console.error("Erro ao buscar recebimentos pendentes:", fetchError);
+    console.error("Erro ao buscar recebimentos:", fetchError);
     throw fetchError;
   }
 
-  console.log(`📋 Encontrados ${existingPayments?.length || 0} recebimentos pendentes`);
+  console.log(`📋 Encontrados ${existingPayments?.length || 0} recebimentos não pagos`);
 
-  // 2. Calcular recebimentos esperados
+  // 2. Calcular recebimentos esperados baseado no novo período
   const expectedPayments = [];
   const startDateStr = startDate.toISOString().split('T')[0];
   const isFirstProportional = shouldUseProportionalRent(startDateStr, paymentDay);
@@ -623,7 +629,9 @@ export async function updatePendingPaymentsOnRentalEdit(rentalData: {
       dueDate = new Date(currentYear, currentMonth + 1, 0);
     }
 
+    // PARAR se ultrapassar data final do contrato
     if (dueDate > endDate) {
+      console.log(`⛔ Parando: ${dueDate.toISOString().split('T')[0]} > ${endDate.toISOString().split('T')[0]}`);
       break;
     }
 
@@ -643,8 +651,10 @@ export async function updatePendingPaymentsOnRentalEdit(rentalData: {
 
   console.log(`📊 Recebimentos esperados: ${expectedPayments.length}`);
 
-  // 3. Atualizar recebimentos existentes
-  for (let i = 0; i < Math.min(existingPayments?.length || 0, expectedPayments.length); i++) {
+  // 3. ATUALIZAR recebimentos existentes que ainda estão dentro do período
+  const paymentsToUpdate = Math.min(existingPayments?.length || 0, expectedPayments.length);
+  
+  for (let i = 0; i < paymentsToUpdate; i++) {
     const existing = existingPayments![i];
     const expected = expectedPayments[i];
 
@@ -666,7 +676,7 @@ export async function updatePendingPaymentsOnRentalEdit(rentalData: {
     console.log(`✅ Pagamento ${i + 1} atualizado: ${expected.due_date} - R$ ${expected.expected_amount.toFixed(2)}`);
   }
 
-  // 4. Criar novos recebimentos se necessário
+  // 4. CRIAR novos recebimentos se período AUMENTOU
   if (expectedPayments.length > (existingPayments?.length || 0)) {
     const newPayments = expectedPayments.slice(existingPayments?.length || 0).map(p => ({
       ...p,
@@ -683,10 +693,10 @@ export async function updatePendingPaymentsOnRentalEdit(rentalData: {
       throw insertError;
     }
 
-    console.log(`✅ Criados ${newPayments.length} novos pagamentos`);
+    console.log(`✅ Criados ${newPayments.length} novos recebimentos (período aumentado)`);
   }
 
-  // 5. Deletar recebimentos pendentes excedentes
+  // 5. DELETAR recebimentos pendentes que ficaram fora do novo período (se REDUZIU)
   if ((existingPayments?.length || 0) > expectedPayments.length) {
     const toDelete = existingPayments!.slice(expectedPayments.length);
     const idsToDelete = toDelete.map(p => p.id);
@@ -697,11 +707,12 @@ export async function updatePendingPaymentsOnRentalEdit(rentalData: {
       .in("id", idsToDelete);
 
     if (deleteError) {
-      console.error("Erro ao deletar pagamentos excedentes:", deleteError);
+      console.error("Erro ao deletar recebimentos fora do período:", deleteError);
       throw deleteError;
     }
 
-    console.log(`✅ Deletados ${toDelete.length} pagamentos excedentes`);
+    console.log(`🗑️ Deletados ${toDelete.length} recebimentos (período reduzido)`);
+    console.log("IDs deletados:", idsToDelete);
   }
 
   console.log("=== FIM updatePendingPaymentsOnRentalEdit ===");

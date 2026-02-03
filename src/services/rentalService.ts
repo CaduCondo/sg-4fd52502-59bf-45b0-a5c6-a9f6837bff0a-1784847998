@@ -229,7 +229,7 @@ export const rentalService = {
     if (rental.propertyId) dbData.property_id = rental.propertyId;
     if (rental.tenantId) dbData.tenant_id = rental.tenantId;
     if (rental.startDate) dbData.start_date = rental.startDate;
-    if (rental.endDate) dbData.end_date = rental.endDate;
+    if (rental.endDate !== undefined) dbData.end_date = rental.endDate; // CRÍTICO: usar !== undefined para permitir null
     if (rental.value) {
       dbData.monthly_rent = rental.value;
       dbData.value = rental.value;
