@@ -33,8 +33,20 @@ export function useRentalForm({
   const [attachments, setAttachments] = useState<string[]>([]);
   
   // Estados para caução parcelado
+  const [isDepositInstallment, setIsDepositInstallment] = useState(false);
+  const [depositInstallmentCount, setDepositInstallmentCount] = useState("");
+  
   const [depositPaymentDate, setDepositPaymentDate] = useState("");
   const [depositPixCode, setDepositPixCode] = useState("");
+  
+  const [depositInstallment2, setDepositInstallment2] = useState("");
+  const [depositInstallment3, setDepositInstallment3] = useState("");
+  
+  const [depositInstallment2PaymentDate, setDepositInstallment2PaymentDate] = useState("");
+  const [depositInstallment3PaymentDate, setDepositInstallment3PaymentDate] = useState("");
+  
+  const [depositInstallment2PixCode, setDepositInstallment2PixCode] = useState("");
+  const [depositInstallment3PixCode, setDepositInstallment3PixCode] = useState("");
   
   // Estado para valor proporcional
   const [proportionalRentInfo, setProportionalRentInfo] = useState<{
@@ -98,12 +110,37 @@ export function useRentalForm({
         setDepositAmount(
           rental.depositAmount ? formatCurrency(rental.depositAmount) : ""
         );
+        
+        // Configurar parcelamento do caução
+        const hasInstallments = rental.depositInstallments ? rental.depositInstallments > 1 : false;
+        setIsDepositInstallment(hasInstallments);
+        setDepositInstallmentCount(rental.depositInstallments ? rental.depositInstallments.toString() : "");
+        
         setDepositPaymentDate(
           rental.depositPaymentDate 
             ? new Date(rental.depositPaymentDate + 'T00:00:00').toISOString().split('T')[0]
             : ""
         );
         setDepositPixCode(rental.depositPixCode || "");
+        
+        // Parcelas 2 e 3
+        setDepositInstallment2(rental.depositInstallment2 ? formatCurrency(rental.depositInstallment2) : "");
+        setDepositInstallment3(rental.depositInstallment3 ? formatCurrency(rental.depositInstallment3) : "");
+        
+        setDepositInstallment2PaymentDate(
+          rental.depositInstallment2PaymentDate 
+            ? new Date(rental.depositInstallment2PaymentDate + 'T00:00:00').toISOString().split('T')[0] 
+            : ""
+        );
+        setDepositInstallment3PaymentDate(
+          rental.depositInstallment3PaymentDate 
+            ? new Date(rental.depositInstallment3PaymentDate + 'T00:00:00').toISOString().split('T')[0] 
+            : ""
+        );
+        
+        setDepositInstallment2PixCode(rental.depositInstallment2PixCode || "");
+        setDepositInstallment3PixCode(rental.depositInstallment3PixCode || "");
+        
         setAttachments(rental.contractAttachments || rental.attachments || []);
       } else {
         resetForm();
@@ -136,8 +173,18 @@ export function useRentalForm({
     setGarageValue("");
     setHasPartnerBroker(false);
     setDepositAmount("");
+    
+    setIsDepositInstallment(false);
+    setDepositInstallmentCount("");
     setDepositPaymentDate("");
     setDepositPixCode("");
+    setDepositInstallment2("");
+    setDepositInstallment3("");
+    setDepositInstallment2PaymentDate("");
+    setDepositInstallment3PaymentDate("");
+    setDepositInstallment2PixCode("");
+    setDepositInstallment3PixCode("");
+    
     setAttachments([]);
     setProportionalRentInfo({
       isProportional: false,
@@ -222,10 +269,32 @@ export function useRentalForm({
     setHasPartnerBroker,
     depositAmount,
     setDepositAmount,
+    
+    isDepositInstallment,
+    setIsDepositInstallment,
+    depositInstallmentCount,
+    setDepositInstallmentCount,
+    
     depositPaymentDate,
     setDepositPaymentDate,
     depositPixCode,
     setDepositPixCode,
+    
+    depositInstallment2,
+    setDepositInstallment2,
+    depositInstallment3,
+    setDepositInstallment3,
+    
+    depositInstallment2PaymentDate,
+    setDepositInstallment2PaymentDate,
+    depositInstallment3PaymentDate,
+    setDepositInstallment3PaymentDate,
+    
+    depositInstallment2PixCode,
+    setDepositInstallment2PixCode,
+    depositInstallment3PixCode,
+    setDepositInstallment3PixCode,
+    
     attachments,
     setAttachments,
     proportionalRentInfo,

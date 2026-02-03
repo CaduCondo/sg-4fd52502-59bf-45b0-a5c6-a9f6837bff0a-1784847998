@@ -58,9 +58,6 @@ export function RentalFormDialog({
     location?: Location;
   } | null>(null);
 
-  const [isDepositInstallment, setIsDepositInstallment] = useState(false);
-  const [depositInstallmentCount, setDepositInstallmentCount] = useState<string>("");
-
   const {
     isEditing,
     setIsEditing,
@@ -82,10 +79,32 @@ export function RentalFormDialog({
     setHasPartnerBroker,
     depositAmount,
     setDepositAmount,
+    
+    isDepositInstallment,
+    setIsDepositInstallment,
+    depositInstallmentCount,
+    setDepositInstallmentCount,
+    
     depositPaymentDate,
     setDepositPaymentDate,
     depositPixCode,
     setDepositPixCode,
+    
+    depositInstallment2,
+    setDepositInstallment2,
+    depositInstallment3,
+    setDepositInstallment3,
+    
+    depositInstallment2PaymentDate,
+    setDepositInstallment2PaymentDate,
+    depositInstallment3PaymentDate,
+    setDepositInstallment3PaymentDate,
+    
+    depositInstallment2PixCode,
+    setDepositInstallment2PixCode,
+    depositInstallment3PixCode,
+    setDepositInstallment3PixCode,
+    
     attachments,
     setAttachments,
     proportionalRentInfo,
@@ -105,42 +124,6 @@ export function RentalFormDialog({
   useEffect(() => {
     loadLocations();
   }, []);
-
-  // Effect para popular o formulário quando o rental muda
-  useEffect(() => {
-    if (rental) {
-      // Configurar estados locais específicos deste componente que não estão no hook
-      setIsDepositInstallment(rental.depositInstallments ? rental.depositInstallments > 1 : false);
-      setDepositInstallmentCount(rental.depositInstallments ? rental.depositInstallments.toString() : "");
-      
-      setDepositInstallment1(rental.depositInstallment1 ? formatCurrency(rental.depositInstallment1) : "");
-      setDepositInstallment2(rental.depositInstallment2 ? formatCurrency(rental.depositInstallment2) : "");
-      setDepositInstallment3(rental.depositInstallment3 ? formatCurrency(rental.depositInstallment3) : "");
-      
-      setDepositInstallment2PaymentDate(rental.depositInstallment2PaymentDate ? new Date(rental.depositInstallment2PaymentDate).toISOString().split('T')[0] : "");
-      setDepositInstallment3PaymentDate(rental.depositInstallment3PaymentDate ? new Date(rental.depositInstallment3PaymentDate).toISOString().split('T')[0] : "");
-      
-      setDepositInstallment2PixCode(rental.depositInstallment2PixCode || "");
-      setDepositInstallment3PixCode(rental.depositInstallment3PixCode || "");
-
-    } else if (!open) {
-      // Resetar estados locais
-      setIsDepositInstallment(false);
-      setDepositInstallmentCount("");
-      setDepositInstallment1("");
-      setDepositInstallment2("");
-      setDepositInstallment3("");
-      setDepositPaymentDate("");
-      setDepositInstallment2PaymentDate("");
-      setDepositInstallment3PaymentDate("");
-      setDepositPixCode("");
-      setDepositInstallment2PixCode("");
-      setDepositInstallment3PixCode("");
-      
-      setIsEditing(false);
-      resetForm();
-    }
-  }, [rental, open, isViewMode, resetForm, setIsEditing]);
 
   const loadLocations = async () => {
     try {
