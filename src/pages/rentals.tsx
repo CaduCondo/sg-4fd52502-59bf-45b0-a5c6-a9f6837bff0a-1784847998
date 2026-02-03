@@ -7,8 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Home, Plus, User, ChevronDown, ChevronUp, Trash2, XCircle, Grid3x3, List, AlertTriangle } from "lucide-react";
 import { getAll as getAllRentals, remove as deleteRental, terminateContract } from "@/services/rentalService";
-import { getAvailable as getAvailableProperties, update as updateProperty } from "@/services/propertyService";
-import { getActive as getActiveTenants, update as updateTenant } from "@/services/tenantService";
+import { getAvailable as getAvailableProperties, update as updateProperty, getAll as getAllProperties } from "@/services/propertyService";
+import { getActive as getActiveTenants, update as updateTenant, getAll as getAllTenants } from "@/services/tenantService";
 import { getAll as getAllLocations } from "@/services/locationService";
 import { RentalFormDialog } from "@/components/rentals/RentalFormDialog";
 import type { Rental, Property, Tenant, Location } from "@/types";
@@ -31,6 +31,8 @@ export default function RentalsPage() {
   const [rentals, setRentals] = useState<Rental[]>([]);
   const [availableProperties, setAvailableProperties] = useState<Property[]>([]);
   const [availableTenants, setAvailableTenants] = useState<Tenant[]>([]);
+  const [allProperties, setAllProperties] = useState<Property[]>([]);
+  const [allTenants, setAllTenants] = useState<Tenant[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingAvailable, setLoadingAvailable] = useState(true);
@@ -62,14 +64,18 @@ export default function RentalsPage() {
   const loadAvailableData = async () => {
     try {
       setLoadingAvailable(true);
-      const [propertiesData, tenantsData, locationsData] = await Promise.all([
+      const [propertiesData, tenantsData, locationsData, allPropertiesData, allTenantsData] = await Promise.all([
         getAvailableProperties(),
         getActiveTenants(),
         getAllLocations(),
+        getAllProperties(),
+        getAllTenants(),
       ]);
       setAvailableProperties(propertiesData);
       setAvailableTenants(tenantsData);
       setLocations(locationsData);
+      setAllProperties(allPropertiesData);
+      setAllTenants(allTenantsData);
     } catch (error) {
       console.error("Erro ao carregar dados disponíveis:", error);
     } finally {
@@ -580,8 +586,8 @@ export default function RentalsPage() {
           onOpenChange={setIsRentalDialogOpen}
           availableProperties={availableProperties}
           availableTenants={availableTenants}
-          properties={availableProperties}
-          tenants={availableTenants}
+          properties={selectedRental ? allProperties : availableProperties}
+          tenants={selectedRental ? allTenants : availableTenants}
           onSuccess={handleDialogSuccess}
           rental={selectedRental}
           isViewMode={isViewMode}

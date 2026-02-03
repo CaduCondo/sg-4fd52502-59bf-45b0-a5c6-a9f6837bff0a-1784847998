@@ -129,6 +129,7 @@ export function usePublicProperties(options: UsePublicPropertiesOptions = {}) {
             name: location.name,
             city: location.city,
             neighborhood: location.neighborhood,
+            state: "", // Valor padrão para evitar erro de tipo
           } : undefined,
         };
       });
