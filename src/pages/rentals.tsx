@@ -258,6 +258,7 @@ export default function RentalsPage() {
             </div>
           </div>
 
+          {/* Cards de Métricas - Locações */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <Card className="h-full">
               <CardHeader className="pb-2">
