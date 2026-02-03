@@ -98,63 +98,6 @@ export default function RentalsPage() {
     return `${day}/${month}/${year}`;
   };
 
-  const getMonthsUntilEnd = (endDate: string | null | undefined): number | null => {
-    if (!endDate) return null;
-    const end = new Date(endDate);
-    const now = new Date();
-    const diffTime = end.getTime() - now.getTime();
-    const diffMonths = Math.ceil(diffTime / (1000 * 60 * 60 * 24 * 30));
-    return diffMonths;
-  };
-
-  const getAlertColor = (rental: Rental): { bg: string; border: string; badge: string } => {
-    if (!rental.endDate || !rental.isActive) {
-      return { bg: "", border: "", badge: "bg-green-500 hover:bg-green-600" };
-    }
-
-    const monthsLeft = getMonthsUntilEnd(rental.endDate);
-    
-    if (monthsLeft === null || monthsLeft > 2) {
-      return { bg: "", border: "", badge: "bg-green-500 hover:bg-green-600" };
-    }
-    
-    if (monthsLeft <= 1) {
-      return { 
-        bg: "bg-red-50 dark:bg-red-950/20", 
-        border: "border-red-200 dark:border-red-800",
-        badge: "bg-red-500 hover:bg-red-600"
-      };
-    }
-    
-    return { 
-      bg: "bg-yellow-50 dark:bg-yellow-950/20", 
-      border: "border-yellow-200 dark:border-yellow-800",
-      badge: "bg-yellow-500 hover:bg-yellow-600"
-    };
-  };
-
-  const getExpirationBadge = (rental: Rental): { text: string; visible: boolean } => {
-    if (!rental.endDate || !rental.isActive) {
-      return { text: "", visible: false };
-    }
-
-    const monthsLeft = getMonthsUntilEnd(rental.endDate);
-    
-    if (monthsLeft === null || monthsLeft > 2) {
-      return { text: "", visible: false };
-    }
-    
-    if (monthsLeft <= 0) {
-      return { text: "Vencido!", visible: true };
-    }
-    
-    if (monthsLeft === 1) {
-      return { text: "Vence em 1 mês", visible: true };
-    }
-    
-    return { text: `Vence em ${monthsLeft} meses`, visible: true };
-  };
-
   const confirmEndContract = async () => {
     if (!rentalToEnd) return;
 
@@ -258,7 +201,6 @@ export default function RentalsPage() {
             </div>
           </div>
 
-          {/* Cards de Métricas - Locações */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <Card className="h-full">
               <CardHeader className="pb-2">
@@ -336,13 +278,11 @@ export default function RentalsPage() {
                       const property = getPropertyByRental(rental);
                       const location = property ? locations.find((loc) => loc.id === property.locationId) : null;
                       const tenant = tenants.find((t) => t.id === rental.tenantId);
-                      const alertColors = getAlertColor(rental);
-                      const expirationBadge = getExpirationBadge(rental);
 
                       return (
                         <Card
                           key={rental.id}
-                          className={`hover:shadow-lg transition-shadow cursor-pointer ${alertColors.bg} ${alertColors.border}`}
+                          className="hover:shadow-lg transition-shadow cursor-pointer"
                           onClick={() => handleViewRental(rental)}
                         >
                           <CardContent className="p-4">
@@ -350,16 +290,9 @@ export default function RentalsPage() {
                               <h3 className="text-lg font-semibold text-blue-600">
                                 {location?.name || "Local não encontrado"}
                               </h3>
-                              <div className="flex flex-col gap-2 items-end">
-                                <Badge className={`${alertColors.badge} text-white px-3 py-1 text-xs font-medium rounded-md`}>
-                                  Ativa
-                                </Badge>
-                                {expirationBadge.visible && (
-                                  <Badge variant="outline" className="text-xs font-semibold border-current">
-                                    ⏰ {expirationBadge.text}
-                                  </Badge>
-                                )}
-                              </div>
+                              <Badge className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 text-xs font-medium rounded-md">
+                                Ativa
+                              </Badge>
                             </div>
 
                             {property?.complement && (
@@ -430,13 +363,11 @@ export default function RentalsPage() {
                           const property = getPropertyByRental(rental);
                           const location = property ? locations.find((loc) => loc.id === property.locationId) : null;
                           const tenant = tenants.find((t) => t.id === rental.tenantId);
-                          const alertColors = getAlertColor(rental);
-                          const expirationBadge = getExpirationBadge(rental);
 
                           return (
                             <TableRow
                               key={rental.id}
-                              className={`cursor-pointer ${alertColors.bg}`}
+                              className="cursor-pointer"
                               onClick={() => handleViewRental(rental)}
                             >
                               <TableCell className="font-medium text-blue-600">
@@ -449,16 +380,9 @@ export default function RentalsPage() {
                               </TableCell>
                               <TableCell>{formatDate(rental.startDate)}</TableCell>
                               <TableCell>
-                                <div className="flex flex-col gap-1">
-                                  <Badge className={`${alertColors.badge} text-white`}>
-                                    Ativa
-                                  </Badge>
-                                  {expirationBadge.visible && (
-                                    <Badge variant="outline" className="text-xs">
-                                      ⏰ {expirationBadge.text}
-                                    </Badge>
-                                  )}
-                                </div>
+                                <Badge className="bg-green-500 hover:bg-green-600 text-white">
+                                  Ativa
+                                </Badge>
                               </TableCell>
                               <TableCell className="text-right">
                                 <div className="flex justify-end gap-2">
