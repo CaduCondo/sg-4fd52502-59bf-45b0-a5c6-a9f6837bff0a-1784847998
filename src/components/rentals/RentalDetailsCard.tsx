@@ -14,6 +14,7 @@ interface RentalDetailsCardProps {
 }
 
 export function RentalDetailsCard({ rental, property, tenant }: RentalDetailsCardProps) {
+  console.log("Dados do rental:", rental);
   const getStatusBadge = (status: string) => {
     const variants: Record<string, "default" | "secondary" | "destructive"> = {
       active: "default",
