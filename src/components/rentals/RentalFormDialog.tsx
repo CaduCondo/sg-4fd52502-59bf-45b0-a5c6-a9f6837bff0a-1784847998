@@ -282,7 +282,6 @@ export function RentalFormDialog({
         };
 
         await createPaymentsForRental(mergedRental);
-        await createDepositInstallments(updatedRental.id, depositData);
 
         const statusTyped = mergedRental.status as "active" | "terminated" | "pending";
         mergedRental.status = statusTyped;
@@ -386,7 +385,6 @@ export function RentalFormDialog({
         };
 
         await createPaymentsForRental(mappedRental);
-        await createDepositInstallments(createdRental.id, depositData);
 
         const createdStatusTyped = mappedRental.status as "active" | "terminated" | "pending";
         mappedRental.status = createdStatusTyped;
