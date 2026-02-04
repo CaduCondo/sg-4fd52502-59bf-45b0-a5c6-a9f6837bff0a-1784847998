@@ -171,7 +171,7 @@ export const depositInstallmentService = {
           rental_id: rentalId,
           installment_number: installmentData.installment_number,
           total_installments: depositInstallments,
-          installment_total: Math.round(totalDeposit),
+          installment_total: depositInstallments, // CORRIGIDO: quantidade de parcelas, não valor total
           amount: installmentData.amount,
           pix_code: installmentData.pix_code,
           payment_date: installmentData.payment_date,
