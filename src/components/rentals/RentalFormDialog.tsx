@@ -221,6 +221,9 @@ export function RentalFormDialog({
         depositPixCode: depositPixCode || null,
       };
 
+      console.log("depositPaymentDate:", depositPaymentDate);
+      console.log("depositPixCode:", depositPixCode);
+
       if (isDepositInstallment && depositInstallmentCount) {
         depositData.depositInstallments = parseInt(depositInstallmentCount);
         
