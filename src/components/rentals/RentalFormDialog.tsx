@@ -214,6 +214,10 @@ export function RentalFormDialog({
         hasPartnerBroker: hasPartnerBroker,
       };
       
+      console.log("💾 VALORES ANTES DE CRIAR depositData:");
+      console.log("depositPaymentDate:", depositPaymentDate);
+      console.log("depositPixCode:", depositPixCode);
+
       const depositData: any = {
         depositInstallments: 1,
         depositInstallment1: parseCurrencyToNumber(depositAmount),
@@ -335,6 +339,8 @@ export function RentalFormDialog({
             deposit_installment_3_payment_date: depositData.depositInstallment3PaymentDate,
             deposit_installment_3_pix_code: depositData.depositInstallment3PixCode,
         };
+
+        console.log("📥 ENVIANDO DADOS PARA SUPABASE:", insertPayload);
 
         const { data: createdRental, error: createError } = await supabase
           .from("rentals")
