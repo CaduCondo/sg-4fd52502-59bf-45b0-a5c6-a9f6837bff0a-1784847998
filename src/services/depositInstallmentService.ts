@@ -110,12 +110,6 @@ export const depositInstallmentService = {
         };
       };
 
-      // 4. Calcular total do caução
-      const totalDeposit =
-        (depositData.installment1 || 0) +
-        (depositData.installment2 || 0) +
-        (depositData.installment3 || 0);
-
       // 5. Preparar dados das parcelas
       const installmentsData: Array<{
         installment_number: number;

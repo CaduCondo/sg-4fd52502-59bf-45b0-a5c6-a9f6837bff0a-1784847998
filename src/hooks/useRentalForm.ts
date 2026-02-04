@@ -119,6 +119,8 @@ export function useRentalForm({
         // CRÍTICO: Garantir que depositPaymentDate e depositPixCode sejam inicializados
         console.log("📅 depositPaymentDate do rental:", rental.depositPaymentDate);
         console.log("🔑 depositPixCode do rental:", rental.depositPixCode);
+        console.log("🔢 depositInstallments do rental:", rental.depositInstallments);
+        console.log("💰 depositAmount do rental:", rental.depositAmount);
         
         setDepositPaymentDate(
           rental.depositPaymentDate 
