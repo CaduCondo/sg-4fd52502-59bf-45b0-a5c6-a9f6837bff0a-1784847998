@@ -162,6 +162,11 @@ export const rentalService = {
       .single();
 
     if (error) throw error;
+    
+    console.log("🔍 rentalService.getById - Dados do banco:", data);
+    console.log("🔍 deposit_payment_date:", data.deposit_payment_date);
+    console.log("🔍 deposit_pix_code:", data.deposit_pix_code);
+    
     return mapRentalData(data);
   },
 
