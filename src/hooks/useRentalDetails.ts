@@ -17,6 +17,8 @@ export function useRentalDetails(rentalId: string) {
     try {
       setIsLoading(true);
 
+      alert("🚀 useRentalDetails.loadRentalData EXECUTADO! ID: " + rentalId);
+
       console.log("=".repeat(80));
       console.log("🚀 useRentalDetails.loadRentalData INICIADO - rentalId:", rentalId);
       console.log("=".repeat(80));

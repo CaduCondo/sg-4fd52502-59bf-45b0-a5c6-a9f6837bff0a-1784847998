@@ -57,6 +57,48 @@ const mapRentalData = (data: any): Rental => {
   };
 };
 
+function mapRentalFromDB(r: any): Rental {
+  const mapped = {
+    id: r.id,
+    propertyId: r.property_id,
+    tenantId: r.tenant_id,
+    startDate: r.start_date,
+    endDate: r.end_date,
+    paymentDay: r.payment_day,
+    depositAmount: r.deposit || 0,
+    status: (r.status || "active") as "active" | "terminated" | "pending",
+    attachments: Array.isArray(r.attachments) ? r.attachments : [],
+    contractAttachments: Array.isArray(r.contract_attachments) ? r.contract_attachments : [],
+    value: r.value || r.monthly_rent || 0,
+    isActive: r.is_active ?? true,
+    autoRenew: r.auto_renew ?? false,
+    hasGarage: r.has_garage ?? false,
+    garageValue: r.garage_value,
+    hasPartnerBroker: r.has_partner_broker ?? false,
+    property: r.properties,
+    tenant: r.tenants,
+    depositInstallments: r.deposit_installments,
+    depositInstallment1: r.deposit_installment_1,
+    depositInstallment2: r.deposit_installment_2,
+    depositInstallment3: r.deposit_installment_3,
+    depositPaymentDate: r.deposit_payment_date,
+    depositInstallment2PaymentDate: r.deposit_installment_2_payment_date,
+    depositInstallment3PaymentDate: r.deposit_installment_3_payment_date,
+    depositPixCode: r.deposit_pix_code,
+    depositInstallment2PixCode: r.deposit_installment_2_pix_code,
+    depositInstallment3PixCode: r.deposit_installment_3_pix_code,
+  };
+
+  console.log("📋 MAPPED RENTAL:", {
+    id: mapped.id,
+    depositPaymentDate: mapped.depositPaymentDate,
+    depositPixCode: mapped.depositPixCode,
+    depositInstallments: mapped.depositInstallments,
+  });
+
+  return mapped;
+}
+
 export const rentalService = {
   async getAll(): Promise<Rental[]> {
     console.time("⏱️ Rental Query Performance");
@@ -77,6 +119,16 @@ export const rentalService = {
         has_garage,
         garage_value,
         has_partner_broker,
+        deposit_installments,
+        deposit_installment_1,
+        deposit_payment_date,
+        deposit_pix_code,
+        deposit_installment_2,
+        deposit_installment_2_payment_date,
+        deposit_installment_2_pix_code,
+        deposit_installment_3,
+        deposit_installment_3_payment_date,
+        deposit_installment_3_pix_code,
         tenants!rentals_tenant_id_fkey (
           id,
           name,
