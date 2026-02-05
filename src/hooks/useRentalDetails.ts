@@ -17,6 +17,10 @@ export function useRentalDetails(rentalId: string) {
     try {
       setIsLoading(true);
 
+      console.log("=".repeat(80));
+      console.log("🚀 useRentalDetails.loadRentalData INICIADO - rentalId:", rentalId);
+      console.log("=".repeat(80));
+
       // Buscar dados da locação
       const { data: rentalData, error: rentalError } = await supabase
         .from("rentals")
@@ -59,9 +63,14 @@ export function useRentalDetails(rentalId: string) {
 
       if (rentalError) throw rentalError;
 
-      console.log("🔍 RAW rental data:", rentalData);
-      console.log("🔍 RAW deposit_payment_date:", rentalData.deposit_payment_date);
-      console.log("🔍 RAW deposit_pix_code:", rentalData.deposit_pix_code);
+      console.log("=".repeat(80));
+      console.log("📦 DADOS RECEBIDOS DO SUPABASE (RAW):");
+      console.log("=".repeat(80));
+      console.log("🔍 rentalData completo:", rentalData);
+      console.log("🔍 deposit_payment_date:", rentalData.deposit_payment_date);
+      console.log("🔍 deposit_pix_code:", rentalData.deposit_pix_code);
+      console.log("🔍 deposit_installments:", rentalData.deposit_installments);
+      console.log("=".repeat(80));
 
       if (!rentalData) {
         toast({
@@ -130,10 +139,14 @@ export function useRentalDetails(rentalId: string) {
         depositInstallment3PixCode: r.deposit_installment_3_pix_code,
       };
 
-      console.log("📋 mappedRental criado:", {
-        depositPaymentDate: mappedRental.depositPaymentDate,
-        depositPixCode: mappedRental.depositPixCode,
-      });
+      console.log("=".repeat(80));
+      console.log("✅ OBJETO mappedRental CRIADO:");
+      console.log("=".repeat(80));
+      console.log("📋 mappedRental:", mappedRental);
+      console.log("📋 depositPaymentDate:", mappedRental.depositPaymentDate);
+      console.log("📋 depositPixCode:", mappedRental.depositPixCode);
+      console.log("📋 depositInstallments:", mappedRental.depositInstallments);
+      console.log("=".repeat(80));
 
       // Mapear Property
       const mappedProperty: Property = {
