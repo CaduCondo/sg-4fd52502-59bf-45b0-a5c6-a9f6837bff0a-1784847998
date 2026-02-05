@@ -59,6 +59,10 @@ export function useRentalDetails(rentalId: string) {
 
       if (rentalError) throw rentalError;
 
+      console.log("🔍 RAW rental data:", rentalData);
+      console.log("🔍 RAW deposit_payment_date:", rentalData.deposit_payment_date);
+      console.log("🔍 RAW deposit_pix_code:", rentalData.deposit_pix_code);
+
       if (!rentalData) {
         toast({
           title: "Erro",
@@ -125,6 +129,11 @@ export function useRentalDetails(rentalId: string) {
         depositInstallment3PaymentDate: r.deposit_installment_3_payment_date,
         depositInstallment3PixCode: r.deposit_installment_3_pix_code,
       };
+
+      console.log("📋 mappedRental criado:", {
+        depositPaymentDate: mappedRental.depositPaymentDate,
+        depositPixCode: mappedRental.depositPixCode,
+      });
 
       // Mapear Property
       const mappedProperty: Property = {
