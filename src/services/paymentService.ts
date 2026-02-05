@@ -312,6 +312,12 @@ export async function createPaymentsForRental(rental: any): Promise<void> {
   let currentMonth = startDate.getMonth();
   let currentYear = startDate.getFullYear();
 
+  console.log("📅 ESTADO INICIAL:", {
+    currentMonth: currentMonth + 1,
+    currentYear,
+    isFirstProportional
+  });
+
   // ETAPA 2: Primeira parcela (proporcional ou integral)
   if (isFirstProportional) {
     const firstPaymentDays = calculateDaysBetweenDates(startDateStr, paymentDay);
@@ -320,19 +326,27 @@ export async function createPaymentsForRental(rental: any): Promise<void> {
     // Vencimento da primeira parcela proporcional
     let firstDueDate = new Date(currentYear, currentMonth, paymentDay);
     
+    console.log("🔄 Primeira parcela PROPORCIONAL:");
+    console.log("   Data calculada inicialmente:", firstDueDate.toISOString().split('T')[0]);
+    console.log("   startDate:", startDate.toISOString().split('T')[0]);
+    
     // Se o dia de pagamento já passou no mês atual, vai para próximo mês
     if (firstDueDate <= startDate) {
+      console.log("   ⚠️ Data de vencimento <= data início, avançando 1 mês");
       currentMonth++;
       if (currentMonth > 11) {
         currentMonth = 0;
         currentYear++;
       }
       firstDueDate = new Date(currentYear, currentMonth, paymentDay);
+      console.log("   Nova data:", firstDueDate.toISOString().split('T')[0]);
     }
     
     // Ajuste para dias inexistentes
     if (firstDueDate.getMonth() !== currentMonth) {
+      console.log("   ⚠️ Dia inexistente no mês, ajustando para último dia");
       firstDueDate = new Date(currentYear, currentMonth + 1, 0);
+      console.log("   Data ajustada:", firstDueDate.toISOString().split('T')[0]);
     }
 
     payments.push({
@@ -344,41 +358,73 @@ export async function createPaymentsForRental(rental: any): Promise<void> {
       reference_year: currentYear,
     });
 
-    console.log(`🔄 Primeira parcela PROPORCIONAL: R$ ${firstPaymentValue.toFixed(2)} (${firstPaymentDays} dias) - Venc: ${firstDueDate.toISOString().split('T')[0]}`);
+    console.log(`✅ Parcela 1/${payments.length} criada: ${firstDueDate.toISOString().split('T')[0]} | Ref: ${currentMonth + 1}/${currentYear} | R$ ${firstPaymentValue.toFixed(2)}`);
 
     // Avançar para próximo mês
+    console.log("📅 Avançando para próximo mês após primeira parcela proporcional");
+    console.log("   ANTES: month =", currentMonth + 1, "year =", currentYear);
     currentMonth++;
     if (currentMonth > 11) {
       currentMonth = 0;
       currentYear++;
     }
+    console.log("   DEPOIS: month =", currentMonth + 1, "year =", currentYear);
   } else {
     // Se não é proporcional, começar do mês da data de início
     const firstDueDate = new Date(currentYear, currentMonth, paymentDay);
     
+    console.log("✅ Primeira parcela INTEGRAL (não proporcional)");
+    console.log("   Data calculada:", firstDueDate.toISOString().split('T')[0]);
+    console.log("   startDate:", startDate.toISOString().split('T')[0]);
+    
     // Se o vencimento for antes da data de início, vai para próximo mês
     if (firstDueDate < startDate) {
+      console.log("   ⚠️ Data de vencimento < data início, avançando 1 mês");
+      console.log("   ANTES: month =", currentMonth + 1, "year =", currentYear);
       currentMonth++;
       if (currentMonth > 11) {
         currentMonth = 0;
         currentYear++;
       }
+      console.log("   DEPOIS: month =", currentMonth + 1, "year =", currentYear);
     }
   }
 
   // ETAPA 3: Parcelas mensais integrais
+  console.log("\n📅 INICIANDO LOOP DE PARCELAS MENSAIS");
+  console.log("   Estado inicial do loop: month =", currentMonth + 1, "year =", currentYear);
+  
+  let iterationCount = 0;
+  const maxIterations = 100; // Segurança para evitar loop infinito
+  
   // Iterar até chegar na data final do contrato
   while (true) {
+    iterationCount++;
+    
+    if (iterationCount > maxIterations) {
+      console.error("❌ ERRO: Loop excedeu limite de iterações!");
+      break;
+    }
+    
+    console.log(`\n--- Iteração ${iterationCount} ---`);
+    console.log(`   Estado: month = ${currentMonth + 1}, year = ${currentYear}`);
+    
     // Criar vencimento para o mês atual
     let dueDate = new Date(currentYear, currentMonth, paymentDay);
     
+    console.log(`   Data criada: ${dueDate.toISOString().split('T')[0]} (${dueDate.getMonth() + 1}/${dueDate.getFullYear()})`);
+    
     // Ajuste para dias inexistentes (ex: 31 de fev vira 28/29)
     if (dueDate.getMonth() !== currentMonth) {
+      console.log(`   ⚠️ AJUSTE: Dia ${paymentDay} não existe no mês ${currentMonth + 1}`);
+      console.log(`   Mês do objeto Date: ${dueDate.getMonth() + 1} (esperado: ${currentMonth + 1})`);
       dueDate = new Date(currentYear, currentMonth + 1, 0);
+      console.log(`   Data ajustada para último dia do mês: ${dueDate.toISOString().split('T')[0]}`);
     }
 
     // PARAR se ultrapassar data final do contrato
     if (dueDate > endDate) {
+      console.log(`   ⛔ PARANDO: ${dueDate.toISOString().split('T')[0]} > ${endDate.toISOString().split('T')[0]}`);
       break;
     }
 
@@ -392,17 +438,43 @@ export async function createPaymentsForRental(rental: any): Promise<void> {
       reference_year: currentYear,
     });
 
-    console.log(`✅ Parcela ${payments.length}: R$ ${monthlyValue.toFixed(2)} - Venc: ${dueDate.toISOString().split('T')[0]} (Ref: ${currentMonth + 1}/${currentYear})`);
+    console.log(`   ✅ Parcela ${payments.length} criada: ${dueDate.toISOString().split('T')[0]} | Ref: ${currentMonth + 1}/${currentYear} | R$ ${monthlyValue.toFixed(2)}`);
 
     // Avançar 1 mês
+    console.log(`   📅 Avançando 1 mês...`);
+    console.log(`   ANTES: month = ${currentMonth + 1}, year = ${currentYear}`);
     currentMonth++;
     if (currentMonth > 11) {
+      console.log(`   ⚠️ Fim do ano! Voltando para Janeiro do próximo ano`);
       currentMonth = 0;
       currentYear++;
     }
+    console.log(`   DEPOIS: month = ${currentMonth + 1}, year = ${currentYear}`);
   }
 
-  console.log(`📊 Total de parcelas criadas: ${payments.length}`);
+  console.log(`\n📊 RESUMO DA CRIAÇÃO:`);
+  console.log(`   Total de parcelas criadas: ${payments.length}`);
+  console.log(`   Total de iterações: ${iterationCount}`);
+
+  // Validação extra: verificar se há duplicatas de mês/ano
+  const monthYearSet = new Set<string>();
+  const duplicateMonths: string[] = [];
+  
+  payments.forEach((p, idx) => {
+    const key = `${p.reference_year}-${String(p.reference_month).padStart(2, "0")}`;
+    if (monthYearSet.has(key)) {
+      duplicateMonths.push(`Parcela ${idx + 1}: ${key} (${p.due_date})`);
+    }
+    monthYearSet.add(key);
+  });
+
+  if (duplicateMonths.length > 0) {
+    console.error("❌ ERRO: DUPLICATAS DETECTADAS!");
+    console.error("Meses duplicados:", duplicateMonths);
+    throw new Error(`Duplicatas detectadas na geração de parcelas: ${duplicateMonths.join(", ")}`);
+  }
+
+  console.log(`✅ Validação: Nenhuma duplicata detectada`);
 
   // Inserir todas as parcelas no banco
   const { data, error } = await supabase
@@ -415,7 +487,7 @@ export async function createPaymentsForRental(rental: any): Promise<void> {
     throw error;
   }
 
-  console.log(`✅ Sucesso! Criados ${data?.length || 0} pagamentos`);
+  console.log(`✅ Sucesso! Criados ${data?.length || 0} pagamentos no banco`);
   console.log("=== FIM createPaymentsForRental ===");
 }
 

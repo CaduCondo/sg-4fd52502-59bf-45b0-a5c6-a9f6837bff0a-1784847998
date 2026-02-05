@@ -1,53 +1,101 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { useToast } from "@/hooks/use-toast";
-import { Wifi, WifiOff, Loader2 } from "lucide-react";
 
 export function ConnectionStatusToast() {
-  const { status, isOnline, isOffline, retryCount } = useOnlineStatus();
+  const { isOnline, isServerReachable } = useOnlineStatus();
   const { toast, dismiss } = useToast();
+  const toastIdRef = useRef<string | undefined>();
+  const reconnectAttemptsRef = useRef(0);
+  const lastStatusRef = useRef({ isOnline: true, isServerReachable: true });
+  const debounceTimerRef = useRef<NodeJS.Timeout>();
 
   useEffect(() => {
-    let toastId: any;
-
-    if (isOffline) {
-      toastId = toast({
-        title: "Servidor offline",
-        description: `Usando dados locais. Tentando reconectar... (${retryCount + 1})`,
-        variant: "destructive",
-        duration: Infinity,
-      });
-    } else if (isOnline && retryCount > 0) {
-      // Was offline, now online
-      toast({
-        title: "Conectado!",
-        description: "Sincronizando dados...",
-        variant: "default",
-        duration: 3000,
-      });
+    // Limpar timer anterior se existir
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
     }
+
+    // Debounce: aguardar 2 segundos antes de mostrar qualquer toast
+    debounceTimerRef.current = setTimeout(() => {
+      const currentStatus = { isOnline, isServerReachable };
+      const lastStatus = lastStatusRef.current;
+
+      // Só atualizar se o status realmente mudou
+      const statusChanged = 
+        currentStatus.isOnline !== lastStatus.isOnline ||
+        currentStatus.isServerReachable !== lastStatus.isServerReachable;
+
+      if (!statusChanged) {
+        return;
+      }
+
+      // Atualizar referência do status anterior
+      lastStatusRef.current = currentStatus;
+
+      // Dismiss toast anterior se existir
+      if (toastIdRef.current) {
+        dismiss(toastIdRef.current);
+        toastIdRef.current = undefined;
+      }
+
+      // Offline (sem internet)
+      if (!isOnline) {
+        reconnectAttemptsRef.current = 0;
+        const { id } = toast({
+          title: "Sem conexão com a internet",
+          description: "Verifique sua conexão e tente novamente.",
+          variant: "destructive",
+          duration: Infinity,
+        });
+        toastIdRef.current = id;
+        return;
+      }
+
+      // Online mas servidor inacessível
+      if (isOnline && !isServerReachable) {
+        reconnectAttemptsRef.current += 1;
+
+        // Limitar tentativas de reconexão para evitar loop infinito
+        if (reconnectAttemptsRef.current > 3) {
+          const { id } = toast({
+            title: "Servidor temporariamente indisponível",
+            description: "Recarregue a página em alguns instantes.",
+            variant: "destructive",
+            duration: 10000, // 10 segundos
+          });
+          toastIdRef.current = id;
+          return;
+        }
+
+        const { id } = toast({
+          title: "Conectando...",
+          description: "Verificando status do servidor",
+          duration: 5000, // 5 segundos
+        });
+        toastIdRef.current = id;
+        return;
+      }
+
+      // Reconectado com sucesso
+      if (isOnline && isServerReachable && reconnectAttemptsRef.current > 0) {
+        reconnectAttemptsRef.current = 0;
+        const { id } = toast({
+          title: "Conexão restabelecida",
+          description: "Você está online novamente.",
+          variant: "default",
+          duration: 3000,
+        });
+        toastIdRef.current = id;
+      }
+    }, 2000); // Debounce de 2 segundos
 
     return () => {
-      if (toastId) {
-        dismiss();
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [status, retryCount]);
-
-  // Show checking status on initial load
-  useEffect(() => {
-    if (status === "checking" && retryCount === 0) {
-      const toastId = toast({
-        title: "Conectando...",
-        description: "Verificando status do servidor",
-        duration: 2000,
-      });
-
-      return () => {
-        dismiss();
-      };
-    }
-  }, [status, retryCount]);
+  }, [isOnline, isServerReachable, toast, dismiss]);
 
   return null;
 }

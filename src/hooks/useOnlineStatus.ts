@@ -1,77 +1,91 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-type ConnectionStatus = "online" | "offline" | "checking";
-
 export function useOnlineStatus() {
-  const [status, setStatus] = useState<ConnectionStatus>("checking");
+  const [isOnline, setIsOnline] = useState(true); // Status da rede (navegador)
+  const [isServerReachable, setIsServerReachable] = useState(true); // Status da API (Supabase)
+  const [isChecking, setIsChecking] = useState(false);
   const [lastChecked, setLastChecked] = useState<Date>(new Date());
   const [retryCount, setRetryCount] = useState(0);
 
   const checkConnection = async () => {
-    setStatus("checking");
+    // Não marcar como checking se já estiver offline (evita loop visual)
+    if (isOnline) {
+      setIsChecking(true);
+    }
+    
     setLastChecked(new Date());
 
     try {
-      // Simple health check - try to fetch 1 record
+      // Verificar conexão com Supabase (health check leve)
+      // Usando HEAD ou SELECT simples
       const { error } = await supabase
         .from("properties")
         .select("id")
         .limit(1)
         .maybeSingle();
 
-      if (error && error.message.includes("<!DOCTYPE html>")) {
-        // HTML error page = server down
-        setStatus("offline");
+      if (error && (error.message?.includes("<!DOCTYPE html>") || error.message?.includes("Failed to fetch"))) {
+        // Erro de rede/servidor
+        setIsServerReachable(false);
         setRetryCount((prev) => prev + 1);
         return false;
       }
 
-      setStatus("online");
+      // Sucesso
+      setIsServerReachable(true);
       setRetryCount(0);
       return true;
     } catch (error) {
-      setStatus("offline");
+      setIsServerReachable(false);
       setRetryCount((prev) => prev + 1);
       return false;
+    } finally {
+      setIsChecking(false);
     }
   };
 
   useEffect(() => {
-    // Initial check
-    checkConnection();
+    // Definir estado inicial baseado no navegador
+    setIsOnline(typeof navigator !== 'undefined' ? navigator.onLine : true);
 
-    // Retry logic with exponential backoff
-    const getRetryDelay = () => {
-      const delays = [30000, 60000, 120000, 300000]; // 30s, 1m, 2m, 5m
-      return delays[Math.min(retryCount, delays.length - 1)];
+    // Listeners do navegador
+    const handleOnline = () => {
+      setIsOnline(true);
+      checkConnection();
     };
-
-    const intervalId = setInterval(() => {
-      if (status === "offline") {
-        checkConnection();
-      }
-    }, getRetryDelay());
-
-    // Browser online/offline events
-    const handleOnline = () => checkConnection();
-    const handleOffline = () => setStatus("offline");
+    
+    const handleOffline = () => {
+      setIsOnline(false);
+      // Se caiu a net, servidor também está inacessível tecnicamente, 
+      // mas mantemos o estado anterior do servidor ou false
+    };
 
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
 
+    // Intervalo de verificação (heartbeat)
+    // Aumentado para 30s para reduzir ruído em produção
+    const intervalId = setInterval(() => {
+      if (navigator.onLine) {
+        checkConnection();
+      }
+    }, 30000);
+
+    // Verificação inicial
+    checkConnection();
+
     return () => {
-      clearInterval(intervalId);
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
+      clearInterval(intervalId);
     };
-  }, [status, retryCount]);
+  }, []);
 
   return {
-    status,
-    isOnline: status === "online",
-    isOffline: status === "offline",
-    isChecking: status === "checking",
+    isOnline,
+    isServerReachable,
+    isChecking,
     lastChecked,
     retryCount,
     checkConnection,
