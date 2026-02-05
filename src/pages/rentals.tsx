@@ -64,22 +64,33 @@ export default function RentalsPage() {
   const loadAvailableData = async () => {
     try {
       setLoadingAvailable(true);
-      const [propertiesData, tenantsData, locationsData, allPropertiesData, allTenantsData] = await Promise.all([
+      // Buscar apenas dados essenciais para os blocos (otimização)
+      const [propertiesData, tenantsData] = await Promise.all([
         getAvailableProperties(),
         getActiveTenants(),
-        getAllLocations(),
-        getAllProperties(),
-        getAllTenants(),
       ]);
       setAvailableProperties(propertiesData);
       setAvailableTenants(tenantsData);
-      setLocations(locationsData);
-      setAllProperties(allPropertiesData);
-      setAllTenants(allTenantsData);
     } catch (error) {
       console.error("Erro ao carregar dados disponíveis:", error);
     } finally {
       setLoadingAvailable(false);
+    }
+  };
+
+  const loadAdditionalData = async () => {
+    try {
+      // Carregar dados adicionais apenas quando necessário (lazy loading)
+      const [locationsData, allPropertiesData, allTenantsData] = await Promise.all([
+        getAllLocations(),
+        getAllProperties(),
+        getAllTenants(),
+      ]);
+      setLocations(locationsData);
+      setAllProperties(allPropertiesData);
+      setAllTenants(allTenantsData);
+    } catch (error) {
+      console.error("Erro ao carregar dados adicionais:", error);
     }
   };
 
@@ -157,12 +168,20 @@ export default function RentalsPage() {
   };
 
   const handleViewRental = (rental: Rental) => {
+    // Carregar dados adicionais antes de abrir o formulário
+    if (locations.length === 0) {
+      loadAdditionalData();
+    }
     setSelectedRental(rental);
     setIsViewMode(true);
     setIsRentalDialogOpen(true);
   };
 
   const handleCreateNew = () => {
+    // Carregar dados adicionais antes de abrir o formulário
+    if (locations.length === 0) {
+      loadAdditionalData();
+    }
     setSelectedRental(null);
     setIsViewMode(false);
     setIsRentalDialogOpen(true);
@@ -240,7 +259,7 @@ export default function RentalsPage() {
                           <div className="flex items-center gap-2 flex-1 min-w-0">
                             <Home className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                             <span className="text-sm font-medium truncate">
-                              {location?.name || property.location || "Local não encontrado"}
+                              {property.propertyIdentifier || location?.name || property.location || "Local não encontrado"}
                               {property.complement && ` - ${property.complement}`}
                             </span>
                           </div>
