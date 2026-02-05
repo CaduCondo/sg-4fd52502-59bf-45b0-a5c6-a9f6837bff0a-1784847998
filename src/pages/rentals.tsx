@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { calculateContractAlert, getAlertClasses, getAlertBadgeClasses } from "@/lib/contractAlerts";
+import { RentalTerminationDialog } from "@/components/rentals/RentalTerminationDialog";
 
 export default function RentalsPage() {
   const { toast } = useToast();
