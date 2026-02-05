@@ -15,6 +15,11 @@ interface RentalDetailsCardProps {
 
 export function RentalDetailsCard({ rental, property, tenant }: RentalDetailsCardProps) {
   console.log("Dados do rental:", rental);
+  console.log("🔍 Campo depositPaymentDate:", rental.depositPaymentDate);
+  console.log("🔍 Campo depositPixCode:", rental.depositPixCode);
+  console.log("🔍 Campo deposit_payment_date:", (rental as any).deposit_payment_date);
+  console.log("🔍 Campo deposit_pix_code:", (rental as any).deposit_pix_code);
+  
   const getStatusBadge = (status: string) => {
     const variants: Record<string, "default" | "secondary" | "destructive"> = {
       active: "default",
