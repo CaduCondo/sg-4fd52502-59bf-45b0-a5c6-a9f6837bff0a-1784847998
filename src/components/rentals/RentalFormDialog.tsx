@@ -31,9 +31,11 @@ interface RentalFormDialogProps {
   availableTenants: Tenant[];
   properties?: Property[];
   tenants?: Tenant[];
+  locations?: Location[];
   onSuccess: () => void;
   rental?: Rental | null;
   isViewMode?: boolean;
+  isLoadingData?: boolean;
 }
 
 export function RentalFormDialog({
@@ -43,13 +45,15 @@ export function RentalFormDialog({
   availableTenants,
   properties = [],
   tenants = [],
+  locations: locationsFromProps = [],
   onSuccess,
   rental = null,
   isViewMode = false,
+  isLoadingData = false,
 }: RentalFormDialogProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  const [locations, setLocations] = useState<Location[]>([]);
+  const [locations, setLocations] = useState<Location[]>(locationsFromProps);
   const [showContract, setShowContract] = useState(false);
   const [createdRentalData, setCreatedRentalData] = useState<{
     rental: Rental;
@@ -117,22 +121,22 @@ export function RentalFormDialog({
     open,
     rental,
     isViewMode,
-    properties,
-    tenants,
+    properties: rental ? properties : availableProperties,
+    tenants: rental ? tenants : availableTenants,
+    locations,
   });
 
   useEffect(() => {
-    loadLocations();
-  }, []);
-
-  const loadLocations = async () => {
-    try {
-      const locationsData = await getAllLocations();
-      setLocations(locationsData);
-    } catch (error) {
-      console.error("Error loading locations:", error);
+    if (locationsFromProps.length > 0) {
+      setLocations(locationsFromProps);
     }
-  };
+  }, [locationsFromProps]);
+
+  useEffect(() => {
+    if (!open) {
+      setLocations([]);
+    }
+  }, [open]);
 
   const onFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -499,6 +503,22 @@ export function RentalFormDialog({
   const isFieldDisabled = isViewMode && !isEditing;
 
   if (!open) return null;
+
+  // Mostrar loading enquanto dados estão sendo carregados
+  if (isLoadingData) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Carregando dados...</DialogTitle>
+          </DialogHeader>
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

@@ -10,6 +10,7 @@ interface UseRentalFormProps {
   isViewMode: boolean;
   properties: Property[];
   tenants: Tenant[];
+  locations: Location[];
 }
 
 export function useRentalForm({
@@ -18,6 +19,7 @@ export function useRentalForm({
   isViewMode,
   properties,
   tenants,
+  locations,
 }: UseRentalFormProps) {
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(!isViewMode);
@@ -60,6 +62,7 @@ export function useRentalForm({
   });
 
   const initializedRef = useRef(false);
+  const prevRentalIdRef = useRef<string | null>(null);
 
   // Calcular valor proporcional quando startDate, paymentDay ou property mudarem
   useEffect(() => {
@@ -87,84 +90,132 @@ export function useRentalForm({
     }
   }, [startDate, paymentDay, selectedPropertyId, properties, hasGarage, garageValue]);
 
+  // Função para inicializar campos com dados do rental
+  const initializeFromRental = (rentalData: Rental) => {
+    console.log("🔧 Inicializando formulário com rental:", rentalData);
+    console.log("📦 Properties disponíveis:", properties.length);
+    console.log("👥 Tenants disponíveis:", tenants.length);
+    
+    setSelectedPropertyId(rentalData.propertyId || "");
+    setSelectedTenantId(rentalData.tenantId || "");
+    setStartDate(rentalData.startDate || "");
+    setEndDate(rentalData.endDate || "");
+    setPaymentDay(rentalData.paymentDay?.toString() || "");
+    setHasGarage(rentalData.hasGarage || false);
+    setGarageValue(
+      rentalData.garageValue ? formatCurrency(rentalData.garageValue) : ""
+    );
+    setHasPartnerBroker(rentalData.hasPartnerBroker || false);
+    setDepositAmount(
+      rentalData.depositAmount ? formatCurrency(rentalData.depositAmount) : ""
+    );
+    
+    const hasInstallments = rentalData.depositInstallments ? rentalData.depositInstallments > 1 : false;
+    setIsDepositInstallment(hasInstallments);
+    setDepositInstallmentCount(rentalData.depositInstallments ? rentalData.depositInstallments.toString() : "");
+    
+    console.log("📅 depositPaymentDate do rental:", rentalData.depositPaymentDate);
+    console.log("🔑 depositPixCode do rental:", rentalData.depositPixCode);
+    
+    setDepositPaymentDate(
+      rentalData.depositPaymentDate 
+        ? (typeof rentalData.depositPaymentDate === 'string' 
+            ? rentalData.depositPaymentDate.split('T')[0] 
+            : new Date(rentalData.depositPaymentDate).toISOString().split('T')[0])
+        : ""
+    );
+    setDepositPixCode(rentalData.depositPixCode || "");
+    
+    setDepositInstallment2(rentalData.depositInstallment2 ? formatCurrency(rentalData.depositInstallment2) : "");
+    setDepositInstallment3(rentalData.depositInstallment3 ? formatCurrency(rentalData.depositInstallment3) : "");
+    
+    setDepositInstallment2PaymentDate(
+      rentalData.depositInstallment2PaymentDate 
+        ? (typeof rentalData.depositInstallment2PaymentDate === 'string'
+            ? rentalData.depositInstallment2PaymentDate.split('T')[0]
+            : new Date(rentalData.depositInstallment2PaymentDate).toISOString().split('T')[0])
+        : ""
+    );
+    setDepositInstallment3PaymentDate(
+      rentalData.depositInstallment3PaymentDate 
+        ? (typeof rentalData.depositInstallment3PaymentDate === 'string'
+            ? rentalData.depositInstallment3PaymentDate.split('T')[0]
+            : new Date(rentalData.depositInstallment3PaymentDate).toISOString().split('T')[0])
+        : ""
+    );
+    
+    setDepositInstallment2PixCode(rentalData.depositInstallment2PixCode || "");
+    setDepositInstallment3PixCode(rentalData.depositInstallment3PixCode || "");
+    
+    setAttachments(rentalData.contractAttachments || rentalData.attachments || []);
+    
+    console.log("✅ Campos inicializados - PropertyId:", rentalData.propertyId, "TenantId:", rentalData.tenantId);
+  };
+
   // Inicializar formulário quando o modal abrir
   useEffect(() => {
-    if (open && !initializedRef.current) {
-      initializedRef.current = true;
+    if (open) {
+      // Resetar flag de inicialização quando modal abre
+      initializedRef.current = false;
       
       // Define se inicia em modo de edição ou visualização
       setIsEditing(!isViewMode);
 
       if (rental) {
-        console.log("🔧 Inicializando formulário com rental:", rental);
-        setSelectedPropertyId(rental.propertyId || "");
-        setSelectedTenantId(rental.tenantId || "");
-        setStartDate(rental.startDate || "");
-        setEndDate(rental.endDate || "");
-        setPaymentDay(rental.paymentDay?.toString() || "");
-        setHasGarage(rental.hasGarage || false);
-        setGarageValue(
-          rental.garageValue ? formatCurrency(rental.garageValue) : ""
-        );
-        setHasPartnerBroker(rental.hasPartnerBroker || false);
-        setDepositAmount(
-          rental.depositAmount ? formatCurrency(rental.depositAmount) : ""
-        );
+        // Verificar se temos os dados necessários
+        const hasRequiredData = properties.length > 0 && tenants.length > 0;
         
-        // Configurar parcelamento do caução
-        const hasInstallments = rental.depositInstallments ? rental.depositInstallments > 1 : false;
-        setIsDepositInstallment(hasInstallments);
-        setDepositInstallmentCount(rental.depositInstallments ? rental.depositInstallments.toString() : "");
-        
-        // CRÍTICO: Garantir que depositPaymentDate e depositPixCode sejam inicializados
-        console.log("📅 depositPaymentDate do rental:", rental.depositPaymentDate);
-        console.log("🔑 depositPixCode do rental:", rental.depositPixCode);
-        console.log("🔢 depositInstallments do rental:", rental.depositInstallments);
-        console.log("💰 depositAmount do rental:", rental.depositAmount);
-        
-        setDepositPaymentDate(
-          rental.depositPaymentDate 
-            ? (typeof rental.depositPaymentDate === 'string' 
-                ? rental.depositPaymentDate.split('T')[0] 
-                : new Date(rental.depositPaymentDate).toISOString().split('T')[0])
-            : ""
-        );
-        setDepositPixCode(rental.depositPixCode || "");
-        
-        // Parcelas 2 e 3
-        setDepositInstallment2(rental.depositInstallment2 ? formatCurrency(rental.depositInstallment2) : "");
-        setDepositInstallment3(rental.depositInstallment3 ? formatCurrency(rental.depositInstallment3) : "");
-        
-        setDepositInstallment2PaymentDate(
-          rental.depositInstallment2PaymentDate 
-            ? (typeof rental.depositInstallment2PaymentDate === 'string'
-                ? rental.depositInstallment2PaymentDate.split('T')[0]
-                : new Date(rental.depositInstallment2PaymentDate).toISOString().split('T')[0])
-            : ""
-        );
-        setDepositInstallment3PaymentDate(
-          rental.depositInstallment3PaymentDate 
-            ? (typeof rental.depositInstallment3PaymentDate === 'string'
-                ? rental.depositInstallment3PaymentDate.split('T')[0]
-                : new Date(rental.depositInstallment3PaymentDate).toISOString().split('T')[0])
-            : ""
-        );
-        
-        setDepositInstallment2PixCode(rental.depositInstallment2PixCode || "");
-        setDepositInstallment3PixCode(rental.depositInstallment3PixCode || "");
-        
-        setAttachments(rental.contractAttachments || rental.attachments || []);
+        if (!hasRequiredData) {
+          console.warn("⚠️ Dados incompletos - aguardando carregamento...");
+          return;
+        }
+
+        // Marcar como inicializado e preencher campos
+        initializedRef.current = true;
+        prevRentalIdRef.current = rental.id;
+        initializeFromRental(rental);
       } else {
+        // Novo rental - apenas resetar
+        initializedRef.current = true;
         resetForm();
       }
-    }
-
-    if (!open) {
+    } else {
+      // Modal fechou - resetar tudo
       initializedRef.current = false;
+      prevRentalIdRef.current = null;
       resetForm();
-      setIsEditing(false); // Resetar para modo visualização ao fechar
+      setIsEditing(false);
     }
-  }, [open, rental, isViewMode]);
+  }, [open, rental?.id, isViewMode]);
+
+  // Effect para reinicializar quando dados completos chegarem
+  useEffect(() => {
+    if (open && rental && !initializedRef.current) {
+      const hasRequiredData = properties.length > 0 && tenants.length > 0;
+      
+      if (hasRequiredData) {
+        console.log("✨ Dados completos chegaram - inicializando campos");
+        initializedRef.current = true;
+        prevRentalIdRef.current = rental.id;
+        initializeFromRental(rental);
+      }
+    }
+  }, [open, rental, properties.length, tenants.length]);
+
+  // Effect para garantir que propertyId e tenantId estejam sempre corretos
+  useEffect(() => {
+    if (open && rental && initializedRef.current) {
+      // Se os campos estão vazios mas deveriam estar preenchidos, preencher
+      if (!selectedPropertyId && rental.propertyId) {
+        console.log("🔄 Corrigindo propertyId vazio");
+        setSelectedPropertyId(rental.propertyId);
+      }
+      if (!selectedTenantId && rental.tenantId) {
+        console.log("🔄 Corrigindo tenantId vazio");
+        setSelectedTenantId(rental.tenantId);
+      }
+    }
+  }, [open, rental?.id, selectedPropertyId, selectedTenantId, properties.length, tenants.length]);
 
   // Effect adicional para forçar atualização quando rental mudar
   useEffect(() => {

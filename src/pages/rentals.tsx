@@ -36,6 +36,7 @@ export default function RentalsPage() {
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingAvailable, setLoadingAvailable] = useState(true);
+  const [loadingAdditionalData, setLoadingAdditionalData] = useState(false);
   const [isRentalDialogOpen, setIsRentalDialogOpen] = useState(false);
   const [selectedRental, setSelectedRental] = useState<Rental | null>(null);
   const [isViewMode, setIsViewMode] = useState(false);
@@ -79,8 +80,13 @@ export default function RentalsPage() {
   };
 
   const loadAdditionalData = async () => {
+    // Se dados já foram carregados, não carregar novamente
+    if (allProperties.length > 0 && allTenants.length > 0 && locations.length > 0) {
+      return;
+    }
+
     try {
-      // Carregar dados adicionais apenas quando necessário (lazy loading)
+      setLoadingAdditionalData(true);
       const [locationsData, allPropertiesData, allTenantsData] = await Promise.all([
         getAllLocations(),
         getAllProperties(),
@@ -91,6 +97,14 @@ export default function RentalsPage() {
       setAllTenants(allTenantsData);
     } catch (error) {
       console.error("Erro ao carregar dados adicionais:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar dados completos. Tente novamente.",
+        variant: "destructive",
+      });
+      throw error; // Propagar erro para impedir abertura do modal
+    } finally {
+      setLoadingAdditionalData(false);
     }
   };
 
@@ -167,24 +181,32 @@ export default function RentalsPage() {
     }
   };
 
-  const handleViewRental = (rental: Rental) => {
-    // Carregar dados adicionais antes de abrir o formulário
-    if (locations.length === 0) {
-      loadAdditionalData();
+  const handleViewRental = async (rental: Rental) => {
+    try {
+      // Carregar dados adicionais e aguardar conclusão ANTES de abrir modal
+      await loadAdditionalData();
+      
+      // Só após dados carregados, atualizar estado e abrir modal
+      setSelectedRental(rental);
+      setIsViewMode(true);
+      setIsRentalDialogOpen(true);
+    } catch (error) {
+      // Erro já foi tratado no loadAdditionalData
     }
-    setSelectedRental(rental);
-    setIsViewMode(true);
-    setIsRentalDialogOpen(true);
   };
 
-  const handleCreateNew = () => {
-    // Carregar dados adicionais antes de abrir o formulário
-    if (locations.length === 0) {
-      loadAdditionalData();
+  const handleCreateNew = async () => {
+    try {
+      // Carregar dados adicionais e aguardar conclusão ANTES de abrir modal
+      await loadAdditionalData();
+      
+      // Só após dados carregados, atualizar estado e abrir modal
+      setSelectedRental(null);
+      setIsViewMode(false);
+      setIsRentalDialogOpen(true);
+    } catch (error) {
+      // Erro já foi tratado no loadAdditionalData
     }
-    setSelectedRental(null);
-    setIsViewMode(false);
-    setIsRentalDialogOpen(true);
   };
 
   const handleDialogSuccess = async () => {
@@ -606,11 +628,13 @@ export default function RentalsPage() {
           onOpenChange={setIsRentalDialogOpen}
           availableProperties={availableProperties}
           availableTenants={availableTenants}
-          properties={selectedRental ? allProperties : availableProperties}
-          tenants={selectedRental ? allTenants : availableTenants}
+          properties={allProperties}
+          tenants={allTenants}
+          locations={locations}
           onSuccess={handleDialogSuccess}
           rental={selectedRental}
           isViewMode={isViewMode}
+          isLoadingData={loadingAdditionalData}
         />
 
         <AlertDialog open={!!rentalToDelete} onOpenChange={() => setRentalToDelete(null)}>
