@@ -54,8 +54,8 @@ export function RentalTerminationDialog({
       return;
     }
 
-    const startDate = parseISO(rental.start_date);
-    const endDate = parseISO(rental.end_date);
+    const startDate = parseISO(rental.startDate);
+    const endDate = parseISO(rental.endDate);
     const today = new Date();
 
     const total = differenceInMonths(endDate, startDate) + 1;
@@ -75,13 +75,13 @@ export function RentalTerminationDialog({
 
     try {
       const termDate = parseISO(terminationDate);
-      const endDate = parseISO(rental.end_date);
+      const endDate = parseISO(rental.endDate);
       const remaining = Math.max(0, differenceInMonths(endDate, termDate));
       
       setRemainingMonths(remaining);
 
       if (applyPenalty && remaining > 0) {
-        const monthlyRent = rental.rental_amount || 0;
+        const monthlyRent = rental.value || 0;
         const penalty = (remaining * monthlyRent) * 0.10;
         setPenaltyAmount(penalty);
       } else {
@@ -142,8 +142,8 @@ export function RentalTerminationDialog({
               <div className="text-right">
                 <p className="text-sm text-muted-foreground">Período</p>
                 <p className="text-sm font-medium">
-                  {format(parseISO(rental.start_date), "dd/MM/yyyy", { locale: ptBR })} -{" "}
-                  {format(parseISO(rental.end_date), "dd/MM/yyyy", { locale: ptBR })}
+                  {format(parseISO(rental.startDate), "dd/MM/yyyy", { locale: ptBR })} -{" "}
+                  {format(parseISO(rental.endDate), "dd/MM/yyyy", { locale: ptBR })}
                 </p>
               </div>
             </div>
@@ -160,7 +160,7 @@ export function RentalTerminationDialog({
               type="date"
               value={terminationDate}
               onChange={(e) => setTerminationDate(e.target.value)}
-              max={format(parseISO(rental.end_date), "yyyy-MM-dd")}
+              max={format(parseISO(rental.endDate), "yyyy-MM-dd")}
               required
             />
             <p className="text-xs text-muted-foreground">
@@ -195,7 +195,7 @@ export function RentalTerminationDialog({
                 <strong>Cálculo da Multa:</strong>
                 <br />
                 {remainingMonths} {remainingMonths === 1 ? "mês" : "meses"} restante(s) × R${" "}
-                {rental.rental_amount?.toLocaleString("pt-BR", {
+                {rental.value?.toLocaleString("pt-BR", {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
                 })}{" "}
@@ -207,20 +207,6 @@ export function RentalTerminationDialog({
               </AlertDescription>
             </Alert>
           )}
-
-          {/* Termination Amount */}
-          <div className="space-y-2">
-            <Label className="text-base font-semibold">Valor Rescisão</Label>
-            <div className="rounded-lg border-2 border-primary bg-primary/5 p-4">
-              <p className="text-3xl font-bold text-primary">
-                R${" "}
-                {penaltyAmount.toLocaleString("pt-BR", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
-              </p>
-            </div>
-          </div>
         </div>
 
         <DialogFooter className="gap-2 sm:gap-0">

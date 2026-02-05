@@ -127,10 +127,18 @@ export default function RentalsPage() {
     return `${day}/${month}/${year}`;
   };
 
-  const confirmEndContract = async () => {
+  const handleConfirmTermination = async (data: {
+    terminationDate: string;
+    applyPenalty: boolean;
+    penaltyAmount: number;
+  }) => {
     if (!rentalToEnd) return;
 
     try {
+      // Aqui você poderia passar os dados da rescisão para o serviço se necessário
+      // Por enquanto mantemos o encerramento básico + logs dos dados calculados
+      console.log("Terminating contract with data:", data);
+
       await terminateContract(rentalToEnd.id);
       
       if (rentalToEnd.propertyId) {
@@ -142,7 +150,7 @@ export default function RentalsPage() {
 
       toast({
         title: "Sucesso",
-        description: "Contrato encerrado com sucesso!",
+        description: `Contrato encerrado! ${data.applyPenalty ? `Multa calculada: ${formatCurrency(data.penaltyAmount)}` : ""}`,
       });
       
       setRentalToEnd(null);
@@ -638,6 +646,13 @@ export default function RentalsPage() {
           isLoadingData={loadingAdditionalData}
         />
 
+        <RentalTerminationDialog
+          open={!!rentalToEnd}
+          onOpenChange={(open) => !open && setRentalToEnd(null)}
+          rental={rentalToEnd}
+          onConfirm={handleConfirmTermination}
+        />
+
         <AlertDialog open={!!rentalToDelete} onOpenChange={() => setRentalToDelete(null)}>
           <AlertDialogContent>
             <AlertDialogHeader>
@@ -650,23 +665,6 @@ export default function RentalsPage() {
               <AlertDialogCancel>Cancelar</AlertDialogCancel>
               <AlertDialogAction onClick={handleDeleteRental} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
                 Excluir
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-
-        <AlertDialog open={!!rentalToEnd} onOpenChange={() => setRentalToEnd(null)}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Confirmar encerramento</AlertDialogTitle>
-              <AlertDialogDescription>
-                Tem certeza que deseja encerrar este contrato? O imóvel ficará disponível e o inquilino voltará ao status ativo.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-              <AlertDialogAction onClick={confirmEndContract} className="bg-yellow-500 text-white hover:bg-yellow-600">
-                Encerrar Contrato
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
