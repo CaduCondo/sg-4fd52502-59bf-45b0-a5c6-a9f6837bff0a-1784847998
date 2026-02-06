@@ -4,7 +4,7 @@ import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, XCircle, ArrowLeft, Eye, RefreshCw } from "lucide-react";
+import { FileText, XCircle, ArrowLeft, Eye, RefreshCw, Trash2 } from "lucide-react";
 import { useRentalDetails } from "@/hooks/useRentalDetails";
 import { RentalDetailsCard } from "@/components/rentals/RentalDetailsCard";
 import { RentalPaymentsTable } from "@/components/rentals/RentalPaymentsTable";
@@ -35,6 +35,7 @@ export default function RentalDetailsPage() {
   const [showAttachments, setShowAttachments] = useState(false);
   const [showRenewalDialog, setShowRenewalDialog] = useState(false);
   const [showTerminationDialog, setShowTerminationDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const handleTermination = () => {
     setShowTerminationDialog(true);
@@ -73,6 +74,30 @@ export default function RentalDetailsPage() {
       toast({
         title: "Erro",
         description: "Não foi possível renovar o contrato.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteRental = async () => {
+    if (!rental) return;
+
+    try {
+      const { remove } = await import("@/services/rentalService");
+      await remove(rental.id);
+
+      toast({
+        title: "Sucesso",
+        description: "Locação excluída com sucesso!",
+      });
+
+      setShowDeleteDialog(false);
+      router.push("/rentals");
+    } catch (error) {
+      console.error("Error deleting rental:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível excluir a locação.",
         variant: "destructive",
       });
     }
@@ -160,7 +185,7 @@ export default function RentalDetailsPage() {
                 <>
                   <Button
                     variant="outline"
-                    className="bg-green-500 hover:bg-green-600 text-white border-green-500"
+                    className="bg-blue-500 hover:bg-blue-600 text-white border-blue-500"
                     onClick={() => setShowRenewalDialog(true)}
                   >
                     <RefreshCw className="h-4 w-4 mr-2" />
@@ -173,6 +198,14 @@ export default function RentalDetailsPage() {
                   >
                     <XCircle className="h-4 w-4 mr-2" />
                     Encerrar Contrato
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="bg-red-500 hover:bg-red-600 text-white border-red-500"
+                    onClick={() => setShowDeleteDialog(true)}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Excluir
                   </Button>
                 </>
               )}
@@ -284,8 +317,26 @@ export default function RentalDetailsPage() {
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Não</AlertDialogCancel>
-              <AlertDialogAction onClick={handleRenewRental} className="bg-green-500 hover:bg-green-600">
+              <AlertDialogAction onClick={handleRenewRental} className="bg-blue-500 hover:bg-blue-600">
                 Sim
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Exclusão AlertDialog */}
+        <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que você deseja excluir esta locação? Esta ação não pode ser desfeita e todos os pagamentos associados serão removidos.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDeleteRental} className="bg-red-500 hover:bg-red-600">
+                Excluir
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
