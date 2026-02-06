@@ -145,8 +145,8 @@ export function RentalTerminationDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[550px] max-h-[90vh] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-yellow-600" />
             Encerrar Contrato
@@ -156,30 +156,30 @@ export function RentalTerminationDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
-          {/* Contract Progress */}
-          <div className="rounded-lg border bg-muted/50 p-4">
-            <div className="flex items-center justify-between">
+        <div className="flex-1 overflow-y-auto space-y-4 py-3 px-1">
+          {/* Contract Progress - Compacto em Grid */}
+          <div className="rounded-lg border bg-muted/50 p-3">
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Progresso do Contrato</p>
-                <p className="text-2xl font-bold">
+                <p className="text-xs font-medium text-muted-foreground">Progresso</p>
+                <p className="text-lg font-bold">
                   Parcela {currentMonth}/{totalMonths}
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-sm text-muted-foreground">Período</p>
-                <p className="text-sm font-medium">
-                  {format(parseISO(rental.startDate), "dd/MM/yyyy", { locale: ptBR })} -{" "}
-                  {format(parseISO(rental.endDate), "dd/MM/yyyy", { locale: ptBR })}
+                <p className="text-xs text-muted-foreground">Período</p>
+                <p className="text-xs font-medium leading-tight">
+                  {format(parseISO(rental.startDate), "dd/MM/yy", { locale: ptBR })} -{" "}
+                  {format(parseISO(rental.endDate), "dd/MM/yy", { locale: ptBR })}
                 </p>
               </div>
             </div>
           </div>
 
           {/* Termination Date */}
-          <div className="space-y-2">
-            <Label htmlFor="termination-date" className="flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
+          <div className="space-y-1.5">
+            <Label htmlFor="termination-date" className="flex items-center gap-1.5 text-sm">
+              <Calendar className="h-3.5 w-3.5" />
               Data da Rescisão *
             </Label>
             <Input
@@ -189,16 +189,17 @@ export function RentalTerminationDialog({
               onChange={(e) => setTerminationDate(e.target.value)}
               max={format(parseISO(rental.endDate), "yyyy-MM-dd")}
               required
+              className="h-9"
             />
             <p className="text-xs text-muted-foreground">
-              Esta data será usada para calcular o valor da rescisão
+              Usada para calcular o valor da rescisão
             </p>
           </div>
 
-          {/* Penalty Type Checkboxes */}
-          <div className="space-y-3">
+          {/* Penalty Type Checkboxes - Layout Compacto */}
+          <div className="space-y-2.5">
             {/* Full Contract Penalty */}
-            <div className="flex items-start space-x-3">
+            <div className="flex items-start space-x-2 rounded-md border p-2.5 hover:bg-muted/50 transition-colors">
               <Checkbox
                 id="apply-full-penalty"
                 checked={applyFullContractPenalty}
@@ -206,22 +207,23 @@ export function RentalTerminationDialog({
                   setApplyFullContractPenalty(checked as boolean);
                   if (checked) setApply12MonthsPenalty(false);
                 }}
+                className="mt-0.5"
               />
-              <div className="space-y-1">
+              <div className="flex-1 space-y-0.5">
                 <Label
                   htmlFor="apply-full-penalty"
                   className="text-sm font-medium leading-none cursor-pointer"
                 >
-                  Aplicar multa rescisória sobre contrato completo?
+                  Multa sobre contrato completo
                 </Label>
                 <p className="text-xs text-muted-foreground">
-                  Multa de 10% sobre o valor de todos os meses restantes do contrato
+                  10% sobre todos os meses restantes
                 </p>
               </div>
             </div>
 
             {/* 12 Months Penalty */}
-            <div className="flex items-start space-x-3">
+            <div className="flex items-start space-x-2 rounded-md border p-2.5 hover:bg-muted/50 transition-colors">
               <Checkbox
                 id="apply-12months-penalty"
                 checked={apply12MonthsPenalty}
@@ -229,78 +231,72 @@ export function RentalTerminationDialog({
                   setApply12MonthsPenalty(checked as boolean);
                   if (checked) setApplyFullContractPenalty(false);
                 }}
+                className="mt-0.5"
               />
-              <div className="space-y-1">
+              <div className="flex-1 space-y-0.5">
                 <Label
                   htmlFor="apply-12months-penalty"
                   className="text-sm font-medium leading-none cursor-pointer"
                 >
-                  Aplicar multa rescisória sobre 12 meses?
+                  Multa sobre 12 meses
                 </Label>
                 <p className="text-xs text-muted-foreground">
-                  Multa de 10% calculada até a 12ª parcela (aplica-se apenas se a rescisão ocorrer antes da 12ª parcela)
+                  10% até a 12ª parcela (se antes dela)
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Penalty Calculation Info - Full Contract */}
+          {/* Penalty Calculation Info - Compacto */}
           {applyFullContractPenalty && remainingMonths > 0 && (
-            <Alert>
-              <AlertDescription className="text-sm">
-                <strong>Cálculo da Multa (Contrato Completo):</strong>
-                <br />
-                {remainingMonths} {remainingMonths === 1 ? "mês" : "meses"} restante(s) × R${" "}
+            <Alert className="py-2.5">
+              <AlertDescription className="text-xs leading-relaxed">
+                <strong>Cálculo:</strong> {remainingMonths} {remainingMonths === 1 ? "mês" : "meses"} × R${" "}
                 {rental.value?.toLocaleString("pt-BR", {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
                 })}{" "}
-                × 10% = R${" "}
+                × 10% = <strong>R${" "}
                 {penaltyAmount.toLocaleString("pt-BR", {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
-                })}
+                })}</strong>
               </AlertDescription>
             </Alert>
           )}
 
-          {/* Penalty Calculation Info - 12 Months */}
           {apply12MonthsPenalty && (
-            <Alert>
-              <AlertDescription className="text-sm">
+            <Alert className="py-2.5">
+              <AlertDescription className="text-xs leading-relaxed">
                 {monthsUntil12th > 0 ? (
                   <>
-                    <strong>Cálculo da Multa (12 Meses):</strong>
+                    <strong>Cálculo:</strong> Faltam {monthsUntil12th} {monthsUntil12th === 1 ? "mês" : "meses"} para a 12ª parcela
                     <br />
-                    Faltam {monthsUntil12th} {monthsUntil12th === 1 ? "mês" : "meses"} para chegar na 12ª parcela
-                    <br />
-                    {monthsUntil12th} {monthsUntil12th === 1 ? "mês" : "meses"} × R${" "}
+                    {monthsUntil12th} × R${" "}
                     {rental.value?.toLocaleString("pt-BR", {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     })}{" "}
-                    × 10% = R${" "}
+                    × 10% = <strong>R${" "}
                     {penaltyAmount.toLocaleString("pt-BR", {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
-                    })}
+                    })}</strong>
                   </>
                 ) : (
                   <>
-                    <strong>Multa (12 Meses):</strong>
-                    <br />
-                    Rescisão após a 12ª parcela - Sem multa aplicável
+                    <strong>Sem multa:</strong> Rescisão após a 12ª parcela
                   </>
                 )}
               </AlertDescription>
             </Alert>
           )}
 
-          {/* Penalty Amount Display */}
+          {/* Penalty Amount Display - Compacto */}
           {(applyFullContractPenalty || apply12MonthsPenalty) && (
-            <div className="rounded-lg border bg-primary/5 p-4">
-              <p className="text-sm font-medium text-muted-foreground mb-1">Valor da Rescisão</p>
-              <p className="text-3xl font-bold text-primary">
+            <div className="rounded-lg border bg-primary/5 p-3">
+              <p className="text-xs font-medium text-muted-foreground mb-0.5">Valor da Rescisão</p>
+              <p className="text-2xl font-bold text-primary">
                 R${" "}
                 {penaltyAmount.toLocaleString("pt-BR", {
                   minimumFractionDigits: 2,
@@ -311,12 +307,13 @@ export function RentalTerminationDialog({
           )}
         </div>
 
-        <DialogFooter className="gap-2 sm:gap-0">
+        <DialogFooter className="flex-shrink-0 gap-2 sm:gap-0 pt-3 border-t">
           <Button
             type="button"
             variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={isSubmitting}
+            className="h-9"
           >
             Cancelar
           </Button>
@@ -324,6 +321,7 @@ export function RentalTerminationDialog({
             type="button"
             onClick={handleConfirm}
             disabled={!terminationDate || isSubmitting}
+            className="h-9"
           >
             {isSubmitting ? "Encerrando..." : "OK"}
           </Button>
