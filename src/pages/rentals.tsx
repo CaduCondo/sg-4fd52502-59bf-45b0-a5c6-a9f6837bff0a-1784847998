@@ -43,6 +43,7 @@ export default function RentalsPage() {
   const [isViewMode, setIsViewMode] = useState(false);
   const [rentalToDelete, setRentalToDelete] = useState<Rental | null>(null);
   const [rentalToEnd, setRentalToEnd] = useState<Rental | null>(null);
+  const [rentalToRenew, setRentalToRenew] = useState<Rental | null>(null);
   const [showInactive, setShowInactive] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
 

@@ -10,14 +10,16 @@ import { RentalDetailsCard } from "@/components/rentals/RentalDetailsCard";
 import { RentalPaymentsTable } from "@/components/rentals/RentalPaymentsTable";
 import { RentalContract } from "@/components/RentalContract";
 import { AttachmentViewer } from "@/components/AttachmentViewer";
+import { RentalTerminationDialog } from "@/components/rentals/RentalTerminationDialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useState } from "react";
-import { toast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 
 export default function RentalDetailsPage() {
   const router = useRouter();
   const { id } = router.query;
   const rentalId = typeof id === "string" ? id : "";
+  const { toast } = useToast();
 
   const {
     rental,
@@ -32,6 +34,7 @@ export default function RentalDetailsPage() {
   const [showContract, setShowContract] = useState(false);
   const [showAttachments, setShowAttachments] = useState(false);
   const [showRenewalDialog, setShowRenewalDialog] = useState(false);
+  const [showTerminationDialog, setShowTerminationDialog] = useState(false);
 
   const handleTermination = () => {
     setShowTerminationDialog(true);
@@ -290,6 +293,10 @@ export default function RentalDetailsPage() {
 
         {/* Rescisão Dialog */}
         <RentalTerminationDialog
+          open={showTerminationDialog}
+          onOpenChange={setShowTerminationDialog}
+          rental={rental}
+          onConfirm={handleTerminateRental}
         />
       </Layout>
     </>
