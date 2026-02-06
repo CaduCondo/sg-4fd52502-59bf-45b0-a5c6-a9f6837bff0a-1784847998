@@ -19,30 +19,38 @@ function toDatabase(data: Partial<Tenant>): any {
   if (data.phone !== undefined) dbData.phone = data.phone;
   if (data.status !== undefined) dbData.status = data.status;
   if (data.rg !== undefined) dbData.rg = data.rg;
+  if (data.notes !== undefined) dbData.notes = data.notes;
   
-  // Handle document_type (camelCase to snake_case)
-  if (data.documentType !== undefined) {
-    dbData.document_type = data.documentType;
-  } else if (data.document_type !== undefined) {
-    dbData.document_type = data.document_type;
-  }
-  
-  // Handle document field (stores CPF or CNPJ value)
-  if (data.document !== undefined) {
-    dbData.document = data.document;
-  }
-  
-  // Address fields
-  if (data.cep !== undefined) dbData.cep = data.cep;
+  // Address fields - map cep to zip_code
+  if (data.cep !== undefined) dbData.zip_code = data.cep;
   if (data.street !== undefined) dbData.street = data.street;
   if (data.number !== undefined) dbData.number = data.number;
   if (data.complement !== undefined) dbData.complement = data.complement;
   if (data.neighborhood !== undefined) dbData.neighborhood = data.neighborhood;
   if (data.city !== undefined) dbData.city = data.city;
   if (data.state !== undefined) dbData.state = data.state;
-  if (data.notes !== undefined) dbData.notes = data.notes;
   
-  // REMOVED: cpf and cnpj columns don't exist in database
+  // Document type and document handling
+  if (data.documentType !== undefined) dbData.document_type = data.documentType;
+  if (data.document_type !== undefined) dbData.document_type = data.document_type;
+  
+  // Handle document field based on document_type
+  const docType = data.documentType || data.document_type;
+  if (docType === "cpf" && data.cpf) {
+    dbData.document = data.cpf;
+  } else if (docType === "cnpj" && data.cnpj) {
+    dbData.document = data.cnpj;
+  } else if (data.document) {
+    dbData.document = data.document;
+  }
+  
+  // Only set cpf field if document_type is cpf - for backward compatibility
+  // In the unified model, document_type + document hold everything
+  // cpf column is kept for queries but should mirror document when type=cpf
+  if (docType === "cpf" && data.cpf) {
+    dbData.cpf = data.cpf;
+  }
+  
   // All values go to 'document' field based on 'document_type'
   
   return dbData;
@@ -52,14 +60,12 @@ function toDatabase(data: Partial<Tenant>): any {
 function fromDatabase(data: any): Tenant {
   return {
     ...data,
-    documentType: data.document_type || data.documentType,
-    createdAt: data.created_at || data.createdAt,
-    updatedAt: data.updated_at || data.updatedAt,
-    // Map document field to cpf or cnpj for frontend compatibility
-    cpf: data.document_type === "cpf" ? data.document : data.cpf,
-    cnpj: data.document_type === "cnpj" ? data.document : data.cnpj,
-    // Address fields
-    cep: data.cep,
+    documentType: data.document_type || (data.cpf ? "cpf" : data.document ? "cnpj" : "cpf"),
+    document_type: data.document_type || (data.cpf ? "cpf" : data.document ? "cnpj" : "cpf"),
+    cpf: data.document_type === "cpf" ? data.document : (data.cpf || ""),
+    cnpj: data.document_type === "cnpj" ? data.document : "",
+    rg: data.rg,
+    cep: data.zip_code,
     street: data.street,
     number: data.number,
     complement: data.complement,
