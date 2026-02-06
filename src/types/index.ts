@@ -139,22 +139,23 @@ export interface Tenant {
   name: string;
   email: string;
   phone: string;
-  documentType: "cpf" | "cnpj";
   document: string;
+  documentType?: "cpf" | "cnpj";
+  document_type?: "cpf" | "cnpj";
   cpf?: string;
-  rg?: string;
   cnpj?: string;
-  location_id?: string;
-  document_type?: "cpf" | "cnpj"; // Database field match
-  status: "active" | "inactive" | "rented" | "locatario";
-  createdAt?: string;
-  created_at?: string;
-  updatedAt?: string;
-  updated_at?: string;
-  active: boolean;
-  // Campos opcionais para UI/Formulário
-  address?: string;
+  rg?: string;
+  cep?: string;
+  street?: string;
+  number?: string;
+  complement?: string;
+  neighborhood?: string;
+  city?: string;
+  state?: string;
+  status: "active" | "inactive" | "rented";
   notes?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Rental {

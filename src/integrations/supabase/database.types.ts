@@ -743,6 +743,8 @@ export type Database = {
       }
       tenants: {
         Row: {
+          city: string | null
+          complement: string | null
           cpf: string | null
           created_at: string | null
           document: string | null
@@ -750,12 +752,19 @@ export type Database = {
           email: string | null
           id: string
           name: string
+          neighborhood: string | null
+          number: string | null
           phone: string | null
           rg: string | null
+          state: string | null
           status: string
+          street: string | null
           updated_at: string | null
+          zip_code: string | null
         }
         Insert: {
+          city?: string | null
+          complement?: string | null
           cpf?: string | null
           created_at?: string | null
           document?: string | null
@@ -763,12 +772,19 @@ export type Database = {
           email?: string | null
           id?: string
           name: string
+          neighborhood?: string | null
+          number?: string | null
           phone?: string | null
           rg?: string | null
+          state?: string | null
           status: string
+          street?: string | null
           updated_at?: string | null
+          zip_code?: string | null
         }
         Update: {
+          city?: string | null
+          complement?: string | null
           cpf?: string | null
           created_at?: string | null
           document?: string | null
@@ -776,10 +792,15 @@ export type Database = {
           email?: string | null
           id?: string
           name?: string
+          neighborhood?: string | null
+          number?: string | null
           phone?: string | null
           rg?: string | null
+          state?: string | null
           status?: string
+          street?: string | null
           updated_at?: string | null
+          zip_code?: string | null
         }
         Relationships: []
       }
