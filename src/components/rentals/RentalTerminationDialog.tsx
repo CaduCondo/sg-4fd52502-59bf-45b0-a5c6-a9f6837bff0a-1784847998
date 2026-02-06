@@ -35,22 +35,26 @@ export function RentalTerminationDialog({
   onConfirm,
 }: RentalTerminationDialogProps) {
   const [terminationDate, setTerminationDate] = useState<string>("");
-  const [applyPenalty, setApplyPenalty] = useState<boolean>(false);
+  const [applyFullContractPenalty, setApplyFullContractPenalty] = useState<boolean>(false);
+  const [apply12MonthsPenalty, setApply12MonthsPenalty] = useState<boolean>(false);
   const [penaltyAmount, setPenaltyAmount] = useState<number>(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [currentMonth, setCurrentMonth] = useState<number>(0);
   const [totalMonths, setTotalMonths] = useState<number>(0);
   const [remainingMonths, setRemainingMonths] = useState<number>(0);
+  const [monthsUntil12th, setMonthsUntil12th] = useState<number>(0);
 
   useEffect(() => {
     if (!rental || !open) {
       setTerminationDate("");
-      setApplyPenalty(false);
+      setApplyFullContractPenalty(false);
+      setApply12MonthsPenalty(false);
       setPenaltyAmount(0);
       setCurrentMonth(0);
       setTotalMonths(0);
       setRemainingMonths(0);
+      setMonthsUntil12th(0);
       return;
     }
 
@@ -64,6 +68,10 @@ export function RentalTerminationDialog({
     setTotalMonths(total);
     setCurrentMonth(Math.min(current, total));
     setTerminationDate(format(today, "yyyy-MM-dd"));
+
+    // Calcula quantos meses faltam para chegar na 12ª parcela
+    const until12 = Math.max(0, 12 - current);
+    setMonthsUntil12th(until12);
   }, [rental, open]);
 
   useEffect(() => {
@@ -76,15 +84,34 @@ export function RentalTerminationDialog({
     try {
       const termDate = parseISO(terminationDate);
       const endDate = parseISO(rental.endDate);
+      const startDate = parseISO(rental.startDate);
+      
+      const currentMonthFromDate = differenceInMonths(termDate, startDate) + 1;
       const remaining = Math.max(0, differenceInMonths(endDate, termDate));
       
       setRemainingMonths(remaining);
 
-      if (applyPenalty && remaining > 0) {
-        const monthlyRent = rental.value || 0;
+      const monthlyRent = rental.value || 0;
+
+      // Calcula multa sobre contrato completo
+      if (applyFullContractPenalty && remaining > 0) {
         const penalty = (remaining * monthlyRent) * 0.10;
         setPenaltyAmount(penalty);
-      } else {
+      } 
+      // Calcula multa sobre 12 meses
+      else if (apply12MonthsPenalty) {
+        if (currentMonthFromDate < 12) {
+          const monthsTo12th = Math.max(0, 12 - currentMonthFromDate);
+          const penalty = (monthsTo12th * monthlyRent) * 0.10;
+          setPenaltyAmount(penalty);
+          setMonthsUntil12th(monthsTo12th);
+        } else {
+          // Já passou da 12ª parcela, sem multa
+          setPenaltyAmount(0);
+          setMonthsUntil12th(0);
+        }
+      } 
+      else {
         setPenaltyAmount(0);
       }
     } catch (error) {
@@ -92,7 +119,7 @@ export function RentalTerminationDialog({
       setPenaltyAmount(0);
       setRemainingMonths(0);
     }
-  }, [rental, terminationDate, applyPenalty]);
+  }, [rental, terminationDate, applyFullContractPenalty, apply12MonthsPenalty]);
 
   const handleConfirm = async () => {
     if (!terminationDate) {
@@ -103,7 +130,7 @@ export function RentalTerminationDialog({
     try {
       await onConfirm({
         terminationDate,
-        applyPenalty,
+        applyPenalty: applyFullContractPenalty || apply12MonthsPenalty,
         penaltyAmount,
       });
       onOpenChange(false);
@@ -168,31 +195,60 @@ export function RentalTerminationDialog({
             </p>
           </div>
 
-          {/* Apply Penalty Checkbox */}
-          <div className="flex items-start space-x-3">
-            <Checkbox
-              id="apply-penalty"
-              checked={applyPenalty}
-              onCheckedChange={(checked) => setApplyPenalty(checked as boolean)}
-            />
-            <div className="space-y-1">
-              <Label
-                htmlFor="apply-penalty"
-                className="text-sm font-medium leading-none cursor-pointer"
-              >
-                Aplicar multa rescisória?
-              </Label>
-              <p className="text-xs text-muted-foreground">
-                Multa de 10% sobre o valor dos meses restantes do contrato
-              </p>
+          {/* Penalty Type Checkboxes */}
+          <div className="space-y-3">
+            {/* Full Contract Penalty */}
+            <div className="flex items-start space-x-3">
+              <Checkbox
+                id="apply-full-penalty"
+                checked={applyFullContractPenalty}
+                onCheckedChange={(checked) => {
+                  setApplyFullContractPenalty(checked as boolean);
+                  if (checked) setApply12MonthsPenalty(false);
+                }}
+              />
+              <div className="space-y-1">
+                <Label
+                  htmlFor="apply-full-penalty"
+                  className="text-sm font-medium leading-none cursor-pointer"
+                >
+                  Aplicar multa rescisória sobre contrato completo?
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Multa de 10% sobre o valor de todos os meses restantes do contrato
+                </p>
+              </div>
+            </div>
+
+            {/* 12 Months Penalty */}
+            <div className="flex items-start space-x-3">
+              <Checkbox
+                id="apply-12months-penalty"
+                checked={apply12MonthsPenalty}
+                onCheckedChange={(checked) => {
+                  setApply12MonthsPenalty(checked as boolean);
+                  if (checked) setApplyFullContractPenalty(false);
+                }}
+              />
+              <div className="space-y-1">
+                <Label
+                  htmlFor="apply-12months-penalty"
+                  className="text-sm font-medium leading-none cursor-pointer"
+                >
+                  Aplicar multa rescisória sobre 12 meses?
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Multa de 10% calculada até a 12ª parcela (aplica-se apenas se a rescisão ocorrer antes da 12ª parcela)
+                </p>
+              </div>
             </div>
           </div>
 
-          {/* Penalty Calculation Info */}
-          {applyPenalty && remainingMonths > 0 && (
+          {/* Penalty Calculation Info - Full Contract */}
+          {applyFullContractPenalty && remainingMonths > 0 && (
             <Alert>
               <AlertDescription className="text-sm">
-                <strong>Cálculo da Multa:</strong>
+                <strong>Cálculo da Multa (Contrato Completo):</strong>
                 <br />
                 {remainingMonths} {remainingMonths === 1 ? "mês" : "meses"} restante(s) × R${" "}
                 {rental.value?.toLocaleString("pt-BR", {
@@ -206,6 +262,52 @@ export function RentalTerminationDialog({
                 })}
               </AlertDescription>
             </Alert>
+          )}
+
+          {/* Penalty Calculation Info - 12 Months */}
+          {apply12MonthsPenalty && (
+            <Alert>
+              <AlertDescription className="text-sm">
+                {monthsUntil12th > 0 ? (
+                  <>
+                    <strong>Cálculo da Multa (12 Meses):</strong>
+                    <br />
+                    Faltam {monthsUntil12th} {monthsUntil12th === 1 ? "mês" : "meses"} para chegar na 12ª parcela
+                    <br />
+                    {monthsUntil12th} {monthsUntil12th === 1 ? "mês" : "meses"} × R${" "}
+                    {rental.value?.toLocaleString("pt-BR", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}{" "}
+                    × 10% = R${" "}
+                    {penaltyAmount.toLocaleString("pt-BR", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </>
+                ) : (
+                  <>
+                    <strong>Multa (12 Meses):</strong>
+                    <br />
+                    Rescisão após a 12ª parcela - Sem multa aplicável
+                  </>
+                )}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Penalty Amount Display */}
+          {(applyFullContractPenalty || apply12MonthsPenalty) && (
+            <div className="rounded-lg border bg-primary/5 p-4">
+              <p className="text-sm font-medium text-muted-foreground mb-1">Valor da Rescisão</p>
+              <p className="text-3xl font-bold text-primary">
+                R${" "}
+                {penaltyAmount.toLocaleString("pt-BR", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </p>
+            </div>
           )}
         </div>
 
