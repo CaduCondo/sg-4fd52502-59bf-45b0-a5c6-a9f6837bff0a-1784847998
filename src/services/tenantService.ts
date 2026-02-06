@@ -32,6 +32,16 @@ function toDatabase(data: Partial<Tenant>): any {
     dbData.document = data.document;
   }
   
+  // Address fields
+  if (data.cep !== undefined) dbData.cep = data.cep;
+  if (data.street !== undefined) dbData.street = data.street;
+  if (data.number !== undefined) dbData.number = data.number;
+  if (data.complement !== undefined) dbData.complement = data.complement;
+  if (data.neighborhood !== undefined) dbData.neighborhood = data.neighborhood;
+  if (data.city !== undefined) dbData.city = data.city;
+  if (data.state !== undefined) dbData.state = data.state;
+  if (data.notes !== undefined) dbData.notes = data.notes;
+  
   // REMOVED: cpf and cnpj columns don't exist in database
   // All values go to 'document' field based on 'document_type'
   
@@ -48,6 +58,15 @@ function fromDatabase(data: any): Tenant {
     // Map document field to cpf or cnpj for frontend compatibility
     cpf: data.document_type === "cpf" ? data.document : data.cpf,
     cnpj: data.document_type === "cnpj" ? data.document : data.cnpj,
+    // Address fields
+    cep: data.cep,
+    street: data.street,
+    number: data.number,
+    complement: data.complement,
+    neighborhood: data.neighborhood,
+    city: data.city,
+    state: data.state,
+    notes: data.notes,
   };
 }
 
