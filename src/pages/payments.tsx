@@ -195,8 +195,7 @@ export default function Payments() {
         document: tenant.document || "",
         cpf: tenant.cpf || "",
         rg: tenant.rg || "",
-        status: (tenant.status as "active" | "inactive" | "rented" | "locatario") || "active",
-        active: true,
+        status: (tenant.status as "active" | "inactive" | "rented") || "active",
       };
 
       setReceiptData({

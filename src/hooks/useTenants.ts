@@ -125,9 +125,9 @@ export function useTenants() {
 
       const matchesStatus = statusFilter === "all" || tenant.status === statusFilter;
 
-      const matchesLocation =
-        selectedLocations.length === 0 ||
-        (tenant.location_id ? selectedLocations.includes(tenant.location_id) : false);
+      // Filtro de localização removido pois tenants não possuem location_id direto
+      // Se necessário filtrar por localização, precisaria fazer join com rentals
+      const matchesLocation = true;
 
       return matchesSearch && matchesStatus && matchesLocation;
     });

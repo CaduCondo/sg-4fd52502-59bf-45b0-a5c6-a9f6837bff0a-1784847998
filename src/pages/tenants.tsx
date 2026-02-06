@@ -123,7 +123,7 @@ export default function TenantsPage() {
 
   const getRowClassName = (tenant: Tenant) => {
     const baseClasses = "cursor-pointer hover:bg-muted/50 transition-colors";
-    if (tenant.status === "active" || tenant.status === "locatario") {
+    if (tenant.status === "active" || tenant.status === "rented") {
       return `${baseClasses} bg-green-50 dark:bg-green-950/20`;
     }
     return `${baseClasses} bg-gray-100 dark:bg-gray-800`;

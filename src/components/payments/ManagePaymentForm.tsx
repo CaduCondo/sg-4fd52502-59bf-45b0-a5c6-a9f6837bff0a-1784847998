@@ -448,7 +448,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           cpf: tenant.cpf || "",
           rg: tenant.rg || "",
           status: tenant.status || "active",
-          active: true,
         };
 
         console.log("📦 Dados sendo enviados para callback:", { paymentForReceipt, mockRental, propertyForReceipt, tenantForReceipt });
