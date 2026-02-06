@@ -417,13 +417,13 @@ export default function RentalsPage() {
                               </div>
                             </div>
 
-                            <div className="mb-3">
+                            <div className="mb-2">
                               <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Inquilino:</p>
                               <p className="text-sm text-gray-600 dark:text-gray-400">{rental.tenant?.name || "-"}</p>
                             </div>
 
-                            <div className="flex items-end justify-between">
-                              <div className="mb-3">
+                            <div className="flex items-end justify-between gap-3">
+                              <div>
                                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
                                   Valor do Aluguel
                                 </p>
@@ -431,36 +431,40 @@ export default function RentalsPage() {
                                   {formatCurrency(rental.value || 0)}
                                 </p>
                               </div>
-                              <div className="flex flex-col gap-2">
+                              <div className="flex gap-1.5 flex-shrink-0">
                                 <Button
                                   variant="outline"
-                                  size="sm"
-                                  className="bg-green-500 hover:bg-green-600 text-white border-green-500"
+                                  size="icon"
+                                  className="h-8 w-8 bg-blue-500 hover:bg-blue-600 text-white border-blue-500"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setRentalToRenew(rental);
                                   }}
+                                  title="Renovar Contrato"
                                 >
                                   <RefreshCw className="h-4 w-4" />
                                 </Button>
                                 <Button
                                   variant="outline"
-                                  size="sm"
-                                  className="bg-yellow-500 hover:bg-yellow-600 text-white border-yellow-500"
+                                  size="icon"
+                                  className="h-8 w-8 bg-yellow-500 hover:bg-yellow-600 text-white border-yellow-500"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setRentalToEnd(rental);
                                   }}
+                                  title="Encerrar Contrato"
                                 >
                                   <XCircle className="h-4 w-4" />
                                 </Button>
                                 <Button
                                   variant="destructive"
-                                  size="sm"
+                                  size="icon"
+                                  className="h-8 w-8"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setRentalToDelete(rental);
                                   }}
+                                  title="Excluir Locação"
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
@@ -528,11 +532,12 @@ export default function RentalsPage() {
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    className="bg-green-500 hover:bg-green-600 text-white border-green-500"
+                                    className="bg-blue-500 hover:bg-blue-600 text-white border-blue-500"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       setRentalToRenew(rental);
                                     }}
+                                    title="Renovar Contrato"
                                   >
                                     <RefreshCw className="h-4 w-4" />
                                   </Button>
@@ -544,6 +549,7 @@ export default function RentalsPage() {
                                       e.stopPropagation();
                                       setRentalToEnd(rental);
                                     }}
+                                    title="Encerrar Contrato"
                                   >
                                     <XCircle className="h-4 w-4" />
                                   </Button>
@@ -554,6 +560,7 @@ export default function RentalsPage() {
                                       e.stopPropagation();
                                       setRentalToDelete(rental);
                                     }}
+                                    title="Excluir Locação"
                                   >
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
