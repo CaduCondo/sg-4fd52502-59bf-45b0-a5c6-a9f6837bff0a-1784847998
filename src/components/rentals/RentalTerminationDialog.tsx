@@ -44,6 +44,9 @@ export function RentalTerminationDialog({
   const [totalMonths, setTotalMonths] = useState<number>(0);
   const [remainingMonths, setRemainingMonths] = useState<number>(0);
   const [monthsUntil12th, setMonthsUntil12th] = useState<number>(0);
+  const [applyDiscount, setApplyDiscount] = useState<boolean>(false);
+  const [discountPercentage, setDiscountPercentage] = useState<number>(0);
+  const [finalAmount, setFinalAmount] = useState<number>(0);
 
   useEffect(() => {
     if (!rental || !open) {
