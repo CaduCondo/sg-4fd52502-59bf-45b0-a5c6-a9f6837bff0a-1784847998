@@ -75,27 +75,6 @@ export function TenantFormDialog({
           notes: tenant.notes || "",
         });
         setDocumentType(docType);
-      } else {
-        setFormData({
-          name: "",
-          email: "",
-          phone: "",
-          documentType: "cpf",
-          document: "",
-          cpf: "",
-          cnpj: "",
-          rg: "",
-          cep: "",
-          street: "",
-          number: "",
-          complement: "",
-          neighborhood: "",
-          city: "",
-          state: "",
-          status: "active",
-          notes: "",
-        });
-        setDocumentType("cpf");
       }
     }
 
