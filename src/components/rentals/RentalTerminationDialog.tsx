@@ -51,10 +51,14 @@ export function RentalTerminationDialog({
       setApplyFullContractPenalty(false);
       setApply12MonthsPenalty(false);
       setPenaltyAmount(0);
+      setIsSubmitting(false);
       setCurrentMonth(0);
       setTotalMonths(0);
       setRemainingMonths(0);
       setMonthsUntil12th(0);
+      setApplyDiscount(false);
+      setDiscountPercentage(0);
+      setFinalAmount(0);
       return;
     }
 
@@ -127,6 +131,16 @@ export function RentalTerminationDialog({
     }
   }, [rental, terminationDate, applyFullContractPenalty, apply12MonthsPenalty, totalMonths]);
 
+  // Calcula o valor final com desconto
+  useEffect(() => {
+    if (applyDiscount && discountPercentage > 0) {
+      const discount = (penaltyAmount * discountPercentage) / 100;
+      setFinalAmount(penaltyAmount - discount);
+    } else {
+      setFinalAmount(penaltyAmount);
+    }
+  }, [penaltyAmount, applyDiscount, discountPercentage]);
+
   const handleConfirm = async () => {
     if (!terminationDate) {
       return;
@@ -158,7 +172,7 @@ export function RentalTerminationDialog({
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-yellow-600" />
-            Encerrar Contrato
+            Rescisão de Contrato
           </DialogTitle>
           <DialogDescription>
             Você está encerrando o contrato de locação. Esta ação não pode ser desfeita.
@@ -240,18 +254,24 @@ export function RentalTerminationDialog({
                   setApply12MonthsPenalty(checked as boolean);
                   if (checked) setApplyFullContractPenalty(false);
                 }}
+                disabled={currentMonth >= 12}
                 className="mt-0.5"
               />
               <div className="flex-1 space-y-0.5">
                 <Label
                   htmlFor="apply-12months-penalty"
-                  className="text-sm font-medium leading-none cursor-pointer"
+                  className={`text-sm font-medium leading-none cursor-pointer ${currentMonth >= 12 ? "opacity-50" : ""}`}
                 >
-                  Multa sobre 12 meses
+                  Multa para contratos com cláusula dos 12 meses
                 </Label>
-                <p className="text-xs text-muted-foreground">
+                <p className={`text-xs text-muted-foreground ${currentMonth >= 12 ? "opacity-50" : ""}`}>
                   (3 × aluguel) ÷ 12 × meses até 12ª parcela
                 </p>
+                {currentMonth >= 12 && (
+                  <p className="text-xs text-yellow-600 font-medium">
+                    Disponível apenas antes da 12ª parcela
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -287,13 +307,71 @@ export function RentalTerminationDialog({
             </Alert>
           )}
 
+          {/* Discount Section */}
+          {(applyFullContractPenalty || apply12MonthsPenalty) && penaltyAmount > 0 && (
+            <div className="space-y-2.5">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="apply-discount"
+                  checked={applyDiscount}
+                  onCheckedChange={(checked) => {
+                    setApplyDiscount(checked as boolean);
+                    if (!checked) {
+                      setDiscountPercentage(0);
+                    }
+                  }}
+                />
+                <Label
+                  htmlFor="apply-discount"
+                  className="text-sm font-medium cursor-pointer"
+                >
+                  Aplicar Desconto?
+                </Label>
+              </div>
+
+              {applyDiscount && (
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    value={discountPercentage}
+                    onChange={(e) => {
+                      const value = parseFloat(e.target.value) || 0;
+                      setDiscountPercentage(Math.min(100, Math.max(0, value)));
+                    }}
+                    placeholder="0"
+                    className="h-9 w-24"
+                  />
+                  <span className="text-sm font-medium">%</span>
+                  {discountPercentage > 0 && (
+                    <span className="text-xs text-muted-foreground ml-2">
+                      Desconto: R$ {((penaltyAmount * discountPercentage) / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Penalty Amount Display - Compacto */}
           {(applyFullContractPenalty || apply12MonthsPenalty) && (
             <div className="rounded-lg border bg-primary/5 p-3">
               <p className="text-xs font-medium text-muted-foreground mb-0.5">Valor da Rescisão</p>
               <p className="text-2xl font-bold text-primary">
-                R$ {penaltyAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                R$ {finalAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </p>
+              {applyDiscount && discountPercentage > 0 && (
+                <div className="mt-2 pt-2 border-t space-y-0.5">
+                  <p className="text-xs text-muted-foreground">
+                    Valor original: R$ {penaltyAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                  <p className="text-xs text-green-600 font-medium">
+                    Desconto de {discountPercentage}%: -R$ {((penaltyAmount * discountPercentage) / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>
