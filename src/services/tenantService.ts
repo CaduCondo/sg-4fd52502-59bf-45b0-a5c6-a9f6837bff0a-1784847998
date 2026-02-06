@@ -19,7 +19,6 @@ function toDatabase(data: Partial<Tenant>): any {
   if (data.phone !== undefined) dbData.phone = data.phone;
   if (data.status !== undefined) dbData.status = data.status;
   if (data.rg !== undefined) dbData.rg = data.rg;
-  if (data.notes !== undefined) dbData.notes = data.notes;
   
   // Address fields - map cep to zip_code
   if (data.cep !== undefined) dbData.zip_code = data.cep;
@@ -51,8 +50,6 @@ function toDatabase(data: Partial<Tenant>): any {
     dbData.cpf = data.cpf;
   }
   
-  // All values go to 'document' field based on 'document_type'
-  
   return dbData;
 }
 
@@ -72,7 +69,6 @@ function fromDatabase(data: any): Tenant {
     neighborhood: data.neighborhood,
     city: data.city,
     state: data.state,
-    notes: data.notes,
   };
 }
 

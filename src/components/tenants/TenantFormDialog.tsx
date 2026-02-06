@@ -43,7 +43,6 @@ export function TenantFormDialog({
     city: "",
     state: "",
     status: "active",
-    notes: "",
   });
 
   const initializedRef = useRef(false);
@@ -72,7 +71,6 @@ export function TenantFormDialog({
           city: tenant.city || "",
           state: tenant.state || "",
           status: tenant.status || "active",
-          notes: tenant.notes || "",
         });
         setDocumentType(docType);
       }
@@ -159,7 +157,6 @@ export function TenantFormDialog({
       city: formData.city,
       state: formData.state,
       status: tenant?.status || "active",
-      notes: formData.notes,
     };
 
     if (documentType === "cpf") {
@@ -361,20 +358,6 @@ export function TenantFormDialog({
                 />
               </div>
             </div>
-          </div>
-
-          {/* Observações */}
-          <div className="space-y-2 pt-2 border-t">
-            <Label htmlFor="notes" className="text-sm font-medium">Observações</Label>
-            <Textarea
-              id="notes"
-              value={formData.notes || ""}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              placeholder="Observações adicionais"
-              rows={3}
-              disabled={!isEditing}
-              className="resize-none text-sm min-h-[80px] mobile-input"
-            />
           </div>
 
           <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2 pt-3 border-t">

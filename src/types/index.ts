@@ -153,7 +153,6 @@ export interface Tenant {
   city?: string;
   state?: string;
   status: "active" | "inactive" | "rented";
-  notes?: string;
   created_at?: string;
   updated_at?: string;
 }
