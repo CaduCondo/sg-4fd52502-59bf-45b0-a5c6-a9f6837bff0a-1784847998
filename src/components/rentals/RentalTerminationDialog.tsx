@@ -94,15 +94,21 @@ export function RentalTerminationDialog({
       const monthlyRent = rental.value || 0;
 
       // Calcula multa sobre contrato completo
+      // Fórmula: (3 × valor_aluguel) ÷ tempo_total_contrato × tempo_restante_contrato
       if (applyFullContractPenalty && remaining > 0) {
-        const penalty = (remaining * monthlyRent) * 0.10;
+        const threeTimesRent = 3 * monthlyRent;
+        const perMonthPenalty = threeTimesRent / totalMonths;
+        const penalty = perMonthPenalty * remaining;
         setPenaltyAmount(penalty);
       } 
       // Calcula multa sobre 12 meses
+      // Fórmula: (3 × valor_aluguel) ÷ 12 × meses_até_12ª_parcela
       else if (apply12MonthsPenalty) {
         if (currentMonthFromDate < 12) {
           const monthsTo12th = Math.max(0, 12 - currentMonthFromDate);
-          const penalty = (monthsTo12th * monthlyRent) * 0.10;
+          const threeTimesRent = 3 * monthlyRent;
+          const perMonthPenalty = threeTimesRent / 12;
+          const penalty = perMonthPenalty * monthsTo12th;
           setPenaltyAmount(penalty);
           setMonthsUntil12th(monthsTo12th);
         } else {
@@ -119,7 +125,7 @@ export function RentalTerminationDialog({
       setPenaltyAmount(0);
       setRemainingMonths(0);
     }
-  }, [rental, terminationDate, applyFullContractPenalty, apply12MonthsPenalty]);
+  }, [rental, terminationDate, applyFullContractPenalty, apply12MonthsPenalty, totalMonths]);
 
   const handleConfirm = async () => {
     if (!terminationDate) {
@@ -142,6 +148,9 @@ export function RentalTerminationDialog({
   };
 
   if (!rental) return null;
+
+  const monthlyRent = rental.value || 0;
+  const threeTimesRent = 3 * monthlyRent;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -217,7 +226,7 @@ export function RentalTerminationDialog({
                   Multa sobre contrato completo
                 </Label>
                 <p className="text-xs text-muted-foreground">
-                  10% sobre todos os meses restantes
+                  (3 × aluguel) ÷ meses totais × meses restantes
                 </p>
               </div>
             </div>
@@ -241,7 +250,7 @@ export function RentalTerminationDialog({
                   Multa sobre 12 meses
                 </Label>
                 <p className="text-xs text-muted-foreground">
-                  10% até a 12ª parcela (se antes dela)
+                  (3 × aluguel) ÷ 12 × meses até 12ª parcela
                 </p>
               </div>
             </div>
@@ -250,38 +259,24 @@ export function RentalTerminationDialog({
           {/* Penalty Calculation Info - Compacto */}
           {applyFullContractPenalty && remainingMonths > 0 && (
             <Alert className="py-2.5">
-              <AlertDescription className="text-xs leading-relaxed">
-                <strong>Cálculo:</strong> {remainingMonths} {remainingMonths === 1 ? "mês" : "meses"} × R${" "}
-                {rental.value?.toLocaleString("pt-BR", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}{" "}
-                × 10% = <strong>R${" "}
-                {penaltyAmount.toLocaleString("pt-BR", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}</strong>
+              <AlertDescription className="text-xs leading-relaxed space-y-1">
+                <div><strong>Cálculo:</strong></div>
+                <div>3 × R$ {monthlyRent.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} = R$ {threeTimesRent.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                <div>R$ {threeTimesRent.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ÷ {totalMonths} meses = R$ {(threeTimesRent / totalMonths).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                <div>R$ {(threeTimesRent / totalMonths).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} × {remainingMonths} meses restantes = <strong>R$ {penaltyAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></div>
               </AlertDescription>
             </Alert>
           )}
 
           {apply12MonthsPenalty && (
             <Alert className="py-2.5">
-              <AlertDescription className="text-xs leading-relaxed">
+              <AlertDescription className="text-xs leading-relaxed space-y-1">
                 {monthsUntil12th > 0 ? (
                   <>
-                    <strong>Cálculo:</strong> Faltam {monthsUntil12th} {monthsUntil12th === 1 ? "mês" : "meses"} para a 12ª parcela
-                    <br />
-                    {monthsUntil12th} × R${" "}
-                    {rental.value?.toLocaleString("pt-BR", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}{" "}
-                    × 10% = <strong>R${" "}
-                    {penaltyAmount.toLocaleString("pt-BR", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}</strong>
+                    <div><strong>Cálculo:</strong> Faltam {monthsUntil12th} {monthsUntil12th === 1 ? "mês" : "meses"} para a 12ª parcela</div>
+                    <div>3 × R$ {monthlyRent.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} = R$ {threeTimesRent.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                    <div>R$ {threeTimesRent.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ÷ 12 = R$ {(threeTimesRent / 12).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                    <div>R$ {(threeTimesRent / 12).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} × {monthsUntil12th} {monthsUntil12th === 1 ? "mês" : "meses"} até 12ª = <strong>R$ {penaltyAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></div>
                   </>
                 ) : (
                   <>
@@ -297,11 +292,7 @@ export function RentalTerminationDialog({
             <div className="rounded-lg border bg-primary/5 p-3">
               <p className="text-xs font-medium text-muted-foreground mb-0.5">Valor da Rescisão</p>
               <p className="text-2xl font-bold text-primary">
-                R${" "}
-                {penaltyAmount.toLocaleString("pt-BR", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
+                R$ {penaltyAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </p>
             </div>
           )}
