@@ -205,28 +205,47 @@ export function useRentalDetails(rentalId: string) {
     }
   };
 
-  const handleTerminateRental = async () => {
-    try {
-      const { error } = await supabase
-        .from("rentals")
-        .update({ status: "terminated", end_date: new Date().toISOString() })
-        .eq("id", rentalId);
+  const handleTerminateRental = async (data: {
+    terminationDate: string;
+    applyPenalty: boolean;
+    penaltyAmount: number;
+  }) => {
+    if (!rental) return;
 
-      if (error) throw error;
+    try {
+      // Importar o serviço de rescisão
+      const { processContractTermination } = await import("@/services/terminationService");
+
+      // Processar a rescisão (cria recebimento e deleta futuros)
+      await processContractTermination({
+        rentalId: rental.id,
+        terminationDate: data.terminationDate,
+        penaltyAmount: data.penaltyAmount,
+        paymentDay: rental.paymentDay,
+      });
+
+      // Atualizar status da locação para terminada
+      const { update: updateRental } = await import("@/services/rentalService");
+      await updateRental(rental.id, {
+        status: "terminated",
+        endDate: data.terminationDate,
+      });
 
       toast({
         title: "Sucesso",
-        description: "Locação encerrada com sucesso",
+        description: "Contrato encerrado com sucesso!",
       });
 
-      loadRentalData();
+      // Recarregar a página para atualizar os dados
+      window.location.reload();
     } catch (error) {
-      console.error("Erro ao encerrar locação:", error);
+      console.error("Error terminating rental:", error);
       toast({
         title: "Erro",
-        description: "Erro ao encerrar locação",
+        description: "Não foi possível encerrar o contrato.",
         variant: "destructive",
       });
+      throw error;
     }
   };
 
