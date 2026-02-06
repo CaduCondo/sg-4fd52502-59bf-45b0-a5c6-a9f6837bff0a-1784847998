@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Home, Plus, User, ChevronDown, ChevronUp, Trash2, XCircle, Grid3x3, List, AlertTriangle } from "lucide-react";
+import { Home, Plus, User, ChevronDown, ChevronUp, Trash2, XCircle, Grid3x3, List, AlertTriangle, RefreshCw } from "lucide-react";
 import { getAll as getAllRentals, remove as deleteRental, terminateContract } from "@/services/rentalService";
 import { getAvailable as getAvailableProperties, update as updateProperty, getAll as getAllProperties } from "@/services/propertyService";
 import { getActive as getActiveTenants, update as updateTenant, getAll as getAllTenants } from "@/services/tenantService";
@@ -161,6 +161,36 @@ export default function RentalsPage() {
       toast({
         title: "Erro",
         description: "Não foi possível encerrar o contrato.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRenewRental = async () => {
+    if (!rentalToRenew) return;
+
+    try {
+      const currentEndDate = new Date(rentalToRenew.endDate);
+      const newEndDate = new Date(currentEndDate);
+      newEndDate.setFullYear(newEndDate.getFullYear() + 1);
+
+      const { update: updateRental } = await import("@/services/rentalService");
+      await updateRental(rentalToRenew.id, {
+        endDate: newEndDate.toISOString().split("T")[0],
+      });
+
+      toast({
+        title: "Sucesso",
+        description: `Contrato renovado com sucesso! Nova data final: ${formatDate(newEndDate.toISOString())}`,
+      });
+
+      setRentalToRenew(null);
+      await loadRentalsData();
+    } catch (error) {
+      console.error("Error renewing contract:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível renovar o contrato.",
         variant: "destructive",
       });
     }
@@ -404,6 +434,17 @@ export default function RentalsPage() {
                                 <Button
                                   variant="outline"
                                   size="sm"
+                                  className="bg-green-500 hover:bg-green-600 text-white border-green-500"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setRentalToRenew(rental);
+                                  }}
+                                >
+                                  <RefreshCw className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
                                   className="bg-yellow-500 hover:bg-yellow-600 text-white border-yellow-500"
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -483,6 +524,17 @@ export default function RentalsPage() {
                               </TableCell>
                               <TableCell className="text-right">
                                 <div className="flex justify-end gap-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="bg-green-500 hover:bg-green-600 text-white border-green-500"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setRentalToRenew(rental);
+                                    }}
+                                  >
+                                    <RefreshCw className="h-4 w-4" />
+                                  </Button>
                                   <Button
                                     variant="outline"
                                     size="sm"
@@ -665,6 +717,23 @@ export default function RentalsPage() {
               <AlertDialogCancel>Cancelar</AlertDialogCancel>
               <AlertDialogAction onClick={handleDeleteRental} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
                 Excluir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog open={!!rentalToRenew} onOpenChange={() => setRentalToRenew(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirmar Renovação</AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que você deseja adicionar mais 1 ano de contrato a essa locação?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Não</AlertDialogCancel>
+              <AlertDialogAction onClick={handleRenewRental} className="bg-green-500 hover:bg-green-600">
+                Sim
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

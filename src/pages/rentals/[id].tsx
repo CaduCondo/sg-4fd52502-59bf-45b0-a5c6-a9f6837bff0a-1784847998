@@ -4,7 +4,7 @@ import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, XCircle, ArrowLeft, Eye } from "lucide-react";
+import { FileText, XCircle, ArrowLeft, Eye, RefreshCw } from "lucide-react";
 import { useRentalDetails } from "@/hooks/useRentalDetails";
 import { RentalDetailsCard } from "@/components/rentals/RentalDetailsCard";
 import { RentalPaymentsTable } from "@/components/rentals/RentalPaymentsTable";
@@ -12,6 +12,7 @@ import { RentalContract } from "@/components/RentalContract";
 import { AttachmentViewer } from "@/components/AttachmentViewer";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useState } from "react";
+import { toast } from "@/components/ui/use-toast";
 
 export default function RentalDetailsPage() {
   const router = useRouter();
@@ -30,6 +31,49 @@ export default function RentalDetailsPage() {
 
   const [showContract, setShowContract] = useState(false);
   const [showAttachments, setShowAttachments] = useState(false);
+  const [showRenewalDialog, setShowRenewalDialog] = useState(false);
+
+  const handleTermination = () => {
+    setShowTerminationDialog(true);
+  };
+
+  const handleRenewRental = async () => {
+    if (!rental) return;
+
+    try {
+      const currentEndDate = new Date(rental.endDate);
+      const newEndDate = new Date(currentEndDate);
+      newEndDate.setFullYear(newEndDate.getFullYear() + 1);
+
+      const { update: updateRental } = await import("@/services/rentalService");
+      await updateRental(rental.id, {
+        endDate: newEndDate.toISOString().split("T")[0],
+      });
+
+      const formatDate = (dateString: string) => {
+        const date = new Date(dateString);
+        const day = String(date.getDate()).padStart(2, "0");
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const year = date.getFullYear();
+        return `${day}/${month}/${year}`;
+      };
+
+      toast({
+        title: "Sucesso",
+        description: `Contrato renovado com sucesso! Nova data final: ${formatDate(newEndDate.toISOString())}`,
+      });
+
+      setShowRenewalDialog(false);
+      router.push("/rentals");
+    } catch (error) {
+      console.error("Error renewing contract:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível renovar o contrato.",
+        variant: "destructive",
+      });
+    }
+  };
 
   if (isLoading) {
     return (
@@ -110,28 +154,24 @@ export default function RentalDetailsPage() {
               )}
 
               {rental.status === "active" && (
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="destructive">
-                      <XCircle className="h-4 w-4 mr-2" />
-                      Encerrar Locação
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Confirmar Encerramento</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Tem certeza que deseja encerrar esta locação? Esta ação não pode ser desfeita.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                      <Button onClick={async (e) => { (e.target as HTMLButtonElement).blur(); await handleTerminateRental(); }}>
-                        Confirmar
-                      </Button>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                <>
+                  <Button
+                    variant="outline"
+                    className="bg-green-500 hover:bg-green-600 text-white border-green-500"
+                    onClick={() => setShowRenewalDialog(true)}
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Renovação
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="bg-yellow-500 hover:bg-yellow-600 text-white border-yellow-500"
+                    onClick={handleTermination}
+                  >
+                    <XCircle className="h-4 w-4 mr-2" />
+                    Encerrar Contrato
+                  </Button>
+                </>
               )}
             </div>
           </div>
@@ -229,6 +269,28 @@ export default function RentalDetailsPage() {
             />
           </DialogContent>
         </Dialog>
+
+        {/* Renovação AlertDialog */}
+        <AlertDialog open={showRenewalDialog} onOpenChange={setShowRenewalDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirmar Renovação</AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que você deseja adicionar mais 1 ano de contrato a essa locação?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Não</AlertDialogCancel>
+              <AlertDialogAction onClick={handleRenewRental} className="bg-green-500 hover:bg-green-600">
+                Sim
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Rescisão Dialog */}
+        <RentalTerminationDialog
+        />
       </Layout>
     </>
   );
