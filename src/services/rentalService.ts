@@ -278,6 +278,20 @@ export const rentalService = {
       );
     }
 
+    // Atualizar status do inquilino para 'rented'
+    if (rental.tenantId) {
+      const { error: tenantError } = await supabase
+        .from("tenants")
+        .update({ status: "rented" })
+        .eq("id", rental.tenantId);
+
+      if (tenantError) {
+        console.error("⚠️ Erro ao atualizar status do inquilino:", tenantError);
+      } else {
+        console.log("✅ Status do inquilino atualizado para 'rented'");
+      }
+    }
+
     return mapRentalData(data);
   },
 
@@ -350,6 +364,24 @@ export const rentalService = {
       );
     }
 
+    // Sincronizar status do inquilino quando houver mudança de status da locação
+    if (rental.status !== undefined) {
+      const tenantId = rental.tenantId || data.tenant_id;
+      if (tenantId) {
+        const newTenantStatus = rental.status === "active" ? "rented" : "active";
+        const { error: tenantError } = await supabase
+          .from("tenants")
+          .update({ status: newTenantStatus })
+          .eq("id", tenantId);
+
+        if (tenantError) {
+          console.error("⚠️ Erro ao sincronizar status do inquilino:", tenantError);
+        } else {
+          console.log(`✅ Status do inquilino atualizado para '${newTenantStatus}'`);
+        }
+      }
+    }
+
     // Atualizar recebimentos pendentes com as mudanças da locação
     await updatePendingPaymentsOnRentalEdit({
       id,
@@ -368,6 +400,15 @@ export const rentalService = {
   },
 
   async terminateContract(id: string): Promise<void> {
+    // Buscar tenant_id antes de terminar o contrato
+    const { data: rentalData, error: fetchError } = await supabase
+      .from("rentals")
+      .select("tenant_id")
+      .eq("id", id)
+      .single();
+
+    if (fetchError) throw fetchError;
+
     const { error } = await supabase
       .from("rentals")
       .update({ 
@@ -377,6 +418,20 @@ export const rentalService = {
       .eq("id", id);
 
     if (error) throw error;
+
+    // Atualizar status do inquilino para 'active' após encerrar o contrato
+    if (rentalData?.tenant_id) {
+      const { error: tenantError } = await supabase
+        .from("tenants")
+        .update({ status: "active" })
+        .eq("id", rentalData.tenant_id);
+
+      if (tenantError) {
+        console.error("⚠️ Erro ao atualizar status do inquilino:", tenantError);
+      } else {
+        console.log("✅ Status do inquilino atualizado para 'active' após encerramento");
+      }
+    }
   }
 };
 
