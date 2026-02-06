@@ -314,6 +314,31 @@ export function PropertyFormDialog({
           {!isReadOnly && (
             <div className="space-y-3">
               <Label className="text-sm font-medium">Fotos do Imóvel</Label>
+              
+              {/* Existing Images Gallery with Remove Button */}
+              {formData.images.length > 0 && (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-3">
+                  {formData.images.map((image, index) => (
+                    <div key={index} className="relative aspect-video group">
+                      <img
+                        src={image}
+                        alt={`Foto ${index + 1}`}
+                        className="w-full h-full object-cover rounded-lg border"
+                      />
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => removeImage(index)}
+                        className="absolute top-1 right-1 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                 <Button
                   type="button"

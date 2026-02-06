@@ -52,8 +52,33 @@ function fromDatabase(data: any): Tenant {
 }
 
 export async function getAllTenants(): Promise<Tenant[]> {
+  console.log("🔍 === FETCHING ALL TENANTS (DEBUG) ===");
+  
   const data = await fetchAll<any>(TABLE);
-  return data.map(fromDatabase);
+  
+  console.log(`📊 Total tenants fetched from database: ${data.length}`);
+  
+  // Group by status for debugging
+  const statusCount = data.reduce((acc: any, tenant: any) => {
+    const status = tenant.status || "unknown";
+    acc[status] = (acc[status] || 0) + 1;
+    return acc;
+  }, {});
+  
+  console.log("📊 Tenants by status:", statusCount);
+  
+  // Check for duplicates by document
+  const documents = data.map((t: any) => t.document).filter(Boolean);
+  const uniqueDocuments = new Set(documents);
+  if (documents.length !== uniqueDocuments.size) {
+    console.warn("⚠️ WARNING: Duplicate documents found in tenants!");
+    console.warn(`Total documents: ${documents.length}, Unique: ${uniqueDocuments.size}`);
+  }
+  
+  const tenants = data.map(fromDatabase);
+  console.log("✅ Tenants mapped successfully");
+  
+  return tenants;
 }
 
 // Alias
