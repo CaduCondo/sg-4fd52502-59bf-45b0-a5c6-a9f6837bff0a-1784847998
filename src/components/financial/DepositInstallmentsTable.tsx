@@ -42,7 +42,7 @@ interface DepositInstallmentData {
   rental: {
     has_partner_broker: boolean;
     security_deposit: number;
-    is_active: boolean;
+    status: string;
     property_id: string;
     monthly_rent: number;
     garage_value: number | null;

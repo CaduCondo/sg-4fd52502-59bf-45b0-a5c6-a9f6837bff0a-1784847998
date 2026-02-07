@@ -23,33 +23,15 @@ export async function processContractTermination(data: TerminationData): Promise
 
   const { rentalId, terminationDate, penaltyAmount, paymentDay, depositAmount = 0, repairExpenses = 0 } = data;
 
-  // PASSO 1: Determinar o mês da rescisão e o mês do recebimento final
+  // PASSO 1: Determinar o mês da rescisão
   const terminationDateObj = parseISO(terminationDate);
   const terminationMonth = getMonth(terminationDateObj) + 1; // 1-12
   const terminationYear = getYear(terminationDateObj);
   
-  // O recebimento final será no MÊS SEGUINTE ao mês da rescisão
-  const nextMonth = addMonths(terminationDateObj, 1);
-  const finalPaymentMonth = getMonth(nextMonth) + 1; // 1-12
-  const finalPaymentYear = getYear(nextMonth);
-
   console.log("📅 Data de rescisão:", format(terminationDateObj, "dd/MM/yyyy"));
   console.log("📅 Mês da rescisão:", `${terminationMonth}/${terminationYear}`);
-  console.log("📅 Mês do recebimento final:", `${finalPaymentMonth}/${finalPaymentYear}`);
 
-  // PASSO 2: Criar data de vencimento do recebimento final
-  let finalPaymentDueDate = new Date(finalPaymentYear, finalPaymentMonth - 1, paymentDay);
-
-  // Ajuste para dias inexistentes
-  if (finalPaymentDueDate.getMonth() !== finalPaymentMonth - 1) {
-    finalPaymentDueDate = new Date(finalPaymentYear, finalPaymentMonth, 0);
-    console.log("⚠️ Dia inexistente ajustado para:", format(finalPaymentDueDate, "dd/MM/yyyy"));
-  }
-
-  const dueDateStr = format(finalPaymentDueDate, "yyyy-MM-dd");
-  console.log("💰 Vencimento do recebimento final:", format(finalPaymentDueDate, "dd/MM/yyyy"));
-
-  // PASSO 3: Deletar APENAS os recebimentos POSTERIORES ao mês da rescisão
+  // PASSO 2: Deletar APENAS os recebimentos POSTERIORES ao mês da rescisão
   console.log("\n🗑️ Deletando recebimentos POSTERIORES a", `${terminationMonth}/${terminationYear}...`);
 
   const { data: paymentsToDelete, error: fetchError } = await supabase
@@ -97,7 +79,7 @@ export async function processContractTermination(data: TerminationData): Promise
     console.log("✅ Nenhum recebimento para deletar (todos estão no período mantido)");
   }
 
-  // PASSO 4: Criar ÚNICO recebimento final no mês seguinte
+  // PASSO 3: Criar ÚNICO recebimento final no mês seguinte
   const nextMonthDate = addMonths(terminationDateObj, 1);
   const finalPaymentMonth = getMonth(nextMonthDate) + 1;
   const finalPaymentYear = getYear(nextMonthDate);

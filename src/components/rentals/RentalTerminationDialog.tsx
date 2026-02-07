@@ -16,7 +16,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Calendar, AlertTriangle } from "lucide-react";
 import type { Rental } from "@/types";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 
 interface RentalTerminationDialogProps {
   open: boolean;
