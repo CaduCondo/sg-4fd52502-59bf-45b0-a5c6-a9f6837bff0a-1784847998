@@ -394,6 +394,23 @@ export function DepositInstallmentsTable({
   const activeDeposits = data.filter(item => item.rental?.is_active === true);
   const returnedDeposits = data.filter(item => item.rental?.is_active === false);
 
+  // Cálculos dos Totais para os Cards
+  const totalExpected = data.reduce((acc, curr) => acc + (curr.amount || 0), 0);
+  
+  const totalReceived = data.reduce((acc, curr) => {
+    // Considera recebido se tiver data de pagamento
+    return curr.payment_date ? acc + (curr.amount || 0) : acc;
+  }, 0);
+
+  const adminCommission = data.reduce((acc, curr) => acc + (curr.internal_commission || 0), 0);
+  const partnerCommission = data.reduce((acc, curr) => acc + (curr.partner_commission || 0), 0);
+  
+  // Usando adminCommission como "Comissão" (adminFee) nos cards
+  const adminFee = adminCommission; 
+  
+  // Receita Líquida = Recebido - Comissões (Interna + Parceiro)
+  const netRevenue = totalReceived - adminCommission - partnerCommission;
+
   // Função auxiliar para renderizar a tabela (evitar duplicação de código)
   const renderTable = (items: DepositInstallmentData[], title: string, isReturned: boolean) => {
     if (items.length === 0) {

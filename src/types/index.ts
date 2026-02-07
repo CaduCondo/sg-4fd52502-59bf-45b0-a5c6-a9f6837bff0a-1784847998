@@ -187,6 +187,8 @@ export interface Rental {
   depositInstallment3PaymentDate?: string;
   depositInstallment3PixCode?: string;
 
+  security_deposit?: number; // Adicionado campo do banco de dados
+
   // Dados relacionados (JOINs)
   property?: {
     id: string;
