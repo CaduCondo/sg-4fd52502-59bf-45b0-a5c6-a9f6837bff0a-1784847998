@@ -46,7 +46,9 @@ export function RentalTerminationDialog({
   const [monthsUntil12th, setMonthsUntil12th] = useState<number>(0);
   const [applyDiscount, setApplyDiscount] = useState<boolean>(false);
   const [discountPercentage, setDiscountPercentage] = useState<number>(0);
+  const [repairExpenses, setRepairExpenses] = useState<number>(0);
   const [finalAmount, setFinalAmount] = useState<number>(0);
+  const [depositAmount, setDepositAmount] = useState<number>(0);
 
   useEffect(() => {
     if (!rental || !open) {
@@ -61,7 +63,9 @@ export function RentalTerminationDialog({
       setMonthsUntil12th(0);
       setApplyDiscount(false);
       setDiscountPercentage(0);
+      setRepairExpenses(0);
       setFinalAmount(0);
+      setDepositAmount(0);
       return;
     }
 
@@ -79,6 +83,9 @@ export function RentalTerminationDialog({
     // Calcula quantos meses faltam para chegar na 12ª parcela
     const until12 = Math.max(0, 12 - current);
     setMonthsUntil12th(until12);
+
+    // Buscar valor do caução
+    setDepositAmount(rental.deposit || 0);
   }, [rental, open]);
 
   useEffect(() => {
@@ -134,15 +141,24 @@ export function RentalTerminationDialog({
     }
   }, [rental, terminationDate, applyFullContractPenalty, apply12MonthsPenalty, totalMonths]);
 
-  // Calcula o valor final com desconto
+  // Calcula o valor final: Multa - Caução + Despesas de Reforma - Desconto
   useEffect(() => {
+    let total = penaltyAmount;
+    
+    // Subtrai caução (devolução ao inquilino)
+    total -= depositAmount;
+    
+    // Adiciona despesas de reforma
+    total += repairExpenses;
+    
+    // Aplica desconto se marcado
     if (applyDiscount && discountPercentage > 0) {
-      const discount = (penaltyAmount * discountPercentage) / 100;
-      setFinalAmount(penaltyAmount - discount);
-    } else {
-      setFinalAmount(penaltyAmount);
+      const discount = (total * discountPercentage) / 100;
+      total -= discount;
     }
-  }, [penaltyAmount, applyDiscount, discountPercentage]);
+    
+    setFinalAmount(Math.max(0, total)); // Não permite valor negativo
+  }, [penaltyAmount, depositAmount, repairExpenses, applyDiscount, discountPercentage]);
 
   const handleConfirm = async () => {
     if (!terminationDate) {
@@ -154,7 +170,9 @@ export function RentalTerminationDialog({
       await onConfirm({
         terminationDate,
         applyPenalty: applyFullContractPenalty || apply12MonthsPenalty,
-        penaltyAmount: finalAmount, // Usar finalAmount (com desconto) ao invés de penaltyAmount
+        penaltyAmount: finalAmount,
+        depositAmount,
+        repairExpenses,
       });
       onOpenChange(false);
     } catch (error) {
@@ -310,6 +328,44 @@ export function RentalTerminationDialog({
             </Alert>
           )}
 
+          {/* Caução Info */}
+          {depositAmount > 0 && (
+            <div className="rounded-lg border bg-blue-50 p-3">
+              <p className="text-xs font-medium text-blue-900 mb-0.5">💰 Caução a Devolver</p>
+              <p className="text-lg font-bold text-blue-600">
+                R$ {depositAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </p>
+              <p className="text-xs text-blue-700 mt-1">
+                Este valor será devolvido ao inquilino
+              </p>
+            </div>
+          )}
+
+          {/* Repair Expenses Section */}
+          {(applyFullContractPenalty || apply12MonthsPenalty) && penaltyAmount > 0 && (
+            <div className="space-y-2">
+              <Label htmlFor="repair-expenses" className="text-sm font-medium">
+                Despesas de Reforma/Limpeza (Opcional)
+              </Label>
+              <Input
+                id="repair-expenses"
+                type="number"
+                min="0"
+                step="0.01"
+                value={repairExpenses || ""}
+                onChange={(e) => {
+                  const value = parseFloat(e.target.value) || 0;
+                  setRepairExpenses(Math.max(0, value));
+                }}
+                placeholder="0,00"
+                className="h-9 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              />
+              <p className="text-xs text-muted-foreground">
+                Valor gasto para deixar o imóvel nas condições originais
+              </p>
+            </div>
+          )}
+
           {/* Discount Section */}
           {(applyFullContractPenalty || apply12MonthsPenalty) && penaltyAmount > 0 && (
             <div className="space-y-2.5">
@@ -328,7 +384,7 @@ export function RentalTerminationDialog({
                   htmlFor="apply-discount"
                   className="text-sm font-medium cursor-pointer"
                 >
-                  Aplicar Desconto?
+                  Aplicar Desconto na Multa?
                 </Label>
               </div>
 
@@ -339,41 +395,66 @@ export function RentalTerminationDialog({
                     min="0"
                     max="100"
                     step="0.01"
-                    value={discountPercentage}
+                    value={discountPercentage || ""}
                     onChange={(e) => {
                       const value = parseFloat(e.target.value) || 0;
                       setDiscountPercentage(Math.min(100, Math.max(0, value)));
                     }}
                     placeholder="0"
-                    className="h-9 w-24"
+                    className="h-9 w-24 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
                   <span className="text-sm font-medium">%</span>
-                  {discountPercentage > 0 && (
-                    <span className="text-xs text-muted-foreground ml-2">
-                      Desconto: R$ {((penaltyAmount * discountPercentage) / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </span>
-                  )}
                 </div>
               )}
             </div>
           )}
 
-          {/* Penalty Amount Display - Compacto */}
+          {/* Final Amount Display - Cálculo Detalhado */}
           {(applyFullContractPenalty || apply12MonthsPenalty) && (
             <div className="rounded-lg border bg-primary/5 p-3">
-              <p className="text-xs font-medium text-muted-foreground mb-0.5">Valor da Rescisão</p>
-              <p className="text-2xl font-bold text-primary">
-                R$ {finalAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </p>
-              {applyDiscount && discountPercentage > 0 && (
-                <div className="mt-2 pt-2 border-t space-y-0.5">
-                  <p className="text-xs text-muted-foreground">
-                    Valor original: R$ {penaltyAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </p>
-                  <p className="text-xs text-green-600 font-medium">
-                    Desconto de {discountPercentage}%: -R$ {((penaltyAmount * discountPercentage) / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </p>
+              <p className="text-xs font-medium text-muted-foreground mb-2">Cálculo Final do Recebimento</p>
+              
+              {/* Breakdown do cálculo */}
+              <div className="space-y-1.5 text-sm mb-3 pb-3 border-b">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Multa de rescisão:</span>
+                  <span className="font-medium">+ R$ {penaltyAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 </div>
+                
+                {depositAmount > 0 && (
+                  <div className="flex justify-between text-blue-600">
+                    <span>Caução a devolver:</span>
+                    <span className="font-medium">- R$ {depositAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  </div>
+                )}
+                
+                {repairExpenses > 0 && (
+                  <div className="flex justify-between text-orange-600">
+                    <span>Despesas de reforma:</span>
+                    <span className="font-medium">+ R$ {repairExpenses.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  </div>
+                )}
+                
+                {applyDiscount && discountPercentage > 0 && (
+                  <div className="flex justify-between text-green-600">
+                    <span>Desconto ({discountPercentage}%):</span>
+                    <span className="font-medium">- R$ {(((penaltyAmount - depositAmount + repairExpenses) * discountPercentage) / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  </div>
+                )}
+              </div>
+              
+              {/* Valor total */}
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium text-muted-foreground">Valor Total:</span>
+                <p className="text-2xl font-bold text-primary">
+                  R$ {finalAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </p>
+              </div>
+              
+              {finalAmount < 0 && (
+                <p className="text-xs text-red-600 mt-2">
+                  ⚠️ Valor negativo: O inquilino receberá R$ {Math.abs(finalAmount).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} de volta
+                </p>
               )}
             </div>
           )}
