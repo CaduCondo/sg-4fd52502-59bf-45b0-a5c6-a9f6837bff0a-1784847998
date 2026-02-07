@@ -168,53 +168,32 @@ export default function RentalsPage() {
       await processContractTermination({
         rentalId: rentalToEnd.id,
         terminationDate: data.terminationDate,
-        penaltyAmount: data.penaltyAmount, // Já vem com desconto aplicado
+        penaltyAmount: data.penaltyAmount,
         paymentDay: rentalToEnd.paymentDay,
         depositAmount: data.depositAmount || 0,
         repairExpenses: data.repairExpenses || 0,
       });
       console.log("✅ processContractTermination concluído!");
 
-      // PASSO 2: Atualizar propriedade para disponível
-      if (rentalToEnd.propertyId) {
-        console.log("🔄 Atualizando propriedade para disponível...");
-        await updateProperty(rentalToEnd.propertyId, { status: "available" });
-        console.log("✅ Propriedade atualizada!");
-      }
-
-      // PASSO 3: Atualizar inquilino para ativo
-      if (rentalToEnd.tenantId) {
-        console.log("🔄 Atualizando inquilino para ativo...");
-        await updateTenant(rentalToEnd.tenantId, { status: "active" });
-        console.log("✅ Inquilino atualizado!");
-      }
-
-      // PASSO 4: Atualizar locação para terminated
-      console.log("🔄 Atualizando locação para terminated...");
-      const { update: updateRental } = await import("@/services/rentalService");
-      await updateRental(rentalToEnd.id, {
-        status: "terminated",
-        endDate: data.terminationDate,
-      });
-      console.log("✅ Locação atualizada!");
-
+      // NÃO atualizar status aqui - só muda quando o recebimento final for pago
+      
       toast({
-        title: "Contrato encerrado com sucesso!",
-        description: `A rescisão foi processada. ${data.applyPenalty ? `Multa de ${formatCurrency(data.penaltyAmount)} aplicada.` : ""} O recebimento final foi gerado.`,
+        title: "Rescisão processada com sucesso!",
+        description: `O recebimento final foi criado. ${data.applyPenalty ? `Valor: ${formatCurrency(data.penaltyAmount)}` : ""} A locação permanecerá ativa até o pagamento final.`,
         className: "bg-green-500 text-white border-none",
       });
       
       console.log("=== FIM handleConfirmTermination ===");
       
       setRentalToEnd(null);
-      // Forçar atualização dos dados
+      // Recarregar dados
       await loadRentalsData();
       await loadAvailableData();
     } catch (error) {
       console.error("❌ Error ending contract:", error);
       toast({
         title: "Erro",
-        description: "Não foi possível encerrar o contrato.",
+        description: "Não foi possível processar a rescisão.",
         variant: "destructive",
       });
     }

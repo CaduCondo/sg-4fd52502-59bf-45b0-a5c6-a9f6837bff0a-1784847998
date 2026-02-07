@@ -226,32 +226,18 @@ export function useRentalDetails(rentalId: string) {
       await processContractTermination({
         rentalId: rental.id,
         terminationDate: data.terminationDate,
-        penaltyAmount: data.penaltyAmount, // Já vem com desconto aplicado
+        penaltyAmount: data.penaltyAmount,
         paymentDay: rental.paymentDay,
         depositAmount: data.depositAmount || 0,
         repairExpenses: data.repairExpenses || 0,
       });
       console.log("✅ processContractTermination concluído com sucesso!");
 
-      // PASSO 2: Atualizar status da locação para terminada
-      console.log("🔄 Atualizando status da locação...");
-      const { error: updateError } = await supabase
-        .from("rentals")
-        .update({
-          status: "terminated",
-          end_date: data.terminationDate,
-        })
-        .eq("id", rental.id);
-
-      if (updateError) {
-        console.error("❌ Erro ao atualizar status da locação:", updateError);
-        throw updateError;
-      }
-      console.log("✅ Status da locação atualizado com sucesso!");
+      // NÃO atualizar status aqui - só muda quando o recebimento final for pago
 
       toast({
-        title: "Contrato encerrado com sucesso!",
-        description: "A rescisão foi processada e o recebimento final gerado.",
+        title: "Rescisão processada com sucesso!",
+        description: "O recebimento final foi criado. A locação permanecerá ativa até o pagamento final.",
         className: "bg-green-500 text-white border-none",
       });
 
@@ -263,7 +249,7 @@ export function useRentalDetails(rentalId: string) {
       console.error("❌ Error terminating rental:", error);
       toast({
         title: "Erro",
-        description: "Não foi possível encerrar o contrato.",
+        description: "Não foi possível processar a rescisão.",
         variant: "destructive",
       });
       throw error;
