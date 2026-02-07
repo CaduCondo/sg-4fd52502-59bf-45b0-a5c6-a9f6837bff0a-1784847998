@@ -163,7 +163,7 @@ export default function RentalsPage() {
       // Importar o serviço de rescisão
       const { processContractTermination } = await import("@/services/terminationService");
 
-      // PASSO 1: Processar a rescisão (cria recebimento e deleta futuros)
+      // Processar a rescisão (cria recebimento final e deleta futuros)
       console.log("🔄 Chamando processContractTermination...");
       await processContractTermination({
         rentalId: rentalToEnd.id,
