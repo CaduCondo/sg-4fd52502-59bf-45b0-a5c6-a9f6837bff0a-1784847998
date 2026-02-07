@@ -308,72 +308,58 @@ export function DepositInstallmentsTable({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {Object.entries(activeDeposits.reduce((acc, item) => {
-                    if (!acc[item.rental_id]) acc[item.rental_id] = [];
-                    acc[item.rental_id].push(item);
-                    return acc;
-                  }, {} as Record<string, DepositInstallmentData[]>)).map(([rentalId, installments]) => {
-                    const firstInstallment = installments[0];
-                    const rowSpan = installments.length;
-                    const totalCaucaoValue = installments.reduce((sum, inst) => sum + inst.amount, 0);
-
-                    return installments.map((installment, index) => {
-                      const isPaid = installment.pix_code && installment.pix_code.trim() !== "";
-                      const rowBgClass = isPaid ? "bg-green-50" : "bg-red-50";
-                      
-                      return (
-                        <TableRow key={installment.id}>
-                          {index === 0 && (
-                            <>
-                              <TableCell rowSpan={rowSpan} className="font-medium">
-                                <div className="max-w-[150px] truncate" title={firstInstallment.rental?.property?.location?.name}>
-                                  {firstInstallment.rental?.property?.location?.name || "-"}
-                                </div>
-                              </TableCell>
-                              <TableCell rowSpan={rowSpan}>
-                                <div className="max-w-[100px] truncate" title={firstInstallment.rental?.property?.complement}>
-                                  {firstInstallment.rental?.property?.complement || "-"}
-                                </div>
-                              </TableCell>
-                              <TableCell rowSpan={rowSpan}>
-                                <div className="max-w-[120px] truncate" title={firstInstallment.rental?.tenant?.name}>
-                                  {firstInstallment.rental?.tenant?.name || "-"}
-                                </div>
-                              </TableCell>
-                              <TableCell rowSpan={rowSpan} className="text-right">
-                                {formatCurrency((firstInstallment.rental?.monthly_rent || 0) + (firstInstallment.rental?.garage_value || 0))}
-                              </TableCell>
-                              <TableCell rowSpan={rowSpan} className="text-right">
-                                {formatCurrency(totalCaucaoValue)}
-                              </TableCell>
-                              <TableCell rowSpan={rowSpan}>
-                                {firstInstallment.rental?.has_partner_broker ? "Sim" : "Não"}
-                              </TableCell>
-                              <TableCell rowSpan={rowSpan} className="text-right">
-                                {formatCurrency(firstInstallment.partner_commission || 0)}
-                              </TableCell>
-                              <TableCell rowSpan={rowSpan} className="text-right">
-                                {formatCurrency(firstInstallment.internal_commission || 0)}
-                              </TableCell>
-                            </>
-                          )}
-                          <TableCell className={rowBgClass}>
-                            {installment.installment_number}/{installment.total_installments}
-                          </TableCell>
-                          <TableCell className={rowBgClass}>
-                            {formatDateWithoutTimezone(installment.payment_date)}
-                          </TableCell>
-                          <TableCell className={`text-right font-semibold text-green-600 ${rowBgClass}`}>
-                            {formatCurrency(installment.amount)}
-                          </TableCell>
-                          <TableCell className={rowBgClass}>
-                            <span className="text-xs font-mono truncate max-w-[100px] block" title={installment.pix_code || ""}>
-                              {installment.pix_code || "-"}
-                            </span>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    });
+                  {activeDeposits.map((item) => {
+                    const isPaid = item.pix_code && item.pix_code.trim() !== "";
+                    const rowBgClass = isPaid ? "bg-green-50" : "bg-red-50";
+                    
+                    return (
+                      <TableRow key={item.id}>
+                        <TableCell className="font-medium">
+                          <div className="max-w-[150px] truncate" title={item.rental?.property?.location?.name}>
+                            {item.rental?.property?.location?.name || "-"}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="max-w-[100px] truncate" title={item.rental?.property?.complement}>
+                            {item.rental?.property?.complement || "-"}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="max-w-[120px] truncate" title={item.rental?.tenant?.name}>
+                            {item.rental?.tenant?.name || "-"}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {formatCurrency((item.rental?.monthly_rent || 0) + (item.rental?.garage_value || 0))}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {formatCurrency(item.amount)}
+                        </TableCell>
+                        <TableCell>
+                          {item.rental?.has_partner_broker ? "Sim" : "Não"}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {formatCurrency(item.partner_commission || 0)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {formatCurrency(item.internal_commission || 0)}
+                        </TableCell>
+                        <TableCell className={rowBgClass}>
+                          {item.installment_number}/{item.total_installments}
+                        </TableCell>
+                        <TableCell className={rowBgClass}>
+                          {formatDateWithoutTimezone(item.payment_date)}
+                        </TableCell>
+                        <TableCell className={`text-right font-semibold text-green-600 ${rowBgClass}`}>
+                          {formatCurrency(item.amount)}
+                        </TableCell>
+                        <TableCell className={rowBgClass}>
+                          <span className="text-xs font-mono truncate max-w-[100px] block" title={item.pix_code || ""}>
+                            {item.pix_code || "-"}
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    );
                   })}
                 </TableBody>
               </Table>
@@ -415,72 +401,58 @@ export function DepositInstallmentsTable({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {Object.entries(returnedDeposits.reduce((acc, item) => {
-                      if (!acc[item.rental_id]) acc[item.rental_id] = [];
-                      acc[item.rental_id].push(item);
-                      return acc;
-                    }, {} as Record<string, DepositInstallmentData[]>)).map(([rentalId, installments]) => {
-                      const firstInstallment = installments[0];
-                      const rowSpan = installments.length;
-                      const totalCaucaoValue = installments.reduce((sum, inst) => sum + inst.amount, 0);
-
-                      return installments.map((installment, index) => {
-                        const isPaid = installment.pix_code && installment.pix_code.trim() !== "";
-                        const rowBgClass = isPaid ? "bg-green-50" : "bg-red-50";
-                        
-                        return (
-                          <TableRow key={installment.id}>
-                            {index === 0 && (
-                              <>
-                                <TableCell rowSpan={rowSpan} className="font-medium">
-                                  <div className="max-w-[150px] truncate" title={firstInstallment.rental?.property?.location?.name}>
-                                    {firstInstallment.rental?.property?.location?.name || "-"}
-                                  </div>
-                                </TableCell>
-                                <TableCell rowSpan={rowSpan}>
-                                  <div className="max-w-[100px] truncate" title={firstInstallment.rental?.property?.complement}>
-                                    {firstInstallment.rental?.property?.complement || "-"}
-                                  </div>
-                                </TableCell>
-                                <TableCell rowSpan={rowSpan}>
-                                  <div className="max-w-[120px] truncate" title={firstInstallment.rental?.tenant?.name}>
-                                    {firstInstallment.rental?.tenant?.name || "-"}
-                                  </div>
-                                </TableCell>
-                                <TableCell rowSpan={rowSpan} className="text-right">
-                                  {formatCurrency((firstInstallment.rental?.monthly_rent || 0) + (firstInstallment.rental?.garage_value || 0))}
-                                </TableCell>
-                                <TableCell rowSpan={rowSpan} className="text-right">
-                                  {formatCurrency(totalCaucaoValue)}
-                                </TableCell>
-                                <TableCell rowSpan={rowSpan}>
-                                  {firstInstallment.rental?.has_partner_broker ? "Sim" : "Não"}
-                                </TableCell>
-                                <TableCell rowSpan={rowSpan} className="text-right">
-                                  {formatCurrency(firstInstallment.partner_commission || 0)}
-                                </TableCell>
-                                <TableCell rowSpan={rowSpan} className="text-right">
-                                  {formatCurrency(firstInstallment.internal_commission || 0)}
-                                </TableCell>
-                              </>
-                            )}
-                            <TableCell className={rowBgClass}>
-                              {installment.installment_number}/{installment.total_installments}
-                            </TableCell>
-                            <TableCell className={rowBgClass}>
-                              {formatDateWithoutTimezone(installment.payment_date)}
-                            </TableCell>
-                            <TableCell className={`text-right font-semibold text-green-600 ${rowBgClass}`}>
-                              {formatCurrency(installment.amount)}
-                            </TableCell>
-                            <TableCell className={rowBgClass}>
-                              <span className="text-xs font-mono truncate max-w-[100px] block" title={installment.pix_code || ""}>
-                                {installment.pix_code || "-"}
-                              </span>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      });
+                    {returnedDeposits.map((item) => {
+                      const isPaid = item.pix_code && item.pix_code.trim() !== "";
+                      const rowBgClass = isPaid ? "bg-green-50" : "bg-red-50";
+                      
+                      return (
+                        <TableRow key={item.id}>
+                          <TableCell className="font-medium">
+                            <div className="max-w-[150px] truncate" title={item.rental?.property?.location?.name}>
+                              {item.rental?.property?.location?.name || "-"}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="max-w-[100px] truncate" title={item.rental?.property?.complement}>
+                              {item.rental?.property?.complement || "-"}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="max-w-[120px] truncate" title={item.rental?.tenant?.name}>
+                              {item.rental?.tenant?.name || "-"}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {formatCurrency((item.rental?.monthly_rent || 0) + (item.rental?.garage_value || 0))}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {formatCurrency(item.amount)}
+                          </TableCell>
+                          <TableCell>
+                            {item.rental?.has_partner_broker ? "Sim" : "Não"}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {formatCurrency(item.partner_commission || 0)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {formatCurrency(item.internal_commission || 0)}
+                          </TableCell>
+                          <TableCell className={rowBgClass}>
+                            {item.installment_number}/{item.total_installments}
+                          </TableCell>
+                          <TableCell className={rowBgClass}>
+                            {formatDateWithoutTimezone(item.payment_date)}
+                          </TableCell>
+                          <TableCell className={`text-right font-semibold text-green-600 ${rowBgClass}`}>
+                            {formatCurrency(item.amount)}
+                          </TableCell>
+                          <TableCell className={rowBgClass}>
+                            <span className="text-xs font-mono truncate max-w-[100px] block" title={item.pix_code || ""}>
+                              {item.pix_code || "-"}
+                            </span>
+                          </TableCell>
+                        </TableRow>
+                      );
                     })}
                   </TableBody>
                 </Table>
