@@ -411,134 +411,10 @@ export function DepositInstallmentsTable({
   // Receita Líquida = Recebido - Comissões (Interna + Parceiro)
   const netRevenue = totalReceived - adminCommission - partnerCommission;
 
-  // Função auxiliar para renderizar a tabela (evitar duplicação de código)
-  const renderTable = (items: DepositInstallmentData[], title: string, isReturned: boolean) => {
-    if (items.length === 0) {
-      return (
-        <Card className="mt-8">
-            <CardContent className="pt-6">
-                <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                    {isReturned ? <Check className="h-5 w-5 text-green-600" /> : <DollarSign className="h-5 w-5 text-blue-600" />}
-                    {title}
-                </h3>
-                <p className="text-muted-foreground text-center py-4">Nenhum registro encontrado.</p>
-            </CardContent>
-        </Card>
-      );
-    }
-
-    const groupedItems = items.reduce((acc, item) => {
-        if (!acc[item.rental_id]) acc[item.rental_id] = [];
-        acc[item.rental_id].push(item);
-        return acc;
-    }, {} as Record<string, DepositInstallmentData[]>);
-
-    return (
-        <Card className="mt-8">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h2 className="text-2xl font-bold flex items-center gap-2">
-                  {isReturned ? <Check className="h-6 w-6 text-green-600" /> : <FileText className="h-6 w-6" />}
-                  {title}
-                </h2>
-              </div>
-            </div>
-
-            <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Local</TableHead>
-                      <TableHead>Complemento</TableHead>
-                      <TableHead>Inquilino</TableHead>
-                      <TableHead className="text-right">Valor Aluguel</TableHead>
-                      <TableHead className="text-right">Valor Total Caução</TableHead>
-                      <TableHead>Corretor Parceiro</TableHead>
-                      <TableHead className="text-right">Comissão Parc.</TableHead>
-                      <TableHead className="text-right">Comissão Int.</TableHead>
-                      <TableHead>Parcela</TableHead>
-                      <TableHead>Data Pagamento</TableHead>
-                      <TableHead className="text-right">Valor Parcela</TableHead>
-                      <TableHead>Código PIX</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {Object.entries(groupedItems).map(([rentalId, installments]) => {
-                      const firstInstallment = installments[0];
-                      const rowSpan = installments.length;
-                      const totalCaucaoValue = installments.reduce((sum, inst) => sum + inst.amount, 0);
-
-                      return installments.map((installment, index) => {
-                        const isPaid = installment.pix_code && installment.pix_code.trim() !== "";
-                        const rowBgClass = isPaid ? "bg-green-50" : "bg-red-50";
-                        
-                        return (
-                          <TableRow key={installment.id}>
-                            {index === 0 && (
-                              <>
-                                <TableCell rowSpan={rowSpan} className="font-medium">
-                                  <div className="max-w-[150px] truncate" title={firstInstallment.rental?.property?.location?.name}>
-                                    {firstInstallment.rental?.property?.location?.name || "-"}
-                                  </div>
-                                </TableCell>
-                                <TableCell rowSpan={rowSpan}>
-                                  <div className="max-w-[100px] truncate" title={firstInstallment.rental?.property?.complement}>
-                                    {firstInstallment.rental?.property?.complement || "-"}
-                                  </div>
-                                </TableCell>
-                                <TableCell rowSpan={rowSpan}>
-                                    <div className="max-w-[120px] truncate" title={firstInstallment.rental?.tenant?.name}>
-                                        {firstInstallment.rental?.tenant?.name || "-"}
-                                    </div>
-                                </TableCell>
-                                <TableCell rowSpan={rowSpan} className="text-right">
-                                  {formatCurrency((firstInstallment.rental?.monthly_rent || 0) + (firstInstallment.rental?.garage_value || 0))}
-                                </TableCell>
-                                <TableCell rowSpan={rowSpan} className="text-right">
-                                  {formatCurrency(totalCaucaoValue)}
-                                </TableCell>
-                                <TableCell rowSpan={rowSpan}>
-                                  {firstInstallment.rental?.has_partner_broker ? "Sim" : "Não"}
-                                </TableCell>
-                                <TableCell rowSpan={rowSpan} className="text-right">
-                                    {formatCurrency(firstInstallment.partner_commission || 0)}
-                                </TableCell>
-                                <TableCell rowSpan={rowSpan} className="text-right">
-                                    {formatCurrency(firstInstallment.internal_commission || 0)}
-                                </TableCell>
-                              </>
-                            )}
-                            <TableCell className={rowBgClass}>
-                              {installment.installment_number}/{installment.total_installments}
-                            </TableCell>
-                            <TableCell className={rowBgClass}>
-                              {formatDateWithoutTimezone(installment.payment_date)}
-                            </TableCell>
-                            <TableCell className={`text-right font-semibold text-green-600 ${rowBgClass}`}>
-                              {formatCurrency(installment.amount)}
-                            </TableCell>
-                            <TableCell className={rowBgClass}>
-                              <span className="text-xs font-mono truncate max-w-[100px] block" title={installment.pix_code || ""}>
-                                {installment.pix_code || "-"}
-                              </span>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      });
-                    })}
-                  </TableBody>
-                </Table>
-            </div>
-          </CardContent>
-        </Card>
-    );
-  };
-
   if (loading) {
     return (
         <Card><CardContent className="pt-6 text-center">Carregando...</CardContent></Card>
-    )
+    );
   }
 
   if (!isAdmin) return null;
@@ -608,12 +484,214 @@ export function DepositInstallmentsTable({
 
       {/* Tabela de Cauções Ativos */}
       <ScrollReveal delay={0.6}>
-        {renderTable(activeDeposits, "Detalhamento dos Cauções", false)}
+        <Card className="mt-8">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-2xl font-bold flex items-center gap-2">
+                  <Check className="h-6 w-6 text-green-600" />
+                  Detalhamento dos Cauções
+                </h2>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Local</TableHead>
+                      <TableHead>Complemento</TableHead>
+                      <TableHead>Inquilino</TableHead>
+                      <TableHead className="text-right">Valor Aluguel</TableHead>
+                      <TableHead className="text-right">Valor Total Caução</TableHead>
+                      <TableHead>Corretor Parceiro</TableHead>
+                      <TableHead className="text-right">Comissão Parc.</TableHead>
+                      <TableHead className="text-right">Comissão Int.</TableHead>
+                      <TableHead>Parcela</TableHead>
+                      <TableHead>Data Pagamento</TableHead>
+                      <TableHead className="text-right">Valor Parcela</TableHead>
+                      <TableHead>Código PIX</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {Object.entries(activeDeposits.reduce((acc, item) => {
+                      if (!acc[item.rental_id]) acc[item.rental_id] = [];
+                      acc[item.rental_id].push(item);
+                      return acc;
+                    }, {} as Record<string, DepositInstallmentData[]>)).map(([rentalId, installments]) => {
+                      const firstInstallment = installments[0];
+                      const rowSpan = installments.length;
+                      const totalCaucaoValue = installments.reduce((sum, inst) => sum + inst.amount, 0);
+
+                      return installments.map((installment, index) => {
+                        const isPaid = installment.pix_code && installment.pix_code.trim() !== "";
+                        const rowBgClass = isPaid ? "bg-green-50" : "bg-red-50";
+                        
+                        return (
+                          <TableRow key={installment.id}>
+                            {index === 0 && (
+                              <>
+                                <TableCell rowSpan={rowSpan} className="font-medium">
+                                  <div className="max-w-[150px] truncate" title={firstInstallment.rental?.property?.location?.name}>
+                                    {firstInstallment.rental?.property?.location?.name || "-"}
+                                  </div>
+                                </TableCell>
+                                <TableCell rowSpan={rowSpan}>
+                                  <div className="max-w-[100px] truncate" title={firstInstallment.rental?.property?.complement}>
+                                    {firstInstallment.rental?.property?.complement || "-"}
+                                  </div>
+                                </TableCell>
+                                <TableCell rowSpan={rowSpan}>
+                                    <div className="max-w-[120px] truncate" title={firstInstallment.rental?.tenant?.name}>
+                                        {firstInstallment.rental?.tenant?.name || "-"}
+                                    </div>
+                                </TableCell>
+                                <TableCell rowSpan={rowSpan} className="text-right">
+                                  {formatCurrency((firstInstallment.rental?.monthly_rent || 0) + (firstInstallment.rental?.garage_value || 0))}
+                                </TableCell>
+                                <TableCell rowSpan={rowSpan} className="text-right">
+                                  {formatCurrency(totalCaucaoValue)}
+                                </TableCell>
+                                <TableCell rowSpan={rowSpan}>
+                                  {firstInstallment.rental?.has_partner_broker ? "Sim" : "Não"}
+                                </TableCell>
+                                <TableCell rowSpan={rowSpan} className="text-right">
+                                    {formatCurrency(firstInstallment.partner_commission || 0)}
+                                </TableCell>
+                                <TableCell rowSpan={rowSpan} className="text-right">
+                                    {formatCurrency(firstInstallment.internal_commission || 0)}
+                                </TableCell>
+                              </>
+                            )}
+                            <TableCell className={rowBgClass}>
+                              {installment.installment_number}/{installment.total_installments}
+                            </TableCell>
+                            <TableCell className={rowBgClass}>
+                              {formatDateWithoutTimezone(installment.payment_date)}
+                            </TableCell>
+                            <TableCell className={`text-right font-semibold text-green-600 ${rowBgClass}`}>
+                              {formatCurrency(installment.amount)}
+                            </TableCell>
+                            <TableCell className={rowBgClass}>
+                              <span className="text-xs font-mono truncate max-w-[100px] block" title={installment.pix_code || ""}>
+                                {installment.pix_code || "-"}
+                              </span>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      });
+                    })}
+                  </TableBody>
+                </Table>
+            </div>
+          </CardContent>
+        </Card>
       </ScrollReveal>
 
       {/* Tabela de Cauções Devolvidos */}
       <ScrollReveal delay={0.8}>
-        {renderTable(returnedDeposits, "Detalhamento dos Cauções DEVOLVIDOS", true)}
+        <Card className="mt-8">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-2xl font-bold flex items-center gap-2">
+                  <Check className="h-6 w-6 text-green-600" />
+                  Detalhamento dos Cauções DEVOLVIDOS
+                </h2>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Local</TableHead>
+                      <TableHead>Complemento</TableHead>
+                      <TableHead>Inquilino</TableHead>
+                      <TableHead className="text-right">Valor Aluguel</TableHead>
+                      <TableHead className="text-right">Valor Total Caução</TableHead>
+                      <TableHead>Corretor Parceiro</TableHead>
+                      <TableHead className="text-right">Comissão Parc.</TableHead>
+                      <TableHead className="text-right">Comissão Int.</TableHead>
+                      <TableHead>Parcela</TableHead>
+                      <TableHead>Data Pagamento</TableHead>
+                      <TableHead className="text-right">Valor Parcela</TableHead>
+                      <TableHead>Código PIX</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {Object.entries(returnedDeposits.reduce((acc, item) => {
+                      if (!acc[item.rental_id]) acc[item.rental_id] = [];
+                      acc[item.rental_id].push(item);
+                      return acc;
+                    }, {} as Record<string, DepositInstallmentData[]>)).map(([rentalId, installments]) => {
+                      const firstInstallment = installments[0];
+                      const rowSpan = installments.length;
+                      const totalCaucaoValue = installments.reduce((sum, inst) => sum + inst.amount, 0);
+
+                      return installments.map((installment, index) => {
+                        const isPaid = installment.pix_code && installment.pix_code.trim() !== "";
+                        const rowBgClass = isPaid ? "bg-green-50" : "bg-red-50";
+                        
+                        return (
+                          <TableRow key={installment.id}>
+                            {index === 0 && (
+                              <>
+                                <TableCell rowSpan={rowSpan} className="font-medium">
+                                  <div className="max-w-[150px] truncate" title={firstInstallment.rental?.property?.location?.name}>
+                                    {firstInstallment.rental?.property?.location?.name || "-"}
+                                  </div>
+                                </TableCell>
+                                <TableCell rowSpan={rowSpan}>
+                                  <div className="max-w-[100px] truncate" title={firstInstallment.rental?.property?.complement}>
+                                    {firstInstallment.rental?.property?.complement || "-"}
+                                  </div>
+                                </TableCell>
+                                <TableCell rowSpan={rowSpan}>
+                                    <div className="max-w-[120px] truncate" title={firstInstallment.rental?.tenant?.name}>
+                                        {firstInstallment.rental?.tenant?.name || "-"}
+                                    </div>
+                                </TableCell>
+                                <TableCell rowSpan={rowSpan} className="text-right">
+                                  {formatCurrency((firstInstallment.rental?.monthly_rent || 0) + (firstInstallment.rental?.garage_value || 0))}
+                                </TableCell>
+                                <TableCell rowSpan={rowSpan} className="text-right">
+                                  {formatCurrency(totalCaucaoValue)}
+                                </TableCell>
+                                <TableCell rowSpan={rowSpan}>
+                                  {firstInstallment.rental?.has_partner_broker ? "Sim" : "Não"}
+                                </TableCell>
+                                <TableCell rowSpan={rowSpan} className="text-right">
+                                    {formatCurrency(firstInstallment.partner_commission || 0)}
+                                </TableCell>
+                                <TableCell rowSpan={rowSpan} className="text-right">
+                                    {formatCurrency(firstInstallment.internal_commission || 0)}
+                                </TableCell>
+                              </>
+                            )}
+                            <TableCell className={rowBgClass}>
+                              {installment.installment_number}/{installment.total_installments}
+                            </TableCell>
+                            <TableCell className={rowBgClass}>
+                              {formatDateWithoutTimezone(installment.payment_date)}
+                            </TableCell>
+                            <TableCell className={`text-right font-semibold text-green-600 ${rowBgClass}`}>
+                              {formatCurrency(installment.amount)}
+                            </TableCell>
+                            <TableCell className={rowBgClass}>
+                              <span className="text-xs font-mono truncate max-w-[100px] block" title={installment.pix_code || ""}>
+                                {installment.pix_code || "-"}
+                              </span>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      });
+                    })}
+                  </TableBody>
+                </Table>
+            </div>
+          </CardContent>
+        </Card>
       </ScrollReveal>
     </div>
   );
