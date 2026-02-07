@@ -124,6 +124,12 @@ export async function updatePayment(id: string, payment: Partial<Payment>): Prom
     .single();
 
   if (error) throw error;
+
+  // Verificar se é pagamento de rescisão e processar finalização
+  if (payment.status) {
+    await checkAndProcessTerminationPayment(id, payment.status);
+  }
+
   return mapPaymentFromDB(data);
 }
 
@@ -134,6 +140,100 @@ export async function deletePayment(id: string): Promise<void> {
 }
 
 export const remove = deletePayment;
+
+/**
+ * Verifica se um pagamento é de rescisão e processa finalização da locação
+ * quando for marcado como pago
+ */
+async function checkAndProcessTerminationPayment(paymentId: string, newStatus: string): Promise<void> {
+  // Só processa se o status for "paid"
+  if (newStatus !== "paid") return;
+
+  console.log("🔍 Verificando se pagamento é de rescisão:", paymentId);
+
+  // Buscar o pagamento
+  const { data: payment, error: paymentError } = await supabase
+    .from("payments")
+    .select("*, rental:rentals!payments_rental_id_fkey(*)")
+    .eq("id", paymentId)
+    .single();
+
+  if (paymentError || !payment) {
+    console.log("❌ Erro ao buscar pagamento:", paymentError);
+    return;
+  }
+
+  // Verificar se é um pagamento de rescisão (tem a palavra "Rescisão" no notes)
+  const isTerminationPayment = payment.notes?.includes("Rescisão de Contrato");
+  
+  if (!isTerminationPayment) {
+    console.log("ℹ️ Pagamento não é de rescisão");
+    return;
+  }
+
+  console.log("✅ Pagamento de rescisão detectado! Processando finalização...");
+
+  const rental = payment.rental;
+  if (!rental) {
+    console.log("❌ Locação não encontrada");
+    return;
+  }
+
+  // PASSO 1: Atualizar status da propriedade para "available"
+  console.log("🏠 Atualizando propriedade para disponível...");
+  const { error: propertyError } = await supabase
+    .from("properties")
+    .update({ status: "available" })
+    .eq("id", rental.property_id);
+
+  if (propertyError) {
+    console.error("❌ Erro ao atualizar propriedade:", propertyError);
+  } else {
+    console.log("✅ Propriedade atualizada para: available");
+  }
+
+  // PASSO 2: Verificar se inquilino tem outras locações ativas
+  const { data: otherRentals, error: otherRentalsError } = await supabase
+    .from("rentals")
+    .select("id")
+    .eq("tenant_id", rental.tenant_id)
+    .eq("status", "active")
+    .neq("id", rental.id);
+
+  if (otherRentalsError) {
+    console.error("❌ Erro ao verificar outras locações:", otherRentalsError);
+  }
+
+  // Se não tem outras locações ativas, atualiza inquilino para inactive
+  const newTenantStatus = (!otherRentals || otherRentals.length === 0) ? "inactive" : "active";
+  
+  console.log(`👤 Atualizando inquilino para: ${newTenantStatus}`);
+  const { error: tenantError } = await supabase
+    .from("tenants")
+    .update({ status: newTenantStatus })
+    .eq("id", rental.tenant_id);
+
+  if (tenantError) {
+    console.error("❌ Erro ao atualizar inquilino:", tenantError);
+  } else {
+    console.log(`✅ Inquilino atualizado para: ${newTenantStatus}`);
+  }
+
+  // PASSO 3: Atualizar status da locação para "terminated"
+  console.log("📋 Atualizando locação para terminada...");
+  const { error: rentalError } = await supabase
+    .from("rentals")
+    .update({ status: "terminated", is_active: false })
+    .eq("id", rental.id);
+
+  if (rentalError) {
+    console.error("❌ Erro ao atualizar locação:", rentalError);
+  } else {
+    console.log("✅ Locação atualizada para: terminated");
+  }
+
+  console.log("🎉 Finalização da rescisão processada com sucesso!");
+}
 
 export async function getPaymentsByRentalId(rentalId: string): Promise<Payment[]> {
   const { data, error } = await supabase
