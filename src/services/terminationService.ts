@@ -1,31 +1,37 @@
 import { supabase } from "@/integrations/supabase/client";
 import { parseISO, addMonths, format, getMonth, getYear } from "date-fns";
 
+export interface TerminationData {
+  rentalId: string;
+  terminationDate: string;
+  penaltyAmount: number;
+  paymentDay: number;
+  depositAmount?: number;
+  repairExpenses?: number;
+}
+
 /**
  * Processa a rescisão de contrato:
  * 1. Cria recebimento de rescisão no mês POSTERIOR à data de rescisão
  * 2. Deleta todos os recebimentos do mês posterior em diante
  * 3. Mantém recebimentos até o mês da rescisão
  */
-export async function processContractTermination(data: {
-  rentalId: string;
-  terminationDate: string;
-  penaltyAmount: number;
-  paymentDay: number;
-}): Promise<void> {
+export async function processContractTermination(data: TerminationData): Promise<void> {
   console.log("=== INICIO processContractTermination ===");
   console.log("Dados recebidos:", data);
 
-  const { rentalId, terminationDate, penaltyAmount, paymentDay } = data;
+  const { rentalId, terminationDate, penaltyAmount, paymentDay, depositAmount = 0, repairExpenses = 0 } = data;
 
   // PASSO 1: Calcular o mês posterior à rescisão
   const terminationDateObj = parseISO(terminationDate);
   const nextMonth = addMonths(terminationDateObj, 1);
   const nextMonthNumber = getMonth(nextMonth) + 1; // 1-12
   const nextMonthYear = getYear(nextMonth);
+  const currentMonthNumber = getMonth(terminationDateObj) + 1;
+  const currentMonthYear = getYear(terminationDateObj);
 
   console.log("📅 Data de rescisão:", format(terminationDateObj, "dd/MM/yyyy"));
-  console.log("📅 Mês posterior:", `${nextMonthNumber}/${nextMonthYear}`);
+  console.log("📅 Mês posterior (recebimento):", `${nextMonthNumber}/${nextMonthYear}`);
 
   // PASSO 2: Criar data de vencimento do recebimento de rescisão
   // Vencimento = dia do pagamento no mês posterior
@@ -47,7 +53,7 @@ export async function processContractTermination(data: {
     .from("payments")
     .select("id, due_date, reference_month, reference_year, status")
     .eq("rental_id", rentalId)
-    .gte("reference_year", nextMonthYear)
+    .gte("reference_year", currentMonthYear) // Busca do ano atual em diante
     .order("due_date", { ascending: true });
 
   if (fetchError) {
@@ -87,38 +93,47 @@ export async function processContractTermination(data: {
     console.log(`✅ Deletados ${toDelete.length} recebimentos`);
   }
 
-  // PASSO 4: Criar recebimento de rescisão (somente se houver valor)
-  if (penaltyAmount > 0) {
-    console.log("\n💰 Criando recebimento de rescisão...");
-    console.log("   Valor:", `R$ ${penaltyAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
-    console.log("   Vencimento:", format(terminationPaymentDueDate, "dd/MM/yyyy"));
-    console.log("   Referência:", `${nextMonthNumber}/${nextMonthYear}`);
+  // PASSO 4: Criar recebimento de rescisão
+  // Cálculo: Multa - Caução + Reparos = Valor Final
+  // Se o valor for negativo (Caução > Multa + Reparos), cria recebimento zerado ou com valor simbólico e nota explicativa
+  
+  const finalAmount = Math.max(0, penaltyAmount - depositAmount + repairExpenses);
+  const notes = `Rescisão de Contrato
+--------------------------------
+Multa Rescisória: R$ ${penaltyAmount.toFixed(2)}
+(-) Devolução Caução: R$ ${depositAmount.toFixed(2)}
+(+) Despesas Reparos: R$ ${repairExpenses.toFixed(2)}
+--------------------------------
+Total a Receber: R$ ${finalAmount.toFixed(2)}`;
 
-    const { data: newPayment, error: insertError } = await supabase
-      .from("payments")
-      .insert({
-        rental_id: rentalId,
-        due_date: dueDateStr,
-        expected_amount: penaltyAmount,
-        status: "pending",
-        reference_month: String(nextMonthNumber),
-        reference_year: String(nextMonthYear),
-      })
-      .select()
-      .single();
+  console.log("\n💰 Criando recebimento de rescisão...");
+  console.log("   Valor Final:", `R$ ${finalAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`);
+  console.log("   Vencimento:", format(terminationPaymentDueDate, "dd/MM/yyyy"));
+  console.log("   Referência:", `${nextMonthNumber}/${nextMonthYear}`);
 
-    if (insertError) {
-      console.error("❌ Erro ao criar recebimento de rescisão:", insertError);
-      throw insertError;
-    }
+  const { data: newPayment, error: insertError } = await supabase
+    .from("payments")
+    .insert({
+      rental_id: rentalId,
+      due_date: dueDateStr,
+      expected_amount: finalAmount,
+      status: "pending",
+      reference_month: String(nextMonthNumber),
+      reference_year: String(nextMonthYear),
+      notes: notes,
+    })
+    .select()
+    .single();
 
-    console.log("✅ Recebimento de rescisão criado:", newPayment.id);
-  } else {
-    console.log("\n⚠️ Valor da rescisão é zero, nenhum recebimento criado");
+  if (insertError) {
+    console.error("❌ Erro ao criar recebimento de rescisão:", insertError);
+    throw insertError;
   }
+
+  console.log("✅ Recebimento de rescisão criado:", newPayment.id);
 
   console.log("\n=== RESUMO DA RESCISÃO ===");
   console.log(`✅ Recebimentos deletados: ${toDelete.length}`);
-  console.log(`✅ Recebimento de rescisão: ${penaltyAmount > 0 ? "Criado" : "Não criado (valor zero)"}`);
+  console.log(`✅ Recebimento de rescisão: Criado (${notes.replace(/\n/g, ", ")})`);
   console.log("=== FIM processContractTermination ===");
 }

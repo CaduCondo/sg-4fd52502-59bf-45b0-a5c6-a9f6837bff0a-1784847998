@@ -199,13 +199,15 @@ export default function RentalsPage() {
       console.log("✅ Locação atualizada!");
 
       toast({
-        title: "Sucesso",
-        description: `Contrato encerrado! ${data.applyPenalty ? `Valor da rescisão: ${formatCurrency(data.penaltyAmount)}` : ""}`,
+        title: "Contrato encerrado com sucesso!",
+        description: `A rescisão foi processada. ${data.applyPenalty ? `Multa de ${formatCurrency(data.penaltyAmount)} aplicada.` : ""} O recebimento final foi gerado.`,
+        className: "bg-green-500 text-white border-none",
       });
       
       console.log("=== FIM handleConfirmTermination ===");
       
       setRentalToEnd(null);
+      // Forçar atualização dos dados
       await loadRentalsData();
       await loadAvailableData();
     } catch (error) {

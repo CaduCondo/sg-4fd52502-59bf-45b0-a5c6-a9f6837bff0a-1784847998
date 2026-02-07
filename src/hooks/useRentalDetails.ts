@@ -250,14 +250,15 @@ export function useRentalDetails(rentalId: string) {
       console.log("✅ Status da locação atualizado com sucesso!");
 
       toast({
-        title: "Sucesso",
-        description: "Contrato encerrado com sucesso!",
+        title: "Contrato encerrado com sucesso!",
+        description: "A rescisão foi processada e o recebimento final gerado.",
+        className: "bg-green-500 text-white border-none",
       });
 
       console.log("=== FIM handleTerminateRental ===");
 
-      // Recarregar a página para atualizar os dados
-      // window.location.reload();
+      // Recarregar dados da locação
+      await loadRentalData();
     } catch (error) {
       console.error("❌ Error terminating rental:", error);
       toast({
