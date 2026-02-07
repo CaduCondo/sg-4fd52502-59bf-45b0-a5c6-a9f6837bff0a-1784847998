@@ -149,6 +149,8 @@ export default function RentalsPage() {
     terminationDate: string;
     applyPenalty: boolean;
     penaltyAmount: number;
+    depositAmount?: number;
+    repairExpenses?: number;
   }) => {
     if (!rentalToEnd) return;
 
@@ -168,6 +170,8 @@ export default function RentalsPage() {
         terminationDate: data.terminationDate,
         penaltyAmount: data.penaltyAmount, // Já vem com desconto aplicado
         paymentDay: rentalToEnd.paymentDay,
+        depositAmount: data.depositAmount || 0,
+        repairExpenses: data.repairExpenses || 0,
       });
       console.log("✅ processContractTermination concluído!");
 

@@ -207,6 +207,8 @@ export function useRentalDetails(rentalId: string) {
     terminationDate: string;
     applyPenalty: boolean;
     penaltyAmount: number;
+    depositAmount?: number;
+    repairExpenses?: number;
   }) => {
     if (!rental) return;
 
@@ -224,8 +226,10 @@ export function useRentalDetails(rentalId: string) {
       await processContractTermination({
         rentalId: rental.id,
         terminationDate: data.terminationDate,
-        penaltyAmount: data.penaltyAmount,
+        penaltyAmount: data.penaltyAmount, // Já vem com desconto aplicado
         paymentDay: rental.paymentDay,
+        depositAmount: data.depositAmount || 0,
+        repairExpenses: data.repairExpenses || 0,
       });
       console.log("✅ processContractTermination concluído com sucesso!");
 
