@@ -38,6 +38,10 @@ export default function RentalsPage() {
   const [loading, setLoading] = useState(true);
   const [loadingAvailable, setLoadingAvailable] = useState(true);
   const [loadingAdditionalData, setLoadingAdditionalData] = useState(false);
+  const [dataCache, setDataCache] = useState({
+    loaded: false,
+    timestamp: 0,
+  });
   const [isRentalDialogOpen, setIsRentalDialogOpen] = useState(false);
   const [selectedRental, setSelectedRental] = useState<Rental | null>(null);
   const [isViewMode, setIsViewMode] = useState(false);
@@ -82,29 +86,39 @@ export default function RentalsPage() {
   };
 
   const loadAdditionalData = async () => {
-    // Se dados já foram carregados, não carregar novamente
-    if (allProperties.length > 0 && allTenants.length > 0 && locations.length > 0) {
+    const now = Date.now();
+    const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
+    
+    // Se dados já foram carregados recentemente, não recarregar
+    if (dataCache.loaded && (now - dataCache.timestamp) < CACHE_DURATION) {
+      console.log("✅ Usando dados do cache (carregados há", Math.round((now - dataCache.timestamp) / 1000), "segundos)");
       return;
     }
 
     try {
       setLoadingAdditionalData(true);
+      console.log("🔄 Carregando dados adicionais...");
+      
       const [locationsData, allPropertiesData, allTenantsData] = await Promise.all([
         getAllLocations(),
         getAllProperties(),
         getAllTenants(),
       ]);
+      
       setLocations(locationsData);
       setAllProperties(allPropertiesData);
       setAllTenants(allTenantsData);
+      setDataCache({ loaded: true, timestamp: now });
+      
+      console.log("✅ Dados carregados com sucesso!");
     } catch (error) {
-      console.error("Erro ao carregar dados adicionais:", error);
+      console.error("❌ Erro ao carregar dados adicionais:", error);
       toast({
         title: "Erro",
         description: "Não foi possível carregar dados completos. Tente novamente.",
         variant: "destructive",
       });
-      throw error; // Propagar erro para impedir abertura do modal
+      throw error;
     } finally {
       setLoadingAdditionalData(false);
     }
@@ -136,29 +150,59 @@ export default function RentalsPage() {
     if (!rentalToEnd) return;
 
     try {
-      // Aqui você poderia passar os dados da rescisão para o serviço se necessário
-      // Por enquanto mantemos o encerramento básico + logs dos dados calculados
-      console.log("Terminating contract with data:", data);
+      console.log("=== INICIO handleConfirmTermination (rentals.tsx) ===");
+      console.log("📋 Dados recebidos:", data);
+      console.log("📋 Rental:", rentalToEnd);
+      console.log("📋 Payment Day:", rentalToEnd.paymentDay);
 
-      await terminateContract(rentalToEnd.id);
-      
+      // Importar o serviço de rescisão
+      const { processContractTermination } = await import("@/services/terminationService");
+
+      // PASSO 1: Processar a rescisão (cria recebimento e deleta futuros)
+      console.log("🔄 Chamando processContractTermination...");
+      await processContractTermination({
+        rentalId: rentalToEnd.id,
+        terminationDate: data.terminationDate,
+        penaltyAmount: data.penaltyAmount, // Já vem com desconto aplicado
+        paymentDay: rentalToEnd.paymentDay,
+      });
+      console.log("✅ processContractTermination concluído!");
+
+      // PASSO 2: Atualizar propriedade para disponível
       if (rentalToEnd.propertyId) {
+        console.log("🔄 Atualizando propriedade para disponível...");
         await updateProperty(rentalToEnd.propertyId, { status: "available" });
+        console.log("✅ Propriedade atualizada!");
       }
+
+      // PASSO 3: Atualizar inquilino para ativo
       if (rentalToEnd.tenantId) {
+        console.log("🔄 Atualizando inquilino para ativo...");
         await updateTenant(rentalToEnd.tenantId, { status: "active" });
+        console.log("✅ Inquilino atualizado!");
       }
+
+      // PASSO 4: Atualizar locação para terminated
+      console.log("🔄 Atualizando locação para terminated...");
+      const { update: updateRental } = await import("@/services/rentalService");
+      await updateRental(rentalToEnd.id, {
+        status: "terminated",
+        endDate: data.terminationDate,
+      });
+      console.log("✅ Locação atualizada!");
 
       toast({
         title: "Sucesso",
-        description: `Contrato encerrado! ${data.applyPenalty ? `Multa calculada: ${formatCurrency(data.penaltyAmount)}` : ""}`,
+        description: `Contrato encerrado! ${data.applyPenalty ? `Valor da rescisão: ${formatCurrency(data.penaltyAmount)}` : ""}`,
       });
+      
+      console.log("=== FIM handleConfirmTermination ===");
       
       setRentalToEnd(null);
       await loadRentalsData();
       await loadAvailableData();
     } catch (error) {
-      console.error("Error ending contract:", error);
+      console.error("❌ Error ending contract:", error);
       toast({
         title: "Erro",
         description: "Não foi possível encerrar o contrato.",

@@ -253,7 +253,7 @@ export function useRentalDetails(rentalId: string) {
       console.log("=== FIM handleTerminateRental ===");
 
       // Recarregar a página para atualizar os dados
-      window.location.reload();
+      // window.location.reload();
     } catch (error) {
       console.error("❌ Error terminating rental:", error);
       toast({

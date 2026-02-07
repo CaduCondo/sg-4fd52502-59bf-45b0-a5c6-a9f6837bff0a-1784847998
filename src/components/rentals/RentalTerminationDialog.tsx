@@ -154,7 +154,7 @@ export function RentalTerminationDialog({
       await onConfirm({
         terminationDate,
         applyPenalty: applyFullContractPenalty || apply12MonthsPenalty,
-        penaltyAmount,
+        penaltyAmount: finalAmount, // Usar finalAmount (com desconto) ao invés de penaltyAmount
       });
       onOpenChange(false);
     } catch (error) {
