@@ -16,6 +16,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Calendar, AlertTriangle } from "lucide-react";
 import type { Rental } from "@/types";
+import { supabase } from "@/lib/supabase";
 
 interface RentalTerminationDialogProps {
   open: boolean;
@@ -85,9 +86,38 @@ export function RentalTerminationDialog({
     const until12 = Math.max(0, 12 - current);
     setMonthsUntil12th(until12);
 
-    // Buscar valor TOTAL do caução (security_deposit)
-    const depositVal = rental.security_deposit || rental.depositAmount || 0;
-    setDepositAmount(Number(depositVal));
+    // Buscar valor TOTAL do caução somando todas as parcelas
+    const fetchTotalDeposit = async () => {
+      try {
+        const { data: installments, error } = await supabase
+          .from("deposit_installments")
+          .select("amount")
+          .eq("rental_id", rental.id);
+
+        if (error) {
+          console.error("Erro ao buscar parcelas do caução:", error);
+          // Fallback para security_deposit se houver erro
+          setDepositAmount(rental.security_deposit || 0);
+          return;
+        }
+
+        // Somar TODAS as parcelas
+        const totalDeposit = installments?.reduce((sum, inst) => sum + (inst.amount || 0), 0) || 0;
+        
+        console.log("💰 Caução calculado:", {
+          parcelas: installments?.length || 0,
+          valorTotal: totalDeposit,
+          securityDeposit: rental.security_deposit
+        });
+
+        setDepositAmount(totalDeposit);
+      } catch (error) {
+        console.error("Erro ao calcular caução total:", error);
+        setDepositAmount(rental.security_deposit || 0);
+      }
+    };
+
+    fetchTotalDeposit();
   }, [rental, open]);
 
   useEffect(() => {

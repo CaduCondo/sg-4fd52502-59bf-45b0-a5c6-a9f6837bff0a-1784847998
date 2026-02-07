@@ -97,36 +97,75 @@ export async function processContractTermination(data: TerminationData): Promise
     console.log("✅ Nenhum recebimento para deletar (todos estão no período mantido)");
   }
 
-  // PASSO 4: Criar recebimento final (rescisão)
-  const finalAmount = Math.max(0, penaltyAmount - depositAmount + repairExpenses);
-  
-  const notes = `Rescisão de Contrato - Pagamento Final
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Multa Rescisória:        R$ ${penaltyAmount.toFixed(2)}
-(-) Devolução Caução:    R$ ${depositAmount.toFixed(2)}
-(+) Despesas Reparos:    R$ ${repairExpenses.toFixed(2)}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Total a Receber:         R$ ${finalAmount.toFixed(2)}
+  // PASSO 4: Criar ÚNICO recebimento final no mês seguinte
+  const nextMonthDate = addMonths(terminationDateObj, 1);
+  const finalPaymentMonth = getMonth(nextMonthDate) + 1;
+  const finalPaymentYear = getYear(nextMonthDate);
 
-Observação: Inclui devolução de caução`;
+  console.log("📅 Mês do recebimento final:", `${finalPaymentMonth}/${finalPaymentYear}`);
 
-  console.log("\n💰 Criando recebimento final (rescisão)...");
-  console.log("   Valor Final:", `R$ ${finalAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`);
-  console.log("   Vencimento:", format(finalPaymentDueDate, "dd/MM/yyyy"));
-  console.log("   Referência:", `${finalPaymentMonth}/${finalPaymentYear}`);
-  console.log("   Descrição:");
-  console.log(notes);
+  // Criar data de vencimento do recebimento final
+  let finalPaymentDueDate = new Date(finalPaymentYear, finalPaymentMonth - 1, paymentDay);
 
+  // Ajustar para último dia do mês se o dia não existir
+  if (finalPaymentDueDate.getMonth() !== finalPaymentMonth - 1) {
+    finalPaymentDueDate = new Date(finalPaymentYear, finalPaymentMonth, 0);
+    console.log("⚠️ Dia de pagamento ajustado para último dia do mês");
+  }
+
+  const dueDateStr = format(finalPaymentDueDate, "yyyy-MM-dd");
+  console.log("💰 Vencimento do recebimento final:", format(finalPaymentDueDate, "dd/MM/yyyy"));
+
+  // Calcular valor final
+  const finalValue = Math.max(0, penaltyAmount - depositAmount + repairExpenses);
+
+  console.log("\n💰 Cálculo do valor final:");
+  console.log("   Multa rescisória:        R$", penaltyAmount.toFixed(2));
+  console.log("   (-) Caução a devolver:   R$", depositAmount.toFixed(2));
+  console.log("   (+) Despesas de reforma: R$", repairExpenses.toFixed(2));
+  console.log("   ══════════════════════════════════════");
+  console.log("   Total a receber:         R$", finalValue.toFixed(2));
+
+  // Criar breakdown (Formação de Valores)
+  const breakdown = [
+    {
+      description: "Multa Rescisória",
+      amount: penaltyAmount,
+      type: "addition"
+    },
+    {
+      description: "Devolução de Caução",
+      amount: -depositAmount,
+      type: "deduction"
+    }
+  ];
+
+  // Adicionar despesas de reforma se houver
+  if (repairExpenses > 0) {
+    breakdown.push({
+      description: "Despesas de Reforma/Limpeza",
+      amount: repairExpenses,
+      type: "addition"
+    });
+  }
+
+  console.log("\n📋 Breakdown (Formação de Valores):");
+  breakdown.forEach(item => {
+    console.log(`   ${item.description}: R$ ${item.amount.toFixed(2)} (${item.type})`);
+  });
+
+  // Criar recebimento final
   const { data: newPayment, error: insertError } = await supabase
     .from("payments")
     .insert({
       rental_id: rentalId,
       due_date: dueDateStr,
-      expected_amount: finalAmount,
+      expected_amount: finalValue,
       status: "pending",
       reference_month: String(finalPaymentMonth),
       reference_year: String(finalPaymentYear),
-      notes: notes,
+      breakdown: JSON.stringify(breakdown),
+      notes: "Rescisão de Contrato - Pagamento Final. Inclui devolução de caução.",
     })
     .select()
     .single();
@@ -141,7 +180,7 @@ Observação: Inclui devolução de caução`;
   console.log("\n=== RESUMO DA RESCISÃO ===");
   console.log(`✅ Recebimentos mantidos: Até ${terminationMonth}/${terminationYear} (inclusive)`);
   console.log(`✅ Recebimentos deletados: ${toDelete.length} (posteriores a ${terminationMonth}/${terminationYear})`);
-  console.log(`✅ Recebimento final: Criado para ${finalPaymentMonth}/${finalPaymentYear} (R$ ${finalAmount.toFixed(2)})`);
+  console.log(`✅ Recebimento final: Criado para ${finalPaymentMonth}/${finalPaymentYear} (R$ ${finalValue.toFixed(2)})`);
   console.log(`⚠️  Status NÃO alterado: Locação, imóvel e inquilino permanecem ativos até o pagamento final`);
   console.log("=== FIM processContractTermination ===");
 }

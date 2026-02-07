@@ -103,7 +103,7 @@ export function DepositInstallmentsTable({
             rental:rentals(
               has_partner_broker,
               security_deposit,
-              is_active,
+              status,
               property_id,
               monthly_rent,
               garage_value,
@@ -129,6 +129,8 @@ export function DepositInstallmentsTable({
             allowedLocationIds.includes(item.rental?.property?.location_id)
           );
         }
+
+        console.log("✅ Dados de cauções carregados:", filteredData.length, "registros");
 
         if (isMounted) {
           setData(filteredData);
@@ -189,8 +191,8 @@ export function DepositInstallmentsTable({
   };
 
   // Filtrar dados para Ativos e Devolvidos
-  const activeDeposits = data.filter(item => item.rental?.is_active === true);
-  const returnedDeposits = data.filter(item => item.rental?.is_active === false);
+  const activeDeposits = data.filter(item => item.rental?.status === "active");
+  const returnedDeposits = data.filter(item => item.rental?.status === "terminated");
 
   // Cálculos dos Totais para os Cards
   const totalExpected = data.reduce((acc, curr) => acc + (curr.amount || 0), 0);
@@ -205,6 +207,14 @@ export function DepositInstallmentsTable({
   const adminFee = adminCommission;
   const netRevenue = totalReceived - adminCommission - partnerCommission;
 
+  console.log("📊 Resumo dos dados:", {
+    total: data.length,
+    ativos: activeDeposits.length,
+    devolvidos: returnedDeposits.length,
+    totalExpected,
+    totalReceived,
+  });
+
   if (loading) {
     return (
       <Card><CardContent className="pt-6 text-center">Carregando...</CardContent></Card>
@@ -212,6 +222,16 @@ export function DepositInstallmentsTable({
   }
 
   if (!isAdmin) return null;
+
+  if (data.length === 0) {
+    return (
+      <Card>
+        <CardContent className="pt-6 text-center text-muted-foreground">
+          Nenhum dado de caução encontrado.
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-6">
