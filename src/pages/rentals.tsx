@@ -149,46 +149,13 @@ export default function RentalsPage() {
     terminationDate: string;
     applyPenalty: boolean;
     penaltyAmount: number;
-    depositAmount?: number;
-    repairExpenses?: number;
+    depositAmount: number;
+    repairExpenses: number;
+    proportionalRent: number;
   }) => {
-    if (!rentalToEnd) return;
-
     try {
-      console.log("=== INICIO handleConfirmTermination (rentals.tsx) ===");
-      console.log("📋 Dados recebidos:", data);
-      console.log("📋 Rental:", rentalToEnd);
-      console.log("📋 Payment Day:", rentalToEnd.paymentDay);
-
-      // Importar o serviço de rescisão
-      const { processContractTermination } = await import("@/services/terminationService");
-
-      // Processar a rescisão (cria recebimento final e deleta futuros)
-      console.log("🔄 Chamando processContractTermination...");
-      await processContractTermination({
-        rentalId: rentalToEnd.id,
-        terminationDate: data.terminationDate,
-        penaltyAmount: data.penaltyAmount,
-        paymentDay: rentalToEnd.paymentDay,
-        depositAmount: data.depositAmount || 0,
-        repairExpenses: data.repairExpenses || 0,
-      });
-      console.log("✅ processContractTermination concluído!");
-
-      // NÃO atualizar status aqui - só muda quando o recebimento final for pago
-      
-      toast({
-        title: "Rescisão processada com sucesso!",
-        description: `O recebimento final foi criado. ${data.applyPenalty ? `Valor: ${formatCurrency(data.penaltyAmount)}` : ""} A locação permanecerá ativa até o pagamento final.`,
-        className: "bg-green-500 text-white border-none",
-      });
-      
-      console.log("=== FIM handleConfirmTermination ===");
-      
-      setRentalToEnd(null);
-      // Recarregar dados
-      await loadRentalsData();
-      await loadAvailableData();
+      await handleTerminateRental(data);
+      setTerminationDialogOpen(false);
     } catch (error) {
       console.error("❌ Error ending contract:", error);
       toast({

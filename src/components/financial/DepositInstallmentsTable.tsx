@@ -170,7 +170,7 @@ export function DepositInstallmentsTable({
       "Data Pagamento": formatDateWithoutTimezone(item.payment_date),
       "Valor Parcela": item.amount,
       "Código PIX": item.pix_code || "-",
-      Status: item.rental?.is_active ? "Ativa" : "Inativa",
+      Status: item.rental?.status === "active" ? "Ativa" : "Inativa/Finalizada",
     }));
 
     const ws = XLSX.utils.json_to_sheet(excelData);

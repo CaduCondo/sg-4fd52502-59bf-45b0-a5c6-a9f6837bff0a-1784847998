@@ -8,20 +8,21 @@ export interface TerminationData {
   paymentDay: number;
   depositAmount?: number;
   repairExpenses?: number;
+  proportionalRent?: number;
 }
 
 /**
  * Processa a rescisão de contrato:
  * 1. Mantém recebimentos ATÉ o mês da rescisão (inclusive)
  * 2. Deleta recebimentos POSTERIORES ao mês da rescisão
- * 3. Cria 1 recebimento final com: Multa - Caução Total + Despesas
+ * 3. Cria 1 recebimento final com: Multa - Caução Total + Despesas + Aluguel Proporcional
  * 4. NÃO atualiza status (só muda quando o recebimento final for pago)
  */
 export async function processContractTermination(data: TerminationData): Promise<void> {
   console.log("=== INICIO processContractTermination ===");
   console.log("Dados recebidos:", data);
 
-  const { rentalId, terminationDate, penaltyAmount, paymentDay, depositAmount = 0, repairExpenses = 0 } = data;
+  const { rentalId, terminationDate, penaltyAmount, paymentDay, depositAmount = 0, repairExpenses = 0, proportionalRent = 0 } = data;
 
   // PASSO 1: Determinar o mês da rescisão
   const terminationDateObj = parseISO(terminationDate);
@@ -99,30 +100,43 @@ export async function processContractTermination(data: TerminationData): Promise
   console.log("💰 Vencimento do recebimento final:", format(finalPaymentDueDate, "dd/MM/yyyy"));
 
   // Calcular valor final
-  const finalValue = Math.max(0, penaltyAmount - depositAmount + repairExpenses);
+  const finalValue = Math.max(0, penaltyAmount - depositAmount + repairExpenses + proportionalRent);
 
   console.log("\n💰 Cálculo do valor final:");
   console.log("   Multa rescisória:        R$", penaltyAmount.toFixed(2));
+  console.log("   (+) Aluguel Proporcional: R$", proportionalRent.toFixed(2));
   console.log("   (-) Caução a devolver:   R$", depositAmount.toFixed(2));
   console.log("   (+) Despesas de reforma: R$", repairExpenses.toFixed(2));
   console.log("   ══════════════════════════════════════");
   console.log("   Total a receber:         R$", finalValue.toFixed(2));
 
   // Criar breakdown (Formação de Valores)
-  const breakdown = [
-    {
+  const breakdown = [];
+
+  if (proportionalRent > 0) {
+    breakdown.push({
+      description: "Aluguel Proporcional",
+      amount: proportionalRent,
+      type: "addition"
+    });
+  }
+
+  if (penaltyAmount > 0) {
+    breakdown.push({
       description: "Multa Rescisória",
       amount: penaltyAmount,
       type: "addition"
-    },
-    {
+    });
+  }
+
+  if (depositAmount > 0) {
+    breakdown.push({
       description: "Devolução de Caução",
       amount: -depositAmount,
       type: "deduction"
-    }
-  ];
+    });
+  }
 
-  // Adicionar despesas de reforma se houver
   if (repairExpenses > 0) {
     breakdown.push({
       description: "Despesas de Reforma/Limpeza",
@@ -147,7 +161,7 @@ export async function processContractTermination(data: TerminationData): Promise
       reference_month: String(finalPaymentMonth),
       reference_year: String(finalPaymentYear),
       breakdown: JSON.stringify(breakdown),
-      notes: "Rescisão de Contrato - Pagamento Final. Inclui devolução de caução.",
+      notes: "Rescisão de Contrato - Pagamento Final.",
     })
     .select()
     .single();
