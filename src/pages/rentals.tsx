@@ -150,8 +150,6 @@ export default function RentalsPage() {
     applyPenalty: boolean;
     penaltyAmount: number;
     depositAmount: number;
-    repairExpenses: number;
-    proportionalRent: number;
   }) => {
     if (!rentalToEnd) return;
 
@@ -162,10 +160,9 @@ export default function RentalsPage() {
         rentalId: rentalToEnd.id,
         terminationDate: data.terminationDate,
         penaltyAmount: data.penaltyAmount,
-        paymentDay: rentalToEnd.paymentDay,
+        paymentDay: rentalToEnd.paymentDay || 1,
         depositAmount: data.depositAmount,
-        repairExpenses: data.repairExpenses,
-        proportionalRent: data.proportionalRent,
+        monthlyRent: rentalToEnd.value || 0,
       });
 
       toast({
@@ -186,8 +183,6 @@ export default function RentalsPage() {
     applyPenalty: boolean;
     penaltyAmount: number;
     depositAmount: number;
-    repairExpenses: number;
-    proportionalRent: number;
   }) => {
     try {
       await handleTerminateRental(data);

@@ -3,6 +3,8 @@ import { useRouter } from "next/router";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Rental, Payment, Property, Tenant } from "@/types";
+import { parseISO } from "date-fns";
+import { processContractTermination } from "@/services/terminationService";
 
 export function useRentalDetails(rentalId: string) {
   const [rental, setRental] = useState<Rental | null>(null);
@@ -208,47 +210,42 @@ export function useRentalDetails(rentalId: string) {
     applyPenalty: boolean;
     penaltyAmount: number;
     depositAmount: number;
-    repairExpenses: number;
-    proportionalRent: number;
   }) => {
     if (!rental) return;
 
     try {
-      console.log("=== INICIO handleTerminateRental ===");
-      console.log("📋 Dados recebidos:", data);
-      console.log("📋 Rental ID:", rental.id);
-      console.log("📋 Payment Day:", rental.paymentDay);
-
-      // Importar o serviço de rescisão
-      const { processContractTermination } = await import("@/services/terminationService");
-
-      // Processar a rescisão (cria recebimento final e deleta futuros)
-      console.log("🔄 Chamando processContractTermination...");
+      // 1. Calcular aluguel proporcional aqui para passar para o serviço
+      const termDate = parseISO(data.terminationDate);
+      const paymentDay = rental.paymentDay || 1;
+      const terminationDay = termDate.getDate();
+      const monthlyRent = rental.value || 0;
+      
+      let daysUsed = 0;
+      if (terminationDay >= paymentDay) {
+        daysUsed = terminationDay - paymentDay + 1;
+      } else {
+        daysUsed = 30; 
+      }
+      
+      // 2. Chamar serviço de rescisão
       await processContractTermination({
         rentalId: rental.id,
         terminationDate: data.terminationDate,
         penaltyAmount: data.penaltyAmount,
-        paymentDay: rental.paymentDay,
         depositAmount: data.depositAmount,
-        repairExpenses: data.repairExpenses,
-        proportionalRent: data.proportionalRent,
+        paymentDay: rental.paymentDay || 1,
+        monthlyRent: rental.value || 0,
       });
-      console.log("✅ processContractTermination concluído com sucesso!");
-
-      // NÃO atualizar status aqui - só muda quando o recebimento final for pago
 
       toast({
         title: "Rescisão processada com sucesso!",
-        description: "O recebimento final foi criado. A locação permanecerá ativa até o pagamento final.",
-        className: "bg-green-500 text-white border-none",
+        description: "O recebimento final foi criado. Aguardando pagamento para finalizar.",
       });
-
-      console.log("=== FIM handleTerminateRental ===");
-
-      // Recarregar dados da locação
+      
+      // Recarregar dados
       await loadRentalData();
     } catch (error) {
-      console.error("❌ Error terminating rental:", error);
+      console.error("Error terminating rental:", error);
       toast({
         title: "Erro",
         description: "Não foi possível processar a rescisão.",
