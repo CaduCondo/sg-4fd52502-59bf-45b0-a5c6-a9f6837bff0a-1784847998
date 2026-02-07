@@ -1,67 +1,173 @@
 import { supabase } from "@/integrations/supabase/client";
-import { parseISO, addMonths, format, getMonth, getYear } from "date-fns";
+import { parseISO, getMonth, getYear, differenceInDays } from "date-fns";
 
 export interface TerminationData {
   rentalId: string;
   terminationDate: string;
   penaltyAmount: number;
+  depositAmount: number;
   paymentDay: number;
-  depositAmount?: number;
-  repairExpenses?: number;
-  proportionalRent?: number;
+  monthlyRent: number;
 }
 
 /**
  * Processa a rescisão de contrato:
- * 1. Mantém recebimentos ATÉ o mês da rescisão (inclusive)
- * 2. Deleta recebimentos POSTERIORES ao mês da rescisão
- * 3. Cria 1 recebimento final com: Multa - Caução Total + Despesas + Aluguel Proporcional
- * 4. NÃO atualiza status (só muda quando o recebimento final for pago)
+ * 1. Calcula aluguel proporcional do dia de vencimento até data da rescisão
+ * 2. Atualiza recebimento do mês da rescisão com:
+ *    - Aluguel proporcional
+ *    - Multa rescisória
+ *    - Caução corrigido (negativo)
+ * 3. Deleta recebimentos do mês SEGUINTE em diante
+ * 4. NÃO atualiza status (só muda quando recebimento for pago)
  */
 export async function processContractTermination(data: TerminationData): Promise<void> {
   console.log("=== INICIO processContractTermination ===");
   console.log("Dados recebidos:", data);
 
-  const { rentalId, terminationDate, penaltyAmount, paymentDay, depositAmount = 0, repairExpenses = 0, proportionalRent = 0 } = data;
+  const { 
+    rentalId, 
+    terminationDate, 
+    penaltyAmount, 
+    depositAmount,
+    paymentDay,
+    monthlyRent
+  } = data;
 
   // PASSO 1: Determinar o mês da rescisão
   const terminationDateObj = parseISO(terminationDate);
   const terminationMonth = getMonth(terminationDateObj) + 1; // 1-12
   const terminationYear = getYear(terminationDateObj);
+  const terminationDay = terminationDateObj.getDate();
   
-  console.log("📅 Data de rescisão:", format(terminationDateObj, "dd/MM/yyyy"));
+  console.log("📅 Data de rescisão:", terminationDate);
   console.log("📅 Mês da rescisão:", `${terminationMonth}/${terminationYear}`);
 
-  // PASSO 2: Deletar APENAS os recebimentos POSTERIORES ao mês da rescisão
-  console.log("\n🗑️ Deletando recebimentos POSTERIORES a", `${terminationMonth}/${terminationYear}...`);
+  // PASSO 2: Calcular aluguel proporcional
+  // Do dia de vencimento até o dia da rescisão
+  let daysUsed = 0;
+  if (terminationDay >= paymentDay) {
+    daysUsed = terminationDay - paymentDay + 1;
+  } else {
+    daysUsed = 30; // Considera mês completo se rescisão antes do vencimento
+  }
+  
+  const proportionalRent = (monthlyRent / 30) * daysUsed;
+  
+  console.log("💰 Aluguel proporcional:", {
+    diaVencimento: paymentDay,
+    diaRescisao: terminationDay,
+    diasUsados: daysUsed,
+    valorProporcional: proportionalRent.toFixed(2)
+  });
 
-  const { data: paymentsToDelete, error: fetchError } = await supabase
+  // PASSO 3: Buscar recebimento do mês da rescisão
+  console.log("\n🔍 Buscando recebimento do mês da rescisão...");
+  
+  const { data: paymentOfMonth, error: fetchError } = await supabase
     .from("payments")
-    .select("id, due_date, reference_month, reference_year, status")
+    .select("*")
     .eq("rental_id", rentalId)
-    .order("due_date", { ascending: true });
+    .eq("reference_month", String(terminationMonth))
+    .eq("reference_year", String(terminationYear))
+    .maybeSingle();
 
   if (fetchError) {
-    console.error("❌ Erro ao buscar recebimentos para deletar:", fetchError);
+    console.error("❌ Erro ao buscar recebimento:", fetchError);
     throw fetchError;
   }
 
-  // Filtrar APENAS recebimentos POSTERIORES ao mês da rescisão
-  const toDelete = paymentsToDelete?.filter(p => {
-    const refYear = parseInt(p.reference_year);
-    const refMonth = parseInt(p.reference_month);
-    
-    // Deletar se: ano > ano da rescisão OU (mesmo ano E mês > mês da rescisão)
-    return refYear > terminationYear || (refYear === terminationYear && refMonth > terminationMonth);
-  }) || [];
+  if (!paymentOfMonth) {
+    console.error("❌ Recebimento do mês da rescisão não encontrado!");
+    throw new Error("Recebimento do mês da rescisão não encontrado");
+  }
 
-  console.log(`📋 Encontrados ${toDelete.length} recebimentos para deletar`);
+  console.log("✅ Recebimento encontrado:", paymentOfMonth.id);
 
-  if (toDelete.length > 0) {
-    const idsToDelete = toDelete.map(p => p.id);
+  // PASSO 4: Calcular caução corrigido pela inflação
+  // TODO: Implementar correção pela inflação
+  // Por ora, usa valor nominal
+  const correctedDeposit = depositAmount;
+
+  // PASSO 5: Criar breakdown (Formação de Valores)
+  const breakdown = [];
+
+  // Item 1: Aluguel Proporcional
+  breakdown.push({
+    description: `Aluguel Proporcional (${daysUsed} dias)`,
+    amount: proportionalRent,
+    type: "addition"
+  });
+
+  // Item 2: Multa Rescisória (se houver)
+  if (penaltyAmount > 0) {
+    breakdown.push({
+      description: "Multa Rescisória",
+      amount: penaltyAmount,
+      type: "addition"
+    });
+  }
+
+  // Item 3: Devolução de Caução (corrigido)
+  if (correctedDeposit > 0) {
+    breakdown.push({
+      description: "Devolução de Caução (corrigido pela inflação)",
+      amount: -correctedDeposit,
+      type: "deduction"
+    });
+  }
+
+  // PASSO 6: Calcular valor total do recebimento atualizado
+  const totalAmount = proportionalRent + penaltyAmount - correctedDeposit;
+
+  console.log("\n💰 Cálculo do recebimento atualizado:");
+  console.log("   Aluguel Proporcional:    R$", proportionalRent.toFixed(2));
+  console.log("   (+) Multa Rescisória:    R$", penaltyAmount.toFixed(2));
+  console.log("   (-) Caução Corrigido:    R$", correctedDeposit.toFixed(2));
+  console.log("   ══════════════════════════════════════");
+  console.log("   Total do Recebimento:    R$", totalAmount.toFixed(2));
+
+  // PASSO 7: Atualizar recebimento do mês
+  const { error: updateError } = await supabase
+    .from("payments")
+    .update({
+      expected_amount: totalAmount,
+      breakdown: JSON.stringify(breakdown),
+      notes: `Rescisão de Contrato - Data de saída: ${terminationDate}. Despesas de reforma podem ser adicionadas na tela de Recebimentos.`,
+      updated_at: new Date().toISOString()
+    })
+    .eq("id", paymentOfMonth.id);
+
+  if (updateError) {
+    console.error("❌ Erro ao atualizar recebimento:", updateError);
+    throw updateError;
+  }
+
+  console.log("✅ Recebimento do mês atualizado com sucesso!");
+
+  // PASSO 8: Deletar recebimentos do mês SEGUINTE em diante
+  console.log("\n🗑️ Deletando recebimentos futuros (a partir do mês seguinte)...");
+
+  const nextMonth = terminationMonth === 12 ? 1 : terminationMonth + 1;
+  const nextYear = terminationMonth === 12 ? terminationYear + 1 : terminationYear;
+
+  const { data: paymentsToDelete, error: fetchDeleteError } = await supabase
+    .from("payments")
+    .select("id, due_date, reference_month, reference_year, status")
+    .eq("rental_id", rentalId)
+    .or(`reference_year.gt.${terminationYear},and(reference_year.eq.${terminationYear},reference_month.gte.${nextMonth})`);
+
+  if (fetchDeleteError) {
+    console.error("❌ Erro ao buscar recebimentos para deletar:", fetchDeleteError);
+    throw fetchDeleteError;
+  }
+
+  console.log(`📋 Encontrados ${paymentsToDelete?.length || 0} recebimentos para deletar`);
+
+  if (paymentsToDelete && paymentsToDelete.length > 0) {
+    const idsToDelete = paymentsToDelete.map(p => p.id);
     
     console.log("IDs a deletar:", idsToDelete);
-    toDelete.forEach(p => {
+    paymentsToDelete.forEach(p => {
       console.log(`  - ${p.due_date} | Ref: ${p.reference_month}/${p.reference_year} | Status: ${p.status}`);
     });
 
@@ -75,108 +181,15 @@ export async function processContractTermination(data: TerminationData): Promise
       throw deleteError;
     }
 
-    console.log(`✅ Deletados ${toDelete.length} recebimentos`);
+    console.log(`✅ Deletados ${paymentsToDelete.length} recebimentos`);
   } else {
-    console.log("✅ Nenhum recebimento para deletar (todos estão no período mantido)");
+    console.log("✅ Nenhum recebimento para deletar");
   }
-
-  // PASSO 3: Criar ÚNICO recebimento final no mês seguinte
-  const nextMonthDate = addMonths(terminationDateObj, 1);
-  const finalPaymentMonth = getMonth(nextMonthDate) + 1;
-  const finalPaymentYear = getYear(nextMonthDate);
-
-  console.log("📅 Mês do recebimento final:", `${finalPaymentMonth}/${finalPaymentYear}`);
-
-  // Criar data de vencimento do recebimento final
-  let finalPaymentDueDate = new Date(finalPaymentYear, finalPaymentMonth - 1, paymentDay);
-
-  // Ajustar para último dia do mês se o dia não existir
-  if (finalPaymentDueDate.getMonth() !== finalPaymentMonth - 1) {
-    finalPaymentDueDate = new Date(finalPaymentYear, finalPaymentMonth, 0);
-    console.log("⚠️ Dia de pagamento ajustado para último dia do mês");
-  }
-
-  const dueDateStr = format(finalPaymentDueDate, "yyyy-MM-dd");
-  console.log("💰 Vencimento do recebimento final:", format(finalPaymentDueDate, "dd/MM/yyyy"));
-
-  // Calcular valor final
-  const finalValue = Math.max(0, penaltyAmount - depositAmount + repairExpenses + proportionalRent);
-
-  console.log("\n💰 Cálculo do valor final:");
-  console.log("   Multa rescisória:        R$", penaltyAmount.toFixed(2));
-  console.log("   (+) Aluguel Proporcional: R$", proportionalRent.toFixed(2));
-  console.log("   (-) Caução a devolver:   R$", depositAmount.toFixed(2));
-  console.log("   (+) Despesas de reforma: R$", repairExpenses.toFixed(2));
-  console.log("   ══════════════════════════════════════");
-  console.log("   Total a receber:         R$", finalValue.toFixed(2));
-
-  // Criar breakdown (Formação de Valores)
-  const breakdown = [];
-
-  if (proportionalRent > 0) {
-    breakdown.push({
-      description: "Aluguel Proporcional",
-      amount: proportionalRent,
-      type: "addition"
-    });
-  }
-
-  if (penaltyAmount > 0) {
-    breakdown.push({
-      description: "Multa Rescisória",
-      amount: penaltyAmount,
-      type: "addition"
-    });
-  }
-
-  if (depositAmount > 0) {
-    breakdown.push({
-      description: "Devolução de Caução",
-      amount: -depositAmount,
-      type: "deduction"
-    });
-  }
-
-  if (repairExpenses > 0) {
-    breakdown.push({
-      description: "Despesas de Reforma/Limpeza",
-      amount: repairExpenses,
-      type: "addition"
-    });
-  }
-
-  console.log("\n📋 Breakdown (Formação de Valores):");
-  breakdown.forEach(item => {
-    console.log(`   ${item.description}: R$ ${item.amount.toFixed(2)} (${item.type})`);
-  });
-
-  // Criar recebimento final
-  const { data: newPayment, error: insertError } = await supabase
-    .from("payments")
-    .insert({
-      rental_id: rentalId,
-      due_date: dueDateStr,
-      expected_amount: finalValue,
-      status: "pending",
-      reference_month: String(finalPaymentMonth),
-      reference_year: String(finalPaymentYear),
-      breakdown: JSON.stringify(breakdown),
-      notes: "Rescisão de Contrato - Pagamento Final.",
-    })
-    .select()
-    .single();
-
-  if (insertError) {
-    console.error("❌ Erro ao criar recebimento final:", insertError);
-    throw insertError;
-  }
-
-  console.log("✅ Recebimento final criado:", newPayment.id);
 
   console.log("\n=== RESUMO DA RESCISÃO ===");
-  console.log(`✅ Recebimentos mantidos: Até ${terminationMonth}/${terminationYear} (inclusive)`);
-  console.log(`✅ Recebimentos deletados: ${toDelete.length} (posteriores a ${terminationMonth}/${terminationYear})`);
-  console.log(`✅ Recebimento final: Criado para ${finalPaymentMonth}/${finalPaymentYear} (R$ ${finalValue.toFixed(2)})`);
-  console.log(`⚠️  Status NÃO alterado: Locação, imóvel e inquilino permanecem ativos até o pagamento final`);
+  console.log(`✅ Recebimento de ${terminationMonth}/${terminationYear} atualizado com R$ ${totalAmount.toFixed(2)}`);
+  console.log(`✅ Recebimentos deletados: ${paymentsToDelete?.length || 0} (a partir de ${nextMonth}/${nextYear})`);
+  console.log(`⚠️  Status NÃO alterado: Locação, imóvel e inquilino permanecem ativos até o pagamento`);
+  console.log(`💡 Despesas de reforma podem ser adicionadas depois na tela de Recebimentos`);
   console.log("=== FIM processContractTermination ===");
 }

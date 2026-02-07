@@ -34,6 +34,8 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
   const [removeFees, setRemoveFees] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [isPaid, setIsPaid] = useState(false);
+  const [repairExpenses, setRepairExpenses] = useState<number>(0);
+  const [isTerminationPayment, setIsTerminationPayment] = useState(false);
 
   const [formData, setFormData] = useState({
     payment_date: "",
@@ -62,12 +64,20 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
   useEffect(() => {
     if (payment && rentalValue > 0 && !loading && isEditMode) {
       const values = calculateValues();
+      
+      // Se for pagamento de rescisão, incluir despesas de reforma no cálculo
+      let finalAmount = values.valorAPagar;
+      
+      if (isTerminationPayment && repairExpenses > 0) {
+        finalAmount += repairExpenses;
+      }
+      
       setFormData(prev => ({
         ...prev,
-        amount_to_pay: formatCurrency(values.valorAPagar.toFixed(2))
+        amount_to_pay: formatCurrency(finalAmount.toFixed(2))
       }));
     }
-  }, [payment, rentalValue, garageValue, loading, formData.payment_date, lateFeePercentage, interestRatePercentage, removeFees, isEditMode]);
+  }, [payment, rentalValue, garageValue, loading, formData.payment_date, lateFeePercentage, interestRatePercentage, removeFees, isEditMode, repairExpenses, isTerminationPayment]);
 
   const loadConfig = async () => {
     try {
@@ -121,6 +131,29 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       const alreadyPaid = paymentData.status === "paid";
       setIsPaid(alreadyPaid);
       setIsEditMode(!alreadyPaid); // Se não está pago, começa em modo de edição
+
+      // Detectar se é pagamento de rescisão
+      const isTermination = paymentData.notes?.includes("Rescisão de Contrato") || false;
+      setIsTerminationPayment(isTermination);
+
+      // Carregar despesas de reforma do breakdown se existir
+      if (paymentData.breakdown) {
+        try {
+          const breakdownData = typeof paymentData.breakdown === 'string' 
+            ? JSON.parse(paymentData.breakdown) 
+            : paymentData.breakdown;
+          
+          const expensesItem = breakdownData.find((item: any) => 
+            item.description?.includes("Despesas") || item.description?.includes("Reforma")
+          );
+          
+          if (expensesItem) {
+            setRepairExpenses(Math.abs(expensesItem.amount || 0));
+          }
+        } catch (error) {
+          console.error("Erro ao parsear breakdown:", error);
+        }
+      }
 
       if (paymentData.attachments && Array.isArray(paymentData.attachments)) {
         const attachmentStrings = paymentData.attachments
@@ -332,6 +365,32 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         paymentStatus = "partial";
       }
 
+      // Atualizar breakdown se for pagamento de rescisão e tiver despesas
+      let updatedBreakdown = payment?.breakdown;
+      if (isTerminationPayment && repairExpenses > 0) {
+        try {
+          const breakdownData = typeof payment.breakdown === 'string' 
+            ? JSON.parse(payment.breakdown) 
+            : (payment.breakdown || []);
+          
+          // Remover item de despesas anterior se existir
+          const filteredBreakdown = breakdownData.filter((item: any) => 
+            !item.description?.includes("Despesas") && !item.description?.includes("Reforma")
+          );
+          
+          // Adicionar novo item de despesas
+          filteredBreakdown.push({
+            description: "Despesas de Reforma/Limpeza",
+            amount: -repairExpenses, // Negativo = subtrai do total
+            type: "deduction"
+          });
+          
+          updatedBreakdown = JSON.stringify(filteredBreakdown);
+        } catch (error) {
+          console.error("Erro ao atualizar breakdown:", error);
+        }
+      }
+
       const paymentData = {
         payment_date: formData.payment_date,
         payment_method: formData.payment_method,
@@ -343,6 +402,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         interest: removeFees ? 0 : calculatedValues.juros,
         updated_at: new Date().toISOString(),
         pix_code_type: formData.pix_code_type,
+        breakdown: updatedBreakdown,
       };
 
       console.log("📤 Dados a serem salvos:", paymentData);
@@ -793,6 +853,39 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                   />
                 </div>
               </div>
+
+              {/* Despesas de Reforma (apenas para pagamentos de rescisão) */}
+              {isTerminationPayment && (
+                <div className="col-span-2 pt-4 border-t">
+                  <Label htmlFor="repair-expenses" className="text-base font-semibold mb-2 block">
+                    Despesas Adicionais de Reforma/Limpeza
+                  </Label>
+                  <div className="flex items-center gap-4">
+                    <div className="flex-1">
+                      <p className="text-sm text-muted-foreground mb-2">
+                        Reformas, pinturas ou reparos necessários após a saída do inquilino
+                      </p>
+                      <Input
+                        id="repair-expenses"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={repairExpenses || ""}
+                        onChange={(e) => setRepairExpenses(Math.max(0, parseFloat(e.target.value) || 0))}
+                        placeholder="0,00"
+                        disabled={isReadOnly}
+                        className="max-w-[200px]"
+                      />
+                    </div>
+                    <div className="text-right">
+                      <span className="text-sm text-muted-foreground block mb-1">Subtotal + Despesas</span>
+                      <span className="text-lg font-bold text-orange-600">
+                        + R$ {repairExpenses.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

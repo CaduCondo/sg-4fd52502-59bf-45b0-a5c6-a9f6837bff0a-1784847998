@@ -378,6 +378,7 @@ export type Database = {
         Row: {
           admin_fee: number | null
           attachments: Json | null
+          breakdown: Json | null
           created_at: string | null
           discount_amount: number | null
           due_date: string
@@ -403,6 +404,7 @@ export type Database = {
         Insert: {
           admin_fee?: number | null
           attachments?: Json | null
+          breakdown?: Json | null
           created_at?: string | null
           discount_amount?: number | null
           due_date: string
@@ -428,6 +430,7 @@ export type Database = {
         Update: {
           admin_fee?: number | null
           attachments?: Json | null
+          breakdown?: Json | null
           created_at?: string | null
           discount_amount?: number | null
           due_date?: string
