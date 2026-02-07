@@ -82,12 +82,10 @@ export function RentalTerminationDialog({
     setCurrentMonth(Math.min(current, total));
     setTerminationDate(format(today, "yyyy-MM-dd"));
 
-    // Calcula quantos meses faltam para chegar na 12ª parcela
     const until12 = Math.max(0, 12 - current);
     setMonthsUntil12th(until12);
 
-    // Buscar valor do caução
-    // Prioriza security_deposit, depois deposit_value, depois tenta converter deposit se for numérico
+    // Buscar valor TOTAL do caução (security_deposit)
     const depositVal = rental.security_deposit || rental.depositAmount || 0;
     setDepositAmount(Number(depositVal));
   }, [rental, open]);
@@ -111,16 +109,12 @@ export function RentalTerminationDialog({
 
       const monthlyRent = rental.value || 0;
 
-      // Calcula multa sobre contrato completo
-      // Fórmula: (3 × valor_aluguel) ÷ tempo_total_contrato × tempo_restante_contrato
       if (applyFullContractPenalty && remaining > 0) {
         const threeTimesRent = 3 * monthlyRent;
         const perMonthPenalty = threeTimesRent / totalMonths;
         const penalty = perMonthPenalty * remaining;
         setPenaltyAmount(penalty);
       } 
-      // Calcula multa sobre 12 meses
-      // Fórmula: (3 × valor_aluguel) ÷ 12 × meses_até_12ª_parcela
       else if (apply12MonthsPenalty) {
         if (currentMonthFromDate < 12) {
           const monthsTo12th = Math.max(0, 12 - currentMonthFromDate);
@@ -130,7 +124,6 @@ export function RentalTerminationDialog({
           setPenaltyAmount(penalty);
           setMonthsUntil12th(monthsTo12th);
         } else {
-          // Já passou da 12ª parcela, sem multa
           setPenaltyAmount(0);
           setMonthsUntil12th(0);
         }
@@ -161,7 +154,7 @@ export function RentalTerminationDialog({
       total -= discount;
     }
     
-    setFinalAmount(Math.max(0, total)); // Não permite valor negativo
+    setFinalAmount(Math.max(0, total));
   }, [penaltyAmount, depositAmount, repairExpenses, applyDiscount, discountPercentage]);
 
   const handleConfirm = async () => {
@@ -205,7 +198,7 @@ export function RentalTerminationDialog({
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto space-y-4 py-3 px-1">
-          {/* Contract Progress - Compacto em Grid */}
+          {/* Contract Progress */}
           <div className="rounded-lg border bg-muted/50 p-3">
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -240,11 +233,11 @@ export function RentalTerminationDialog({
               className="h-9"
             />
             <p className="text-xs text-muted-foreground">
-              Usada para calcular o valor da rescisão
+              Recebimentos ATÉ este mês serão mantidos
             </p>
           </div>
 
-          {/* Penalty Type Checkboxes - Layout Compacto */}
+          {/* Penalty Type Checkboxes */}
           <div className="space-y-2.5">
             {/* Full Contract Penalty */}
             <div className="flex items-start space-x-2 rounded-md border p-2.5 hover:bg-muted/50 transition-colors">
@@ -301,7 +294,7 @@ export function RentalTerminationDialog({
             </div>
           </div>
 
-          {/* Penalty Calculation Info - Compacto */}
+          {/* Penalty Calculation Info */}
           {applyFullContractPenalty && remainingMonths > 0 && (
             <Alert className="py-2.5">
               <AlertDescription className="text-xs leading-relaxed space-y-1">
@@ -335,7 +328,7 @@ export function RentalTerminationDialog({
           {/* Caução Info */}
           {depositAmount > 0 && (
             <div className="rounded-lg border bg-blue-50 p-3">
-              <p className="text-xs font-medium text-blue-900 mb-0.5">💰 Caução a Devolver</p>
+              <p className="text-xs font-medium text-blue-900 mb-0.5">💰 Caução TOTAL a Devolver</p>
               <p className="text-lg font-bold text-blue-600">
                 R$ {depositAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </p>
@@ -413,12 +406,11 @@ export function RentalTerminationDialog({
             </div>
           )}
 
-          {/* Final Amount Display - Cálculo Detalhado */}
+          {/* Final Amount Display */}
           {(applyFullContractPenalty || apply12MonthsPenalty) && (
             <div className="rounded-lg border bg-primary/5 p-3">
               <p className="text-xs font-medium text-muted-foreground mb-2">Cálculo Final do Recebimento</p>
               
-              {/* Breakdown do cálculo */}
               <div className="space-y-1.5 text-sm mb-3 pb-3 border-b">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Multa de rescisão:</span>
@@ -447,7 +439,6 @@ export function RentalTerminationDialog({
                 )}
               </div>
               
-              {/* Valor total */}
               <div className="flex justify-between items-center">
                 <span className="text-sm font-medium text-muted-foreground">Valor Total:</span>
                 <p className="text-2xl font-bold text-primary">
@@ -480,7 +471,7 @@ export function RentalTerminationDialog({
             disabled={!terminationDate || isSubmitting}
             className="h-9"
           >
-            {isSubmitting ? "Encerrando..." : "OK"}
+            {isSubmitting ? "Processando..." : "Confirmar Rescisão"}
           </Button>
         </DialogFooter>
       </DialogContent>

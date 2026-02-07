@@ -38,12 +38,11 @@ export async function processContractTermination(data: TerminationData): Promise
   console.log("📅 Mês do recebimento final:", `${finalPaymentMonth}/${finalPaymentYear}`);
 
   // PASSO 2: Criar data de vencimento do recebimento final
-  // Vencimento = dia do pagamento no mês seguinte ao da rescisão
   let finalPaymentDueDate = new Date(finalPaymentYear, finalPaymentMonth - 1, paymentDay);
 
-  // Ajuste para dias inexistentes (ex: 31 de fev vira último dia do mês)
+  // Ajuste para dias inexistentes
   if (finalPaymentDueDate.getMonth() !== finalPaymentMonth - 1) {
-    finalPaymentDueDate = new Date(finalPaymentYear, finalPaymentMonth, 0); // Último dia do mês
+    finalPaymentDueDate = new Date(finalPaymentYear, finalPaymentMonth, 0);
     console.log("⚠️ Dia inexistente ajustado para:", format(finalPaymentDueDate, "dd/MM/yyyy"));
   }
 
@@ -99,16 +98,17 @@ export async function processContractTermination(data: TerminationData): Promise
   }
 
   // PASSO 4: Criar recebimento final (rescisão)
-  // Cálculo: Multa - Caução Total + Despesas de Reparos = Valor Final
   const finalAmount = Math.max(0, penaltyAmount - depositAmount + repairExpenses);
   
-  const notes = `Rescisão de Contrato
---------------------------------
-Multa Rescisória: R$ ${penaltyAmount.toFixed(2)}
-(-) Devolução Caução: R$ ${depositAmount.toFixed(2)}
-(+) Despesas Reparos: R$ ${repairExpenses.toFixed(2)}
---------------------------------
-Total a Receber: R$ ${finalAmount.toFixed(2)}`;
+  const notes = `Rescisão de Contrato - Pagamento Final
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Multa Rescisória:        R$ ${penaltyAmount.toFixed(2)}
+(-) Devolução Caução:    R$ ${depositAmount.toFixed(2)}
+(+) Despesas Reparos:    R$ ${repairExpenses.toFixed(2)}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Total a Receber:         R$ ${finalAmount.toFixed(2)}
+
+Observação: Inclui devolução de caução`;
 
   console.log("\n💰 Criando recebimento final (rescisão)...");
   console.log("   Valor Final:", `R$ ${finalAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`);

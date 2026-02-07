@@ -126,8 +126,8 @@ export async function updatePayment(id: string, payment: Partial<Payment>): Prom
   if (error) throw error;
 
   // Verificar se é pagamento de rescisão e processar finalização
-  if (payment.status) {
-    await checkAndProcessTerminationPayment(id, payment.status);
+  if (payment.status === "paid") {
+    await checkAndProcessTerminationPayment(id);
   }
 
   return mapPaymentFromDB(data);
@@ -145,10 +145,7 @@ export const remove = deletePayment;
  * Verifica se um pagamento é de rescisão e processa finalização da locação
  * quando for marcado como pago
  */
-async function checkAndProcessTerminationPayment(paymentId: string, newStatus: string): Promise<void> {
-  // Só processa se o status for "paid"
-  if (newStatus !== "paid") return;
-
+async function checkAndProcessTerminationPayment(paymentId: string): Promise<void> {
   console.log("🔍 Verificando se pagamento é de rescisão:", paymentId);
 
   // Buscar o pagamento
