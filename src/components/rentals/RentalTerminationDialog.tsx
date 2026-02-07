@@ -263,7 +263,12 @@ export function RentalTerminationDialog({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label className="text-sm text-muted-foreground">Locação</Label>
-              <p className="font-medium">{rental.property?.location?.name} - {rental.property?.complement}</p>
+              <p className="font-medium">
+                {typeof rental.property?.location === 'object' 
+                  ? (rental.property?.location as any)?.name 
+                  : rental.property?.location} 
+                - {rental.property?.complement}
+              </p>
             </div>
             <div className="space-y-1.5 text-right">
               <Label className="text-sm text-muted-foreground">Inquilino</Label>

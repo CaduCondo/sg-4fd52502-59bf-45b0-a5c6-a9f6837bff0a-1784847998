@@ -145,6 +145,42 @@ export default function RentalsPage() {
     return `${day}/${month}/${year}`;
   };
 
+  const handleTerminateRental = async (data: {
+    terminationDate: string;
+    applyPenalty: boolean;
+    penaltyAmount: number;
+    depositAmount: number;
+    repairExpenses: number;
+    proportionalRent: number;
+  }) => {
+    if (!rentalToEnd) return;
+
+    try {
+      const { processContractTermination } = await import("@/services/terminationService");
+      
+      await processContractTermination({
+        rentalId: rentalToEnd.id,
+        terminationDate: data.terminationDate,
+        penaltyAmount: data.penaltyAmount,
+        paymentDay: rentalToEnd.paymentDay,
+        depositAmount: data.depositAmount,
+        repairExpenses: data.repairExpenses,
+        proportionalRent: data.proportionalRent,
+      });
+
+      toast({
+        title: "Sucesso",
+        description: "Rescisão processada com sucesso! Aguardando pagamento final.",
+        className: "bg-green-500 text-white border-none",
+      });
+      
+      await loadRentalsData();
+    } catch (error) {
+      console.error("Erro ao processar rescisão:", error);
+      throw error;
+    }
+  };
+
   const handleConfirmTermination = async (data: {
     terminationDate: string;
     applyPenalty: boolean;
@@ -155,7 +191,7 @@ export default function RentalsPage() {
   }) => {
     try {
       await handleTerminateRental(data);
-      setTerminationDialogOpen(false);
+      setRentalToEnd(null);
     } catch (error) {
       console.error("❌ Error ending contract:", error);
       toast({
