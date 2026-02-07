@@ -25,6 +25,8 @@ interface RentalTerminationDialogProps {
     terminationDate: string;
     applyPenalty: boolean;
     penaltyAmount: number;
+    depositAmount: number;
+    repairExpenses: number;
   }) => Promise<void>;
 }
 
@@ -85,7 +87,9 @@ export function RentalTerminationDialog({
     setMonthsUntil12th(until12);
 
     // Buscar valor do caução
-    setDepositAmount(rental.deposit || 0);
+    // Prioriza security_deposit, depois deposit_value, depois tenta converter deposit se for numérico
+    const depositVal = rental.security_deposit || rental.depositAmount || 0;
+    setDepositAmount(Number(depositVal));
   }, [rental, open]);
 
   useEffect(() => {
