@@ -26,20 +26,122 @@ export function usePayments() {
   const loadPayments = async () => {
     try {
       setLoading(true);
-      const [paymentsData, rentalsData, propertiesData, tenantsData] = await Promise.all([
-        getAllPayments(),
-        getAllRentals(),
-        propertyService.getAll(),
-        tenantService.getAll()
-      ]);
       
-      setPayments(paymentsData);
-      setRentals(rentalsData);
-      setProperties(propertiesData);
-      setTenants(tenantsData);
+      // Query otimizada: busca tudo em uma única query com joins
+      const { data: paymentsWithRelations, error: paymentsError } = await supabase
+        .from("payments")
+        .select(`
+          *,
+          rentals!inner (
+            id,
+            property_id,
+            tenant_id,
+            status,
+            properties!inner (
+              id,
+              location_id,
+              complement,
+              locations!inner (
+                name
+              )
+            ),
+            tenants!inner (
+              id,
+              name
+            )
+          )
+        `)
+        .order("due_date", { ascending: true });
+
+      if (paymentsError) throw paymentsError;
+
+      // Mapear dados para os estados
+      const mappedPayments: Payment[] = [];
+      const rentalsMap = new Map<string, Rental>();
+      const propertiesMap = new Map<string, Property>();
+      const tenantsMap = new Map<string, Tenant>();
+
+      paymentsWithRelations?.forEach((p: any) => {
+        // Mapear payment
+        mappedPayments.push({
+          id: p.id,
+          rentalId: p.rental_id,
+          dueDate: p.due_date,
+          expectedAmount: p.expected_amount,
+          paidAmount: p.paid_amount || 0,
+          paymentDate: p.payment_date,
+          status: p.status,
+          paymentMethod: p.payment_method,
+          notes: p.notes,
+          lateFee: p.late_fee || 0,
+          interest: p.interest || 0,
+          attachments: (p.attachments as string[]) || [],
+          referenceMonth: parseInt(p.reference_month),
+          referenceYear: parseInt(p.reference_year),
+        });
+
+        // Mapear rental (se ainda não existir)
+        if (!rentalsMap.has(p.rentals.id)) {
+          rentalsMap.set(p.rentals.id, {
+            id: p.rentals.id,
+            propertyId: p.rentals.property_id,
+            tenantId: p.rentals.tenant_id,
+            startDate: "",
+            endDate: "",
+            paymentDay: 1,
+            value: 0,
+            depositAmount: 0,
+            status: p.rentals.status,
+            isActive: p.rentals.status === "active",
+            attachments: [],
+            contractAttachments: [],
+            autoRenew: false,
+          });
+        }
+
+        // Mapear property (se ainda não existir)
+        if (!propertiesMap.has(p.rentals.properties.id)) {
+          propertiesMap.set(p.rentals.properties.id, {
+            id: p.rentals.properties.id,
+            locationId: p.rentals.properties.location_id,
+            location: p.rentals.properties.locations?.name || "",
+            complement: p.rentals.properties.complement || "",
+            address: "",
+            number: "",
+            neighborhood: "",
+            city: "",
+            state: "",
+            zipCode: "",
+            rooms: 0,
+            bathrooms: 0,
+            area: 0,
+            status: "occupied",
+            value: 0,
+          });
+        }
+
+        // Mapear tenant (se ainda não existir)
+        if (!tenantsMap.has(p.rentals.tenants.id)) {
+          tenantsMap.set(p.rentals.tenants.id, {
+            id: p.rentals.tenants.id,
+            name: p.rentals.tenants.name,
+            email: "",
+            phone: "",
+            documentType: "cpf",
+            document: "",
+            cpf: "",
+            rg: "",
+            status: "active",
+          });
+        }
+      });
+      
+      setPayments(mappedPayments);
+      setRentals(Array.from(rentalsMap.values()));
+      setProperties(Array.from(propertiesMap.values()));
+      setTenants(Array.from(tenantsMap.values()));
     } catch (error) {
       console.error("Error loading data:", error);
-      // Não mostrar toast - pode ser simplesmente que não há dados ainda
     } finally {
       setLoading(false);
     }

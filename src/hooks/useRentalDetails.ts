@@ -17,8 +17,6 @@ export function useRentalDetails(rentalId: string) {
     try {
       setIsLoading(true);
 
-      alert("🚀 useRentalDetails.loadRentalData EXECUTADO! ID: " + rentalId);
-
       console.log("=".repeat(80));
       console.log("🚀 useRentalDetails.loadRentalData INICIADO - rentalId:", rentalId);
       console.log("=".repeat(80));
@@ -213,33 +211,51 @@ export function useRentalDetails(rentalId: string) {
     if (!rental) return;
 
     try {
+      console.log("=== INICIO handleTerminateRental ===");
+      console.log("📋 Dados recebidos:", data);
+      console.log("📋 Rental ID:", rental.id);
+      console.log("📋 Payment Day:", rental.paymentDay);
+
       // Importar o serviço de rescisão
       const { processContractTermination } = await import("@/services/terminationService");
 
-      // Processar a rescisão (cria recebimento e deleta futuros)
+      // PASSO 1: Processar a rescisão (cria recebimento e deleta futuros)
+      console.log("🔄 Chamando processContractTermination...");
       await processContractTermination({
         rentalId: rental.id,
         terminationDate: data.terminationDate,
         penaltyAmount: data.penaltyAmount,
         paymentDay: rental.paymentDay,
       });
+      console.log("✅ processContractTermination concluído com sucesso!");
 
-      // Atualizar status da locação para terminada
-      const { update: updateRental } = await import("@/services/rentalService");
-      await updateRental(rental.id, {
-        status: "terminated",
-        endDate: data.terminationDate,
-      });
+      // PASSO 2: Atualizar status da locação para terminada
+      console.log("🔄 Atualizando status da locação...");
+      const { error: updateError } = await supabase
+        .from("rentals")
+        .update({
+          status: "terminated",
+          end_date: data.terminationDate,
+        })
+        .eq("id", rental.id);
+
+      if (updateError) {
+        console.error("❌ Erro ao atualizar status da locação:", updateError);
+        throw updateError;
+      }
+      console.log("✅ Status da locação atualizado com sucesso!");
 
       toast({
         title: "Sucesso",
         description: "Contrato encerrado com sucesso!",
       });
 
+      console.log("=== FIM handleTerminateRental ===");
+
       // Recarregar a página para atualizar os dados
       window.location.reload();
     } catch (error) {
-      console.error("Error terminating rental:", error);
+      console.error("❌ Error terminating rental:", error);
       toast({
         title: "Erro",
         description: "Não foi possível encerrar o contrato.",

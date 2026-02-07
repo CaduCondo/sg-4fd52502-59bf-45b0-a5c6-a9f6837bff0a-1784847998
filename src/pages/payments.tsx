@@ -30,6 +30,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useMemo } from "react";
 
 export default function Payments() {
   const router = useRouter();
@@ -243,7 +244,7 @@ export default function Payments() {
     return months[month - 1] || "";
   };
 
-  const getFilteredPayments = () => {
+  const filteredPayments = useMemo(() => {
     let filtered = [...payments];
 
     if (selectedMonth !== "all" && selectedYear !== "all") {
@@ -282,15 +283,19 @@ export default function Payments() {
       const dateB = new Date(b.dueDate);
       return dateA.getTime() - dateB.getTime();
     });
-  };
+  }, [payments, selectedMonth, selectedYear, statusFilter]);
 
-  const filteredPayments = getFilteredPayments();
-
-  const unpaidPayments = filteredPayments.filter(
-    (p) => p.status === "pending" || p.status === "partial" || p.status === "overdue"
+  const unpaidPayments = useMemo(() => 
+    filteredPayments.filter(
+      (p) => p.status === "pending" || p.status === "partial" || p.status === "overdue"
+    ),
+    [filteredPayments]
   );
 
-  const paidPayments = filteredPayments.filter((p) => p.status === "paid");
+  const paidPayments = useMemo(() => 
+    filteredPayments.filter((p) => p.status === "paid"),
+    [filteredPayments]
+  );
 
   const hasActiveFilters = selectedMonth !== "all" || selectedYear !== "all";
 

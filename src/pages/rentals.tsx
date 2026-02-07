@@ -584,7 +584,7 @@ export default function RentalsPage() {
                 onClick={() => setShowInactive(!showInactive)}
               >
                 <CardTitle className="flex items-center justify-between">
-                  <span>Locações Inativas ({inactiveRentals.length})</span>
+                  <span>Locações Terminadas ({inactiveRentals.length})</span>
                   {showInactive ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
                 </CardTitle>
               </CardHeader>
@@ -601,7 +601,7 @@ export default function RentalsPage() {
                                   {rental.property?.location || "Local não encontrado"}
                                 </h3>
                                 <Badge className="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 text-xs font-medium rounded-md">
-                                  Inativa
+                                  Terminada
                                 </Badge>
                               </div>
 
@@ -660,7 +660,7 @@ export default function RentalsPage() {
                                 <TableCell>{formatDate(rental.endDate || "")}</TableCell>
                                 <TableCell>
                                   <Badge className="bg-gray-500 hover:bg-gray-600 text-white">
-                                    Inativa
+                                    Terminada
                                   </Badge>
                                 </TableCell>
                               </TableRow>
