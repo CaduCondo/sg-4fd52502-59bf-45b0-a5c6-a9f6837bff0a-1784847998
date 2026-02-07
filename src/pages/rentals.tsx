@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useRouter } from "next/router";
 import { Layout } from "@/components/Layout";
 import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
@@ -26,9 +27,11 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { calculateContractAlert, getAlertClasses, getAlertBadgeClasses } from "@/lib/contractAlerts";
 import { RentalTerminationDialog } from "@/components/rentals/RentalTerminationDialog";
+import { useContractExpiration } from "@/hooks/useContractExpiration";
 
 export default function RentalsPage() {
   const { toast } = useToast();
+  useContractExpiration(); // Auto-inativa contratos vencidos
   const [rentals, setRentals] = useState<Rental[]>([]);
   const [availableProperties, setAvailableProperties] = useState<Property[]>([]);
   const [availableTenants, setAvailableTenants] = useState<Tenant[]>([]);
