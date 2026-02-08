@@ -5,7 +5,8 @@ import { updatePendingPaymentsOnRentalEdit } from "./paymentService";
 
 // Helper para mapear dados do banco para o tipo Rental
 const mapRentalData = (data: any): Rental => {
-  return {
+  console.log("📋 MAPPED RENTAL DATA:", data);
+  const mapped = {
     id: data.id,
     propertyId: data.property_id,
     tenantId: data.tenant_id,
@@ -55,6 +56,10 @@ const mapRentalData = (data: any): Rental => {
       phone: data.tenants.phone,
     } : undefined,
   };
+
+  console.log("📋 MAPPED RENTAL DATA - VALORES MAPEADOS:", mapped);
+
+  return mapped;
 };
 
 function mapRentalFromDB(r: any): Rental {
