@@ -358,8 +358,8 @@ export async function updateFuturePayments(rentalId: string, newValue: number): 
 
 /**
  * FUNÇÃO CORRIGIDA - Cria parcelas de pagamento para uma locação
- * FIX: Evita duplicação de parcelas no mesmo mês
- * FIX: Não cria novos recebimentos se já existem para esta locação
+ * FIX: Valor correto (monthly_rent + garage_value)
+ * FIX: Cria todas as parcelas até o fim do contrato
  */
 export async function createPaymentsForRental(rental: any): Promise<void> {
   console.log("=== INICIO createPaymentsForRental (VERSÃO CORRIGIDA) ===");
@@ -389,23 +389,23 @@ export async function createPaymentsForRental(rental: any): Promise<void> {
     : new Date(startDate.getFullYear() + 1, startDate.getMonth(), startDate.getDate());
   
   const paymentDay = Number(rental.paymentDay || rental.payment_day);
-  const monthlyRent = Number(rental.value || rental.monthly_rent || 0);
-  const garageValue = Number(rental.garageValue || rental.garage_value || 0);
-  const monthlyValue = monthlyRent + garageValue;
 
   console.log("📊 DADOS EXTRAÍDOS DO RENTAL:");
   console.log("  - ID:", rental.id);
-  console.log("  - startDate:", startDate.toISOString().split('T')[0]);
-  console.log("  - endDate:", endDate.toISOString().split('T')[0]);
-  console.log("  - paymentDay:", paymentDay);
   console.log("  - rental.value:", rental.value);
   console.log("  - rental.monthly_rent:", rental.monthly_rent);
   console.log("  - rental.garageValue:", rental.garageValue);
   console.log("  - rental.garage_value:", rental.garage_value);
-  console.log("  - monthlyRent:", monthlyRent);
+  console.log("  - rental.hasGarage:", rental.hasGarage || rental.has_garage);
+
+  // CORREÇÃO CRÍTICA: Usar monthly_rent PRIMEIRO, não value
+  const monthlyRent = Number(rental.monthly_rent || rental.value || 0);
+  const garageValue = Number(rental.garage_value || rental.garageValue || 0);
+  const monthlyValue = monthlyRent + garageValue;
+
+  console.log("  - monthlyRent (CORRIGIDO):", monthlyRent);
   console.log("  - garageValue:", garageValue);
   console.log("  - monthlyValue (CALCULADO):", monthlyValue);
-  console.log("  - rental.hasGarage:", rental.hasGarage || rental.has_garage);
 
   console.log("\n📅 PERÍODO DO CONTRATO:");
   console.log("  - Início:", startDate.toISOString().split('T')[0]);
@@ -413,7 +413,7 @@ export async function createPaymentsForRental(rental: any): Promise<void> {
   
   const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  const expectedMonths = Math.floor(diffDays / 30);
+  const expectedMonths = Math.ceil(diffDays / 30);
   console.log("  - Dias totais:", diffDays);
   console.log("  - Meses esperados (aproximado):", expectedMonths);
 
@@ -506,14 +506,14 @@ export async function createPaymentsForRental(rental: any): Promise<void> {
   }
 
   // ETAPA 3: Parcelas mensais integrais
-  console.log("\n📅 INICIANDO LOOP DE PARCELAS MENSAIS");
-  console.log("   Estado inicial do loop: month =", currentMonth + 1, "year =", currentYear);
+  console.log("\n🔄 INICIANDO LOOP DE PARCELAS MENSAIS:");
+  console.log("  Estado inicial do loop: month =", currentMonth + 1, "year =", currentYear);
   
   let iterationCount = 0;
   const maxIterations = 100; // Segurança para evitar loop infinito
   
-  // Iterar até chegar na data final do contrato
-  while (true) {
+  // CORREÇÃO CRÍTICA: Iterar até endDate OU até atingir número esperado de meses
+  while (iterationCount < expectedMonths + 1) { // +1 para garantir cobertura
     iterationCount++;
     
     if (iterationCount > maxIterations) {
@@ -570,6 +570,12 @@ export async function createPaymentsForRental(rental: any): Promise<void> {
   console.log(`\n📊 RESUMO DA CRIAÇÃO:`);
   console.log(`   Total de parcelas criadas: ${payments.length}`);
   console.log(`   Total de iterações: ${iterationCount}`);
+  console.log(`   Meses esperados: ${expectedMonths}`);
+
+  if (payments.length < expectedMonths - 1) {
+    console.warn(`   ⚠️ ATENÇÃO: Criadas menos parcelas que o esperado!`);
+    console.warn(`   Diferença: ${expectedMonths - payments.length} meses`);
+  }
 
   // Validação extra: verificar se há duplicatas de mês/ano
   const monthYearSet = new Set<string>();
@@ -590,14 +596,6 @@ export async function createPaymentsForRental(rental: any): Promise<void> {
   }
 
   console.log(`✅ Validação: Nenhuma duplicata detectada`);
-
-  console.log("\n🔍 ANÁLISE FINAL:");
-  console.log(`   Meses esperados: ~${expectedMonths}`);
-  console.log(`   Parcelas criadas: ${payments.length}`);
-  if (payments.length < expectedMonths - 1) {
-    console.warn(`   ⚠️ ATENÇÃO: Criadas menos parcelas que o esperado!`);
-    console.warn(`   Diferença: ${expectedMonths - payments.length} meses`);
-  }
 
   // Inserir todas as parcelas no banco
   const { data, error } = await supabase
@@ -654,7 +652,7 @@ export async function migrateProportionalFirstPayments(): Promise<{
       try {
         const startDate = rental.start_date;
         const paymentDay = rental.payment_day;
-        const monthlyValue = rental.value || rental.monthly_rent || 0;
+        const monthlyValue = rental.monthly_rent || rental.value || 0;
 
         console.log(`\n🔍 Processando locação ID: ${rental.id}`);
 
