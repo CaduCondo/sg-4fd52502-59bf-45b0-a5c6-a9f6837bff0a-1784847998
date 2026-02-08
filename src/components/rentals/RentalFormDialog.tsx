@@ -208,6 +208,7 @@ export function RentalFormDialog({
         endDate: endDate || null,
         paymentDay: parseInt(paymentDay),
         value: totalValue,
+        monthlyRent: baseRent,  // ✅ ADICIONAR: Enviar aluguel base separado
         depositAmount: parseCurrencyToNumber(depositAmount) || 0,
         status: "active" as const,
         isActive: true,
@@ -322,8 +323,8 @@ export function RentalFormDialog({
             start_date: startDate,
             end_date: endDate || null,
             payment_day: parseInt(paymentDay),
-            monthly_rent: totalValue,
-            value: totalValue,
+            monthly_rent: baseRent,  // ✅ CORRIGIDO: Enviar apenas o valor do aluguel base
+            value: totalValue,  // Total para compatibilidade
             deposit: parseCurrencyToNumber(depositAmount) || 0,
             status: "active",
             is_active: true,
@@ -345,6 +346,10 @@ export function RentalFormDialog({
         };
 
         console.log("📥 ENVIANDO DADOS PARA SUPABASE:", insertPayload);
+        console.log("=== VALORES CALCULADOS NO FORMULÁRIO ===");
+        console.log("baseRent:", baseRent);
+        console.log("garageAmount:", garageAmount);
+        console.log("totalValue:", totalValue);
 
         const { data: createdRental, error: createError } = await supabase
           .from("rentals")
