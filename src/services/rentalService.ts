@@ -223,6 +223,16 @@ export const rentalService = {
   },
 
   async create(rental: Partial<Rental>): Promise<Rental> {
+    console.log("🏠 === CRIANDO NOVA LOCAÇÃO ===");
+    console.log("📥 Dados recebidos do formulário:", {
+      value: rental.value,
+      hasGarage: rental.hasGarage,
+      garageValue: rental.garageValue,
+      startDate: rental.startDate,
+      endDate: rental.endDate,
+      paymentDay: rental.paymentDay,
+    });
+
     const dbData = {
       property_id: rental.propertyId,
       tenant_id: rental.tenantId,
@@ -250,6 +260,8 @@ export const rentalService = {
       deposit_installment_3_pix_code: rental.depositInstallment3PixCode
     };
 
+    console.log("📤 Dados sendo enviados ao banco:", dbData);
+
     const { data, error } = await supabase
       .from("rentals")
       .insert([dbData])
@@ -257,6 +269,13 @@ export const rentalService = {
       .single();
 
     if (error) throw error;
+
+    console.log("✅ Locação criada no banco:", data);
+    console.log("🔍 Verificando campos críticos:");
+    console.log("  - value:", data.value);
+    console.log("  - monthly_rent:", data.monthly_rent);
+    console.log("  - has_garage:", data.has_garage);
+    console.log("  - garage_value:", data.garage_value);
 
     // Sincronizar parcelas do caução APENAS se houver
     if (rental.depositInstallments && rental.depositInstallments > 0) {

@@ -393,15 +393,29 @@ export async function createPaymentsForRental(rental: any): Promise<void> {
   const garageValue = Number(rental.garageValue || rental.garage_value || 0);
   const monthlyValue = monthlyRent + garageValue;
 
-  console.log("Dados processados:", {
-    rentalId: rental.id,
-    startDate: startDate.toISOString().split('T')[0],
-    endDate: endDate.toISOString().split('T')[0],
-    paymentDay,
-    monthlyRent,
-    garageValue,
-    monthlyValue
-  });
+  console.log("📊 DADOS EXTRAÍDOS DO RENTAL:");
+  console.log("  - ID:", rental.id);
+  console.log("  - startDate:", startDate.toISOString().split('T')[0]);
+  console.log("  - endDate:", endDate.toISOString().split('T')[0]);
+  console.log("  - paymentDay:", paymentDay);
+  console.log("  - rental.value:", rental.value);
+  console.log("  - rental.monthly_rent:", rental.monthly_rent);
+  console.log("  - rental.garageValue:", rental.garageValue);
+  console.log("  - rental.garage_value:", rental.garage_value);
+  console.log("  - monthlyRent:", monthlyRent);
+  console.log("  - garageValue:", garageValue);
+  console.log("  - monthlyValue (CALCULADO):", monthlyValue);
+  console.log("  - rental.hasGarage:", rental.hasGarage || rental.has_garage);
+
+  console.log("\n📅 PERÍODO DO CONTRATO:");
+  console.log("  - Início:", startDate.toISOString().split('T')[0]);
+  console.log("  - Fim:", endDate.toISOString().split('T')[0]);
+  
+  const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  const expectedMonths = Math.floor(diffDays / 30);
+  console.log("  - Dias totais:", diffDays);
+  console.log("  - Meses esperados (aproximado):", expectedMonths);
 
   const payments = [];
   const startDateStr = startDate.toISOString().split('T')[0];
@@ -576,6 +590,14 @@ export async function createPaymentsForRental(rental: any): Promise<void> {
   }
 
   console.log(`✅ Validação: Nenhuma duplicata detectada`);
+
+  console.log("\n🔍 ANÁLISE FINAL:");
+  console.log(`   Meses esperados: ~${expectedMonths}`);
+  console.log(`   Parcelas criadas: ${payments.length}`);
+  if (payments.length < expectedMonths - 1) {
+    console.warn(`   ⚠️ ATENÇÃO: Criadas menos parcelas que o esperado!`);
+    console.warn(`   Diferença: ${expectedMonths - payments.length} meses`);
+  }
 
   // Inserir todas as parcelas no banco
   const { data, error } = await supabase
