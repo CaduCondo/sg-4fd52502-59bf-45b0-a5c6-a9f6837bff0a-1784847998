@@ -16,23 +16,11 @@ import * as XLSX from "xlsx";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
 
-const formatDateWithoutTimezone = (dateString: string | null): string => {
-  if (!dateString) return "-";
-  
-  const match = dateString.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (match) {
-    const [, year, month, day] = match;
-    return `${day}/${month}/${year}`;
-  }
-  
-  return "-";
-};
-
 interface RentalData {
   id: string;
   security_deposit: number;
   monthly_rent: number;
-  garage_value: number | null;
+  garage_value: number;
   has_partner_broker: boolean;
   status: string;
   tenant: {
@@ -70,9 +58,8 @@ export function DepositInstallmentsTable({
 
       try {
         setLoading(true);
-        console.log("🔍 Buscando dados de cauções...");
+        console.log("🔍 === INÍCIO BUSCA CAUÇÕES ===");
 
-        // Query simples e direta
         const { data: rentalsData, error } = await supabase
           .from("rentals")
           .select(`
@@ -82,14 +69,10 @@ export function DepositInstallmentsTable({
             garage_value,
             has_partner_broker,
             status,
-            tenants (
-              name
-            ),
-            properties (
+            tenant:tenants(name),
+            property:properties(
               complement,
-              locations (
-                name
-              )
+              location:locations(name)
             )
           `)
           .order("created_at", { ascending: false });
@@ -99,8 +82,9 @@ export function DepositInstallmentsTable({
           throw error;
         }
 
-        console.log("✅ Dados recebidos:", rentalsData?.length || 0);
-        
+        console.log("✅ Query executada com sucesso");
+        console.log("📊 Total de rentals:", rentalsData?.length || 0);
+
         if (!rentalsData || rentalsData.length === 0) {
           console.log("⚠️ Nenhum rental encontrado");
           setData([]);
@@ -108,21 +92,7 @@ export function DepositInstallmentsTable({
           return;
         }
 
-        // Log detalhado dos primeiros registros
-        console.log("📊 Primeiros 3 registros:");
-        rentalsData.slice(0, 3).forEach((rental, idx) => {
-          console.log(`${idx + 1}.`, {
-            id: rental.id,
-            security_deposit: rental.security_deposit,
-            monthly_rent: rental.monthly_rent,
-            status: rental.status,
-            tenant: rental.tenants?.name,
-            property: rental.properties?.locations?.name
-          });
-        });
-
-        // Mapear para estrutura esperada
-        const mappedData = rentalsData.map(rental => ({
+        const mappedData: RentalData[] = rentalsData.map((rental) => ({
           id: rental.id,
           security_deposit: rental.security_deposit || 0,
           monthly_rent: rental.monthly_rent || 0,
@@ -130,29 +100,17 @@ export function DepositInstallmentsTable({
           has_partner_broker: rental.has_partner_broker || false,
           status: rental.status,
           tenant: {
-            name: rental.tenants?.name || "Sem inquilino"
+            name: rental.tenant?.name || "Sem inquilino"
           },
           property: {
-            complement: rental.properties?.complement || "Sem complemento",
+            complement: rental.property?.complement || "Sem complemento",
             location: {
-              name: rental.properties?.locations?.name || "Sem localização"
+              name: rental.property?.location?.name || "Sem localização"
             }
           }
         }));
 
-        console.log("📋 Dados mapeados:", mappedData.length);
-        
-        // Verificar se há algum security_deposit > 0
-        const withDeposit = mappedData.filter(r => r.security_deposit > 0);
-        console.log("💰 Registros com caução > 0:", withDeposit.length);
-        
-        if (withDeposit.length > 0) {
-          console.log("💰 Exemplo com caução:", withDeposit[0]);
-        } else {
-          console.warn("⚠️ ATENÇÃO: Nenhum registro tem security_deposit > 0!");
-          console.log("⚠️ Isso indica que o campo security_deposit pode não estar preenchido no banco.");
-        }
-
+        console.log("✅ Dados mapeados:", mappedData.length);
         setData(mappedData);
         setLoading(false);
       } catch (error) {
@@ -198,25 +156,11 @@ export function DepositInstallmentsTable({
     window.print();
   };
 
-  const activeRentals = data.filter(r => r.status === "active");
-  const inactiveRentals = data.filter(r => r.status === "terminated");
-
-  const totalExpected = data.reduce((acc, curr) => acc + (curr.security_deposit || 0), 0);
-  const totalReceived = totalExpected;
-  const adminCommission = totalExpected * 0.10;
-  const netRevenue = totalReceived - adminCommission;
-
-  console.log("📊 Totais calculados:", { 
-    totalExpected, 
-    activeRentals: activeRentals.length, 
-    inactiveRentals: inactiveRentals.length 
-  });
-
   if (loading) {
     return (
       <Card>
         <CardContent className="pt-6">
-          <div className="flex items-center justify-center">
+          <div className="flex items-center justify-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             <span className="ml-2">Carregando dados...</span>
           </div>
@@ -245,58 +189,58 @@ export function DepositInstallmentsTable({
     );
   }
 
+  const activeRentals = data.filter(r => r.status === "active");
+  const inactiveRentals = data.filter(r => r.status === "terminated");
+
+  const totalExpected = data.reduce((acc, curr) => acc + (curr.security_deposit || 0), 0);
+  const totalReceived = totalExpected;
+  const adminCommission = totalExpected * 0.10;
+  const netRevenue = totalReceived - adminCommission;
+
   return (
     <div className="space-y-6">
       {/* Cards de Resumo */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <ScrollReveal delay={0.2}>
-          <Card className="border-l-4 border-l-blue-500">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-muted-foreground">Valor Bruto Esperado</p>
-                  <p className="text-2xl font-bold text-blue-600">{formatCurrency(totalExpected)}</p>
-                </div>
+        <Card className="border-l-4 border-l-blue-500">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">Valor Bruto Esperado</p>
+                <p className="text-2xl font-bold text-blue-600">{formatCurrency(totalExpected)}</p>
               </div>
-            </CardContent>
-          </Card>
-        </ScrollReveal>
-        <ScrollReveal delay={0.3}>
-          <Card className="border-l-4 border-l-green-500">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-muted-foreground">Valor Bruto Recebido</p>
-                  <p className="text-2xl font-bold text-green-600">{formatCurrency(totalReceived)}</p>
-                </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-l-4 border-l-green-500">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">Valor Bruto Recebido</p>
+                <p className="text-2xl font-bold text-green-600">{formatCurrency(totalReceived)}</p>
               </div>
-            </CardContent>
-          </Card>
-        </ScrollReveal>
-        <ScrollReveal delay={0.4}>
-          <Card className="border-l-4 border-l-red-500">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-muted-foreground">Comissão</p>
-                  <p className="text-2xl font-bold text-red-600">{formatCurrency(adminCommission)}</p>
-                </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-l-4 border-l-red-500">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">Comissão</p>
+                <p className="text-2xl font-bold text-red-600">{formatCurrency(adminCommission)}</p>
               </div>
-            </CardContent>
-          </Card>
-        </ScrollReveal>
-        <ScrollReveal delay={0.5}>
-          <Card className="border-l-4 border-l-purple-500">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-muted-foreground">Receita Líquida</p>
-                  <p className="text-2xl font-bold text-purple-600">{formatCurrency(netRevenue)}</p>
-                </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-l-4 border-l-purple-500">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">Receita Líquida</p>
+                <p className="text-2xl font-bold text-purple-600">{formatCurrency(netRevenue)}</p>
               </div>
-            </CardContent>
-          </Card>
-        </ScrollReveal>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <div className="flex justify-end gap-2 mb-4">
@@ -309,7 +253,7 @@ export function DepositInstallmentsTable({
       </div>
 
       {/* Tabela de Cauções Ativos */}
-      <ScrollReveal delay={0.6}>
+      {activeRentals.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -364,66 +308,64 @@ export function DepositInstallmentsTable({
             </div>
           </CardContent>
         </Card>
-      </ScrollReveal>
+      )}
 
       {/* Tabela de Cauções Devolvidos */}
       {inactiveRentals.length > 0 && (
-        <ScrollReveal delay={0.8}>
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Check className="h-6 w-6 text-blue-600" />
-                Detalhamento dos Cauções - LOCAÇÕES INATIVAS/FINALIZADAS ({inactiveRentals.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Local</TableHead>
-                      <TableHead>Complemento</TableHead>
-                      <TableHead>Inquilino</TableHead>
-                      <TableHead className="text-right">Valor Aluguel</TableHead>
-                      <TableHead className="text-right">Valor Total Caução</TableHead>
-                      <TableHead>Corretor Parceiro</TableHead>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Check className="h-6 w-6 text-blue-600" />
+              Detalhamento dos Cauções - LOCAÇÕES INATIVAS/FINALIZADAS ({inactiveRentals.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Local</TableHead>
+                    <TableHead>Complemento</TableHead>
+                    <TableHead>Inquilino</TableHead>
+                    <TableHead className="text-right">Valor Aluguel</TableHead>
+                    <TableHead className="text-right">Valor Total Caução</TableHead>
+                    <TableHead>Corretor Parceiro</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {inactiveRentals.map((rental) => (
+                    <TableRow key={rental.id}>
+                      <TableCell className="font-medium">
+                        <div className="max-w-[150px] truncate" title={rental.property?.location?.name}>
+                          {rental.property?.location?.name || "-"}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="max-w-[100px] truncate" title={rental.property?.complement}>
+                          {rental.property?.complement || "-"}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="max-w-[120px] truncate" title={rental.tenant?.name}>
+                          {rental.tenant?.name || "-"}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {formatCurrency((rental.monthly_rent || 0) + (rental.garage_value || 0))}
+                      </TableCell>
+                      <TableCell className="text-right font-semibold text-blue-600">
+                        {formatCurrency(rental.security_deposit || 0)}
+                      </TableCell>
+                      <TableCell>
+                        {rental.has_partner_broker ? "Sim" : "Não"}
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {inactiveRentals.map((rental) => (
-                      <TableRow key={rental.id}>
-                        <TableCell className="font-medium">
-                          <div className="max-w-[150px] truncate" title={rental.property?.location?.name}>
-                            {rental.property?.location?.name || "-"}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="max-w-[100px] truncate" title={rental.property?.complement}>
-                            {rental.property?.complement || "-"}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="max-w-[120px] truncate" title={rental.tenant?.name}>
-                            {rental.tenant?.name || "-"}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {formatCurrency((rental.monthly_rent || 0) + (rental.garage_value || 0))}
-                        </TableCell>
-                        <TableCell className="text-right font-semibold text-blue-600">
-                          {formatCurrency(rental.security_deposit || 0)}
-                        </TableCell>
-                        <TableCell>
-                          {rental.has_partner_broker ? "Sim" : "Não"}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-        </ScrollReveal>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

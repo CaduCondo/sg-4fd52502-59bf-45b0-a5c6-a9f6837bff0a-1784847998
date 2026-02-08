@@ -75,51 +75,62 @@ export function RentalTerminationDialog({
     // Buscar valor TOTAL do caução
     const fetchTotalDeposit = async () => {
       try {
-        console.log("💰 Buscando caução para rental:", rental.id);
-        console.log("💰 Security deposit do rental:", rental.security_deposit);
+        console.log("💰 === BUSCANDO CAUÇÃO TOTAL ===");
+        console.log("Rental ID:", rental.id);
 
-        // Primeiro tentar buscar parcelas pagas
+        // PASSO 1: Buscar parcelas PAGAS de deposit_installments (PRIORIDADE)
         const { data: installments, error } = await supabase
           .from("deposit_installments")
-          .select("amount, payment_date")
+          .select("amount, payment_date, installment_number")
           .eq("rental_id", rental.id)
           .not("payment_date", "is", null);
 
         if (error) {
           console.error("❌ Erro ao buscar parcelas:", error);
-          // Usar security_deposit como fallback
-          const fallbackValue = rental.security_deposit || 0;
-          console.log("⚠️ Usando security_deposit como fallback:", fallbackValue);
-          setDepositAmount(fallbackValue);
-          return;
-        }
-
-        console.log("📊 Parcelas encontradas:", installments?.length || 0);
-        
-        if (installments && installments.length > 0) {
-          // Somar todas as parcelas PAGAS
-          const totalPaid = installments.reduce(
-            (sum, inst) => sum + (inst.amount || 0),
-            0
-          );
-
-          console.log("💰 Cálculo do caução:", {
-            parcelasPagas: installments.length,
-            valores: installments.map(i => i.amount),
-            totalPago: totalPaid
-          });
-
-          setDepositAmount(totalPaid);
         } else {
-          // Sem parcelas, usar security_deposit
-          const fallbackValue = rental.security_deposit || 0;
-          console.log("⚠️ Sem parcelas, usando security_deposit:", fallbackValue);
-          setDepositAmount(fallbackValue);
+          console.log("✅ Parcelas encontradas:", installments?.length || 0);
+          
+          if (installments && installments.length > 0) {
+            console.log("📋 Detalhes das parcelas:");
+            installments.forEach(inst => {
+              console.log(`   Parcela ${inst.installment_number}: R$ ${inst.amount} (Pago em: ${inst.payment_date})`);
+            });
+          }
         }
+
+        // PASSO 2: Calcular total pago
+        const totalPaid = installments?.reduce(
+          (sum, inst) => sum + (inst.amount || 0), 
+          0
+        ) || 0;
+
+        // PASSO 3: Usar security_deposit como fallback
+        const fallbackValue = rental.security_deposit || 0;
+
+        console.log("📊 Resumo do Caução:");
+        console.log(`   Total de parcelas pagas: R$ ${totalPaid}`);
+        console.log(`   Security Deposit (fallback): R$ ${fallbackValue}`);
+
+        // PASSO 4: Usar total pago se houver parcelas, senão usar fallback
+        let finalDeposit = 0;
+        
+        if (totalPaid > 0) {
+          finalDeposit = totalPaid;
+          console.log(`✅ Usando total das parcelas: R$ ${finalDeposit}`);
+        } else if (fallbackValue > 0) {
+          finalDeposit = fallbackValue;
+          console.log(`✅ Usando security_deposit: R$ ${finalDeposit}`);
+        } else {
+          console.log("⚠️ NENHUM caução encontrado!");
+        }
+
+        console.log("💰 === CAUÇÃO FINAL: R$", finalDeposit, "===\n");
+        setDepositAmount(finalDeposit);
+
       } catch (error) {
         console.error("❌ Erro ao calcular caução:", error);
         const fallbackValue = rental.security_deposit || 0;
-        console.log("⚠️ Erro - usando security_deposit:", fallbackValue);
+        console.log("⚠️ Usando fallback devido ao erro: R$", fallbackValue);
         setDepositAmount(fallbackValue);
       }
     };

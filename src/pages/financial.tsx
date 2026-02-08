@@ -971,7 +971,7 @@ export default function Financial() {
           </TabsContent>
 
           {isAdmin && (
-            <TabsContent value="deposits" className="space-y-8 mt-8">
+            <TabsContent value="deposits" className="space-y-6">
               <div className="overflow-x-auto">
                 <DepositInstallmentsTable 
                   userRole={user?.role || "user"}

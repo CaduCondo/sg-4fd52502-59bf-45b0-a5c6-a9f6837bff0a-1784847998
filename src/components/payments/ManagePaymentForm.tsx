@@ -178,14 +178,8 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
 
   // Calcular valores
   const calculateValues = () => {
-    const valorIntegral = Math.round((rentalValue + garageValue) * 100) / 100;
-    const valorAluguel = payment?.expected_amount 
-      ? Math.round(payment.expected_amount * 100) / 100 
-      : valorIntegral;
-    
-    // Verificar proporcionalidade apenas se não for rescisão (rescisão já tem lógica própria)
-    const diferenca = Math.abs(valorAluguel - valorIntegral);
-    const isProportional = !isTerminationPayment && diferenca > 1.00;
+    // SEMPRE usar valores base do rental para cálculos
+    const valorAluguel = Math.round((rentalValue + garageValue) * 100) / 100;
     
     let multa = 0;
     let juros = 0;
@@ -230,7 +224,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       valorRestante: Math.round(valorRestante * 100) / 100,
       diasAtraso,
       jurosDiario: interestRatePercentage,
-      isProportional,
+      isProportional: false,
     };
   };
 
@@ -736,23 +730,25 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
 
                   <div className="border-t border-dashed my-2"></div>
 
-                  {/* Campo editável de Despesas Adicionais */}
-                  <div className="pt-1 space-y-2">
-                    <Label htmlFor="repair-expenses" className="text-sm font-medium">
-                      Despesas Adicionais *
-                    </Label>
-                    <Input
-                      id="repair-expenses"
-                      type="text"
-                      value={formatCurrency(repairExpenses.toFixed(2))}
-                      onChange={(e) => {
-                        const value = parseCurrency(e.target.value);
-                        setRepairExpenses(value);
-                      }}
-                      placeholder="R$ 0,00"
-                      disabled={isReadOnly}
-                      className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                    />
+                  {/* Campo de Despesas Adicionais - Alinhado à direita */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <Label htmlFor="repair-expenses" className="text-sm font-medium">
+                        Despesas Adicionais *
+                      </Label>
+                      <Input
+                        id="repair-expenses"
+                        type="text"
+                        value={formatCurrency(repairExpenses.toFixed(2))}
+                        onChange={(e) => {
+                          const value = parseCurrency(e.target.value);
+                          setRepairExpenses(value);
+                        }}
+                        placeholder="R$ 0,00"
+                        disabled={isReadOnly}
+                        className="w-40 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      />
+                    </div>
                   </div>
 
                   {/* Total */}
@@ -770,18 +766,22 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                 </>
               ) : (
                 <>
-                  {/* Pagamento normal (sem alterações de lógica, apenas layout) */}
+                  {/* Pagamento normal - Mostrar Aluguel + Vaga separados */}
                   <div className="flex justify-between text-sm">
-                    <span>
-                      Valor Aluguel {garageValue > 0 && "+ Vaga"}
-                      {values.isProportional && (
-                        <span className="text-blue-600 font-medium ml-2">(Proporcional)</span>
-                      )}
-                    </span>
+                    <span>Valor Aluguel</span>
                     <span className="font-medium">
-                      {formatCurrency(values.valorAluguel.toFixed(2))}
+                      {formatCurrency(rentalValue.toFixed(2))}
                     </span>
                   </div>
+
+                  {garageValue > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span>Valor Vaga</span>
+                      <span className="font-medium">
+                        {formatCurrency(garageValue.toFixed(2))}
+                      </span>
+                    </div>
+                  )}
 
                   {values.multa > 0 && (
                     <div className="flex justify-between text-sm">

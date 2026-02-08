@@ -389,13 +389,17 @@ export async function createPaymentsForRental(rental: any): Promise<void> {
     : new Date(startDate.getFullYear() + 1, startDate.getMonth(), startDate.getDate());
   
   const paymentDay = Number(rental.paymentDay || rental.payment_day);
-  const monthlyValue = Number(rental.value || rental.monthly_rent);
+  const monthlyRent = Number(rental.value || rental.monthly_rent || 0);
+  const garageValue = Number(rental.garageValue || rental.garage_value || 0);
+  const monthlyValue = monthlyRent + garageValue;
 
   console.log("Dados processados:", {
     rentalId: rental.id,
     startDate: startDate.toISOString().split('T')[0],
     endDate: endDate.toISOString().split('T')[0],
     paymentDay,
+    monthlyRent,
+    garageValue,
     monthlyValue
   });
 
