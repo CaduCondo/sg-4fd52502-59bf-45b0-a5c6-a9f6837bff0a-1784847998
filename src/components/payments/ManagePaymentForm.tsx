@@ -36,6 +36,8 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
   const [isPaid, setIsPaid] = useState(false);
   const [repairExpenses, setRepairExpenses] = useState<number>(0);
   const [isTerminationPayment, setIsTerminationPayment] = useState(false);
+  const [originalBreakdown, setOriginalBreakdown] = useState<any[]>([]);
+  const [calculatedTotal, setCalculatedTotal] = useState<number>(0);
 
   const [formData, setFormData] = useState({
     payment_date: "",
@@ -59,25 +61,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     loadPaymentData();
     loadConfig();
   }, [paymentId]);
-
-  // Sincronizar amount_to_pay quando os dados estiverem carregados OU quando removeFees/data mudarem
-  useEffect(() => {
-    if (payment && rentalValue > 0 && !loading && isEditMode) {
-      const values = calculateValues();
-      
-      // Se for pagamento de rescisão, incluir despesas de reforma no cálculo
-      let finalAmount = values.valorAPagar;
-      
-      if (isTerminationPayment && repairExpenses > 0) {
-        finalAmount += repairExpenses;
-      }
-      
-      setFormData(prev => ({
-        ...prev,
-        amount_to_pay: formatCurrency(finalAmount.toFixed(2))
-      }));
-    }
-  }, [payment, rentalValue, garageValue, loading, formData.payment_date, lateFeePercentage, interestRatePercentage, removeFees, isEditMode, repairExpenses, isTerminationPayment]);
 
   const loadConfig = async () => {
     try {
@@ -127,31 +110,36 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       setRentalValue(paymentData.rentals.monthly_rent || 0);
       setGarageValue(paymentData.rentals.garage_value || 0);
 
-      // Verificar se o pagamento já está pago
       const alreadyPaid = paymentData.status === "paid";
       setIsPaid(alreadyPaid);
-      setIsEditMode(!alreadyPaid); // Se não está pago, começa em modo de edição
+      setIsEditMode(!alreadyPaid);
 
       // Detectar se é pagamento de rescisão
       const isTermination = paymentData.notes?.includes("Rescisão de Contrato") || false;
       setIsTerminationPayment(isTermination);
 
-      // Carregar despesas de reforma do breakdown se existir
+      // Carregar breakdown original
       if (paymentData.breakdown) {
         try {
           const breakdownData = typeof paymentData.breakdown === 'string' 
             ? JSON.parse(paymentData.breakdown) 
             : paymentData.breakdown;
           
-          const expensesItem = breakdownData.find((item: any) => 
-            item.description?.includes("Despesas") || item.description?.includes("Reforma")
-          );
+          setOriginalBreakdown(breakdownData || []);
           
-          if (expensesItem) {
-            setRepairExpenses(Math.abs(expensesItem.amount || 0));
+          // Carregar despesas se existir (para rescisão)
+          if (isTermination) {
+            const expensesItem = breakdownData.find((item: any) => 
+              item.description?.includes("Despesas")
+            );
+            
+            if (expensesItem) {
+              setRepairExpenses(Math.abs(expensesItem.amount || 0));
+            }
           }
         } catch (error) {
           console.error("Erro ao parsear breakdown:", error);
+          setOriginalBreakdown([]);
         }
       }
 
@@ -164,10 +152,18 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       setFormData({
         payment_date: paymentData.payment_date || new Date().toISOString().split("T")[0],
         payment_method: paymentData.payment_method || "pix",
-        amount_to_pay: "", // Será preenchido pelo useEffect
+        amount_to_pay: paymentData.paid_amount 
+          ? formatCurrency(paymentData.paid_amount.toFixed(2)) 
+          : "",
         notes: paymentData.notes || "",
         pix_code_type: (paymentData as any).pix_code_type || "CP",
       });
+      
+      // Se não estiver pago, definir valores iniciais
+      if (!alreadyPaid) {
+        // O useEffect de cálculo cuidará de definir o amount_to_pay
+      }
+      
     } catch (error) {
       console.error("Erro ao carregar dados do pagamento:", error);
       toast({
@@ -180,17 +176,16 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     }
   };
 
+  // Calcular valores
   const calculateValues = () => {
-    // Usar o expected_amount do pagamento (que contém valor proporcional se for 1ª parcela)
-    // Se não existir, calcular o valor integral
     const valorIntegral = Math.round((rentalValue + garageValue) * 100) / 100;
     const valorAluguel = payment?.expected_amount 
       ? Math.round(payment.expected_amount * 100) / 100 
       : valorIntegral;
     
-    // Calcular se é proporcional - CRÍTICO: só é proporcional se diferença > R$ 1,00
+    // Verificar proporcionalidade apenas se não for rescisão (rescisão já tem lógica própria)
     const diferenca = Math.abs(valorAluguel - valorIntegral);
-    const isProportional = diferenca > 1.00;
+    const isProportional = !isTerminationPayment && diferenca > 1.00;
     
     let multa = 0;
     let juros = 0;
@@ -204,17 +199,24 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         const diffTime = paymentDate.getTime() - dueDate.getTime();
         diasAtraso = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-        multa = Math.round((valorAluguel * lateFeePercentage / 100) * 100) / 100;
+        // Para rescisão, a multa/juros incide sobre o saldo devedor ou uma base específica?
+        // Assumindo sobre o valor esperado base (ex: aluguel proporcional + multa rescisória - caução)
+        // Se o resultado for negativo (caução cobriu tudo), não deve ter juros sobre valor negativo.
+        // Mas a lógica original usa valorAluguel. Na rescisão, expected_amount já é o saldo final.
+        // Vamos usar Math.max(0, valorAluguel) para garantir.
+        
+        const baseCalculo = Math.max(0, valorAluguel);
+        
+        multa = Math.round((baseCalculo * lateFeePercentage / 100) * 100) / 100;
 
         const jurosDiario = interestRatePercentage;
-        juros = Math.round((valorAluguel * jurosDiario / 100 * diasAtraso) * 100) / 100;
+        juros = Math.round((baseCalculo * jurosDiario / 100 * diasAtraso) * 100) / 100;
       }
     }
 
     const valorTotalSemIsencao = Math.round((valorAluguel + multa + juros) * 100) / 100;
     const valorAPagar = removeFees ? valorAluguel : valorTotalSemIsencao;
     
-    // Considerar valor já pago (se houver)
     const valorJaPago = payment?.paid_amount || 0;
     const valorRestante = Math.max(0, Math.round((valorAPagar - valorJaPago) * 100) / 100);
 
@@ -231,6 +233,58 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       isProportional,
     };
   };
+
+  // Recalcular totais em tempo real
+  useEffect(() => {
+    if (loading || !payment) return;
+    
+    const values = calculateValues();
+    
+    if (isTerminationPayment && originalBreakdown.length > 0) {
+      // Para rescisão, pegamos o breakdown original (sem despesas e sem multas de atraso)
+      // Filtramos despesas e multas antigas se existirem
+      const cleanBreakdown = originalBreakdown.filter((item: any) => 
+        !item.description?.includes("Despesas") && 
+        !item.description?.includes("Multa por Atraso") && 
+        !item.description?.includes("Juros por Atraso")
+      );
+      
+      const breakdownTotal = cleanBreakdown.reduce((sum, item) => sum + item.amount, 0);
+      
+      // Adicionar multa/juros por atraso se não removidos
+      const lateFees = removeFees ? 0 : (values.multa + values.juros);
+      
+      // Adicionar despesas (repairExpenses)
+      const newTotal = breakdownTotal + lateFees + repairExpenses;
+      
+      setCalculatedTotal(newTotal);
+      
+      // Atualizar campo se estiver em modo de edição
+      if (isEditMode) {
+        setFormData(prev => ({
+          ...prev,
+          amount_to_pay: formatCurrency(newTotal.toFixed(2))
+        }));
+      }
+    } else if (!isTerminationPayment && isEditMode) {
+      // Pagamento normal
+      setFormData(prev => ({
+        ...prev,
+        amount_to_pay: formatCurrency(values.valorAPagar.toFixed(2))
+      }));
+    }
+  }, [
+    isTerminationPayment,
+    originalBreakdown,
+    repairExpenses,
+    removeFees,
+    formData.payment_date,
+    lateFeePercentage,
+    interestRatePercentage,
+    isEditMode,
+    loading,
+    payment
+  ]);
 
   const formatCurrency = (value: string | number): string => {
     const numericValue = typeof value === "string" ? value.replace(/\D/g, "") : String(value).replace(/\D/g, "");
@@ -252,7 +306,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     const date = new Date(paymentDate);
     const day = String(date.getDate()).padStart(2, "0");
     
-    // Gerar 4 dígitos sequenciais (pode ser baseado em timestamp ou ID)
     const timestamp = Date.now();
     const sequence = String(timestamp).slice(-4);
     
@@ -327,7 +380,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
 
   const handleCancelEdit = () => {
     setIsEditMode(false);
-    loadPaymentData(); // Recarregar dados originais
+    loadPaymentData();
     toast({
       title: "Edição Cancelada",
       description: "Alterações descartadas.",
@@ -335,10 +388,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
   };
 
   const handleSubmit = async () => {
-    console.log("🚀 handleSubmit CHAMADO!");
-
     if (!formData.payment_date || !formData.payment_method || !formData.amount_to_pay) {
-      console.log("❌ Validação falhou - campos obrigatórios faltando");
       toast({
         title: "Atenção",
         description: "Preencha todos os campos obrigatórios",
@@ -348,108 +398,112 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     }
 
     try {
-      console.log("💾 Salvando pagamento no banco...");
-      console.log("📋 Dados do formulário:", formData);
       setIsSubmitting(true);
 
-      const calculatedValues = calculateValues();
       const paidAmount = parseCurrency(formData.amount_to_pay);
-      const expectedTotal = calculatedValues.valorAPagar;
-      
-      // Se houver valor já pago, somar ao novo pagamento
       const totalPaid = (payment?.paid_amount || 0) + paidAmount;
       
-      // Determinar status baseado no valor total pago
-      let paymentStatus: "paid" | "partial" = "paid";
-      if (totalPaid < expectedTotal) {
-        paymentStatus = "partial";
-      }
-
-      // Atualizar breakdown se for pagamento de rescisão e tiver despesas
+      let expectedTotal = 0;
       let updatedBreakdown = payment?.breakdown;
-      if (isTerminationPayment && repairExpenses > 0) {
+      const values = calculateValues();
+
+      if (isTerminationPayment) {
+        // Atualizar breakdown com despesas e multa/juros
         try {
-          const breakdownData = typeof payment.breakdown === 'string' 
+          let breakdownData = typeof payment.breakdown === 'string' 
             ? JSON.parse(payment.breakdown) 
             : (payment.breakdown || []);
           
-          // Remover item de despesas anterior se existir
-          const filteredBreakdown = breakdownData.filter((item: any) => 
-            !item.description?.includes("Despesas") && !item.description?.includes("Reforma")
+          // Remover itens de despesas e multa/juros antigos
+          breakdownData = breakdownData.filter((item: any) => 
+            !item.description?.includes("Despesas") &&
+            !item.description?.includes("Multa por Atraso") &&
+            !item.description?.includes("Juros por Atraso")
           );
           
-          // Adicionar novo item de despesas
-          filteredBreakdown.push({
-            description: "Despesas de Reforma/Limpeza",
-            amount: -repairExpenses, // Negativo = subtrai do total
-            type: "deduction"
-          });
+          // Adicionar multa e juros por atraso se houver e não removido
+          if (!removeFees && values.multa > 0) {
+            breakdownData.push({
+              description: "Multa por Atraso",
+              amount: values.multa,
+              type: "addition"
+            });
+          }
+          if (!removeFees && values.juros > 0) {
+            breakdownData.push({
+              description: "Juros por Atraso",
+              amount: values.juros,
+              type: "addition"
+            });
+          }
           
-          updatedBreakdown = JSON.stringify(filteredBreakdown);
+          // Adicionar despesas se houver
+          if (repairExpenses > 0) {
+            breakdownData.push({
+              description: "Despesas Adicionais*",
+              amount: repairExpenses,
+              type: "addition"
+            });
+          }
+          
+          updatedBreakdown = JSON.stringify(breakdownData);
+          
+          // Calcular total esperado
+          expectedTotal = breakdownData.reduce((sum: number, item: any) => sum + item.amount, 0);
         } catch (error) {
           console.error("Erro ao atualizar breakdown:", error);
+          expectedTotal = calculatedTotal;
         }
+      } else {
+        expectedTotal = values.valorAPagar;
       }
+      
+      const paymentStatus: "paid" | "partial" = totalPaid >= expectedTotal ? "paid" : "partial";
 
-      const paymentData = {
+      const paymentDataUpdate = {
         payment_date: formData.payment_date,
         payment_method: formData.payment_method,
-        paid_amount: totalPaid, // Salvar o total acumulado
+        paid_amount: totalPaid,
         notes: formData.notes,
         status: paymentStatus,
         attachments: attachments.length > 0 ? attachments : null,
-        late_fee: removeFees ? 0 : calculatedValues.multa,
-        interest: removeFees ? 0 : calculatedValues.juros,
+        late_fee: isTerminationPayment ? (removeFees ? 0 : values.multa) : (removeFees ? 0 : values.multa),
+        interest: isTerminationPayment ? (removeFees ? 0 : values.juros) : (removeFees ? 0 : values.juros),
         updated_at: new Date().toISOString(),
         pix_code_type: formData.pix_code_type,
         breakdown: updatedBreakdown,
       };
 
-      console.log("📤 Dados a serem salvos:", paymentData);
-
       const { error: updateError } = await supabase
         .from("payments")
-        .update(paymentData)
+        .update(paymentDataUpdate)
         .eq("id", paymentId);
 
-      if (updateError) {
-        console.error("❌ Erro ao salvar:", updateError);
-        throw updateError;
-      }
+      if (updateError) throw updateError;
 
-      console.log("✅ Pagamento salvo com sucesso no banco!");
-
-      // Gerar e salvar código PIX no rental se forma de pagamento for PIX
       if (formData.payment_method === "pix" && formData.pix_code_type) {
         const pixCode = generatePixCode(formData.payment_date, formData.pix_code_type);
         
-        const { error: rentalError } = await supabase
+        await supabase
           .from("rentals")
           .update({ pix_code: pixCode })
           .eq("id", payment.rental_id);
-        
-        if (rentalError) {
-          console.error("❌ Erro ao salvar código PIX:", rentalError);
-        } else {
-          console.log("✅ Código PIX salvo:", pixCode);
-        }
       }
 
       toast({
         title: "Sucesso",
         description: paymentStatus === "partial" 
-          ? `Pagamento parcial registrado! Valor pago: ${formatCurrency(paidAmount.toFixed(2))}. Restante: ${formatCurrency((expectedTotal - totalPaid).toFixed(2))}`
+          ? `Pagamento parcial registrado! Restante: ${formatCurrency((expectedTotal - totalPaid).toFixed(2))}`
           : isPaid ? "Pagamento atualizado com sucesso!" : "Pagamento registrado com sucesso!",
       });
 
       if (paymentStatus === "paid" && !isPaid && onSuccess) {
-        console.log("📞 Chamando callback onSuccess com dados completos...");
-
+        // Mock data for receipt generation
         const paymentForReceipt: Payment = {
           id: payment.id,
           rentalId: payment.rental_id,
           dueDate: payment.due_date,
-          expectedAmount: payment.expected_amount,
+          expectedAmount: expectedTotal,
           paidAmount: totalPaid,
           paymentDate: formData.payment_date,
           status: "paid",
@@ -458,23 +512,21 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           referenceMonth: parseInt(payment.reference_month),
           referenceYear: parseInt(payment.reference_year),
           attachments: attachments,
-          lateFee: removeFees ? 0 : calculatedValues.multa,
-          interest: removeFees ? 0 : calculatedValues.juros,
+          lateFee: removeFees ? 0 : values.multa,
+          interest: removeFees ? 0 : values.juros,
         };
 
-        // Create a mock rental object since we don't have the full rental data here
-        // but we need it for the PaymentReceipt component
         const mockRental: Rental = {
-          id: payment.rentalId,
-          propertyId: payment.propertyId || "",
-          tenantId: payment.tenantId || "",
-          startDate: new Date().toISOString(),
-          endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString(), // Mock date
-          paymentDay: 1,
-          value: payment.expectedAmount,
-          depositAmount: 0,
-          status: "active",
-          isActive: true,
+          id: payment.rental_id,
+          propertyId: property.id,
+          tenantId: tenant.id,
+          startDate: rental.start_date,
+          endDate: rental.end_date,
+          paymentDay: rental.payment_day,
+          value: rental.monthly_rent,
+          depositAmount: rental.security_deposit || 0,
+          status: rental.status,
+          isActive: rental.status === "active",
           attachments: [],
           contractAttachments: [],
           autoRenew: false
@@ -510,29 +562,13 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           status: tenant.status || "active",
         };
 
-        console.log("📦 Dados sendo enviados para callback:", { paymentForReceipt, mockRental, propertyForReceipt, tenantForReceipt });
-
-        if (onSuccess) {
-          console.log("✅ onSuccess existe! Chamando agora...");
-          onSuccess({
-            payment: paymentForReceipt,
-            rental: mockRental,
-            property: propertyForReceipt,
-            tenant: tenantForReceipt,
-          });
-          console.log("✅ onSuccess foi chamado!");
-        } else {
-          console.log("❌ onSuccess NÃO existe!");
-        }
-      } else if (paymentStatus === "partial") {
-        // Pagamento parcial: apenas fecha o dialog e recarrega
-        if (onClose) {
-          onClose();
-        } else {
-          router.push("/payments");
-        }
-      } else if (isPaid) {
-        // Se estava editando um pagamento já pago, apenas fecha
+        onSuccess({
+          payment: paymentForReceipt,
+          rental: mockRental,
+          property: propertyForReceipt,
+          tenant: tenantForReceipt,
+        });
+      } else if (paymentStatus === "partial" || isPaid) {
         if (onClose) {
           onClose();
         } else {
@@ -541,7 +577,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       }
 
     } catch (error) {
-      console.error("💥 Erro ao confirmar recebimento:", error);
+      console.error("Erro ao confirmar recebimento:", error);
       toast({
         title: "Erro",
         description: "Erro inesperado ao registrar pagamento.",
@@ -549,7 +585,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       });
     } finally {
       setIsSubmitting(false);
-      console.log("🏁 handleSubmit finalizado");
     }
   };
 
@@ -569,12 +604,13 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       {!embedded && (
         <div className="text-center mb-6">
           <h1 className="text-2xl font-bold">
-            {isPaid && isEditMode ? "Edição do Recebimento" : isPaid ? "Detalhes do Recebimento" : "Registrar Recebimento"}
+            Registrar Recebimento
           </h1>
         </div>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Cards de Info Imóvel e Locatário (sem alterações) */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base">
@@ -593,20 +629,8 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                 <p className="text-foreground flex-1">{property?.complement}</p>
               </div>
               <div className="flex gap-2">
-                <span className="font-medium text-muted-foreground min-w-[80px]">Endereço:</span>
-                <p className="text-foreground flex-1">
-                  {location?.street}, {location?.number}
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <span className="font-medium text-muted-foreground min-w-[80px]">Cidade/UF:</span>
-                <p className="text-foreground flex-1">
-                  {location?.city} - {location?.state}
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <span className="font-medium text-muted-foreground min-w-[80px]">CEP:</span>
-                <p className="text-foreground flex-1">{location?.zip_code}</p>
+                <span className="font-medium text-muted-foreground min-w-[80px]">Cidade:</span>
+                <p className="text-foreground flex-1">{location?.city}</p>
               </div>
             </div>
           </CardContent>
@@ -630,143 +654,198 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                 <p className="text-foreground flex-1">{tenant?.cpf}</p>
               </div>
               <div className="flex gap-2">
-                <span className="font-medium text-muted-foreground min-w-[80px]">RG:</span>
-                <p className="text-foreground flex-1">{tenant?.rg}</p>
-              </div>
-              <div className="flex gap-2">
-                <span className="font-medium text-muted-foreground min-w-[80px]">Telefone:</span>
+                <span className="font-medium text-muted-foreground min-w-[80px]">Tel:</span>
                 <p className="text-foreground flex-1">{tenant?.phone}</p>
-              </div>
-              <div className="flex gap-2">
-                <span className="font-medium text-muted-foreground min-w-[80px]">Email:</span>
-                <p className="text-foreground flex-1">{tenant?.email}</p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <FileText className="h-4 w-4" />
-            Informações da Locação
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
-            <div>
-              <span className="font-medium text-muted-foreground">Data Início:</span>
-              <p className="text-foreground">
-                {rental?.start_date ? new Date(rental.start_date + "T12:00:00").toLocaleDateString("pt-BR") : "-"}
-              </p>
-            </div>
-            <div>
-              <span className="font-medium text-muted-foreground">Data Término:</span>
-              <p className="text-foreground">
-                {rental?.end_date ? new Date(rental.end_date + "T12:00:00").toLocaleDateString("pt-BR") : "Indeterminado"}
-              </p>
-            </div>
-            <div>
-              <span className="font-medium text-muted-foreground">Data Vencimento:</span>
-              <p className="text-foreground">
-                {payment?.due_date ? new Date(payment.due_date + "T12:00:00").toLocaleDateString("pt-BR") : "-"}
-              </p>
-            </div>
-            <div>
-              <span className="font-medium text-muted-foreground">Valor Aluguel:</span>
-              <p className="text-foreground">{formatCurrency(rentalValue.toFixed(2))}</p>
-            </div>
-            <div>
-              <span className="font-medium text-muted-foreground">Valor Vaga:</span>
-              <p className="text-foreground">{formatCurrency(garageValue.toFixed(2))}</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
+        {/* Card Formação de Valores */}
+        <Card className={isTerminationPayment ? "border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950" : ""}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <DollarSign className="h-5 w-5" />
-              Formação de Valores
+              Formação de Valores {isTerminationPayment && "- Rescisão"}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              <div className="flex justify-between text-sm">
-                <span>
-                  Valor Aluguel {garageValue > 0 && "+ Vaga"}
-                  {values.isProportional && (
-                    <span className="text-blue-600 font-medium ml-2">(Proporcional)</span>
+              {isTerminationPayment ? (
+                <>
+                  {/* Rescisão - Breakdown original limpo */}
+                  {originalBreakdown
+                    .filter(item => 
+                      !item.description?.includes("Despesas") && 
+                      !item.description?.includes("Multa por Atraso") &&
+                      !item.description?.includes("Juros por Atraso")
+                    )
+                    .map((item, index) => (
+                    <div key={index} className="flex justify-between text-sm">
+                      <span>{item.description}</span>
+                      <span className={item.type === "deduction" ? "text-red-600 font-medium" : "font-medium"}>
+                        {item.type === "deduction" ? "-" : ""}
+                        {formatCurrency(Math.abs(item.amount).toFixed(2))}
+                      </span>
+                    </div>
+                  ))}
+
+                  <div className="border-t border-dashed my-2"></div>
+
+                  {/* Multa e Juros por Atraso (se houver) */}
+                  {values.multa > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600"}>
+                        Multa por Atraso ({lateFeePercentage}%)
+                      </span>
+                      <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600 font-medium"}>
+                        + {formatCurrency(values.multa.toFixed(2))}
+                      </span>
+                    </div>
                   )}
-                </span>
-                <span className="font-medium">
-                  {formatCurrency(values.valorAluguel.toFixed(2))}
-                </span>
-              </div>
 
-              {values.multa > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600"}>
-                    Multa ({lateFeePercentage}%)
-                  </span>
-                  <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600 font-medium"}>
-                    + {formatCurrency(values.multa.toFixed(2))}
-                  </span>
-                </div>
+                  {values.juros > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600"}>
+                        Juros por Atraso ({interestRatePercentage.toFixed(3)}% ao dia) + {values.diasAtraso} dias
+                      </span>
+                      <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600 font-medium"}>
+                        + {formatCurrency(values.juros.toFixed(2))}
+                      </span>
+                    </div>
+                  )}
+
+                  {(values.multa > 0 || values.juros > 0) && isEditMode && (
+                    <div className="flex items-center space-x-2 py-2">
+                      <Checkbox
+                        id="remove-fees-termination"
+                        checked={removeFees}
+                        onCheckedChange={(checked) => setRemoveFees(checked as boolean)}
+                        disabled={isReadOnly}
+                      />
+                      <label
+                        htmlFor="remove-fees-termination"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                      >
+                        Retirar multa/juros por atraso
+                      </label>
+                    </div>
+                  )}
+
+                  <div className="border-t border-dashed my-2"></div>
+
+                  {/* Campo editável de Despesas Adicionais */}
+                  <div className="pt-1 space-y-2">
+                    <Label htmlFor="repair-expenses" className="text-sm font-medium">
+                      Despesas Adicionais *
+                    </Label>
+                    <Input
+                      id="repair-expenses"
+                      type="text"
+                      value={formatCurrency(repairExpenses.toFixed(2))}
+                      onChange={(e) => {
+                        const value = parseCurrency(e.target.value);
+                        setRepairExpenses(value);
+                      }}
+                      placeholder="R$ 0,00"
+                      disabled={isReadOnly}
+                      className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                  </div>
+
+                  {/* Total */}
+                  <div className="flex justify-between pt-3 border-t-2 border-primary mt-2">
+                    <span className="font-bold text-base">VALOR TOTAL</span>
+                    <span className="font-bold text-base text-primary">
+                      {formatCurrency(calculatedTotal.toFixed(2))}
+                    </span>
+                  </div>
+
+                  {/* Rodapé explicativo */}
+                  <div className="text-xs text-muted-foreground pt-2 border-t mt-2">
+                    * Despesas Adicionais de Reforma/Limpeza/Pinturas ou reparos necessários após a saída do inquilino
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Pagamento normal (sem alterações de lógica, apenas layout) */}
+                  <div className="flex justify-between text-sm">
+                    <span>
+                      Valor Aluguel {garageValue > 0 && "+ Vaga"}
+                      {values.isProportional && (
+                        <span className="text-blue-600 font-medium ml-2">(Proporcional)</span>
+                      )}
+                    </span>
+                    <span className="font-medium">
+                      {formatCurrency(values.valorAluguel.toFixed(2))}
+                    </span>
+                  </div>
+
+                  {values.multa > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600"}>
+                        Multa ({lateFeePercentage}%)
+                      </span>
+                      <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600 font-medium"}>
+                        + {formatCurrency(values.multa.toFixed(2))}
+                      </span>
+                    </div>
+                  )}
+
+                  {values.juros > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600"}>
+                        Juros ({interestRatePercentage.toFixed(3)}% ao dia) + {values.diasAtraso} dias
+                      </span>
+                      <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600 font-medium"}>
+                        + {formatCurrency(values.juros.toFixed(2))}
+                      </span>
+                    </div>
+                  )}
+
+                  {(values.multa > 0 || values.juros > 0) && isEditMode && (
+                    <div className="flex items-center space-x-2 py-2 border-t">
+                      <Checkbox
+                        id="remove-fees"
+                        checked={removeFees}
+                        onCheckedChange={(checked) => setRemoveFees(checked as boolean)}
+                        disabled={isReadOnly}
+                      />
+                      <label
+                        htmlFor="remove-fees"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                      >
+                        Retirar multa/juros
+                      </label>
+                    </div>
+                  )}
+
+                  {values.valorJaPago > 0 && (
+                    <div className="flex justify-between pt-3 border-t">
+                      <span className="text-sm text-green-600">Valor já Pago</span>
+                      <span className="text-sm text-green-600 font-medium">
+                        - {formatCurrency(values.valorJaPago.toFixed(2))}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between pt-3 border-t-2 border-primary">
+                    <span className="font-bold text-base">
+                      {values.valorJaPago > 0 ? "Valor Restante" : "Valor Total"}
+                    </span>
+                    <span className="font-bold text-base text-primary">
+                      {formatCurrency(values.valorJaPago > 0 ? values.valorRestante.toFixed(2) : values.valorAPagar.toFixed(2))}
+                    </span>
+                  </div>
+                </>
               )}
-
-              {values.juros > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600"}>
-                    Juros ({interestRatePercentage.toFixed(3)}% ao dia) + {values.diasAtraso} dias
-                  </span>
-                  <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600 font-medium"}>
-                    + {formatCurrency(values.juros.toFixed(2))}
-                  </span>
-                </div>
-              )}
-
-              {(values.multa > 0 || values.juros > 0) && isEditMode && (
-                <div className="flex items-center space-x-2 py-2 border-t">
-                  <Checkbox
-                    id="remove-fees"
-                    checked={removeFees}
-                    onCheckedChange={(checked) => setRemoveFees(checked as boolean)}
-                    disabled={isReadOnly}
-                  />
-                  <label
-                    htmlFor="remove-fees"
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                  >
-                    Retirar multa/juros
-                  </label>
-                </div>
-              )}
-
-              {values.valorJaPago > 0 && (
-                <div className="flex justify-between pt-3 border-t">
-                  <span className="text-sm text-green-600">Valor já Pago</span>
-                  <span className="text-sm text-green-600 font-medium">
-                    - {formatCurrency(values.valorJaPago.toFixed(2))}
-                  </span>
-                </div>
-              )}
-
-              <div className="flex justify-between pt-3 border-t-2 border-primary">
-                <span className="font-bold text-base">
-                  {values.valorJaPago > 0 ? "Valor Restante" : "Valor Total"}
-                </span>
-                <span className="font-bold text-base text-primary">
-                  {formatCurrency(values.valorJaPago > 0 ? values.valorRestante.toFixed(2) : values.valorAPagar.toFixed(2))}
-                </span>
-              </div>
             </div>
           </CardContent>
         </Card>
 
+        {/* Card Informações Pagamento */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -853,39 +932,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                   />
                 </div>
               </div>
-
-              {/* Despesas de Reforma (apenas para pagamentos de rescisão) */}
-              {isTerminationPayment && (
-                <div className="col-span-2 pt-4 border-t">
-                  <Label htmlFor="repair-expenses" className="text-base font-semibold mb-2 block">
-                    Despesas Adicionais de Reforma/Limpeza
-                  </Label>
-                  <div className="flex items-center gap-4">
-                    <div className="flex-1">
-                      <p className="text-sm text-muted-foreground mb-2">
-                        Reformas, pinturas ou reparos necessários após a saída do inquilino
-                      </p>
-                      <Input
-                        id="repair-expenses"
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={repairExpenses || ""}
-                        onChange={(e) => setRepairExpenses(Math.max(0, parseFloat(e.target.value) || 0))}
-                        placeholder="0,00"
-                        disabled={isReadOnly}
-                        className="max-w-[200px]"
-                      />
-                    </div>
-                    <div className="text-right">
-                      <span className="text-sm text-muted-foreground block mb-1">Subtotal + Despesas</span>
-                      <span className="text-lg font-bold text-orange-600">
-                        + R$ {repairExpenses.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           </CardContent>
         </Card>

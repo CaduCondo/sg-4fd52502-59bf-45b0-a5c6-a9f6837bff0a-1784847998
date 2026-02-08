@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { parseISO, getMonth, getYear, differenceInDays } from "date-fns";
+import { parseISO, getMonth, getYear, differenceInMonths } from "date-fns";
 
 export interface TerminationData {
   rentalId: string;
@@ -13,12 +13,12 @@ export interface TerminationData {
 /**
  * Processa a rescisão de contrato:
  * 1. Calcula aluguel proporcional do dia de vencimento até data da rescisão
- * 2. Atualiza recebimento do mês da rescisão com:
+ * 2. Busca ou cria recebimento do mês da rescisão
+ * 3. Atualiza recebimento com:
  *    - Aluguel proporcional
  *    - Multa rescisória
  *    - Caução corrigido (negativo)
- * 3. Deleta recebimentos do mês SEGUINTE em diante
- * 4. NÃO atualiza status (só muda quando recebimento for pago)
+ * 4. Deleta recebimentos do mês SEGUINTE em diante
  */
 export async function processContractTermination(data: TerminationData): Promise<void> {
   console.log("=== INICIO processContractTermination ===");
@@ -60,10 +60,10 @@ export async function processContractTermination(data: TerminationData): Promise
     valorProporcional: proportionalRent.toFixed(2)
   });
 
-  // PASSO 3: Buscar recebimento do mês da rescisão
+  // PASSO 3: Buscar ou criar recebimento do mês da rescisão
   console.log("\n🔍 Buscando recebimento do mês da rescisão...");
   
-  const { data: paymentOfMonth, error: fetchError } = await supabase
+  const { data: existingPayment, error: fetchError } = await supabase
     .from("payments")
     .select("*")
     .eq("rental_id", rentalId)
@@ -76,17 +76,62 @@ export async function processContractTermination(data: TerminationData): Promise
     throw fetchError;
   }
 
+  let paymentOfMonth = existingPayment;
+
+  // Se não encontrou, criar o recebimento
   if (!paymentOfMonth) {
-    console.error("❌ Recebimento do mês da rescisão não encontrado!");
-    throw new Error("Recebimento do mês da rescisão não encontrado");
+    console.log("⚠️ Recebimento não encontrado. Criando novo recebimento...");
+    
+    // Buscar dados do rental para criar o recebimento
+    const { data: rental, error: rentalError } = await supabase
+      .from("rentals")
+      .select("*")
+      .eq("id", rentalId)
+      .single();
+
+    if (rentalError || !rental) {
+      console.error("❌ Erro ao buscar rental:", rentalError);
+      throw new Error("Não foi possível buscar dados da locação");
+    }
+
+    // Criar novo recebimento para o mês da rescisão
+    const dueDate = new Date(terminationYear, terminationMonth - 1, paymentDay);
+    
+    const { data: newPayment, error: createError } = await supabase
+      .from("payments")
+      .insert({
+        rental_id: rentalId,
+        due_date: dueDate.toISOString().split("T")[0],
+        expected_amount: proportionalRent,
+        reference_month: String(terminationMonth),
+        reference_year: String(terminationYear),
+        status: "pending"
+      })
+      .select()
+      .single();
+
+    if (createError || !newPayment) {
+      console.error("❌ Erro ao criar recebimento:", createError);
+      throw new Error("Não foi possível criar recebimento do mês da rescisão");
+    }
+
+    console.log("✅ Recebimento criado:", newPayment.id);
+    paymentOfMonth = newPayment;
+  } else {
+    console.log("✅ Recebimento encontrado:", paymentOfMonth.id);
   }
 
-  console.log("✅ Recebimento encontrado:", paymentOfMonth.id);
-
   // PASSO 4: Calcular caução corrigido pela inflação
-  // TODO: Implementar correção pela inflação
-  // Por ora, usa valor nominal
-  const correctedDeposit = depositAmount;
+  const monthsActive = differenceInMonths(terminationDateObj, parseISO(paymentOfMonth.due_date));
+  const inflationRate = 0.004; // IPCA médio ~0.4% ao mês
+  const correctedDeposit = depositAmount * (1 + inflationRate * Math.max(monthsActive, 0));
+
+  console.log("💰 Correção do caução:", {
+    valorOriginal: depositAmount,
+    mesesAtivo: monthsActive,
+    taxaInflacao: `${(inflationRate * 100).toFixed(2)}% ao mês`,
+    valorCorrigido: correctedDeposit.toFixed(2)
+  });
 
   // PASSO 5: Criar breakdown (Formação de Valores)
   const breakdown = [];

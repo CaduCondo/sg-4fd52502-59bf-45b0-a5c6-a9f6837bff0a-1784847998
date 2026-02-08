@@ -58,8 +58,6 @@ export function RentalTerminationDialog({
       setCurrentMonth(0);
       setTotalMonths(0);
       setDepositAmount(0);
-      setProportionalDays(0);
-      setProportionalRent(0);
       return;
     }
 
@@ -74,36 +72,55 @@ export function RentalTerminationDialog({
     setCurrentMonth(Math.min(current, total));
     setTerminationDate(format(today, "yyyy-MM-dd"));
 
-    // Buscar valor TOTAL do caução somando todas as parcelas
+    // Buscar valor TOTAL do caução
     const fetchTotalDeposit = async () => {
       try {
+        console.log("💰 Buscando caução para rental:", rental.id);
+        console.log("💰 Security deposit do rental:", rental.security_deposit);
+
+        // Primeiro tentar buscar parcelas pagas
         const { data: installments, error } = await supabase
           .from("deposit_installments")
-          .select("amount")
-          .eq("rental_id", rental.id);
+          .select("amount, payment_date")
+          .eq("rental_id", rental.id)
+          .not("payment_date", "is", null);
 
         if (error) {
-          console.error("Erro ao buscar parcelas do caução:", error);
-          setDepositAmount(rental.security_deposit || 0);
+          console.error("❌ Erro ao buscar parcelas:", error);
+          // Usar security_deposit como fallback
+          const fallbackValue = rental.security_deposit || 0;
+          console.log("⚠️ Usando security_deposit como fallback:", fallbackValue);
+          setDepositAmount(fallbackValue);
           return;
         }
 
-        const totalDeposit = installments?.reduce((sum, inst) => sum + (inst.amount || 0), 0) || 0;
+        console.log("📊 Parcelas encontradas:", installments?.length || 0);
         
-        console.log("💰 Caução total calculado:", {
-          parcelas: installments?.length || 0,
-          valorTotal: totalDeposit,
-          securityDeposit: rental.security_deposit
-        });
+        if (installments && installments.length > 0) {
+          // Somar todas as parcelas PAGAS
+          const totalPaid = installments.reduce(
+            (sum, inst) => sum + (inst.amount || 0),
+            0
+          );
 
-        if (totalDeposit > 0) {
-          setDepositAmount(totalDeposit);
+          console.log("💰 Cálculo do caução:", {
+            parcelasPagas: installments.length,
+            valores: installments.map(i => i.amount),
+            totalPago: totalPaid
+          });
+
+          setDepositAmount(totalPaid);
         } else {
-          setDepositAmount(rental.security_deposit || 0);
+          // Sem parcelas, usar security_deposit
+          const fallbackValue = rental.security_deposit || 0;
+          console.log("⚠️ Sem parcelas, usando security_deposit:", fallbackValue);
+          setDepositAmount(fallbackValue);
         }
       } catch (error) {
-        console.error("Erro ao calcular caução total:", error);
-        setDepositAmount(rental.security_deposit || 0);
+        console.error("❌ Erro ao calcular caução:", error);
+        const fallbackValue = rental.security_deposit || 0;
+        console.log("⚠️ Erro - usando security_deposit:", fallbackValue);
+        setDepositAmount(fallbackValue);
       }
     };
 
@@ -177,6 +194,81 @@ export function RentalTerminationDialog({
     }
   }, [rental, terminationDate, applyFullContractPenalty, apply12MonthsPenalty, totalMonths]);
 
+  // Calcular multas ao mudar data ou checkbox
+  useEffect(() => {
+    if (!rental || !terminationDate) {
+      setPenaltyAmount(0);
+      return;
+    }
+
+    try {
+      const termDate = parseISO(terminationDate);
+      const startDate = parseISO(rental.startDate);
+      const endDate = parseISO(rental.endDate);
+      
+      const monthlyRent = rental.value || 0;
+      
+      // Calcular meses decorridos desde o início
+      const monthsElapsed = differenceInMonths(termDate, startDate);
+      
+      // Calcular meses restantes até o fim
+      const monthsRemaining = differenceInMonths(endDate, termDate);
+
+      console.log("📊 Cálculo de Multa:", {
+        dataInicio: rental.startDate,
+        dataRescisao: terminationDate,
+        dataFim: rental.endDate,
+        mesesDecorridos: monthsElapsed,
+        mesesRestantes: monthsRemaining,
+        aluguelMensal: monthlyRent
+      });
+
+      // REGRA 1: Multa Proporcional ao Tempo Restante (até o fim do contrato)
+      if (applyFullContractPenalty && monthsRemaining > 0) {
+        // 3 aluguéis dividido pelos meses TOTAIS do contrato × meses RESTANTES
+        const totalContractMonths = totalMonths;
+        const threeRents = 3 * monthlyRent;
+        const penaltyPerMonth = threeRents / totalContractMonths;
+        const penalty = penaltyPerMonth * monthsRemaining;
+        
+        console.log("💰 Multa Proporcional:", {
+          formula: `(3 × ${monthlyRent}) ÷ ${totalContractMonths} × ${monthsRemaining}`,
+          resultado: penalty
+        });
+        
+        setPenaltyAmount(penalty);
+      }
+      // REGRA 2: Multa Cláusula 12 Meses (se sair antes de completar 12 meses)
+      else if (apply12MonthsPenalty) {
+        if (monthsElapsed < 12) {
+          // 3 aluguéis dividido por 12 × meses FALTANDO para completar 12
+          const monthsTo12 = 12 - monthsElapsed;
+          const threeRents = 3 * monthlyRent;
+          const penaltyPerMonth = threeRents / 12;
+          const penalty = penaltyPerMonth * monthsTo12;
+          
+          console.log("💰 Multa 12 Meses:", {
+            mesesDecorridos: monthsElapsed,
+            mesesFaltandoPara12: monthsTo12,
+            formula: `(3 × ${monthlyRent}) ÷ 12 × ${monthsTo12}`,
+            resultado: penalty
+          });
+          
+          setPenaltyAmount(penalty);
+        } else {
+          console.log("✅ Isento de multa (12+ meses)");
+          setPenaltyAmount(0);
+        }
+      }
+      else {
+        setPenaltyAmount(0);
+      }
+    } catch (error) {
+      console.error("❌ Erro ao calcular multa:", error);
+      setPenaltyAmount(0);
+    }
+  }, [rental, terminationDate, applyFullContractPenalty, apply12MonthsPenalty, totalMonths]);
+
   const handleConfirm = async () => {
     if (!terminationDate) {
       return;
@@ -204,7 +296,7 @@ export function RentalTerminationDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-yellow-600" />
@@ -328,7 +420,7 @@ export function RentalTerminationDialog({
               <div>
                 <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Caução Total a Devolver</span>
                 <p className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">
-                  Valor será corrigido pela inflação no período
+                  Valor será corrigido pela inflação e incluído no recebimento final
                 </p>
               </div>
               <span className="font-bold text-blue-700 dark:text-blue-300">
