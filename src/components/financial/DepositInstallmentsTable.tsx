@@ -262,17 +262,6 @@ export function DepositInstallmentsTable({
     );
   }
 
-  const totalExpected = data.reduce((acc, curr) => acc + (curr.amount || 0), 0);
-  const totalReceived = data
-    .filter((inst) => inst.status === "paid")
-    .reduce((acc, curr) => acc + (curr.amount || 0), 0);
-  
-  const totalPartnerCommission = data.reduce((acc, curr) => acc + (curr.partner_commission || 0), 0);
-  const totalInternalCommission = data.reduce((acc, curr) => acc + (curr.internal_commission || 0), 0);
-  const totalCommission = totalPartnerCommission + totalInternalCommission;
-  
-  const netRevenue = totalReceived - totalCommission;
-
   // ✅ Agrupa parcelas por rental_id
   const groupedData = data.reduce((acc, inst) => {
     if (!acc[inst.rental_id]) {
@@ -297,6 +286,32 @@ export function DepositInstallmentsTable({
       return dateA.getTime() - dateB.getTime();
     })
     .map(([_, group]) => group); // Retorna apenas os grupos (arrays de parcelas)
+
+  const totalExpected = sortedGroups.reduce((acc, group) => {
+    const groupTotalDeposit = group.reduce((acc, curr) => acc + (curr.amount || 0), 0);
+    return acc + groupTotalDeposit;
+  }, 0);
+
+  const totalReceived = sortedGroups
+    .filter((group) => group[0].status === "paid")
+    .reduce((acc, group) => {
+      const groupTotalDeposit = group.reduce((acc, curr) => acc + (curr.amount || 0), 0);
+      return acc + groupTotalDeposit;
+    }, 0);
+
+  const totalPartnerCommission = sortedGroups.reduce((acc, group) => {
+    const groupTotalPartnerCommission = group.reduce((acc, curr) => acc + (curr.partner_commission || 0), 0);
+    return acc + groupTotalPartnerCommission;
+  }, 0);
+
+  const totalInternalCommission = sortedGroups.reduce((acc, group) => {
+    const groupTotalInternalCommission = group.reduce((acc, curr) => acc + (curr.internal_commission || 0), 0);
+    return acc + groupTotalInternalCommission;
+  }, 0);
+
+  const totalCommission = totalPartnerCommission + totalInternalCommission;
+
+  const netRevenue = totalReceived - totalCommission;
 
   return (
     <div className="space-y-6">
