@@ -313,16 +313,6 @@ export default function Payments() {
     });
   }, [payments, statusFilter]);
 
-  useEffect(() => {
-    loadPayments({
-      filters: {
-        month: selectedMonth,
-        year: selectedYear,
-        status: statusFilter,
-      },
-    });
-  }, [selectedMonth, selectedYear, statusFilter]);
-
   return (
     <>
       <Head>
