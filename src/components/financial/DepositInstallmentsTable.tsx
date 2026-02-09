@@ -586,7 +586,7 @@ export function DepositInstallmentsTable({
                       </TableCell>
                       <TableCell className={bgColor}>
                         {inst.payment_date
-                          ? new Date(inst.payment_date).toLocaleDateString("pt-BR")
+                          ? inst.payment_date.split("T")[0]
                           : "-"}
                       </TableCell>
                       <TableCell className={`text-right ${bgColor}`}>
