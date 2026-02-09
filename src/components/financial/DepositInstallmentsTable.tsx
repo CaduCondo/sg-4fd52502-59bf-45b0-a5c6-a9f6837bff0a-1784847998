@@ -273,6 +273,31 @@ export function DepositInstallmentsTable({
   );
   const netRevenue = totalReceived - totalCommission;
 
+  // ✅ Agrupa parcelas por rental_id
+  const groupedData = data.reduce((acc, inst) => {
+    if (!acc[inst.rental_id]) {
+      acc[inst.rental_id] = [];
+    }
+    acc[inst.rental_id].push(inst);
+    return acc;
+  }, {} as Record<string, DepositInstallment[]>);
+
+  // ✅ Ordena parcelas dentro de cada grupo por installment_number
+  Object.values(groupedData).forEach((group) => {
+    group.sort((a, b) => a.installment_number - b.installment_number);
+  });
+
+  // ✅ NOVO: Converte para array e ordena grupos pela data da primeira parcela
+  // Isso garante que as parcelas da mesma locação fiquem SEMPRE JUNTAS
+  const sortedGroups = Object.entries(groupedData)
+    .sort((a, b) => {
+      // Usa a data da primeira parcela de cada grupo para ordenar
+      const dateA = new Date(a[1][0].due_date || a[1][0].payment_date || "");
+      const dateB = new Date(b[1][0].due_date || b[1][0].payment_date || "");
+      return dateA.getTime() - dateB.getTime();
+    })
+    .map(([_, group]) => group); // Retorna apenas os grupos (arrays de parcelas)
+
   return (
     <div className="space-y-6">
       {/* Cards de Resumo */}
@@ -407,211 +432,213 @@ export function DepositInstallmentsTable({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data.map((inst) => (
-                  <TableRow
-                    key={inst.id}
-                    className={
-                      inst.status === "paid" ? "bg-green-50/50" : "bg-red-50/50"
-                    }
-                  >
-                    <TableCell className="font-medium">
-                      <div
-                        className="max-w-[150px] truncate"
-                        title={inst.rental?.property?.location?.name}
-                      >
-                        {inst.rental?.property?.location?.name || "-"}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div
-                        className="max-w-[100px] truncate"
-                        title={inst.rental?.property?.complement}
-                      >
-                        {inst.rental?.property?.complement || "-"}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div
-                        className="max-w-[120px] truncate"
-                        title={inst.rental?.tenant?.name}
-                      >
-                        {inst.rental?.tenant?.name || "-"}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {formatCurrency(
-                        (inst.rental?.monthly_rent || 0) +
-                          (inst.rental?.garage_value || 0)
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right font-semibold">
-                      {formatCurrency(inst.rental?.security_deposit || 0)}
-                    </TableCell>
-                    <TableCell>
-                      {inst.rental?.has_partner_broker ? "Sim" : "Não"}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {editingCell?.id === inst.id &&
-                      editingCell?.field === "partner_commission" ? (
-                        <Input
-                          type="number"
-                          step="0.01"
-                          defaultValue={inst.partner_commission}
-                          onBlur={(e) =>
-                            handleUpdateField(
-                              inst.id,
-                              "partner_commission",
-                              e.target.value
-                            )
-                          }
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
+                {sortedGroups.map((group) =>
+                  group.map((inst, index) => (
+                    <TableRow
+                      key={inst.id}
+                      className={
+                        inst.status === "paid" ? "bg-green-50/50" : "bg-red-50/50"
+                      }
+                    >
+                      <TableCell className="font-medium">
+                        <div
+                          className="max-w-[150px] truncate"
+                          title={inst.rental?.property?.location?.name}
+                        >
+                          {inst.rental?.property?.location?.name || "-"}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div
+                          className="max-w-[100px] truncate"
+                          title={inst.rental?.property?.complement}
+                        >
+                          {inst.rental?.property?.complement || "-"}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div
+                          className="max-w-[120px] truncate"
+                          title={inst.rental?.tenant?.name}
+                        >
+                          {inst.rental?.tenant?.name || "-"}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {formatCurrency(
+                          (inst.rental?.monthly_rent || 0) +
+                            (inst.rental?.garage_value || 0)
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right font-semibold">
+                        {formatCurrency(inst.rental?.security_deposit || 0)}
+                      </TableCell>
+                      <TableCell>
+                        {inst.rental?.has_partner_broker ? "Sim" : "Não"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {editingCell?.id === inst.id &&
+                        editingCell?.field === "partner_commission" ? (
+                          <Input
+                            type="number"
+                            step="0.01"
+                            defaultValue={inst.partner_commission}
+                            onBlur={(e) =>
                               handleUpdateField(
                                 inst.id,
                                 "partner_commission",
-                                (e.target as HTMLInputElement).value
-                              );
+                                e.target.value
+                              )
                             }
-                          }}
-                          autoFocus
-                          className="w-24 h-8"
-                        />
-                      ) : (
-                        <div
-                          className="flex items-center justify-end gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded"
-                          onClick={() =>
-                            setEditingCell({
-                              id: inst.id,
-                              field: "partner_commission",
-                            })
-                          }
-                        >
-                          <span>{formatCurrency(inst.partner_commission)}</span>
-                          <Pencil className="h-3 w-3 text-muted-foreground" />
-                        </div>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {editingCell?.id === inst.id &&
-                      editingCell?.field === "internal_commission" ? (
-                        <Input
-                          type="number"
-                          step="0.01"
-                          defaultValue={inst.internal_commission}
-                          onBlur={(e) =>
-                            handleUpdateField(
-                              inst.id,
-                              "internal_commission",
-                              e.target.value
-                            )
-                          }
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                handleUpdateField(
+                                  inst.id,
+                                  "partner_commission",
+                                  (e.target as HTMLInputElement).value
+                                );
+                              }
+                            }}
+                            autoFocus
+                            className="w-24 h-8"
+                          />
+                        ) : (
+                          <div
+                            className="flex items-center justify-end gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded"
+                            onClick={() =>
+                              setEditingCell({
+                                id: inst.id,
+                                field: "partner_commission",
+                              })
+                            }
+                          >
+                            <span>{formatCurrency(inst.partner_commission)}</span>
+                            <Pencil className="h-3 w-3 text-muted-foreground" />
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {editingCell?.id === inst.id &&
+                        editingCell?.field === "internal_commission" ? (
+                          <Input
+                            type="number"
+                            step="0.01"
+                            defaultValue={inst.internal_commission}
+                            onBlur={(e) =>
                               handleUpdateField(
                                 inst.id,
                                 "internal_commission",
-                                (e.target as HTMLInputElement).value
-                              );
+                                e.target.value
+                              )
                             }
-                          }}
-                          autoFocus
-                          className="w-24 h-8"
-                        />
-                      ) : (
-                        <div
-                          className="flex items-center justify-end gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded"
-                          onClick={() =>
-                            setEditingCell({
-                              id: inst.id,
-                              field: "internal_commission",
-                            })
-                          }
-                        >
-                          <span>{formatCurrency(inst.internal_commission)}</span>
-                          <Pencil className="h-3 w-3 text-muted-foreground" />
-                        </div>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-center font-semibold">
-                      {inst.installment_number}/{inst.total_installments}
-                    </TableCell>
-                    <TableCell>
-                      {inst.payment_date
-                        ? new Date(inst.payment_date).toLocaleDateString("pt-BR")
-                        : "-"}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {editingCell?.id === inst.id &&
-                      editingCell?.field === "amount" ? (
-                        <Input
-                          type="number"
-                          step="0.01"
-                          defaultValue={inst.amount}
-                          onBlur={(e) =>
-                            handleUpdateField(inst.id, "amount", e.target.value)
-                          }
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              handleUpdateField(
-                                inst.id,
-                                "amount",
-                                (e.target as HTMLInputElement).value
-                              );
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                handleUpdateField(
+                                  inst.id,
+                                  "internal_commission",
+                                  (e.target as HTMLInputElement).value
+                                );
+                              }
+                            }}
+                            autoFocus
+                            className="w-24 h-8"
+                          />
+                        ) : (
+                          <div
+                            className="flex items-center justify-end gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded"
+                            onClick={() =>
+                              setEditingCell({
+                                id: inst.id,
+                                field: "internal_commission",
+                              })
                             }
-                          }}
-                          autoFocus
-                          className="w-28 h-8"
-                        />
-                      ) : (
-                        <div
-                          className="flex items-center justify-end gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded"
-                          onClick={() =>
-                            setEditingCell({ id: inst.id, field: "amount" })
-                          }
-                        >
-                          <span className="font-semibold text-green-600">
-                            {formatCurrency(inst.amount)}
-                          </span>
-                          <Pencil className="h-3 w-3 text-muted-foreground" />
-                        </div>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {editingCell?.id === inst.id &&
-                      editingCell?.field === "pix_code" ? (
-                        <Input
-                          type="text"
-                          defaultValue={inst.pix_code || ""}
-                          onBlur={(e) =>
-                            handleUpdateField(inst.id, "pix_code", e.target.value)
-                          }
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              handleUpdateField(
-                                inst.id,
-                                "pix_code",
-                                (e.target as HTMLInputElement).value
-                              );
+                          >
+                            <span>{formatCurrency(inst.internal_commission)}</span>
+                            <Pencil className="h-3 w-3 text-muted-foreground" />
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-center font-semibold">
+                        {inst.installment_number}/{inst.total_installments}
+                      </TableCell>
+                      <TableCell>
+                        {inst.payment_date
+                          ? new Date(inst.payment_date).toLocaleDateString("pt-BR")
+                          : "-"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {editingCell?.id === inst.id &&
+                        editingCell?.field === "amount" ? (
+                          <Input
+                            type="number"
+                            step="0.01"
+                            defaultValue={inst.amount}
+                            onBlur={(e) =>
+                              handleUpdateField(inst.id, "amount", e.target.value)
                             }
-                          }}
-                          autoFocus
-                          className="w-32 h-8"
-                        />
-                      ) : (
-                        <div
-                          className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded"
-                          onClick={() =>
-                            setEditingCell({ id: inst.id, field: "pix_code" })
-                          }
-                        >
-                          <span className="truncate max-w-[100px]">
-                            {inst.pix_code || "-"}
-                          </span>
-                          <Pencil className="h-3 w-3 text-muted-foreground" />
-                        </div>
-                      )}
-                    </TableCell>
-                  </TableRow>
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                handleUpdateField(
+                                  inst.id,
+                                  "amount",
+                                  (e.target as HTMLInputElement).value
+                                );
+                              }
+                            }}
+                            autoFocus
+                            className="w-28 h-8"
+                          />
+                        ) : (
+                          <div
+                            className="flex items-center justify-end gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded"
+                            onClick={() =>
+                              setEditingCell({ id: inst.id, field: "amount" })
+                            }
+                          >
+                            <span className="font-semibold text-green-600">
+                              {formatCurrency(inst.amount)}
+                            </span>
+                            <Pencil className="h-3 w-3 text-muted-foreground" />
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {editingCell?.id === inst.id &&
+                        editingCell?.field === "pix_code" ? (
+                          <Input
+                            type="text"
+                            defaultValue={inst.pix_code || ""}
+                            onBlur={(e) =>
+                              handleUpdateField(inst.id, "pix_code", e.target.value)
+                            }
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                handleUpdateField(
+                                  inst.id,
+                                  "pix_code",
+                                  (e.target as HTMLInputElement).value
+                                );
+                              }
+                            }}
+                            autoFocus
+                            className="w-32 h-8"
+                          />
+                        ) : (
+                          <div
+                            className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded"
+                            onClick={() =>
+                              setEditingCell({ id: inst.id, field: "pix_code" })
+                            }
+                          >
+                            <span className="truncate max-w-[100px]">
+                              {inst.pix_code || "-"}
+                            </span>
+                            <Pencil className="h-3 w-3 text-muted-foreground" />
+                          </div>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))
                 ))}
               </TableBody>
             </Table>
