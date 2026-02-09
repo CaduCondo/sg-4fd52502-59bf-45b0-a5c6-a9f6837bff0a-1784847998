@@ -181,14 +181,15 @@ export default function Dashboard() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const overduePaymentsList = payments.filter(p => {
-      if (p.status === 'paid') return false;
+    const overduePayments = payments.filter((p) => {
+      if (p.status === "paid") return false;
       const dueDate = new Date(p.dueDate);
-      return dueDate < today;
+      const pDate = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
+      return pDate < today;
     });
 
-    const overduePayments = overduePaymentsList.length;
-    const overdueAmount = overduePaymentsList.reduce((acc, p) => acc + (p.expectedAmount || 0), 0);
+    const overduePaymentsCount = overduePayments.length;
+    const overdueAmount = overduePayments.reduce((acc, p) => acc + (p.expectedAmount || 0), 0);
 
     const dueTodayPayments = payments.filter(p => {
       if (p.status === 'paid') return false;
@@ -231,7 +232,7 @@ export default function Dashboard() {
       occupancyRate,
       totalTenants,
       activeContracts,
-      overduePayments,
+      overduePayments: overduePaymentsCount,
       overdueAmount,
       dueTodayPayments,
       completedPayments,
