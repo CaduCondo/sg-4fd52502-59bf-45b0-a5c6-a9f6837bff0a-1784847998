@@ -358,50 +358,57 @@ export function RentalFormDialog({
           .single();
 
         if (createError) {
-          console.error("❌ ERRO SUPABASE:", createError);
+          console.error("❌ Erro ao criar locação:", createError);
           throw createError;
         }
-        
+
         console.log("✅ LOCAÇÃO CRIADA:", createdRental);
 
-        await updateProperty(selectedPropertyId, { status: "occupied" });
+        // Update property and tenant status
+        console.log("\n=== UPDATING PROPERTY ===");
+        await updateProperty({
+          id: propertyId,
+          isRented: true,
+          currentRentalId: createdRental.id,
+        });
 
-        const tenant = availableTenants.find((t) => t.id === selectedTenantId);
-        if (tenant) {
-          await updateTenant(selectedTenantId, { ...tenant, status: "rented" });
-        }
-        
-        const rentalStatus = (createdRental.status || "active") as "active" | "terminated" | "pending";
-        
+        console.log("✅ Property updated successfully");
+
+        console.log("\nupdateSingle: Atualizando tenants");
+        console.log("ID:", tenantId);
+        await updateTenant({ id: tenantId, status: "rented" });
+
         const mappedRental: Rental = {
           id: createdRental.id,
           propertyId: createdRental.property_id,
           tenantId: createdRental.tenant_id,
           startDate: createdRental.start_date,
-          endDate: createdRental.end_date,
-          paymentDay: Number(createdRental.payment_day),
-          depositAmount: Number(createdRental.deposit),
-          status: rentalStatus,
+          endDate: createdRental.end_date || undefined,
+          paymentDay: createdRental.payment_day,
+          value: totalValue,
+          monthlyRent: baseRent,
+          deposit: parseCurrencyToNumber(depositAmount) || 0,
+          status: createdRental.status as "active" | "terminated" | "pending" | "inactive",
+          isActive: createdRental.is_active,
           attachments: (createdRental.attachments as string[]) || [],
           contractAttachments: (createdRental.contract_attachments as string[]) || [],
-          value: totalValue,
-          isActive: Boolean(createdRental.is_active),
-          autoRenew: false,
           hasGarage: hasGarage,
           garageValue: hasGarage && garageValue ? parseCurrencyToNumber(garageValue) : undefined,
           hasPartnerBroker: hasPartnerBroker,
-          depositInstallments: Number(depositData.depositInstallments),
-          depositInstallment1: Number(depositData.depositInstallment1),
-          depositInstallment2: depositData.depositInstallment2 ? Number(depositData.depositInstallment2) : undefined,
-          depositInstallment3: depositData.depositInstallment3 ? Number(depositData.depositInstallment3) : undefined,
+          depositInstallments: depositData.depositInstallments,
+          depositInstallment1: depositData.depositInstallment1,
+          depositInstallment2: depositData.depositInstallment2,
+          depositInstallment3: depositData.depositInstallment3,
           depositPaymentDate: depositData.depositPaymentDate,
           depositInstallment2PaymentDate: depositData.depositInstallment2PaymentDate,
           depositInstallment3PaymentDate: depositData.depositInstallment3PaymentDate,
           depositPixCode: depositData.depositPixCode,
           depositInstallment2PixCode: depositData.depositInstallment2PixCode,
           depositInstallment3PixCode: depositData.depositInstallment3PixCode,
+          createdAt: createdRental.created_at,
         };
 
+        console.log("\n=== INICIO createPaymentsForRental (VERSÃO CORRIGIDA) ===");
         await createPaymentsForRental(mappedRental);
 
         const createdStatusTyped = mappedRental.status as "active" | "terminated" | "pending";
