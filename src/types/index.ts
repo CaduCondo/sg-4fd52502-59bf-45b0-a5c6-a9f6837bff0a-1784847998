@@ -164,7 +164,9 @@ export interface Rental {
   startDate: string;
   endDate: string;
   paymentDay: number;
-  value: number;
+  value: number; // Valor TOTAL (Aluguel + Vaga)
+  monthlyRent?: number; // Valor APENAS do Aluguel
+  monthly_rent?: number; // Compatibilidade DB snake_case
   depositAmount: number;
   status: "active" | "inactive" | "terminated" | "pending";
   isActive: boolean;
@@ -172,6 +174,7 @@ export interface Rental {
   contractAttachments: string[];
   autoRenew: boolean;
   pixCode?: string;
+  createdAt?: string;
 
   // Campos para parcelamento do caução
   depositInstallments?: number;

@@ -366,8 +366,7 @@ export function RentalFormDialog({
 
         // Update property and tenant status
         console.log("\n=== UPDATING PROPERTY ===");
-        await updateProperty({
-          id: propertyId,
+        await updateProperty(propertyId, {
           isRented: true,
           currentRentalId: createdRental.id,
         });
@@ -376,7 +375,7 @@ export function RentalFormDialog({
 
         console.log("\nupdateSingle: Atualizando tenants");
         console.log("ID:", tenantId);
-        await updateTenant({ id: tenantId, status: "rented" });
+        await updateTenant(tenantId, { status: "rented" });
 
         const mappedRental: Rental = {
           id: createdRental.id,
@@ -387,11 +386,12 @@ export function RentalFormDialog({
           paymentDay: createdRental.payment_day,
           value: totalValue,
           monthlyRent: baseRent,
-          deposit: parseCurrencyToNumber(depositAmount) || 0,
+          depositAmount: parseCurrencyToNumber(depositAmount) || 0, // ✅ CORRIGIDO: deposit -> depositAmount
           status: createdRental.status as "active" | "terminated" | "pending" | "inactive",
           isActive: createdRental.is_active,
           attachments: (createdRental.attachments as string[]) || [],
           contractAttachments: (createdRental.contract_attachments as string[]) || [],
+          autoRenew: false, // ✅ ADICIONADO: Campo obrigatório
           hasGarage: hasGarage,
           garageValue: hasGarage && garageValue ? parseCurrencyToNumber(garageValue) : undefined,
           hasPartnerBroker: hasPartnerBroker,
@@ -409,6 +409,7 @@ export function RentalFormDialog({
         };
 
         console.log("\n=== INICIO createPaymentsForRental (VERSÃO CORRIGIDA) ===");
+        // ✅ CORRIGIDO: Passando apenas 1 argumento conforme definição do serviço
         await createPaymentsForRental(mappedRental);
 
         const createdStatusTyped = mappedRental.status as "active" | "terminated" | "pending";
