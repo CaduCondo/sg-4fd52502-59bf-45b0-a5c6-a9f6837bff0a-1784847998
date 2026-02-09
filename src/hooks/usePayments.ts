@@ -58,6 +58,24 @@ export function usePayments() {
 
       if (paymentsError) throw paymentsError;
 
+      console.log("🔍 DEBUG: Dados retornados do Supabase:");
+      console.log("📊 Total de pagamentos:", paymentsWithRelations?.length || 0);
+      
+      // Mostrar os primeiros 3 pagamentos como exemplo
+      if (paymentsWithRelations && paymentsWithRelations.length > 0) {
+        console.log("📋 Exemplo de pagamentos (primeiros 3):");
+        paymentsWithRelations.slice(0, 3).forEach((p: any, index: number) => {
+          console.log(`Pagamento ${index + 1}:`, {
+            id: p.id,
+            due_date: p.due_date,
+            reference_month: p.reference_month,
+            reference_year: p.reference_year,
+            status: p.status,
+            expected_amount: p.expected_amount
+          });
+        });
+      }
+
       // Mapear dados para os estados
       const mappedPayments: Payment[] = [];
       const rentalsMap = new Map<string, Rental>();
