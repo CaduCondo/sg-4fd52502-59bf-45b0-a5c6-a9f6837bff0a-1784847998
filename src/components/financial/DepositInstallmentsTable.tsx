@@ -107,7 +107,7 @@ export function DepositInstallmentsTable({
               )
             )
           `)
-          .order("due_date", { ascending: true });
+          .order("due_date", { ascending: true, nullsFirst: false });
 
         const { data: installmentsData, error } = await query;
 
@@ -562,7 +562,7 @@ export function DepositInstallmentsTable({
                       )}
 
                       {/* ✅ CÉLULAS NÃO MESCLADAS - Aparecem em todas as linhas */}
-                      <TableCell className="text-center font-semibold border-l">
+                      <TableCell className="text-center font-semibold border-l border-l-2 border-gray-300">
                         {inst.installment_number}/{inst.total_installments}
                       </TableCell>
                       <TableCell>
