@@ -471,7 +471,9 @@ export function DepositInstallmentsTable({
                             )}
                           </TableCell>
                           <TableCell className="text-right font-semibold" rowSpan={group.length}>
-                            {formatCurrency(inst.rental?.security_deposit || 0)}
+                            {formatCurrency(
+                              group.reduce((acc, curr) => acc + (curr.amount || 0), 0)
+                            )}
                           </TableCell>
                           <TableCell rowSpan={group.length}>
                             {inst.rental?.has_partner_broker ? "Sim" : "Não"}
@@ -562,15 +564,15 @@ export function DepositInstallmentsTable({
                       )}
 
                       {/* ✅ CÉLULAS NÃO MESCLADAS - Aparecem em todas as linhas */}
-                      <TableCell className="text-center font-semibold border-l border-l-2 border-gray-300">
+                      <TableCell className={`text-center font-semibold border-l border-l-2 border-gray-300 ${bgColor}`}>
                         {inst.installment_number}/{inst.total_installments}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className={bgColor}>
                         {inst.payment_date
                           ? new Date(inst.payment_date).toLocaleDateString("pt-BR")
                           : "-"}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className={`text-right ${bgColor}`}>
                         {editingCell?.id === inst.id &&
                         editingCell?.field === "amount" ? (
                           <Input
@@ -606,7 +608,7 @@ export function DepositInstallmentsTable({
                           </div>
                         )}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className={bgColor}>
                         {editingCell?.id === inst.id &&
                         editingCell?.field === "pix_code" ? (
                           <Input
