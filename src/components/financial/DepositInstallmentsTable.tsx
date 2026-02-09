@@ -266,11 +266,11 @@ export function DepositInstallmentsTable({
   const totalReceived = data
     .filter((inst) => inst.status === "paid")
     .reduce((acc, curr) => acc + (curr.amount || 0), 0);
-  const totalCommission = data.reduce(
-    (acc, curr) =>
-      acc + (curr.partner_commission || 0) + (curr.internal_commission || 0),
-    0
-  );
+  
+  const totalPartnerCommission = data.reduce((acc, curr) => acc + (curr.partner_commission || 0), 0);
+  const totalInternalCommission = data.reduce((acc, curr) => acc + (curr.internal_commission || 0), 0);
+  const totalCommission = totalPartnerCommission + totalInternalCommission;
+  
   const netRevenue = totalReceived - totalCommission;
 
   // ✅ Agrupa parcelas por rental_id
@@ -420,10 +420,10 @@ export function DepositInstallmentsTable({
                   <TableHead className="text-right">Valor Total Caução</TableHead>
                   <TableHead>Corretor Parceiro</TableHead>
                   <TableHead className="text-right">
-                    Valor Pg Corretagem Parceiro
+                    Valor Pg Corretor Parceiro
                   </TableHead>
                   <TableHead className="text-right">
-                    Valor Pg Corretagem Interno
+                    Valor Pg Corretor Interno
                   </TableHead>
                   <TableHead className="text-center">Parcela</TableHead>
                   <TableHead>Data Pagamento</TableHead>
@@ -433,7 +433,11 @@ export function DepositInstallmentsTable({
               </TableHeader>
               <TableBody>
                 {sortedGroups.map((group) =>
-                  group.map((inst, index) => (
+                  group.map((inst, index) => {
+                    const bgColor = inst.pix_code && inst.pix_code.trim() !== "" ? "bg-green-50" : "bg-red-50";
+                    const groupTotalDeposit = group.reduce((acc, curr) => acc + (curr.amount || 0), 0);
+                    
+                    return (
                     <TableRow
                       key={inst.id}
                     >
@@ -471,9 +475,7 @@ export function DepositInstallmentsTable({
                             )}
                           </TableCell>
                           <TableCell className="text-right font-semibold" rowSpan={group.length}>
-                            {formatCurrency(
-                              group.reduce((acc, curr) => acc + (curr.amount || 0), 0)
-                            )}
+                            {formatCurrency(groupTotalDeposit)}
                           </TableCell>
                           <TableCell rowSpan={group.length}>
                             {inst.rental?.has_partner_broker ? "Sim" : "Não"}
@@ -644,8 +646,21 @@ export function DepositInstallmentsTable({
                         )}
                       </TableCell>
                     </TableRow>
-                  ))
+                  );
+                })
                 )}
+                {/* ✅ LINHA DE TOTAIS */}
+                <TableRow className="bg-muted font-bold border-t-2 border-gray-400">
+                  <TableCell colSpan={4} className="text-right pr-4">TOTAIS</TableCell>
+                  <TableCell className="text-right">{formatCurrency(totalExpected)}</TableCell>
+                  <TableCell></TableCell>
+                  <TableCell className="text-right">{formatCurrency(totalPartnerCommission)}</TableCell>
+                  <TableCell className="text-right">{formatCurrency(totalInternalCommission)}</TableCell>
+                  <TableCell className="border-l border-l-2 border-gray-300"></TableCell>
+                  <TableCell></TableCell>
+                  <TableCell className="text-right">{formatCurrency(totalExpected)}</TableCell>
+                  <TableCell></TableCell>
+                </TableRow>
               </TableBody>
             </Table>
           </div>
