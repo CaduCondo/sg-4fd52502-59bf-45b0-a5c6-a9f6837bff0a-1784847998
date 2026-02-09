@@ -8,28 +8,46 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency } from "@/lib/masks";
 import { Button } from "@/components/ui/button";
-import { Download, Printer, Check } from "lucide-react";
+import { Download, Printer, Pencil } from "lucide-react";
 import * as XLSX from "xlsx";
 import { useToast } from "@/hooks/use-toast";
-import { ScrollReveal } from "@/components/animations/ScrollReveal";
 
-interface RentalData {
+interface DepositInstallment {
   id: string;
-  security_deposit: number;
-  monthly_rent: number;
-  garage_value: number;
-  has_partner_broker: boolean;
+  rental_id: string;
+  installment_number: number;
+  total_installments: number;
+  amount: number;
+  pix_code: string | null;
+  partner_commission: number;
+  internal_commission: number;
+  payment_date: string | null;
   status: string;
-  tenant: {
-    name: string;
-  };
-  property: {
-    complement: string;
-    location: {
+  due_date: string | null;
+  rental: {
+    monthly_rent: number;
+    garage_value: number;
+    security_deposit: number;
+    has_partner_broker: boolean;
+    tenant: {
       name: string;
+    };
+    property: {
+      complement: string;
+      location: {
+        name: string;
+      };
     };
   };
 }
@@ -43,8 +61,10 @@ export function DepositInstallmentsTable({
   userRole,
   allowedLocationIds = [],
 }: DepositInstallmentsTableProps) {
-  const [data, setData] = useState<RentalData[]>([]);
+  const [data, setData] = useState<DepositInstallment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState<string>("active");
+  const [editingCell, setEditingCell] = useState<{ id: string; field: string } | null>(null);
   const { toast } = useToast();
 
   const isAdmin = userRole === "admin";
@@ -58,24 +78,38 @@ export function DepositInstallmentsTable({
 
       try {
         setLoading(true);
-        console.log("🔍 === INÍCIO BUSCA CAUÇÕES ===");
+        console.log("🔍 === INÍCIO BUSCA PARCELAS DE CAUÇÃO ===");
 
-        const { data: rentalsData, error } = await supabase
-          .from("rentals")
+        const query = supabase
+          .from("deposit_installments")
           .select(`
             id,
-            security_deposit,
-            monthly_rent,
-            garage_value,
-            has_partner_broker,
+            rental_id,
+            installment_number,
+            total_installments,
+            amount,
+            pix_code,
+            partner_commission,
+            internal_commission,
+            payment_date,
             status,
-            tenant:tenants(name),
-            property:properties(
-              complement,
-              location:locations(name)
+            due_date,
+            rental:rentals!rental_id(
+              monthly_rent,
+              garage_value,
+              security_deposit,
+              has_partner_broker,
+              status,
+              tenant:tenants(name),
+              property:properties(
+                complement,
+                location:locations(name)
+              )
             )
           `)
-          .order("created_at", { ascending: false });
+          .order("payment_date", { ascending: true });
+
+        const { data: installmentsData, error } = await query;
 
         if (error) {
           console.error("❌ Erro na query:", error);
@@ -83,35 +117,25 @@ export function DepositInstallmentsTable({
         }
 
         console.log("✅ Query executada com sucesso");
-        console.log("📊 Total de rentals:", rentalsData?.length || 0);
+        console.log("📊 Total de parcelas:", installmentsData?.length || 0);
 
-        if (!rentalsData || rentalsData.length === 0) {
-          console.log("⚠️ Nenhum rental encontrado");
+        if (!installmentsData || installmentsData.length === 0) {
+          console.log("⚠️ Nenhuma parcela encontrada");
           setData([]);
           setLoading(false);
           return;
         }
 
-        const mappedData: RentalData[] = rentalsData.map((rental) => ({
-          id: rental.id,
-          security_deposit: rental.security_deposit || 0,
-          monthly_rent: rental.monthly_rent || 0,
-          garage_value: rental.garage_value || 0,
-          has_partner_broker: rental.has_partner_broker || false,
-          status: rental.status,
-          tenant: {
-            name: rental.tenant?.name || "Sem inquilino"
-          },
-          property: {
-            complement: rental.property?.complement || "Sem complemento",
-            location: {
-              name: rental.property?.location?.name || "Sem localização"
-            }
-          }
-        }));
+        // Filtrar por status de locação se necessário
+        let filteredData = installmentsData;
+        if (statusFilter === "active") {
+          filteredData = installmentsData.filter(
+            (inst) => inst.rental?.status === "active"
+          );
+        }
 
-        console.log("✅ Dados mapeados:", mappedData.length);
-        setData(mappedData);
+        console.log("✅ Dados filtrados:", filteredData.length);
+        setData(filteredData as DepositInstallment[]);
         setLoading(false);
       } catch (error) {
         console.error("❌ Erro ao buscar dados:", error);
@@ -126,17 +150,66 @@ export function DepositInstallmentsTable({
     };
 
     fetchData();
-  }, [isAdmin, toast]);
+  }, [isAdmin, statusFilter, toast]);
+
+  const handleUpdateField = async (
+    installmentId: string,
+    field: string,
+    value: string | number
+  ) => {
+    try {
+      const updateData: any = {};
+      
+      if (field === "amount" || field === "partner_commission" || field === "internal_commission") {
+        updateData[field] = parseFloat(value.toString()) || 0;
+      } else {
+        updateData[field] = value;
+      }
+
+      const { error } = await supabase
+        .from("deposit_installments")
+        .update(updateData)
+        .eq("id", installmentId);
+
+      if (error) throw error;
+
+      // Atualizar estado local
+      setData((prevData) =>
+        prevData.map((item) =>
+          item.id === installmentId ? { ...item, ...updateData } : item
+        )
+      );
+
+      toast({
+        title: "Sucesso",
+        description: "Valor atualizado com sucesso!",
+      });
+
+      setEditingCell(null);
+    } catch (error) {
+      console.error("❌ Erro ao atualizar:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar o valor.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const exportToExcel = () => {
-    const excelData = data.map((rental) => ({
-      Local: rental.property?.location?.name || "-",
-      Complemento: rental.property?.complement || "-",
-      Inquilino: rental.tenant?.name || "-",
-      "Valor Aluguel": (rental.monthly_rent || 0) + (rental.garage_value || 0),
-      "Valor Total Caução": rental.security_deposit || 0,
-      "Corretor Parceiro": rental.has_partner_broker ? "Sim" : "Não",
-      Status: rental.status === "active" ? "Ativa" : "Devolvida",
+    const excelData = data.map((inst) => ({
+      Local: inst.rental?.property?.location?.name || "-",
+      Complemento: inst.rental?.property?.complement || "-",
+      Inquilino: inst.rental?.tenant?.name || "-",
+      "Valor Aluguel": (inst.rental?.monthly_rent || 0) + (inst.rental?.garage_value || 0),
+      "Valor Total Caução": inst.rental?.security_deposit || 0,
+      "Corretor Parceiro": inst.rental?.has_partner_broker ? "Sim" : "Não",
+      "Valor Pg Corretagem Parceiro": inst.partner_commission || 0,
+      "Valor Pg Corretagem Interno": inst.internal_commission || 0,
+      Parcela: `${inst.installment_number}/${inst.total_installments}`,
+      "Data Pagamento": inst.payment_date || "-",
+      "Valor Parcela": inst.amount || 0,
+      "Código PIX": inst.pix_code || "-",
     }));
 
     const ws = XLSX.utils.json_to_sheet(excelData);
@@ -189,13 +262,16 @@ export function DepositInstallmentsTable({
     );
   }
 
-  const activeRentals = data.filter(r => r.status === "active");
-  const inactiveRentals = data.filter(r => r.status === "terminated");
-
-  const totalExpected = data.reduce((acc, curr) => acc + (curr.security_deposit || 0), 0);
-  const totalReceived = totalExpected;
-  const adminCommission = totalExpected * 0.10;
-  const netRevenue = totalReceived - adminCommission;
+  const totalExpected = data.reduce((acc, curr) => acc + (curr.amount || 0), 0);
+  const totalReceived = data
+    .filter((inst) => inst.status === "paid")
+    .reduce((acc, curr) => acc + (curr.amount || 0), 0);
+  const totalCommission = data.reduce(
+    (acc, curr) =>
+      acc + (curr.partner_commission || 0) + (curr.internal_commission || 0),
+    0
+  );
+  const netRevenue = totalReceived - totalCommission;
 
   return (
     <div className="space-y-6">
@@ -205,8 +281,15 @@ export function DepositInstallmentsTable({
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">Valor Bruto Esperado</p>
-                <p className="text-2xl font-bold text-blue-600">{formatCurrency(totalExpected)}</p>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Valor Bruto Esperado
+                </p>
+                <p className="text-2xl font-bold text-blue-600">
+                  {formatCurrency(totalExpected)}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Soma de todos os recebimentos
+                </p>
               </div>
             </div>
           </CardContent>
@@ -215,8 +298,15 @@ export function DepositInstallmentsTable({
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">Valor Bruto Recebido</p>
-                <p className="text-2xl font-bold text-green-600">{formatCurrency(totalReceived)}</p>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Valor Bruto Recebido
+                </p>
+                <p className="text-2xl font-bold text-green-600">
+                  {formatCurrency(totalReceived)}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Todos os pagamentos recebidos
+                </p>
               </div>
             </div>
           </CardContent>
@@ -225,8 +315,15 @@ export function DepositInstallmentsTable({
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">Comissão</p>
-                <p className="text-2xl font-bold text-red-600">{formatCurrency(adminCommission)}</p>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Comissão
+                </p>
+                <p className="text-2xl font-bold text-red-600">
+                  {formatCurrency(totalCommission)}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Soma das comissões parceiro + interno
+                </p>
               </div>
             </div>
           </CardContent>
@@ -235,138 +332,292 @@ export function DepositInstallmentsTable({
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">Receita Líquida</p>
-                <p className="text-2xl font-bold text-purple-600">{formatCurrency(netRevenue)}</p>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Receita Líquida
+                </p>
+                <p className="text-2xl font-bold text-purple-600">
+                  {formatCurrency(netRevenue)}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Receita após taxa administrativa
+                </p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <div className="flex justify-end gap-2 mb-4">
-        <Button variant="outline" size="sm" onClick={handlePrint} className="gap-2">
-          <Printer className="h-4 w-4" /> Imprimir
-        </Button>
-        <Button variant="outline" size="sm" onClick={exportToExcel} className="gap-2">
-          <Download className="h-4 w-4" /> Exportar Excel
-        </Button>
-      </div>
-
-      {/* Tabela de Cauções Ativos */}
-      {activeRentals.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Check className="h-6 w-6 text-green-600" />
-              Detalhamento dos Cauções - LOCAÇÕES ATIVAS ({activeRentals.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Local</TableHead>
-                    <TableHead>Complemento</TableHead>
-                    <TableHead>Inquilino</TableHead>
-                    <TableHead className="text-right">Valor Aluguel</TableHead>
-                    <TableHead className="text-right">Valor Total Caução</TableHead>
-                    <TableHead>Corretor Parceiro</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {activeRentals.map((rental) => (
-                    <TableRow key={rental.id}>
-                      <TableCell className="font-medium">
-                        <div className="max-w-[150px] truncate" title={rental.property?.location?.name}>
-                          {rental.property?.location?.name || "-"}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="max-w-[100px] truncate" title={rental.property?.complement}>
-                          {rental.property?.complement || "-"}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="max-w-[120px] truncate" title={rental.tenant?.name}>
-                          {rental.tenant?.name || "-"}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {formatCurrency((rental.monthly_rent || 0) + (rental.garage_value || 0))}
-                      </TableCell>
-                      <TableCell className="text-right font-semibold text-green-600">
-                        {formatCurrency(rental.security_deposit || 0)}
-                      </TableCell>
-                      <TableCell>
-                        {rental.has_partner_broker ? "Sim" : "Não"}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-2xl">📋 Detalhamento dos Cauções</CardTitle>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium">Status Locação</label>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Ativos</SelectItem>
+                    <SelectItem value="all">Todos</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePrint}
+                className="gap-2"
+              >
+                <Printer className="h-4 w-4" /> Imprimir
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={exportToExcel}
+                className="gap-2"
+              >
+                <Download className="h-4 w-4" /> Exportar Excel
+              </Button>
             </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Tabela de Cauções Devolvidos */}
-      {inactiveRentals.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Check className="h-6 w-6 text-blue-600" />
-              Detalhamento dos Cauções - LOCAÇÕES INATIVAS/FINALIZADAS ({inactiveRentals.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Local</TableHead>
-                    <TableHead>Complemento</TableHead>
-                    <TableHead>Inquilino</TableHead>
-                    <TableHead className="text-right">Valor Aluguel</TableHead>
-                    <TableHead className="text-right">Valor Total Caução</TableHead>
-                    <TableHead>Corretor Parceiro</TableHead>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Local</TableHead>
+                  <TableHead>Complemento</TableHead>
+                  <TableHead>Inquilino</TableHead>
+                  <TableHead className="text-right">Valor Aluguel</TableHead>
+                  <TableHead className="text-right">Valor Total Caução</TableHead>
+                  <TableHead>Corretor Parceiro</TableHead>
+                  <TableHead className="text-right">
+                    Valor Pg Corretagem Parceiro
+                  </TableHead>
+                  <TableHead className="text-right">
+                    Valor Pg Corretagem Interno
+                  </TableHead>
+                  <TableHead className="text-center">Parcela</TableHead>
+                  <TableHead>Data Pagamento</TableHead>
+                  <TableHead className="text-right">Valor Parcela</TableHead>
+                  <TableHead>Código PIX</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {data.map((inst) => (
+                  <TableRow
+                    key={inst.id}
+                    className={
+                      inst.status === "paid" ? "bg-green-50/50" : "bg-red-50/50"
+                    }
+                  >
+                    <TableCell className="font-medium">
+                      <div
+                        className="max-w-[150px] truncate"
+                        title={inst.rental?.property?.location?.name}
+                      >
+                        {inst.rental?.property?.location?.name || "-"}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div
+                        className="max-w-[100px] truncate"
+                        title={inst.rental?.property?.complement}
+                      >
+                        {inst.rental?.property?.complement || "-"}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div
+                        className="max-w-[120px] truncate"
+                        title={inst.rental?.tenant?.name}
+                      >
+                        {inst.rental?.tenant?.name || "-"}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {formatCurrency(
+                        (inst.rental?.monthly_rent || 0) +
+                          (inst.rental?.garage_value || 0)
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right font-semibold">
+                      {formatCurrency(inst.rental?.security_deposit || 0)}
+                    </TableCell>
+                    <TableCell>
+                      {inst.rental?.has_partner_broker ? "Sim" : "Não"}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {editingCell?.id === inst.id &&
+                      editingCell?.field === "partner_commission" ? (
+                        <Input
+                          type="number"
+                          step="0.01"
+                          defaultValue={inst.partner_commission}
+                          onBlur={(e) =>
+                            handleUpdateField(
+                              inst.id,
+                              "partner_commission",
+                              e.target.value
+                            )
+                          }
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              handleUpdateField(
+                                inst.id,
+                                "partner_commission",
+                                (e.target as HTMLInputElement).value
+                              );
+                            }
+                          }}
+                          autoFocus
+                          className="w-24 h-8"
+                        />
+                      ) : (
+                        <div
+                          className="flex items-center justify-end gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded"
+                          onClick={() =>
+                            setEditingCell({
+                              id: inst.id,
+                              field: "partner_commission",
+                            })
+                          }
+                        >
+                          <span>{formatCurrency(inst.partner_commission)}</span>
+                          <Pencil className="h-3 w-3 text-muted-foreground" />
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {editingCell?.id === inst.id &&
+                      editingCell?.field === "internal_commission" ? (
+                        <Input
+                          type="number"
+                          step="0.01"
+                          defaultValue={inst.internal_commission}
+                          onBlur={(e) =>
+                            handleUpdateField(
+                              inst.id,
+                              "internal_commission",
+                              e.target.value
+                            )
+                          }
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              handleUpdateField(
+                                inst.id,
+                                "internal_commission",
+                                (e.target as HTMLInputElement).value
+                              );
+                            }
+                          }}
+                          autoFocus
+                          className="w-24 h-8"
+                        />
+                      ) : (
+                        <div
+                          className="flex items-center justify-end gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded"
+                          onClick={() =>
+                            setEditingCell({
+                              id: inst.id,
+                              field: "internal_commission",
+                            })
+                          }
+                        >
+                          <span>{formatCurrency(inst.internal_commission)}</span>
+                          <Pencil className="h-3 w-3 text-muted-foreground" />
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-center font-semibold">
+                      {inst.installment_number}/{inst.total_installments}
+                    </TableCell>
+                    <TableCell>
+                      {inst.payment_date
+                        ? new Date(inst.payment_date).toLocaleDateString("pt-BR")
+                        : "-"}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {editingCell?.id === inst.id &&
+                      editingCell?.field === "amount" ? (
+                        <Input
+                          type="number"
+                          step="0.01"
+                          defaultValue={inst.amount}
+                          onBlur={(e) =>
+                            handleUpdateField(inst.id, "amount", e.target.value)
+                          }
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              handleUpdateField(
+                                inst.id,
+                                "amount",
+                                (e.target as HTMLInputElement).value
+                              );
+                            }
+                          }}
+                          autoFocus
+                          className="w-28 h-8"
+                        />
+                      ) : (
+                        <div
+                          className="flex items-center justify-end gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded"
+                          onClick={() =>
+                            setEditingCell({ id: inst.id, field: "amount" })
+                          }
+                        >
+                          <span className="font-semibold text-green-600">
+                            {formatCurrency(inst.amount)}
+                          </span>
+                          <Pencil className="h-3 w-3 text-muted-foreground" />
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {editingCell?.id === inst.id &&
+                      editingCell?.field === "pix_code" ? (
+                        <Input
+                          type="text"
+                          defaultValue={inst.pix_code || ""}
+                          onBlur={(e) =>
+                            handleUpdateField(inst.id, "pix_code", e.target.value)
+                          }
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              handleUpdateField(
+                                inst.id,
+                                "pix_code",
+                                (e.target as HTMLInputElement).value
+                              );
+                            }
+                          }}
+                          autoFocus
+                          className="w-32 h-8"
+                        />
+                      ) : (
+                        <div
+                          className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded"
+                          onClick={() =>
+                            setEditingCell({ id: inst.id, field: "pix_code" })
+                          }
+                        >
+                          <span className="truncate max-w-[100px]">
+                            {inst.pix_code || "-"}
+                          </span>
+                          <Pencil className="h-3 w-3 text-muted-foreground" />
+                        </div>
+                      )}
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {inactiveRentals.map((rental) => (
-                    <TableRow key={rental.id}>
-                      <TableCell className="font-medium">
-                        <div className="max-w-[150px] truncate" title={rental.property?.location?.name}>
-                          {rental.property?.location?.name || "-"}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="max-w-[100px] truncate" title={rental.property?.complement}>
-                          {rental.property?.complement || "-"}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="max-w-[120px] truncate" title={rental.tenant?.name}>
-                          {rental.tenant?.name || "-"}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {formatCurrency((rental.monthly_rent || 0) + (rental.garage_value || 0))}
-                      </TableCell>
-                      <TableCell className="text-right font-semibold text-blue-600">
-                        {formatCurrency(rental.security_deposit || 0)}
-                      </TableCell>
-                      <TableCell>
-                        {rental.has_partner_broker ? "Sim" : "Não"}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
