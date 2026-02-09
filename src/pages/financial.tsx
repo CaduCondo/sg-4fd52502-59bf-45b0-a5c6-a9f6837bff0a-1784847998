@@ -838,7 +838,7 @@ export default function Financial() {
                                   </div>
                                 </TableCell>
                                 <TableCell>
-                                  {details.tenantName}
+                                  <span className="whitespace-nowrap">{details.tenantName}</span>
                                 </TableCell>
                                 <TableCell>{payment.referenceYear}</TableCell>
                                 <TableCell className="capitalize">{monthName}</TableCell>

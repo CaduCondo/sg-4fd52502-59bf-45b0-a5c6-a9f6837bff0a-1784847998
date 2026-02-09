@@ -153,8 +153,6 @@ export const rentalService = {
       `)
       .order("created_at", { ascending: false });
 
-    console.timeEnd("⏱️ Rental Query Performance");
-
     if (error) {
       console.error("Error fetching rentals:", error);
       throw error;
