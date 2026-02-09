@@ -22,9 +22,49 @@ export function usePayments() {
   // Memória para guardar os últimos filtros aplicados
   const filtersRef = useRef<{month?: string, year?: string}>({});
 
+  // ✅ NOVO: Cache de parcelas (paymentId -> "5/12")
+  const [paymentInstallments, setPaymentInstallments] = useState<Record<string, string>>({});
+
   useEffect(() => {
     loadPayments();
   }, []);
+
+  // ✅ NOVO: Função para carregar parcelas de todas as locações visíveis
+  const loadPaymentInstallments = async (visiblePayments: Payment[]) => {
+    try {
+      // Agrupar pagamentos por rental_id
+      const rentalIds = Array.from(new Set(visiblePayments.map(p => p.rentalId)));
+      
+      const installmentsMap: Record<string, string> = {};
+
+      // Para cada locação, buscar todos os pagamentos e calcular posições
+      await Promise.all(
+        rentalIds.map(async (rentalId) => {
+          const { data: allRentalPayments, error } = await supabase
+            .from("payments")
+            .select("id, due_date")
+            .eq("rental_id", rentalId)
+            .order("due_date", { ascending: true });
+
+          if (error || !allRentalPayments) {
+            console.error(`Erro ao buscar pagamentos da locação ${rentalId}:`, error);
+            return;
+          }
+
+          const totalPayments = allRentalPayments.length;
+
+          // Mapear cada pagamento para sua posição
+          allRentalPayments.forEach((p, index) => {
+            installmentsMap[p.id] = `${index + 1}/${totalPayments}`;
+          });
+        })
+      );
+
+      setPaymentInstallments(installmentsMap);
+    } catch (error) {
+      console.error("Erro ao carregar parcelas:", error);
+    }
+  };
 
   const loadPayments = async (month?: string, year?: string) => {
     try {
@@ -189,6 +229,9 @@ export function usePayments() {
       setRentals(Array.from(rentalsMap.values()));
       setProperties(Array.from(propertiesMap.values()));
       setTenants(Array.from(tenantsMap.values()));
+
+      // ✅ NOVO: Calcular parcelas após carregar pagamentos
+      await loadPaymentInstallments(mappedPayments);
     } catch (error) {
       console.error("Error loading data:", error);
     } finally {
@@ -276,34 +319,13 @@ export function usePayments() {
   };
 
   const getPaymentInstallment = (payment: Payment): string => {
-    const rental = rentals.find(r => r.id === payment.rentalId);
-    if (!rental) return "";
-    
-    // Buscar todos os pagamentos desta locação
-    const rentalPayments = payments
-      .filter(p => p.rentalId === payment.rentalId)
-      .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
-    
-    // Calcular total de meses baseado no período do contrato
-    const startDate = new Date(rental.startDate);
-    const endDate = rental.endDate ? new Date(rental.endDate) : new Date();
-    
-    // Validação crítica: garantir que as datas são válidas
-    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-      console.error("❌ Datas inválidas para calcular parcelas:", { startDate: rental.startDate, endDate: rental.endDate });
-      return `${rentalPayments.findIndex(p => p.id === payment.id) + 1}/?`;
+    // ✅ Retorna do cache se disponível
+    if (paymentInstallments[payment.id]) {
+      return paymentInstallments[payment.id];
     }
-    
-    // ✅ CORREÇÃO: Usar differenceInMonths do date-fns para cálculo correto
-    const totalMonths = differenceInMonths(endDate, startDate) + 1;
-    
-    // Validação: totalMonths deve ser >= 1
-    const validTotalMonths = Math.max(1, totalMonths);
-    
-    // Encontrar a posição do pagamento atual
-    const currentPosition = rentalPayments.findIndex(p => p.id === payment.id) + 1;
-    
-    return `${currentPosition}/${validTotalMonths}`;
+
+    // ⏳ Ainda não carregou, retorna placeholder
+    return "?/?";
   };
 
   const getPaymentById = async (id: string): Promise<Payment | null> => {
