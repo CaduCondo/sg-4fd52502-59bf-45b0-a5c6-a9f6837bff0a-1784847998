@@ -6,6 +6,7 @@ import {
   deleteSingle
 } from "@/lib/supabaseHelpers";
 import { supabase } from "@/integrations/supabase/client";
+import { differenceInMonths } from "date-fns";
 import {
   calculateDaysBetweenDates,
   calculateProportionalRent,
@@ -371,7 +372,7 @@ export async function updateFuturePayments(rentalId: string, newValue: number): 
  * FIX: Cria todas as parcelas até o fim do contrato
  */
 export async function createPaymentsForRental(rental: any): Promise<void> {
-  console.log("=== INICIO createPaymentsForRental (VERSÃO CORRIGIDA) ===");
+  console.log("=== INICIO createPaymentsForRental (VERSÃO CORRIGIDA V2) ===");
   console.log("Rental recebido:", rental);
   
   const paymentDay = rental.paymentDay;
@@ -395,44 +396,25 @@ export async function createPaymentsForRental(rental: any): Promise<void> {
   }
   
   // 💰 VALOR DA PARCELA
-  // CRÍTICO: Usar rental.value (Total) diretamente para evitar duplicação
-  // Se monthlyRent e garageValue forem somados novamente, gera o erro de R$ 1398
   const monthlyValue = rental.value;
 
   console.log("💰 VALORES CORRIGIDOS:");
   console.log("  - monthlyValue (USANDO RENTAL.VALUE):", monthlyValue);
 
-  // 📅 PERÍODO
-  const startDate = new Date(rental.startDate);
-  // Ajuste de fuso horário para garantir data correta
-  startDate.setMinutes(startDate.getMinutes() + startDate.getTimezoneOffset());
-  
-  const endDate = rental.endDate ? new Date(rental.endDate) : new Date(startDate);
-  if (rental.endDate) {
-     endDate.setMinutes(endDate.getMinutes() + endDate.getTimezoneOffset());
-  } else {
-     endDate.setFullYear(endDate.getFullYear() + 1);
-  }
-
-  // Cálculo exato de meses
-  const expectedMonths = (endDate.getFullYear() - startDate.getFullYear()) * 12 
-                       + (endDate.getMonth() - startDate.getMonth()) 
-                       + 1; // +1 para incluir o mês final se for cheio
-
-  // Ajuste fino: se dia final < dia inicial, não conta mês cheio extra
-  // Ex: 01/10 a 01/10 (12 meses). 01/10 a 30/09 (12 meses).
-  // O cálculo acima dá 12.
+  // 📅 PERÍODO - PARSING SIMPLIFICADO (sem ajuste de timezone problemático)
+  const startDate = new Date(rental.startDate + "T00:00:00");
+  const endDate = rental.endDate 
+    ? new Date(rental.endDate + "T00:00:00")
+    : new Date(startDate.getFullYear() + 1, startDate.getMonth(), startDate.getDate());
 
   console.log("\n📅 PERÍODO DO CONTRATO:");
   console.log("  - Início:", startDate.toISOString().split('T')[0]);
   console.log("  - Fim:", endDate.toISOString().split('T')[0]);
   
-  // Cálculo exato de meses (diferença de anos * 12 + diferença de meses + 1 se inclusivo)
-  const expectedMonthsCalc = (endDate.getFullYear() - startDate.getFullYear()) * 12 
-                       + (endDate.getMonth() - startDate.getMonth()) 
-                       + 1; // +1 porque inclui o mês de início e fim se dia permitir
+  // ✅ CÁLCULO CORRETO usando date-fns
+  const expectedMonths = differenceInMonths(endDate, startDate) + 1;
 
-  console.log("  - Meses esperados (Cálculo Exato):", expectedMonthsCalc);
+  console.log("  - Meses esperados (date-fns):", expectedMonths);
 
   const payments = [];
   const startDateStr = startDate.toISOString().split('T')[0];
@@ -452,27 +434,18 @@ export async function createPaymentsForRental(rental: any): Promise<void> {
 
   // ETAPA 2: Primeira parcela (proporcional ou integral)
   if (isFirstProportional) {
-    // Para proporcional, usamos o monthlyValue (Total) como base
     const firstPaymentValue = calculateProportionalRent(monthlyValue, startDateStr, paymentDay);
     
-    // Vencimento da primeira parcela proporcional
     let firstDueDate = new Date(currentYear, currentMonth, paymentDay);
     
-    // Se o dia de pagamento já passou no mês atual, a proporcional fica para o mesmo mês (vencimento imediato ou próximo)
-    // Mas a lógica padrão geralmente joga para o mês seguinte se for muito próximo, ou cobra no ato.
-    // Vamos manter a lógica: Data de vencimento baseada no paymentDay.
-    
-    // Ajuste para dias inexistentes
-    if (firstDueDate.getMonth() !== currentMonth) {
-      firstDueDate = new Date(currentYear, currentMonth + 1, 0);
+    if (firstDueDate <= startDate) {
+      currentMonth++;
+      if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+      firstDueDate = new Date(currentYear, currentMonth, paymentDay);
     }
     
-    // Se a data de vencimento calculada for ANTERIOR à data de início, avança para o mês seguinte
-    if (firstDueDate < startDate) {
-       // Exemplo: Inicio 20/10, Vencimento 10. 10/10 já passou. Vencimento 10/11.
-       currentMonth++;
-       if (currentMonth > 11) { currentMonth = 0; currentYear++; }
-       firstDueDate = new Date(currentYear, currentMonth, paymentDay);
+    if (firstDueDate.getMonth() !== currentMonth) {
+      firstDueDate = new Date(currentYear, currentMonth + 1, 0);
     }
 
     payments.push({
@@ -480,23 +453,18 @@ export async function createPaymentsForRental(rental: any): Promise<void> {
       due_date: firstDueDate.toISOString().split('T')[0],
       expected_amount: firstPaymentValue,
       status: 'pending',
-      reference_month: startDate.getMonth() + 1, // Refere-se ao mês de entrada
+      reference_month: startDate.getMonth() + 1,
       reference_year: startDate.getFullYear(),
     });
 
     console.log(`✅ Parcela Proporcional criada: ${firstDueDate.toISOString().split('T')[0]} | R$ ${firstPaymentValue.toFixed(2)}`);
 
-    // Avançar para próximo mês para as parcelas cheias
     currentMonth++;
     if (currentMonth > 11) {
       currentMonth = 0;
       currentYear++;
     }
   } else {
-    // Se não é proporcional, o primeiro vencimento segue a regra do dia.
-    // Se dia 10 e entrou dia 01/10, paga 10/10 (antecipado/mês corrente) ou 10/11 (mês vencido)?
-    // Assumindo mês corrente se data < vencimento, ou próximo se data > vencimento.
-    
     const firstDueDate = new Date(currentYear, currentMonth, paymentDay);
     if (firstDueDate < startDate) {
       currentMonth++;
@@ -511,30 +479,29 @@ export async function createPaymentsForRental(rental: any): Promise<void> {
   console.log("\n🔄 INICIANDO LOOP DE PARCELAS MENSAIS:");
   
   let iterationCount = 0;
-  const maxIterations = 60; // Limite de segurança (5 anos)
+  const maxIterations = 60;
   
-  // Loop enquanto a data de vencimento gerada for <= Data Final do Contrato
-  while (true) {
+  // ✅ CONDIÇÃO DE PARADA MELHORADA: Parar quando atingir expectedMonths OU ultrapassar endDate
+  while (payments.length < expectedMonths && iterationCount < maxIterations) {
     iterationCount++;
-    if (iterationCount > maxIterations) break;
 
     let dueDate = new Date(currentYear, currentMonth, paymentDay);
     
-    // Ajuste dias inexistentes (ex: 30 de fev)
+    // Ajuste dias inexistentes
     if (dueDate.getMonth() !== currentMonth) {
       dueDate = new Date(currentYear, currentMonth + 1, 0);
     }
 
-    // CRÍTICO: Se a data de vencimento ultrapassa o fim do contrato, PARE.
+    // ✅ PARAR se ultrapassar a data final
     if (dueDate > endDate) {
-      console.log(`   ⛔ FIM DO CONTRATO ATINGIDO: ${dueDate.toISOString().split('T')[0]} > ${endDate.toISOString().split('T')[0]}`);
+      console.log(`   ⛔ PAROU: Data de vencimento ${dueDate.toISOString().split('T')[0]} ultrapassa fim do contrato ${endDate.toISOString().split('T')[0]}`);
       break;
     }
 
     payments.push({
       rental_id: rental.id,
       due_date: dueDate.toISOString().split('T')[0],
-      expected_amount: monthlyValue, // Usa o TOTAL direto
+      expected_amount: monthlyValue,
       status: 'pending',
       reference_month: currentMonth + 1,
       reference_year: currentYear,
@@ -542,7 +509,6 @@ export async function createPaymentsForRental(rental: any): Promise<void> {
 
     console.log(`   ✅ Parcela criada: ${dueDate.toISOString().split('T')[0]} | R$ ${monthlyValue.toFixed(2)}`);
 
-    // Avançar 1 mês
     currentMonth++;
     if (currentMonth > 11) {
       currentMonth = 0;
@@ -555,12 +521,13 @@ export async function createPaymentsForRental(rental: any): Promise<void> {
   console.log(`   Total de iterações: ${iterationCount}`);
   console.log(`   Meses esperados: ${expectedMonths}`);
 
-  if (payments.length < expectedMonths - 1) {
-    console.warn(`   ⚠️ ATENÇÃO: Criadas menos parcelas que o esperado!`);
-    console.warn(`   Diferença: ${expectedMonths - payments.length} meses`);
+  if (payments.length !== expectedMonths) {
+    console.warn(`   ⚠️ ATENÇÃO: Parcelas criadas (${payments.length}) diferem do esperado (${expectedMonths})`);
+  } else {
+    console.log(`   ✅ Parcelas criadas correspondem ao período do contrato!`);
   }
 
-  // Validação extra: verificar se há duplicatas de mês/ano
+  // Validação: verificar duplicatas
   const monthYearSet = new Set<string>();
   const duplicateMonths: string[] = [];
   
