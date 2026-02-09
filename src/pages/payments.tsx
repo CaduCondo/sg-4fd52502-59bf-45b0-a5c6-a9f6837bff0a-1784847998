@@ -251,27 +251,89 @@ export default function Payments() {
       filtered = filtered.filter((payment) => {
         if (!payment.dueDate) return false;
         
-        const dueDateObj = new Date(payment.dueDate + "T00:00:00");
+        // Parse robusto: aceita "YYYY-MM-DD", "DD/MM/YYYY", timestamps, etc
+        let dueDateObj: Date;
+        
+        // Tenta parse direto
+        if (payment.dueDate.includes('-')) {
+          // Formato YYYY-MM-DD ou variações
+          dueDateObj = new Date(payment.dueDate + "T00:00:00");
+        } else if (payment.dueDate.includes('/')) {
+          // Formato DD/MM/YYYY
+          const [day, month, year] = payment.dueDate.split('/');
+          dueDateObj = new Date(`${year}-${month}-${day}T00:00:00`);
+        } else {
+          // Timestamp ou outro formato
+          dueDateObj = new Date(payment.dueDate);
+        }
+        
+        // Validação: verificar se a data é válida
+        if (isNaN(dueDateObj.getTime())) {
+          console.error("❌ Data inválida no filtro:", payment.dueDate);
+          return false;
+        }
+        
         const dueMonth = dueDateObj.getMonth() + 1;
         const dueYear = dueDateObj.getFullYear();
         
-        return (
+        const matches = (
           dueMonth === parseInt(selectedMonth) &&
           dueYear === parseInt(selectedYear)
         );
+        
+        // Log de debug (remover depois se necessário)
+        if (matches) {
+          console.log("✅ Pagamento corresponde ao filtro:", {
+            paymentId: payment.id,
+            dueDate: payment.dueDate,
+            parsedDate: dueDateObj.toISOString(),
+            filterMonth: selectedMonth,
+            filterYear: selectedYear
+          });
+        }
+        
+        return matches;
       });
     } else if (selectedMonth !== "all") {
-       filtered = filtered.filter((payment) => {
-          if (!payment.dueDate) return false;
-          const dueMonth = new Date(payment.dueDate + "T00:00:00").getMonth() + 1;
-          return dueMonth === parseInt(selectedMonth);
-       });
+      filtered = filtered.filter((payment) => {
+        if (!payment.dueDate) return false;
+        
+        // Parse robusto
+        let dueDateObj: Date;
+        if (payment.dueDate.includes('-')) {
+          dueDateObj = new Date(payment.dueDate + "T00:00:00");
+        } else if (payment.dueDate.includes('/')) {
+          const [day, month, year] = payment.dueDate.split('/');
+          dueDateObj = new Date(`${year}-${month}-${day}T00:00:00`);
+        } else {
+          dueDateObj = new Date(payment.dueDate);
+        }
+        
+        if (isNaN(dueDateObj.getTime())) return false;
+        
+        const dueMonth = dueDateObj.getMonth() + 1;
+        return dueMonth === parseInt(selectedMonth);
+      });
     } else if (selectedYear !== "all") {
-       filtered = filtered.filter((payment) => {
-          if (!payment.dueDate) return false;
-          const dueYear = new Date(payment.dueDate + "T00:00:00").getFullYear();
-          return dueYear === parseInt(selectedYear);
-       });
+      filtered = filtered.filter((payment) => {
+        if (!payment.dueDate) return false;
+        
+        // Parse robusto
+        let dueDateObj: Date;
+        if (payment.dueDate.includes('-')) {
+          dueDateObj = new Date(payment.dueDate + "T00:00:00");
+        } else if (payment.dueDate.includes('/')) {
+          const [day, month, year] = payment.dueDate.split('/');
+          dueDateObj = new Date(`${year}-${month}-${day}T00:00:00`);
+        } else {
+          dueDateObj = new Date(payment.dueDate);
+        }
+        
+        if (isNaN(dueDateObj.getTime())) return false;
+        
+        const dueYear = dueDateObj.getFullYear();
+        return dueYear === parseInt(selectedYear);
+      });
     }
 
     if (statusFilter !== "all") {
