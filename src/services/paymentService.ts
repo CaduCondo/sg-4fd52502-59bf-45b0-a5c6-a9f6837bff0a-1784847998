@@ -399,19 +399,19 @@ export async function createPaymentsForRental(rental: any): Promise<void> {
   
   const paymentDay = Number(rental.paymentDay || rental.payment_day);
 
-  console.log("📊 DADOS EXTRAÍDOS DO RENTAL:");
+  console.log("\n📋 DADOS EXTRAÍDOS DO RENTAL:");
   console.log("  - ID:", rental.id);
   console.log("  - rental.value:", rental.value);
   console.log("  - rental.monthly_rent:", rental.monthly_rent);
   console.log("  - rental.garageValue:", rental.garageValue);
   console.log("  - rental.garage_value:", rental.garage_value);
-  console.log("  - rental.hasGarage:", rental.hasGarage || rental.has_garage);
+  console.log("  - rental.hasGarage:", rental.hasGarage);
 
-  // CORREÇÃO CRÍTICA: Usar monthly_rent PRIMEIRO, não value
-  const monthlyRent = Number(rental.monthly_rent || rental.value || 0);
-  const garageValue = Number(rental.garage_value || rental.garageValue || 0);
-  const monthlyValue = monthlyRent + garageValue;
+  const monthlyRent = rental.monthly_rent || rental.value || 0;
+  const garageValue = rental.garageValue || rental.garage_value || 0;
+  const monthlyValue = monthlyRent + (rental.hasGarage ? garageValue : 0);
 
+  console.log("\n💰 VALORES CORRIGIDOS:");
   console.log("  - monthlyRent (CORRIGIDO):", monthlyRent);
   console.log("  - garageValue:", garageValue);
   console.log("  - monthlyValue (CALCULADO):", monthlyValue);

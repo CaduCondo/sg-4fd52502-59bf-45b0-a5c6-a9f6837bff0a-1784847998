@@ -425,7 +425,7 @@ export default function Payments() {
                           isPaid={false}
                           viewMode={viewMode}
                           installment={getPaymentInstallment(payment)}
-                          expectedAmount={getExpectedAmount(payment)}
+                          expectedAmount={payment.expectedAmount}
                           onCardClick={handleCardClick}
                           onViewReceipt={handleViewReceipt}
                           getMonthName={getMonthName}
@@ -519,7 +519,7 @@ export default function Payments() {
                           isPaid={true}
                           viewMode={viewMode}
                           installment={getPaymentInstallment(payment)}
-                          expectedAmount={getExpectedAmount(payment)}
+                          expectedAmount={payment.expectedAmount}
                           onCardClick={handleCardClick}
                           onCancelPayment={handleCancelPaymentClick}
                           onViewReceipt={handleViewReceipt}
