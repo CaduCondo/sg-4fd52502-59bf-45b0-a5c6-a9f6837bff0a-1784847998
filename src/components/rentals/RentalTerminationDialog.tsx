@@ -72,63 +72,58 @@ export function RentalTerminationDialog({
     setCurrentMonth(Math.min(current, total));
     setTerminationDate(format(today, "yyyy-MM-dd"));
 
-    // Buscar valor TOTAL do caução
+    // Buscar valor TOTAL do caução (TODAS as parcelas, pagas ou não)
     const fetchTotalDeposit = async () => {
       try {
-        console.log("💰 === BUSCANDO CAUÇÃO TOTAL ===");
+        console.log("💰 === BUSCANDO CAUÇÃO TOTAL (CORRIGIDO) ===");
         console.log("Rental ID:", rental.id);
 
-        // PASSO 1: Buscar parcelas PAGAS de deposit_installments (PRIORIDADE)
+        // BUSCAR TODAS AS PARCELAS (pagas ou não pagas)
         const { data: installments, error } = await supabase
           .from("deposit_installments")
           .select("amount, payment_date, installment_number")
-          .eq("rental_id", rental.id)
-          .not("payment_date", "is", null);
+          .eq("rental_id", rental.id);
 
         if (error) {
           console.error("❌ Erro ao buscar parcelas:", error);
-        } else {
-          console.log("✅ Parcelas encontradas:", installments?.length || 0);
-          
-          if (installments && installments.length > 0) {
-            console.log("📋 Detalhes das parcelas:");
-            installments.forEach(inst => {
-              console.log(`   Parcela ${inst.installment_number}: R$ ${inst.amount} (Pago em: ${inst.payment_date})`);
-            });
-          }
+          throw error;
         }
 
-        // PASSO 2: Calcular total pago
-        const totalPaid = installments?.reduce(
-          (sum, inst) => sum + (inst.amount || 0), 
-          0
-        ) || 0;
-
-        // PASSO 3: Usar security_deposit como fallback
-        const fallbackValue = rental.security_deposit || 0;
-
-        console.log("📊 Resumo do Caução:");
-        console.log(`   Total de parcelas pagas: R$ ${totalPaid}`);
-        console.log(`   Security Deposit (fallback): R$ ${fallbackValue}`);
-
-        // PASSO 4: Usar total pago se houver parcelas, senão usar fallback
-        let finalDeposit = 0;
+        console.log("✅ Total de parcelas encontradas:", installments?.length || 0);
         
-        if (totalPaid > 0) {
-          finalDeposit = totalPaid;
-          console.log(`✅ Usando total das parcelas: R$ ${finalDeposit}`);
-        } else if (fallbackValue > 0) {
-          finalDeposit = fallbackValue;
-          console.log(`✅ Usando security_deposit: R$ ${finalDeposit}`);
-        } else {
-          console.log("⚠️ NENHUM caução encontrado!");
+        if (installments && installments.length > 0) {
+          console.log("📋 Detalhes de TODAS as parcelas:");
+          installments.forEach(inst => {
+            const status = inst.payment_date ? `✅ Pago em: ${inst.payment_date}` : "⏳ Pendente";
+            console.log(`   Parcela ${inst.installment_number}: R$ ${inst.amount} (${status})`);
+          });
+
+          // SOMAR TODAS AS PARCELAS (independente de pagamento)
+          const totalDeposit = installments.reduce(
+            (sum, inst) => sum + (inst.amount || 0), 
+            0
+          );
+
+          console.log("📊 CAUÇÃO TOTAL (soma de todas as parcelas):", totalDeposit);
+          console.log("💰 === CAUÇÃO FINAL: R$", totalDeposit, "===\n");
+          
+          setDepositAmount(totalDeposit);
+          return;
         }
 
-        console.log("💰 === CAUÇÃO FINAL: R$", finalDeposit, "===\n");
-        setDepositAmount(finalDeposit);
+        // Fallback: usar security_deposit apenas se NÃO houver parcelas
+        console.log("⚠️ NENHUMA parcela encontrada - Usando security_deposit como fallback");
+        const fallbackValue = rental.security_deposit || 0;
+        console.log("💰 Security Deposit (fallback): R$", fallbackValue);
+        console.log("💰 === CAUÇÃO FINAL: R$", fallbackValue, "===\n");
+        
+        setDepositAmount(fallbackValue);
 
       } catch (error) {
         console.error("❌ Erro ao calcular caução:", error);
+        console.error("Detalhes do erro:", JSON.stringify(error, null, 2));
+        
+        // Em caso de erro, usar security_deposit como último recurso
         const fallbackValue = rental.security_deposit || 0;
         console.log("⚠️ Usando fallback devido ao erro: R$", fallbackValue);
         setDepositAmount(fallbackValue);
@@ -285,12 +280,15 @@ export function RentalTerminationDialog({
       return;
     }
 
+    // VALIDAÇÃO CRÍTICA: Impedir rescisão se caução = 0
+    if (depositAmount === 0) {
+      alert("⚠️ ATENÇÃO: Não é possível rescindir o contrato sem caução.\n\nPor favor, verifique se o caução foi cadastrado corretamente no sistema.");
+      console.error("❌ RESCISÃO BLOQUEADA: depositAmount = 0");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      if (depositAmount === 0) {
-        alert("Não é possível rescindir o contrato sem caução. Por favor, verifique o valor da caução.");
-        return;
-      }
       await onConfirm({
         terminationDate,
         applyPenalty: applyFullContractPenalty || apply12MonthsPenalty,
@@ -344,6 +342,28 @@ export function RentalTerminationDialog({
               </span>
             </div>
           </div>
+
+          {/* ALERTA DESTACADO - VALOR DO CAUÇÃO */}
+          {depositAmount > 0 && (
+            <Alert className="border-blue-500 bg-blue-50 dark:bg-blue-950">
+              <AlertDescription>
+                <div className="space-y-2">
+                  <p className="font-semibold text-blue-900 dark:text-blue-100">
+                    🔔 ATENÇÃO: VALOR DO CAUÇÃO
+                  </p>
+                  <p className="text-sm text-blue-800 dark:text-blue-200">
+                    Esta rescisão devolverá:
+                  </p>
+                  <p className="text-2xl font-bold text-center text-blue-900 dark:text-blue-100">
+                    R$ {depositAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                  </p>
+                  <p className="text-xs text-blue-700 dark:text-blue-300">
+                    Valor corrigido pela inflação será adicionado automaticamente ao recebimento final.
+                  </p>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
 
           {/* Data da Rescisão */}
           <div className="space-y-2">
