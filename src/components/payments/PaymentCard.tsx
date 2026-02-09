@@ -111,13 +111,13 @@ export function PaymentCard({
           </div>
         </CardHeader>
         <CardContent className="space-y-3 p-4 pt-0">
-          <div className="flex items-start gap-2">
-            <User className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium truncate">{tenant?.name || "N/A"}</p>
-              <p className="text-xs text-muted-foreground truncate">
-                {tenant?.document || "N/A"}
-              </p>
+          <div className="flex items-center gap-2 text-sm">
+            <User className="h-4 w-4 text-muted-foreground" />
+            <div className="flex-1">
+              <span className="font-medium block">{tenant?.name || "Inquilino não identificado"}</span>
+              {tenant?.phone && (
+                <span className="text-xs text-muted-foreground block">{tenant.phone}</span>
+              )}
             </div>
           </div>
 
@@ -211,7 +211,7 @@ export function PaymentCard({
                 </span>
                 {getStatusBadge(payment.status)}
                 <span className="text-xs font-semibold text-muted-foreground">
-                  {installment}
+                  Parcela {installment}
                 </span>
               </div>
               {property ? (
@@ -237,6 +237,9 @@ export function PaymentCard({
               <div className="text-left sm:text-right">
                 <p className="text-xs text-muted-foreground">Inquilino</p>
                 <p className="text-sm font-medium truncate">{tenant?.name || "N/A"}</p>
+                {tenant?.phone && (
+                  <p className="text-xs text-muted-foreground">{tenant.phone}</p>
+                )}
               </div>
               
               <div className="text-right">

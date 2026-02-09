@@ -235,19 +235,27 @@ export function usePayments() {
       .filter(p => p.rentalId === payment.rentalId)
       .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
     
-    // CORREÇÃO: Calcular total baseado no período do contrato, não no array
+    // Calcular total de meses baseado no período do contrato
     const startDate = new Date(rental.startDate);
-    const endDate = rental.endDate ? new Date(rental.endDate) : new Date(startDate.getFullYear() + 1, startDate.getMonth(), startDate.getDate());
+    const endDate = rental.endDate ? new Date(rental.endDate) : new Date();
     
-    // Cálculo exato de meses
+    // Validação crítica: garantir que as datas são válidas
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      console.error("❌ Datas inválidas para calcular parcelas:", { startDate: rental.startDate, endDate: rental.endDate });
+      return `${rentalPayments.findIndex(p => p.id === payment.id) + 1}/?`;
+    }
+    
     const totalMonths = (endDate.getFullYear() - startDate.getFullYear()) * 12 
                       + (endDate.getMonth() - startDate.getMonth()) 
                       + 1;
     
+    // Validação: totalMonths deve ser >= 1
+    const validTotalMonths = Math.max(1, totalMonths);
+    
     // Encontrar a posição do pagamento atual
     const currentPosition = rentalPayments.findIndex(p => p.id === payment.id) + 1;
     
-    return `${currentPosition}/${totalMonths}`;
+    return `${currentPosition}/${validTotalMonths}`;
   };
 
   const getPaymentById = async (id: string): Promise<Payment | null> => {
