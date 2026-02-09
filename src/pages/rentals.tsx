@@ -231,12 +231,20 @@ export default function RentalsPage() {
     if (!rentalToDelete) return;
 
     try {
+      // 1. Excluir TODOS os pagamentos associados primeiro
+      const { deletePaymentsByRentalId } = await import("@/services/paymentService");
+      await deletePaymentsByRentalId(rentalToDelete.id);
+
+      // 2. Depois excluir a locação
+      await deleteRental(rentalToDelete.id);
+
+      // 3. Por fim, liberar imóvel e inquilino
       await updateProperty(rentalToDelete.propertyId, { status: "available" });
       await updateTenant(rentalToDelete.tenantId, { status: "active" });
-      await deleteRental(rentalToDelete.id);
+
       toast({
         title: "Sucesso!",
-        description: "Locação removida com sucesso.",
+        description: "Locação e todos os pagamentos associados foram removidos.",
       });
       setRentalToDelete(null);
       await loadRentalsData();

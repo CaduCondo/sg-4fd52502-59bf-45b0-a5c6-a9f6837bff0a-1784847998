@@ -244,6 +244,15 @@ export async function getPaymentsByRentalId(rentalId: string): Promise<Payment[]
 
 export const getByRentalId = getPaymentsByRentalId;
 
+export async function deletePaymentsByRentalId(rentalId: string): Promise<void> {
+  const { error } = await supabase
+    .from(TABLE)
+    .delete()
+    .eq('rental_id', rentalId);
+
+  if (error) throw error;
+}
+
 export async function deletePendingPaymentsByRentalId(rentalId: string): Promise<void> {
   const { error } = await supabase
     .from(TABLE)
