@@ -287,6 +287,10 @@ export function RentalTerminationDialog({
 
     setIsSubmitting(true);
     try {
+      if (depositAmount === 0) {
+        alert("Não é possível rescindir o contrato sem caução. Por favor, verifique o valor da caução.");
+        return;
+      }
       await onConfirm({
         terminationDate,
         applyPenalty: applyFullContractPenalty || apply12MonthsPenalty,
