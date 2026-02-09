@@ -107,7 +107,7 @@ export function DepositInstallmentsTable({
               )
             )
           `)
-          .order("payment_date", { ascending: true });
+          .order("due_date", { ascending: true });
 
         const { data: installmentsData, error } = await query;
 
@@ -436,9 +436,6 @@ export function DepositInstallmentsTable({
                   group.map((inst, index) => (
                     <TableRow
                       key={inst.id}
-                      className={
-                        inst.status === "paid" ? "bg-green-50/50" : "bg-red-50/50"
-                      }
                     >
                       {/* ✅ CÉLULAS MESCLADAS - Só aparecem na 1ª parcela do grupo */}
                       {index === 0 && (
