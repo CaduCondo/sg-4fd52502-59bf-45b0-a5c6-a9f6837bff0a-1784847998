@@ -19,7 +19,7 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency } from "@/lib/masks";
 import { Button } from "@/components/ui/button";
-import { Download, Printer, Pencil } from "lucide-react";
+import { Download, Printer, Pencil, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import * as XLSX from "xlsx";
 import { useToast } from "@/hooks/use-toast";
 
@@ -57,6 +57,9 @@ interface DepositInstallmentsTableProps {
   allowedLocationIds?: string[];
 }
 
+type SortField = "location" | "complement" | "tenant" | "rent" | "deposit" | "partner" | "partnerCommission" | "internalCommission" | "installment" | "date" | "amount" | "pix";
+type SortDirection = "asc" | "desc" | null;
+
 export function DepositInstallmentsTable({
   userRole,
   allowedLocationIds = [],
@@ -65,6 +68,8 @@ export function DepositInstallmentsTable({
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>("active");
   const [editingCell, setEditingCell] = useState<{ id: string; field: string } | null>(null);
+  const [sortField, setSortField] = useState<SortField | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>(null);
   const { toast } = useToast();
 
   const isAdmin = userRole === "admin";
@@ -152,6 +157,31 @@ export function DepositInstallmentsTable({
     fetchData();
   }, [isAdmin, statusFilter, toast]);
 
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      // Ciclo: asc → desc → null
+      if (sortDirection === "asc") {
+        setSortDirection("desc");
+      } else if (sortDirection === "desc") {
+        setSortDirection(null);
+        setSortField(null);
+      }
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
+    }
+  };
+
+  const getSortIcon = (field: SortField) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="h-4 w-4 ml-1 opacity-30" />;
+    }
+    if (sortDirection === "asc") {
+      return <ArrowUp className="h-4 w-4 ml-1" />;
+    }
+    return <ArrowDown className="h-4 w-4 ml-1" />;
+  };
+
   const handleUpdateField = async (
     installmentId: string,
     field: string,
@@ -204,8 +234,8 @@ export function DepositInstallmentsTable({
       "Valor Aluguel": (inst.rental?.monthly_rent || 0) + (inst.rental?.garage_value || 0),
       "Valor Total Caução": inst.rental?.security_deposit || 0,
       "Corretor Parceiro": inst.rental?.has_partner_broker ? "Sim" : "Não",
-      "Valor Pg Corretagem Parceiro": inst.partner_commission || 0,
-      "Valor Pg Corretagem Interno": inst.internal_commission || 0,
+      "Valor Pg Corretor Parceiro": inst.partner_commission || 0,
+      "Valor Pg Corretor Interno": inst.internal_commission || 0,
       Parcela: `${inst.installment_number}/${inst.total_installments}`,
       "Data Pagamento": inst.payment_date || "-",
       "Valor Parcela": inst.amount || 0,
@@ -276,41 +306,86 @@ export function DepositInstallmentsTable({
     group.sort((a, b) => a.installment_number - b.installment_number);
   });
 
-  // ✅ NOVO: Converte para array e ordena grupos pela data da primeira parcela
-  // Isso garante que as parcelas da mesma locação fiquem SEMPRE JUNTAS
-  const sortedGroups = Object.entries(groupedData)
+  // ✅ Converte para array e ordena grupos pela data da primeira parcela
+  let sortedGroups = Object.entries(groupedData)
     .sort((a, b) => {
-      // Usa a data da primeira parcela de cada grupo para ordenar
       const dateA = new Date(a[1][0].due_date || a[1][0].payment_date || "");
       const dateB = new Date(b[1][0].due_date || b[1][0].payment_date || "");
       return dateA.getTime() - dateB.getTime();
     })
-    .map(([_, group]) => group); // Retorna apenas os grupos (arrays de parcelas)
+    .map(([_, group]) => group);
 
-  const totalExpected = sortedGroups.reduce((acc, group) => {
-    const groupTotalDeposit = group.reduce((acc, curr) => acc + (curr.amount || 0), 0);
-    return acc + groupTotalDeposit;
-  }, 0);
+  // ✅ Aplicar ordenação customizada se houver
+  if (sortField && sortDirection) {
+    sortedGroups = [...sortedGroups].sort((groupA, groupB) => {
+      const instA = groupA[0];
+      const instB = groupB[0];
+      let comparison = 0;
 
-  const totalReceived = sortedGroups
-    .filter((group) => group[0].status === "paid")
-    .reduce((acc, group) => {
-      const groupTotalDeposit = group.reduce((acc, curr) => acc + (curr.amount || 0), 0);
-      return acc + groupTotalDeposit;
-    }, 0);
+      switch (sortField) {
+        case "location":
+          comparison = (instA.rental?.property?.location?.name || "").localeCompare(
+            instB.rental?.property?.location?.name || ""
+          );
+          break;
+        case "complement":
+          comparison = (instA.rental?.property?.complement || "").localeCompare(
+            instB.rental?.property?.complement || ""
+          );
+          break;
+        case "tenant":
+          comparison = (instA.rental?.tenant?.name || "").localeCompare(
+            instB.rental?.tenant?.name || ""
+          );
+          break;
+        case "rent":
+          comparison = ((instA.rental?.monthly_rent || 0) + (instA.rental?.garage_value || 0)) -
+            ((instB.rental?.monthly_rent || 0) + (instB.rental?.garage_value || 0));
+          break;
+        case "deposit":
+          const depositA = groupA.reduce((acc, curr) => acc + (curr.amount || 0), 0);
+          const depositB = groupB.reduce((acc, curr) => acc + (curr.amount || 0), 0);
+          comparison = depositA - depositB;
+          break;
+        case "partner":
+          comparison = (instA.rental?.has_partner_broker ? 1 : 0) - (instB.rental?.has_partner_broker ? 1 : 0);
+          break;
+        case "partnerCommission":
+          comparison = (instA.partner_commission || 0) - (instB.partner_commission || 0);
+          break;
+        case "internalCommission":
+          comparison = (instA.internal_commission || 0) - (instB.internal_commission || 0);
+          break;
+        case "installment":
+          comparison = instA.installment_number - instB.installment_number;
+          break;
+        case "date":
+          const dateA = new Date(instA.payment_date || instA.due_date || "");
+          const dateB = new Date(instB.payment_date || instB.due_date || "");
+          comparison = dateA.getTime() - dateB.getTime();
+          break;
+        case "amount":
+          comparison = (instA.amount || 0) - (instB.amount || 0);
+          break;
+        case "pix":
+          comparison = (instA.pix_code || "").localeCompare(instB.pix_code || "");
+          break;
+      }
 
-  const totalPartnerCommission = sortedGroups.reduce((acc, group) => {
-    const groupTotalPartnerCommission = group.reduce((acc, curr) => acc + (curr.partner_commission || 0), 0);
-    return acc + groupTotalPartnerCommission;
-  }, 0);
+      return sortDirection === "asc" ? comparison : -comparison;
+    });
+  }
 
-  const totalInternalCommission = sortedGroups.reduce((acc, group) => {
-    const groupTotalInternalCommission = group.reduce((acc, curr) => acc + (curr.internal_commission || 0), 0);
-    return acc + groupTotalInternalCommission;
-  }, 0);
+  // Achatar os grupos para cálculo de totais
+  const visibleData = sortedGroups.flatMap(group => group);
 
+  const totalExpected = visibleData.reduce((acc, curr) => acc + (curr.amount || 0), 0);
+  const totalReceived = visibleData
+    .filter((inst) => inst.status === "paid")
+    .reduce((acc, curr) => acc + (curr.amount || 0), 0);
+  const totalPartnerCommission = visibleData.reduce((acc, curr) => acc + (curr.partner_commission || 0), 0);
+  const totalInternalCommission = visibleData.reduce((acc, curr) => acc + (curr.internal_commission || 0), 0);
   const totalCommission = totalPartnerCommission + totalInternalCommission;
-
   const netRevenue = totalReceived - totalCommission;
 
   return (
@@ -428,22 +503,102 @@ export function DepositInstallmentsTable({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Local</TableHead>
-                  <TableHead>Complemento</TableHead>
-                  <TableHead>Inquilino</TableHead>
-                  <TableHead className="text-right">Valor Aluguel</TableHead>
-                  <TableHead className="text-right">Valor Total Caução</TableHead>
-                  <TableHead>Corretor Parceiro</TableHead>
-                  <TableHead className="text-right">
-                    Valor Pg Corretor Parceiro
+                  <TableHead>
+                    <button
+                      onClick={() => handleSort("location")}
+                      className="flex items-center hover:text-primary cursor-pointer"
+                    >
+                      Local {getSortIcon("location")}
+                    </button>
+                  </TableHead>
+                  <TableHead>
+                    <button
+                      onClick={() => handleSort("complement")}
+                      className="flex items-center hover:text-primary cursor-pointer"
+                    >
+                      Complemento {getSortIcon("complement")}
+                    </button>
+                  </TableHead>
+                  <TableHead>
+                    <button
+                      onClick={() => handleSort("tenant")}
+                      className="flex items-center hover:text-primary cursor-pointer"
+                    >
+                      Inquilino {getSortIcon("tenant")}
+                    </button>
                   </TableHead>
                   <TableHead className="text-right">
-                    Valor Pg Corretor Interno
+                    <button
+                      onClick={() => handleSort("rent")}
+                      className="flex items-center justify-end hover:text-primary cursor-pointer ml-auto"
+                    >
+                      Valor Aluguel {getSortIcon("rent")}
+                    </button>
                   </TableHead>
-                  <TableHead className="text-center">Parcela</TableHead>
-                  <TableHead>Data Pagamento</TableHead>
-                  <TableHead className="text-right">Valor Parcela</TableHead>
-                  <TableHead>Código PIX</TableHead>
+                  <TableHead className="text-right">
+                    <button
+                      onClick={() => handleSort("deposit")}
+                      className="flex items-center justify-end hover:text-primary cursor-pointer ml-auto"
+                    >
+                      Valor Total Caução {getSortIcon("deposit")}
+                    </button>
+                  </TableHead>
+                  <TableHead>
+                    <button
+                      onClick={() => handleSort("partner")}
+                      className="flex items-center hover:text-primary cursor-pointer"
+                    >
+                      Corretor Parceiro {getSortIcon("partner")}
+                    </button>
+                  </TableHead>
+                  <TableHead className="text-right">
+                    <button
+                      onClick={() => handleSort("partnerCommission")}
+                      className="flex items-center justify-end hover:text-primary cursor-pointer ml-auto"
+                    >
+                      Valor Pg Corretor Parceiro {getSortIcon("partnerCommission")}
+                    </button>
+                  </TableHead>
+                  <TableHead className="text-right">
+                    <button
+                      onClick={() => handleSort("internalCommission")}
+                      className="flex items-center justify-end hover:text-primary cursor-pointer ml-auto"
+                    >
+                      Valor Pg Corretor Interno {getSortIcon("internalCommission")}
+                    </button>
+                  </TableHead>
+                  <TableHead className="text-center">
+                    <button
+                      onClick={() => handleSort("installment")}
+                      className="flex items-center justify-center hover:text-primary cursor-pointer mx-auto"
+                    >
+                      Parcela {getSortIcon("installment")}
+                    </button>
+                  </TableHead>
+                  <TableHead>
+                    <button
+                      onClick={() => handleSort("date")}
+                      className="flex items-center hover:text-primary cursor-pointer"
+                    >
+                      Data Pagamento {getSortIcon("date")}
+                    </button>
+                  </TableHead>
+                  <TableHead className="text-right">
+                    <button
+                      onClick={() => handleSort("amount")}
+                      className="flex items-center justify-end hover:text-primary cursor-pointer ml-auto"
+                    >
+                      Valor Parcela {getSortIcon("amount")}
+                    </button>
+                  </TableHead>
+                  <TableHead>
+                    <button
+                      onClick={() => handleSort("pix")}
+                      className="flex items-center hover:text-primary cursor-pointer"
+                    >
+                      Código PIX {getSortIcon("pix")}
+                    </button>
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -584,9 +739,9 @@ export function DepositInstallmentsTable({
                       <TableCell className={`text-center font-semibold border-l border-l-2 border-gray-300 ${bgColor}`}>
                         {inst.installment_number}/{inst.total_installments}
                       </TableCell>
-                      <TableCell className={bgColor}>
+                      <TableCell className={`${bgColor} whitespace-nowrap`}>
                         {inst.payment_date
-                          ? inst.payment_date.split("T")[0]
+                          ? inst.payment_date.split("T")[0].split("-").reverse().join("/")
                           : "-"}
                       </TableCell>
                       <TableCell className={`text-right ${bgColor}`}>

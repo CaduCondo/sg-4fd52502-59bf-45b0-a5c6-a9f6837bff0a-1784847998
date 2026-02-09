@@ -544,7 +544,7 @@ export default function RentalsPage() {
                                 {rental.property?.location || "Local não encontrado"}
                               </TableCell>
                               <TableCell>{rental.property?.complement || "-"}</TableCell>
-                              <TableCell>{rental.tenant?.name || "-"}</TableCell>
+                              <TableCell className="whitespace-nowrap">{rental.tenant?.name || "-"}</TableCell>
                               <TableCell className="font-bold text-emerald-600">
                                 {formatCurrency(rental.value || 0)}
                               </TableCell>
@@ -693,7 +693,7 @@ export default function RentalsPage() {
                                   {rental.property?.location || "Local não encontrado"}
                                 </TableCell>
                                 <TableCell>{rental.property?.complement || "-"}</TableCell>
-                                <TableCell>{rental.tenant?.name || "-"}</TableCell>
+                                <TableCell className="whitespace-nowrap">{rental.tenant?.name || "-"}</TableCell>
                                 <TableCell className="font-bold text-gray-600">
                                   {formatCurrency(rental.value || 0)}
                                 </TableCell>
