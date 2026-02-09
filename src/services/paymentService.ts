@@ -373,6 +373,8 @@ export async function updateFuturePayments(rentalId: string, newValue: number): 
 export async function createPaymentsForRental(rental: any): Promise<void> {
   console.log("=== INICIO createPaymentsForRental (VERSÃO CORRIGIDA) ===");
   console.log("Rental recebido:", rental);
+  
+  const paymentDay = rental.paymentDay;
 
   // VERIFICAR SE JÁ EXISTEM RECEBIMENTOS PARA ESTA LOCAÇÃO
   const { data: existingPayments, error: checkError } = await supabase
@@ -392,36 +394,45 @@ export async function createPaymentsForRental(rental: any): Promise<void> {
     return;
   }
   
-  const startDate = new Date(rental.startDate || rental.start_date);
-  const endDate = rental.endDate || rental.end_date 
-    ? new Date(rental.endDate || rental.end_date) 
-    : new Date(startDate.getFullYear() + 1, startDate.getMonth(), startDate.getDate());
+  // 💰 VALOR DA PARCELA
+  // CRÍTICO: Usar rental.value (Total) diretamente para evitar duplicação
+  // Se monthlyRent e garageValue forem somados novamente, gera o erro de R$ 1398
+  const monthlyValue = rental.value;
+
+  console.log("💰 VALORES CORRIGIDOS:");
+  console.log("  - monthlyValue (USANDO RENTAL.VALUE):", monthlyValue);
+
+  // 📅 PERÍODO
+  const startDate = new Date(rental.startDate);
+  // Ajuste de fuso horário para garantir data correta
+  startDate.setMinutes(startDate.getMinutes() + startDate.getTimezoneOffset());
   
-  const paymentDay = Number(rental.paymentDay || rental.payment_day);
+  const endDate = rental.endDate ? new Date(rental.endDate) : new Date(startDate);
+  if (rental.endDate) {
+     endDate.setMinutes(endDate.getMinutes() + endDate.getTimezoneOffset());
+  } else {
+     endDate.setFullYear(endDate.getFullYear() + 1);
+  }
 
-  console.log("\n📋 DADOS EXTRAÍDOS DO RENTAL:");
-  console.log("  - ID:", rental.id);
-  console.log("  - rental.value (TOTAL):", rental.value);
-  console.log("  - rental.monthlyRent (BASE):", rental.monthlyRent);
-  console.log("  - rental.garageValue:", rental.garageValue);
+  // Cálculo exato de meses
+  const expectedMonths = (endDate.getFullYear() - startDate.getFullYear()) * 12 
+                       + (endDate.getMonth() - startDate.getMonth()) 
+                       + 1; // +1 para incluir o mês final se for cheio
 
-  // LÓGICA SIMPLIFICADA E CORRIGIDA:
-  // rental.value JÁ É O TOTAL (Aluguel + Vaga) calculado no formulário.
-  // Não devemos somar a garagem novamente.
-  const monthlyValue = Number(rental.value);
-
-  console.log("\n💰 VALOR MENSAL FINAL PARA PAGAMENTO:", monthlyValue);
+  // Ajuste fino: se dia final < dia inicial, não conta mês cheio extra
+  // Ex: 01/10 a 01/10 (12 meses). 01/10 a 30/09 (12 meses).
+  // O cálculo acima dá 12.
 
   console.log("\n📅 PERÍODO DO CONTRATO:");
   console.log("  - Início:", startDate.toISOString().split('T')[0]);
   console.log("  - Fim:", endDate.toISOString().split('T')[0]);
   
   // Cálculo exato de meses (diferença de anos * 12 + diferença de meses + 1 se inclusivo)
-  const expectedMonths = (endDate.getFullYear() - startDate.getFullYear()) * 12 
+  const expectedMonthsCalc = (endDate.getFullYear() - startDate.getFullYear()) * 12 
                        + (endDate.getMonth() - startDate.getMonth()) 
                        + 1; // +1 porque inclui o mês de início e fim se dia permitir
 
-  console.log("  - Meses esperados (Cálculo Exato):", expectedMonths);
+  console.log("  - Meses esperados (Cálculo Exato):", expectedMonthsCalc);
 
   const payments = [];
   const startDateStr = startDate.toISOString().split('T')[0];

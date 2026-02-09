@@ -235,12 +235,19 @@ export function usePayments() {
       .filter(p => p.rentalId === payment.rentalId)
       .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
     
-    const totalPayments = rentalPayments.length;
+    // CORREÇÃO: Calcular total baseado no período do contrato, não no array
+    const startDate = new Date(rental.startDate);
+    const endDate = rental.endDate ? new Date(rental.endDate) : new Date(startDate.getFullYear() + 1, startDate.getMonth(), startDate.getDate());
+    
+    // Cálculo exato de meses
+    const totalMonths = (endDate.getFullYear() - startDate.getFullYear()) * 12 
+                      + (endDate.getMonth() - startDate.getMonth()) 
+                      + 1;
     
     // Encontrar a posição do pagamento atual
     const currentPosition = rentalPayments.findIndex(p => p.id === payment.id) + 1;
     
-    return `${currentPosition}/${totalPayments}`;
+    return `${currentPosition}/${totalMonths}`;
   };
 
   const getPaymentById = async (id: string): Promise<Payment | null> => {

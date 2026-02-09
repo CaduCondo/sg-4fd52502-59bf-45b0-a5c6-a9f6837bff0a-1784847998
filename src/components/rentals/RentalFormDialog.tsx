@@ -367,8 +367,7 @@ export function RentalFormDialog({
         // Update property and tenant status
         console.log("\n=== UPDATING PROPERTY ===");
         await updateProperty(propertyId, {
-          isRented: true,
-          currentRentalId: createdRental.id,
+          status: "occupied",
         });
 
         console.log("✅ Property updated successfully");
