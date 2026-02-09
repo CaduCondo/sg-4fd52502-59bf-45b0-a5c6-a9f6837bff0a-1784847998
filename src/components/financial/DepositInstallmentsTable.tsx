@@ -646,7 +646,7 @@ export function DepositInstallmentsTable({
                       </TableCell>
                     </TableRow>
                   ))
-                ))}
+                )}
               </TableBody>
             </Table>
           </div>
