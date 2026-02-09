@@ -301,12 +301,12 @@ export default function Financial() {
           bValue = b.status;
           break;
         case "dueDate":
-          aValue = new Date(a.dueDate).getTime();
-          bValue = new Date(b.dueDate).getTime();
+          aValue = new Date(a.dueDate + "T00:00:00").getTime();
+          bValue = new Date(b.dueDate + "T00:00:00").getTime();
           break;
         case "paymentDate":
-          aValue = a.paymentDate ? new Date(a.paymentDate).getTime() : 0;
-          bValue = b.paymentDate ? new Date(b.paymentDate).getTime() : 0;
+          aValue = a.paymentDate ? new Date(a.paymentDate + "T00:00:00").getTime() : 0;
+          bValue = b.paymentDate ? new Date(b.paymentDate + "T00:00:00").getTime() : 0;
           break;
         case "expectedAmount":
           aValue = a.expectedAmount;
@@ -384,8 +384,8 @@ export default function Financial() {
         "Status": payment.status === "paid" ? "Pago" : 
                  payment.status === "pending" ? "Pendente" :
                  payment.status === "overdue" ? "Atrasado" : "Parcial",
-        "Data Vencimento": format(new Date(payment.dueDate), "dd/MM/yyyy"),
-        "Data Recebida": payment.paymentDate ? format(new Date(payment.paymentDate), "dd/MM/yyyy") : "-",
+        "Data Vencimento": format(new Date(payment.dueDate + "T00:00:00"), "dd/MM/yyyy"),
+        "Data Recebida": payment.paymentDate ? format(new Date(payment.paymentDate + "T00:00:00"), "dd/MM/yyyy") : "-",
         "Valor Esperado": payment.expectedAmount,
         "Valor Pago": payment.paidAmount || 0,
         "Código PIX": details.pixCode || "-",
@@ -837,8 +837,8 @@ export default function Financial() {
                                     {details.complemento}
                                   </div>
                                 </TableCell>
-                                <TableCell>
-                                  <span className="whitespace-nowrap">{details.tenantName}</span>
+                                <TableCell className="whitespace-nowrap">
+                                  {details.tenantName}
                                 </TableCell>
                                 <TableCell>{payment.referenceYear}</TableCell>
                                 <TableCell className="capitalize">{monthName}</TableCell>
@@ -864,11 +864,11 @@ export default function Financial() {
                                   </Badge>
                                 </TableCell>
                                 <TableCell>
-                                  {format(new Date(payment.dueDate), "dd/MM/yyyy")}
+                                  {format(new Date(payment.dueDate + "T00:00:00"), "dd/MM/yyyy")}
                                 </TableCell>
                                 <TableCell>
                                   {payment.paymentDate
-                                    ? format(new Date(payment.paymentDate), "dd/MM/yyyy")
+                                    ? format(new Date(payment.paymentDate + "T00:00:00"), "dd/MM/yyyy")
                                     : "-"}
                                 </TableCell>
                                 <TableCell className="text-right">
