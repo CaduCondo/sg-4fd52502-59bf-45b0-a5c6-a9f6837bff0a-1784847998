@@ -37,6 +37,8 @@ export function usePayments() {
             property_id,
             tenant_id,
             status,
+            start_date,
+            end_date,
             properties!inner (
               id,
               location_id,
@@ -47,7 +49,8 @@ export function usePayments() {
             ),
             tenants!inner (
               id,
-              name
+              name,
+              phone
             )
           )
         `)
@@ -86,8 +89,8 @@ export function usePayments() {
             id: p.rentals.id,
             propertyId: p.rentals.property_id,
             tenantId: p.rentals.tenant_id,
-            startDate: "",
-            endDate: "",
+            startDate: p.rentals.start_date || "",
+            endDate: p.rentals.end_date || "",
             paymentDay: 1,
             value: 0,
             depositAmount: 0,
@@ -126,7 +129,7 @@ export function usePayments() {
             id: p.rentals.tenants.id,
             name: p.rentals.tenants.name,
             email: "",
-            phone: "",
+            phone: p.rentals.tenants.phone || "",
             documentType: "cpf",
             document: "",
             cpf: "",
