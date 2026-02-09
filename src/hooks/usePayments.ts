@@ -294,9 +294,8 @@ export function usePayments() {
       return `${rentalPayments.findIndex(p => p.id === payment.id) + 1}/?`;
     }
     
-    const totalMonths = (endDate.getFullYear() - startDate.getFullYear()) * 12 
-                      + (endDate.getMonth() - startDate.getMonth()) 
-                      + 1;
+    // ✅ CORREÇÃO: Usar differenceInMonths do date-fns para cálculo correto
+    const totalMonths = differenceInMonths(endDate, startDate) + 1;
     
     // Validação: totalMonths deve ser >= 1
     const validTotalMonths = Math.max(1, totalMonths);
