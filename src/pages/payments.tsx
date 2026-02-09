@@ -85,7 +85,7 @@ export default function Payments() {
     console.log("🚪 Fechando dialog de gerenciamento");
     setIsDialogOpen(false);
     setSelectedPaymentId(null);
-    loadPayments();
+    loadPayments(selectedMonth, selectedYear);
   };
 
   const handlePaymentSuccess = (data: {
@@ -110,7 +110,7 @@ export default function Payments() {
     console.log("🚪 Fechando recibo");
     setShowReceipt(false);
     setReceiptData(null);
-    loadPayments();
+    loadPayments(selectedMonth, selectedYear);
   };
 
   const handleViewReceipt = async (paymentId: string, e: React.MouseEvent) => {

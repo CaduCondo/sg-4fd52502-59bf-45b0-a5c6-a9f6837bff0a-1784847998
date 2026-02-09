@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import type { Payment, Rental, Property, Tenant } from "@/types";
 import { 
@@ -18,6 +18,9 @@ export function usePayments() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Memória para guardar os últimos filtros aplicados
+  const filtersRef = useRef<{month?: string, year?: string}>({});
 
   useEffect(() => {
     loadPayments();
@@ -27,7 +30,19 @@ export function usePayments() {
     try {
       setLoading(true);
       
-      console.log("🔍 CARREGANDO PAGAMENTOS DO BANCO com filtros:", { month, year });
+      // Se argumentos foram passados, atualiza a memória e usa eles
+      // Se não foram passados (ex: reload interno), usa a memória
+      if (month !== undefined || year !== undefined) {
+        filtersRef.current = { month, year };
+      }
+      
+      const effectiveMonth = month !== undefined ? month : filtersRef.current.month;
+      const effectiveYear = year !== undefined ? year : filtersRef.current.year;
+      
+      console.log("🔍 CARREGANDO PAGAMENTOS DO BANCO com filtros:", { 
+        passed: { month, year },
+        effective: { effectiveMonth, effectiveYear }
+      });
       
       // Query otimizada: busca com filtro de mês/ano se fornecido
       let query = supabase
@@ -57,14 +72,14 @@ export function usePayments() {
           )
         `);
 
-      // Aplicar filtros se fornecidos
-      if (month && month !== "all") {
-        query = query.eq("reference_month", month);
-        console.log("📅 Filtrando por mês:", month);
+      // Aplicar filtros efetivos
+      if (effectiveMonth && effectiveMonth !== "all") {
+        query = query.eq("reference_month", effectiveMonth);
+        console.log("📅 Filtrando por mês:", effectiveMonth);
       }
-      if (year && year !== "all") {
-        query = query.eq("reference_year", year);
-        console.log("📅 Filtrando por ano:", year);
+      if (effectiveYear && effectiveYear !== "all") {
+        query = query.eq("reference_year", effectiveYear);
+        console.log("📅 Filtrando por ano:", effectiveYear);
       }
 
       const { data: paymentsWithRelations, error: paymentsError } = await query.order("due_date", { ascending: true });
