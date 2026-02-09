@@ -80,7 +80,7 @@ export const checkSupabaseHealth = async (): Promise<{
     console.log('🏥 Verificando saúde do Supabase...');
     
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
     
     const { data, error } = await supabase
       .from('system_users')
