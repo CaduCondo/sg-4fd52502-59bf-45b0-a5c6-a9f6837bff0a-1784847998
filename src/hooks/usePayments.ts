@@ -23,12 +23,14 @@ export function usePayments() {
     loadPayments();
   }, []);
 
-  const loadPayments = async () => {
+  const loadPayments = async (month?: string, year?: string) => {
     try {
       setLoading(true);
       
-      // Query otimizada: busca tudo em uma única query com joins
-      const { data: paymentsWithRelations, error: paymentsError } = await supabase
+      console.log("🔍 CARREGANDO PAGAMENTOS DO BANCO com filtros:", { month, year });
+      
+      // Query otimizada: busca com filtro de mês/ano se fornecido
+      let query = supabase
         .from("payments")
         .select(`
           *,
@@ -53,8 +55,19 @@ export function usePayments() {
               phone
             )
           )
-        `)
-        .order("due_date", { ascending: true });
+        `);
+
+      // Aplicar filtros se fornecidos
+      if (month && month !== "all") {
+        query = query.eq("reference_month", month);
+        console.log("📅 Filtrando por mês:", month);
+      }
+      if (year && year !== "all") {
+        query = query.eq("reference_year", year);
+        console.log("📅 Filtrando por ano:", year);
+      }
+
+      const { data: paymentsWithRelations, error: paymentsError } = await query.order("due_date", { ascending: true });
 
       if (paymentsError) throw paymentsError;
 

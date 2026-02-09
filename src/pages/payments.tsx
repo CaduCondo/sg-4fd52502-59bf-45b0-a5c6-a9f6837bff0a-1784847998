@@ -31,6 +31,7 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useMemo } from "react";
+import { useEffect } from "react";
 
 export default function Payments() {
   const router = useRouter();
@@ -68,6 +69,12 @@ export default function Payments() {
   );
   const [selectedYear, setSelectedYear] = useState<string>("2026");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+
+  // Recarregar pagamentos quando os filtros de mês/ano mudarem
+  useEffect(() => {
+    console.log("🔄 Filtros mudaram, recarregando pagamentos...", { selectedMonth, selectedYear });
+    loadPayments(selectedMonth, selectedYear);
+  }, [selectedMonth, selectedYear]);
 
   const handleCardClick = (paymentId: string) => {
     setSelectedPaymentId(paymentId);
@@ -244,121 +251,6 @@ export default function Payments() {
     return months[month - 1] || "";
   };
 
-  const filteredPayments = useMemo(() => {
-    let filtered = [...payments];
-
-    if (selectedMonth !== "all" && selectedYear !== "all") {
-      filtered = filtered.filter((payment) => {
-        if (!payment.dueDate) return false;
-        
-        // Parse robusto: aceita "YYYY-MM-DD", "DD/MM/YYYY", timestamps, etc
-        let dueDateObj: Date;
-        
-        // Tenta parse direto
-        if (payment.dueDate.includes('-')) {
-          // Formato YYYY-MM-DD ou variações
-          dueDateObj = new Date(payment.dueDate + "T00:00:00");
-        } else if (payment.dueDate.includes('/')) {
-          // Formato DD/MM/YYYY
-          const [day, month, year] = payment.dueDate.split('/');
-          dueDateObj = new Date(`${year}-${month}-${day}T00:00:00`);
-        } else {
-          // Timestamp ou outro formato
-          dueDateObj = new Date(payment.dueDate);
-        }
-        
-        // Validação: verificar se a data é válida
-        if (isNaN(dueDateObj.getTime())) {
-          console.error("❌ Data inválida no filtro:", payment.dueDate);
-          return false;
-        }
-        
-        const dueMonth = dueDateObj.getMonth() + 1;
-        const dueYear = dueDateObj.getFullYear();
-        
-        const matches = (
-          dueMonth === parseInt(selectedMonth) &&
-          dueYear === parseInt(selectedYear)
-        );
-        
-        // Log de debug (remover depois se necessário)
-        if (matches) {
-          console.log("✅ Pagamento corresponde ao filtro:", {
-            paymentId: payment.id,
-            dueDate: payment.dueDate,
-            parsedDate: dueDateObj.toISOString(),
-            filterMonth: selectedMonth,
-            filterYear: selectedYear
-          });
-        }
-        
-        return matches;
-      });
-    } else if (selectedMonth !== "all") {
-      filtered = filtered.filter((payment) => {
-        if (!payment.dueDate) return false;
-        
-        // Parse robusto
-        let dueDateObj: Date;
-        if (payment.dueDate.includes('-')) {
-          dueDateObj = new Date(payment.dueDate + "T00:00:00");
-        } else if (payment.dueDate.includes('/')) {
-          const [day, month, year] = payment.dueDate.split('/');
-          dueDateObj = new Date(`${year}-${month}-${day}T00:00:00`);
-        } else {
-          dueDateObj = new Date(payment.dueDate);
-        }
-        
-        if (isNaN(dueDateObj.getTime())) return false;
-        
-        const dueMonth = dueDateObj.getMonth() + 1;
-        return dueMonth === parseInt(selectedMonth);
-      });
-    } else if (selectedYear !== "all") {
-      filtered = filtered.filter((payment) => {
-        if (!payment.dueDate) return false;
-        
-        // Parse robusto
-        let dueDateObj: Date;
-        if (payment.dueDate.includes('-')) {
-          dueDateObj = new Date(payment.dueDate + "T00:00:00");
-        } else if (payment.dueDate.includes('/')) {
-          const [day, month, year] = payment.dueDate.split('/');
-          dueDateObj = new Date(`${year}-${month}-${day}T00:00:00`);
-        } else {
-          dueDateObj = new Date(payment.dueDate);
-        }
-        
-        if (isNaN(dueDateObj.getTime())) return false;
-        
-        const dueYear = dueDateObj.getFullYear();
-        return dueYear === parseInt(selectedYear);
-      });
-    }
-
-    if (statusFilter !== "all") {
-      filtered = filtered.filter((payment) => payment.status === statusFilter);
-    }
-
-    return filtered.sort((a, b) => {
-      const dateA = new Date(a.dueDate);
-      const dateB = new Date(b.dueDate);
-      return dateA.getTime() - dateB.getTime();
-    });
-  }, [payments, selectedMonth, selectedYear, statusFilter]);
-
-  const unpaidPayments = useMemo(() => 
-    filteredPayments.filter(
-      (p) => p.status === "pending" || p.status === "partial" || p.status === "overdue"
-    ),
-    [filteredPayments]
-  );
-
-  const paidPayments = useMemo(() => 
-    filteredPayments.filter((p) => p.status === "paid"),
-    [filteredPayments]
-  );
-
   const hasActiveFilters = selectedMonth !== "all" || selectedYear !== "all";
 
   const getStatusBadge = (status: string) => {
@@ -396,6 +288,40 @@ export default function Payments() {
     }
     return `${baseClasses} bg-white dark:bg-gray-950`;
   };
+
+  // Filtro simples apenas por status (mês/ano já vem do banco)
+  const filteredPayments = useMemo(() => {
+    console.log("🔍 Aplicando filtro de status:", { statusFilter, totalPayments: payments.length });
+    
+    let filtered = [...payments];
+
+    // Filtrar apenas por status (mês/ano já foram filtrados no banco)
+    if (statusFilter !== "all") {
+      filtered = filtered.filter((payment) => payment.status === statusFilter);
+    }
+
+    console.log("📊 RESULTADO DO FILTRO:", {
+      totalFiltrados: filtered.length,
+      pendentes: filtered.filter(p => p.status === "pending" || p.status === "partial" || p.status === "overdue").length,
+      pagos: filtered.filter(p => p.status === "paid").length
+    });
+
+    return filtered.sort((a, b) => {
+      const dateA = new Date(a.dueDate);
+      const dateB = new Date(b.dueDate);
+      return dateA.getTime() - dateB.getTime();
+    });
+  }, [payments, statusFilter]);
+
+  useEffect(() => {
+    loadPayments({
+      filters: {
+        month: selectedMonth,
+        year: selectedYear,
+        status: statusFilter,
+      },
+    });
+  }, [selectedMonth, selectedYear, statusFilter]);
 
   return (
     <>
@@ -459,12 +385,16 @@ export default function Payments() {
                   <div className="flex items-center gap-2">
                     <h2 className="text-2xl font-bold">Recebimentos Pendentes</h2>
                     <Badge variant="destructive" className="text-sm">
-                      {unpaidPayments.length}
+                      {payments.filter(
+                        (p) => p.status === "pending" || p.status === "partial" || p.status === "overdue"
+                      ).length}
                     </Badge>
                   </div>
                 </ScrollReveal>
 
-                {unpaidPayments.length === 0 ? (
+                {payments.filter(
+                  (p) => p.status === "pending" || p.status === "partial" || p.status === "overdue"
+                ).length === 0 ? (
                   <ScrollReveal delay={0.3}>
                     <Card>
                       <CardContent className="py-12 text-center">
@@ -478,22 +408,26 @@ export default function Payments() {
                   </ScrollReveal>
                 ) : viewMode === "grid" ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {unpaidPayments.map((payment, index) => (
-                      <FloatingCard key={payment.id} delay={0.1 * (index + 3)}>
-                        <PaymentCard
-                          payment={payment}
-                          property={getPropertyInfo(payment.rentalId)}
-                          tenant={getTenantInfo(payment.rentalId)}
-                          isPaid={false}
-                          viewMode={viewMode}
-                          installment={getPaymentInstallment(payment)}
-                          expectedAmount={payment.expectedAmount}
-                          onCardClick={handleCardClick}
-                          onViewReceipt={handleViewReceipt}
-                          getMonthName={getMonthName}
-                        />
-                      </FloatingCard>
-                    ))}
+                    {payments
+                      .filter(
+                        (p) => p.status === "pending" || p.status === "partial" || p.status === "overdue"
+                      )
+                      .map((payment, index) => (
+                        <FloatingCard key={payment.id} delay={0.1 * (index + 3)}>
+                          <PaymentCard
+                            payment={payment}
+                            property={getPropertyInfo(payment.rentalId)}
+                            tenant={getTenantInfo(payment.rentalId)}
+                            isPaid={false}
+                            viewMode={viewMode}
+                            installment={getPaymentInstallment(payment)}
+                            expectedAmount={payment.expectedAmount}
+                            onCardClick={handleCardClick}
+                            onViewReceipt={handleViewReceipt}
+                            getMonthName={getMonthName}
+                          />
+                        </FloatingCard>
+                      ))}
                   </div>
                 ) : (
                   <div className="rounded-md border">
@@ -510,38 +444,42 @@ export default function Payments() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {unpaidPayments.map((payment) => {
-                          const property = getPropertyInfo(payment.rentalId);
-                          const tenant = getTenantInfo(payment.rentalId);
-                          return (
-                            <TableRow
-                              key={payment.id}
-                              className={getPaymentRowClassName(payment)}
-                              onClick={() => handleCardClick(payment.id)}
-                            >
-                              <TableCell className="font-medium">
-                                {property ? `${property.location} - ${property.complement}` : "-"}
-                              </TableCell>
-                              <TableCell>{tenant?.name || "-"}</TableCell>
-                              <TableCell>{formatDate(payment.dueDate)}</TableCell>
-                              <TableCell>{formatCurrency(payment.expectedAmount)}</TableCell>
-                              <TableCell>{payment.paidAmount ? formatCurrency(payment.paidAmount) : "-"}</TableCell>
-                              <TableCell>{getStatusBadge(payment.status)}</TableCell>
-                              <TableCell className="text-right">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleCardClick(payment.id);
-                                  }}
-                                >
-                                  <Eye className="h-4 w-4" />
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
+                        {payments
+                          .filter(
+                            (p) => p.status === "pending" || p.status === "partial" || p.status === "overdue"
+                          )
+                          .map((payment) => {
+                            const property = getPropertyInfo(payment.rentalId);
+                            const tenant = getTenantInfo(payment.rentalId);
+                            return (
+                              <TableRow
+                                key={payment.id}
+                                className={getPaymentRowClassName(payment)}
+                                onClick={() => handleCardClick(payment.id)}
+                              >
+                                <TableCell className="font-medium">
+                                  {property ? `${property.location} - ${property.complement}` : "-"}
+                                </TableCell>
+                                <TableCell>{tenant?.name || "-"}</TableCell>
+                                <TableCell>{formatDate(payment.dueDate)}</TableCell>
+                                <TableCell>{formatCurrency(payment.expectedAmount)}</TableCell>
+                                <TableCell>{payment.paidAmount ? formatCurrency(payment.paidAmount) : "-"}</TableCell>
+                                <TableCell>{getStatusBadge(payment.status)}</TableCell>
+                                <TableCell className="text-right">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleCardClick(payment.id);
+                                    }}
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
                       </TableBody>
                     </Table>
                   </div>
@@ -553,12 +491,12 @@ export default function Payments() {
                   <div className="flex items-center gap-2">
                     <h2 className="text-2xl font-bold">Recebimentos Pagos</h2>
                     <Badge variant="default" className="bg-green-500 text-sm">
-                      {paidPayments.length}
+                      {payments.filter((p) => p.status === "paid").length}
                     </Badge>
                   </div>
                 </ScrollReveal>
 
-                {paidPayments.length === 0 ? (
+                {payments.filter((p) => p.status === "paid").length === 0 ? (
                   <ScrollReveal delay={0.5}>
                     <Card>
                       <CardContent className="py-12 text-center">
@@ -572,23 +510,25 @@ export default function Payments() {
                   </ScrollReveal>
                 ) : viewMode === "grid" ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {paidPayments.map((payment, index) => (
-                      <FloatingCard key={payment.id} delay={0.1 * (index + 5)}>
-                        <PaymentCard
-                          payment={payment}
-                          property={getPropertyInfo(payment.rentalId)}
-                          tenant={getTenantInfo(payment.rentalId)}
-                          isPaid={true}
-                          viewMode={viewMode}
-                          installment={getPaymentInstallment(payment)}
-                          expectedAmount={payment.expectedAmount}
-                          onCardClick={handleCardClick}
-                          onCancelPayment={handleCancelPaymentClick}
-                          onViewReceipt={handleViewReceipt}
-                          getMonthName={getMonthName}
-                        />
-                      </FloatingCard>
-                    ))}
+                    {payments
+                      .filter((p) => p.status === "paid")
+                      .map((payment, index) => (
+                        <FloatingCard key={payment.id} delay={0.1 * (index + 5)}>
+                          <PaymentCard
+                            payment={payment}
+                            property={getPropertyInfo(payment.rentalId)}
+                            tenant={getTenantInfo(payment.rentalId)}
+                            isPaid={true}
+                            viewMode={viewMode}
+                            installment={getPaymentInstallment(payment)}
+                            expectedAmount={payment.expectedAmount}
+                            onCardClick={handleCardClick}
+                            onCancelPayment={handleCancelPaymentClick}
+                            onViewReceipt={handleViewReceipt}
+                            getMonthName={getMonthName}
+                          />
+                        </FloatingCard>
+                      ))}
                   </div>
                 ) : (
                   <div className="rounded-md border">
@@ -605,44 +545,46 @@ export default function Payments() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {paidPayments.map((payment) => {
-                          const property = getPropertyInfo(payment.rentalId);
-                          const tenant = getTenantInfo(payment.rentalId);
-                          return (
-                            <TableRow
-                              key={payment.id}
-                              className={getPaymentRowClassName(payment)}
-                              onClick={() => handleCardClick(payment.id)}
-                            >
-                              <TableCell className="font-medium">
-                                {property ? `${property.location} - ${property.complement}` : "-"}
-                              </TableCell>
-                              <TableCell>{tenant?.name || "-"}</TableCell>
-                              <TableCell>{formatDate(payment.dueDate)}</TableCell>
-                              <TableCell>{formatCurrency(payment.expectedAmount)}</TableCell>
-                              <TableCell>{formatCurrency(payment.paidAmount || 0)}</TableCell>
-                              <TableCell>{getStatusBadge(payment.status)}</TableCell>
-                              <TableCell className="text-right">
-                                <div className="flex justify-end gap-2">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={(e) => handleViewReceipt(payment.id, e)}
-                                  >
-                                    <Eye className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={(e) => handleCancelPaymentClick(payment.id, e)}
-                                  >
-                                    <XCircle className="h-4 w-4 text-destructive" />
-                                  </Button>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
+                        {payments
+                          .filter((p) => p.status === "paid")
+                          .map((payment) => {
+                            const property = getPropertyInfo(payment.rentalId);
+                            const tenant = getTenantInfo(payment.rentalId);
+                            return (
+                              <TableRow
+                                key={payment.id}
+                                className={getPaymentRowClassName(payment)}
+                                onClick={() => handleCardClick(payment.id)}
+                              >
+                                <TableCell className="font-medium">
+                                  {property ? `${property.location} - ${property.complement}` : "-"}
+                                </TableCell>
+                                <TableCell>{tenant?.name || "-"}</TableCell>
+                                <TableCell>{formatDate(payment.dueDate)}</TableCell>
+                                <TableCell>{formatCurrency(payment.expectedAmount)}</TableCell>
+                                <TableCell>{formatCurrency(payment.paidAmount || 0)}</TableCell>
+                                <TableCell>{getStatusBadge(payment.status)}</TableCell>
+                                <TableCell className="text-right">
+                                  <div className="flex justify-end gap-2">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={(e) => handleViewReceipt(payment.id, e)}
+                                    >
+                                      <Eye className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={(e) => handleCancelPaymentClick(payment.id, e)}
+                                    >
+                                      <XCircle className="h-4 w-4 text-destructive" />
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
                       </TableBody>
                     </Table>
                   </div>
