@@ -62,7 +62,7 @@ export function Lightbox({ files, initialIndex, onClose }: LightboxProps) {
 
   return (
     <div 
-      className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center"
+      className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center"
       onClick={onClose}
     >
       <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/80 to-transparent p-4 z-10">

@@ -178,25 +178,50 @@ export default function Dashboard() {
     
     const totalRevenue = payments.reduce((acc, p) => acc + (p.paidAmount || 0), 0);
     
+    // CORREÇÃO: Usar UTC para evitar problemas de timezone
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const todayUTC = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
 
+    // CORREÇÃO: Aluguéis que vencem HOJE (data de vencimento = hoje)
+    const dueTodayPayments = payments.filter(p => {
+      if (p.status === 'paid') return false;
+      
+      const dueDate = new Date(p.dueDate);
+      const dueDateUTC = new Date(Date.UTC(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate()));
+      
+      return dueDateUTC.getTime() === todayUTC.getTime();
+    }).length;
+
+    console.log("📅 Vencem Hoje - Debug:", {
+      today: todayUTC.toISOString(),
+      dueTodayPayments,
+      allPayments: payments.length,
+      unpaidPayments: payments.filter(p => p.status !== 'paid').length
+    });
+
+    // CORREÇÃO: Aluguéis ATRASADOS (data de vencimento < hoje E não pagos)
     const overduePayments = payments.filter((p) => {
       if (p.status === "paid") return false;
+      
       const dueDate = new Date(p.dueDate);
-      const pDate = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
-      return pDate < today;
+      const dueDateUTC = new Date(Date.UTC(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate()));
+      
+      return dueDateUTC.getTime() < todayUTC.getTime();
     });
 
     const overduePaymentsCount = overduePayments.length;
     const overdueAmount = overduePayments.reduce((acc, p) => acc + (p.expectedAmount || 0), 0);
 
-    const dueTodayPayments = payments.filter(p => {
-      if (p.status === 'paid') return false;
-      const dueDate = new Date(p.dueDate);
-      const pDate = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
-      return pDate.getTime() === today.getTime();
-    }).length;
+    console.log("⏰ Atrasados - Debug:", {
+      today: todayUTC.toISOString(),
+      overduePaymentsCount,
+      overdueAmount,
+      sampleOverdue: overduePayments.slice(0, 3).map(p => ({
+        dueDate: p.dueDate,
+        status: p.status,
+        expectedAmount: p.expectedAmount
+      }))
+    });
 
     const completedPayments = payments.filter(p => p.status === 'paid').length;
     const expectedAmount = payments.reduce((acc, p) => acc + (p.expectedAmount || 0), 0);
@@ -242,7 +267,7 @@ export default function Dashboard() {
       totalFeesAndExpenses,
       netRevenue,
     };
-  }, [payments, properties, rentals, locationExpenses]);
+  }, [payments, properties, rentals, locationExpenses, exemptLocationIds]);
 
   return (
     <Layout>
