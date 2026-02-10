@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { AttachmentViewer } from "@/components/AttachmentViewer";
 import { Camera, Paperclip, Home, User, DollarSign, CreditCard, FileText, Edit, X } from "lucide-react";
 import type { Payment, Rental, Property, Tenant } from "@/types";
+import { calculateCorrectedDeposit } from "@/services/igpmService";
 
 interface ManagePaymentFormProps {
   paymentId: string;
@@ -38,6 +39,13 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
   const [isTerminationPayment, setIsTerminationPayment] = useState(false);
   const [originalBreakdown, setOriginalBreakdown] = useState<any[]>([]);
   const [calculatedTotal, setCalculatedTotal] = useState<number>(0);
+  const [igpmCorrection, setIgpmCorrection] = useState<{
+    originalAmount: number;
+    correctedAmount: number;
+    igpmPercentage: number;
+    months: number;
+    igpmDetails: string;
+  } | null>(null);
 
   const [formData, setFormData] = useState({
     payment_date: "",
@@ -117,6 +125,22 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       // Detectar se é pagamento de rescisão
       const isTermination = paymentData.notes?.includes("Rescisão de Contrato") || false;
       setIsTerminationPayment(isTermination);
+
+      // Calcular correção IGPM para rescisão
+      if (isTermination && paymentData.rentals) {
+        const startDate = paymentData.rentals.start_date;
+        const endDate = paymentData.rentals.end_date || paymentData.due_date;
+        
+        // Buscar valor original do caução
+        const originalDeposit = paymentData.rentals.security_deposit || 0;
+        
+        if (originalDeposit > 0 && startDate && endDate) {
+          const correction = calculateCorrectedDeposit(originalDeposit, startDate, endDate);
+          setIgpmCorrection(correction);
+          
+          console.log("💰 Correção IGPM aplicada:", correction);
+        }
+      }
 
       // Carregar breakdown original
       if (paymentData.breakdown) {
