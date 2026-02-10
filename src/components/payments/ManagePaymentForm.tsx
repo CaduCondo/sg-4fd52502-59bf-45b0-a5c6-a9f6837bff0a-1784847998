@@ -36,6 +36,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
   const [isEditMode, setIsEditMode] = useState(false);
   const [isPaid, setIsPaid] = useState(false);
   const [repairExpenses, setRepairExpenses] = useState<number>(0);
+  const [repairExpensesInput, setRepairExpensesInput] = useState<string>("R$ 0,00");
   const [isTerminationPayment, setIsTerminationPayment] = useState(false);
   const [originalBreakdown, setOriginalBreakdown] = useState<any[]>([]);
   const [calculatedTotal, setCalculatedTotal] = useState<number>(0);
@@ -142,23 +143,40 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         }
       }
 
-      // Carregar breakdown original
+      // Carregar breakdown original e aplicar IGPM
       if (paymentData.breakdown) {
         try {
           const breakdownData = typeof paymentData.breakdown === 'string' 
             ? JSON.parse(paymentData.breakdown) 
             : paymentData.breakdown;
           
-          setOriginalBreakdown(breakdownData || []);
+          let updatedBreakdown = [...breakdownData];
+          
+          // Se tem correção IGPM, atualizar o valor da Devolução de Caução no breakdown
+          if (igpmCorrection && isTermination) {
+            updatedBreakdown = updatedBreakdown.map((item: any) => {
+              if (item.description?.includes("Devolução de Caução")) {
+                return {
+                  ...item,
+                  amount: -igpmCorrection.correctedAmount, // Valor corrigido (negativo)
+                };
+              }
+              return item;
+            });
+          }
+          
+          setOriginalBreakdown(updatedBreakdown || []);
           
           // Carregar despesas se existir (para rescisão)
           if (isTermination) {
-            const expensesItem = breakdownData.find((item: any) => 
+            const expensesItem = updatedBreakdown.find((item: any) => 
               item.description?.includes("Despesas")
             );
             
             if (expensesItem) {
-              setRepairExpenses(Math.abs(expensesItem.amount || 0));
+              const expValue = Math.abs(expensesItem.amount || 0);
+              setRepairExpenses(expValue);
+              setRepairExpensesInput(formatCurrency(expValue.toFixed(2)));
             }
           }
         } catch (error) {
@@ -183,11 +201,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         pix_code_type: (paymentData as any).pix_code_type || "CP",
       });
       
-      // Se não estiver pago, definir valores iniciais
-      if (!alreadyPaid) {
-        // O useEffect de cálculo cuidará de definir o amount_to_pay
-      }
-      
     } catch (error) {
       console.error("Erro ao carregar dados do pagamento:", error);
       toast({
@@ -202,7 +215,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
 
   // Calcular valores
   const calculateValues = () => {
-    // SEMPRE usar valores base do rental para cálculos
     const valorAluguel = Math.round((rentalValue + garageValue) * 100) / 100;
     
     let multa = 0;
@@ -217,12 +229,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         const diffTime = paymentDate.getTime() - dueDate.getTime();
         diasAtraso = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-        // Para rescisão, a multa/juros incide sobre o saldo devedor ou uma base específica?
-        // Assumindo sobre o valor esperado base (ex: aluguel proporcional + multa rescisória - caução)
-        // Se o resultado for negativo (caução cobriu tudo), não deve ter juros sobre valor negativo.
-        // Mas a lógica original usa valorAluguel. Na rescisão, expected_amount já é o saldo final.
-        // Vamos usar Math.max(0, valorAluguel) para garantir.
-        
         const baseCalculo = Math.max(0, valorAluguel);
         
         multa = Math.round((baseCalculo * lateFeePercentage / 100) * 100) / 100;
@@ -259,9 +265,23 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     const values = calculateValues();
     
     if (isTerminationPayment && originalBreakdown.length > 0) {
-      // Para rescisão, pegamos o breakdown original (sem despesas e sem multas de atraso)
-      // Filtramos despesas e multas antigas se existirem
-      const cleanBreakdown = originalBreakdown.filter((item: any) => 
+      // Atualizar breakdown com valor IGPM se disponível
+      let workingBreakdown = [...originalBreakdown];
+      
+      if (igpmCorrection) {
+        workingBreakdown = workingBreakdown.map((item: any) => {
+          if (item.description?.includes("Devolução de Caução")) {
+            return {
+              ...item,
+              amount: -igpmCorrection.correctedAmount,
+            };
+          }
+          return item;
+        });
+      }
+      
+      // Filtrar despesas e multas antigas
+      const cleanBreakdown = workingBreakdown.filter((item: any) => 
         !item.description?.includes("Despesas") && 
         !item.description?.includes("Multa por Atraso") && 
         !item.description?.includes("Juros por Atraso")
@@ -269,15 +289,11 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       
       const breakdownTotal = cleanBreakdown.reduce((sum, item) => sum + item.amount, 0);
       
-      // Adicionar multa/juros por atraso se não removidos
       const lateFees = removeFees ? 0 : (values.multa + values.juros);
-      
-      // Adicionar despesas (repairExpenses)
       const newTotal = breakdownTotal + lateFees + repairExpenses;
       
       setCalculatedTotal(newTotal);
       
-      // Atualizar campo se estiver em modo de edição
       if (isEditMode) {
         setFormData(prev => ({
           ...prev,
@@ -285,7 +301,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         }));
       }
     } else if (!isTerminationPayment && isEditMode) {
-      // Pagamento normal
       setFormData(prev => ({
         ...prev,
         amount_to_pay: formatCurrency(values.valorAPagar.toFixed(2))
@@ -301,7 +316,8 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     interestRatePercentage,
     isEditMode,
     loading,
-    payment
+    payment,
+    igpmCorrection
   ]);
 
   const formatCurrency = (value: string | number): string => {
@@ -405,6 +421,11 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     });
   };
 
+  const handleRepairExpensesChange = (value: string) => {
+    setRepairExpensesInput(formatCurrency(value));
+    setRepairExpenses(parseCurrency(formatCurrency(value)));
+  };
+
   const handleSubmit = async () => {
     if (!formData.payment_date || !formData.payment_method || !formData.amount_to_pay) {
       toast({
@@ -426,11 +447,23 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       const values = calculateValues();
 
       if (isTerminationPayment) {
-        // Atualizar breakdown com despesas e multa/juros
         try {
           let breakdownData = typeof payment.breakdown === 'string' 
             ? JSON.parse(payment.breakdown) 
             : (payment.breakdown || []);
+          
+          // Atualizar valor do caução com IGPM se disponível
+          if (igpmCorrection) {
+            breakdownData = breakdownData.map((item: any) => {
+              if (item.description?.includes("Devolução de Caução")) {
+                return {
+                  ...item,
+                  amount: -igpmCorrection.correctedAmount,
+                };
+              }
+              return item;
+            });
+          }
           
           // Remover itens de despesas e multa/juros antigos
           breakdownData = breakdownData.filter((item: any) => 
@@ -516,7 +549,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       });
 
       if (paymentStatus === "paid" && !isPaid && onSuccess) {
-        // Mock data for receipt generation
         const paymentForReceipt: Payment = {
           id: payment.id,
           rentalId: payment.rental_id,
@@ -628,7 +660,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Cards de Info Imóvel e Locatário (sem alterações) */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base">
@@ -681,7 +712,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Card Formação de Valores */}
         <Card className={isTerminationPayment ? "border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950" : ""}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -693,26 +723,42 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
             <div className="space-y-3">
               {isTerminationPayment ? (
                 <>
-                  {/* Rescisão - Breakdown original limpo */}
                   {originalBreakdown
                     .filter(item => 
                       !item.description?.includes("Despesas") && 
                       !item.description?.includes("Multa por Atraso") &&
                       !item.description?.includes("Juros por Atraso")
                     )
-                    .map((item, index) => (
-                    <div key={index} className="flex justify-between text-sm">
-                      <span>{item.description}</span>
-                      <span className={item.type === "deduction" ? "text-red-600 font-medium" : "font-medium"}>
-                        {item.type === "deduction" ? "-" : ""}
-                        {formatCurrency(Math.abs(item.amount).toFixed(2))}
-                      </span>
-                    </div>
-                  ))}
+                    .map((item, index) => {
+                      const isDepositDeduction = item.description?.includes("Devolução de Caução");
+                      const displayAmount = isDepositDeduction && igpmCorrection 
+                        ? igpmCorrection.correctedAmount 
+                        : Math.abs(item.amount);
+                      
+                      return (
+                        <div key={index}>
+                          <div className="flex justify-between items-start text-sm">
+                            <div className="flex-1">
+                              <span className={isDepositDeduction ? "block" : ""}>
+                                {item.description?.replace(" (corrigido pela inflação)", "")}
+                              </span>
+                              {isDepositDeduction && (
+                                <span className="block text-xs text-muted-foreground ml-2">
+                                  (corrigido pela inflação)
+                                </span>
+                              )}
+                            </div>
+                            <span className={`${item.type === "deduction" ? "text-red-600" : ""} font-medium whitespace-nowrap ml-4`}>
+                              {item.type === "deduction" ? "- " : ""}
+                              {formatCurrency(displayAmount.toFixed(2))}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
 
                   <div className="border-t border-dashed my-2"></div>
 
-                  {/* Multa e Juros por Atraso (se houver) */}
                   {values.multa > 0 && (
                     <div className="flex justify-between text-sm">
                       <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600"}>
@@ -754,20 +800,16 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
 
                   <div className="border-t border-dashed my-2"></div>
 
-                  {/* Campo de Despesas Adicionais - Alinhado à direita */}
                   <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <Label htmlFor="repair-expenses" className="text-sm font-medium">
+                    <div className="flex justify-between items-center gap-4">
+                      <Label htmlFor="repair-expenses" className="text-sm font-medium whitespace-nowrap">
                         Despesas Adicionais *
                       </Label>
                       <Input
                         id="repair-expenses"
                         type="text"
-                        value={formatCurrency(repairExpenses.toFixed(2))}
-                        onChange={(e) => {
-                          const value = parseCurrency(e.target.value);
-                          setRepairExpenses(value);
-                        }}
+                        value={repairExpensesInput}
+                        onChange={(e) => handleRepairExpensesChange(e.target.value)}
                         placeholder="R$ 0,00"
                         disabled={isReadOnly}
                         className="w-40 text-right"
@@ -775,7 +817,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                     </div>
                   </div>
 
-                  {/* Total */}
                   <div className="flex justify-between pt-3 border-t-2 border-primary mt-2">
                     <span className="font-bold text-base">VALOR TOTAL</span>
                     <span className="font-bold text-base text-primary">
@@ -783,14 +824,12 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                     </span>
                   </div>
 
-                  {/* Rodapé explicativo */}
                   <div className="text-xs text-muted-foreground pt-2 border-t mt-2">
                     * Despesas Adicionais de Reforma/Limpeza/Pinturas ou reparos necessários após a saída do inquilino
                   </div>
                 </>
               ) : (
                 <>
-                  {/* Pagamento normal - Mostrar Aluguel + Vaga separados */}
                   <div className="flex justify-between text-sm">
                     <span>Valor Aluguel</span>
                     <span className="font-medium">
@@ -869,7 +908,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           </CardContent>
         </Card>
 
-        {/* Card Informações Pagamento */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
