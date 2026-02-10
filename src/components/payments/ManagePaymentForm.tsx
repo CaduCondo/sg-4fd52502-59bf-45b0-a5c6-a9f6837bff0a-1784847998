@@ -126,24 +126,33 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       // Detectar se é pagamento de rescisão
       const isTermination = paymentData.notes?.includes("Rescisão de Contrato") || false;
       setIsTerminationPayment(isTermination);
+      
+      console.log("🔍 [DEBUG] É rescisão?", isTermination);
 
-      // Calcular correção IGPM para rescisão
+      // Calcular correção IGPM IMEDIATAMENTE (não esperar estado)
+      let igpmCorrectionValue = null;
       if (isTermination && paymentData.rentals) {
         const startDate = paymentData.rentals.start_date;
         const endDate = paymentData.rentals.end_date || paymentData.due_date;
-        
-        // Buscar valor original do caução
         const originalDeposit = paymentData.rentals.security_deposit || 0;
         
+        console.log("🔍 [DEBUG] Dados para IGPM:", {
+          startDate,
+          endDate,
+          originalDeposit
+        });
+        
         if (originalDeposit > 0 && startDate && endDate) {
-          const correction = calculateCorrectedDeposit(originalDeposit, startDate, endDate);
-          setIgpmCorrection(correction);
+          igpmCorrectionValue = calculateCorrectedDeposit(originalDeposit, startDate, endDate);
+          setIgpmCorrection(igpmCorrectionValue);
           
-          console.log("💰 Correção IGPM aplicada:", correction);
+          console.log("💰 [DEBUG] Correção IGPM calculada:", igpmCorrectionValue);
+        } else {
+          console.log("⚠️ [DEBUG] Não calculou IGPM - dados faltando");
         }
       }
 
-      // Carregar breakdown original e aplicar IGPM
+      // Carregar breakdown original e aplicar IGPM IMEDIATAMENTE
       if (paymentData.breakdown) {
         try {
           const breakdownData = typeof paymentData.breakdown === 'string' 
@@ -152,17 +161,28 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           
           let updatedBreakdown = [...breakdownData];
           
-          // Se tem correção IGPM, atualizar o valor da Devolução de Caução no breakdown
-          if (igpmCorrection && isTermination) {
+          // APLICAR IGPM IMEDIATAMENTE usando variável local
+          if (igpmCorrectionValue && isTermination) {
+            console.log("💰 [DEBUG] Aplicando IGPM ao breakdown IMEDIATAMENTE");
+            console.log("💰 [DEBUG] Valor original do caução no breakdown:", 
+              updatedBreakdown.find(item => item.description?.includes("Devolução de Caução"))?.amount
+            );
+            
             updatedBreakdown = updatedBreakdown.map((item: any) => {
               if (item.description?.includes("Devolução de Caução")) {
+                const correctedValue = -Math.abs(igpmCorrectionValue.correctedAmount);
+                console.log("💰 [DEBUG] Atualizando caução de", item.amount, "para", correctedValue);
                 return {
                   ...item,
-                  amount: -igpmCorrection.correctedAmount, // Valor corrigido (negativo)
+                  amount: correctedValue,
                 };
               }
               return item;
             });
+            
+            console.log("💰 [DEBUG] Valor do caução após atualização:", 
+              updatedBreakdown.find(item => item.description?.includes("Devolução de Caução"))?.amount
+            );
           }
           
           setOriginalBreakdown(updatedBreakdown || []);
@@ -180,7 +200,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
             }
           }
         } catch (error) {
-          console.error("Erro ao parsear breakdown:", error);
+          console.error("❌ [DEBUG] Erro ao parsear breakdown:", error);
           setOriginalBreakdown([]);
         }
       }
@@ -268,12 +288,12 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       // Atualizar breakdown com valor IGPM se disponível
       let workingBreakdown = [...originalBreakdown];
       
-      if (igpmCorrection) {
+      if (igpmCorrectionValue) {
         workingBreakdown = workingBreakdown.map((item: any) => {
           if (item.description?.includes("Devolução de Caução")) {
             return {
               ...item,
-              amount: -igpmCorrection.correctedAmount,
+              amount: -igpmCorrectionValue.correctedAmount,
             };
           }
           return item;
@@ -317,7 +337,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     isEditMode,
     loading,
     payment,
-    igpmCorrection
+    igpmCorrectionValue
   ]);
 
   const formatCurrency = (value: string | number): string => {
@@ -453,12 +473,12 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
             : (payment.breakdown || []);
           
           // Atualizar valor do caução com IGPM se disponível
-          if (igpmCorrection) {
+          if (igpmCorrectionValue) {
             breakdownData = breakdownData.map((item: any) => {
               if (item.description?.includes("Devolução de Caução")) {
                 return {
                   ...item,
-                  amount: -igpmCorrection.correctedAmount,
+                  amount: -igpmCorrectionValue.correctedAmount,
                 };
               }
               return item;
@@ -731,9 +751,22 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                     )
                     .map((item, index) => {
                       const isDepositDeduction = item.description?.includes("Devolução de Caução");
+                      
+                      // Log de debug
+                      if (isDepositDeduction) {
+                        console.log("🔍 [RENDER] Renderizando Devolução de Caução:");
+                        console.log("  - Valor no breakdown:", item.amount);
+                        console.log("  - igpmCorrection existe?", !!igpmCorrection);
+                        console.log("  - igpmCorrection.correctedAmount:", igpmCorrection?.correctedAmount);
+                      }
+                      
                       const displayAmount = isDepositDeduction && igpmCorrection 
                         ? igpmCorrection.correctedAmount 
                         : Math.abs(item.amount);
+                      
+                      if (isDepositDeduction) {
+                        console.log("  - displayAmount final:", displayAmount);
+                      }
                       
                       return (
                         <div key={index}>
@@ -801,19 +834,11 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                   <div className="border-t border-dashed my-2"></div>
 
                   <div className="space-y-2">
-                    <div className="flex justify-between items-center gap-4">
-                      <Label htmlFor="repair-expenses" className="text-sm font-medium whitespace-nowrap">
-                        Despesas Adicionais *
-                      </Label>
-                      <Input
-                        id="repair-expenses"
-                        type="text"
-                        value={repairExpensesInput}
-                        onChange={(e) => handleRepairExpensesChange(e.target.value)}
-                        placeholder="R$ 0,00"
-                        disabled={isReadOnly}
-                        className="w-40 text-right"
-                      />
+                    <div className="flex justify-between text-sm">
+                      <span>Despesas Adicionais *</span>
+                      <span className="font-medium">
+                        {formatCurrency(repairExpenses.toFixed(2))}
+                      </span>
                     </div>
                   </div>
 

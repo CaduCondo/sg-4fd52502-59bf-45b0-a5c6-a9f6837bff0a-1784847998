@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { parseISO, getMonth, getYear, differenceInMonths } from "date-fns";
+import { calculateCorrectedDeposit } from "./igpmService";
 
 export interface TerminationData {
   rentalId: string;
@@ -121,16 +122,30 @@ export async function processContractTermination(data: TerminationData): Promise
     console.log("✅ Recebimento encontrado:", paymentOfMonth.id);
   }
 
-  // PASSO 4: Calcular caução corrigido pela inflação
-  const monthsActive = differenceInMonths(terminationDateObj, parseISO(paymentOfMonth.due_date));
-  const inflationRate = 0.004; // IPCA médio ~0.4% ao mês
-  const correctedDeposit = depositAmount * (1 + inflationRate * Math.max(monthsActive, 0));
+  // PASSO 4: Calcular caução corrigido pela inflação usando IGPM real
+  const rentalStartDate = await supabase
+    .from("rentals")
+    .select("start_date")
+    .eq("id", rentalId)
+    .single();
 
-  console.log("💰 Correção do caução:", {
+  const startDate = rentalStartDate.data?.start_date || paymentOfMonth.due_date;
+  
+  // Calcular correção IGPM real
+  const igpmCorrection = calculateCorrectedDeposit(
+    depositAmount,
+    startDate,
+    terminationDate
+  );
+
+  const correctedDeposit = igpmCorrection.correctedAmount;
+
+  console.log("💰 Correção do caução pelo IGPM:", {
     valorOriginal: depositAmount,
-    mesesAtivo: monthsActive,
-    taxaInflacao: `${(inflationRate * 100).toFixed(2)}% ao mês`,
-    valorCorrigido: correctedDeposit.toFixed(2)
+    mesesAtivo: igpmCorrection.months,
+    igpmAcumulado: `${igpmCorrection.igpmPercentage.toFixed(2)}%`,
+    valorCorrigido: correctedDeposit.toFixed(2),
+    detalhamento: igpmCorrection.igpmDetails
   });
 
   // PASSO 5: Criar breakdown (Formação de Valores)

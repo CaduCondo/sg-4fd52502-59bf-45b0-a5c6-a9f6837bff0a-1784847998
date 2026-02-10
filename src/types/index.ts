@@ -239,7 +239,11 @@ export interface Payment {
   lateFee?: number; // Alias
   interest?: number; // Alias
   
-  installmentNumber?: number;
+  // Installment info
+  installment?: number;
+  totalInstallments?: number;
+  installmentNumber?: number; // Legacy alias
+
   partialPayments?: any[];
   createdAt?: string;
   updatedAt?: string;
