@@ -143,9 +143,9 @@ export async function processContractTermination(data: TerminationData): Promise
   console.log("💰 Correção do caução pelo IGPM:", {
     valorOriginal: depositAmount,
     mesesAtivo: igpmCorrection.months,
-    igpmAcumulado: `${igpmCorrection.igpmPercentage.toFixed(2)}%`,
+    igpmAcumulado: `${igpmCorrection.poupancaPercentage.toFixed(2)}%`,
     valorCorrigido: correctedDeposit.toFixed(2),
-    detalhamento: igpmCorrection.igpmDetails
+    detalhamento: igpmCorrection.poupancaDetails
   });
 
   // PASSO 5: Criar breakdown (Formação de Valores)
