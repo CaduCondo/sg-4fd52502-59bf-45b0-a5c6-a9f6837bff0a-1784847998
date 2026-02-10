@@ -7,6 +7,7 @@ export function useDashboardData(month: number, year: number, userId: string | u
   const [payments, setPayments] = useState<Payment[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [rentals, setRentals] = useState<Rental[]>([]);
+  const [tenants, setTenants] = useState<any[]>([]);
   const [allowedLocationIds, setAllowedLocationIds] = useState<string[]>([]);
   const [locationExpenses, setLocationExpenses] = useState<number>(0);
   const [exemptLocationIds, setExemptLocationIds] = useState<string[]>([]);
@@ -262,10 +263,25 @@ export function useDashboardData(month: number, year: number, userId: string | u
           }
         }
 
+        // 7. Buscar TODOS os inquilinos cadastrados (APENAS ATIVOS)
+        const tenantsQuery = supabase
+          .from("tenants")
+          .select("id, name, status")
+          .eq("status", "active"); // Apenas inquilinos ativos
+
+        const { data: tenantsData, error: tenantsError } = await tenantsQuery;
+
+        if (tenantsError) {
+          console.error("❌ Erro ao buscar inquilinos:", tenantsError);
+        } else {
+          console.log(`✅ Inquilinos carregados (APENAS ATIVOS): ${tenantsData?.length || 0}`);
+        }
+
         if (isMounted) {
           setPayments((paymentsData || []).map(mapPaymentFromDB));
           setProperties((propertiesData || []).map(mapPropertyFromDB));
-          setRentals((rentalsData || []).map(mapRentalFromDB)); // Salva TODAS as locações
+          setRentals((rentalsData || []).map(mapRentalFromDB));
+          setTenants(tenantsData || []); // Salvar inquilinos
           console.log("✅ Dashboard: Dados carregados com sucesso");
           console.log("📊 Resumo:", {
             properties: propertiesData?.length || 0,
@@ -290,5 +306,5 @@ export function useDashboardData(month: number, year: number, userId: string | u
     };
   }, [month, year, userId, userRole, mapPaymentFromDB, mapPropertyFromDB, mapRentalFromDB]);
 
-  return { loading, payments, properties, rentals, allowedLocationIds, locationExpenses, exemptLocationIds };
+  return { loading, payments, properties, rentals, tenants, allowedLocationIds, locationExpenses, exemptLocationIds };
 }

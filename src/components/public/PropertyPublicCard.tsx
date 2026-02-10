@@ -27,6 +27,7 @@ import { InterestFormDialog } from "./InterestFormDialog";
 import { ShareButtons } from "./ShareButtons";
 import { Lightbox } from "@/components/Lightbox";
 import { Property } from "@/types";
+import type React from "react";
 
 interface PropertyPublicCardProps {
   property: Property;
@@ -48,14 +49,14 @@ export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
     setShowDetails(true);
   };
 
-  const handleThumbnailClick = (index: number) => {
+  const handleThumbnailClick = (index: number, e: React.MouseEvent) => {
+    e.stopPropagation();
     setLightboxIndex(index);
     setShowLightbox(true);
   };
 
   const handleCloseLightbox = () => {
     setShowLightbox(false);
-    // NÃO fecha o modal de detalhes, apenas o lightbox
   };
 
   const lightboxFiles = images.map((url, index) => ({
@@ -310,7 +311,7 @@ export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
                   {images.map((imageUrl, index) => (
                     <button
                       key={index}
-                      onClick={() => handleThumbnailClick(index)}
+                      onClick={(e) => handleThumbnailClick(index, e)}
                       className="relative aspect-square overflow-hidden rounded-lg border-2 border-slate-200 hover:border-blue-500 transition-all hover:scale-105 group"
                     >
                       <Image

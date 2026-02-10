@@ -19,6 +19,7 @@ export function Lightbox({ files, initialIndex, onClose }: LightboxProps) {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
+        e.stopPropagation();
         onClose();
       } else if (e.key === "ArrowLeft" && currentIndex > 0) {
         handlePrevious();
@@ -57,13 +58,18 @@ export function Lightbox({ files, initialIndex, onClose }: LightboxProps) {
     document.body.removeChild(link);
   };
 
+  const handleClose = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onClose();
+  };
+
   const isImage = currentFile.type.startsWith("image/");
   const isPDF = currentFile.type === "application/pdf";
 
   return (
     <div 
       className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center"
-      onClick={onClose}
+      onClick={handleClose}
     >
       <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/80 to-transparent p-4 z-10">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
@@ -91,7 +97,7 @@ export function Lightbox({ files, initialIndex, onClose }: LightboxProps) {
               variant="ghost"
               size="icon"
               className="text-white hover:bg-white/10"
-              onClick={onClose}
+              onClick={handleClose}
             >
               <X size={20} />
             </Button>

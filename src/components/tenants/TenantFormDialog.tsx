@@ -3,10 +3,10 @@ import { Button } from "@/components/ui/button";
 import React, { useState, useEffect, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tenant } from "@/types";
 import { applyCpfMask, applyCnpjMask, applyPhoneMask, applyRgMask, applyCepMask, fetchAddressByCEP } from "@/lib/masks";
 import { Pencil, Loader2 } from "lucide-react";
-import { Textarea } from "@/components/ui/textarea";
 
 interface TenantFormDialogProps {
   open: boolean;
@@ -118,7 +118,6 @@ export function TenantFormDialog({
     const masked = applyCepMask(e.target.value);
     setFormData((prev) => ({ ...prev, cep: masked }));
 
-    // Buscar endereço quando CEP estiver completo (8 dígitos)
     const cleanCep = masked.replace(/\D/g, "");
     if (cleanCep.length === 8) {
       setLoadingCep(true);
@@ -156,7 +155,7 @@ export function TenantFormDialog({
       neighborhood: formData.neighborhood,
       city: formData.city,
       state: formData.state,
-      status: tenant?.status || "active",
+      status: formData.status,
     };
 
     if (documentType === "cpf") {
@@ -261,6 +260,25 @@ export function TenantFormDialog({
                   className="h-11 sm:h-10 text-sm mobile-input"
                 />
               </div>
+
+              {tenant && (
+                <div className="space-y-2">
+                  <Label htmlFor="status" className="text-sm font-medium">Status *</Label>
+                  <Select
+                    value={formData.status}
+                    onValueChange={(value) => setFormData({ ...formData, status: value as "active" | "inactive" })}
+                    disabled={!isEditing}
+                  >
+                    <SelectTrigger className="h-11 sm:h-10">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Ativo</SelectItem>
+                      <SelectItem value="inactive">Inativo</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
           </div>
 

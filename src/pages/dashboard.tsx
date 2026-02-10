@@ -16,7 +16,7 @@ export default function Dashboard() {
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
   const { user } = useAuth();
 
-  const { loading, payments, properties, rentals, allowedLocationIds, locationExpenses, exemptLocationIds } = useDashboardData(
+  const { loading, payments, properties, rentals, allowedLocationIds, locationExpenses, exemptLocationIds, tenants } = useDashboardData(
     selectedMonth,
     selectedYear,
     user?.id,
