@@ -260,44 +260,31 @@ export function useDashboardData(month: number, year: number, userId: string | u
           }
         }
 
-        // 7. CORRIGIDO: Buscar TODOS os inquilinos únicos das locações ATIVAS + inquilinos disponíveis (active)
+        // 7. CORRIGIDO: Buscar TODOS os inquilinos cadastrados (exceto inativos)
         console.log("\n👥 === CONTANDO INQUILINOS ÚNICOS ===");
         
-        // Pegar tenant_ids únicos dos contratos ATIVOS
-        const uniqueTenantIdsInActiveRentals = new Set(
-          (rentalsData || [])
-            .filter((r: any) => r.is_active)
-            .map((r: any) => r.tenant_id)
-        );
-        
-        console.log(`📋 Inquilinos únicos em contratos ATIVOS: ${uniqueTenantIdsInActiveRentals.size}`);
-        
-        // Buscar inquilinos disponíveis (status = 'active')
-        const { data: availableTenants, error: availableError } = await supabase
+        const { data: allTenants, error: tenantsError } = await supabase
           .from("tenants")
-          .select("id")
-          .eq("status", "active");
+          .select("id, status, name")
+          .neq("status", "inactive");
         
-        if (availableError) {
-          console.error("❌ Erro ao buscar inquilinos disponíveis:", availableError);
+        if (tenantsError) {
+          console.error("❌ Erro ao buscar inquilinos:", tenantsError);
+        } else {
+          console.log(`✅ Total de inquilinos (exceto inativos): ${allTenants?.length || 0}`);
+          
+          // Log de distribuição por status
+          const statusCount = (allTenants || []).reduce((acc: any, t: any) => {
+            acc[t.status] = (acc[t.status] || 0) + 1;
+            return acc;
+          }, {});
+          console.log("📊 Distribuição por status:", statusCount);
         }
         
-        const availableTenantIds = new Set((availableTenants || []).map(t => t.id));
-        console.log(`📋 Inquilinos disponíveis (active): ${availableTenantIds.size}`);
-        
-        // Combinar os dois conjuntos (união)
-        const allUniqueTenantIds = new Set([
-          ...uniqueTenantIdsInActiveRentals,
-          ...availableTenantIds
-        ]);
-        
-        console.log(`✅ TOTAL DE INQUILINOS ÚNICOS: ${allUniqueTenantIds.size}`);
-        console.log(`   - Em contratos ativos: ${uniqueTenantIdsInActiveRentals.size}`);
-        console.log(`   - Disponíveis: ${availableTenantIds.size}`);
         console.log("👥 === FIM DA CONTAGEM ===\n");
         
-        // Criar array de objetos tenant com o tamanho correto
-        const tenantsArray = Array.from(allUniqueTenantIds).map(id => ({ id }));
+        // Criar array de objetos tenant
+        const tenantsArray = (allTenants || []).map(t => ({ id: t.id, status: t.status, name: t.name }));
 
         if (isMounted) {
           setPayments((paymentsData || []).map(mapPaymentFromDB));

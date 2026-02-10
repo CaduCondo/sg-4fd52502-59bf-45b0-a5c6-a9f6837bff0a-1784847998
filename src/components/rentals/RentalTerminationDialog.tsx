@@ -94,34 +94,38 @@ export function RentalTerminationDialog({
           .from("deposit_installments")
           .select("amount, payment_date, installment_number")
           .eq("rental_id", rental.id)
-          .order("installment_number", { ascending: true });
+          .order("installment_number", { ascending: false }); // DESC - do maior para menor
 
         if (installmentsError) {
           console.error("❌ Erro ao buscar parcelas:", installmentsError);
         } else if (installments && installments.length > 0) {
           console.log("✅ Parcelas encontradas:", installments.length);
-          console.log("📋 Detalhes das parcelas:");
-          
-          const paidInstallments = installments.filter(inst => inst.payment_date);
+          console.log("📋 Detalhes das parcelas (ordem: maior → menor):");
           
           installments.forEach(inst => {
             const status = inst.payment_date ? `✅ Pago em: ${inst.payment_date}` : "⏳ Pendente";
             console.log(`   Parcela ${inst.installment_number}: R$ ${inst.amount} (${status})`);
           });
 
-          totalDeposit = installments.reduce((sum, inst) => sum + (inst.amount || 0), 0);
-          source = "deposit_installments (tabela de parcelas)";
+          // CRÍTICO: Filtrar apenas parcelas PAGAS e pegar a PRIMEIRA (maior número = última paga)
+          const paidInstallments = installments.filter(inst => inst.payment_date);
           
           if (paidInstallments.length > 0) {
-            // CRÍTICO: Pegar a ÚLTIMA parcela paga (maior installment_number com payment_date)
-            const sortedPaidInstallments = paidInstallments.sort((a, b) => b.installment_number - a.installment_number);
-            lastPaidDate = sortedPaidInstallments[0].payment_date;
-            console.log("📅 Data da ÚLTIMA parcela PAGA:", lastPaidDate, `(Parcela ${sortedPaidInstallments[0].installment_number})`);
+            console.log("\n🎯 Parcelas PAGAS (ordem: maior → menor):");
+            paidInstallments.forEach(inst => {
+              console.log(`   Parcela ${inst.installment_number}: ${inst.payment_date}`);
+            });
+            
+            // A PRIMEIRA do array é a ÚLTIMA paga (maior installment_number)
+            lastPaidDate = paidInstallments[0].payment_date;
+            console.log(`\n📅 Data da ÚLTIMA parcela PAGA: ${lastPaidDate} (Parcela ${paidInstallments[0].installment_number})`);
           } else {
             console.log("⚠️ Nenhuma parcela paga ainda, usando data início do contrato");
             lastPaidDate = rental.startDate;
           }
-          
+
+          totalDeposit = installments.reduce((sum, inst) => sum + (inst.amount || 0), 0);
+          source = "deposit_installments (tabela de parcelas)";
           console.log("✅ SOMA DAS PARCELAS: R$", totalDeposit);
         } else {
           console.log("⚠️ Nenhuma parcela encontrada na deposit_installments");
