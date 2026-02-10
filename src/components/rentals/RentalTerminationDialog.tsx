@@ -104,31 +104,42 @@ export function RentalTerminationDialog({
           console.error("❌ Erro ao buscar parcelas:", installmentsError);
         } else if (installments && installments.length > 0) {
           console.log("✅ Total de parcelas encontradas:", installments.length);
-          console.log("\n📊 TODAS AS PARCELAS (ordem original do banco):");
+          console.log("\n📊 TODAS AS PARCELAS (ordem ORIGINAL retornada pelo banco):");
           
           installments.forEach((inst, index) => {
             const status = inst.payment_date ? `✅ PAGA em ${inst.payment_date}` : "⏳ PENDENTE";
             console.log(`   ${index + 1}. Parcela ${inst.installment_number}: R$ ${inst.amount.toFixed(2)} - ${status}`);
           });
 
-          // CRÍTICO: Filtrar parcelas pagas e ordenar por installment_number DESC
-          const paidInstallments = installments
-            .filter(inst => inst.payment_date)
-            .sort((a, b) => b.installment_number - a.installment_number); // MAIOR para MENOR!
+          console.log("\n🔍 FILTRANDO apenas parcelas PAGAS...");
+          const paidInstallments = installments.filter(inst => inst.payment_date);
           
-          console.log("\n🎯 PARCELAS PAGAS (ordenadas: MAIOR → menor):");
+          console.log(`✅ Total de parcelas PAGAS: ${paidInstallments.length}`);
+          console.log("\n📋 PARCELAS PAGAS (ANTES da ordenação):");
+          paidInstallments.forEach((inst, index) => {
+            console.log(`   ${index + 1}. Parcela ${inst.installment_number}: Data ${inst.payment_date} (R$ ${inst.amount.toFixed(2)})`);
+          });
+
+          console.log("\n🔄 ORDENANDO por installment_number DESCENDENTE (maior → menor)...");
+          paidInstallments.sort((a, b) => {
+            const result = b.installment_number - a.installment_number;
+            console.log(`   Comparando: Parcela ${b.installment_number} vs Parcela ${a.installment_number} = ${result}`);
+            return result;
+          });
+
+          console.log("\n📋 PARCELAS PAGAS (DEPOIS da ordenação DESC):");
+          paidInstallments.forEach((inst, index) => {
+            console.log(`   ${index + 1}. Parcela ${inst.installment_number}: Data ${inst.payment_date} (R$ ${inst.amount.toFixed(2)})`);
+          });
+
           if (paidInstallments.length > 0) {
-            paidInstallments.forEach((inst, index) => {
-              console.log(`   ${index + 1}. Parcela ${inst.installment_number}: Data ${inst.payment_date} (R$ ${inst.amount.toFixed(2)})`);
-            });
-            
-            // PEGA A PRIMEIRA = MAIOR NÚMERO DE PARCELA = ÚLTIMA PAGA!
             const lastPaidInstallment = paidInstallments[0];
             lastPaidDate = lastPaidInstallment.payment_date;
             
             console.log("\n🔥🔥🔥 CONFIRMAÇÃO DA DATA BASE 🔥🔥🔥");
             console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
             console.log("✅ ÚLTIMA PARCELA PAGA IDENTIFICADA:");
+            console.log(`   • Posição no array: [0] (primeira posição)`);
             console.log(`   • Número da Parcela: ${lastPaidInstallment.installment_number}`);
             console.log(`   • Valor: R$ ${lastPaidInstallment.amount.toFixed(2)}`);
             console.log(`   • Data de Pagamento: ${lastPaidDate}`);
