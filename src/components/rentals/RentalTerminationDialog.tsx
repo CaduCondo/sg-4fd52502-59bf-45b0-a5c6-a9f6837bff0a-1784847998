@@ -117,8 +117,15 @@ export function RentalTerminationDialog({
             });
             
             // A PRIMEIRA do array é a ÚLTIMA paga (maior installment_number)
-            lastPaidDate = paidInstallments[0].payment_date;
-            console.log(`\n📅 Data da ÚLTIMA parcela PAGA: ${lastPaidDate} (Parcela ${paidInstallments[0].installment_number})`);
+            const lastPaidInstallment = paidInstallments[0];
+            lastPaidDate = lastPaidInstallment.payment_date;
+            
+            console.log(`\n🔥🔥🔥 CONFIRMAÇÃO DA DATA BASE 🔥🔥🔥`);
+            console.log(`📅 Parcela ${lastPaidInstallment.installment_number} foi escolhida como DATA BASE`);
+            console.log(`📅 Data: ${lastPaidDate}`);
+            console.log(`💰 Valor: R$ ${lastPaidInstallment.amount}`);
+            console.log(`✅ Esta é a ÚLTIMA parcela PAGA do caução`);
+            console.log(`🔥🔥🔥 FIM DA CONFIRMAÇÃO 🔥🔥🔥\n`);
           } else {
             console.log("⚠️ Nenhuma parcela paga ainda, usando data início do contrato");
             lastPaidDate = rental.startDate;

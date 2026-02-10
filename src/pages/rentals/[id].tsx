@@ -38,6 +38,10 @@ export default function RentalDetailsPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const handleTermination = () => {
+    console.log("🔥 BOTÃO DE RESCISÃO CLICADO!");
+    console.log("📋 Rental ID:", rental?.id);
+    console.log("📋 Rental Status:", rental?.status);
+    console.log("📋 Is Active:", rental?.isActive);
     setShowTerminationDialog(true);
   };
 
