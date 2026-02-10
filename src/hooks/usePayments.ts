@@ -59,23 +59,29 @@ export function usePayments() {
       setLoading(true);
       clearCacheIfExpired();
 
+      console.log("🔍 loadPayments chamado com filtros:", { month, year });
+
       // PASSO 1: Buscar apenas payments (query rápida)
       let query = supabase
         .from("payments")
         .select("id, rental_id, due_date, expected_amount, paid_amount, payment_date, status, payment_method, notes, reference_month, reference_year, attachments, late_fee, interest")
         .order("due_date", { ascending: true });
 
-      // Aplicar filtros de mês/ano
+      // CRÍTICO: Aplicar filtros de mês/ano SEMPRE (nunca buscar tudo)
       if (month && month !== "all") {
         query = query.eq("reference_month", month);
+        console.log("✅ Filtro de mês aplicado:", month);
       }
       if (year && year !== "all") {
         query = query.eq("reference_year", year);
+        console.log("✅ Filtro de ano aplicado:", year);
       }
 
       const { data: paymentsData, error: paymentsError } = await query;
 
       if (paymentsError) throw paymentsError;
+
+      console.log("📊 Payments retornados do banco:", paymentsData?.length || 0);
 
       if (!paymentsData || paymentsData.length === 0) {
         setPayments([]);
@@ -276,6 +282,8 @@ export function usePayments() {
       setProperties(Array.from(propertiesMap.values()));
       setTenants(Array.from(tenantsMap.values()));
 
+      console.log("✅ Estados atualizados. Total de payments:", paymentsMap.length);
+
     } catch (error) {
       console.error("❌ Erro ao carregar pagamentos:", error);
       toast({
@@ -343,10 +351,6 @@ export function usePayments() {
     if (!payment.installment || !payment.totalInstallments) return null;
     return `${payment.installment}/${payment.totalInstallments}`;
   };
-
-  useEffect(() => {
-    loadPayments();
-  }, []);
 
   return {
     payments,

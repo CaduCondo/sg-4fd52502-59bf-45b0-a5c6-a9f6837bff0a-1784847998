@@ -70,10 +70,21 @@ export default function Payments() {
   const [selectedYear, setSelectedYear] = useState<string>(currentDate.getFullYear().toString());
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
-  // Recarregar pagamentos quando os filtros de mês/ano mudarem
+  // CARREGAMENTO INICIAL: Sempre com o mês atual
+  useEffect(() => {
+    console.log("🚀 Carregamento inicial da página payments");
+    console.log("📅 Filtros iniciais:", { 
+      selectedMonth, 
+      selectedYear 
+    });
+    loadPayments(selectedMonth, selectedYear);
+  }, []); // Só executa na montagem inicial
+
+  // Recarregar pagamentos quando os filtros de mês/ano mudarem (após montagem)
   useEffect(() => {
     // Só carregar se os filtros estiverem definidos (não carregar todos)
     if (selectedMonth && selectedYear && selectedMonth !== "all" && selectedYear !== "all") {
+      console.log("🔄 Filtros mudaram, recarregando payments:", { selectedMonth, selectedYear });
       loadPayments(selectedMonth, selectedYear);
     }
   }, [selectedMonth, selectedYear]);
