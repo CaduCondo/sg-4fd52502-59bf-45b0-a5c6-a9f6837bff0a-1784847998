@@ -121,11 +121,11 @@ export function RentalTerminationDialog({
           });
 
           console.log("\n🔄 ORDENANDO por installment_number DESCENDENTE (maior → menor)...");
-          paidInstallments.sort((a, b) => {
-            const result = b.installment_number - a.installment_number;
-            console.log(`   Comparando: Parcela ${b.installment_number} vs Parcela ${a.installment_number} = ${result}`);
-            return result;
-          });
+          const maxInstallmentNumber = Math.max(...paidInstallments.map(inst => inst.installment_number));
+          const lastPaidInstallment = paidInstallments.find(inst => inst.installment_number === maxInstallmentNumber);
+          if (lastPaidInstallment) {
+            lastPaidDate = lastPaidInstallment.payment_date;
+          }
 
           console.log("\n📋 PARCELAS PAGAS (DEPOIS da ordenação DESC):");
           paidInstallments.forEach((inst, index) => {
@@ -133,9 +133,6 @@ export function RentalTerminationDialog({
           });
 
           if (paidInstallments.length > 0) {
-            const lastPaidInstallment = paidInstallments[0];
-            lastPaidDate = lastPaidInstallment.payment_date;
-            
             console.log("\n🔥🔥🔥 CONFIRMAÇÃO DA DATA BASE 🔥🔥🔥");
             console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
             console.log("✅ ÚLTIMA PARCELA PAGA IDENTIFICADA:");

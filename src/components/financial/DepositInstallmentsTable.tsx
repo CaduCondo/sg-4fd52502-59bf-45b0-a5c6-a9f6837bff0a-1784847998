@@ -86,35 +86,23 @@ export function DepositInstallmentsTable({
         console.log("🔍 === INÍCIO BUSCA PARCELAS DE CAUÇÃO ===");
 
         const query = supabase
-          .from("deposit_installments")
+          .from("rentals")
           .select(`
             id,
-            rental_id,
-            installment_number,
-            total_installments,
-            amount,
-            pix_code,
-            partner_commission,
-            internal_commission,
-            payment_date,
+            monthly_rent,
+            garage_value,
+            security_deposit,
+            has_partner_broker,
             status,
-            due_date,
-            rental:rentals!rental_id(
-              monthly_rent,
-              garage_value,
-              security_deposit,
-              has_partner_broker,
-              status,
-              tenant:tenants(name),
-              property:properties(
-                complement,
-                location:locations(name)
-              )
+            tenant:tenants(name),
+            property:properties(
+              complement,
+              location:locations(name)
             )
           `)
-          .order("due_date", { ascending: true, nullsFirst: false });
+          .order("security_deposit", { ascending: true, nullsFirst: false });
 
-        const { data: installmentsData, error } = await query;
+        const { data: rentalsData, error } = await query;
 
         if (error) {
           console.error("❌ Erro na query:", error);
@@ -122,20 +110,20 @@ export function DepositInstallmentsTable({
         }
 
         console.log("✅ Query executada com sucesso");
-        console.log("📊 Total de parcelas:", installmentsData?.length || 0);
+        console.log("📊 Total de locações:", rentalsData?.length || 0);
 
-        if (!installmentsData || installmentsData.length === 0) {
-          console.log("⚠️ Nenhuma parcela encontrada");
+        if (!rentalsData || rentalsData.length === 0) {
+          console.log("⚠️ Nenhuma locação encontrada");
           setData([]);
           setLoading(false);
           return;
         }
 
         // Filtrar por status de locação se necessário
-        let filteredData = installmentsData;
+        let filteredData = rentalsData;
         if (statusFilter === "active") {
-          filteredData = installmentsData.filter(
-            (inst) => inst.rental?.status === "active"
+          filteredData = rentalsData.filter(
+            (rental) => rental.status === "active"
           );
         }
 
