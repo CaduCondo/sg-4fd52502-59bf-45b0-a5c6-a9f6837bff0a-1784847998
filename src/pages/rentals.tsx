@@ -502,7 +502,6 @@ export default function RentalsPage() {
                                     setRentalToEnd(rental);
                                   }}
                                   title="Rescisão de Contrato"
-                                  disabled={rental.status === "terminated"}
                                 >
                                   <XCircle className="h-4 w-4" />
                                 </Button>
@@ -600,7 +599,6 @@ export default function RentalsPage() {
                                       setRentalToEnd(rental);
                                     }}
                                     title="Rescisão de Contrato"
-                                    disabled={rental.status === "terminated"}
                                   >
                                     <XCircle className="h-4 w-4" />
                                   </Button>

@@ -82,64 +82,73 @@ export function RentalTerminationDialog({
 
     const fetchTotalDeposit = async () => {
       try {
-        console.log("💰 === BUSCANDO CAUÇÃO TOTAL (MULTI-FONTE) ===");
-        console.log("Rental ID:", rental.id);
+        console.log("\n\n");
+        console.log("💰 ========================================");
+        console.log("💰   BUSCA DE CAUÇÃO E DATA BASE POUPANÇA");
+        console.log("💰 ========================================");
+        console.log("📋 Rental ID:", rental.id);
 
         let totalDeposit = 0;
         let source = "";
         let lastPaidDate = "";
 
-        console.log("\n🔍 FONTE 1: Buscando na tabela deposit_installments...");
+        console.log("\n🔍 FONTE 1: Tabela deposit_installments");
+        console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        
         const { data: installments, error: installmentsError } = await supabase
           .from("deposit_installments")
           .select("amount, payment_date, installment_number")
           .eq("rental_id", rental.id)
-          .order("installment_number", { ascending: false }); // DESC - do maior para menor
+          .order("installment_number", { ascending: false });
 
         if (installmentsError) {
           console.error("❌ Erro ao buscar parcelas:", installmentsError);
         } else if (installments && installments.length > 0) {
-          console.log("✅ Parcelas encontradas:", installments.length);
-          console.log("📋 Detalhes das parcelas (ordem: maior → menor):");
+          console.log("✅ Total de parcelas encontradas:", installments.length);
+          console.log("\n📊 TODAS AS PARCELAS (ordem DESC - maior para menor):");
           
-          installments.forEach(inst => {
-            const status = inst.payment_date ? `✅ Pago em: ${inst.payment_date}` : "⏳ Pendente";
-            console.log(`   Parcela ${inst.installment_number}: R$ ${inst.amount} (${status})`);
+          installments.forEach((inst, index) => {
+            const status = inst.payment_date ? `✅ PAGA em ${inst.payment_date}` : "⏳ PENDENTE";
+            console.log(`   ${index + 1}. Parcela ${inst.installment_number}: R$ ${inst.amount.toFixed(2)} - ${status}`);
           });
 
-          // CRÍTICO: Filtrar apenas parcelas PAGAS e pegar a PRIMEIRA (maior número = última paga)
           const paidInstallments = installments.filter(inst => inst.payment_date);
           
+          console.log("\n🎯 PARCELAS PAGAS (filtradas, ordem DESC):");
           if (paidInstallments.length > 0) {
-            console.log("\n🎯 Parcelas PAGAS (ordem: maior → menor):");
-            paidInstallments.forEach(inst => {
-              console.log(`   Parcela ${inst.installment_number}: ${inst.payment_date}`);
+            paidInstallments.forEach((inst, index) => {
+              console.log(`   ${index + 1}. Parcela ${inst.installment_number}: Data ${inst.payment_date}`);
             });
             
-            // A PRIMEIRA do array é a ÚLTIMA paga (maior installment_number)
-            const lastPaidInstallment = paidInstallments[0];
-            lastPaidDate = lastPaidInstallment.payment_date;
+            const lastPaid = paidInstallments[0];
+            lastPaidDate = lastPaid.payment_date;
             
-            console.log(`\n🔥🔥🔥 CONFIRMAÇÃO DA DATA BASE 🔥🔥🔥`);
-            console.log(`📅 Parcela ${lastPaidInstallment.installment_number} foi escolhida como DATA BASE`);
-            console.log(`📅 Data: ${lastPaidDate}`);
-            console.log(`💰 Valor: R$ ${lastPaidInstallment.amount}`);
-            console.log(`✅ Esta é a ÚLTIMA parcela PAGA do caução`);
-            console.log(`🔥🔥🔥 FIM DA CONFIRMAÇÃO 🔥🔥🔥\n`);
+            console.log("\n🔥🔥🔥 CONFIRMAÇÃO DA DATA BASE 🔥🔥🔥");
+            console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+            console.log("✅ ÚLTIMA PARCELA PAGA IDENTIFICADA:");
+            console.log(`   • Número da Parcela: ${lastPaid.installment_number}`);
+            console.log(`   • Valor: R$ ${lastPaid.amount.toFixed(2)}`);
+            console.log(`   • Data de Pagamento: ${lastPaidDate}`);
+            console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+            console.log("📅 ESTA DATA SERÁ USADA COMO BASE PARA CORREÇÃO POUPANÇA");
+            console.log("🔥🔥🔥 FIM DA CONFIRMAÇÃO 🔥🔥🔥\n");
           } else {
-            console.log("⚠️ Nenhuma parcela paga ainda, usando data início do contrato");
+            console.log("⚠️ Nenhuma parcela paga ainda");
             lastPaidDate = rental.startDate;
+            console.log(`📅 Usando data início do contrato como base: ${lastPaidDate}`);
           }
 
           totalDeposit = installments.reduce((sum, inst) => sum + (inst.amount || 0), 0);
-          source = "deposit_installments (tabela de parcelas)";
-          console.log("✅ SOMA DAS PARCELAS: R$", totalDeposit);
+          source = "deposit_installments";
+          console.log(`\n💰 SOMA TOTAL DAS PARCELAS: R$ ${totalDeposit.toFixed(2)}`);
         } else {
-          console.log("⚠️ Nenhuma parcela encontrada na deposit_installments");
+          console.log("⚠️ Nenhuma parcela encontrada");
         }
 
         if (totalDeposit === 0) {
-          console.log("\n🔍 FONTE 2: Buscando nos campos antigos (deposit_installment_1/2/3)...");
+          console.log("\n🔍 FONTE 2: Campos antigos (deposit_installment_1/2/3)");
+          console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+          
           const { data: rentalData, error: rentalError } = await supabase
             .from("rentals")
             .select("deposit_installment_1, deposit_installment_2, deposit_installment_3")
@@ -153,81 +162,71 @@ export function RentalTerminationDialog({
             const inst2 = Number(rentalData.deposit_installment_2) || 0;
             const inst3 = Number(rentalData.deposit_installment_3) || 0;
 
-            console.log("📋 Detalhes dos campos antigos:");
-            console.log(`   deposit_installment_1: R$ ${inst1}`);
-            console.log(`   deposit_installment_2: R$ ${inst2}`);
-            console.log(`   deposit_installment_3: R$ ${inst3}`);
+            console.log(`   Parcela 1: R$ ${inst1.toFixed(2)}`);
+            console.log(`   Parcela 2: R$ ${inst2.toFixed(2)}`);
+            console.log(`   Parcela 3: R$ ${inst3.toFixed(2)}`);
 
             totalDeposit = inst1 + inst2 + inst3;
             if (totalDeposit > 0) {
-              source = "campos deposit_installment_X (rentals)";
+              source = "campos deposit_installment_X";
               lastPaidDate = rental.startDate;
-              console.log("✅ SOMA DOS CAMPOS ANTIGOS: R$", totalDeposit);
-            } else {
-              console.log("⚠️ Campos antigos também estão zerados");
+              console.log(`✅ Total: R$ ${totalDeposit.toFixed(2)}`);
             }
           }
         }
 
         if (totalDeposit === 0) {
-          console.log("\n🔍 FONTE 3: Buscando no campo security_deposit...");
+          console.log("\n🔍 FONTE 3: Campo security_deposit");
           const securityDepositValue = Number(rental.security_deposit) || 0;
-          console.log(`   security_deposit: R$ ${securityDepositValue}`);
-
           if (securityDepositValue > 0) {
             totalDeposit = securityDepositValue;
-            source = "security_deposit (rentals)";
+            source = "security_deposit";
             lastPaidDate = rental.startDate;
-            console.log("✅ USANDO SECURITY_DEPOSIT: R$", totalDeposit);
-          } else {
-            console.log("⚠️ security_deposit também está zerado");
+            console.log(`✅ Valor: R$ ${totalDeposit.toFixed(2)}`);
           }
         }
 
         if (totalDeposit === 0) {
-          console.log("\n🔍 FONTE 4: Buscando no campo deposit_value...");
-          const { data: rentalData, error: rentalError } = await supabase
+          console.log("\n🔍 FONTE 4: Campo deposit_value");
+          const { data: rentalData } = await supabase
             .from("rentals")
             .select("deposit_value")
             .eq("id", rental.id)
             .single();
 
-          if (rentalError) {
-            console.error("❌ Erro ao buscar rental:", rentalError);
-          } else if (rentalData) {
+          if (rentalData) {
             const depositValue = Number(rentalData.deposit_value) || 0;
-            console.log(`   deposit_value: R$ ${depositValue}`);
-
             if (depositValue > 0) {
               totalDeposit = depositValue;
-              source = "deposit_value (rentals)";
+              source = "deposit_value";
               lastPaidDate = rental.startDate;
-              console.log("✅ USANDO DEPOSIT_VALUE: R$", totalDeposit);
-            } else {
-              console.log("⚠️ deposit_value também está zerado");
+              console.log(`✅ Valor: R$ ${totalDeposit.toFixed(2)}`);
             }
           }
         }
 
-        console.log("\n💰 === RESULTADO FINAL ===");
+        console.log("\n💰 ========================================");
+        console.log("💰   RESULTADO FINAL DA BUSCA");
+        console.log("💰 ========================================");
         if (totalDeposit > 0) {
-          console.log(`✅ Caução encontrado: R$ ${totalDeposit}`);
+          console.log(`✅ Caução encontrado: R$ ${totalDeposit.toFixed(2)}`);
           console.log(`📍 Fonte: ${source}`);
-          console.log(`📅 Data base para correção: ${lastPaidDate}`);
+          console.log(`📅 Data base: ${lastPaidDate}`);
         } else {
-          console.error("❌ NENHUM VALOR DE CAUÇÃO ENCONTRADO EM NENHUMA FONTE!");
-          console.log("⚠️ Rescisão será BLOQUEADA até o caução ser cadastrado");
+          console.error("❌ NENHUM VALOR DE CAUÇÃO ENCONTRADO!");
         }
-        console.log("💰 === FIM DA BUSCA ===\n");
+        console.log("💰 ========================================\n");
 
         setDepositAmount(totalDeposit);
         setLastInstallmentDate(lastPaidDate);
         
         if (totalDeposit > 0 && lastPaidDate) {
-          console.log("\n💰 === APLICANDO CORREÇÃO POUPANÇA NO CAUÇÃO ===");
-          console.log("Valor original do caução:", totalDeposit);
-          console.log("Data base (última parcela paga):", lastPaidDate);
-          console.log("Data rescisão (hoje):", format(today, "yyyy-MM-dd"));
+          console.log("\n📈 ========================================");
+          console.log("📈   APLICAÇÃO DA CORREÇÃO POUPANÇA");
+          console.log("📈 ========================================");
+          console.log(`💰 Valor original: R$ ${totalDeposit.toFixed(2)}`);
+          console.log(`📅 Data base (última parcela): ${lastPaidDate}`);
+          console.log(`📅 Data rescisão (hoje): ${format(today, "yyyy-MM-dd")}`);
           
           try {
             const poupancaCorrection = calculateCorrectedDeposit(
@@ -236,10 +235,10 @@ export function RentalTerminationDialog({
               format(today, "yyyy-MM-dd")
             );
             
-            console.log("✅ Valor corrigido pela Poupança:", poupancaCorrection.correctedAmount);
-            console.log("📊 Percentual Poupança acumulado:", poupancaCorrection.poupancaPercentage.toFixed(4) + "%");
-            console.log("📅 Detalhamento:", poupancaCorrection.poupancaDetails);
-            console.log("💰 === FIM DA APLICAÇÃO DA POUPANÇA ===\n");
+            console.log(`✅ Valor corrigido: R$ ${poupancaCorrection.correctedAmount.toFixed(2)}`);
+            console.log(`📊 Percentual Poupança: +${poupancaCorrection.poupancaPercentage.toFixed(4)}%`);
+            console.log(`📋 Detalhes: ${poupancaCorrection.poupancaDetails}`);
+            console.log("📈 ========================================\n");
             
             setCorrectedDepositAmount(poupancaCorrection.correctedAmount);
             setPoupancaPercentage(poupancaCorrection.poupancaPercentage);
@@ -249,13 +248,12 @@ export function RentalTerminationDialog({
             setPoupancaPercentage(0);
           }
         } else {
-          console.log("⚠️ Não foi possível calcular Poupança (dados insuficientes)");
           setCorrectedDepositAmount(totalDeposit);
           setPoupancaPercentage(0);
         }
 
       } catch (error) {
-        console.error("❌ Erro CRÍTICO ao buscar caução:", error);
+        console.error("❌ ERRO CRÍTICO:", error);
         setDepositAmount(0);
         setCorrectedDepositAmount(0);
         setPoupancaPercentage(0);
