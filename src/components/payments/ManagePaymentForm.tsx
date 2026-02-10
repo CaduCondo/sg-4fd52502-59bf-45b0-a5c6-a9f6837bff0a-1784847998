@@ -288,12 +288,12 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       // Atualizar breakdown com valor IGPM se disponível
       let workingBreakdown = [...originalBreakdown];
       
-      if (igpmCorrectionValue) {
+      if (igpmCorrection) {
         workingBreakdown = workingBreakdown.map((item: any) => {
           if (item.description?.includes("Devolução de Caução")) {
             return {
               ...item,
-              amount: -igpmCorrectionValue.correctedAmount,
+              amount: -igpmCorrection.correctedAmount,
             };
           }
           return item;
@@ -337,7 +337,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     isEditMode,
     loading,
     payment,
-    igpmCorrectionValue
+    igpmCorrection
   ]);
 
   const formatCurrency = (value: string | number): string => {
@@ -473,12 +473,12 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
             : (payment.breakdown || []);
           
           // Atualizar valor do caução com IGPM se disponível
-          if (igpmCorrectionValue) {
+          if (igpmCorrection) {
             breakdownData = breakdownData.map((item: any) => {
               if (item.description?.includes("Devolução de Caução")) {
                 return {
                   ...item,
-                  amount: -igpmCorrectionValue.correctedAmount,
+                  amount: -igpmCorrection.correctedAmount,
                 };
               }
               return item;
