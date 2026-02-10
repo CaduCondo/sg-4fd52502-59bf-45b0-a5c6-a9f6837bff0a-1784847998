@@ -43,7 +43,7 @@ export function usePayments() {
     for (let i = 0; i < ids.length; i += batchSize) {
       const batch = ids.slice(i, i + batchSize);
       const { data, error } = await supabase
-        .from(table)
+        .from(table as any)
         .select(select)
         .in("id", batch);
 
