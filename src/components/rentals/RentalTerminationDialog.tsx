@@ -94,7 +94,7 @@ export function RentalTerminationDialog({
           .from("deposit_installments")
           .select("amount, payment_date, installment_number")
           .eq("rental_id", rental.id)
-          .order("installment_number", { ascending: false });
+          .order("installment_number", { ascending: true });
 
         if (installmentsError) {
           console.error("❌ Erro ao buscar parcelas:", installmentsError);
@@ -113,8 +113,10 @@ export function RentalTerminationDialog({
           source = "deposit_installments (tabela de parcelas)";
           
           if (paidInstallments.length > 0) {
-            lastPaidDate = paidInstallments[0].payment_date;
-            console.log("📅 Data da ÚLTIMA parcela paga:", lastPaidDate);
+            // CRÍTICO: Pegar a ÚLTIMA parcela paga (maior installment_number com payment_date)
+            const sortedPaidInstallments = paidInstallments.sort((a, b) => b.installment_number - a.installment_number);
+            lastPaidDate = sortedPaidInstallments[0].payment_date;
+            console.log("📅 Data da ÚLTIMA parcela PAGA:", lastPaidDate, `(Parcela ${sortedPaidInstallments[0].installment_number})`);
           } else {
             console.log("⚠️ Nenhuma parcela paga ainda, usando data início do contrato");
             lastPaidDate = rental.startDate;
@@ -452,7 +454,6 @@ export function RentalTerminationDialog({
               type="date"
               value={terminationDate}
               onChange={(e) => setTerminationDate(e.target.value)}
-              max={format(parseISO(rental.endDate), "yyyy-MM-dd")}
               required
             />
             {proportionalDays > 0 && (

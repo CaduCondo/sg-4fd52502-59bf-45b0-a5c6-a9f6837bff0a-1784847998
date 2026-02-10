@@ -158,7 +158,7 @@ export function useDashboardData(month: number, year: number, userId: string | u
           console.log(`✅ Properties carregados: ${propertiesData?.length || 0}`);
         }
 
-        // 4. Buscar TODAS as locações (ativas e inativas) para contar inquilinos corretamente
+        // 4. Buscar TODAS as locações (ativas e inativas)
         const allowedPropertyIds = (propertiesData || []).map((p: any) => p.id);
         
         let rentalsQuery = supabase
@@ -174,6 +174,7 @@ export function useDashboardData(month: number, year: number, userId: string | u
             setPayments([]);
             setProperties([]);
             setRentals([]);
+            setTenants([]);
             setLoading(false);
           }
           return;
@@ -188,10 +189,6 @@ export function useDashboardData(month: number, year: number, userId: string | u
           const activeRentals = rentalsData?.filter(r => r.is_active).length || 0;
           console.log(`   - Ativos: ${activeRentals}`);
           console.log(`   - Inativos: ${(rentalsData?.length || 0) - activeRentals}`);
-          
-          // Contar tenant_ids únicos para total de inquilinos
-          const uniqueTenantIds = new Set(rentalsData?.map((r: any) => r.tenant_id) || []);
-          console.log(`👥 Total de inquilinos únicos: ${uniqueTenantIds.size}`);
         }
 
         // 5. Buscar pagamentos do período (filtrados pelos rentals ATIVOS permitidos)
@@ -214,6 +211,7 @@ export function useDashboardData(month: number, year: number, userId: string | u
             setPayments([]);
             setProperties((propertiesData || []).map(mapPropertyFromDB));
             setRentals((rentalsData || []).map(mapRentalFromDB));
+            setTenants([]);
             setLoading(false);
           }
           return;
@@ -234,7 +232,6 @@ export function useDashboardData(month: number, year: number, userId: string | u
           .eq("reference_month", month)
           .eq("reference_year", year);
         
-        // Filtrar despesas por locais permitidos se for usuário financeiro
         if (userRole === "financial" && allowedLocations.length > 0) {
           expensesQuery = expensesQuery.in("location_id", allowedLocations);
           console.log("💸 Filtrando location_expenses por locais permitidos");
@@ -263,34 +260,56 @@ export function useDashboardData(month: number, year: number, userId: string | u
           }
         }
 
-        // 7. Buscar TODOS os inquilinos cadastrados (ATIVOS + LOCATÁRIOS)
-        const tenantsQuery = supabase
+        // 7. CORRIGIDO: Buscar TODOS os inquilinos únicos das locações ATIVAS + inquilinos disponíveis (active)
+        console.log("\n👥 === CONTANDO INQUILINOS ÚNICOS ===");
+        
+        // Pegar tenant_ids únicos dos contratos ATIVOS
+        const uniqueTenantIdsInActiveRentals = new Set(
+          (rentalsData || [])
+            .filter((r: any) => r.is_active)
+            .map((r: any) => r.tenant_id)
+        );
+        
+        console.log(`📋 Inquilinos únicos em contratos ATIVOS: ${uniqueTenantIdsInActiveRentals.size}`);
+        
+        // Buscar inquilinos disponíveis (status = 'active')
+        const { data: availableTenants, error: availableError } = await supabase
           .from("tenants")
-          .select("id, name, status")
-          .in("status", ["active", "tenant"]);
-
-        const { data: tenantsData, error: tenantsError } = await tenantsQuery;
-
-        if (tenantsError) {
-          console.error("❌ Erro ao buscar inquilinos:", tenantsError);
-        } else {
-          console.log(`✅ Inquilinos carregados (TODOS - active + tenant): ${tenantsData?.length || 0}`);
-          console.log("📊 Breakdown por status:", tenantsData?.reduce((acc: any, t: any) => {
-            acc[t.status] = (acc[t.status] || 0) + 1;
-            return acc;
-          }, {}));
+          .select("id")
+          .eq("status", "active");
+        
+        if (availableError) {
+          console.error("❌ Erro ao buscar inquilinos disponíveis:", availableError);
         }
+        
+        const availableTenantIds = new Set((availableTenants || []).map(t => t.id));
+        console.log(`📋 Inquilinos disponíveis (active): ${availableTenantIds.size}`);
+        
+        // Combinar os dois conjuntos (união)
+        const allUniqueTenantIds = new Set([
+          ...uniqueTenantIdsInActiveRentals,
+          ...availableTenantIds
+        ]);
+        
+        console.log(`✅ TOTAL DE INQUILINOS ÚNICOS: ${allUniqueTenantIds.size}`);
+        console.log(`   - Em contratos ativos: ${uniqueTenantIdsInActiveRentals.size}`);
+        console.log(`   - Disponíveis: ${availableTenantIds.size}`);
+        console.log("👥 === FIM DA CONTAGEM ===\n");
+        
+        // Criar array de objetos tenant com o tamanho correto
+        const tenantsArray = Array.from(allUniqueTenantIds).map(id => ({ id }));
 
         if (isMounted) {
           setPayments((paymentsData || []).map(mapPaymentFromDB));
           setProperties((propertiesData || []).map(mapPropertyFromDB));
           setRentals((rentalsData || []).map(mapRentalFromDB));
-          setTenants(tenantsData || []); // Salvar inquilinos
+          setTenants(tenantsArray);
           console.log("✅ Dashboard: Dados carregados com sucesso");
           console.log("📊 Resumo:", {
             properties: propertiesData?.length || 0,
             rentals: rentalsData?.length || 0,
             payments: paymentsData?.length || 0,
+            tenants: tenantsArray.length,
             allowedLocations: userRole === "financial" ? allowedLocations : "Todos"
           });
         }
