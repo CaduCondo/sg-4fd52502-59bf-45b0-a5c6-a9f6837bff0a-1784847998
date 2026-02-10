@@ -181,34 +181,32 @@ export default function RentalDetailsPage() {
                 </Button>
               )}
 
-              {rental.status === "active" && (
-                <>
-                  <Button
-                    variant="outline"
-                    className="bg-blue-500 hover:bg-blue-600 text-white border-blue-500"
-                    onClick={() => setShowRenewalDialog(true)}
-                  >
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Renovação
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="bg-yellow-500 hover:bg-yellow-600 text-white border-yellow-500"
-                    onClick={handleTermination}
-                  >
-                    <XCircle className="h-4 w-4 mr-2" />
-                    Encerrar Contrato
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="bg-red-500 hover:bg-red-600 text-white border-red-500"
-                    onClick={() => setShowDeleteDialog(true)}
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Excluir
-                  </Button>
-                </>
-              )}
+              <Button
+                variant="outline"
+                className="bg-blue-500 hover:bg-blue-600 text-white border-blue-500"
+                onClick={() => setShowRenewalDialog(true)}
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Renovação
+              </Button>
+              
+              <Button
+                variant="outline"
+                className="bg-yellow-500 hover:bg-yellow-600 text-white border-yellow-500"
+                onClick={handleTermination}
+              >
+                <XCircle className="h-4 w-4 mr-2" />
+                Encerrar Contrato
+              </Button>
+              
+              <Button
+                variant="outline"
+                className="bg-red-500 hover:bg-red-600 text-white border-red-500"
+                onClick={() => setShowDeleteDialog(true)}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Excluir
+              </Button>
             </div>
           </div>
 

@@ -165,6 +165,7 @@ export default function Dashboard() {
       paymentsCount: payments.length,
       propertiesCount: properties.length,
       rentalsCount: rentals.length,
+      tenantsCount: tenants.length,
       locationExpenses
     });
 
@@ -173,10 +174,8 @@ export default function Dashboard() {
     const rentedProperties = properties.filter(p => p.status === 'occupied').length;
     const unavailableProperties = properties.filter(p => p.status === 'unavailable').length;
     
-    // CORREÇÃO: Total de inquilinos = TODOS os inquilinos cadastrados (não só os em locação)
-    // Buscar todos os tenant_ids únicos dos rentals (ativos e inativos)
-    const allTenantIds = new Set(rentals.map(r => r.tenantId));
-    const totalTenants = allTenantIds.size;
+    // Total de inquilinos = todos os inquilinos (active + tenant)
+    const totalTenants = tenants.length;
     
     const activeContracts = rentals.filter(r => r.isActive).length;
     
@@ -298,7 +297,7 @@ export default function Dashboard() {
       totalFeesAndExpenses,
       netRevenue,
     };
-  }, [payments, properties, rentals, locationExpenses, exemptLocationIds]);
+  }, [payments, properties, rentals, locationExpenses, exemptLocationIds, tenants]);
 
   return (
     <Layout>

@@ -57,20 +57,11 @@ export function Lightbox({ files, initialIndex, onClose }: LightboxProps) {
     document.body.removeChild(link);
   };
 
-  const handleBackgroundClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
-      onClose();
-    }
-  };
-
   const isImage = currentFile.type.startsWith("image/");
   const isPDF = currentFile.type === "application/pdf";
 
   return (
-    <div 
-      className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center"
-      onClick={handleBackgroundClick}
-    >
+    <div className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center">
       <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/80 to-transparent p-4 z-10">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="text-white">
@@ -85,10 +76,7 @@ export function Lightbox({ files, initialIndex, onClose }: LightboxProps) {
               variant="ghost"
               size="icon"
               className="text-white hover:bg-white/10"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleDownload();
-              }}
+              onClick={handleDownload}
             >
               <Download size={20} />
             </Button>
@@ -97,10 +85,7 @@ export function Lightbox({ files, initialIndex, onClose }: LightboxProps) {
               variant="ghost"
               size="icon"
               className="text-white hover:bg-white/10"
-              onClick={(e) => {
-                e.stopPropagation();
-                onClose();
-              }}
+              onClick={onClose}
             >
               <X size={20} />
             </Button>
@@ -114,10 +99,7 @@ export function Lightbox({ files, initialIndex, onClose }: LightboxProps) {
             variant="ghost"
             size="icon"
             className="absolute left-4 top-1/2 -translate-y-1/2 text-white hover:bg-white/10 h-12 w-12 z-10"
-            onClick={(e) => {
-              e.stopPropagation();
-              handlePrevious();
-            }}
+            onClick={handlePrevious}
             disabled={currentIndex === 0}
           >
             <ChevronLeft size={32} />
@@ -127,10 +109,7 @@ export function Lightbox({ files, initialIndex, onClose }: LightboxProps) {
             variant="ghost"
             size="icon"
             className="absolute right-4 top-1/2 -translate-y-1/2 text-white hover:bg-white/10 h-12 w-12 z-10"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleNext();
-            }}
+            onClick={handleNext}
             disabled={currentIndex === files.length - 1}
           >
             <ChevronRight size={32} />
@@ -138,10 +117,7 @@ export function Lightbox({ files, initialIndex, onClose }: LightboxProps) {
         </>
       )}
 
-      <div 
-        className="max-w-[95vw] max-h-[85vh] w-full h-full flex items-center justify-center p-4"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="max-w-[95vw] max-h-[85vh] w-full h-full flex items-center justify-center p-4">
         {isImage ? (
           <div className="relative w-full h-full flex items-center justify-center">
             <img
@@ -177,10 +153,7 @@ export function Lightbox({ files, initialIndex, onClose }: LightboxProps) {
             {files.map((file, index) => (
               <button
                 key={index}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setCurrentIndex(index);
-                }}
+                onClick={() => setCurrentIndex(index)}
                 className={`flex-shrink-0 w-16 h-16 rounded border-2 transition-all ${
                   index === currentIndex
                     ? "border-blue-500 scale-110"
