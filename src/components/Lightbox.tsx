@@ -60,6 +60,7 @@ export function Lightbox({ files, initialIndex, onClose }: LightboxProps) {
 
   const handleClose = (e: React.MouseEvent) => {
     e.stopPropagation();
+    e.preventDefault();
     onClose();
   };
 
@@ -87,6 +88,7 @@ export function Lightbox({ files, initialIndex, onClose }: LightboxProps) {
               className="text-white hover:bg-white/10"
               onClick={(e) => {
                 e.stopPropagation();
+                e.preventDefault();
                 handleDownload();
               }}
             >
@@ -97,7 +99,11 @@ export function Lightbox({ files, initialIndex, onClose }: LightboxProps) {
               variant="ghost"
               size="icon"
               className="text-white hover:bg-white/10"
-              onClick={handleClose}
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                onClose();
+              }}
             >
               <X size={20} />
             </Button>
@@ -113,6 +119,7 @@ export function Lightbox({ files, initialIndex, onClose }: LightboxProps) {
             className="absolute left-4 top-1/2 -translate-y-1/2 text-white hover:bg-white/10 h-12 w-12 z-10"
             onClick={(e) => {
               e.stopPropagation();
+              e.preventDefault();
               handlePrevious();
             }}
             disabled={currentIndex === 0}
@@ -126,6 +133,7 @@ export function Lightbox({ files, initialIndex, onClose }: LightboxProps) {
             className="absolute right-4 top-1/2 -translate-y-1/2 text-white hover:bg-white/10 h-12 w-12 z-10"
             onClick={(e) => {
               e.stopPropagation();
+              e.preventDefault();
               handleNext();
             }}
             disabled={currentIndex === files.length - 1}

@@ -49,9 +49,10 @@ export function RentalTerminationDialog({
   const [currentMonth, setCurrentMonth] = useState<number>(0);
   const [totalMonths, setTotalMonths] = useState<number>(0);
   
-  // Estado para valor corrigido do caução pelo IGPM
+  // Estado para valor corrigido do caução pela Poupança
   const [correctedDepositAmount, setCorrectedDepositAmount] = useState<number>(0);
-  const [igpmPercentage, setIgpmPercentage] = useState<number>(0);
+  const [poupancaPercentage, setPoupancaPercentage] = useState<number>(0);
+  const [lastInstallmentDate, setLastInstallmentDate] = useState<string>("");
 
   useEffect(() => {
     if (!rental || !open) {
@@ -63,6 +64,9 @@ export function RentalTerminationDialog({
       setCurrentMonth(0);
       setTotalMonths(0);
       setDepositAmount(0);
+      setCorrectedDepositAmount(0);
+      setPoupancaPercentage(0);
+      setLastInstallmentDate("");
       return;
     }
 
@@ -85,6 +89,7 @@ export function RentalTerminationDialog({
 
         let totalDeposit = 0;
         let source = "";
+        let lastPaidDate = "";
 
         // ========================================
         // FONTE 1: Tabela deposit_installments
@@ -93,13 +98,17 @@ export function RentalTerminationDialog({
         const { data: installments, error: installmentsError } = await supabase
           .from("deposit_installments")
           .select("amount, payment_date, installment_number")
-          .eq("rental_id", rental.id);
+          .eq("rental_id", rental.id)
+          .order("installment_number", { ascending: false });
 
         if (installmentsError) {
           console.error("❌ Erro ao buscar parcelas:", installmentsError);
         } else if (installments && installments.length > 0) {
           console.log("✅ Parcelas encontradas:", installments.length);
           console.log("📋 Detalhes:");
+          
+          const paidInstallments = installments.filter(inst => inst.payment_date);
+          
           installments.forEach(inst => {
             const status = inst.payment_date ? `✅ Pago em: ${inst.payment_date}` : "⏳ Pendente";
             console.log(`   Parcela ${inst.installment_number}: R$ ${inst.amount} (${status})`);
@@ -107,6 +116,16 @@ export function RentalTerminationDialog({
 
           totalDeposit = installments.reduce((sum, inst) => sum + (inst.amount || 0), 0);
           source = "deposit_installments (tabela de parcelas)";
+          
+          // Buscar data da ÚLTIMA PARCELA PAGA
+          if (paidInstallments.length > 0) {
+            lastPaidDate = paidInstallments[0].payment_date; // Já ordenado DESC
+            console.log("📅 Data da última parcela paga:", lastPaidDate);
+          } else {
+            console.log("⚠️ Nenhuma parcela paga ainda, usando data início do contrato");
+            lastPaidDate = rental.startDate;
+          }
+          
           console.log("✅ SOMA DAS PARCELAS: R$", totalDeposit);
         } else {
           console.log("⚠️ Nenhuma parcela encontrada na deposit_installments");
@@ -138,6 +157,7 @@ export function RentalTerminationDialog({
             totalDeposit = inst1 + inst2 + inst3;
             if (totalDeposit > 0) {
               source = "campos deposit_installment_X (rentals)";
+              lastPaidDate = rental.startDate; // Fallback para data início
               console.log("✅ SOMA DOS CAMPOS ANTIGOS: R$", totalDeposit);
             } else {
               console.log("⚠️ Campos antigos também estão zerados");
@@ -156,6 +176,7 @@ export function RentalTerminationDialog({
           if (securityDepositValue > 0) {
             totalDeposit = securityDepositValue;
             source = "security_deposit (rentals)";
+            lastPaidDate = rental.startDate; // Fallback para data início
             console.log("✅ USANDO SECURITY_DEPOSIT: R$", totalDeposit);
           } else {
             console.log("⚠️ security_deposit também está zerado");
@@ -182,6 +203,7 @@ export function RentalTerminationDialog({
             if (depositValue > 0) {
               totalDeposit = depositValue;
               source = "deposit_value (rentals)";
+              lastPaidDate = rental.startDate; // Fallback para data início
               console.log("✅ USANDO DEPOSIT_VALUE: R$", totalDeposit);
             } else {
               console.log("⚠️ deposit_value também está zerado");
@@ -196,6 +218,7 @@ export function RentalTerminationDialog({
         if (totalDeposit > 0) {
           console.log(`✅ Caução encontrado: R$ ${totalDeposit}`);
           console.log(`📍 Fonte: ${source}`);
+          console.log(`📅 Data base para correção: ${lastPaidDate}`);
         } else {
           console.error("❌ NENHUM VALOR DE CAUÇÃO ENCONTRADO EM NENHUMA FONTE!");
           console.log("⚠️ Rescisão será BLOQUEADA até o caução ser cadastrado");
@@ -203,37 +226,38 @@ export function RentalTerminationDialog({
         console.log("💰 === FIM DA BUSCA ===\n");
 
         setDepositAmount(totalDeposit);
+        setLastInstallmentDate(lastPaidDate);
         
-        // APLICAR CORREÇÃO DO IGPM NO CAUÇÃO
-        if (totalDeposit > 0 && rental.startDate && terminationDate) {
+        // APLICAR CORREÇÃO DA POUPANÇA NO CAUÇÃO
+        if (totalDeposit > 0 && lastPaidDate && terminationDate) {
           console.log("\n💰 === APLICANDO CORREÇÃO POUPANÇA NO CAUÇÃO ===");
           console.log("Valor original do caução:", totalDeposit);
-          console.log("Data início contrato:", rental.startDate);
+          console.log("Data base (última parcela paga):", lastPaidDate);
           console.log("Data rescisão:", terminationDate);
           
           try {
             const poupancaCorrection = calculateCorrectedDeposit(
               totalDeposit,
-              rental.startDate,
+              lastPaidDate,
               terminationDate
             );
             
             console.log("✅ Valor corrigido pela Poupança:", poupancaCorrection.correctedAmount);
-            console.log("📊 Percentual Poupança acumulado:", poupancaCorrection.poupancaPercentage.toFixed(2) + "%");
+            console.log("📊 Percentual Poupança acumulado:", poupancaCorrection.poupancaPercentage.toFixed(4) + "%");
             console.log("📅 Detalhamento:", poupancaCorrection.poupancaDetails);
             console.log("💰 === FIM DA APLICAÇÃO DA POUPANÇA ===\n");
             
             setCorrectedDepositAmount(poupancaCorrection.correctedAmount);
-            setIgpmPercentage(poupancaCorrection.poupancaPercentage);
+            setPoupancaPercentage(poupancaCorrection.poupancaPercentage);
           } catch (error) {
             console.error("❌ Erro ao calcular Poupança:", error);
             setCorrectedDepositAmount(totalDeposit); // Fallback para valor original
-            setIgpmPercentage(0);
+            setPoupancaPercentage(0);
           }
         } else {
           console.log("⚠️ Não foi possível calcular Poupança (dados insuficientes)");
           setCorrectedDepositAmount(totalDeposit);
-          setIgpmPercentage(0);
+          setPoupancaPercentage(0);
         }
 
       } catch (error) {
@@ -241,7 +265,8 @@ export function RentalTerminationDialog({
         console.error("Detalhes:", JSON.stringify(error, null, 2));
         setDepositAmount(0);
         setCorrectedDepositAmount(0);
-        setIgpmPercentage(0);
+        setPoupancaPercentage(0);
+        setLastInstallmentDate("");
       }
     };
 
@@ -337,7 +362,7 @@ export function RentalTerminationDialog({
         terminationDate,
         applyPenalty: applyFullContractPenalty || apply12MonthsPenalty,
         penaltyAmount,
-        depositAmount: correctedDepositAmount > 0 ? correctedDepositAmount : depositAmount, // Usa valor corrigido se disponível
+        depositAmount: correctedDepositAmount > 0 ? correctedDepositAmount : depositAmount,
       });
       onOpenChange(false);
     } catch (error) {
@@ -398,17 +423,18 @@ export function RentalTerminationDialog({
                   <p className="text-sm text-blue-800 dark:text-blue-200">
                     Esta rescisão devolverá:
                   </p>
-                  {igpmPercentage > 0 ? (
+                  {poupancaPercentage > 0 ? (
                     <>
-                      <div className="text-sm text-blue-700 dark:text-blue-300">
+                      <div className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
                         <p>Valor original: R$ {depositAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
-                        <p className="font-medium">Correção Poupança: {igpmPercentage.toFixed(2)}%</p>
+                        <p>Data base: {lastInstallmentDate ? format(parseISO(lastInstallmentDate), "dd/MM/yyyy", { locale: ptBR }) : "N/A"}</p>
+                        <p className="font-medium">Correção Poupança: +{poupancaPercentage.toFixed(4)}%</p>
                       </div>
                       <p className="text-2xl font-bold text-center text-blue-900 dark:text-blue-100">
                         R$ {correctedDepositAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                       </p>
                       <p className="text-xs text-blue-700 dark:text-blue-300">
-                        Valor corrigido pela Taxa da Poupança do período.
+                        Valor corrigido pela Taxa da Poupança desde {lastInstallmentDate ? format(parseISO(lastInstallmentDate), "dd/MM/yyyy", { locale: ptBR }) : "data início"} até hoje.
                       </p>
                     </>
                   ) : (
