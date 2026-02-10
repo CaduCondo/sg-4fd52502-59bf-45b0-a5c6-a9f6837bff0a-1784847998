@@ -98,39 +98,43 @@ export function RentalTerminationDialog({
         const { data: installments, error: installmentsError } = await supabase
           .from("deposit_installments")
           .select("amount, payment_date, installment_number")
-          .eq("rental_id", rental.id)
-          .order("installment_number", { ascending: false });
+          .eq("rental_id", rental.id);
 
         if (installmentsError) {
           console.error("❌ Erro ao buscar parcelas:", installmentsError);
         } else if (installments && installments.length > 0) {
           console.log("✅ Total de parcelas encontradas:", installments.length);
-          console.log("\n📊 TODAS AS PARCELAS (ordem DESC - maior para menor):");
+          console.log("\n📊 TODAS AS PARCELAS (ordem original do banco):");
           
           installments.forEach((inst, index) => {
             const status = inst.payment_date ? `✅ PAGA em ${inst.payment_date}` : "⏳ PENDENTE";
             console.log(`   ${index + 1}. Parcela ${inst.installment_number}: R$ ${inst.amount.toFixed(2)} - ${status}`);
           });
 
-          const paidInstallments = installments.filter(inst => inst.payment_date);
+          // CRÍTICO: Filtrar parcelas pagas e ordenar por installment_number DESC
+          const paidInstallments = installments
+            .filter(inst => inst.payment_date)
+            .sort((a, b) => b.installment_number - a.installment_number); // MAIOR para MENOR!
           
-          console.log("\n🎯 PARCELAS PAGAS (filtradas, ordem DESC):");
+          console.log("\n🎯 PARCELAS PAGAS (ordenadas: MAIOR → menor):");
           if (paidInstallments.length > 0) {
             paidInstallments.forEach((inst, index) => {
-              console.log(`   ${index + 1}. Parcela ${inst.installment_number}: Data ${inst.payment_date}`);
+              console.log(`   ${index + 1}. Parcela ${inst.installment_number}: Data ${inst.payment_date} (R$ ${inst.amount.toFixed(2)})`);
             });
             
-            const lastPaid = paidInstallments[0];
-            lastPaidDate = lastPaid.payment_date;
+            // PEGA A PRIMEIRA = MAIOR NÚMERO DE PARCELA = ÚLTIMA PAGA!
+            const lastPaidInstallment = paidInstallments[0];
+            lastPaidDate = lastPaidInstallment.payment_date;
             
             console.log("\n🔥🔥🔥 CONFIRMAÇÃO DA DATA BASE 🔥🔥🔥");
             console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
             console.log("✅ ÚLTIMA PARCELA PAGA IDENTIFICADA:");
-            console.log(`   • Número da Parcela: ${lastPaid.installment_number}`);
-            console.log(`   • Valor: R$ ${lastPaid.amount.toFixed(2)}`);
+            console.log(`   • Número da Parcela: ${lastPaidInstallment.installment_number}`);
+            console.log(`   • Valor: R$ ${lastPaidInstallment.amount.toFixed(2)}`);
             console.log(`   • Data de Pagamento: ${lastPaidDate}`);
             console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
             console.log("📅 ESTA DATA SERÁ USADA COMO BASE PARA CORREÇÃO POUPANÇA");
+            console.log("💡 Quanto mais recente a data, MENOR a correção (mais barato)");
             console.log("🔥🔥🔥 FIM DA CONFIRMAÇÃO 🔥🔥🔥\n");
           } else {
             console.log("⚠️ Nenhuma parcela paga ainda");
@@ -139,7 +143,7 @@ export function RentalTerminationDialog({
           }
 
           totalDeposit = installments.reduce((sum, inst) => sum + (inst.amount || 0), 0);
-          source = "deposit_installments";
+          source = "deposit_installments (tabela de parcelas)";
           console.log(`\n💰 SOMA TOTAL DAS PARCELAS: R$ ${totalDeposit.toFixed(2)}`);
         } else {
           console.log("⚠️ Nenhuma parcela encontrada");
@@ -238,6 +242,7 @@ export function RentalTerminationDialog({
             console.log(`✅ Valor corrigido: R$ ${poupancaCorrection.correctedAmount.toFixed(2)}`);
             console.log(`📊 Percentual Poupança: +${poupancaCorrection.poupancaPercentage.toFixed(4)}%`);
             console.log(`📋 Detalhes: ${poupancaCorrection.poupancaDetails}`);
+            console.log(`💡 ECONOMIA: Quanto mais recente a data base, menor o valor corrigido (melhor para vocês!)`);
             console.log("📈 ========================================\n");
             
             setCorrectedDepositAmount(poupancaCorrection.correctedAmount);
