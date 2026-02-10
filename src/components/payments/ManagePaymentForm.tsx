@@ -674,7 +674,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       {!embedded && (
         <div className="text-center mb-6">
           <h1 className="text-2xl font-bold">
-            Registrar Recebimento
+            Registrar recebimento
           </h1>
         </div>
       )}
@@ -777,7 +777,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                               </span>
                               {isDepositDeduction && (
                                 <span className="block text-xs text-muted-foreground ml-2">
-                                  (corrigido pela inflação)
+                                  (corrigido pela Taxa da Poupança)
                                 </span>
                               )}
                             </div>
@@ -792,47 +792,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
 
                   <div className="border-t border-dashed my-2"></div>
 
-                  {values.multa > 0 && (
-                    <div className="flex justify-between text-sm">
-                      <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600"}>
-                        Multa por Atraso ({lateFeePercentage}%)
-                      </span>
-                      <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600 font-medium"}>
-                        + {formatCurrency(values.multa.toFixed(2))}
-                      </span>
-                    </div>
-                  )}
-
-                  {values.juros > 0 && (
-                    <div className="flex justify-between text-sm">
-                      <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600"}>
-                        Juros por Atraso ({interestRatePercentage.toFixed(3)}% ao dia) + {values.diasAtraso} dias
-                      </span>
-                      <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600 font-medium"}>
-                        + {formatCurrency(values.juros.toFixed(2))}
-                      </span>
-                    </div>
-                  )}
-
-                  {(values.multa > 0 || values.juros > 0) && isEditMode && (
-                    <div className="flex items-center space-x-2 py-2">
-                      <Checkbox
-                        id="remove-fees-termination"
-                        checked={removeFees}
-                        onCheckedChange={(checked) => setRemoveFees(checked as boolean)}
-                        disabled={isReadOnly}
-                      />
-                      <label
-                        htmlFor="remove-fees-termination"
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                      >
-                        Retirar multa/juros por atraso
-                      </label>
-                    </div>
-                  )}
-
-                  <div className="border-t border-dashed my-2"></div>
-
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span>Despesas Adicionais *</span>
@@ -840,6 +799,19 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                         {formatCurrency(repairExpenses.toFixed(2))}
                       </span>
                     </div>
+                    
+                    {isEditMode && (
+                      <div className="mt-2">
+                        <Input
+                          type="text"
+                          placeholder="R$ 0,00"
+                          value={repairExpensesInput}
+                          onChange={(e) => handleRepairExpensesChange(e.target.value)}
+                          className="w-full"
+                          disabled={isReadOnly}
+                        />
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex justify-between pt-3 border-t-2 border-primary mt-2">

@@ -214,7 +214,36 @@ export function usePayments() {
       const paymentsMap: Payment[] = paymentsData.map(p => {
         const totalPayments = paymentCountsByRental[p.rental_id] || 0;
         const rentalHistory = allHistoryPayments?.filter(hp => hp.rental_id === p.rental_id) || [];
-        const installmentNumber = (rentalHistory.findIndex(hp => hp.id === p.id) || 0) + 1;
+        
+        // Verificar se há pagamento de rescisão no histórico
+        const hasTerminationPayment = rentalHistory.some(hp => {
+          const paymentNotes = paymentsData.find(pd => pd.id === hp.id)?.notes || "";
+          return paymentNotes.includes("Rescisão de Contrato");
+        });
+        
+        // Se for pagamento de rescisão, é sempre a última parcela
+        const isTerminationPayment = p.notes?.includes("Rescisão de Contrato") || false;
+        
+        let installmentNumber: number;
+        let totalInstallments: number;
+        
+        if (isTerminationPayment) {
+          // Rescisão é sempre a última parcela
+          installmentNumber = rentalHistory.length;
+          totalInstallments = rentalHistory.length;
+        } else if (hasTerminationPayment) {
+          // Se existe rescisão, o total é o número de pagamentos até ela
+          const terminationIndex = rentalHistory.findIndex(hp => {
+            const paymentNotes = paymentsData.find(pd => pd.id === hp.id)?.notes || "";
+            return paymentNotes.includes("Rescisão de Contrato");
+          });
+          installmentNumber = (rentalHistory.findIndex(hp => hp.id === p.id) || 0) + 1;
+          totalInstallments = terminationIndex + 1;
+        } else {
+          // Cálculo normal
+          installmentNumber = (rentalHistory.findIndex(hp => hp.id === p.id) || 0) + 1;
+          totalInstallments = totalPayments;
+        }
 
         return {
           id: p.id,
@@ -232,7 +261,7 @@ export function usePayments() {
           lateFee: p.late_fee || 0,
           interest: p.interest || 0,
           installment: installmentNumber,
-          totalInstallments: totalPayments,
+          totalInstallments: totalInstallments,
         };
       });
 

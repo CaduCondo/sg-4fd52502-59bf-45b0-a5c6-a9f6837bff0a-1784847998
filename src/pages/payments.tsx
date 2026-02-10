@@ -72,8 +72,10 @@ export default function Payments() {
 
   // Recarregar pagamentos quando os filtros de mês/ano mudarem
   useEffect(() => {
-    console.log("🔄 Filtros mudaram, recarregando pagamentos...", { selectedMonth, selectedYear });
-    loadPayments(selectedMonth, selectedYear);
+    // Só carregar se os filtros estiverem definidos (não carregar todos)
+    if (selectedMonth && selectedYear && selectedMonth !== "all" && selectedYear !== "all") {
+      loadPayments(selectedMonth, selectedYear);
+    }
   }, [selectedMonth, selectedYear]);
 
   const handleCardClick = (paymentId: string) => {

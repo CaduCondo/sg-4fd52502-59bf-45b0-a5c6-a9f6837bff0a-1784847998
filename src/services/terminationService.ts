@@ -170,7 +170,7 @@ export async function processContractTermination(data: TerminationData): Promise
   // Item 3: Devolução de Caução (corrigido)
   if (correctedDeposit > 0) {
     breakdown.push({
-      description: "Devolução de Caução (corrigido pela inflação)",
+      description: "Devolução de Caução (corrigido pela Taxa da Poupança)",
       amount: -correctedDeposit,
       type: "deduction"
     });

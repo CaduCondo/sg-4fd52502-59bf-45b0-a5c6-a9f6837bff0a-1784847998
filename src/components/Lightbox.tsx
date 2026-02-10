@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { X, ChevronLeft, ChevronRight, Download, ZoomIn, ZoomOut } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface LightboxProps {
@@ -14,7 +14,6 @@ interface LightboxProps {
 
 export function Lightbox({ files, initialIndex, onClose }: LightboxProps) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
-  const [zoom, setZoom] = useState(1);
   const currentFile = files[currentIndex];
 
   useEffect(() => {
@@ -40,14 +39,12 @@ export function Lightbox({ files, initialIndex, onClose }: LightboxProps) {
   const handlePrevious = () => {
     if (currentIndex > 0) {
       setCurrentIndex(currentIndex - 1);
-      setZoom(1);
     }
   };
 
   const handleNext = () => {
     if (currentIndex < files.length - 1) {
       setCurrentIndex(currentIndex + 1);
-      setZoom(1);
     }
   };
 
@@ -60,14 +57,6 @@ export function Lightbox({ files, initialIndex, onClose }: LightboxProps) {
     document.body.removeChild(link);
   };
 
-  const handleZoomIn = () => {
-    setZoom(prev => Math.min(prev + 0.25, 3));
-  };
-
-  const handleZoomOut = () => {
-    setZoom(prev => Math.max(prev - 0.25, 0.5));
-  };
-
   const isImage = currentFile.type.startsWith("image/");
   const isPDF = currentFile.type === "application/pdf";
 
@@ -76,7 +65,6 @@ export function Lightbox({ files, initialIndex, onClose }: LightboxProps) {
       className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center"
       onClick={onClose}
     >
-      {/* Header */}
       <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/80 to-transparent p-4 z-10">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="text-white">
@@ -87,38 +75,6 @@ export function Lightbox({ files, initialIndex, onClose }: LightboxProps) {
           </div>
           
           <div className="flex items-center space-x-2">
-            {isImage && (
-              <>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-white hover:bg-white/10"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleZoomOut();
-                  }}
-                  disabled={zoom <= 0.5}
-                >
-                  <ZoomOut size={20} />
-                </Button>
-                <span className="text-white text-sm min-w-[60px] text-center">
-                  {Math.round(zoom * 100)}%
-                </span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-white hover:bg-white/10"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleZoomIn();
-                  }}
-                  disabled={zoom >= 3}
-                >
-                  <ZoomIn size={20} />
-                </Button>
-              </>
-            )}
-            
             <Button
               variant="ghost"
               size="icon"
@@ -143,7 +99,6 @@ export function Lightbox({ files, initialIndex, onClose }: LightboxProps) {
         </div>
       </div>
 
-      {/* Navigation Buttons */}
       {files.length > 1 && (
         <>
           <Button
@@ -174,18 +129,17 @@ export function Lightbox({ files, initialIndex, onClose }: LightboxProps) {
         </>
       )}
 
-      {/* Content */}
       <div 
-        className="max-w-7xl max-h-[90vh] w-full h-full flex items-center justify-center p-4"
+        className="max-w-[95vw] max-h-[85vh] w-full h-full flex items-center justify-center p-4"
         onClick={(e) => e.stopPropagation()}
       >
         {isImage ? (
-          <div className="relative overflow-auto max-h-full max-w-full">
+          <div className="relative w-full h-full flex items-center justify-center">
             <img
               src={currentFile.url}
               alt={currentFile.name}
-              className="max-w-full max-h-full object-contain transition-transform duration-200"
-              style={{ transform: `scale(${zoom})` }}
+              className="max-w-full max-h-full object-contain"
+              style={{ width: "auto", height: "auto" }}
             />
           </div>
         ) : isPDF ? (
@@ -208,7 +162,6 @@ export function Lightbox({ files, initialIndex, onClose }: LightboxProps) {
         )}
       </div>
 
-      {/* Thumbnails */}
       {files.length > 1 && (
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 z-10">
           <div className="flex items-center justify-center space-x-2 overflow-x-auto max-w-7xl mx-auto">
@@ -218,7 +171,6 @@ export function Lightbox({ files, initialIndex, onClose }: LightboxProps) {
                 onClick={(e) => {
                   e.stopPropagation();
                   setCurrentIndex(index);
-                  setZoom(1);
                 }}
                 className={`flex-shrink-0 w-16 h-16 rounded border-2 transition-all ${
                   index === currentIndex
