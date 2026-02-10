@@ -121,11 +121,14 @@ export function RentalTerminationDialog({
           });
 
           console.log("\n🔄 ORDENANDO por installment_number DESCENDENTE (maior → menor)...");
-          const maxInstallmentNumber = Math.max(...paidInstallments.map(inst => inst.installment_number));
-          const lastPaidInstallment = paidInstallments.find(inst => inst.installment_number === maxInstallmentNumber);
-          if (lastPaidInstallment) {
-            lastPaidDate = lastPaidInstallment.payment_date;
-          }
+          paidInstallments.forEach((inst, i) => {
+            if (i < paidInstallments.length - 1) {
+              const next = paidInstallments[i + 1];
+              const comparison = inst.installment_number - next.installment_number;
+              console.log(`   Comparando: Parcela ${inst.installment_number} vs Parcela ${next.installment_number} = ${comparison > 0 ? "maior" : "menor"}`);
+            }
+          });
+          paidInstallments.sort((a, b) => b.installment_number - a.installment_number);
 
           console.log("\n📋 PARCELAS PAGAS (DEPOIS da ordenação DESC):");
           paidInstallments.forEach((inst, index) => {
@@ -136,10 +139,12 @@ export function RentalTerminationDialog({
             console.log("\n🔥🔥🔥 CONFIRMAÇÃO DA DATA BASE 🔥🔥🔥");
             console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
             console.log("✅ ÚLTIMA PARCELA PAGA IDENTIFICADA:");
+            const lastPaidInstallment = paidInstallments[0];
             console.log(`   • Posição no array: [0] (primeira posição)`);
             console.log(`   • Número da Parcela: ${lastPaidInstallment.installment_number}`);
             console.log(`   • Valor: R$ ${lastPaidInstallment.amount.toFixed(2)}`);
-            console.log(`   • Data de Pagamento: ${lastPaidDate}`);
+            console.log(`   • Data de Pagamento: ${lastPaidInstallment.payment_date}`);
+            lastPaidDate = lastPaidInstallment.payment_date;
             console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
             console.log("📅 ESTA DATA SERÁ USADA COMO BASE PARA CORREÇÃO POUPANÇA");
             console.log("💡 Quanto mais recente a data, MENOR a correção (mais barato)");
