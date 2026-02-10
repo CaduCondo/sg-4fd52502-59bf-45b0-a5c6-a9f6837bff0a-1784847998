@@ -739,14 +739,14 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                       <Input
                         id="repair-expenses"
                         type="text"
-                        value={repairExpenses}
+                        value={formatCurrency(repairExpenses.toFixed(2))}
                         onChange={(e) => {
                           const value = parseCurrency(e.target.value);
                           setRepairExpenses(value);
                         }}
                         placeholder="R$ 0,00"
                         disabled={isReadOnly}
-                        className="w-40 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        className="w-40 text-right"
                       />
                     </div>
                   </div>
