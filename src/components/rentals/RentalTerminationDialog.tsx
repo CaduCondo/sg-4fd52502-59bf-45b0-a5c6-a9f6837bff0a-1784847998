@@ -17,6 +17,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Calendar, AlertTriangle, Info } from "lucide-react";
 import type { Rental } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
+import { calculateCorrectedDeposit } from "@/services/igpmService";
 
 interface RentalTerminationDialogProps {
   open: boolean;
@@ -47,6 +48,10 @@ export function RentalTerminationDialog({
 
   const [currentMonth, setCurrentMonth] = useState<number>(0);
   const [totalMonths, setTotalMonths] = useState<number>(0);
+  
+  // Estado para valor corrigido do caução pelo IGPM
+  const [correctedDepositAmount, setCorrectedDepositAmount] = useState<number>(0);
+  const [igpmPercentage, setIgpmPercentage] = useState<number>(0);
 
   useEffect(() => {
     if (!rental || !open) {
@@ -198,16 +203,50 @@ export function RentalTerminationDialog({
         console.log("💰 === FIM DA BUSCA ===\n");
 
         setDepositAmount(totalDeposit);
+        
+        // APLICAR CORREÇÃO DO IGPM NO CAUÇÃO
+        if (totalDeposit > 0 && rental.startDate && terminationDate) {
+          console.log("\n💰 === APLICANDO CORREÇÃO IGPM NO CAUÇÃO ===");
+          console.log("Valor original do caução:", totalDeposit);
+          console.log("Data início contrato:", rental.startDate);
+          console.log("Data rescisão:", terminationDate);
+          
+          try {
+            const igpmCorrection = calculateCorrectedDeposit(
+              totalDeposit,
+              rental.startDate,
+              terminationDate
+            );
+            
+            console.log("✅ Valor corrigido pelo IGPM:", igpmCorrection.correctedAmount);
+            console.log("📊 Percentual IGPM acumulado:", igpmCorrection.igpmPercentage.toFixed(2) + "%");
+            console.log("📅 Detalhamento:", igpmCorrection.igpmDetails);
+            console.log("💰 === FIM DA APLICAÇÃO DO IGPM ===\n");
+            
+            setCorrectedDepositAmount(igpmCorrection.correctedAmount);
+            setIgpmPercentage(igpmCorrection.igpmPercentage);
+          } catch (error) {
+            console.error("❌ Erro ao calcular IGPM:", error);
+            setCorrectedDepositAmount(totalDeposit); // Fallback para valor original
+            setIgpmPercentage(0);
+          }
+        } else {
+          console.log("⚠️ Não foi possível calcular IGPM (dados insuficientes)");
+          setCorrectedDepositAmount(totalDeposit);
+          setIgpmPercentage(0);
+        }
 
       } catch (error) {
         console.error("❌ Erro CRÍTICO ao buscar caução:", error);
         console.error("Detalhes:", JSON.stringify(error, null, 2));
         setDepositAmount(0);
+        setCorrectedDepositAmount(0);
+        setIgpmPercentage(0);
       }
     };
 
     fetchTotalDeposit();
-  }, [rental, open]);
+  }, [rental, open, terminationDate]);
 
   // Calcular aluguel proporcional e multas ao mudar data
   useEffect(() => {
@@ -298,7 +337,7 @@ export function RentalTerminationDialog({
         terminationDate,
         applyPenalty: applyFullContractPenalty || apply12MonthsPenalty,
         penaltyAmount,
-        depositAmount,
+        depositAmount: correctedDepositAmount > 0 ? correctedDepositAmount : depositAmount, // Usa valor corrigido se disponível
       });
       onOpenChange(false);
     } catch (error) {
@@ -359,12 +398,29 @@ export function RentalTerminationDialog({
                   <p className="text-sm text-blue-800 dark:text-blue-200">
                     Esta rescisão devolverá:
                   </p>
-                  <p className="text-2xl font-bold text-center text-blue-900 dark:text-blue-100">
-                    R$ {depositAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                  </p>
-                  <p className="text-xs text-blue-700 dark:text-blue-300">
-                    Valor corrigido pela inflação será adicionado automaticamente ao recebimento final.
-                  </p>
+                  {igpmPercentage > 0 ? (
+                    <>
+                      <div className="text-sm text-blue-700 dark:text-blue-300">
+                        <p>Valor original: R$ {depositAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                        <p className="font-medium">Correção IGPM: {igpmPercentage.toFixed(2)}%</p>
+                      </div>
+                      <p className="text-2xl font-bold text-center text-blue-900 dark:text-blue-100">
+                        R$ {correctedDepositAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      </p>
+                      <p className="text-xs text-blue-700 dark:text-blue-300">
+                        Valor corrigido pela inflação (IGPM) do período.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-2xl font-bold text-center text-blue-900 dark:text-blue-100">
+                        R$ {depositAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      </p>
+                      <p className="text-xs text-blue-700 dark:text-blue-300">
+                        Será adicionado ao recebimento final.
+                      </p>
+                    </>
+                  )}
                 </div>
               </AlertDescription>
             </Alert>

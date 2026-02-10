@@ -430,11 +430,14 @@ export default function RentalsPage() {
                           <CardContent className="p-4">
                             <div className="flex items-start justify-between gap-3 mb-3">
                               <div className="flex-1 min-w-0">
-                                <h3 className="text-lg font-semibold text-blue-600 truncate">
-                                  {rental.property?.location || "Local não encontrado"}
-                                </h3>
+                                <div className="flex items-center gap-2 mb-1">
+                                  <Home className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                                  <h3 className="text-lg font-semibold text-blue-600 truncate">
+                                    {rental.property?.location || "Local não encontrado"}
+                                  </h3>
+                                </div>
                                 {rental.property?.complement && (
-                                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                                  <p className="text-sm text-gray-600 dark:text-gray-400 ml-6">
                                     {rental.property.complement}
                                   </p>
                                 )}
@@ -456,12 +459,19 @@ export default function RentalsPage() {
                               </div>
                             </div>
 
-                            <div className="mb-2">
-                              <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Inquilino:</p>
+                            <div className="mb-3 flex items-center gap-2">
+                              <User className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                               <p className="text-sm text-gray-600 dark:text-gray-400">{rental.tenant?.name || "-"}</p>
                             </div>
 
-                            <div className="flex items-end justify-between gap-3">
+                            <div className="mb-3 flex items-center gap-2">
+                              <Calendar className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                              <p className="text-sm text-gray-600 dark:text-gray-400">
+                                {formatDate(rental.startDate)} - {formatDate(rental.endDate)}
+                              </p>
+                            </div>
+
+                            <div className="flex items-end justify-between gap-3 pt-3 border-t">
                               <div>
                                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
                                   Valor do Aluguel
@@ -638,35 +648,40 @@ export default function RentalsPage() {
                           <Card key={rental.id} className="opacity-75">
                             <CardContent className="p-4">
                               <div className="flex items-start justify-between mb-3">
-                                <h3 className="text-lg font-semibold text-blue-600">
-                                  {rental.property?.location || "Local não encontrado"}
-                                </h3>
-                                <Badge className="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 text-xs font-medium rounded-md">
+                                <div className="flex items-center gap-2 flex-1 min-w-0">
+                                  <Home className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                                  <h3 className="text-lg font-semibold text-blue-600 truncate">
+                                    {rental.property?.location || "Local não encontrado"}
+                                  </h3>
+                                </div>
+                                <Badge className="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 text-xs font-medium rounded-md flex-shrink-0">
                                   Terminada
                                 </Badge>
                               </div>
 
                               {rental.property?.complement && (
-                                <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                                <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 ml-6">
                                   {rental.property.complement}
                                 </p>
                               )}
 
-                              <div className="mb-3">
-                                <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Inquilino:</p>
+                              <div className="mb-3 flex items-center gap-2">
+                                <User className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                                 <p className="text-sm text-gray-600 dark:text-gray-400">{rental.tenant?.name || "-"}</p>
                               </div>
 
-                              <div className="flex items-end justify-between">
-                                <div>
-                                  <p className="text-sm text-gray-600 dark:text-gray-400">Valor</p>
-                                  <p className="text-2xl font-bold text-emerald-600">
-                                    {formatCurrency(rental.value || 0)}
-                                  </p>
-                                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                                    Término: {formatDate(rental.endDate || "")}
-                                  </p>
-                                </div>
+                              <div className="mb-3 flex items-center gap-2">
+                                <Calendar className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                <p className="text-sm text-gray-600 dark:text-gray-400">
+                                  Término: {formatDate(rental.endDate || "")}
+                                </p>
+                              </div>
+
+                              <div className="pt-3 border-t">
+                                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Valor</p>
+                                <p className="text-2xl font-bold text-emerald-600">
+                                  {formatCurrency(rental.value || 0)}
+                                </p>
                               </div>
                             </CardContent>
                           </Card>
