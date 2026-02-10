@@ -19,12 +19,11 @@ export function Lightbox({ files, initialIndex, onClose }: LightboxProps) {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        e.stopPropagation();
         onClose();
       } else if (e.key === "ArrowLeft" && currentIndex > 0) {
-        handlePrevious();
+        setCurrentIndex(currentIndex - 1);
       } else if (e.key === "ArrowRight" && currentIndex < files.length - 1) {
-        handleNext();
+        setCurrentIndex(currentIndex + 1);
       }
     };
 
@@ -58,10 +57,10 @@ export function Lightbox({ files, initialIndex, onClose }: LightboxProps) {
     document.body.removeChild(link);
   };
 
-  const handleClose = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    onClose();
+  const handleBackgroundClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
   };
 
   const isImage = currentFile.type.startsWith("image/");
@@ -70,7 +69,7 @@ export function Lightbox({ files, initialIndex, onClose }: LightboxProps) {
   return (
     <div 
       className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center"
-      onClick={handleClose}
+      onClick={handleBackgroundClick}
     >
       <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/80 to-transparent p-4 z-10">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
@@ -88,7 +87,6 @@ export function Lightbox({ files, initialIndex, onClose }: LightboxProps) {
               className="text-white hover:bg-white/10"
               onClick={(e) => {
                 e.stopPropagation();
-                e.preventDefault();
                 handleDownload();
               }}
             >
@@ -101,7 +99,6 @@ export function Lightbox({ files, initialIndex, onClose }: LightboxProps) {
               className="text-white hover:bg-white/10"
               onClick={(e) => {
                 e.stopPropagation();
-                e.preventDefault();
                 onClose();
               }}
             >
@@ -119,7 +116,6 @@ export function Lightbox({ files, initialIndex, onClose }: LightboxProps) {
             className="absolute left-4 top-1/2 -translate-y-1/2 text-white hover:bg-white/10 h-12 w-12 z-10"
             onClick={(e) => {
               e.stopPropagation();
-              e.preventDefault();
               handlePrevious();
             }}
             disabled={currentIndex === 0}
@@ -133,7 +129,6 @@ export function Lightbox({ files, initialIndex, onClose }: LightboxProps) {
             className="absolute right-4 top-1/2 -translate-y-1/2 text-white hover:bg-white/10 h-12 w-12 z-10"
             onClick={(e) => {
               e.stopPropagation();
-              e.preventDefault();
               handleNext();
             }}
             disabled={currentIndex === files.length - 1}

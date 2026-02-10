@@ -263,18 +263,18 @@ export function useDashboardData(month: number, year: number, userId: string | u
           }
         }
 
-        // 7. Buscar TODOS os inquilinos cadastrados (APENAS ATIVOS + LOCATÁRIOS)
+        // 7. Buscar TODOS os inquilinos cadastrados (ATIVOS + LOCATÁRIOS)
         const tenantsQuery = supabase
           .from("tenants")
           .select("id, name, status")
-          .in("status", ["active", "tenant"]); // Incluir active E tenant, excluir inactive
+          .in("status", ["active", "tenant"]);
 
         const { data: tenantsData, error: tenantsError } = await tenantsQuery;
 
         if (tenantsError) {
           console.error("❌ Erro ao buscar inquilinos:", tenantsError);
         } else {
-          console.log(`✅ Inquilinos carregados (ATIVOS + LOCATÁRIOS): ${tenantsData?.length || 0}`);
+          console.log(`✅ Inquilinos carregados (TODOS - active + tenant): ${tenantsData?.length || 0}`);
           console.log("📊 Breakdown por status:", tenantsData?.reduce((acc: any, t: any) => {
             acc[t.status] = (acc[t.status] || 0) + 1;
             return acc;

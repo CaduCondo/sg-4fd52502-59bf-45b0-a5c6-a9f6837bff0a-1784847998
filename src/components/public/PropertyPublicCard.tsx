@@ -38,11 +38,9 @@ export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
   const [showInterestForm, setShowInterestForm] = useState(false);
   const [showLightbox, setShowLightbox] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
-  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
 
   const images = property.images || [];
   const hasImages = images.length > 0;
-  const mainImage = hasImages ? images[0] : "/placeholder-property.jpg";
 
   const totalMonthly = property.value + (property.hasGarage ? property.garageValue : 0);
 
@@ -54,19 +52,10 @@ export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
     e.stopPropagation();
     setLightboxIndex(index);
     setShowLightbox(true);
-    setIsLightboxOpen(true);
   };
 
   const handleCloseLightbox = () => {
     setShowLightbox(false);
-    setIsLightboxOpen(false);
-  };
-
-  const handleDialogChange = (open: boolean) => {
-    // Só fecha o Dialog se o lightbox não estiver aberto
-    if (!isLightboxOpen) {
-      setShowDetails(open);
-    }
   };
 
   const lightboxFiles = images.map((url, index) => ({
@@ -157,7 +146,7 @@ export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
         </CardContent>
       </Card>
 
-      <Dialog open={showDetails} onOpenChange={handleDialogChange}>
+      <Dialog open={showDetails} onOpenChange={setShowDetails}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-display text-2xl">

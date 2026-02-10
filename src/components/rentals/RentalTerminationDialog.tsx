@@ -49,7 +49,6 @@ export function RentalTerminationDialog({
   const [currentMonth, setCurrentMonth] = useState<number>(0);
   const [totalMonths, setTotalMonths] = useState<number>(0);
   
-  // Estado para valor corrigido do caução pela Poupança
   const [correctedDepositAmount, setCorrectedDepositAmount] = useState<number>(0);
   const [poupancaPercentage, setPoupancaPercentage] = useState<number>(0);
   const [lastInstallmentDate, setLastInstallmentDate] = useState<string>("");
@@ -81,7 +80,6 @@ export function RentalTerminationDialog({
     setCurrentMonth(Math.min(current, total));
     setTerminationDate(format(today, "yyyy-MM-dd"));
 
-    // Buscar valor TOTAL do caução com MÚLTIPLAS FONTES DE DADOS
     const fetchTotalDeposit = async () => {
       try {
         console.log("💰 === BUSCANDO CAUÇÃO TOTAL (MULTI-FONTE) ===");
@@ -91,9 +89,6 @@ export function RentalTerminationDialog({
         let source = "";
         let lastPaidDate = "";
 
-        // ========================================
-        // FONTE 1: Tabela deposit_installments
-        // ========================================
         console.log("\n🔍 FONTE 1: Buscando na tabela deposit_installments...");
         const { data: installments, error: installmentsError } = await supabase
           .from("deposit_installments")
@@ -105,7 +100,7 @@ export function RentalTerminationDialog({
           console.error("❌ Erro ao buscar parcelas:", installmentsError);
         } else if (installments && installments.length > 0) {
           console.log("✅ Parcelas encontradas:", installments.length);
-          console.log("📋 Detalhes:");
+          console.log("📋 Detalhes das parcelas:");
           
           const paidInstallments = installments.filter(inst => inst.payment_date);
           
@@ -117,10 +112,9 @@ export function RentalTerminationDialog({
           totalDeposit = installments.reduce((sum, inst) => sum + (inst.amount || 0), 0);
           source = "deposit_installments (tabela de parcelas)";
           
-          // Buscar data da ÚLTIMA PARCELA PAGA
           if (paidInstallments.length > 0) {
-            lastPaidDate = paidInstallments[0].payment_date; // Já ordenado DESC
-            console.log("📅 Data da última parcela paga:", lastPaidDate);
+            lastPaidDate = paidInstallments[0].payment_date;
+            console.log("📅 Data da ÚLTIMA parcela paga:", lastPaidDate);
           } else {
             console.log("⚠️ Nenhuma parcela paga ainda, usando data início do contrato");
             lastPaidDate = rental.startDate;
@@ -131,9 +125,6 @@ export function RentalTerminationDialog({
           console.log("⚠️ Nenhuma parcela encontrada na deposit_installments");
         }
 
-        // ========================================
-        // FONTE 2: Campos antigos (deposit_installment_1/2/3)
-        // ========================================
         if (totalDeposit === 0) {
           console.log("\n🔍 FONTE 2: Buscando nos campos antigos (deposit_installment_1/2/3)...");
           const { data: rentalData, error: rentalError } = await supabase
@@ -157,7 +148,7 @@ export function RentalTerminationDialog({
             totalDeposit = inst1 + inst2 + inst3;
             if (totalDeposit > 0) {
               source = "campos deposit_installment_X (rentals)";
-              lastPaidDate = rental.startDate; // Fallback para data início
+              lastPaidDate = rental.startDate;
               console.log("✅ SOMA DOS CAMPOS ANTIGOS: R$", totalDeposit);
             } else {
               console.log("⚠️ Campos antigos também estão zerados");
@@ -165,9 +156,6 @@ export function RentalTerminationDialog({
           }
         }
 
-        // ========================================
-        // FONTE 3: Campo security_deposit
-        // ========================================
         if (totalDeposit === 0) {
           console.log("\n🔍 FONTE 3: Buscando no campo security_deposit...");
           const securityDepositValue = Number(rental.security_deposit) || 0;
@@ -176,16 +164,13 @@ export function RentalTerminationDialog({
           if (securityDepositValue > 0) {
             totalDeposit = securityDepositValue;
             source = "security_deposit (rentals)";
-            lastPaidDate = rental.startDate; // Fallback para data início
+            lastPaidDate = rental.startDate;
             console.log("✅ USANDO SECURITY_DEPOSIT: R$", totalDeposit);
           } else {
             console.log("⚠️ security_deposit também está zerado");
           }
         }
 
-        // ========================================
-        // FONTE 4: Campo deposit_value
-        // ========================================
         if (totalDeposit === 0) {
           console.log("\n🔍 FONTE 4: Buscando no campo deposit_value...");
           const { data: rentalData, error: rentalError } = await supabase
@@ -203,7 +188,7 @@ export function RentalTerminationDialog({
             if (depositValue > 0) {
               totalDeposit = depositValue;
               source = "deposit_value (rentals)";
-              lastPaidDate = rental.startDate; // Fallback para data início
+              lastPaidDate = rental.startDate;
               console.log("✅ USANDO DEPOSIT_VALUE: R$", totalDeposit);
             } else {
               console.log("⚠️ deposit_value também está zerado");
@@ -211,9 +196,6 @@ export function RentalTerminationDialog({
           }
         }
 
-        // ========================================
-        // RESULTADO FINAL
-        // ========================================
         console.log("\n💰 === RESULTADO FINAL ===");
         if (totalDeposit > 0) {
           console.log(`✅ Caução encontrado: R$ ${totalDeposit}`);
@@ -228,18 +210,17 @@ export function RentalTerminationDialog({
         setDepositAmount(totalDeposit);
         setLastInstallmentDate(lastPaidDate);
         
-        // APLICAR CORREÇÃO DA POUPANÇA NO CAUÇÃO
-        if (totalDeposit > 0 && lastPaidDate && terminationDate) {
+        if (totalDeposit > 0 && lastPaidDate) {
           console.log("\n💰 === APLICANDO CORREÇÃO POUPANÇA NO CAUÇÃO ===");
           console.log("Valor original do caução:", totalDeposit);
           console.log("Data base (última parcela paga):", lastPaidDate);
-          console.log("Data rescisão:", terminationDate);
+          console.log("Data rescisão (hoje):", format(today, "yyyy-MM-dd"));
           
           try {
             const poupancaCorrection = calculateCorrectedDeposit(
               totalDeposit,
               lastPaidDate,
-              terminationDate
+              format(today, "yyyy-MM-dd")
             );
             
             console.log("✅ Valor corrigido pela Poupança:", poupancaCorrection.correctedAmount);
@@ -251,7 +232,7 @@ export function RentalTerminationDialog({
             setPoupancaPercentage(poupancaCorrection.poupancaPercentage);
           } catch (error) {
             console.error("❌ Erro ao calcular Poupança:", error);
-            setCorrectedDepositAmount(totalDeposit); // Fallback para valor original
+            setCorrectedDepositAmount(totalDeposit);
             setPoupancaPercentage(0);
           }
         } else {
@@ -262,7 +243,6 @@ export function RentalTerminationDialog({
 
       } catch (error) {
         console.error("❌ Erro CRÍTICO ao buscar caução:", error);
-        console.error("Detalhes:", JSON.stringify(error, null, 2));
         setDepositAmount(0);
         setCorrectedDepositAmount(0);
         setPoupancaPercentage(0);
@@ -271,9 +251,8 @@ export function RentalTerminationDialog({
     };
 
     fetchTotalDeposit();
-  }, [rental, open, terminationDate]);
+  }, [rental, open]);
 
-  // Calcular aluguel proporcional e multas ao mudar data
   useEffect(() => {
     if (!rental || !terminationDate) {
       setPenaltyAmount(0);
@@ -292,7 +271,6 @@ export function RentalTerminationDialog({
 
       const monthlyRent = rental.value || 0;
 
-      // Calcular aluguel proporcional
       const paymentDay = rental.paymentDay || 1;
       const terminationDay = termDate.getDate();
       
@@ -307,7 +285,6 @@ export function RentalTerminationDialog({
       const proportionalValue = (monthlyRent / 30) * daysUsed;
       setProportionalRent(proportionalValue);
 
-      // Calcular multas
       if (applyFullContractPenalty && remaining > 0) {
         const threeTimesRent = 3 * monthlyRent;
         const perMonthPenalty = threeTimesRent / totalMonths;
@@ -341,7 +318,6 @@ export function RentalTerminationDialog({
       return;
     }
 
-    // VALIDAÇÃO CRÍTICA: Impedir rescisão se caução = 0
     if (depositAmount === 0) {
       alert(
         "⚠️ ATENÇÃO: Não é possível rescindir o contrato sem caução cadastrado.\n\n" +
@@ -390,7 +366,6 @@ export function RentalTerminationDialog({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          {/* Info da Locação */}
           <div className="rounded-lg bg-muted p-3 space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Imóvel:</span>
@@ -412,7 +387,6 @@ export function RentalTerminationDialog({
             </div>
           </div>
 
-          {/* ALERTA DESTACADO - VALOR DO CAUÇÃO */}
           {depositAmount > 0 ? (
             <Alert className="border-blue-500 bg-blue-50 dark:bg-blue-950">
               <AlertDescription>
@@ -423,7 +397,7 @@ export function RentalTerminationDialog({
                   <p className="text-sm text-blue-800 dark:text-blue-200">
                     Esta rescisão devolverá:
                   </p>
-                  {poupancaPercentage > 0 ? (
+                  {correctedDepositAmount > 0 && poupancaPercentage > 0 ? (
                     <>
                       <div className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
                         <p>Valor original: R$ {depositAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
@@ -468,7 +442,6 @@ export function RentalTerminationDialog({
             </Alert>
           )}
 
-          {/* Data da Rescisão */}
           <div className="space-y-2">
             <Label htmlFor="termination-date" className="flex items-center gap-2">
               <Calendar className="h-4 w-4" />
@@ -490,7 +463,6 @@ export function RentalTerminationDialog({
             )}
           </div>
 
-          {/* Multas */}
           <div className="space-y-3 border-t pt-4">
             <Label className="text-base font-semibold">Multa Rescisória</Label>
             
@@ -552,7 +524,6 @@ export function RentalTerminationDialog({
             </div>
           </div>
 
-          {/* Resumo */}
           <Alert>
             <AlertDescription className="text-xs space-y-1">
               <p className="font-medium">O que vai acontecer:</p>
