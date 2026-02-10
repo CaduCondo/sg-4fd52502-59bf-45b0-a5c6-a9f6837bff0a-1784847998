@@ -206,32 +206,32 @@ export function RentalTerminationDialog({
         
         // APLICAR CORREÇÃO DO IGPM NO CAUÇÃO
         if (totalDeposit > 0 && rental.startDate && terminationDate) {
-          console.log("\n💰 === APLICANDO CORREÇÃO IGPM NO CAUÇÃO ===");
+          console.log("\n💰 === APLICANDO CORREÇÃO POUPANÇA NO CAUÇÃO ===");
           console.log("Valor original do caução:", totalDeposit);
           console.log("Data início contrato:", rental.startDate);
           console.log("Data rescisão:", terminationDate);
           
           try {
-            const igpmCorrection = calculateCorrectedDeposit(
+            const poupancaCorrection = calculateCorrectedDeposit(
               totalDeposit,
               rental.startDate,
               terminationDate
             );
             
-            console.log("✅ Valor corrigido pelo IGPM:", igpmCorrection.correctedAmount);
-            console.log("📊 Percentual IGPM acumulado:", igpmCorrection.igpmPercentage.toFixed(2) + "%");
-            console.log("📅 Detalhamento:", igpmCorrection.igpmDetails);
-            console.log("💰 === FIM DA APLICAÇÃO DO IGPM ===\n");
+            console.log("✅ Valor corrigido pela Poupança:", poupancaCorrection.correctedAmount);
+            console.log("📊 Percentual Poupança acumulado:", poupancaCorrection.poupancaPercentage.toFixed(2) + "%");
+            console.log("📅 Detalhamento:", poupancaCorrection.poupancaDetails);
+            console.log("💰 === FIM DA APLICAÇÃO DA POUPANÇA ===\n");
             
-            setCorrectedDepositAmount(igpmCorrection.correctedAmount);
-            setIgpmPercentage(igpmCorrection.igpmPercentage);
+            setCorrectedDepositAmount(poupancaCorrection.correctedAmount);
+            setIgpmPercentage(poupancaCorrection.poupancaPercentage);
           } catch (error) {
-            console.error("❌ Erro ao calcular IGPM:", error);
+            console.error("❌ Erro ao calcular Poupança:", error);
             setCorrectedDepositAmount(totalDeposit); // Fallback para valor original
             setIgpmPercentage(0);
           }
         } else {
-          console.log("⚠️ Não foi possível calcular IGPM (dados insuficientes)");
+          console.log("⚠️ Não foi possível calcular Poupança (dados insuficientes)");
           setCorrectedDepositAmount(totalDeposit);
           setIgpmPercentage(0);
         }
@@ -402,13 +402,13 @@ export function RentalTerminationDialog({
                     <>
                       <div className="text-sm text-blue-700 dark:text-blue-300">
                         <p>Valor original: R$ {depositAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
-                        <p className="font-medium">Correção IGPM: {igpmPercentage.toFixed(2)}%</p>
+                        <p className="font-medium">Correção Poupança: {igpmPercentage.toFixed(2)}%</p>
                       </div>
                       <p className="text-2xl font-bold text-center text-blue-900 dark:text-blue-100">
                         R$ {correctedDepositAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                       </p>
                       <p className="text-xs text-blue-700 dark:text-blue-300">
-                        Valor corrigido pela inflação (IGPM) do período.
+                        Valor corrigido pela Taxa da Poupança do período.
                       </p>
                     </>
                   ) : (

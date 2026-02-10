@@ -67,7 +67,7 @@ export default function Payments() {
   const [selectedMonth, setSelectedMonth] = useState<string>(
     (currentDate.getMonth() + 1).toString()
   );
-  const [selectedYear, setSelectedYear] = useState<string>("2026");
+  const [selectedYear, setSelectedYear] = useState<string>(currentDate.getFullYear().toString());
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
   // Recarregar pagamentos quando os filtros de mês/ano mudarem
