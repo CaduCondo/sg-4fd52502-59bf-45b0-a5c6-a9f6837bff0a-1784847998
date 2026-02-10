@@ -739,7 +739,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                       <Input
                         id="repair-expenses"
                         type="text"
-                        value={formatCurrency(repairExpenses.toFixed(2))}
+                        value={repairExpenses}
                         onChange={(e) => {
                           const value = parseCurrency(e.target.value);
                           setRepairExpenses(value);

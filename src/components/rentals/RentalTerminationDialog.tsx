@@ -470,23 +470,6 @@ export function RentalTerminationDialog({
             </div>
           </div>
 
-          {/* Caução */}
-          {depositAmount > 0 && (
-            <div className="border-t pt-4">
-              <div className="flex justify-between items-center bg-blue-50 dark:bg-blue-950 p-3 rounded">
-                <div>
-                  <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Caução Total a Devolver</span>
-                  <p className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">
-                    Valor será corrigido pela inflação e incluído no recebimento final
-                  </p>
-                </div>
-                <span className="font-bold text-blue-700 dark:text-blue-300">
-                  R$ {depositAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                </span>
-              </div>
-            </div>
-          )}
-
           {/* Resumo */}
           <Alert>
             <AlertDescription className="text-xs space-y-1">
