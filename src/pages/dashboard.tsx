@@ -173,7 +173,11 @@ export default function Dashboard() {
     const rentedProperties = properties.filter(p => p.status === 'occupied').length;
     const unavailableProperties = properties.filter(p => p.status === 'unavailable').length;
     
-    const totalTenants = new Set(rentals.map(r => r.tenantId)).size;
+    // CORREÇÃO: Total de inquilinos = TODOS os inquilinos cadastrados (não só os em locação)
+    // Buscar todos os tenant_ids únicos dos rentals (ativos e inativos)
+    const allTenantIds = new Set(rentals.map(r => r.tenantId));
+    const totalTenants = allTenantIds.size;
+    
     const activeContracts = rentals.filter(r => r.isActive).length;
     
     const totalRevenue = payments.reduce((acc, p) => acc + (p.paidAmount || 0), 0);
@@ -181,39 +185,58 @@ export default function Dashboard() {
     // CORREÇÃO: Usar UTC para evitar problemas de timezone
     const today = new Date();
     const todayUTC = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
+    const todayStr = todayUTC.toISOString().split('T')[0]; // "2026-02-10"
 
-    // CORREÇÃO: Aluguéis que vencem HOJE (data de vencimento = hoje)
+    console.log("📅 Data de hoje (UTC):", todayStr);
+
+    // CORREÇÃO: Aluguéis que vencem HOJE (dueDate = hoje E status != paid)
     const dueTodayPayments = payments.filter(p => {
       if (p.status === 'paid') return false;
       
-      const dueDate = new Date(p.dueDate);
-      const dueDateUTC = new Date(Date.UTC(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate()));
+      const dueDateStr = p.dueDate.split('T')[0]; // Pegar apenas YYYY-MM-DD
+      const isDueToday = dueDateStr === todayStr;
       
-      return dueDateUTC.getTime() === todayUTC.getTime();
+      if (isDueToday) {
+        console.log("✅ Vence hoje:", {
+          dueDate: dueDateStr,
+          status: p.status,
+          expectedAmount: p.expectedAmount
+        });
+      }
+      
+      return isDueToday;
     }).length;
 
     console.log("📅 Vencem Hoje - Debug:", {
-      today: todayUTC.toISOString(),
+      today: todayStr,
       dueTodayPayments,
       allPayments: payments.length,
       unpaidPayments: payments.filter(p => p.status !== 'paid').length
     });
 
-    // CORREÇÃO: Aluguéis ATRASADOS (data de vencimento < hoje E não pagos)
+    // CORREÇÃO: Aluguéis ATRASADOS (dueDate < hoje E status != paid)
     const overduePayments = payments.filter((p) => {
       if (p.status === "paid") return false;
       
-      const dueDate = new Date(p.dueDate);
-      const dueDateUTC = new Date(Date.UTC(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate()));
+      const dueDateStr = p.dueDate.split('T')[0]; // Pegar apenas YYYY-MM-DD
+      const isOverdue = dueDateStr < todayStr;
       
-      return dueDateUTC.getTime() < todayUTC.getTime();
+      if (isOverdue) {
+        console.log("⏰ Atrasado:", {
+          dueDate: dueDateStr,
+          status: p.status,
+          expectedAmount: p.expectedAmount
+        });
+      }
+      
+      return isOverdue;
     });
 
     const overduePaymentsCount = overduePayments.length;
     const overdueAmount = overduePayments.reduce((acc, p) => acc + (p.expectedAmount || 0), 0);
 
     console.log("⏰ Atrasados - Debug:", {
-      today: todayUTC.toISOString(),
+      today: todayStr,
       overduePaymentsCount,
       overdueAmount,
       sampleOverdue: overduePayments.slice(0, 3).map(p => ({
@@ -248,6 +271,14 @@ export default function Dashboard() {
 
     const totalFeesAndExpenses = totalFees + locationExpenses;
     const netRevenue = grossRevenue - totalFeesAndExpenses;
+
+    console.log("📊 RESUMO FINAL:", {
+      totalTenants,
+      activeContracts,
+      dueTodayPayments,
+      overduePaymentsCount,
+      todayStr
+    });
 
     return {
       totalProperties,

@@ -53,6 +53,11 @@ export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
     setShowLightbox(true);
   };
 
+  const handleCloseLightbox = () => {
+    setShowLightbox(false);
+    // NÃO fecha o modal de detalhes, apenas o lightbox
+  };
+
   const lightboxFiles = images.map((url, index) => ({
     name: `Foto ${index + 1}`,
     url: url,
@@ -338,7 +343,7 @@ export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
         <Lightbox
           files={lightboxFiles}
           initialIndex={lightboxIndex}
-          onClose={() => setShowLightbox(false)}
+          onClose={handleCloseLightbox}
         />
       )}
     </>

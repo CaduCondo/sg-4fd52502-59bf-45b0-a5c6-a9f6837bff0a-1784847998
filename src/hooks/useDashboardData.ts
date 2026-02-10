@@ -157,19 +157,17 @@ export function useDashboardData(month: number, year: number, userId: string | u
           console.log(`✅ Properties carregados: ${propertiesData?.length || 0}`);
         }
 
-        // 4. Buscar locações (filtradas pelos imóveis permitidos)
+        // 4. Buscar TODAS as locações (ativas e inativas) para contar inquilinos corretamente
         const allowedPropertyIds = (propertiesData || []).map((p: any) => p.id);
         
         let rentalsQuery = supabase
           .from("rentals")
-          .select("*")
-          .eq("is_active", true);
+          .select("*");
 
         if (userRole === "financial" && allowedPropertyIds.length > 0) {
           rentalsQuery = rentalsQuery.in("property_id", allowedPropertyIds);
           console.log(`🏠 Filtrando rentals por ${allowedPropertyIds.length} properties permitidos`);
         } else if (userRole === "financial" && allowedPropertyIds.length === 0) {
-          // Se não há properties permitidos, não há rentals
           console.log("⚠️ Nenhum property permitido, sem rentals");
           if (isMounted) {
             setPayments([]);
@@ -185,11 +183,20 @@ export function useDashboardData(month: number, year: number, userId: string | u
         if (rentalsError) {
           console.error("❌ Erro ao buscar locações:", rentalsError);
         } else {
-          console.log(`✅ Rentals carregados: ${rentalsData?.length || 0}`);
+          console.log(`✅ Rentals carregados (TODOS): ${rentalsData?.length || 0}`);
+          const activeRentals = rentalsData?.filter(r => r.is_active).length || 0;
+          console.log(`   - Ativos: ${activeRentals}`);
+          console.log(`   - Inativos: ${(rentalsData?.length || 0) - activeRentals}`);
+          
+          // Contar tenant_ids únicos para total de inquilinos
+          const uniqueTenantIds = new Set(rentalsData?.map((r: any) => r.tenant_id) || []);
+          console.log(`👥 Total de inquilinos únicos: ${uniqueTenantIds.size}`);
         }
 
-        // 5. Buscar pagamentos do período (filtrados pelos rentals permitidos)
-        const allowedRentalIds = (rentalsData || []).map((r: any) => r.id);
+        // 5. Buscar pagamentos do período (filtrados pelos rentals ATIVOS permitidos)
+        const activeRentalIds = (rentalsData || [])
+          .filter((r: any) => r.is_active)
+          .map((r: any) => r.id);
         
         let paymentsQuery = supabase
           .from("payments")
@@ -197,16 +204,15 @@ export function useDashboardData(month: number, year: number, userId: string | u
           .eq("reference_month", month.toString())
           .eq("reference_year", year.toString());
 
-        if (userRole === "financial" && allowedRentalIds.length > 0) {
-          paymentsQuery = paymentsQuery.in("rental_id", allowedRentalIds);
-          console.log(`💰 Filtrando payments por ${allowedRentalIds.length} rentals permitidos`);
-        } else if (userRole === "financial" && allowedRentalIds.length === 0) {
-          // Se não há rentals permitidos, não há payments
-          console.log("⚠️ Nenhum rental permitido, sem payments");
+        if (userRole === "financial" && activeRentalIds.length > 0) {
+          paymentsQuery = paymentsQuery.in("rental_id", activeRentalIds);
+          console.log(`💰 Filtrando payments por ${activeRentalIds.length} rentals ativos permitidos`);
+        } else if (userRole === "financial" && activeRentalIds.length === 0) {
+          console.log("⚠️ Nenhum rental ativo permitido, sem payments");
           if (isMounted) {
             setPayments([]);
             setProperties((propertiesData || []).map(mapPropertyFromDB));
-            setRentals([]);
+            setRentals((rentalsData || []).map(mapRentalFromDB));
             setLoading(false);
           }
           return;
@@ -259,7 +265,7 @@ export function useDashboardData(month: number, year: number, userId: string | u
         if (isMounted) {
           setPayments((paymentsData || []).map(mapPaymentFromDB));
           setProperties((propertiesData || []).map(mapPropertyFromDB));
-          setRentals((rentalsData || []).map(mapRentalFromDB));
+          setRentals((rentalsData || []).map(mapRentalFromDB)); // Salva TODAS as locações
           console.log("✅ Dashboard: Dados carregados com sucesso");
           console.log("📊 Resumo:", {
             properties: propertiesData?.length || 0,
