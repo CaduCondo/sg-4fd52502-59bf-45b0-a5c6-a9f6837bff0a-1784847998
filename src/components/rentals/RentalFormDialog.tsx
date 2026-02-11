@@ -305,52 +305,11 @@ export function RentalFormDialog({
 
         setShowContract(true);
       } else {
-        // Mapear camelCase para snake_case para inserção direta no Supabase (create case)
-        const insertPayload: any = {
-            property_id: propertyId,
-            tenant_id: tenantId,
-            start_date: startDate,
-            end_date: endDate || null,
-            payment_day: parseInt(paymentDay),
-            monthly_rent: baseRent,  // ✅ CORRIGIDO: Enviar apenas o valor do aluguel base
-            value: totalValue,  // Total para compatibilidade
-            deposit: parseCurrencyToNumber(depositAmount) || 0,
-            status: "active",
-            is_active: true,
-            attachments: attachments.length > 0 ? attachments : null,
-            contract_attachments: null,
-            has_garage: hasGarage,
-            garage_value: hasGarage && garageValue ? parseCurrencyToNumber(garageValue) : null,
-            has_partner_broker: hasPartnerBroker,
-            deposit_installments: depositData.depositInstallments,
-            deposit_installment_1: depositData.depositInstallment1,
-            deposit_payment_date: depositData.depositPaymentDate,
-            deposit_pix_code: depositData.depositPixCode,
-            deposit_installment_2: depositData.depositInstallment2,
-            deposit_installment_2_payment_date: depositData.depositInstallment2PaymentDate,
-            deposit_installment_2_pix_code: depositData.depositInstallment2PixCode,
-            deposit_installment_3: depositData.depositInstallment3,
-            deposit_installment_3_payment_date: depositData.depositInstallment3PaymentDate,
-            deposit_installment_3_pix_code: depositData.depositInstallment3PixCode,
-        };
+        // Criar nova locação usando o serviço que já implementa a sincronização do caução
+        console.log("📤 CRIANDO NOVA LOCAÇÃO COM DADOS:", fullUpdateData);
 
-        console.log("📥 ENVIANDO DADOS PARA SUPABASE:", insertPayload);
-        console.log("=== VALORES CALCULADOS NO FORMULÁRIO ===");
-        console.log("baseRent:", baseRent);
-        console.log("garageAmount:", garageAmount);
-        console.log("totalValue:", totalValue);
-
-        const { data: createdRental, error: createError } = await supabase
-          .from("rentals")
-          .insert([insertPayload])
-          .select()
-          .single();
-
-        if (createError) {
-          console.error("❌ Erro ao criar locação:", createError);
-          throw createError;
-        }
-
+        const createdRental = await createRental(fullUpdateData);
+        
         console.log("✅ LOCAÇÃO CRIADA:", createdRental);
 
         // Update property and tenant status
@@ -367,40 +326,37 @@ export function RentalFormDialog({
 
         const mappedRental: Rental = {
           id: createdRental.id,
-          propertyId: createdRental.property_id,
-          tenantId: createdRental.tenant_id,
-          startDate: createdRental.start_date,
-          endDate: createdRental.end_date || undefined,
-          paymentDay: createdRental.payment_day,
-          value: totalValue,
+          propertyId: createdRental.propertyId,
+          tenantId: createdRental.tenantId,
+          startDate: createdRental.startDate,
+          endDate: createdRental.endDate,
+          paymentDay: createdRental.paymentDay,
+          value: createdRental.value,
           monthlyRent: baseRent,
-          depositAmount: parseCurrencyToNumber(depositAmount) || 0, // ✅ CORRIGIDO: deposit -> depositAmount
-          status: createdRental.status as "active" | "terminated" | "pending" | "inactive",
-          isActive: createdRental.is_active,
-          attachments: (createdRental.attachments as string[]) || [],
-          contractAttachments: (createdRental.contract_attachments as string[]) || [],
-          autoRenew: false, // ✅ ADICIONADO: Campo obrigatório
-          hasGarage: hasGarage,
-          garageValue: hasGarage && garageValue ? parseCurrencyToNumber(garageValue) : undefined,
-          hasPartnerBroker: hasPartnerBroker,
-          depositInstallments: depositData.depositInstallments,
-          depositInstallment1: depositData.depositInstallment1,
-          depositInstallment2: depositData.depositInstallment2,
-          depositInstallment3: depositData.depositInstallment3,
-          depositPaymentDate: depositData.depositPaymentDate,
-          depositInstallment2PaymentDate: depositData.depositInstallment2PaymentDate,
-          depositInstallment3PaymentDate: depositData.depositInstallment3PaymentDate,
-          depositPixCode: depositData.depositPixCode,
-          depositInstallment2PixCode: depositData.depositInstallment2PixCode,
-          depositInstallment3PixCode: depositData.depositInstallment3PixCode,
-          createdAt: createdRental.created_at,
+          depositAmount: createdRental.depositAmount,
+          status: createdRental.status,
+          isActive: createdRental.isActive,
+          attachments: createdRental.attachments || [],
+          contractAttachments: createdRental.contractAttachments || [],
+          autoRenew: createdRental.autoRenew || false,
+          hasGarage: createdRental.hasGarage,
+          garageValue: createdRental.garageValue,
+          hasPartnerBroker: createdRental.hasPartnerBroker,
+          depositInstallments: createdRental.depositInstallments,
+          depositInstallment1: createdRental.depositInstallment1,
+          depositInstallment2: createdRental.depositInstallment2,
+          depositInstallment3: createdRental.depositInstallment3,
+          depositPaymentDate: createdRental.depositPaymentDate,
+          depositInstallment2PaymentDate: createdRental.depositInstallment2PaymentDate,
+          depositInstallment3PaymentDate: createdRental.depositInstallment3PaymentDate,
+          depositPixCode: createdRental.depositPixCode,
+          depositInstallment2PixCode: createdRental.depositInstallment2PixCode,
+          depositInstallment3PixCode: createdRental.depositInstallment3PixCode,
+          createdAt: createdRental.createdAt,
         };
 
-        console.log("\n=== INICIO createPaymentsForRental (VERSÃO CORRIGIDA) ===");
-        // ✅ CORRIGIDO: Passando apenas 1 argumento conforme definição do serviço
+        console.log("\n=== INICIO createPaymentsForRental ===");
         await createPaymentsForRental(mappedRental);
-
-        const createdStatusTyped = mappedRental.status as "active" | "terminated" | "pending";
 
         const selectedLocation = locations.find((loc) => loc.id === selectedProperty.locationId);
 
