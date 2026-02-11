@@ -453,8 +453,8 @@ export function RentalFormDialog({
                   {propertiesToDisplay
                     .slice()
                     .sort((a, b) => {
-                      const locationA = getLocationName(a.locationId);
-                      const locationB = getLocationName(b.locationId);
+                      const locationA = a.location || a.locationName || "Local não encontrado";
+                      const locationB = b.location || b.locationName || "Local não encontrado";
                       if (locationA < locationB) return -1;
                       if (locationA > locationB) return 1;
                       return 0;
@@ -463,7 +463,7 @@ export function RentalFormDialog({
                       <SelectItem key={property.id} value={property.id}>
                         <div className="flex items-center gap-2">
                           <span className="font-medium">
-                            {getLocationName(property.locationId)}
+                            {property.location || property.locationName || "Local não encontrado"}
                             {property.complement && ` - ${property.complement}`}
                           </span>
                           <span className="text-muted-foreground">•</span>
