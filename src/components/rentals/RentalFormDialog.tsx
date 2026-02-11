@@ -12,6 +12,7 @@ import { create as createRental, update as updateRentalService } from "@/service
 import { update as updateProperty } from "@/services/propertyService";
 import { update as updateTenant } from "@/services/tenantService";
 import { getAll as getAllLocations } from "@/services/locationService";
+import { depositInstallmentService } from "@/services/depositInstallmentService";
 import {
   createPaymentsForRental,
   updateFuturePayments,
@@ -22,7 +23,6 @@ import { AttachmentViewer } from "@/components/AttachmentViewer";
 import { RentalContract } from "@/components/RentalContract";
 import { useRentalForm } from "@/hooks/useRentalForm";
 import { validateRentalForm, validateRentalValue, prepareRentalData } from "@/lib/rentalCalculations";
-import { supabase } from "@/integrations/supabase/client";
 
 interface RentalFormDialogProps {
   open: boolean;
@@ -200,7 +200,6 @@ export function RentalFormDialog({
       const propertyId = String(selectedPropertyId);
       const tenantId = String(selectedTenantId);
       
-      // CRÍTICO: Usar camelCase para compatibilidade com a interface Rental e o serviço update
       const commonData = {
         propertyId: propertyId,
         tenantId: tenantId,
@@ -208,7 +207,7 @@ export function RentalFormDialog({
         endDate: endDate || null,
         paymentDay: parseInt(paymentDay),
         value: totalValue,
-        monthlyRent: baseRent,  // ✅ ADICIONAR: Enviar aluguel base separado
+        monthlyRent: baseRent,
         depositAmount: parseCurrencyToNumber(depositAmount) || 0,
         status: "active" as const,
         isActive: true,
@@ -218,10 +217,6 @@ export function RentalFormDialog({
         garageValue: hasGarage && garageValue ? parseCurrencyToNumber(garageValue) : undefined,
         hasPartnerBroker: hasPartnerBroker,
       };
-      
-      console.log("💾 VALORES ANTES DE CRIAR depositData:");
-      console.log("depositPaymentDate:", depositPaymentDate);
-      console.log("depositPixCode:", depositPixCode);
 
       const depositData: any = {
         depositInstallments: 1,
@@ -229,9 +224,6 @@ export function RentalFormDialog({
         depositPaymentDate: depositPaymentDate || null,
         depositPixCode: depositPixCode || null,
       };
-
-      console.log("depositPaymentDate:", depositPaymentDate);
-      console.log("depositPixCode:", depositPixCode);
 
       if (isDepositInstallment && depositInstallmentCount) {
         depositData.depositInstallments = parseInt(depositInstallmentCount);
@@ -249,10 +241,9 @@ export function RentalFormDialog({
         }
       }
 
-      // Merge commonData with depositData for complete update payload
       const fullUpdateData = { ...commonData, ...depositData };
 
-      console.log("📤 ENVIANDO DADOS PARA SUPABASE:", fullUpdateData);
+      console.log("📤 DADOS COMPLETOS PARA CRIAR/ATUALIZAR:", fullUpdateData);
 
       if (rental) {
         console.log("📤 Atualizando locação com dados:", fullUpdateData);
@@ -264,15 +255,12 @@ export function RentalFormDialog({
           await updateFuturePaymentsOnPaymentDayChange(rental.id, parseInt(paymentDay));
         }
 
-        await updateDepositInstallments(rental.id, depositData);
-
         const finalStatus = (updatedRental.status || "active") as "active" | "terminated" | "pending";
 
         const mergedRental: Rental = {
           ...rental,
           ...updatedRental,
           status: isViewMode ? "active" : finalStatus,
-          // Corrigido acesso para camelCase
           attachments: updatedRental.attachments || [],
           contractAttachments: updatedRental.contractAttachments || [],
           value: Number(updatedRental.value || 0),
@@ -412,11 +400,6 @@ export function RentalFormDialog({
         await createPaymentsForRental(mappedRental);
 
         const createdStatusTyped = mappedRental.status as "active" | "terminated" | "pending";
-        mappedRental.status = createdStatusTyped;
-
-        if (isViewMode) {
-          mappedRental.status = "active" as "active" | "terminated" | "pending";
-        }
 
         const selectedLocation = locations.find((loc) => loc.id === selectedProperty.locationId);
 
@@ -446,53 +429,6 @@ export function RentalFormDialog({
     }
   };
 
-  const createDepositInstallments = async (rentalId: string, rentalData: any) => {
-    const count = rentalData.depositInstallments || 1;
-    const installments = [];
-
-    for (let i = 1; i <= count; i++) {
-      let amount = 0;
-      let paymentDate = null;
-      let pixCode = null;
-
-      if (i === 1) {
-        amount = rentalData.depositInstallment1;
-        paymentDate = rentalData.depositPaymentDate;
-        pixCode = rentalData.depositPixCode;
-      } else if (i === 2) {
-        amount = rentalData.depositInstallment2 || 0;
-        paymentDate = rentalData.depositInstallment2PaymentDate || null;
-        pixCode = rentalData.depositInstallment2PixCode || null;
-      } else if (i === 3) {
-        amount = rentalData.depositInstallment3 || 0;
-        paymentDate = rentalData.depositInstallment3PaymentDate || null;
-        pixCode = rentalData.depositInstallment3PixCode || null;
-      }
-
-      installments.push({
-        rental_id: rentalId,
-        installment_number: i,
-        total_installments: count,
-        installment_total: count,
-        amount: amount,
-        payment_date: paymentDate,
-        pix_code: pixCode,
-      });
-    }
-
-    const { error } = await supabase.from("deposit_installments").insert(installments);
-
-    if (error) {
-      console.error("Error creating deposit installments:", error);
-    }
-  };
-
-  const updateDepositInstallments = async (rentalId: string, rentalData: any) => {
-    const { error: deleteError } = await supabase.from("deposit_installments").delete().eq("rental_id", rentalId);
-    if (deleteError) console.error("Error deleting old deposit installments:", deleteError);
-    await createDepositInstallments(rentalId, rentalData);
-  };
-
   const calculateTotalDeposit = () => {
     let total = 0;
     if (depositAmount) total += parseCurrencyToNumber(depositAmount);
@@ -516,7 +452,6 @@ export function RentalFormDialog({
 
   if (!open) return null;
 
-  // Mostrar loading enquanto dados estão sendo carregados
   if (isLoadingData) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
