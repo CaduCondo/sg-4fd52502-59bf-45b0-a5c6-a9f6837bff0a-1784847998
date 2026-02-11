@@ -246,6 +246,18 @@ export async function processContractTermination(data: TerminationData): Promise
     console.log("✅ Nenhum recebimento para deletar");
   }
 
+  console.log(`\n📊 Atualizando campo 'months' da locação para ${terminationMonth}...`);
+  const { error: updateMonthsError } = await supabase
+    .from("rentals")
+    .update({ months: terminationMonth })
+    .eq("id", rentalId);
+
+  if (updateMonthsError) {
+    console.error("❌ Erro ao atualizar campo months:", updateMonthsError);
+  } else {
+    console.log("✅ Campo 'months' atualizado com sucesso!");
+  }
+
   console.log("\n=== RESUMO DA RESCISÃO ===");
   console.log(`✅ Recebimento de ${terminationMonth}/${terminationYear} atualizado com R$ ${totalAmount.toFixed(2)}`);
   console.log(`✅ Recebimentos deletados: ${paymentsToDelete?.length || 0} (a partir de ${nextMonth}/${nextYear})`);
