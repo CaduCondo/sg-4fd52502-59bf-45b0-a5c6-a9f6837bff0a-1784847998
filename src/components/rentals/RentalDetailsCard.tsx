@@ -17,8 +17,16 @@ export function RentalDetailsCard({ rental, property, tenant }: RentalDetailsCar
   console.log("Dados do rental:", rental);
   console.log("🔍 Campo depositPaymentDate:", rental.depositPaymentDate);
   console.log("🔍 Campo depositPixCode:", rental.depositPixCode);
-  console.log("🔍 Campo deposit_payment_date:", (rental as any).deposit_payment_date);
-  console.log("🔍 Campo deposit_pix_code:", (rental as any).deposit_pix_code);
+  console.log("🔍 Dados 2ª parcela:", {
+    valor: rental.depositInstallment2,
+    data: rental.depositInstallment2PaymentDate,
+    pix: rental.depositInstallment2PixCode
+  });
+  console.log("🔍 Dados 3ª parcela:", {
+    valor: rental.depositInstallment3,
+    data: rental.depositInstallment3PaymentDate,
+    pix: rental.depositInstallment3PixCode
+  });
   
   const getStatusBadge = (status: string) => {
     const variants: Record<string, "default" | "secondary" | "destructive"> = {
