@@ -200,7 +200,6 @@ export function RentalFormDialog({
       const propertyId = String(selectedPropertyId);
       const tenantId = String(selectedTenantId);
       
-      // CRÍTICO: Usar camelCase para compatibilidade com a interface Rental e o serviço update
       const commonData = {
         propertyId: propertyId,
         tenantId: tenantId,
@@ -208,7 +207,7 @@ export function RentalFormDialog({
         endDate: endDate || null,
         paymentDay: parseInt(paymentDay),
         value: totalValue,
-        monthlyRent: baseRent,  // ✅ ADICIONAR: Enviar aluguel base separado
+        monthlyRent: baseRent,
         depositAmount: parseCurrencyToNumber(depositAmount) || 0,
         status: "active" as const,
         isActive: true,
@@ -219,19 +218,12 @@ export function RentalFormDialog({
         hasPartnerBroker: hasPartnerBroker,
       };
       
-      console.log("💾 VALORES ANTES DE CRIAR depositData:");
-      console.log("depositPaymentDate:", depositPaymentDate);
-      console.log("depositPixCode:", depositPixCode);
-
       const depositData: any = {
         depositInstallments: 1,
         depositInstallment1: parseCurrencyToNumber(depositAmount),
         depositPaymentDate: depositPaymentDate || null,
         depositPixCode: depositPixCode || null,
       };
-
-      console.log("depositPaymentDate:", depositPaymentDate);
-      console.log("depositPixCode:", depositPixCode);
 
       if (isDepositInstallment && depositInstallmentCount) {
         depositData.depositInstallments = parseInt(depositInstallmentCount);
@@ -249,10 +241,7 @@ export function RentalFormDialog({
         }
       }
 
-      // Merge commonData with depositData for complete update payload
       const fullUpdateData = { ...commonData, ...depositData };
-
-      console.log("📤 ENVIANDO DADOS PARA SUPABASE:", fullUpdateData);
 
       if (rental) {
         console.log("📤 Atualizando locação com dados:", fullUpdateData);
@@ -272,7 +261,6 @@ export function RentalFormDialog({
           ...rental,
           ...updatedRental,
           status: isViewMode ? "active" : finalStatus,
-          // Corrigido acesso para camelCase
           attachments: updatedRental.attachments || [],
           contractAttachments: updatedRental.contractAttachments || [],
           value: Number(updatedRental.value || 0),
@@ -316,15 +304,14 @@ export function RentalFormDialog({
 
         setShowContract(true);
       } else {
-        // Mapear camelCase para snake_case para inserção direta no Supabase (create case)
         const insertPayload: any = {
             property_id: propertyId,
             tenant_id: tenantId,
             start_date: startDate,
             end_date: endDate || null,
             payment_day: parseInt(paymentDay),
-            monthly_rent: baseRent,  // ✅ CORRIGIDO: Enviar apenas o valor do aluguel base
-            value: totalValue,  // Total para compatibilidade
+            monthly_rent: baseRent,
+            value: totalValue,
             deposit: parseCurrencyToNumber(depositAmount) || 0,
             status: "active",
             is_active: true,
@@ -333,23 +320,9 @@ export function RentalFormDialog({
             has_garage: hasGarage,
             garage_value: hasGarage && garageValue ? parseCurrencyToNumber(garageValue) : null,
             has_partner_broker: hasPartnerBroker,
-            deposit_installments: depositData.depositInstallments,
-            deposit_installment_1: depositData.depositInstallment1,
-            deposit_payment_date: depositData.depositPaymentDate,
-            deposit_pix_code: depositData.depositPixCode,
-            deposit_installment_2: depositData.depositInstallment2,
-            deposit_installment_2_payment_date: depositData.depositInstallment2PaymentDate,
-            deposit_installment_2_pix_code: depositData.depositInstallment2PixCode,
-            deposit_installment_3: depositData.depositInstallment3,
-            deposit_installment_3_payment_date: depositData.depositInstallment3PaymentDate,
-            deposit_installment_3_pix_code: depositData.depositInstallment3PixCode,
         };
 
-        console.log("📥 ENVIANDO DADOS PARA SUPABASE:", insertPayload);
-        console.log("=== VALORES CALCULADOS NO FORMULÁRIO ===");
-        console.log("baseRent:", baseRent);
-        console.log("garageAmount:", garageAmount);
-        console.log("totalValue:", totalValue);
+        console.log("📥 CRIANDO LOCAÇÃO - Payload:", insertPayload);
 
         const { data: createdRental, error: createError } = await supabase
           .from("rentals")
@@ -364,16 +337,13 @@ export function RentalFormDialog({
 
         console.log("✅ LOCAÇÃO CRIADA:", createdRental);
 
-        // Update property and tenant status
-        console.log("\n=== UPDATING PROPERTY ===");
+        // CRÍTICO: Salvar parcelas de caução na tabela deposit_installments
+        await createDepositInstallments(createdRental.id, depositData);
+
         await updateProperty(propertyId, {
           status: "occupied",
         });
 
-        console.log("✅ Property updated successfully");
-
-        console.log("\nupdateSingle: Atualizando tenants");
-        console.log("ID:", tenantId);
         await updateTenant(tenantId, { status: "rented" });
 
         const mappedRental: Rental = {
@@ -385,12 +355,12 @@ export function RentalFormDialog({
           paymentDay: createdRental.payment_day,
           value: totalValue,
           monthlyRent: baseRent,
-          depositAmount: parseCurrencyToNumber(depositAmount) || 0, // ✅ CORRIGIDO: deposit -> depositAmount
+          depositAmount: parseCurrencyToNumber(depositAmount) || 0,
           status: createdRental.status as "active" | "terminated" | "pending" | "inactive",
           isActive: createdRental.is_active,
           attachments: (createdRental.attachments as string[]) || [],
           contractAttachments: (createdRental.contract_attachments as string[]) || [],
-          autoRenew: false, // ✅ ADICIONADO: Campo obrigatório
+          autoRenew: false,
           hasGarage: hasGarage,
           garageValue: hasGarage && garageValue ? parseCurrencyToNumber(garageValue) : undefined,
           hasPartnerBroker: hasPartnerBroker,
@@ -407,8 +377,6 @@ export function RentalFormDialog({
           createdAt: createdRental.created_at,
         };
 
-        console.log("\n=== INICIO createPaymentsForRental (VERSÃO CORRIGIDA) ===");
-        // ✅ CORRIGIDO: Passando apenas 1 argumento conforme definição do serviço
         await createPaymentsForRental(mappedRental);
 
         const createdStatusTyped = mappedRental.status as "active" | "terminated" | "pending";
@@ -447,7 +415,13 @@ export function RentalFormDialog({
   };
 
   const createDepositInstallments = async (rentalId: string, rentalData: any) => {
+    console.log("\n\n💾 === SALVANDO PARCELAS DE CAUÇÃO NO BANCO ===");
+    console.log("📋 Rental ID:", rentalId);
+    console.log("📊 Dados recebidos:", rentalData);
+    
     const count = rentalData.depositInstallments || 1;
+    console.log("📊 Total de parcelas a salvar:", count);
+    
     const installments = [];
 
     for (let i = 1; i <= count; i++) {
@@ -477,19 +451,56 @@ export function RentalFormDialog({
         amount: amount,
         payment_date: paymentDate,
         pix_code: pixCode,
+        partner_commission: 0,
+        internal_commission: 0,
+        status: paymentDate ? "paid" : "pending",
       });
     }
 
-    const { error } = await supabase.from("deposit_installments").insert(installments);
+    console.log("\n📦 DADOS DAS PARCELAS A SEREM SALVAS:");
+    installments.forEach((inst, idx) => {
+      console.log(`   Parcela ${idx + 1}:`, {
+        rental_id: inst.rental_id,
+        installment_number: inst.installment_number,
+        total_installments: inst.total_installments,
+        amount: inst.amount,
+        payment_date: inst.payment_date,
+        pix_code: inst.pix_code,
+        status: inst.status,
+      });
+    });
+
+    console.log("\n🚀 Executando INSERT no Supabase...");
+    const { data, error } = await supabase.from("deposit_installments").insert(installments).select();
 
     if (error) {
-      console.error("Error creating deposit installments:", error);
+      console.error("❌ ERRO ao salvar parcelas:", error);
+      console.error("❌ Detalhes do erro:", {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+      });
+      throw error;
     }
+
+    console.log("✅ PARCELAS SALVAS COM SUCESSO!");
+    console.log("✅ Dados retornados do Supabase:", data);
+    console.log("✅ Total de registros salvos:", data?.length || 0);
+    console.log("═══════════════════════════════════════════════════\n");
   };
 
   const updateDepositInstallments = async (rentalId: string, rentalData: any) => {
+    console.log("\n🔄 === ATUALIZANDO PARCELAS DE CAUÇÃO ===");
+    console.log("📋 Rental ID:", rentalId);
+    
     const { error: deleteError } = await supabase.from("deposit_installments").delete().eq("rental_id", rentalId);
-    if (deleteError) console.error("Error deleting old deposit installments:", deleteError);
+    if (deleteError) {
+      console.error("❌ Erro ao deletar parcelas antigas:", deleteError);
+    } else {
+      console.log("✅ Parcelas antigas deletadas com sucesso");
+    }
+    
     await createDepositInstallments(rentalId, rentalData);
   };
 
@@ -516,7 +527,6 @@ export function RentalFormDialog({
 
   if (!open) return null;
 
-  // Mostrar loading enquanto dados estão sendo carregados
   if (isLoadingData) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -798,6 +808,17 @@ export function RentalFormDialog({
                       disabled={isFieldDisabled}
                     />
                   </div>
+
+                  <div className="space-y-2 md:col-span-3">
+                    <Label htmlFor="depositInstallment2PixCode">Código PIX</Label>
+                    <Input
+                      id="depositInstallment2PixCode"
+                      value={depositInstallment2PixCode}
+                      onChange={(e) => setDepositInstallment2PixCode(e.target.value)}
+                      placeholder="Código PIX"
+                      disabled={isFieldDisabled}
+                    />
+                  </div>
                 </div>
 
                 {depositInstallmentCount === "3" && (
@@ -820,6 +841,17 @@ export function RentalFormDialog({
                         type="date"
                         value={depositInstallment3PaymentDate}
                         onChange={(e) => setDepositInstallment3PaymentDate(e.target.value)}
+                        disabled={isFieldDisabled}
+                      />
+                    </div>
+
+                    <div className="space-y-2 md:col-span-3">
+                      <Label htmlFor="depositInstallment3PixCode">Código PIX</Label>
+                      <Input
+                        id="depositInstallment3PixCode"
+                        value={depositInstallment3PixCode}
+                        onChange={(e) => setDepositInstallment3PixCode(e.target.value)}
+                        placeholder="Código PIX"
                         disabled={isFieldDisabled}
                       />
                     </div>

@@ -792,32 +792,27 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
 
                   <div className="border-t border-dashed my-2"></div>
 
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Despesas Adicionais *</span>
-                      <span className="font-medium">
-                        {formatCurrency(repairExpenses.toFixed(2))}
-                      </span>
-                    </div>
-                    
-                    {isEditMode && (
-                      <div className="mt-2">
-                        <Input
-                          type="text"
-                          placeholder="R$ 0,00"
-                          value={repairExpensesInput}
-                          onChange={(e) => handleRepairExpensesChange(e.target.value)}
-                          className="w-full"
-                          disabled={isReadOnly}
-                        />
-                      </div>
-                    )}
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-muted-foreground">Despesas Adicionais *</span>
+                    <Input
+                      type="text"
+                      value={repairExpensesInput}
+                      onChange={(e) => handleRepairExpensesChange(e.target.value)}
+                      className="text-right h-9 w-[200px]"
+                      placeholder="R$ 0,00"
+                      disabled={isReadOnly}
+                    />
                   </div>
 
-                  <div className="flex justify-between pt-3 border-t-2 border-primary mt-2">
+                  <div className="border-t border-dashed my-2"></div>
+
+                  <div className="flex justify-between items-center">
                     <span className="font-bold text-base">VALOR TOTAL</span>
-                    <span className="font-bold text-base text-primary">
-                      {formatCurrency(calculatedTotal.toFixed(2))}
+                    <span className={`font-bold text-base ${
+                      calculatedTotal < 0 ? "text-red-600" : "text-primary"
+                    }`}>
+                      {calculatedTotal < 0 ? "- " : ""}
+                      {formatCurrency(Math.abs(calculatedTotal).toFixed(2))}
                     </span>
                   </div>
 

@@ -35,12 +35,11 @@ interface DepositInstallment {
   payment_date: string | null;
   status: string;
   due_date: string | null;
-  is_virtual?: boolean; // Nova flag para identificar parcelas virtuais
   rental: {
     monthly_rent: number;
-    garage_value: number;
-    security_deposit: number;
+    garage_value: number | null;
     has_partner_broker: boolean;
+    status: string;
     tenant: {
       name: string;
     };
@@ -84,120 +83,79 @@ export function DepositInstallmentsTable({
 
       try {
         setLoading(true);
-        console.log("🔍 === INÍCIO BUSCA GERAL DE CAUÇÕES ===");
+        console.log("\n\n🔍 === INÍCIO BUSCA DE PARCELAS DE CAUÇÃO ===");
+        console.log("📊 Filtro de status:", statusFilter);
 
-        // 1. Buscar TODAS as locações com seus dados relacionados e parcelas
         const query = supabase
-          .from("rentals")
+          .from("deposit_installments")
           .select(`
-            id,
-            start_date,
-            monthly_rent,
-            garage_value,
-            security_deposit,
-            deposit_value,
-            has_partner_broker,
-            status,
-            deposit_installments(
+            *,
+            rental:rentals!inner(
               id,
-              rental_id,
-              installment_number,
-              total_installments,
-              amount,
-              pix_code,
-              partner_commission,
-              internal_commission,
-              payment_date,
+              start_date,
+              end_date,
+              monthly_rent,
+              garage_value,
+              has_partner_broker,
               status,
-              due_date
-            ),
-            tenant:tenants(name),
-            property:properties(
-              complement,
-              location:locations(name)
+              tenant:tenants!inner(id, name),
+              property:properties!inner(
+                id,
+                complement,
+                location:locations!inner(id, name)
+              )
             )
           `)
-          .order("start_date", { ascending: false });
+          .order("created_at", { ascending: false });
 
-        const { data: rentalsData, error } = await query;
+        const { data: installmentsData, error } = await query;
 
         if (error) {
           console.error("❌ Erro na query:", error);
           throw error;
         }
 
-        console.log("✅ Query executada com sucesso");
-        console.log("📊 Total de locações encontradas:", rentalsData?.length || 0);
+        console.log("✅ Query executada - Total encontrado:", installmentsData?.length || 0);
 
-        if (!rentalsData || rentalsData.length === 0) {
+        if (!installmentsData || installmentsData.length === 0) {
+          console.log("⚠️ Nenhuma parcela encontrada em deposit_installments");
           setData([]);
           setLoading(false);
           return;
         }
 
-        // Filtrar por status
-        let filteredRentals = rentalsData;
-        if (statusFilter === "active") {
-          filteredRentals = rentalsData.filter(r => r.status === "active");
-        }
-
-        const allInstallments: DepositInstallment[] = [];
-
-        // 2. Processar cada locação para gerar a lista unificada
-        filteredRentals.forEach(rental => {
-          // Determinar o valor total do caução (prioridade: security_deposit > deposit_value)
-          const totalDeposit = Number(rental.security_deposit) || Number(rental.deposit_value) || 0;
-
-          // Se não tem caução, ignora
-          if (totalDeposit <= 0 && (!rental.deposit_installments || rental.deposit_installments.length === 0)) {
-            return;
-          }
-
-          // A. Se tem parcelas cadastradas na tabela deposit_installments
-          if (rental.deposit_installments && rental.deposit_installments.length > 0) {
-            rental.deposit_installments.forEach((inst: any) => {
-              allInstallments.push({
-                ...inst,
-                rental: {
-                  monthly_rent: rental.monthly_rent,
-                  garage_value: rental.garage_value,
-                  security_deposit: totalDeposit,
-                  has_partner_broker: rental.has_partner_broker,
-                  tenant: rental.tenant,
-                  property: rental.property
-                }
-              });
-            });
-          } 
-          // B. Se NÃO tem parcelas, mas tem valor de caução (cria parcela virtual única)
-          else if (totalDeposit > 0) {
-            allInstallments.push({
-              id: `virtual-${rental.id}`,
-              rental_id: rental.id,
-              installment_number: 1,
-              total_installments: 1,
-              amount: totalDeposit,
-              pix_code: null,
-              partner_commission: 0,
-              internal_commission: 0,
-              payment_date: rental.start_date, // Assume data de início como pagamento
-              status: "paid", // Assume pago se está no contrato antigo
-              due_date: rental.start_date,
-              is_virtual: true,
-              rental: {
-                monthly_rent: rental.monthly_rent,
-                garage_value: rental.garage_value,
-                security_deposit: totalDeposit,
-                has_partner_broker: rental.has_partner_broker,
-                tenant: rental.tenant,
-                property: rental.property
-              }
-            });
-          }
+        console.log("\n📋 === DETALHAMENTO DAS PARCELAS ENCONTRADAS ===");
+        installmentsData.forEach((inst, index) => {
+          console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+          console.log(`📋 PARCELA ${index + 1}/${installmentsData.length}`);
+          console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+          console.log(`   🆔 ID: ${inst.id}`);
+          console.log(`   🔗 Rental ID: ${inst.rental_id}`);
+          console.log(`   👤 Inquilino: ${inst.rental?.tenant?.name || "N/A"}`);
+          console.log(`   🏠 Local: ${inst.rental?.property?.location?.name || "N/A"}`);
+          console.log(`   🏢 Complemento: ${inst.rental?.property?.complement || "N/A"}`);
+          console.log(`   💰 Valor: R$ ${inst.amount.toFixed(2)}`);
+          console.log(`   📊 Parcela: ${inst.installment_number}/${inst.total_installments}`);
+          console.log(`   📅 Data Pagamento: ${inst.payment_date || "Pendente"}`);
+          console.log(`   💳 Status: ${inst.status}`);
+          console.log(`   🏢 Status Locação: ${inst.rental?.status || "N/A"}`);
+          console.log(`   🔑 PIX: ${inst.pix_code || "Não informado"}`);
         });
 
-        console.log(`✅ Total final de parcelas (reais + virtuais): ${allInstallments.length}`);
-        setData(allInstallments);
+        let filteredData = installmentsData;
+        if (statusFilter === "active") {
+          filteredData = installmentsData.filter(inst => 
+            inst.rental && inst.rental.status === "active"
+          );
+          console.log(`\n🔍 Filtro aplicado: apenas locações ATIVAS`);
+          console.log(`📊 Total após filtro: ${filteredData.length} parcelas`);
+        }
+
+        console.log("\n✅ === BUSCA FINALIZADA COM SUCESSO ===");
+        console.log(`📊 Total final de parcelas a exibir: ${filteredData.length}`);
+        console.log("════════════════════════════════════════\n");
+
+        setData(filteredData);
         setLoading(false);
 
       } catch (error) {
@@ -217,7 +175,6 @@ export function DepositInstallmentsTable({
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
-      // Ciclo: asc → desc → null
       if (sortDirection === "asc") {
         setSortDirection("desc");
       } else if (sortDirection === "desc") {
@@ -243,18 +200,8 @@ export function DepositInstallmentsTable({
   const handleUpdateField = async (
     installmentId: string,
     field: string,
-    value: string | number,
-    isVirtual: boolean = false
+    value: string | number
   ) => {
-    if (isVirtual) {
-      toast({
-        title: "Ação não permitida",
-        description: "Não é possível editar parcelas virtuais de contratos antigos. Cadastre o parcelamento real na edição do contrato.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     try {
       const updateData: any = {};
       
@@ -271,7 +218,6 @@ export function DepositInstallmentsTable({
 
       if (error) throw error;
 
-      // Atualizar estado local
       setData((prevData) =>
         prevData.map((item) =>
           item.id === installmentId ? { ...item, ...updateData } : item
@@ -300,7 +246,6 @@ export function DepositInstallmentsTable({
       Complemento: inst.rental?.property?.complement || "-",
       Inquilino: inst.rental?.tenant?.name || "-",
       "Valor Aluguel": (inst.rental?.monthly_rent || 0) + (inst.rental?.garage_value || 0),
-      "Valor Total Caução": inst.rental?.security_deposit || 0,
       "Corretor Parceiro": inst.rental?.has_partner_broker ? "Sim" : "Não",
       "Valor Pg Corretor Parceiro": inst.partner_commission || 0,
       "Valor Pg Corretor Interno": inst.internal_commission || 0,
@@ -308,7 +253,6 @@ export function DepositInstallmentsTable({
       "Data Pagamento": inst.payment_date || "-",
       "Valor Parcela": inst.amount || 0,
       "Código PIX": inst.pix_code || "-",
-      "Tipo": inst.is_virtual ? "Virtual (Legado)" : "Real"
     }));
 
     const ws = XLSX.utils.json_to_sheet(excelData);
@@ -361,7 +305,6 @@ export function DepositInstallmentsTable({
     );
   }
 
-  // ✅ Agrupa parcelas por rental_id
   const groupedData = data.reduce((acc, inst) => {
     if (!acc[inst.rental_id]) {
       acc[inst.rental_id] = [];
@@ -370,12 +313,10 @@ export function DepositInstallmentsTable({
     return acc;
   }, {} as Record<string, DepositInstallment[]>);
 
-  // ✅ Ordena parcelas dentro de cada grupo por installment_number
   Object.values(groupedData).forEach((group) => {
     group.sort((a, b) => a.installment_number - b.installment_number);
   });
 
-  // ✅ Converte para array e ordena grupos pela data da primeira parcela
   let sortedGroups = Object.entries(groupedData)
     .sort((a, b) => {
       const dateA = new Date(a[1][0].due_date || a[1][0].payment_date || "");
@@ -384,7 +325,6 @@ export function DepositInstallmentsTable({
     })
     .map(([_, group]) => group);
 
-  // ✅ Aplicar ordenação customizada se houver
   if (sortField && sortDirection) {
     sortedGroups = [...sortedGroups].sort((groupA, groupB) => {
       const instA = groupA[0];
@@ -445,7 +385,6 @@ export function DepositInstallmentsTable({
     });
   }
 
-  // Achatar os grupos para cálculo de totais
   const visibleData = sortedGroups.flatMap(group => group);
 
   const totalExpected = visibleData.reduce((acc, curr) => acc + (curr.amount || 0), 0);
@@ -459,7 +398,6 @@ export function DepositInstallmentsTable({
 
   return (
     <div className="space-y-6">
-      {/* Cards de Resumo */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card className="border-l-4 border-l-blue-500">
           <CardContent className="pt-6">
@@ -680,7 +618,6 @@ export function DepositInstallmentsTable({
                     <TableRow
                       key={inst.id}
                     >
-                      {/* ✅ CÉLULAS MESCLADAS - Só aparecem na 1ª parcela do grupo */}
                       {index === 0 && (
                         <>
                           <TableCell className="font-medium" rowSpan={group.length}>
@@ -730,8 +667,7 @@ export function DepositInstallmentsTable({
                                   handleUpdateField(
                                     inst.id,
                                     "partner_commission",
-                                    e.target.value,
-                                    inst.is_virtual
+                                    e.target.value
                                   )
                                 }
                                 onKeyDown={(e) => {
@@ -739,8 +675,7 @@ export function DepositInstallmentsTable({
                                     handleUpdateField(
                                       inst.id,
                                       "partner_commission",
-                                      (e.target as HTMLInputElement).value,
-                                      inst.is_virtual
+                                      (e.target as HTMLInputElement).value
                                     );
                                   }
                                 }}
@@ -749,16 +684,16 @@ export function DepositInstallmentsTable({
                               />
                             ) : (
                               <div
-                                className={`flex items-center justify-end gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded ${inst.is_virtual ? "opacity-50 cursor-not-allowed" : ""}`}
+                                className="flex items-center justify-end gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded"
                                 onClick={() =>
-                                  !inst.is_virtual && setEditingCell({
+                                  setEditingCell({
                                     id: inst.id,
                                     field: "partner_commission",
                                   })
                                 }
                               >
                                 <span>{formatCurrency(inst.partner_commission)}</span>
-                                {!inst.is_virtual && <Pencil className="h-3 w-3 text-muted-foreground" />}
+                                <Pencil className="h-3 w-3 text-muted-foreground" />
                               </div>
                             )}
                           </TableCell>
@@ -773,8 +708,7 @@ export function DepositInstallmentsTable({
                                   handleUpdateField(
                                     inst.id,
                                     "internal_commission",
-                                    e.target.value,
-                                    inst.is_virtual
+                                    e.target.value
                                   )
                                 }
                                 onKeyDown={(e) => {
@@ -782,8 +716,7 @@ export function DepositInstallmentsTable({
                                     handleUpdateField(
                                       inst.id,
                                       "internal_commission",
-                                      (e.target as HTMLInputElement).value,
-                                      inst.is_virtual
+                                      (e.target as HTMLInputElement).value
                                     );
                                   }
                                 }}
@@ -792,26 +725,24 @@ export function DepositInstallmentsTable({
                               />
                             ) : (
                               <div
-                                className={`flex items-center justify-end gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded ${inst.is_virtual ? "opacity-50 cursor-not-allowed" : ""}`}
+                                className="flex items-center justify-end gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded"
                                 onClick={() =>
-                                  !inst.is_virtual && setEditingCell({
+                                  setEditingCell({
                                     id: inst.id,
                                     field: "internal_commission",
                                   })
                                 }
                               >
                                 <span>{formatCurrency(inst.internal_commission)}</span>
-                                {!inst.is_virtual && <Pencil className="h-3 w-3 text-muted-foreground" />}
+                                <Pencil className="h-3 w-3 text-muted-foreground" />
                               </div>
                             )}
                           </TableCell>
                         </>
                       )}
 
-                      {/* ✅ CÉLULAS NÃO MESCLADAS - Aparecem em todas as linhas */}
                       <TableCell className={`text-center font-semibold border-l border-l-2 border-gray-300 ${bgColor}`}>
                         {inst.installment_number}/{inst.total_installments}
-                        {inst.is_virtual && <span className="ml-1 text-[10px] text-gray-500">(virtual)</span>}
                       </TableCell>
                       <TableCell className={`${bgColor} whitespace-nowrap`}>
                         {inst.payment_date
@@ -826,15 +757,14 @@ export function DepositInstallmentsTable({
                             step="0.01"
                             defaultValue={inst.amount}
                             onBlur={(e) =>
-                              handleUpdateField(inst.id, "amount", e.target.value, inst.is_virtual)
+                              handleUpdateField(inst.id, "amount", e.target.value)
                             }
                             onKeyDown={(e) => {
                               if (e.key === "Enter") {
                                 handleUpdateField(
                                   inst.id,
                                   "amount",
-                                  (e.target as HTMLInputElement).value,
-                                  inst.is_virtual
+                                  (e.target as HTMLInputElement).value
                                 );
                               }
                             }}
@@ -843,15 +773,15 @@ export function DepositInstallmentsTable({
                           />
                         ) : (
                           <div
-                            className={`flex items-center justify-end gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded ${inst.is_virtual ? "opacity-50 cursor-not-allowed" : ""}`}
+                            className="flex items-center justify-end gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded"
                             onClick={() =>
-                              !inst.is_virtual && setEditingCell({ id: inst.id, field: "amount" })
+                              setEditingCell({ id: inst.id, field: "amount" })
                             }
                           >
                             <span className="font-semibold text-green-600">
                               {formatCurrency(inst.amount)}
                             </span>
-                            {!inst.is_virtual && <Pencil className="h-3 w-3 text-muted-foreground" />}
+                            <Pencil className="h-3 w-3 text-muted-foreground" />
                           </div>
                         )}
                       </TableCell>
@@ -862,15 +792,14 @@ export function DepositInstallmentsTable({
                             type="text"
                             defaultValue={inst.pix_code || ""}
                             onBlur={(e) =>
-                              handleUpdateField(inst.id, "pix_code", e.target.value, inst.is_virtual)
+                              handleUpdateField(inst.id, "pix_code", e.target.value)
                             }
                             onKeyDown={(e) => {
                               if (e.key === "Enter") {
                                 handleUpdateField(
                                   inst.id,
                                   "pix_code",
-                                  (e.target as HTMLInputElement).value,
-                                  inst.is_virtual
+                                  (e.target as HTMLInputElement).value
                                 );
                               }
                             }}
@@ -879,15 +808,15 @@ export function DepositInstallmentsTable({
                           />
                         ) : (
                           <div
-                            className={`flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded ${inst.is_virtual ? "opacity-50 cursor-not-allowed" : ""}`}
+                            className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded"
                             onClick={() =>
-                              !inst.is_virtual && setEditingCell({ id: inst.id, field: "pix_code" })
+                              setEditingCell({ id: inst.id, field: "pix_code" })
                             }
                           >
                             <span className="truncate max-w-[100px]">
                               {inst.pix_code || "-"}
                             </span>
-                            {!inst.is_virtual && <Pencil className="h-3 w-3 text-muted-foreground" />}
+                            <Pencil className="h-3 w-3 text-muted-foreground" />
                           </div>
                         )}
                       </TableCell>
@@ -895,7 +824,6 @@ export function DepositInstallmentsTable({
                   );
                 })
                 )}
-                {/* ✅ LINHA DE TOTAIS */}
                 <TableRow className="bg-muted font-bold border-t-2 border-gray-400">
                   <TableCell colSpan={4} className="text-right pr-4">TOTAIS</TableCell>
                   <TableCell className="text-right">{formatCurrency(totalExpected)}</TableCell>

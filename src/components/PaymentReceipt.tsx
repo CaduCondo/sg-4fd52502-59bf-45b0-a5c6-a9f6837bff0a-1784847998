@@ -130,7 +130,6 @@ export function PaymentReceipt({
     }
     
     try {
-      // Remove timezone para evitar problemas de conversão
       const date = new Date(dateString.split('T')[0] + 'T12:00:00');
       
       if (isNaN(date.getTime())) {
@@ -155,7 +154,6 @@ export function PaymentReceipt({
       let dateObj: Date;
       
       if (typeof date === "string") {
-        // Remove timezone para evitar problemas
         const cleanDate = date.split('T')[0] + 'T12:00:00';
         dateObj = new Date(cleanDate);
       } else {
