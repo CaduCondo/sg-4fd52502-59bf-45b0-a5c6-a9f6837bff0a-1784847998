@@ -100,13 +100,13 @@ export const depositInstallmentService = {
       const calculateCommissions = (amount: number) => {
         if (hasPartnerBroker) {
           return {
-            partner_commission: amount * 0.5,
-            internal_commission: amount * 0.5,
+            partner_commission: 0,
+            internal_commission: 0,
           };
         }
         return {
           partner_commission: 0,
-          internal_commission: amount,
+          internal_commission: 0,
         };
       };
 
