@@ -134,6 +134,21 @@ export function RentalFormDialog({
   }, [locationsFromProps]);
 
   useEffect(() => {
+    const fetchLocations = async () => {
+      if (open && locations.length === 0) {
+        try {
+          const data = await getAllLocations();
+          setLocations(data);
+        } catch (error) {
+          console.error("Erro ao buscar locais:", error);
+        }
+      }
+    };
+    
+    fetchLocations();
+  }, [open, locations.length]);
+
+  useEffect(() => {
     if (!open) {
       setLocations([]);
     }
@@ -453,26 +468,42 @@ export function RentalFormDialog({
                   {propertiesToDisplay
                     .slice()
                     .sort((a, b) => {
-                      const locationA = a.location || a.locationName || "Local não encontrado";
-                      const locationB = b.location || b.locationName || "Local não encontrado";
+                      const getLocName = (p: Property) => 
+                        p.location || 
+                        locations.find(l => l.id === p.locationId)?.name || 
+                        p.locationDetails?.name || 
+                        "Local não encontrado";
+                        
+                      const locationA = getLocName(a);
+                      const locationB = getLocName(b);
+                      
                       if (locationA < locationB) return -1;
                       if (locationA > locationB) return 1;
                       return 0;
                     })
-                    .map((property) => (
-                      <SelectItem key={property.id} value={property.id}>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">
-                            {property.location || property.locationName || "Local não encontrado"}
-                            {property.complement && ` - ${property.complement}`}
-                          </span>
-                          <span className="text-muted-foreground">•</span>
-                          <span className="text-sm font-semibold text-emerald-600">
-                            {formatCurrency(property.value || 0)}
-                          </span>
-                        </div>
-                      </SelectItem>
-                    ))}
+                    .map((property) => {
+                      // Estratégia robusta para encontrar o nome do local
+                      const locationName = 
+                        property.location || 
+                        locations.find(l => l.id === property.locationId)?.name || 
+                        property.locationDetails?.name || 
+                        "Local não encontrado";
+                        
+                      return (
+                        <SelectItem key={property.id} value={property.id}>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">
+                              {locationName}
+                              {property.complement && ` - ${property.complement}`}
+                            </span>
+                            <span className="text-muted-foreground">•</span>
+                            <span className="text-sm font-semibold text-emerald-600">
+                              {formatCurrency(property.value || 0)}
+                            </span>
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
                 </SelectContent>
               </Select>
             </div>
