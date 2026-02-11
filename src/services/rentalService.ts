@@ -282,6 +282,20 @@ export const rentalService = {
 
     // Sincronizar parcelas do caução APENAS se houver
     if (rental.depositInstallments && rental.depositInstallments > 0) {
+      console.log("🔄 Iniciando sincronização de parcelas do caução...");
+      console.log("📊 Dados das parcelas:", {
+        depositInstallments: rental.depositInstallments,
+        installment1: rental.depositInstallment1,
+        paymentDate1: rental.depositPaymentDate,
+        pixCode1: rental.depositPixCode,
+        installment2: rental.depositInstallment2,
+        paymentDate2: rental.depositInstallment2PaymentDate,
+        pixCode2: rental.depositInstallment2PixCode,
+        installment3: rental.depositInstallment3,
+        paymentDate3: rental.depositInstallment3PaymentDate,
+        pixCode3: rental.depositInstallment3PixCode,
+      });
+
       await depositInstallmentService.syncDepositInstallments(
         data.id,
         rental.depositInstallments,
@@ -298,6 +312,10 @@ export const rentalService = {
         },
         rental.hasPartnerBroker || false
       );
+      
+      console.log("✅ Sincronização de parcelas concluída");
+    } else {
+      console.log("ℹ️ Caução não parcelado ou sem valor - pulando sincronização");
     }
 
     // Atualizar status do inquilino para 'rented'
