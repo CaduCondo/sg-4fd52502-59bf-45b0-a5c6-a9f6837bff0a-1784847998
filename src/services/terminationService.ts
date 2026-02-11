@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { parseISO, getMonth, getYear, differenceInMonths } from "date-fns";
 import { calculateCorrectedDeposit } from "./igpmService";
+import { recalculateInstallmentNumbers } from "./paymentService";
 
 export interface TerminationData {
   rentalId: string;
@@ -246,16 +247,13 @@ export async function processContractTermination(data: TerminationData): Promise
     console.log("✅ Nenhum recebimento para deletar");
   }
 
-  console.log(`\n📊 Atualizando campo 'months' da locação para ${terminationMonth}...`);
-  const { error: updateMonthsError } = await supabase
-    .from("rentals")
-    .update({ months: terminationMonth })
-    .eq("id", rentalId);
-
-  if (updateMonthsError) {
-    console.error("❌ Erro ao atualizar campo months:", updateMonthsError);
-  } else {
-    console.log("✅ Campo 'months' atualizado com sucesso!");
+  console.log(`\n📊 Recalculando números de parcelas para refletir o novo total...`);
+  try {
+    await recalculateInstallmentNumbers(rentalId);
+    console.log("✅ Números de parcelas recalculados com sucesso!");
+  } catch (recalcError) {
+    console.error("❌ Erro ao recalcular parcelas:", recalcError);
+    // Não lançar erro aqui para não interromper o fluxo de sucesso da rescisão
   }
 
   console.log("\n=== RESUMO DA RESCISÃO ===");
