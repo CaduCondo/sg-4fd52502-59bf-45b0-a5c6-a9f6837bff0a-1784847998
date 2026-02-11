@@ -92,20 +92,19 @@ export function RentalTerminationDialog({
         let source = "";
         let lastPaidDate = "";
 
-        console.log("\n🔍 FONTE ÚNICA: Tabela deposit_installments");
+        console.log("\n🔍 FONTE 1: Tabela deposit_installments");
         console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
         
         const { data: installments, error: installmentsError } = await supabase
           .from("deposit_installments")
           .select("amount, payment_date, installment_number")
-          .eq("rental_id", rental.id)
-          .order("installment_number", { ascending: true });
+          .eq("rental_id", rental.id);
 
         if (installmentsError) {
           console.error("❌ Erro ao buscar parcelas:", installmentsError);
         } else if (installments && installments.length > 0) {
           console.log("✅ Total de parcelas encontradas:", installments.length);
-          console.log("\n📊 TODAS AS PARCELAS (ordem por installment_number):");
+          console.log("\n📊 TODAS AS PARCELAS (ordem ORIGINAL retornada pelo banco):");
           
           installments.forEach((inst, index) => {
             const status = inst.payment_date ? `✅ PAGA em ${inst.payment_date}` : "⏳ PENDENTE";
@@ -116,60 +115,34 @@ export function RentalTerminationDialog({
           const paidInstallments = installments.filter(inst => inst.payment_date);
           
           console.log(`✅ Total de parcelas PAGAS: ${paidInstallments.length}`);
+          console.log("\n📋 PARCELAS PAGAS (ANTES da ordenação):");
+          paidInstallments.forEach((inst, index) => {
+            console.log(`   ${index + 1}. Parcela ${inst.installment_number}: Data ${inst.payment_date} (R$ ${inst.amount.toFixed(2)})`);
+          });
+
+          console.log("\n🔄 ORDENANDO por installment_number DESCENDENTE (maior → menor)...");
+          paidInstallments.sort((a, b) => {
+            const result = b.installment_number - a.installment_number;
+            console.log(`   Comparando: Parcela ${b.installment_number} vs Parcela ${a.installment_number} = ${result}`);
+            return result;
+          });
+
+          console.log("\n📋 PARCELAS PAGAS (DEPOIS da ordenação DESC):");
+          paidInstallments.forEach((inst, index) => {
+            console.log(`   ${index + 1}. Parcela ${inst.installment_number}: Data ${inst.payment_date} (R$ ${inst.amount.toFixed(2)})`);
+          });
 
           if (paidInstallments.length > 0) {
-            console.log("\n🔥🔥🔥 ENCONTRANDO A ÚLTIMA PARCELA PAGA 🔥🔥🔥");
+            const lastPaidInstallment = paidInstallments[0];
+            lastPaidDate = lastPaidInstallment.payment_date;
+            
+            console.log("\n🔥🔥🔥 CONFIRMAÇÃO DA DATA BASE 🔥🔥🔥");
             console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-            
-            // Ordena por installment_number em ordem DECRESCENTE (maior primeiro)
-            const sortedByNumber = [...paidInstallments].sort((a, b) => 
-              b.installment_number - a.installment_number
-            );
-            
-            console.log("\n📊 PARCELAS ORDENADAS (maior número primeiro):");
-            sortedByNumber.forEach((inst, index) => {
-              console.log(`   ${index + 1}. Parcela ${inst.installment_number}: Data ${inst.payment_date} (R$ ${inst.amount.toFixed(2)})`);
-            });
-            
-            // Pega a primeira da lista ordenada (maior número)
-            let lastPaidInstallment = sortedByNumber[0];
-            
-            // BACKUP: Se houver múltiplas parcelas com o mesmo número, pega a mais recente por data
-            const sameNumber = sortedByNumber.filter(
-              inst => inst.installment_number === lastPaidInstallment.installment_number
-            );
-            
-            if (sameNumber.length > 1) {
-              console.log("\n⚠️ MÚLTIPLAS PARCELAS COM MESMO NÚMERO - Ordenando por data...");
-              const sortedByDate = [...sameNumber].sort((a, b) => 
-                new Date(b.payment_date!).getTime() - new Date(a.payment_date!).getTime()
-              );
-              lastPaidInstallment = sortedByDate[0];
-              console.log("✅ Escolhida parcela com data mais recente:", lastPaidInstallment.payment_date);
-            }
-            
-            // VALIDAÇÃO FINAL: Verifica se é realmente a data mais recente
-            console.log("\n🔍 VALIDAÇÃO FINAL:");
-            const allDates = paidInstallments.map(inst => new Date(inst.payment_date!).getTime());
-            const maxDate = Math.max(...allDates);
-            const maxDateStr = new Date(maxDate).toISOString().split("T")[0];
-            
-            console.log(`   Data escolhida: ${lastPaidInstallment.payment_date}`);
-            console.log(`   Data mais recente de TODAS: ${maxDateStr}`);
-            
-            if (lastPaidInstallment.payment_date !== maxDateStr) {
-              console.warn("⚠️ DATA INCONSISTENTE! Usando data mais recente encontrada.");
-              lastPaidInstallment = paidInstallments.find(
-                inst => inst.payment_date === maxDateStr
-              ) || lastPaidInstallment;
-            }
-            
-            console.log("\n✅ ✅ ✅ ÚLTIMA PARCELA PAGA CONFIRMADA:");
+            console.log("✅ ÚLTIMA PARCELA PAGA IDENTIFICADA:");
+            console.log(`   • Posição no array: [0] (primeira posição)`);
             console.log(`   • Número da Parcela: ${lastPaidInstallment.installment_number}`);
             console.log(`   • Valor: R$ ${lastPaidInstallment.amount.toFixed(2)}`);
-            console.log(`   • Data de Pagamento: ${lastPaidInstallment.payment_date}`);
-            
-            lastPaidDate = lastPaidInstallment.payment_date!;
+            console.log(`   • Data de Pagamento: ${lastPaidDate}`);
             console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
             console.log("📅 ESTA DATA SERÁ USADA COMO BASE PARA CORREÇÃO POUPANÇA");
             console.log("💡 Quanto mais recente a data, MENOR a correção (mais barato)");
@@ -181,10 +154,70 @@ export function RentalTerminationDialog({
           }
 
           totalDeposit = installments.reduce((sum, inst) => sum + (inst.amount || 0), 0);
-          source = "deposit_installments (tabela)";
+          source = "deposit_installments (tabela de parcelas)";
           console.log(`\n💰 SOMA TOTAL DAS PARCELAS: R$ ${totalDeposit.toFixed(2)}`);
         } else {
-          console.log("⚠️ Nenhuma parcela encontrada na tabela deposit_installments");
+          console.log("⚠️ Nenhuma parcela encontrada");
+        }
+
+        if (totalDeposit === 0) {
+          console.log("\n🔍 FONTE 2: Campos antigos (deposit_installment_1/2/3)");
+          console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+          
+          const { data: rentalData, error: rentalError } = await supabase
+            .from("rentals")
+            .select("deposit_installment_1, deposit_installment_2, deposit_installment_3")
+            .eq("id", rental.id)
+            .single();
+
+          if (rentalError) {
+            console.error("❌ Erro ao buscar rental:", rentalError);
+          } else if (rentalData) {
+            const inst1 = Number(rentalData.deposit_installment_1) || 0;
+            const inst2 = Number(rentalData.deposit_installment_2) || 0;
+            const inst3 = Number(rentalData.deposit_installment_3) || 0;
+
+            console.log(`   Parcela 1: R$ ${inst1.toFixed(2)}`);
+            console.log(`   Parcela 2: R$ ${inst2.toFixed(2)}`);
+            console.log(`   Parcela 3: R$ ${inst3.toFixed(2)}`);
+
+            totalDeposit = inst1 + inst2 + inst3;
+            if (totalDeposit > 0) {
+              source = "campos deposit_installment_X";
+              lastPaidDate = rental.startDate;
+              console.log(`✅ Total: R$ ${totalDeposit.toFixed(2)}`);
+            }
+          }
+        }
+
+        if (totalDeposit === 0) {
+          console.log("\n🔍 FONTE 3: Campo security_deposit");
+          const securityDepositValue = Number(rental.security_deposit) || 0;
+          if (securityDepositValue > 0) {
+            totalDeposit = securityDepositValue;
+            source = "security_deposit";
+            lastPaidDate = rental.startDate;
+            console.log(`✅ Valor: R$ ${totalDeposit.toFixed(2)}`);
+          }
+        }
+
+        if (totalDeposit === 0) {
+          console.log("\n🔍 FONTE 4: Campo deposit_value");
+          const { data: rentalData } = await supabase
+            .from("rentals")
+            .select("deposit_value")
+            .eq("id", rental.id)
+            .single();
+
+          if (rentalData) {
+            const depositValue = Number(rentalData.deposit_value) || 0;
+            if (depositValue > 0) {
+              totalDeposit = depositValue;
+              source = "deposit_value";
+              lastPaidDate = rental.startDate;
+              console.log(`✅ Valor: R$ ${totalDeposit.toFixed(2)}`);
+            }
+          }
         }
 
         console.log("\n💰 ========================================");
@@ -315,7 +348,11 @@ export function RentalTerminationDialog({
     if (depositAmount === 0) {
       alert(
         "⚠️ ATENÇÃO: Não é possível rescindir o contrato sem caução cadastrado.\n\n" +
-        "O sistema não encontrou o valor do caução na tabela deposit_installments.\n\n" +
+        "O sistema não encontrou o valor do caução em nenhuma fonte de dados:\n" +
+        "• Tabela deposit_installments\n" +
+        "• Campos deposit_installment_1/2/3\n" +
+        "• Campo security_deposit\n" +
+        "• Campo deposit_value\n\n" +
         "Por favor, verifique se o caução foi cadastrado corretamente e tente novamente."
       );
       console.error("❌ RESCISÃO BLOQUEADA: depositAmount = 0");
