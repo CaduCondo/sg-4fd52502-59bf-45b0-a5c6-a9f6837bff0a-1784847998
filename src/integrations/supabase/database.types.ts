@@ -384,6 +384,7 @@ export type Database = {
           due_date: string
           expected_amount: number
           id: string
+          installment: number | null
           interest: number | null
           is_paid: boolean | null
           late_fee: number | null
@@ -399,6 +400,7 @@ export type Database = {
           reference_year: string
           rental_id: string
           status: string
+          total_installments: number | null
           updated_at: string | null
         }
         Insert: {
@@ -410,6 +412,7 @@ export type Database = {
           due_date: string
           expected_amount: number
           id?: string
+          installment?: number | null
           interest?: number | null
           is_paid?: boolean | null
           late_fee?: number | null
@@ -425,6 +428,7 @@ export type Database = {
           reference_year: string
           rental_id: string
           status: string
+          total_installments?: number | null
           updated_at?: string | null
         }
         Update: {
@@ -436,6 +440,7 @@ export type Database = {
           due_date?: string
           expected_amount?: number
           id?: string
+          installment?: number | null
           interest?: number | null
           is_paid?: boolean | null
           late_fee?: number | null
@@ -451,6 +456,7 @@ export type Database = {
           reference_year?: string
           rental_id?: string
           status?: string
+          total_installments?: number | null
           updated_at?: string | null
         }
         Relationships: [

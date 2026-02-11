@@ -236,6 +236,7 @@ export interface Payment {
   penaltyAmount?: number;
   interestAmount?: number;
   discountAmount?: number;
+  adminFee?: number;
   lateFee?: number; // Alias
   interest?: number; // Alias
   

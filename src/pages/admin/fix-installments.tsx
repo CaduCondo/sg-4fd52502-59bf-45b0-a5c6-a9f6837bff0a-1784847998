@@ -83,6 +83,7 @@ export default function FixInstallments() {
             const installmentNumber = i + 1;
 
             // Verificar se precisa atualizar
+            // @ts-expect-error - Propriedades adicionadas recentemente ao banco
             if (payment.installment === installmentNumber && payment.total_installments === totalMonths) {
               addLog("info", `✓ Recebimento ${payment.id} já está correto (${installmentNumber}/${totalMonths})`);
               continue;
@@ -92,6 +93,7 @@ export default function FixInstallments() {
             const { error: updateError } = await supabase
               .from("payments")
               .update({
+                // @ts-expect-error - Propriedades adicionadas recentemente ao banco
                 installment: installmentNumber,
                 total_installments: totalMonths,
               })
