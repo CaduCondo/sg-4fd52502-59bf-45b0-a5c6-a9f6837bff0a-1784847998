@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Camera, Paperclip } from "lucide-react";
 import { formatCurrency, parseCurrencyToNumber, formatCurrencyInput } from "@/lib/masks";
+import { supabase } from "@/integrations/supabase/client";
 import { create as createRental, update as updateRentalService } from "@/services/rentalService";
 import { update as updateProperty } from "@/services/propertyService";
 import { update as updateTenant } from "@/services/tenantService";
