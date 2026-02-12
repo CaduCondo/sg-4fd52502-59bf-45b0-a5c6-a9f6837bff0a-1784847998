@@ -175,7 +175,6 @@ export default function Dashboard() {
     // CORREÇÃO: Contratos Vigentes e Imóveis Alugados devem ter o mesmo número
     // A fonte de verdade é a tabela 'rentals' com is_active = true
     const activeContracts = rentals.filter(r => r.isActive).length;
-    const rentedProperties = activeContracts; // MESMO VALOR - um contrato ativo = um imóvel alugado
     
     const unavailableProperties = properties.filter(p => p.status === 'unavailable').length;
     
