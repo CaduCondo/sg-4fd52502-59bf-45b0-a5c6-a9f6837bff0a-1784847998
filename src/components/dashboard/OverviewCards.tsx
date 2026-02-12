@@ -16,6 +16,8 @@ import { MetricCard } from "./MetricCard";
 import { FinancialMetricCard } from "./FinancialMetricCard";
 import { PeriodSelector } from "./PeriodSelector";
 
+// VERSION: 2026-02-12-23:50 - Cache buster
+
 interface OverviewCardsProps {
   data: {
     totalProperties: number;
