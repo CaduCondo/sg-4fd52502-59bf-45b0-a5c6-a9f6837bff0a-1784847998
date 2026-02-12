@@ -36,10 +36,8 @@ export default function ManagePaymentPage() {
 
       if (error) throw error;
 
-      // Verifica se é rescisão baseada nas notas ou no breakdown
       const isTerminationByNotes = payment?.notes?.includes("Rescisão de Contrato") || false;
       
-      // Verifica breakdown com segurança de tipo
       let isTerminationByBreakdown = false;
       if (payment?.breakdown && Array.isArray(payment.breakdown)) {
         isTerminationByBreakdown = payment.breakdown.some((item: any) => 
@@ -64,23 +62,15 @@ export default function ManagePaymentPage() {
     property: Property;
     tenant: Tenant;
   }) => {
-    console.log("🎯 handlePaymentSuccess CHAMADO NA PÁGINA!");
-    console.log("📄 Página recebeu dados do pagamento:", data);
-    console.log("🔧 Setando receiptData...");
     setReceiptData(data);
-    console.log("🔧 Setando showReceipt para true...");
     setShowReceipt(true);
-    console.log("✅ Estados setados! Recibo deve aparecer agora!");
   };
 
   const handleCloseReceipt = () => {
-    console.log("🔙 Fechando recibo e voltando para listagem...");
     setShowReceipt(false);
     setReceiptData(null);
     router.push("/payments");
   };
-
-  console.log("🔍 Estado atual da página - showReceipt:", showReceipt, "hasReceiptData:", !!receiptData);
 
   const pageTitle = isTermination 
     ? "Registrar Recebimento - Rescisão de Contrato"
@@ -92,30 +82,23 @@ export default function ManagePaymentPage() {
         <title>{pageTitle} - Sistema de Locações</title>
       </Head>
       <Layout>
-        <div>
-          <div className="mb-2"> {/* Margem reduzida de mb-4 para mb-2 */}
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">
-              {pageTitle}
-            </h1>
-          </div>
+        <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-4">
+          {pageTitle}
+        </h1>
 
-          <ManagePaymentForm 
-            paymentId={id as string}
-            onSuccess={handlePaymentSuccess}
-          />
-        </div>
+        <ManagePaymentForm 
+          paymentId={id as string}
+          onSuccess={handlePaymentSuccess}
+        />
 
         {showReceipt && receiptData && (
-          <>
-            {console.log("✅ RENDERIZANDO PaymentReceipt - Dialog deve abrir!")}
-            <PaymentReceipt
-              payment={receiptData.payment}
-              rental={receiptData.rental}
-              property={receiptData.property}
-              tenant={receiptData.tenant}
-              onClose={handleCloseReceipt}
-            />
-          </>
+          <PaymentReceipt
+            payment={receiptData.payment}
+            rental={receiptData.rental}
+            property={receiptData.property}
+            tenant={receiptData.tenant}
+            onClose={handleCloseReceipt}
+          />
         )}
       </Layout>
     </>
