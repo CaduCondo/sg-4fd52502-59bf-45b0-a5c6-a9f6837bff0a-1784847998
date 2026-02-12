@@ -177,6 +177,9 @@ export default function RentalsPage() {
     try {
       const { processContractTermination } = await import("@/services/terminationService");
       
+      console.log("=== INICIANDO RESCISÃO ===");
+      console.log("Data de rescisão:", data.terminationDate);
+      
       await processContractTermination({
         rentalId: rentalToEnd.id,
         terminationDate: data.terminationDate,
@@ -186,15 +189,21 @@ export default function RentalsPage() {
         monthlyRent: rentalToEnd.value || 0,
       });
 
+      console.log("✅ Rescisão processada com sucesso!");
+      console.log("🔄 Recarregando dados das locações...");
+
       toast({
         title: "Sucesso",
         description: "Rescisão processada com sucesso! Aguardando pagamento final.",
         className: "bg-green-500 text-white border-none",
       });
       
+      // CRÍTICO: Recarregar dados ANTES de fechar o modal
       await loadRentalsData();
+      console.log("✅ Dados recarregados!");
+      
     } catch (error) {
-      console.error("Erro ao processar rescisão:", error);
+      console.error("❌ Erro ao processar rescisão:", error);
       throw error;
     }
   };
@@ -207,6 +216,7 @@ export default function RentalsPage() {
   }) => {
     try {
       await handleTerminateRental(data);
+      // Só fecha o modal DEPOIS que os dados foram recarregados
       setRentalToEnd(null);
     } catch (error) {
       console.error("❌ Error ending contract:", error);

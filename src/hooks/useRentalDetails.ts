@@ -214,6 +214,10 @@ export function useRentalDetails(rentalId: string) {
     if (!rental) return;
 
     try {
+      console.log("=== HOOK: INICIANDO RESCISÃO ===");
+      console.log("Rental ID:", rental.id);
+      console.log("Data de rescisão:", data.terminationDate);
+      
       // 1. Calcular aluguel proporcional aqui para passar para o serviço
       const termDate = parseISO(data.terminationDate);
       const paymentDay = rental.paymentDay || 1;
@@ -237,15 +241,19 @@ export function useRentalDetails(rentalId: string) {
         monthlyRent: rental.value || 0,
       });
 
+      console.log("✅ HOOK: Rescisão processada!");
+
       toast({
         title: "Rescisão processada com sucesso!",
         description: "O recebimento final foi criado. Aguardando pagamento para finalizar.",
       });
       
+      console.log("🔄 HOOK: Recarregando dados da locação...");
       // Recarregar dados
       await loadRentalData();
+      console.log("✅ HOOK: Dados recarregados!");
     } catch (error) {
-      console.error("Error terminating rental:", error);
+      console.error("❌ HOOK: Error terminating rental:", error);
       toast({
         title: "Erro",
         description: "Não foi possível processar a rescisão.",
