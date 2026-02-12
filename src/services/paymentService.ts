@@ -577,6 +577,19 @@ export async function createPaymentsForRental(rental: any): Promise<void> {
     console.log(`   ✅ Parcelas criadas correspondem ao período do contrato!`);
   }
 
+  // ADICIONAR campos de parcela a todos os pagamentos
+  const totalInstallments = payments.length;
+  payments.forEach((payment, index) => {
+    payment.installment = index + 1;
+    payment.total_installments = totalInstallments;
+  });
+
+  console.log(`✅ Campos de parcela adicionados: installment e total_installments`);
+
+  // Log detalhado antes da inserção
+  console.log("\n🔍 DADOS QUE SERÃO INSERIDOS NO BANCO:");
+  console.log("Primeiros 2 pagamentos:", JSON.stringify(payments.slice(0, 2), null, 2));
+
   // Validação: verificar duplicatas
   const monthYearSet = new Set<string>();
   const duplicateMonths: string[] = [];
