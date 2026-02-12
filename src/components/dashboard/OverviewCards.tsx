@@ -144,7 +144,7 @@ export function OverviewCards({
             onPeriodChange={onPeriodChange}
           />
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <CardWrapper href="/payments?status=overdue">
             <MetricCard
               title="Aluguéis Atrasados"
@@ -193,19 +193,6 @@ export function OverviewCards({
               iconColor="text-indigo-600"
               iconBgClass="bg-indigo-50 dark:bg-indigo-900/20"
               borderColorClass="border-l-indigo-500"
-              clickable={hasLinks}
-            />
-          </CardWrapper>
-
-          <CardWrapper href="/tenants">
-            <MetricCard
-              title="Total Inquilinos"
-              value={data.totalTenants}
-              subtitle="Inquilinos cadastrados"
-              icon={Users}
-              iconColor="text-cyan-600"
-              iconBgClass="bg-cyan-50 dark:bg-cyan-900/20"
-              borderColorClass="border-l-cyan-500"
               clickable={hasLinks}
             />
           </CardWrapper>
