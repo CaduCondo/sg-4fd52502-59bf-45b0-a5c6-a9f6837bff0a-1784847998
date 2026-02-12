@@ -270,6 +270,9 @@ export default function Dashboard() {
 
     const totalFeesAndExpenses = totalFees + locationExpenses;
     const netRevenue = grossRevenue - totalFeesAndExpenses;
+    
+    // Definir totalRevenue (igual à receita bruta) para satisfazer a interface
+    const totalRevenue = grossRevenue;
 
     console.log("📊 RESUMO FINAL:", {
       totalTenants,
