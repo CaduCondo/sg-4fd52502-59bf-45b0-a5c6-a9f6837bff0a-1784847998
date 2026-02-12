@@ -267,6 +267,12 @@ export async function processContractTermination(data: TerminationData): Promise
     console.log("✅ Nenhum recebimento para deletar");
   }
 
+  console.log(`✅ ${deletedCount} recebimentos futuros foram deletados com sucesso`);
+
+  // ==========================================
+  // 6. CRIAR RECEBIMENTO DE RESCISÃO
+  // ==========================================
+
   console.log(`\n📊 PASSO 9: Recalcular números de parcelas`);
   console.log(`Recalculando para rental_id: ${rentalId}`);
 
