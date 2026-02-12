@@ -670,13 +670,15 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
 
   return (
     <div className="space-y-6 pb-8">
-      {!embedded && (
-        <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold">
-            Registrar Recebimento
-          </h1>
-        </div>
-      )}
+      <Card className="w-full max-w-4xl mx-auto">
+        <CardContent className="pt-6">
+          <div className="text-center mb-6">
+            <h1 className="text-2xl font-bold">
+              Registrar Recebimento
+            </h1>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
