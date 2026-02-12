@@ -391,29 +391,64 @@ export async function recalculateInstallmentNumbers(rentalId: string): Promise<n
   }
 
   const totalInstallments = payments.length;
-  console.log(`📊 Total de parcelas: ${totalInstallments}`);
+  console.log(`📊 Total de parcelas ENCONTRADAS: ${totalInstallments}`);
+  console.log(`📋 IDs dos pagamentos:`, payments.map(p => p.id));
+
+  // Log dos valores ANTES do update
+  console.log("\n📝 VALORES ANTES DO UPDATE:");
+  payments.forEach((p, i) => {
+    console.log(`   Pagamento ${i + 1}: ID=${p.id.substring(0, 8)}... | installment=${p.installment || 'null'} | total_installments=${p.total_installments || 'null'} | due_date=${p.due_date}`);
+  });
 
   // Atualizar cada pagamento com seu número de parcela e total
+  const updatedIds = [];
   for (let i = 0; i < payments.length; i++) {
     const installmentNumber = i + 1;
     
-    const { error: updateError } = await supabase
+    console.log(`\n🔄 Atualizando pagamento ${installmentNumber}/${totalInstallments}...`);
+    console.log(`   ID: ${payments[i].id}`);
+    console.log(`   ANTES: installment=${payments[i].installment}, total_installments=${payments[i].total_installments}`);
+    
+    const { data: updatedPayment, error: updateError } = await supabase
       .from(TABLE)
       .update({
         installment: installmentNumber,
         total_installments: totalInstallments,
       })
-      .eq("id", payments[i].id);
+      .eq("id", payments[i].id)
+      .select()
+      .single();
 
     if (updateError) {
-      console.error(`Erro ao atualizar parcela ${installmentNumber}:`, updateError);
+      console.error(`❌ Erro ao atualizar parcela ${installmentNumber}:`, updateError);
       throw updateError;
     }
 
-    console.log(`✅ Parcela ${installmentNumber}/${totalInstallments} atualizada`);
+    console.log(`   DEPOIS: installment=${updatedPayment.installment}, total_installments=${updatedPayment.total_installments}`);
+    console.log(`   ✅ Parcela ${installmentNumber}/${totalInstallments} atualizada com sucesso!`);
+    
+    updatedIds.push(payments[i].id);
   }
 
-  console.log("✅ Números de parcelas recalculados com sucesso!");
+  console.log("\n✅ RECÁLCULO CONCLUÍDO COM SUCESSO!");
+  console.log(`📊 Total de pagamentos atualizados: ${updatedIds.length}`);
+  console.log(`📋 IDs atualizados:`, updatedIds.map(id => id.substring(0, 8) + "..."));
+  
+  // Verificação final - buscar novamente para confirmar
+  console.log("\n🔍 VERIFICAÇÃO FINAL - Buscando pagamentos novamente...");
+  const { data: verifyPayments, error: verifyError } = await supabase
+    .from(TABLE)
+    .select("id, installment, total_installments, due_date")
+    .eq("rental_id", rentalId)
+    .order("due_date", { ascending: true });
+
+  if (!verifyError && verifyPayments) {
+    console.log("📝 VALORES FINAIS NO BANCO:");
+    verifyPayments.forEach((p, i) => {
+      console.log(`   Pagamento ${i + 1}: ID=${p.id.substring(0, 8)}... | installment=${p.installment} | total_installments=${p.total_installments} | due_date=${p.due_date}`);
+    });
+  }
+
   return totalInstallments;
 }
 
