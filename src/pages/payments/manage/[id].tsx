@@ -30,21 +30,25 @@ export default function ManagePaymentPage() {
     try {
       const { data: payment, error } = await supabase
         .from("payments")
-        .select("rental_id")
+        .select("notes, breakdown")
         .eq("id", id as string)
         .single();
 
       if (error) throw error;
 
-      if (payment?.rental_id) {
-        const { data: termination } = await supabase
-          .from("rental_terminations")
-          .select("id")
-          .eq("rental_id", payment.rental_id)
-          .single();
-
-        setIsTermination(!!termination);
+      // Verifica se é rescisão baseada nas notas ou no breakdown
+      const isTerminationByNotes = payment?.notes?.includes("Rescisão de Contrato") || false;
+      
+      // Verifica breakdown com segurança de tipo
+      let isTerminationByBreakdown = false;
+      if (payment?.breakdown && Array.isArray(payment.breakdown)) {
+        isTerminationByBreakdown = payment.breakdown.some((item: any) => 
+          item.description?.includes("Multa Rescisória") || 
+          item.description?.includes("Devolução de Caução")
+        );
       }
+
+      setIsTermination(isTerminationByNotes || isTerminationByBreakdown);
     } catch (error) {
       console.error("Error checking termination:", error);
     } finally {
@@ -89,7 +93,7 @@ export default function ManagePaymentPage() {
       </Head>
       <Layout>
         <div>
-          <div className="mb-4">
+          <div className="mb-2"> {/* Margem reduzida de mb-4 para mb-2 */}
             <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">
               {pageTitle}
             </h1>
