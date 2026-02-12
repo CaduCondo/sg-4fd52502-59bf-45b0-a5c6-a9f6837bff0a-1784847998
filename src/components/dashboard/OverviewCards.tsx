@@ -10,13 +10,14 @@ import {
   TrendingUp,
   Wallet,
   Clock,
+  Percent,
 } from "lucide-react";
 import Link from "next/link";
 import { MetricCard } from "./MetricCard";
 import { FinancialMetricCard } from "./FinancialMetricCard";
 import { PeriodSelector } from "./PeriodSelector";
 
-// VERSION: 2026-02-12-23:50 - Cache buster
+// VERSION: 2026-02-12-23:55 - Final Order Fix
 
 interface OverviewCardsProps {
   data: {
@@ -24,6 +25,7 @@ interface OverviewCardsProps {
     availableProperties: number;
     unavailableProperties: number;
     totalTenants: number;
+    occupancyRate: number; // Adicionado
     activeContracts: number;
     expiringContracts: number;
     overduePayments: number;
@@ -57,6 +59,10 @@ export function OverviewCards({
       currency: "BRL",
     });
   };
+  
+  const formatPercent = (value: number) => {
+    return `${value.toFixed(1)}%`;
+  };
 
   const hasLinks = userRole === "admin" || userRole === "broker";
 
@@ -73,7 +79,14 @@ export function OverviewCards({
 
   return (
     <div className="space-y-5">
-      {/* Primeira Linha - Imóveis (sem período) */}
+      {/* 
+        PRIMEIRA LINHA - IMÓVEIS (5 cards)
+        1. Imóveis Cadastrados
+        2. Imóveis Disponíveis
+        3. Imóveis Indisponíveis
+        4. Total Inquilinos
+        5. Taxa de Ocupação
+      */}
       <div>
         <h2 className="text-xl font-semibold mb-4">Imóveis</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -110,31 +123,41 @@ export function OverviewCards({
             clickable={false}
           />
 
-          <MetricCard
-            title="Total Inquilinos"
-            value={data.totalTenants}
-            icon={Users}
-            subtitle="Inquilinos cadastrados"
-            iconColor="text-cyan-600"
-            iconBgClass="bg-cyan-50 dark:bg-cyan-900/20"
-            borderColorClass="border-l-cyan-500"
-            clickable={false}
-          />
+          <CardWrapper href={hasLinks ? "/tenants" : undefined}>
+            <MetricCard
+              title="Total Inquilinos"
+              value={data.totalTenants}
+              icon={Users}
+              subtitle="Inquilinos ativos"
+              iconColor="text-cyan-600"
+              iconBgClass="bg-cyan-50 dark:bg-cyan-900/20"
+              borderColorClass="border-l-cyan-500"
+              clickable={hasLinks}
+            />
+          </CardWrapper>
 
           <MetricCard
-            title="Locações a Vencer"
-            value={data.expiringContracts}
-            icon={AlertCircle}
-            subtitle="Contratos vencem em até 2 meses"
-            iconColor="text-purple-600"
-            iconBgClass="bg-purple-50 dark:bg-purple-900/20"
-            borderColorClass="border-l-purple-500"
+            title="Taxa de Ocupação"
+            value={data.occupancyRate}
+            isPercent={true}
+            icon={Percent}
+            subtitle="Imóveis alugados vs total"
+            iconColor="text-teal-600"
+            iconBgClass="bg-teal-50 dark:bg-teal-900/20"
+            borderColorClass="border-l-teal-500"
             clickable={false}
           />
         </div>
       </div>
 
-      {/* Segunda Linha - Contratos e Pagamentos (com filtro de período) */}
+      {/* 
+        SEGUNDA LINHA - CONTRATOS E PAGAMENTOS (5 cards)
+        1. Aluguéis Atrasados
+        2. Aluguéis Vencem Hoje
+        3. Aluguéis Recebidos
+        4. Contratos Vigentes
+        5. Locações a Vencer
+      */}
       <div>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-3">
           <h2 className="text-sm font-semibold text-foreground px-1">
@@ -146,7 +169,7 @@ export function OverviewCards({
             onPeriodChange={onPeriodChange}
           />
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           <CardWrapper href="/payments?status=overdue">
             <MetricCard
               title="Aluguéis Atrasados"
@@ -198,10 +221,30 @@ export function OverviewCards({
               clickable={hasLinks}
             />
           </CardWrapper>
+
+          <CardWrapper href="/rentals?status=expiring">
+            <MetricCard
+              title="Locações a Vencer"
+              value={data.expiringContracts}
+              subtitle="Vencem em até 60 dias"
+              icon={AlertCircle}
+              iconColor="text-purple-600"
+              iconBgClass="bg-purple-50 dark:bg-purple-900/20"
+              borderColorClass="border-l-purple-500"
+              clickable={hasLinks}
+            />
+          </CardWrapper>
         </div>
       </div>
 
-      {/* Terceira Linha - Financeiro */}
+      {/* 
+        TERCEIRA LINHA - RESUMO FINANCEIRO (5 cards)
+        1. Total em Atraso
+        2. Receita Esperada
+        3. Receita Bruta Recebida
+        4. Total Taxas e Contas
+        5. Receita Líquida
+      */}
       <div>
         <h2 className="text-sm font-semibold text-foreground mb-3 px-1">
           💰 Resumo Financeiro
