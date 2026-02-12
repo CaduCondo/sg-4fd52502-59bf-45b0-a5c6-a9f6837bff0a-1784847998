@@ -767,25 +767,24 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                   <div className="border-t border-dashed my-2"></div>
 
                   <div className="space-y-2">
-                    <div className="flex justify-between items-center text-sm">
+                    <div className="grid grid-cols-2 gap-4 items-center text-sm">
                       <span>Despesas Adicionais *</span>
-                      <span className="font-medium">
-                        {formatCurrency(repairExpenses.toFixed(2))}
-                      </span>
-                    </div>
-                    
-                    {isEditMode && (
-                      <div className="mt-2">
+                      
+                      {isEditMode ? (
                         <Input
                           type="text"
                           placeholder="R$ 0,00"
                           value={repairExpensesInput}
                           onChange={(e) => handleRepairExpensesChange(e.target.value)}
-                          className="w-full"
+                          className="text-right"
                           disabled={isReadOnly}
                         />
-                      </div>
-                    )}
+                      ) : (
+                        <span className="font-medium text-right">
+                          {formatCurrency(repairExpenses.toFixed(2))}
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex justify-between pt-3 border-t-2 border-primary mt-2">
