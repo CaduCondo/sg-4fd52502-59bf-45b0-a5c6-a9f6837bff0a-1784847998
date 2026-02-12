@@ -123,13 +123,11 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       setIsPaid(alreadyPaid);
       setIsEditMode(!alreadyPaid);
 
-      // Detectar se é pagamento de rescisão
       const isTermination = paymentData.notes?.includes("Rescisão de Contrato") || false;
       setIsTerminationPayment(isTermination);
       
       console.log("🔍 [DEBUG] É rescisão?", isTermination);
 
-      // Calcular correção IGPM IMEDIATAMENTE (não esperar estado)
       let igpmCorrectionValue = null;
       if (isTermination && paymentData.rentals) {
         const startDate = paymentData.rentals.start_date;
@@ -152,7 +150,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         }
       }
 
-      // Carregar breakdown original e aplicar IGPM IMEDIATAMENTE
       if (paymentData.breakdown) {
         try {
           const breakdownData = typeof paymentData.breakdown === 'string' 
@@ -161,7 +158,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           
           let updatedBreakdown = [...breakdownData];
           
-          // APLICAR IGPM IMEDIATAMENTE usando variável local
           if (igpmCorrectionValue && isTermination) {
             console.log("💰 [DEBUG] Aplicando IGPM ao breakdown IMEDIATAMENTE");
             console.log("💰 [DEBUG] Valor original do caução no breakdown:", 
@@ -187,7 +183,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           
           setOriginalBreakdown(updatedBreakdown || []);
           
-          // Carregar despesas se existir (para rescisão)
           if (isTermination) {
             const expensesItem = updatedBreakdown.find((item: any) => 
               item.description?.includes("Despesas")
@@ -233,7 +228,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     }
   };
 
-  // Calcular valores
   const calculateValues = () => {
     const valorAluguel = Math.round((rentalValue + garageValue) * 100) / 100;
     
@@ -278,14 +272,12 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     };
   };
 
-  // Recalcular totais em tempo real
   useEffect(() => {
     if (loading || !payment) return;
     
     const values = calculateValues();
     
     if (isTerminationPayment && originalBreakdown.length > 0) {
-      // Atualizar breakdown com valor IGPM se disponível
       let workingBreakdown = [...originalBreakdown];
       
       if (igpmCorrection) {
@@ -300,7 +292,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         });
       }
       
-      // Filtrar despesas e multas antigas
       const cleanBreakdown = workingBreakdown.filter((item: any) => 
         !item.description?.includes("Despesas") && 
         !item.description?.includes("Multa por Atraso") && 
@@ -472,7 +463,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
             ? JSON.parse(payment.breakdown) 
             : (payment.breakdown || []);
           
-          // Atualizar valor do caução com IGPM se disponível
           if (igpmCorrection) {
             breakdownData = breakdownData.map((item: any) => {
               if (item.description?.includes("Devolução de Caução")) {
@@ -485,14 +475,12 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
             });
           }
           
-          // Remover itens de despesas e multa/juros antigos
           breakdownData = breakdownData.filter((item: any) => 
             !item.description?.includes("Despesas") &&
             !item.description?.includes("Multa por Atraso") &&
             !item.description?.includes("Juros por Atraso")
           );
           
-          // Adicionar multa e juros por atraso se houver e não removido
           if (!removeFees && values.multa > 0) {
             breakdownData.push({
               description: "Multa por Atraso",
@@ -508,7 +496,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
             });
           }
           
-          // Adicionar despesas se houver
           if (repairExpenses > 0) {
             breakdownData.push({
               description: "Despesas Adicionais*",
@@ -519,7 +506,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           
           updatedBreakdown = JSON.stringify(breakdownData);
           
-          // Calcular total esperado
           expectedTotal = breakdownData.reduce((sum: number, item: any) => sum + item.amount, 0);
         } catch (error) {
           console.error("Erro ao atualizar breakdown:", error);
@@ -752,31 +738,19 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                     .map((item, index) => {
                       const isDepositDeduction = item.description?.includes("Devolução de Caução");
                       
-                      // Log de debug
-                      if (isDepositDeduction) {
-                        console.log("🔍 [RENDER] Renderizando Devolução de Caução:");
-                        console.log("  - Valor no breakdown:", item.amount);
-                        console.log("  - igpmCorrection existe?", !!igpmCorrection);
-                        console.log("  - igpmCorrection.correctedAmount:", igpmCorrection?.correctedAmount);
-                      }
-                      
                       const displayAmount = isDepositDeduction && igpmCorrection 
                         ? igpmCorrection.correctedAmount 
                         : Math.abs(item.amount);
-                      
-                      if (isDepositDeduction) {
-                        console.log("  - displayAmount final:", displayAmount);
-                      }
                       
                       return (
                         <div key={index}>
                           <div className="flex justify-between items-start text-sm">
                             <div className="flex-1">
                               <span className={isDepositDeduction ? "block" : ""}>
-                                {item.description?.replace(" (corrigido pela inflação)", "")}
+                                {isDepositDeduction ? "Devolução de Caução" : item.description}
                               </span>
                               {isDepositDeduction && (
-                                <span className="block text-xs text-muted-foreground ml-2">
+                                <span className="block text-xs text-muted-foreground">
                                   (corrigido pela Taxa da Poupança)
                                 </span>
                               )}
@@ -793,7 +767,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                   <div className="border-t border-dashed my-2"></div>
 
                   <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
+                    <div className="flex justify-between items-center text-sm">
                       <span>Despesas Adicionais *</span>
                       <span className="font-medium">
                         {formatCurrency(repairExpenses.toFixed(2))}
@@ -816,8 +790,9 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
 
                   <div className="flex justify-between pt-3 border-t-2 border-primary mt-2">
                     <span className="font-bold text-base">VALOR TOTAL</span>
-                    <span className="font-bold text-base text-primary">
-                      {formatCurrency(calculatedTotal.toFixed(2))}
+                    <span className={`font-bold text-base ${calculatedTotal < 0 ? "text-red-600" : "text-primary"}`}>
+                      {calculatedTotal < 0 ? "- " : ""}
+                      {formatCurrency(Math.abs(calculatedTotal).toFixed(2))}
                     </span>
                   </div>
 
