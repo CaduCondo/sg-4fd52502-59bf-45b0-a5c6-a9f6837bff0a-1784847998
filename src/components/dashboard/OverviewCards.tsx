@@ -10,7 +10,6 @@ import {
   TrendingUp,
   Wallet,
   Clock,
-  CalendarClock,
 } from "lucide-react";
 import Link from "next/link";
 import { MetricCard } from "./MetricCard";
@@ -57,10 +56,6 @@ export function OverviewCards({
     });
   };
 
-  const formatPercentage = (value: number) => {
-    return `${value.toFixed(1)}%`;
-  };
-
   const hasLinks = userRole === "admin" || userRole === "broker";
 
   const CardWrapper = ({ href, children }: { href?: string; children: React.ReactNode }) => {
@@ -78,74 +73,62 @@ export function OverviewCards({
     <div className="space-y-5">
       {/* Primeira Linha - Imóveis (sem período) */}
       <div>
-        <h2 className="text-sm font-semibold text-foreground mb-3 px-1">
-          📊 Visão Geral dos Imóveis
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-          <CardWrapper href="/properties">
-            <MetricCard
-              title="Imóveis Cadastrados"
-              value={data.totalProperties}
-              subtitle="Total cadastrado"
-              icon={Building2}
-              iconColor="text-blue-600"
-              iconBgClass="bg-blue-50 dark:bg-blue-900/20"
-              borderColorClass="border-l-blue-500"
-              clickable={hasLinks}
-            />
-          </CardWrapper>
+        <h2 className="text-xl font-semibold mb-4">Imóveis</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <MetricCard
+            title="Imóveis Cadastrados"
+            value={data.totalProperties}
+            icon={Building2}
+            subtitle="Total de imóveis cadastrados"
+            iconColor="text-blue-600"
+            iconBgClass="bg-blue-50 dark:bg-blue-900/20"
+            borderColorClass="border-l-blue-500"
+            clickable={false}
+          />
 
-          <CardWrapper href="/properties?status=available">
-            <MetricCard
-              title="Imóveis Disponíveis"
-              value={data.availableProperties}
-              subtitle="Para locação"
-              icon={Home}
-              iconColor="text-green-600"
-              iconBgClass="bg-green-50 dark:bg-green-900/20"
-              borderColorClass="border-l-green-500"
-              clickable={hasLinks}
-            />
-          </CardWrapper>
+          <MetricCard
+            title="Imóveis Disponíveis"
+            value={data.availableProperties}
+            icon={Home}
+            subtitle="Disponíveis para locação"
+            iconColor="text-green-600"
+            iconBgClass="bg-green-50 dark:bg-green-900/20"
+            borderColorClass="border-l-green-500"
+            clickable={false}
+          />
 
-          <CardWrapper href="/properties?status=unavailable">
-            <MetricCard
-              title="Imóveis Indisponíveis"
-              value={data.unavailableProperties}
-              subtitle="Em obra/reforma"
-              icon={Construction}
-              iconColor="text-orange-600"
-              iconBgClass="bg-orange-50 dark:bg-orange-900/20"
-              borderColorClass="border-l-orange-500"
-              clickable={hasLinks}
-            />
-          </CardWrapper>
+          <MetricCard
+            title="Imóveis Indisponíveis"
+            value={data.unavailableProperties}
+            icon={Construction}
+            subtitle="Em obras ou reformas"
+            iconColor="text-orange-600"
+            iconBgClass="bg-orange-50 dark:bg-orange-900/20"
+            borderColorClass="border-l-orange-500"
+            clickable={false}
+          />
 
-          <CardWrapper href="/tenants">
-            <MetricCard
-              title="Total Inquilinos"
-              value={data.totalTenants}
-              subtitle="Inquilinos cadastrados"
-              icon={Users}
-              iconColor="text-cyan-600"
-              iconBgClass="bg-cyan-50 dark:bg-cyan-900/20"
-              borderColorClass="border-l-cyan-500"
-              clickable={hasLinks}
-            />
-          </CardWrapper>
+          <MetricCard
+            title="Total Inquilinos"
+            value={data.totalTenants}
+            icon={Users}
+            subtitle="Inquilinos cadastrados"
+            iconColor="text-cyan-600"
+            iconBgClass="bg-cyan-50 dark:bg-cyan-900/20"
+            borderColorClass="border-l-cyan-500"
+            clickable={false}
+          />
 
-          <CardWrapper href="/rentals">
-            <MetricCard
-              title="Locações a Vencer"
-              value={data.expiringContracts}
-              subtitle="Contratos vencem em 2 meses"
-              icon={CalendarClock}
-              iconColor="text-purple-600"
-              iconBgClass="bg-purple-50 dark:bg-purple-900/20"
-              borderColorClass="border-l-purple-500"
-              clickable={hasLinks}
-            />
-          </CardWrapper>
+          <MetricCard
+            title="Locações a Vencer"
+            value={data.expiringContracts}
+            icon={AlertCircle}
+            subtitle="Contratos vencem em até 2 meses"
+            iconColor="text-purple-600"
+            iconBgClass="bg-purple-50 dark:bg-purple-900/20"
+            borderColorClass="border-l-purple-500"
+            clickable={false}
+          />
         </div>
       </div>
 
