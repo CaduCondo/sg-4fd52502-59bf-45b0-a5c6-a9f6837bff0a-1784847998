@@ -297,7 +297,6 @@ export default function Dashboard() {
     return {
       totalProperties,
       availableProperties,
-      rentedProperties,
       unavailableProperties,
       occupancyRate,
       totalTenants,
