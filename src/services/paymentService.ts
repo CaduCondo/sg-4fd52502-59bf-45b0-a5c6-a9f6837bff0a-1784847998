@@ -370,7 +370,7 @@ export async function updateFuturePayments(rentalId: string, newValue: number): 
  * Recalcula e atualiza os campos installment e total_installments
  * de todos os pagamentos de uma locação
  */
-export async function recalculateInstallmentNumbers(rentalId: string): Promise<void> {
+export async function recalculateInstallmentNumbers(rentalId: string): Promise<number> {
   console.log("🔄 Recalculando números de parcelas para locação:", rentalId);
   
   // Buscar todos os pagamentos da locação ordenados por data de vencimento
@@ -387,7 +387,7 @@ export async function recalculateInstallmentNumbers(rentalId: string): Promise<v
 
   if (!payments || payments.length === 0) {
     console.log("⚠️ Nenhum pagamento encontrado para esta locação");
-    return;
+    return 0;
   }
 
   const totalInstallments = payments.length;
@@ -414,6 +414,7 @@ export async function recalculateInstallmentNumbers(rentalId: string): Promise<v
   }
 
   console.log("✅ Números de parcelas recalculados com sucesso!");
+  return totalInstallments;
 }
 
 /**

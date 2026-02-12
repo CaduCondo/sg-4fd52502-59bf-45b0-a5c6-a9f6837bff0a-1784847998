@@ -247,10 +247,13 @@ export async function processContractTermination(data: TerminationData): Promise
     console.log("✅ Nenhum recebimento para deletar");
   }
 
-  console.log(`\n📊 Recalculando números de parcelas para refletir o novo total...`);
+  console.log(`\n📊 PASSO 9: Recalcular números de parcelas`);
+  console.log(`Recalculando para rental_id: ${rentalId}`);
+
   const totalPaymentsAfter = await recalculateInstallmentNumbers(rentalId);
-  console.log(`Total de parcelas recalculadas: ${totalPaymentsAfter}`);
-  console.log("✅ Números de parcelas recalculados com sucesso!");
+
+  console.log(`✅ Recálculo concluído!`);
+  console.log(`Total de parcelas após recálculo: ${totalPaymentsAfter}`);
 
   console.log("\n=== RESUMO DA RESCISÃO ===");
   console.log(`✅ Recebimento de ${terminationMonth}/${terminationYear} atualizado com R$ ${totalAmount.toFixed(2)}`);
