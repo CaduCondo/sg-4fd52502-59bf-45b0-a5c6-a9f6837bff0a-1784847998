@@ -248,7 +248,8 @@ export async function processContractTermination(data: TerminationData): Promise
   }
 
   console.log(`\n📊 Recalculando números de parcelas para refletir o novo total...`);
-  await recalculateInstallmentNumbers(rentalId);
+  const totalPaymentsAfter = await recalculateInstallmentNumbers(rentalId);
+  console.log(`Total de parcelas recalculadas: ${totalPaymentsAfter}`);
   console.log("✅ Números de parcelas recalculados com sucesso!");
 
   console.log("\n=== RESUMO DA RESCISÃO ===");
