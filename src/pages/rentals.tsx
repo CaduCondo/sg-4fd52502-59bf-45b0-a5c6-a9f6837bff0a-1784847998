@@ -54,12 +54,16 @@ export default function RentalsPage() {
   const [rentalToRenew, setRentalToRenew] = useState<Rental | null>(null);
   const [showInactive, setShowInactive] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
+  const [rentalTerminations, setRentalTerminations] = useState<Record<string, boolean>>({});
 
   const loadRentalsData = async () => {
     try {
       setLoading(true);
       const rentalsData = await getAllRentals();
       setRentals(rentalsData);
+      
+      // Carregar informações de rescisão para locações ativas
+      await loadTerminationInfo(rentalsData.filter(r => r.isActive));
     } catch (error) {
       console.error("Erro ao carregar locações:", error);
       toast({
@@ -69,6 +73,25 @@ export default function RentalsPage() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadTerminationInfo = async (activeRentals: Rental[]) => {
+    try {
+      const { getByRentalId } = await import("@/services/paymentService");
+      const terminationMap: Record<string, boolean> = {};
+      
+      await Promise.all(
+        activeRentals.map(async (rental) => {
+          const payments = await getByRentalId(rental.id);
+          const hasTermination = payments.some(p => p.type === "termination");
+          terminationMap[rental.id] = hasTermination;
+        })
+      );
+      
+      setRentalTerminations(terminationMap);
+    } catch (error) {
+      console.error("Erro ao carregar informações de rescisão:", error);
     }
   };
 
@@ -453,6 +476,11 @@ export default function RentalsPage() {
                                     <span>{alert.message}</span>
                                   </Badge>
                                 )}
+                                {rentalTerminations[rental.id] && (
+                                  <Badge className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 text-xs font-medium rounded-md whitespace-nowrap">
+                                    Rescisão
+                                  </Badge>
+                                )}
                               </div>
                             </div>
 
@@ -569,6 +597,11 @@ export default function RentalsPage() {
                                     }`}>
                                       <AlertTriangle className="h-3 w-3 mr-1" />
                                       {alert.message}
+                                    </Badge>
+                                  )}
+                                  {rentalTerminations[rental.id] && (
+                                    <Badge className="bg-red-600 hover:bg-red-700 text-white text-xs">
+                                      Rescisão
                                     </Badge>
                                   )}
                                 </div>

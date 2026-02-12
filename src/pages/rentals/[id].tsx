@@ -12,9 +12,10 @@ import { RentalContract } from "@/components/RentalContract";
 import { AttachmentViewer } from "@/components/AttachmentViewer";
 import { RentalTerminationDialog } from "@/components/rentals/RentalTerminationDialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { formatDate } from "@/lib/masks";
+import { Badge } from "@/components/ui/badge";
 
 export default function RentalDetailsPage() {
   const router = useRouter();
@@ -37,6 +38,14 @@ export default function RentalDetailsPage() {
   const [showRenewalDialog, setShowRenewalDialog] = useState(false);
   const [showTerminationDialog, setShowTerminationDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [hasTermination, setHasTermination] = useState(false);
+
+  useEffect(() => {
+    if (payments.length > 0) {
+      const terminationExists = payments.some(p => p.type === "termination");
+      setHasTermination(terminationExists);
+    }
+  }, [payments]);
 
   const handleTermination = () => {
     console.log("🔥 BOTÃO DE RESCISÃO CLICADO!");
@@ -149,11 +158,18 @@ export default function RentalDetailsPage() {
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Voltar
               </Button>
-              <div>
-                <h1 className="text-3xl font-bold">Detalhes da Locação</h1>
-                <p className="text-muted-foreground">
-                  Visualize e gerencie os detalhes desta locação
-                </p>
+              <div className="flex items-center gap-3">
+                <div>
+                  <h1 className="text-3xl font-bold">Detalhes da Locação</h1>
+                  <p className="text-muted-foreground">
+                    Visualize e gerencie os detalhes desta locação
+                  </p>
+                </div>
+                {hasTermination && (
+                  <Badge className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 text-sm font-medium">
+                    Rescisão
+                  </Badge>
+                )}
               </div>
             </div>
 
