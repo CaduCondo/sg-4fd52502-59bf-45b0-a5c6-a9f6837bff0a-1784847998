@@ -223,6 +223,7 @@ export interface Payment {
   paidAmount?: number;
   paymentDate?: string;
   status: "pending" | "paid" | "overdue" | "partial";
+  type?: "monthly" | "termination" | "deposit_installment" | "repair";
   paymentMethod?: string;
   paymentLocation?: string;
   paymentCode?: string;
