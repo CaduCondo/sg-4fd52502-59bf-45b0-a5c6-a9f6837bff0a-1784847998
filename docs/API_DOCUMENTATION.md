@@ -1,0 +1,1089 @@
+# 📡 Documentação de API
+
+Este documento detalha todas as APIs, serviços e integrações do sistema.
+
+---
+
+## 📋 Índice
+
+- [Visão Geral](#visão-geral)
+- [Autenticação](#autenticação)
+- [Serviços Frontend](#serviços-frontend)
+- [API Routes](#api-routes)
+- [Integrações Externas](#integrações-externas)
+- [Tipos TypeScript](#tipos-typescript)
+
+---
+
+## 🎯 Visão Geral
+
+O sistema utiliza uma arquitetura de serviços que abstrai as chamadas ao Supabase:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    COMPONENTES REACT                    │
+└────────────────────┬────────────────────────────────────┘
+                     │
+┌────────────────────▼────────────────────────────────────┐
+│                   CUSTOM HOOKS                          │
+│  useProperties, useRentals, usePayments, etc.          │
+└────────────────────┬────────────────────────────────────┘
+                     │
+┌────────────────────▼────────────────────────────────────┐
+│                     SERVICES                            │
+│  propertyService, rentalService, paymentService, etc.   │
+└────────────────────┬────────────────────────────────────┘
+                     │
+┌────────────────────▼────────────────────────────────────┐
+│                  SUPABASE CLIENT                        │
+│  Database, Auth, Storage                               │
+└─────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🔐 Autenticação
+
+### authService.ts
+
+**Localização:** `src/services/authService.ts`
+
+#### Métodos Disponíveis
+
+##### 1. signIn
+```typescript
+async function signIn(email: string, password: string): Promise<User>
+```
+
+**Descrição:** Autentica usuário com email e senha
+
+**Parâmetros:**
+- `email` (string) - Email do usuário
+- `password` (string) - Senha do usuário
+
+**Retorno:** Objeto `User` do Supabase Auth
+
+**Exemplo:**
+```typescript
+import { signIn } from "@/services/authService";
+
+try {
+  const user = await signIn("user@example.com", "senha123");
+  console.log("Usuário autenticado:", user);
+} catch (error) {
+  console.error("Erro ao fazer login:", error);
+}
+```
+
+**Erros Possíveis:**
+- `Invalid login credentials` - Email ou senha incorretos
+- `Email not confirmed` - Email não verificado
+
+---
+
+##### 2. signOut
+```typescript
+async function signOut(): Promise<void>
+```
+
+**Descrição:** Desloga o usuário atual
+
+**Exemplo:**
+```typescript
+import { signOut } from "@/services/authService";
+
+await signOut();
+```
+
+---
+
+##### 3. getCurrentUser
+```typescript
+async function getCurrentUser(): Promise<User | null>
+```
+
+**Descrição:** Retorna o usuário autenticado atual
+
+**Retorno:** Objeto `User` ou `null` se não autenticado
+
+**Exemplo:**
+```typescript
+import { getCurrentUser } from "@/services/authService";
+
+const user = await getCurrentUser();
+if (user) {
+  console.log("Usuário logado:", user.email);
+}
+```
+
+---
+
+##### 4. getSession
+```typescript
+async function getSession(): Promise<Session | null>
+```
+
+**Descrição:** Retorna a sessão atual com token JWT
+
+**Retorno:** Objeto `Session` ou `null`
+
+**Exemplo:**
+```typescript
+import { getSession } from "@/services/authService";
+
+const session = await getSession();
+if (session) {
+  console.log("Token JWT:", session.access_token);
+}
+```
+
+---
+
+## 🏠 Serviços de Propriedades
+
+### propertyService.ts
+
+**Localização:** `src/services/propertyService.ts`
+
+#### Métodos Disponíveis
+
+##### 1. fetchProperties
+```typescript
+async function fetchProperties(
+  locationId?: string,
+  filters?: PropertyFilters
+): Promise<Property[]>
+```
+
+**Descrição:** Busca todas as propriedades com filtros opcionais
+
+**Parâmetros:**
+- `locationId` (string, opcional) - Filtrar por localização
+- `filters` (PropertyFilters, opcional) - Filtros adicionais
+
+**Tipo PropertyFilters:**
+```typescript
+interface PropertyFilters {
+  status?: "available" | "occupied" | "maintenance" | "unavailable";
+  propertyType?: string;
+  minRent?: number;
+  maxRent?: number;
+  bedrooms?: number;
+  bathrooms?: number;
+  search?: string; // Busca em endereço, bairro, cidade
+}
+```
+
+**Retorno:** Array de `Property`
+
+**Exemplo:**
+```typescript
+import { fetchProperties } from "@/services/propertyService";
+
+// Buscar todas as propriedades
+const allProperties = await fetchProperties();
+
+// Buscar apenas disponíveis
+const available = await fetchProperties(undefined, {
+  status: "available"
+});
+
+// Buscar por localização e filtros
+const filtered = await fetchProperties("location-id-123", {
+  status: "available",
+  minRent: 1000,
+  maxRent: 2000,
+  bedrooms: 2
+});
+```
+
+---
+
+##### 2. fetchPropertyById
+```typescript
+async function fetchPropertyById(id: string): Promise<Property>
+```
+
+**Descrição:** Busca uma propriedade específica por ID
+
+**Parâmetros:**
+- `id` (string) - ID da propriedade
+
+**Retorno:** Objeto `Property`
+
+**Exemplo:**
+```typescript
+import { fetchPropertyById } from "@/services/propertyService";
+
+const property = await fetchPropertyById("abc-123");
+console.log("Propriedade:", property.address);
+```
+
+**Erros Possíveis:**
+- `Property not found` - Propriedade não existe ou sem permissão
+
+---
+
+##### 3. createProperty
+```typescript
+async function createProperty(property: PropertyInsert): Promise<Property>
+```
+
+**Descrição:** Cria nova propriedade
+
+**Parâmetros:**
+- `property` (PropertyInsert) - Dados da propriedade
+
+**Tipo PropertyInsert:**
+```typescript
+interface PropertyInsert {
+  location_id: string;
+  address: string;
+  neighborhood?: string;
+  city?: string;
+  state?: string;
+  zip_code?: string;
+  monthly_rent: number;
+  property_type?: string;
+  bedrooms?: number;
+  bathrooms?: number;
+  parking_spaces?: number;
+  area?: number;
+  description?: string;
+  images?: string[];
+}
+```
+
+**Retorno:** Objeto `Property` criado
+
+**Exemplo:**
+```typescript
+import { createProperty } from "@/services/propertyService";
+
+const newProperty = await createProperty({
+  location_id: "location-123",
+  address: "Rua das Flores, 123",
+  neighborhood: "Centro",
+  city: "São Paulo",
+  state: "SP",
+  zip_code: "01234-567",
+  monthly_rent: 1500.00,
+  property_type: "apartamento",
+  bedrooms: 2,
+  bathrooms: 1,
+  parking_spaces: 1,
+  area: 65.00,
+  description: "Apartamento bem localizado"
+});
+```
+
+**Validações:**
+- ✅ `location_id` obrigatório
+- ✅ `address` obrigatório
+- ✅ `monthly_rent` deve ser > 0
+- ✅ Usuário deve ter permissão de criação
+
+---
+
+##### 4. updateProperty
+```typescript
+async function updateProperty(
+  id: string,
+  updates: Partial<PropertyInsert>
+): Promise<Property>
+```
+
+**Descrição:** Atualiza uma propriedade existente
+
+**Parâmetros:**
+- `id` (string) - ID da propriedade
+- `updates` (Partial<PropertyInsert>) - Campos a atualizar
+
+**Retorno:** Objeto `Property` atualizado
+
+**Exemplo:**
+```typescript
+import { updateProperty } from "@/services/propertyService";
+
+const updated = await updateProperty("abc-123", {
+  monthly_rent: 1800.00,
+  description: "Nova descrição"
+});
+```
+
+---
+
+##### 5. deleteProperty
+```typescript
+async function deleteProperty(id: string): Promise<void>
+```
+
+**Descrição:** Deleta uma propriedade
+
+**Parâmetros:**
+- `id` (string) - ID da propriedade
+
+**Exemplo:**
+```typescript
+import { deleteProperty } from "@/services/propertyService";
+
+await deleteProperty("abc-123");
+```
+
+**Validações:**
+- ✅ Propriedade não pode ter locações ativas
+- ✅ Apenas Admin/Manager podem deletar
+
+---
+
+##### 6. uploadPropertyImages
+```typescript
+async function uploadPropertyImages(
+  propertyId: string,
+  files: File[]
+): Promise<string[]>
+```
+
+**Descrição:** Faz upload de imagens da propriedade
+
+**Parâmetros:**
+- `propertyId` (string) - ID da propriedade
+- `files` (File[]) - Array de arquivos de imagem
+
+**Retorno:** Array de URLs das imagens
+
+**Exemplo:**
+```typescript
+import { uploadPropertyImages } from "@/services/propertyService";
+
+const files = [file1, file2, file3];
+const imageUrls = await uploadPropertyImages("abc-123", files);
+
+// Atualizar propriedade com as novas imagens
+await updateProperty("abc-123", {
+  images: imageUrls
+});
+```
+
+**Validações:**
+- ✅ Máximo 20 imagens por propriedade
+- ✅ Tamanho máximo: 5MB por imagem
+- ✅ Formatos aceitos: JPG, PNG, WEBP
+
+---
+
+## 👥 Serviços de Inquilinos
+
+### tenantService.ts
+
+**Localização:** `src/services/tenantService.ts`
+
+#### Métodos Disponíveis
+
+##### 1. fetchTenants
+```typescript
+async function fetchTenants(filters?: TenantFilters): Promise<Tenant[]>
+```
+
+**Descrição:** Busca todos os inquilinos com filtros opcionais
+
+**Parâmetros:**
+- `filters` (TenantFilters, opcional) - Filtros
+
+**Tipo TenantFilters:**
+```typescript
+interface TenantFilters {
+  search?: string; // Busca em nome, CPF, email
+  hasActiveRental?: boolean;
+}
+```
+
+**Retorno:** Array de `Tenant`
+
+**Exemplo:**
+```typescript
+import { fetchTenants } from "@/services/tenantService";
+
+// Buscar todos
+const all = await fetchTenants();
+
+// Buscar apenas com locações ativas
+const active = await fetchTenants({ hasActiveRental: true });
+
+// Buscar por nome/CPF
+const filtered = await fetchTenants({ search: "João" });
+```
+
+---
+
+##### 2. createTenant
+```typescript
+async function createTenant(tenant: TenantInsert): Promise<Tenant>
+```
+
+**Descrição:** Cria novo inquilino
+
+**Parâmetros:**
+- `tenant` (TenantInsert) - Dados do inquilino
+
+**Tipo TenantInsert:**
+```typescript
+interface TenantInsert {
+  name: string;
+  cpf: string;
+  rg?: string;
+  birth_date?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+}
+```
+
+**Retorno:** Objeto `Tenant` criado
+
+**Exemplo:**
+```typescript
+import { createTenant } from "@/services/tenantService";
+
+const tenant = await createTenant({
+  name: "João Silva",
+  cpf: "123.456.789-00",
+  rg: "12.345.678-9",
+  phone: "(11) 98765-4321",
+  email: "joao@example.com"
+});
+```
+
+**Validações:**
+- ✅ `name` obrigatório (mínimo 3 caracteres)
+- ✅ `cpf` obrigatório e único
+- ✅ `cpf` deve ser válido (validação de dígitos)
+- ✅ `email` deve ser válido (se informado)
+
+---
+
+## 📝 Serviços de Locações
+
+### rentalService.ts
+
+**Localização:** `src/services/rentalService.ts`
+
+#### Métodos Disponíveis
+
+##### 1. createRental
+```typescript
+async function createRental(rental: RentalInsert): Promise<Rental>
+```
+
+**Descrição:** Cria nova locação e gera recebimentos automaticamente
+
+**Parâmetros:**
+- `rental` (RentalInsert) - Dados da locação
+
+**Tipo RentalInsert:**
+```typescript
+interface RentalInsert {
+  property_id: string;
+  tenant_id: string;
+  start_date: string; // YYYY-MM-DD
+  end_date: string; // YYYY-MM-DD
+  payment_day: number; // 1-28
+  monthly_rent: number;
+  deposit?: number;
+  deposit_installments?: number; // 1, 2 ou 3
+  deposit_installment_1?: number;
+  deposit_installment_2?: number;
+  deposit_installment_3?: number;
+  deposit_installment_1_payment_date?: string;
+  deposit_installment_2_payment_date?: string;
+  deposit_installment_3_payment_date?: string;
+  deposit_installment_1_pix_code?: string;
+  deposit_installment_2_pix_code?: string;
+  deposit_installment_3_pix_code?: string;
+  parking_value?: number;
+  broker_commission?: number;
+}
+```
+
+**Retorno:** Objeto `Rental` criado
+
+**Exemplo:**
+```typescript
+import { createRental } from "@/services/rentalService";
+
+const rental = await createRental({
+  property_id: "prop-123",
+  tenant_id: "tenant-456",
+  start_date: "2026-01-01",
+  end_date: "2026-12-31",
+  payment_day: 5,
+  monthly_rent: 1000.00,
+  deposit: 1200.00,
+  deposit_installments: 3,
+  deposit_installment_1: 400.00,
+  deposit_installment_2: 400.00,
+  deposit_installment_3: 400.00,
+  parking_value: 200.00,
+  broker_commission: 1200.00
+});
+```
+
+**Validações:**
+- ✅ Propriedade deve estar `available`
+- ✅ `end_date` deve ser maior que `start_date`
+- ✅ `payment_day` entre 1 e 28
+- ✅ `monthly_rent` > 0
+- ✅ Soma das parcelas de caução = valor total do caução
+
+**Ações Automáticas:**
+1. Cria locação no banco
+2. Atualiza status da propriedade para `occupied`
+3. Gera recebimentos mensais (aluguel + taxa admin)
+4. Gera parcelas de caução (se parcelado)
+5. Gera comissão de corretor (se informada)
+
+---
+
+##### 2. terminateRental
+```typescript
+async function terminateRental(
+  rentalId: string,
+  terminationDate: string
+): Promise<void>
+```
+
+**Descrição:** Rescinde contrato e recalcula valores
+
+**Parâmetros:**
+- `rentalId` (string) - ID da locação
+- `terminationDate` (string) - Data da rescisão (YYYY-MM-DD)
+
+**Exemplo:**
+```typescript
+import { terminateRental } from "@/services/terminationService";
+
+await terminateRental("rental-123", "2026-04-10");
+```
+
+**Ações Automáticas:**
+1. Calcula aluguel proporcional
+2. Busca/cria recebimento do mês da rescisão
+3. Calcula caução corrigido pelo IGPM
+4. Atualiza recebimento do mês (valores proporcionais - caução)
+5. Deleta todos os recebimentos futuros
+6. Recalcula números de parcelas
+7. Atualiza data fim da locação
+8. Muda status da propriedade para `available`
+
+---
+
+## 💰 Serviços de Pagamentos
+
+### paymentService.ts
+
+**Localização:** `src/services/paymentService.ts`
+
+#### Métodos Disponíveis
+
+##### 1. fetchPayments
+```typescript
+async function fetchPayments(
+  rentalId?: string,
+  filters?: PaymentFilters
+): Promise<Payment[]>
+```
+
+**Descrição:** Busca pagamentos com filtros
+
+**Parâmetros:**
+- `rentalId` (string, opcional) - Filtrar por locação
+- `filters` (PaymentFilters, opcional) - Filtros adicionais
+
+**Tipo PaymentFilters:**
+```typescript
+interface PaymentFilters {
+  status?: "pending" | "paid" | "overdue" | "cancelled";
+  startDate?: string;
+  endDate?: string;
+  locationId?: string;
+}
+```
+
+**Retorno:** Array de `Payment`
+
+**Exemplo:**
+```typescript
+import { fetchPayments } from "@/services/paymentService";
+
+// Buscar todos os pagamentos
+const all = await fetchPayments();
+
+// Buscar pagamentos de uma locação
+const rentalPayments = await fetchPayments("rental-123");
+
+// Buscar apenas atrasados
+const overdue = await fetchPayments(undefined, {
+  status: "overdue"
+});
+```
+
+---
+
+##### 2. markAsPaid
+```typescript
+async function markAsPaid(
+  paymentId: string,
+  data: MarkAsPaidData
+): Promise<Payment>
+```
+
+**Descrição:** Marca pagamento como pago
+
+**Parâmetros:**
+- `paymentId` (string) - ID do pagamento
+- `data` (MarkAsPaidData) - Dados do pagamento
+
+**Tipo MarkAsPaidData:**
+```typescript
+interface MarkAsPaidData {
+  payment_date: string; // YYYY-MM-DD
+  payment_method: string; // "pix", "transferencia", "dinheiro", etc.
+  attachment?: string; // URL do comprovante
+  notes?: string;
+  apply_late_fees?: boolean; // Default: true
+}
+```
+
+**Retorno:** Objeto `Payment` atualizado
+
+**Exemplo:**
+```typescript
+import { markAsPaid } from "@/services/paymentService";
+
+const paid = await markAsPaid("payment-123", {
+  payment_date: "2026-01-15",
+  payment_method: "pix",
+  apply_late_fees: true
+});
+```
+
+**Ações Automáticas:**
+- Se `payment_date` > `due_date` e `apply_late_fees = true`:
+  - Calcula multa (2% sobre aluguel)
+  - Calcula juros (1% a.m. proporcional)
+  - Adiciona ao valor total
+
+---
+
+##### 3. calculateLateFees
+```typescript
+async function calculateLateFees(
+  paymentId: string
+): Promise<{ late_fee: number; interest: number }>
+```
+
+**Descrição:** Calcula multa e juros de um pagamento
+
+**Parâmetros:**
+- `paymentId` (string) - ID do pagamento
+
+**Retorno:** Objeto com `late_fee` e `interest`
+
+**Exemplo:**
+```typescript
+import { calculateLateFees } from "@/services/paymentService";
+
+const fees = await calculateLateFees("payment-123");
+console.log("Multa:", fees.late_fee);
+console.log("Juros:", fees.interest);
+```
+
+---
+
+##### 4. generateReceipt
+```typescript
+async function generateReceipt(paymentId: string): Promise<Blob>
+```
+
+**Descrição:** Gera PDF do recibo de pagamento
+
+**Parâmetros:**
+- `paymentId` (string) - ID do pagamento
+
+**Retorno:** Blob do PDF
+
+**Exemplo:**
+```typescript
+import { generateReceipt } from "@/services/paymentService";
+
+const pdfBlob = await generateReceipt("payment-123");
+
+// Download automático
+const url = URL.createObjectURL(pdfBlob);
+const a = document.createElement("a");
+a.href = url;
+a.download = "recibo.pdf";
+a.click();
+```
+
+---
+
+## 🔌 API Routes
+
+### Next.js API Routes
+
+**Localização:** `src/pages/api/`
+
+#### 1. Upload de Arquivos
+
+**Endpoint:** `POST /api/upload`
+
+**Descrição:** Upload de imagens e documentos
+
+**Headers:**
+```
+Content-Type: multipart/form-data
+Authorization: Bearer {JWT_TOKEN}
+```
+
+**Body (FormData):**
+```typescript
+{
+  file: File;
+  type: "property-image" | "document" | "receipt";
+}
+```
+
+**Response:**
+```typescript
+{
+  success: true,
+  url: string; // URL do arquivo
+}
+```
+
+**Exemplo (Frontend):**
+```typescript
+const formData = new FormData();
+formData.append("file", file);
+formData.append("type", "property-image");
+
+const response = await fetch("/api/upload", {
+  method: "POST",
+  body: formData,
+  headers: {
+    Authorization: `Bearer ${session.access_token}`
+  }
+});
+
+const data = await response.json();
+console.log("URL:", data.url);
+```
+
+---
+
+#### 2. Propriedades Disponíveis
+
+**Endpoint:** `GET /api/properties/available`
+
+**Descrição:** Lista propriedades disponíveis (público)
+
+**Query Params:**
+```typescript
+{
+  location?: string;
+  minRent?: number;
+  maxRent?: number;
+  bedrooms?: number;
+  bathrooms?: number;
+}
+```
+
+**Response:**
+```typescript
+{
+  properties: Property[];
+  total: number;
+}
+```
+
+**Exemplo:**
+```bash
+GET /api/properties/available?location=sao-paulo&minRent=1000&maxRent=2000
+```
+
+---
+
+## 🌐 Integrações Externas
+
+### IGPM (Índice Geral de Preços do Mercado)
+
+**API:** Banco Central do Brasil
+
+**Endpoint:** `https://api.bcb.gov.br/dados/serie/bcdata.sgs.189/dados`
+
+**Uso:** Correção do caução na rescisão de contratos
+
+**Serviço:** `src/services/igpmService.ts`
+
+#### fetchIGPMData
+```typescript
+async function fetchIGPMData(
+  startDate: string,
+  endDate: string
+): Promise<IGPMData[]>
+```
+
+**Descrição:** Busca dados do IGPM no período
+
+**Parâmetros:**
+- `startDate` (string) - Data início (DD/MM/YYYY)
+- `endDate` (string) - Data fim (DD/MM/YYYY)
+
+**Retorno:** Array de dados IGPM
+
+**Exemplo:**
+```typescript
+import { fetchIGPMData, calculateAccumulatedIGPM } from "@/services/igpmService";
+
+const igpmData = await fetchIGPMData("01/01/2025", "31/12/2025");
+const accumulated = calculateAccumulatedIGPM(igpmData);
+
+console.log("IGPM acumulado:", accumulated, "%");
+
+// Aplicar correção
+const deposit = 1200.00;
+const correctedDeposit = deposit * (1 + accumulated / 100);
+console.log("Caução corrigido:", correctedDeposit);
+```
+
+---
+
+## 📊 Tipos TypeScript
+
+### Property
+```typescript
+interface Property {
+  id: string;
+  location_id: string;
+  address: string;
+  neighborhood?: string;
+  city?: string;
+  state?: string;
+  zip_code?: string;
+  monthly_rent: number;
+  property_type?: string;
+  bedrooms?: number;
+  bathrooms?: number;
+  parking_spaces?: number;
+  area?: number;
+  description?: string;
+  status: "available" | "occupied" | "maintenance" | "unavailable";
+  images?: string[];
+  created_at: string;
+  updated_at?: string;
+}
+```
+
+---
+
+### Tenant
+```typescript
+interface Tenant {
+  id: string;
+  name: string;
+  cpf: string;
+  rg?: string;
+  birth_date?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  created_at: string;
+  updated_at?: string;
+}
+```
+
+---
+
+### Rental
+```typescript
+interface Rental {
+  id: string;
+  property_id: string;
+  tenant_id: string;
+  start_date: string;
+  end_date: string;
+  payment_day: number;
+  monthly_rent: number;
+  deposit?: number;
+  deposit_installments?: number;
+  deposit_installment_1?: number;
+  deposit_installment_2?: number;
+  deposit_installment_3?: number;
+  deposit_installment_1_payment_date?: string;
+  deposit_installment_2_payment_date?: string;
+  deposit_installment_3_payment_date?: string;
+  deposit_installment_1_pix_code?: string;
+  deposit_installment_2_pix_code?: string;
+  deposit_installment_3_pix_code?: string;
+  parking_value?: number;
+  broker_commission?: number;
+  status: "active" | "terminated";
+  created_at: string;
+  updated_at?: string;
+  
+  // Relações
+  property?: Property;
+  tenant?: Tenant;
+}
+```
+
+---
+
+### Payment
+```typescript
+interface Payment {
+  id: string;
+  rental_id: string;
+  due_date: string;
+  amount: number;
+  rent_amount?: number;
+  parking_amount?: number;
+  admin_fee?: number;
+  deposit_amount?: number;
+  broker_commission?: number;
+  late_fee?: number;
+  interest?: number;
+  status: "pending" | "paid" | "overdue" | "cancelled";
+  payment_date?: string;
+  payment_method?: string;
+  reference_month: string;
+  reference_year: string;
+  installment?: number;
+  total_installments?: number;
+  type?: string;
+  created_at: string;
+  updated_at?: string;
+  
+  // Relações
+  rental?: Rental;
+}
+```
+
+---
+
+## 🔒 Autenticação de Requisições
+
+Todas as requisições aos serviços requerem autenticação via JWT token do Supabase.
+
+**Exemplo de requisição autenticada:**
+
+```typescript
+import { supabase } from "@/integrations/supabase/client";
+
+// O token JWT é automaticamente incluído nas requisições
+const { data, error } = await supabase
+  .from("properties")
+  .select("*");
+```
+
+**Token JWT é obtido no login:**
+
+```typescript
+const { data: { session } } = await supabase.auth.signInWithPassword({
+  email: "user@example.com",
+  password: "senha123"
+});
+
+const jwtToken = session?.access_token;
+```
+
+---
+
+## 📝 Tratamento de Erros
+
+### Padrão de Erros
+
+Todos os serviços lançam erros no seguinte formato:
+
+```typescript
+interface APIError {
+  message: string;
+  code?: string;
+  details?: any;
+}
+```
+
+**Exemplo de tratamento:**
+
+```typescript
+import { createProperty } from "@/services/propertyService";
+
+try {
+  const property = await createProperty(data);
+  console.log("Sucesso:", property);
+} catch (error) {
+  if (error.code === "23505") {
+    console.error("Propriedade já existe");
+  } else if (error.code === "42501") {
+    console.error("Sem permissão");
+  } else {
+    console.error("Erro:", error.message);
+  }
+}
+```
+
+---
+
+## 🧪 Exemplos de Uso Completo
+
+### Fluxo Completo: Criar Locação
+
+```typescript
+import { createProperty } from "@/services/propertyService";
+import { createTenant } from "@/services/tenantService";
+import { createRental } from "@/services/rentalService";
+
+// 1. Criar propriedade
+const property = await createProperty({
+  location_id: "location-123",
+  address: "Rua das Flores, 123",
+  monthly_rent: 1000.00,
+  bedrooms: 2,
+  bathrooms: 1
+});
+
+// 2. Criar inquilino
+const tenant = await createTenant({
+  name: "João Silva",
+  cpf: "123.456.789-00",
+  phone: "(11) 98765-4321"
+});
+
+// 3. Criar locação (gera recebimentos automaticamente)
+const rental = await createRental({
+  property_id: property.id,
+  tenant_id: tenant.id,
+  start_date: "2026-01-01",
+  end_date: "2026-12-31",
+  payment_day: 5,
+  monthly_rent: 1000.00,
+  deposit: 1200.00,
+  deposit_installments: 3,
+  parking_value: 200.00
+});
+
+console.log("Locação criada:", rental);
+// Sistema gerou automaticamente:
+// - 12 recebimentos mensais (aluguel + vaga + taxa admin)
+// - 3 parcelas de caução (R$ 400 cada)
+// - Status da propriedade mudou para "occupied"
+```
+
+---
+
+**Próximos documentos:**
+- [Arquitetura do Sistema](ARCHITECTURE.md)
+- [Regras de Negócio](BUSINESS_RULES.md)
+- [Esquema do Banco de Dados](DATABASE_SCHEMA.md)
+- [Guia de Deploy](DEPLOYMENT.md)
