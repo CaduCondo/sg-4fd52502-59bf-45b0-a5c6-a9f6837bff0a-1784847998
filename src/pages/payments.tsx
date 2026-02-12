@@ -284,10 +284,6 @@ export default function Payments() {
     }).format(value);
   };
 
-  const formatDate = (dateString: string) => {
-    return format(new Date(dateString + "T00:00:00"), "dd/MM/yyyy", { locale: ptBR });
-  };
-
   const getPaymentRowClassName = (payment: Payment) => {
     const baseClasses = "cursor-pointer hover:bg-muted/50 transition-colors";
     if (payment.status === "paid") {
@@ -464,7 +460,7 @@ export default function Payments() {
                                   {property ? `${property.location} - ${property.complement}` : "-"}
                                 </TableCell>
                                 <TableCell>{tenant?.name || "-"}</TableCell>
-                                <TableCell>{formatDate(payment.dueDate)}</TableCell>
+                                <TableCell>{format(new Date(payment.dueDate + "T00:00:00"), "dd/MM/yyyy", { locale: ptBR })}</TableCell>
                                 <TableCell>{formatCurrency(payment.expectedAmount)}</TableCell>
                                 <TableCell>{payment.paidAmount ? formatCurrency(payment.paidAmount) : "-"}</TableCell>
                                 <TableCell>{getStatusBadge(payment.status)}</TableCell>
@@ -563,7 +559,7 @@ export default function Payments() {
                                   {property ? `${property.location} - ${property.complement}` : "-"}
                                 </TableCell>
                                 <TableCell>{tenant?.name || "-"}</TableCell>
-                                <TableCell>{formatDate(payment.dueDate)}</TableCell>
+                                <TableCell>{format(new Date(payment.dueDate + "T00:00:00"), "dd/MM/yyyy", { locale: ptBR })}</TableCell>
                                 <TableCell>{formatCurrency(payment.expectedAmount)}</TableCell>
                                 <TableCell>{formatCurrency(payment.paidAmount || 0)}</TableCell>
                                 <TableCell>{getStatusBadge(payment.status)}</TableCell>

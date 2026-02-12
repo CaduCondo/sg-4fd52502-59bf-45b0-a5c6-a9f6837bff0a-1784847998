@@ -14,6 +14,7 @@ import { RentalTerminationDialog } from "@/components/rentals/RentalTerminationD
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { formatDate } from "@/lib/masks";
 
 export default function RentalDetailsPage() {
   const router = useRouter();
@@ -57,14 +58,6 @@ export default function RentalDetailsPage() {
       await updateRental(rental.id, {
         endDate: newEndDate.toISOString().split("T")[0],
       });
-
-      const formatDate = (dateString: string) => {
-        const date = new Date(dateString);
-        const day = String(date.getDate()).padStart(2, "0");
-        const month = String(date.getMonth() + 1).padStart(2, "0");
-        const year = date.getFullYear();
-        return `${day}/${month}/${year}`;
-      };
 
       toast({
         title: "Sucesso",

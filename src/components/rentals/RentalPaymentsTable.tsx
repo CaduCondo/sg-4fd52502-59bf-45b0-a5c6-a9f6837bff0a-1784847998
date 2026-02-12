@@ -35,10 +35,6 @@ export function RentalPaymentsTable({ payments, onManagePayment }: RentalPayment
     );
   };
 
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString("pt-BR");
-  };
-
   const handleViewPayment = (paymentId: string) => {
     router.push(`/payments/${paymentId}`);
   };
