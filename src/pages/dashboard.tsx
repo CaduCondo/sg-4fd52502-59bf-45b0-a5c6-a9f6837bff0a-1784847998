@@ -260,7 +260,7 @@ export default function Dashboard() {
     const completedPayments = payments.filter(p => p.status === 'paid').length;
     const expectedAmount = payments.reduce((acc, p) => acc + (p.expectedAmount || 0), 0);
 
-    const occupancyRate = totalProperties > 0 ? (rentedProperties / totalProperties) * 100 : 0;
+    const occupancyRate = totalProperties > 0 ? (activeContracts / totalProperties) * 100 : 0;
 
     const grossRevenue = payments.reduce((sum, p) => sum + (p.paidAmount || 0), 0);
 
