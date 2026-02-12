@@ -138,8 +138,7 @@ export function OverviewCards({
 
           <MetricCard
             title="Taxa de Ocupação"
-            value={data.occupancyRate}
-            isPercent={true}
+            value={formatPercent(data.occupancyRate)}
             icon={Percent}
             subtitle="Imóveis alugados vs total"
             iconColor="text-teal-600"
