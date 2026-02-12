@@ -922,4 +922,5 @@ export async function updatePendingPaymentsOnRentalEdit(rentalData: {
   }
 
   console.log("=== FIM updatePendingPaymentsOnRentalEdit ===");
+  await recalculateInstallmentNumbers(rentalData.id);
 }
