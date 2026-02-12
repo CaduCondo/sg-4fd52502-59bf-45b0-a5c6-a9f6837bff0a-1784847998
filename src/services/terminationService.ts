@@ -275,7 +275,7 @@ export async function processContractTermination(data: TerminationData): Promise
   // 6. ATUALIZAR TOTAL DE PARCELAS
   // ==========================================
 
-  console.log(`\n📊 PASSO 9: Recalcular números de parcelas`);
+  console.log(`\n📊 PASSO 6: Recalcular números de parcelas`);
   console.log(`Recalculando para rental_id: ${rentalId}`);
 
   // Chamar função do paymentService para recalcular parcelas
