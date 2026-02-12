@@ -1,11 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
 import { Layout } from "@/components/Layout";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
 import { ManagePaymentForm } from "@/components/payments/ManagePaymentForm";
 import { PaymentReceipt } from "@/components/PaymentReceipt";
+import { supabase } from "@/integrations/supabase/client";
 import type { Payment, Rental, Property, Tenant } from "@/types";
 
 export default function ManagePaymentPage() {
@@ -18,6 +17,40 @@ export default function ManagePaymentPage() {
     property: Property;
     tenant: Tenant;
   } | null>(null);
+  const [isTermination, setIsTermination] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (id) {
+      checkIfTermination();
+    }
+  }, [id]);
+
+  const checkIfTermination = async () => {
+    try {
+      const { data: payment, error } = await supabase
+        .from("payments")
+        .select("rental_id")
+        .eq("id", id as string)
+        .single();
+
+      if (error) throw error;
+
+      if (payment?.rental_id) {
+        const { data: termination } = await supabase
+          .from("rental_terminations")
+          .select("id")
+          .eq("rental_id", payment.rental_id)
+          .single();
+
+        setIsTermination(!!termination);
+      }
+    } catch (error) {
+      console.error("Error checking termination:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (!id) return null;
 
@@ -45,19 +78,21 @@ export default function ManagePaymentPage() {
 
   console.log("🔍 Estado atual da página - showReceipt:", showReceipt, "hasReceiptData:", !!receiptData);
 
+  const pageTitle = isTermination 
+    ? "Registrar Recebimento - Rescisão de Contrato"
+    : "Registrar Recebimento";
+
   return (
     <>
       <Head>
-        <title>Registrar Recebimento - Sistema de Locações</title>
+        <title>{pageTitle} - Sistema de Locações</title>
       </Head>
       <Layout>
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">
-                Registrar Recebimento
-              </h1>
-            </div>
+        <div>
+          <div className="mb-4">
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">
+              {pageTitle}
+            </h1>
           </div>
 
           <ManagePaymentForm 
