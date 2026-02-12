@@ -179,12 +179,24 @@ export default function Dashboard() {
     
     const unavailableProperties = properties.filter(p => p.status === 'unavailable').length;
     
-    // Total de inquilinos = todos os inquilinos (active + tenant)
     const totalTenants = tenants.length;
     
     const today = new Date();
-    const todayUTC = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
-    const todayStr = todayUTC.toISOString().split('T')[0]; // "2026-02-10"
+    today.setHours(0, 0, 0, 0);
+    
+    const twoMonthsFromNow = new Date(today);
+    twoMonthsFromNow.setMonth(twoMonthsFromNow.getMonth() + 2);
+    
+    const expiringContracts = rentals.filter(rental => {
+      if (!rental.isActive || !rental.endDate) return false;
+      const endDate = new Date(rental.endDate);
+      endDate.setHours(0, 0, 0, 0);
+      return endDate >= today && endDate <= twoMonthsFromNow;
+    }).length;
+    
+    console.log("⏰ Contratos que vencem em até 2 meses:", expiringContracts);
+    
+    const todayStr = today.toISOString().split('T')[0]; // "2026-02-10"
 
     console.log("📅 Data de hoje (UTC):", todayStr);
 
@@ -290,6 +302,7 @@ export default function Dashboard() {
       occupancyRate,
       totalTenants,
       activeContracts,
+      expiringContracts,
       overduePayments: overduePaymentsCount,
       overdueAmount,
       dueTodayPayments,
