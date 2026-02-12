@@ -267,15 +267,18 @@ export async function processContractTermination(data: TerminationData): Promise
     console.log("✅ Nenhum recebimento para deletar");
   }
 
+  // Corrigido: usar o tamanho do array paymentsToDelete ou 0
+  const deletedCount = paymentsToDelete?.length || 0;
   console.log(`✅ ${deletedCount} recebimentos futuros foram deletados com sucesso`);
 
   // ==========================================
-  // 6. CRIAR RECEBIMENTO DE RESCISÃO
+  // 6. ATUALIZAR TOTAL DE PARCELAS
   // ==========================================
 
   console.log(`\n📊 PASSO 9: Recalcular números de parcelas`);
   console.log(`Recalculando para rental_id: ${rentalId}`);
 
+  // Chamar função do paymentService para recalcular parcelas
   const totalPaymentsAfter = await recalculateInstallmentNumbers(rentalId);
 
   console.log(`✅ Recálculo concluído!`);
