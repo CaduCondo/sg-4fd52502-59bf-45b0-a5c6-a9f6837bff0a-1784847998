@@ -155,9 +155,29 @@ export const applyCnpjMask = (value: string): string => {
 // Date Formatting
 export const formatDate = (date: string | Date): string => {
   if (!date) return "";
-  const d = typeof date === "string" ? new Date(date) : date;
-  if (isNaN(d.getTime())) return "";
-  return d.toLocaleDateString("pt-BR");
+  
+  // Se for objeto Date, usa formatação padrão
+  if (date instanceof Date) {
+    return date.toLocaleDateString("pt-BR");
+  }
+  
+  // Se for string
+  if (typeof date === "string") {
+    // Se for formato YYYY-MM-DD simples (comum em inputs e datas do banco)
+    // Fazemos parse manual para evitar problemas de timezone
+    if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      const [year, month, day] = date.split("-");
+      return `${day}/${month}/${year}`;
+    }
+    
+    // Para outros formatos (ISO com hora, etc), fallback para Date
+    const d = new Date(date);
+    if (!isNaN(d.getTime())) {
+      return d.toLocaleDateString("pt-BR");
+    }
+  }
+  
+  return "";
 };
 
 // Address fetch stub

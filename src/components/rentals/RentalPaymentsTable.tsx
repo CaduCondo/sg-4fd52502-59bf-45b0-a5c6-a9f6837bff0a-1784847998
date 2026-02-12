@@ -69,7 +69,7 @@ export function RentalPaymentsTable({ payments, onManagePayment }: RentalPayment
               {payments.map((payment) => (
                 <TableRow key={payment.id}>
                   <TableCell>{payment.installmentNumber}</TableCell>
-                  <TableCell>{formatDate(payment.dueDate)}</TableCell>
+                  <TableCell>{payment.dueDate}</TableCell>
                   <TableCell>{formatCurrency(payment.expectedAmount)}</TableCell>
                   <TableCell>
                     {payment.paidAmount ? formatCurrency(payment.paidAmount) : "-"}
