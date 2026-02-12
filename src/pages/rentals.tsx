@@ -84,7 +84,7 @@ export default function RentalsPage() {
       await Promise.all(
         activeRentals.map(async (rental) => {
           const payments = await getByRentalId(rental.id);
-          const hasTermination = payments.some(p => p.type === "termination");
+          const hasTermination = payments.some(p => p.notes?.includes("Rescisão de Contrato"));
           terminationMap[rental.id] = hasTermination;
         })
       );

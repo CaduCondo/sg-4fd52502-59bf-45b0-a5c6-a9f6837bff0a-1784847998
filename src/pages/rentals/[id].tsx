@@ -42,7 +42,7 @@ export default function RentalDetailsPage() {
 
   useEffect(() => {
     if (payments.length > 0) {
-      const terminationExists = payments.some(p => p.type === "termination");
+      const terminationExists = payments.some(p => p.notes?.includes("Rescisão de Contrato"));
       setHasTermination(terminationExists);
     }
   }, [payments]);
