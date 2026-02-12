@@ -248,13 +248,8 @@ export async function processContractTermination(data: TerminationData): Promise
   }
 
   console.log(`\n📊 Recalculando números de parcelas para refletir o novo total...`);
-  try {
-    await recalculateInstallmentNumbers(rentalId);
-    console.log("✅ Números de parcelas recalculados com sucesso!");
-  } catch (recalcError) {
-    console.error("❌ Erro ao recalcular parcelas:", recalcError);
-    // Não lançar erro aqui para não interromper o fluxo de sucesso da rescisão
-  }
+  await recalculateInstallmentNumbers(rentalId);
+  console.log("✅ Números de parcelas recalculados com sucesso!");
 
   console.log("\n=== RESUMO DA RESCISÃO ===");
   console.log(`✅ Recebimento de ${terminationMonth}/${terminationYear} atualizado com R$ ${totalAmount.toFixed(2)}`);
