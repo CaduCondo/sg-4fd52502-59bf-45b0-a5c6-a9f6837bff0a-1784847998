@@ -205,6 +205,26 @@ export async function processContractTermination(data: TerminationData): Promise
 
   console.log("✅ Recebimento do mês atualizado com sucesso!");
 
+  // ==========================================
+  // 4. ATUALIZAR DATA FIM DO CONTRATO
+  // ==========================================
+  console.log("\n📅 Atualizando data fim do contrato...");
+
+  const { error: updateRentalError } = await supabase
+    .from("rentals")
+    .update({
+      end_date: terminationDate,
+      updated_at: new Date().toISOString()
+    })
+    .eq("id", rentalId);
+
+  if (updateRentalError) {
+    console.error("❌ Erro ao atualizar data fim do contrato:", updateRentalError);
+    throw updateRentalError;
+  }
+
+  console.log(`✅ Data fim do contrato atualizada para: ${terminationDate}`);
+
   // PASSO 8: Deletar recebimentos do mês SEGUINTE em diante
   console.log("\n🗑️ Deletando recebimentos futuros (a partir do mês seguinte)...");
 
