@@ -318,3 +318,18 @@ export const formatPercentage = (value: number): string => {
     maximumFractionDigits: 3,
   });
 };
+
+export const maskTime = (value: string): string => {
+  const numbers = value.replace(/\D/g, "");
+  
+  if (numbers.length === 0) return "";
+  if (numbers.length <= 2) {
+    const hour = Math.min(parseInt(numbers), 23);
+    return String(hour).padStart(numbers.length, "0");
+  }
+  
+  const hour = Math.min(parseInt(numbers.substring(0, 2)), 23);
+  const minute = Math.min(parseInt(numbers.substring(2, 4)), 59);
+  
+  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+};

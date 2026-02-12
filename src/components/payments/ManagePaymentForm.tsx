@@ -13,6 +13,7 @@ import { AttachmentViewer } from "@/components/AttachmentViewer";
 import { Camera, Paperclip, Home, User, DollarSign, CreditCard, FileText, Edit, X } from "lucide-react";
 import type { Payment, Rental, Property, Tenant } from "@/types";
 import { calculateCorrectedDeposit } from "@/services/igpmService";
+import { maskTime } from "@/lib/masks";
 
 interface ManagePaymentFormProps {
   paymentId: string;
@@ -51,6 +52,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
   const [formData, setFormData] = useState({
     payment_date: "",
     payment_method: "pix",
+    payment_time: "",
     amount_to_pay: "",
     notes: "",
     pix_code_type: "CP",
@@ -209,6 +211,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       setFormData({
         payment_date: paymentData.payment_date || new Date().toISOString().split("T")[0],
         payment_method: paymentData.payment_method || "pix",
+        payment_time: (paymentData as any).payment_time || "",
         amount_to_pay: paymentData.paid_amount 
           ? formatCurrency(paymentData.paid_amount.toFixed(2)) 
           : "",
@@ -447,6 +450,15 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       return;
     }
 
+    if (formData.payment_method === "pix" && !formData.payment_time) {
+      toast({
+        title: "Atenção",
+        description: "Informe o horário do recebimento para pagamentos via PIX",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setIsSubmitting(true);
 
@@ -520,6 +532,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       const paymentDataUpdate = {
         payment_date: formData.payment_date,
         payment_method: formData.payment_method,
+        payment_time: formData.payment_time || null,
         paid_amount: totalPaid,
         notes: formData.notes,
         status: paymentStatus,
@@ -660,7 +673,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       {!embedded && (
         <div className="text-center mb-6">
           <h1 className="text-2xl font-bold">
-            Registrar recebimento
+            Registrar Recebimento
           </h1>
         </div>
       )}
@@ -944,6 +957,27 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                         <SelectItem value="CE">CE</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+                )}
+
+                {formData.payment_method === "pix" && (
+                  <div>
+                    <Label htmlFor="payment_time">
+                      Horário do Recebimento <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="payment_time"
+                      type="text"
+                      placeholder="HH:MM"
+                      maxLength={5}
+                      value={formData.payment_time}
+                      onChange={(e) => {
+                        const masked = maskTime(e.target.value);
+                        setFormData({ ...formData, payment_time: masked });
+                      }}
+                      required
+                      disabled={isReadOnly}
+                    />
                   </div>
                 )}
 
