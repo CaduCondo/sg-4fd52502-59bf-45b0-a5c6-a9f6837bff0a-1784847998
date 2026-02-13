@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { useRouter } from "next/router";
+import { useState, useCallback, useMemo } from "react";
 import { Layout } from "@/components/Layout";
 import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
@@ -7,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Bed, Bath, Trash2, Grid3x3, List } from "lucide-react";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
-import { formatCurrency, parseCurrencyToFloat } from "@/lib/masks";
+import { formatCurrency } from "@/lib/masks";
 import type { Property } from "@/types";
 import { useProperties, type PropertyFormData } from "@/hooks/useProperties";
 import { PropertyCard } from "@/components/properties/PropertyCard";
@@ -17,12 +16,26 @@ import { PropertyDeleteAlert } from "@/components/properties/PropertyDeleteAlert
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 
+const INITIAL_FORM_DATA: PropertyFormData = {
+  location_id: "",
+  property_identifier: "",
+  complement: "",
+  rooms: "",
+  bathrooms: "",
+  monthly_rent: "",
+  description: "",
+  status: "available",
+  images: [],
+  hasFurniture: false,
+  acceptsPets: false,
+  area: "",
+  hasGarage: false,
+};
+
 export default function PropertiesPage() {
-  const router = useRouter();
   const {
-    properties,
-    locations,
     filteredProperties,
+    locations,
     loading,
     searchTerm,
     statusFilter,
@@ -35,7 +48,6 @@ export default function PropertiesPage() {
     setSortOrder,
     setViewMode,
     handleLocationToggle,
-    loadData,
     createProperty,
     updateProperty,
     deleteProperty,
@@ -49,30 +61,16 @@ export default function PropertiesPage() {
   const [editingProperty, setEditingProperty] = useState<Property | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [isViewMode, setIsViewMode] = useState(false);
+  const [formData, setFormData] = useState<PropertyFormData>(INITIAL_FORM_DATA);
 
-  const [formData, setFormData] = useState<PropertyFormData>({
-    location_id: "",
-    property_identifier: "",
-    complement: "",
-    rooms: "",
-    bathrooms: "",
-    monthly_rent: "",
-    description: "",
-    status: "available",
-    images: [],
-    hasFurniture: false,
-    acceptsPets: false,
-    area: "",
-    hasGarage: false,
-  });
-
-  const handleNumberChange = (field: "rooms" | "bathrooms", value: string) => {
+  // Handlers memoizados
+  const handleNumberChange = useCallback((field: "rooms" | "bathrooms", value: string) => {
     const numbersOnly = value.replace(/[^0-9]/g, "");
     const limitedValue = numbersOnly.slice(0, 2);
-    setFormData({ ...formData, [field]: limitedValue });
-  };
+    setFormData(prev => ({ ...prev, [field]: limitedValue }));
+  }, []);
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
 
@@ -92,16 +90,23 @@ export default function PropertiesPage() {
       };
       reader.readAsDataURL(file);
     });
-  };
+  }, []);
 
-  const removeImage = (index: number) => {
+  const removeImage = useCallback((index: number) => {
     setFormData((prev) => ({
       ...prev,
       images: prev.images.filter((_, i) => i !== index),
     }));
-  };
+  }, []);
 
-  const handleEdit = (property: Property) => {
+  const resetForm = useCallback(() => {
+    setFormData(INITIAL_FORM_DATA);
+    setEditingProperty(null);
+    setIsEditMode(false);
+    setIsViewMode(false);
+  }, []);
+
+  const handleEdit = useCallback((property: Property) => {
     setEditingProperty(property);
     setFormData({
       location_id: property.locationId,
@@ -119,9 +124,9 @@ export default function PropertiesPage() {
       hasGarage: property.hasGarage || false,
     });
     setIsDialogOpen(true);
-  };
+  }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
@@ -151,9 +156,9 @@ export default function PropertiesPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [editingProperty, formData, updateProperty, createProperty, toast, resetForm]);
 
-  const handleCardClick = (property: Property) => {
+  const handleCardClick = useCallback((property: Property) => {
     setEditingProperty(property);
     setFormData({
       location_id: property.locationId || "",
@@ -165,27 +170,27 @@ export default function PropertiesPage() {
       description: property.description || "",
       status: property.status || "available",
       images: property.images || [],
-      hasFurniture: property.hasFurniture || property.has_furniture || false,
-      acceptsPets: property.acceptsPets || property.accepts_pets || false,
+      hasFurniture: property.hasFurniture || false,
+      acceptsPets: property.acceptsPets || false,
       area: String(property.area || ""),
       hasGarage: property.hasGarage || false,
     });
     setIsDialogOpen(true);
     setIsViewMode(true);
     setIsEditMode(true);
-  };
+  }, []);
 
-  const handleEnableEdit = () => {
+  const handleEnableEdit = useCallback(() => {
     setIsViewMode(false);
-  };
+  }, []);
 
-  const confirmDelete = (e: React.MouseEvent, id: string) => {
+  const confirmDelete = useCallback((e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     setPropertyToDelete(id);
     setIsDeleteDialogOpen(true);
-  };
+  }, []);
 
-  const handleDelete = async () => {
+  const handleDelete = useCallback(async () => {
     if (!propertyToDelete) return;
 
     try {
@@ -195,42 +200,23 @@ export default function PropertiesPage() {
     } catch (error) {
       console.error("Erro ao excluir imóvel:", error);
     }
-  };
+  }, [propertyToDelete, deleteProperty]);
 
-  const resetForm = () => {
-    setFormData({
-      location_id: "",
-      property_identifier: "",
-      complement: "",
-      rooms: "",
-      bathrooms: "",
-      monthly_rent: "",
-      description: "",
-      status: "available",
-      images: [],
-      hasFurniture: false,
-      acceptsPets: false,
-      area: "",
-      hasGarage: false,
-    });
-    setEditingProperty(null);
-    setIsEditMode(false);
-    setIsViewMode(false);
-  };
-
-  const getStatusBadge = (status: string) => {
-    const variants: Record<string, "default" | "secondary" | "destructive"> = {
-      available: "default",
-      occupied: "secondary",
-      unavailable: "destructive",
+  const getStatusBadge = useMemo(() => {
+    return (status: string) => {
+      const variants: Record<string, "default" | "secondary" | "destructive"> = {
+        available: "default",
+        occupied: "secondary",
+        unavailable: "destructive",
+      };
+      const labels: Record<string, string> = {
+        available: "Disponível",
+        occupied: "Ocupado",
+        unavailable: "Indisponível",
+      };
+      return <Badge variant={variants[status]}>{labels[status]}</Badge>;
     };
-    const labels: Record<string, string> = {
-      available: "Disponível",
-      occupied: "Ocupado",
-      unavailable: "Indisponível",
-    };
-    return <Badge variant={variants[status]}>{labels[status]}</Badge>;
-  };
+  }, []);
 
   if (loading) {
     return (
@@ -254,7 +240,6 @@ export default function PropertiesPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            {/* View Mode Toggle */}
             <div className="flex gap-1 border rounded-lg p-1">
               <Button
                 variant={viewMode === "grid" ? "default" : "ghost"}
@@ -349,10 +334,10 @@ export default function PropertiesPage() {
                         {property.complement || "-"}
                       </TableCell>
                       <TableCell>
-                        {(property.rooms || property.bedrooms) ? (
+                        {property.rooms ? (
                           <div className="flex items-center gap-1">
                             <Bed className="h-4 w-4" />
-                            <span>{property.rooms || property.bedrooms}</span>
+                            <span>{property.rooms}</span>
                           </div>
                         ) : "-"}
                       </TableCell>
@@ -387,9 +372,7 @@ export default function PropertiesPage() {
           open={isDialogOpen}
           onOpenChange={(open) => {
             setIsDialogOpen(open);
-            if (!open) {
-              resetForm();
-            }
+            if (!open) resetForm();
           }}
           onSubmit={handleSubmit}
           formData={formData}

@@ -1,24 +1,50 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/router";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Save, Upload, BedDouble, Bath, Maximize2, DollarSign } from "lucide-react";
+import { ArrowLeft, Save, Upload } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrencyInput } from "@/lib/masks";
 import { AttachmentViewer } from "@/components/AttachmentViewer";
+
+interface FormData {
+  locationId: string;
+  complement: string;
+  propertyIdentifier: string;
+  rooms: string;
+  bathrooms: string;
+  monthlyRent: string;
+  description: string;
+  images: string[];
+  hasFurniture: boolean;
+  acceptsPets: boolean;
+  status: "available" | "occupied" | "unavailable";
+  area: string;
+  hasGarage: boolean;
+}
+
+const INITIAL_FORM_DATA: FormData = {
+  locationId: "",
+  complement: "",
+  propertyIdentifier: "",
+  rooms: "",
+  bathrooms: "",
+  monthlyRent: "",
+  description: "",
+  images: [],
+  hasFurniture: false,
+  acceptsPets: false,
+  status: "available",
+  area: "",
+  hasGarage: false,
+};
 
 export default function PropertyDetails() {
   const router = useRouter();
@@ -27,22 +53,7 @@ export default function PropertyDetails() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [locations, setLocations] = useState<any[]>([]);
-
-  const [formData, setFormData] = useState({
-    locationId: "",
-    complement: "",
-    propertyIdentifier: "",
-    rooms: "",
-    bathrooms: "",
-    monthlyRent: "",
-    description: "",
-    images: [] as string[],
-    hasFurniture: false,
-    acceptsPets: false,
-    status: "available" as "available" | "occupied" | "unavailable",
-    area: "",
-    hasGarage: false,
-  });
+  const [formData, setFormData] = useState<FormData>(INITIAL_FORM_DATA);
 
   useEffect(() => {
     if (id && typeof id === "string") {
@@ -54,7 +65,7 @@ export default function PropertyDetails() {
   const fetchLocations = async () => {
     const { data } = await supabase
       .from("locations")
-      .select("*")
+      .select("id, name")
       .eq("is_active", true)
       .order("name");
 
@@ -67,7 +78,22 @@ export default function PropertyDetails() {
     try {
       const { data, error } = await supabase
         .from("properties")
-        .select("*")
+        .select(`
+          id,
+          location_id,
+          property_identifier,
+          complement,
+          description,
+          rooms,
+          bathrooms,
+          area,
+          has_garage,
+          value,
+          status,
+          images,
+          has_furniture,
+          accepts_pets
+        `)
         .eq("id", propertyId)
         .single();
 
@@ -102,18 +128,18 @@ export default function PropertyDetails() {
     }
   };
 
-  const handleNumberChange = (field: "rooms" | "bathrooms", value: string) => {
+  const handleNumberChange = useCallback((field: "rooms" | "bathrooms", value: string) => {
     const numbersOnly = value.replace(/\D/g, "");
     const limitedValue = numbersOnly.slice(0, 2);
-    setFormData({ ...formData, [field]: limitedValue });
-  };
+    setFormData(prev => ({ ...prev, [field]: limitedValue }));
+  }, []);
 
-  const handleMoneyChange = (value: string) => {
+  const handleMoneyChange = useCallback((value: string) => {
     const maskedValue = formatCurrencyInput(value);
-    setFormData({ ...formData, monthlyRent: maskedValue });
-  };
+    setFormData(prev => ({ ...prev, monthlyRent: maskedValue }));
+  }, []);
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
 
@@ -139,16 +165,18 @@ export default function PropertyDetails() {
       }
     }
 
-    setFormData({
-      ...formData,
-      images: [...formData.images, ...uploadedUrls],
-    });
-  };
+    setFormData(prev => ({
+      ...prev,
+      images: [...prev.images, ...uploadedUrls],
+    }));
+  }, []);
 
-  const handleRemoveImage = (index: number) => {
-    const newImages = formData.images.filter((_, i) => i !== index);
-    setFormData({ ...formData, images: newImages });
-  };
+  const handleRemoveImage = useCallback((index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      images: prev.images.filter((_, i) => i !== index),
+    }));
+  }, []);
 
   const handleSave = async () => {
     if (!id || typeof id !== "string") return;
@@ -234,14 +262,13 @@ export default function PropertyDetails() {
             <CardTitle className="text-lg">Informações do Imóvel</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {/* Linha 1: Local e Código */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label htmlFor="location" className="text-xs">Local *</Label>
                 <Select
                   value={formData.locationId}
                   onValueChange={(value) =>
-                    setFormData({ ...formData, locationId: value })
+                    setFormData(prev => ({ ...prev, locationId: value }))
                   }
                 >
                   <SelectTrigger id="location" className="h-8 text-sm">
@@ -263,7 +290,7 @@ export default function PropertyDetails() {
                   id="propertyIdentifier"
                   value={formData.propertyIdentifier}
                   onChange={(e) =>
-                    setFormData({ ...formData, propertyIdentifier: e.target.value })
+                    setFormData(prev => ({ ...prev, propertyIdentifier: e.target.value }))
                   }
                   placeholder="Ex: AP-001"
                   className="h-8 text-sm"
@@ -271,21 +298,19 @@ export default function PropertyDetails() {
               </div>
             </div>
 
-            {/* Linha 2: Complemento */}
             <div className="space-y-1">
               <Label htmlFor="complement" className="text-xs">Complemento</Label>
               <Input
                 id="complement"
                 value={formData.complement}
                 onChange={(e) =>
-                  setFormData({ ...formData, complement: e.target.value })
+                  setFormData(prev => ({ ...prev, complement: e.target.value }))
                 }
                 placeholder="Ex: Apto 102, Bloco A"
                 className="h-8 text-sm"
               />
             </div>
 
-            {/* Linha 3: Quartos, Banheiros, Área, Valor */}
             <div className="grid grid-cols-4 gap-3">
               <div className="space-y-1">
                 <Label htmlFor="rooms" className="text-xs">Quartos</Label>
@@ -323,7 +348,7 @@ export default function PropertyDetails() {
                   inputMode="decimal"
                   value={formData.area}
                   onChange={(e) =>
-                    setFormData({ ...formData, area: e.target.value })
+                    setFormData(prev => ({ ...prev, area: e.target.value }))
                   }
                   placeholder="0"
                   className="h-8 text-sm"
@@ -342,13 +367,12 @@ export default function PropertyDetails() {
               </div>
             </div>
 
-            {/* Linha 4: Status */}
             <div className="space-y-1">
               <Label htmlFor="status" className="text-xs">Status</Label>
               <Select
                 value={formData.status}
                 onValueChange={(value: "available" | "occupied" | "unavailable") =>
-                  setFormData({ ...formData, status: value })
+                  setFormData(prev => ({ ...prev, status: value }))
                 }
               >
                 <SelectTrigger id="status" className="h-8 text-sm">
@@ -362,7 +386,6 @@ export default function PropertyDetails() {
               </Select>
             </div>
 
-            {/* Linha 5: Checkboxes */}
             <div className="space-y-1">
               <Label className="text-xs">Características</Label>
               <div className="flex gap-4 pt-1">
@@ -371,7 +394,7 @@ export default function PropertyDetails() {
                     id="hasFurniture"
                     checked={formData.hasFurniture}
                     onCheckedChange={(checked) =>
-                      setFormData({ ...formData, hasFurniture: checked as boolean })
+                      setFormData(prev => ({ ...prev, hasFurniture: checked as boolean }))
                     }
                   />
                   <Label htmlFor="hasFurniture" className="text-xs font-normal cursor-pointer">
@@ -384,7 +407,7 @@ export default function PropertyDetails() {
                     id="acceptsPets"
                     checked={formData.acceptsPets}
                     onCheckedChange={(checked) =>
-                      setFormData({ ...formData, acceptsPets: checked as boolean })
+                      setFormData(prev => ({ ...prev, acceptsPets: checked as boolean }))
                     }
                   />
                   <Label htmlFor="acceptsPets" className="text-xs font-normal cursor-pointer">
@@ -397,7 +420,7 @@ export default function PropertyDetails() {
                     id="hasGarage"
                     checked={formData.hasGarage}
                     onCheckedChange={(checked) =>
-                      setFormData({ ...formData, hasGarage: checked as boolean })
+                      setFormData(prev => ({ ...prev, hasGarage: checked as boolean }))
                     }
                   />
                   <Label htmlFor="hasGarage" className="text-xs font-normal cursor-pointer">
@@ -407,14 +430,13 @@ export default function PropertyDetails() {
               </div>
             </div>
 
-            {/* Linha 6: Descrição */}
             <div className="space-y-1">
               <Label htmlFor="description" className="text-xs">Descrição</Label>
               <Textarea
                 id="description"
                 value={formData.description}
                 onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
+                  setFormData(prev => ({ ...prev, description: e.target.value }))
                 }
                 placeholder="Descreva as características do imóvel..."
                 rows={2}
@@ -422,7 +444,6 @@ export default function PropertyDetails() {
               />
             </div>
 
-            {/* Linha 7: Imagens */}
             <div className="space-y-1">
               <Label className="text-xs">Fotos do Imóvel</Label>
               <Button

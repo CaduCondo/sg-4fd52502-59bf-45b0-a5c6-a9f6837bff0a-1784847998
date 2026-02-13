@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Bed, Bath, Trash2, Camera, DollarSign, MapPin } from "lucide-react";
 import { formatCurrency } from "@/lib/masks";
 import type { Property } from "@/types";
+import { memo } from "react";
 
 interface PropertyCardProps {
   property: Property;
@@ -12,7 +13,7 @@ interface PropertyCardProps {
   locationName?: string;
 }
 
-export function PropertyCard({ property, onCardClick, onDeleteClick, locationName }: PropertyCardProps) {
+export const PropertyCard = memo(function PropertyCard({ property, onCardClick, onDeleteClick, locationName }: PropertyCardProps) {
   const getStatusBadge = (status: string) => {
     const variants: Record<string, "default" | "secondary" | "destructive"> = {
       available: "default",
@@ -62,12 +63,12 @@ export function PropertyCard({ property, onCardClick, onDeleteClick, locationNam
       </CardHeader>
       <CardContent className="pt-0 p-4 sm:p-6">
         <div className="space-y-2 sm:space-y-3">
-          {(property.rooms || property.bedrooms || property.bathrooms) && (
+          {(property.rooms || property.bathrooms) && (
             <div className="flex gap-3 sm:gap-4 text-xs sm:text-sm text-muted-foreground flex-wrap">
-              {(property.rooms || property.bedrooms) && (
+              {property.rooms && (
                 <div className="flex items-center gap-1.5">
                   <Bed className="h-4 w-4 flex-shrink-0" />
-                  <span>{property.rooms || property.bedrooms} Quartos</span>
+                  <span>{property.rooms} Quartos</span>
                 </div>
               )}
               {property.bathrooms && (
@@ -108,4 +109,4 @@ export function PropertyCard({ property, onCardClick, onDeleteClick, locationNam
       </CardContent>
     </Card>
   );
-}
+});
