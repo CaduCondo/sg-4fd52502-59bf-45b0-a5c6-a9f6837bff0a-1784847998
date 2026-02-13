@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback } from "react";
 import { Layout } from "@/components/Layout";
 import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
@@ -202,21 +202,19 @@ export default function PropertiesPage() {
     }
   }, [propertyToDelete, deleteProperty]);
 
-  const getStatusBadge = useMemo(() => {
-    return (status: string) => {
-      const variants: Record<string, "default" | "secondary" | "destructive"> = {
-        available: "default",
-        occupied: "secondary",
-        unavailable: "destructive",
-      };
-      const labels: Record<string, string> = {
-        available: "Disponível",
-        occupied: "Ocupado",
-        unavailable: "Indisponível",
-      };
-      return <Badge variant={variants[status]}>{labels[status]}</Badge>;
+  const getStatusBadge = (status: string) => {
+    const variants: Record<string, "default" | "secondary" | "destructive"> = {
+      available: "default",
+      occupied: "secondary",
+      unavailable: "destructive",
     };
-  }, []);
+    const labels: Record<string, string> = {
+      available: "Disponível",
+      occupied: "Ocupado",
+      unavailable: "Indisponível",
+    };
+    return <Badge variant={variants[status]}>{labels[status]}</Badge>;
+  };
 
   if (loading) {
     return (
