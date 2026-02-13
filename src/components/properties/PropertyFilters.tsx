@@ -35,36 +35,41 @@ export function PropertyFilters({
 }: PropertyFiltersProps) {
   return (
     <div className="flex flex-col gap-3">
-      {/* Counter */}
+      {/* Linha 1: Counter + Labels */}
       <div className="flex items-center justify-between">
         <div className="text-sm text-muted-foreground font-medium">
           {totalCount} {totalCount === 1 ? "imóvel encontrado" : "imóveis encontrados"}
         </div>
+        <div className="hidden lg:flex items-center gap-6">
+          <span className="text-sm font-medium text-foreground">Locais:</span>
+          <span className="text-sm font-medium text-foreground">Status:</span>
+          <span className="text-sm font-medium text-foreground">Ordenação:</span>
+        </div>
       </div>
 
-      {/* Filters Row - Desktop: all in one line */}
-      <div className="flex flex-col lg:flex-row gap-3">
-        {/* Search Bar - takes more space on desktop */}
-        <div className="flex-1 lg:max-w-xs">
+      {/* Linha 2: Search + Filters */}
+      <div className="flex flex-col lg:flex-row gap-3 lg:items-center">
+        {/* Search Bar - Takes more space */}
+        <div className="flex-1 lg:max-w-md">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Buscar..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 h-9 text-sm"
+              className="pl-9 h-10"
             />
           </div>
         </div>
 
-        {/* Filters - compact on desktop */}
-        <div className="flex flex-col sm:flex-row gap-3 lg:gap-4">
+        {/* Filters Row - Compact and aligned */}
+        <div className="flex flex-col sm:flex-row gap-3 lg:gap-4 lg:flex-1 lg:justify-end">
           {/* Location Filter */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-foreground">Locais:</label>
+          <div className="flex flex-col gap-1.5 lg:flex-row lg:items-center lg:gap-0">
+            <label className="text-sm font-medium text-foreground lg:hidden">Locais:</label>
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" className="w-full sm:w-auto sm:min-w-[160px] justify-between h-9 text-sm">
+                <Button variant="outline" className="w-full sm:w-auto sm:min-w-[160px] justify-between h-10">
                   <span className="truncate flex items-center gap-2">
                     <Filter className="h-4 w-4 flex-shrink-0" />
                     {selectedLocations.length === 0
@@ -117,10 +122,10 @@ export function PropertyFilters({
           </div>
 
           {/* Status Filter */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-foreground">Status:</label>
+          <div className="flex flex-col gap-1.5 lg:flex-row lg:items-center lg:gap-0">
+            <label className="text-sm font-medium text-foreground lg:hidden">Status:</label>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full sm:w-[140px] h-9 text-sm">
+              <SelectTrigger className="w-full sm:w-[140px] h-10">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -133,10 +138,10 @@ export function PropertyFilters({
           </div>
 
           {/* Sort Order */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-foreground">Ordenação:</label>
+          <div className="flex flex-col gap-1.5 lg:flex-row lg:items-center lg:gap-0">
+            <label className="text-sm font-medium text-foreground lg:hidden">Ordenação:</label>
             <Select value={sortOrder} onValueChange={(value: any) => setSortOrder(value)}>
-              <SelectTrigger className="w-full sm:w-[180px] h-9 text-sm">
+              <SelectTrigger className="w-full sm:w-[140px] h-10">
                 <SelectValue placeholder="Ordenar" />
               </SelectTrigger>
               <SelectContent>
