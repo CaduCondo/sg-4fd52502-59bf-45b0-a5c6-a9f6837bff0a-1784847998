@@ -36,19 +36,21 @@ export function PropertyFilters({
   return (
     <div className="flex flex-col gap-3">
       {/* Linha 1: Counter + Labels */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-end justify-between">
         <div className="text-sm text-muted-foreground font-medium">
           {totalCount} {totalCount === 1 ? "imóvel encontrado" : "imóveis encontrados"}
         </div>
-        <div className="hidden lg:flex items-center gap-6">
-          <span className="text-sm font-medium text-foreground">Locais:</span>
-          <span className="text-sm font-medium text-foreground">Status:</span>
-          <span className="text-sm font-medium text-foreground">Ordenação:</span>
+        
+        {/* Labels alinhados com os combos abaixo */}
+        <div className="hidden lg:flex items-end gap-3">
+          <div className="w-[160px] text-sm font-medium text-foreground">Locais:</div>
+          <div className="w-[140px] text-sm font-medium text-foreground">Status:</div>
+          <div className="w-[140px] text-sm font-medium text-foreground">Ordenação:</div>
         </div>
       </div>
 
       {/* Linha 2: Search + Filters */}
-      <div className="flex flex-col lg:flex-row gap-3 lg:items-center">
+      <div className="flex flex-col lg:flex-row gap-3 lg:items-start">
         {/* Search Bar - Takes more space */}
         <div className="flex-1 lg:max-w-md">
           <div className="relative">
@@ -62,95 +64,86 @@ export function PropertyFilters({
           </div>
         </div>
 
-        {/* Filters Row - Compact and aligned */}
-        <div className="flex flex-col sm:flex-row gap-3 lg:gap-4 lg:flex-1 lg:justify-end">
-          {/* Location Filter */}
-          <div className="flex flex-col gap-1.5 lg:flex-row lg:items-center lg:gap-0">
-            <label className="text-sm font-medium text-foreground lg:hidden">Locais:</label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className="w-full sm:w-auto sm:min-w-[160px] justify-between h-10">
-                  <span className="truncate flex items-center gap-2">
-                    <Filter className="h-4 w-4 flex-shrink-0" />
-                    {selectedLocations.length === 0
-                      ? "Locais"
-                      : selectedLocations.length === 1
-                      ? locations.find((l) => l.id === selectedLocations[0])?.name
-                      : `${selectedLocations.length} locais`}
-                  </span>
-                  <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[280px] p-0" align="start">
-                <div className="max-h-[300px] overflow-y-auto p-3 smooth-scroll">
-                  {[...locations]
-                    .sort((a, b) => a.name.localeCompare(b.name))
-                    .map((location) => (
-                      <div
-                        key={location.id}
-                        className="flex items-center space-x-3 rounded-md px-3 py-2 hover:bg-accent transition-colors"
-                      >
-                        <Checkbox
-                          id={`location-${location.id}`}
-                          checked={selectedLocations.includes(location.id)}
-                          onCheckedChange={() => handleLocationToggle(location.id)}
-                          className="flex-shrink-0"
-                        />
-                        <label 
-                          htmlFor={`location-${location.id}`}
-                          className="flex-1 text-sm cursor-pointer"
-                        >
-                          {location.name}
-                        </label>
-                      </div>
-                    ))}
-                </div>
-                {selectedLocations.length > 0 && (
-                  <div className="border-t p-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="w-full h-8"
-                      onClick={() => setSelectedLocations([])}
+        {/* Filters Row - Aligned with labels above */}
+        <div className="flex flex-col sm:flex-row gap-3 lg:gap-3">
+          {/* Location Filter - 160px to match label */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="w-full sm:w-[160px] justify-between h-10">
+                <span className="truncate flex items-center gap-2">
+                  <Filter className="h-4 w-4 flex-shrink-0" />
+                  {selectedLocations.length === 0
+                    ? "Locais"
+                    : selectedLocations.length === 1
+                    ? locations.find((l) => l.id === selectedLocations[0])?.name
+                    : `${selectedLocations.length} locais`}
+                </span>
+                <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[280px] p-0" align="start">
+              <div className="max-h-[300px] overflow-y-auto p-3 smooth-scroll">
+                {[...locations]
+                  .sort((a, b) => a.name.localeCompare(b.name))
+                  .map((location) => (
+                    <div
+                      key={location.id}
+                      className="flex items-center space-x-3 rounded-md px-3 py-2 hover:bg-accent transition-colors"
                     >
-                      Limpar
-                    </Button>
-                  </div>
-                )}
-              </PopoverContent>
-            </Popover>
-          </div>
+                      <Checkbox
+                        id={`location-${location.id}`}
+                        checked={selectedLocations.includes(location.id)}
+                        onCheckedChange={() => handleLocationToggle(location.id)}
+                        className="flex-shrink-0"
+                      />
+                      <label 
+                        htmlFor={`location-${location.id}`}
+                        className="flex-1 text-sm cursor-pointer"
+                      >
+                        {location.name}
+                      </label>
+                    </div>
+                  ))}
+              </div>
+              {selectedLocations.length > 0 && (
+                <div className="border-t p-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full h-8"
+                    onClick={() => setSelectedLocations([])}
+                  >
+                    Limpar
+                  </Button>
+                </div>
+              )}
+            </PopoverContent>
+          </Popover>
 
-          {/* Status Filter */}
-          <div className="flex flex-col gap-1.5 lg:flex-row lg:items-center lg:gap-0">
-            <label className="text-sm font-medium text-foreground lg:hidden">Status:</label>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full sm:w-[140px] h-10">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="available">Disponível</SelectItem>
-                <SelectItem value="occupied">Ocupado</SelectItem>
-                <SelectItem value="unavailable">Indisponível</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Status Filter - 140px to match label */}
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full sm:w-[140px] h-10">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="available">Disponível</SelectItem>
+              <SelectItem value="occupied">Ocupado</SelectItem>
+              <SelectItem value="unavailable">Indisponível</SelectItem>
+            </SelectContent>
+          </Select>
 
-          {/* Sort Order */}
-          <div className="flex flex-col gap-1.5 lg:flex-row lg:items-center lg:gap-0">
-            <label className="text-sm font-medium text-foreground lg:hidden">Ordenação:</label>
-            <Select value={sortOrder} onValueChange={(value: any) => setSortOrder(value)}>
-              <SelectTrigger className="w-full sm:w-[140px] h-10">
-                <SelectValue placeholder="Ordenar" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="alphabetical">A-Z</SelectItem>
-                <SelectItem value="price-asc">Menor Valor</SelectItem>
-                <SelectItem value="price-desc">Maior Valor</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Sort Order - 140px to match label */}
+          <Select value={sortOrder} onValueChange={(value: any) => setSortOrder(value)}>
+            <SelectTrigger className="w-full sm:w-[140px] h-10">
+              <SelectValue placeholder="Ordenar" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="alphabetical">A-Z</SelectItem>
+              <SelectItem value="price-asc">Menor Valor</SelectItem>
+              <SelectItem value="price-desc">Maior Valor</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
     </div>
