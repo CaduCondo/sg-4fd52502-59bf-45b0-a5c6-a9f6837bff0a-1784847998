@@ -61,11 +61,17 @@ export function useDashboardData(month: number, year: number, userId: string | u
 
     const loadData = async () => {
       try {
-        if (!userId) return;
+        if (!userId) {
+          console.log("❌ Dashboard: userId não disponível");
+          setLoading(false);
+          return;
+        }
 
+        console.log("🔄 Dashboard: Iniciando carregamento...", { month, year, userId, userRole });
         setLoading(true);
 
         // ETAPA 1: Configurações globais + permissões (paralelo)
+        console.log("📊 Dashboard: Carregando configurações...");
         const [exemptResult, permissionsResult] = await Promise.all([
           supabase.from("admin_fee_exempt_locations").select("location_id"),
           userRole === "financial" 
@@ -75,12 +81,22 @@ export function useDashboardData(month: number, year: number, userId: string | u
 
         if (!isMounted) return;
 
+        if (exemptResult.error) {
+          console.error("❌ Dashboard: Erro ao buscar locais isentos:", exemptResult.error);
+        }
+        if (permissionsResult.error) {
+          console.error("❌ Dashboard: Erro ao buscar permissões:", permissionsResult.error);
+        }
+
         const exemptIds = exemptResult.data?.map(e => e.location_id) || [];
         const allowedLocations = permissionsResult.data?.map(p => p.location_id) || [];
+
+        console.log("✅ Dashboard: Configurações carregadas", { exemptIds: exemptIds.length, allowedLocations: allowedLocations.length });
 
         setExemptLocationIds(exemptIds);
 
         // ETAPA 2: Properties + Tenants Count (paralelo, apenas campos essenciais)
+        console.log("📊 Dashboard: Carregando properties e tenants...");
         let propertiesQuery = supabase
           .from("properties")
           .select("id, status, location_id");
@@ -99,13 +115,25 @@ export function useDashboardData(month: number, year: number, userId: string | u
 
         if (!isMounted) return;
 
-        if (propertiesResult.error) throw propertiesResult.error;
-        if (tenantsCountResult.error) throw tenantsCountResult.error;
+        if (propertiesResult.error) {
+          console.error("❌ Dashboard: Erro ao buscar properties:", propertiesResult.error);
+          throw propertiesResult.error;
+        }
+        if (tenantsCountResult.error) {
+          console.error("❌ Dashboard: Erro ao buscar tenants:", tenantsCountResult.error);
+          throw tenantsCountResult.error;
+        }
+
+        console.log("✅ Dashboard: Properties e tenants carregados", { 
+          properties: propertiesResult.data?.length || 0, 
+          tenants: tenantsCountResult.count || 0 
+        });
 
         const allowedPropertyIds = (propertiesResult.data || []).map(p => p.id);
 
         // Early return se não há properties
         if (userRole === "financial" && allowedPropertyIds.length === 0) {
+          console.log("⚠️ Dashboard: Usuário financial sem properties");
           setPayments([]);
           setProperties([]);
           setRentals([]);
@@ -116,6 +144,7 @@ export function useDashboardData(month: number, year: number, userId: string | u
         }
 
         // ETAPA 3: Rentals (apenas campos necessários)
+        console.log("📊 Dashboard: Carregando rentals...");
         let rentalsQuery = supabase
           .from("rentals")
           .select("id, property_id, tenant_id, start_date, end_date, monthly_rent, value, is_active, status");
@@ -127,7 +156,13 @@ export function useDashboardData(month: number, year: number, userId: string | u
         const rentalsResult = await rentalsQuery;
         
         if (!isMounted) return;
-        if (rentalsResult.error) throw rentalsResult.error;
+        
+        if (rentalsResult.error) {
+          console.error("❌ Dashboard: Erro ao buscar rentals:", rentalsResult.error);
+          throw rentalsResult.error;
+        }
+
+        console.log("✅ Dashboard: Rentals carregados", { rentals: rentalsResult.data?.length || 0 });
 
         const activeRentalIds = (rentalsResult.data || [])
           .filter(r => r.is_active)
@@ -135,6 +170,7 @@ export function useDashboardData(month: number, year: number, userId: string | u
 
         // Early return se não há rentals ativos
         if (userRole === "financial" && activeRentalIds.length === 0) {
+          console.log("⚠️ Dashboard: Usuário financial sem rentals ativos");
           setPayments([]);
           setProperties(propertiesResult.data.map(mapPropertyFromDB));
           setRentals(rentalsResult.data.map(mapRentalFromDB));
@@ -145,6 +181,7 @@ export function useDashboardData(month: number, year: number, userId: string | u
         }
 
         // ETAPA 4: Payments + Expenses (paralelo, apenas campos necessários)
+        console.log("📊 Dashboard: Carregando payments e expenses...");
         let paymentsQuery = supabase
           .from("payments")
           .select("id, rental_id, due_date, expected_amount, paid_amount, payment_date, status, reference_month, reference_year")
@@ -172,8 +209,19 @@ export function useDashboardData(month: number, year: number, userId: string | u
 
         if (!isMounted) return;
 
-        if (paymentsResult.error) throw paymentsResult.error;
-        if (expensesResult.error) throw expensesResult.error;
+        if (paymentsResult.error) {
+          console.error("❌ Dashboard: Erro ao buscar payments:", paymentsResult.error);
+          throw paymentsResult.error;
+        }
+        if (expensesResult.error) {
+          console.error("❌ Dashboard: Erro ao buscar expenses:", expensesResult.error);
+          throw expensesResult.error;
+        }
+
+        console.log("✅ Dashboard: Payments e expenses carregados", { 
+          payments: paymentsResult.data?.length || 0, 
+          expenses: expensesResult.data?.length || 0 
+        });
 
         const totalExpenses = (expensesResult.data || [])
           .reduce((sum, e) => sum + (e.amount || 0), 0);
@@ -185,11 +233,20 @@ export function useDashboardData(month: number, year: number, userId: string | u
         setTenantsCount(tenantsCountResult.count || 0);
         setLocationExpenses(totalExpenses);
 
+        console.log("✅ Dashboard: Carregamento completo!", {
+          payments: paymentsResult.data?.length || 0,
+          properties: propertiesResult.data?.length || 0,
+          rentals: rentalsResult.data?.length || 0,
+          tenants: tenantsCountResult.count || 0,
+          expenses: totalExpenses
+        });
+
       } catch (error) {
-        console.error("Erro ao carregar dashboard:", error);
+        console.error("❌ Dashboard: Erro ao carregar dashboard:", error);
       } finally {
         if (isMounted) {
           setLoading(false);
+          console.log("✅ Dashboard: Loading finalizado");
         }
       }
     };
