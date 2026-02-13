@@ -65,7 +65,7 @@ export function PropertyFilters({
         </div>
 
         {/* Combos com mesmas larguras dos labels */}
-        <div className="hidden lg:flex gap-3">
+        <div className="hidden lg:flex gap-3 ml-auto">
           {/* Location Filter - 160px */}
           <Popover>
             <PopoverTrigger asChild>
