@@ -55,7 +55,7 @@ export function useDashboardData(month: number, year: number, userId: string | u
     locationId: data.location_id,
     createdAt: data.created_at,
     updatedAt: data.updated_at,
-    images: data.photos || [],
+    images: data.images || [], // Corrigido de photos para images
   }), []);
 
   const mapRentalFromDB = useCallback((data: any): Rental => ({
@@ -109,7 +109,7 @@ export function useDashboardData(month: number, year: number, userId: string | u
         // PASSO 2: Carregar dados principais (paralelo)
         let propertiesQuery = supabase
           .from("properties")
-          .select("id, status, location_id, value, photos"); // Removido monthly_rent
+          .select("id, status, location_id, value, images"); // Corrigido de photos para images e removido monthly_rent
         
         if (userRole === "financial" && allowedLocations.length > 0) {
           propertiesQuery = propertiesQuery.in("location_id", allowedLocations);
