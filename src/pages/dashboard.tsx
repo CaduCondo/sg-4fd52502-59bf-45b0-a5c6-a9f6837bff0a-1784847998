@@ -10,6 +10,8 @@ import { PeriodSelector } from "@/components/dashboard/PeriodSelector";
 import { useAuth } from "@/contexts/AuthContext";
 import { WelcomeCard } from "@/components/dashboard/WelcomeCard";
 
+// VERSION: 2026-02-13-00:15 - DASHBOARD REBUILD
+
 export default function Dashboard() {
   const now = new Date();
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1);
