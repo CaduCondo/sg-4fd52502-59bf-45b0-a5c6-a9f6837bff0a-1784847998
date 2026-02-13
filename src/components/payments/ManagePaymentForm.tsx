@@ -966,18 +966,27 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                     <Input
                       id="payment_time"
                       type="text"
-                      inputMode="numeric"
                       placeholder="HH:MM"
                       maxLength={5}
                       value={formData.payment_time}
                       onChange={(e) => {
-                        const value = e.target.value.replace(/\D/g, '');
-                        const masked = maskTime(value);
+                        const value = e.target.value;
+                        const numbers = value.replace(/\D/g, '');
+                        const masked = maskTime(numbers);
                         setFormData({ ...formData, payment_time: masked });
                       }}
-                      onKeyPress={(e) => {
-                        if (!/[0-9]/.test(e.key)) {
-                          e.preventDefault();
+                      onBlur={(e) => {
+                        const value = e.target.value.replace(/\D/g, '');
+                        
+                        if (value.length > 0) {
+                          let hour = parseInt(value.substring(0, 2)) || 0;
+                          let minute = parseInt(value.substring(2, 4)) || 0;
+                          
+                          hour = Math.min(Math.max(hour, 0), 23);
+                          minute = Math.min(Math.max(minute, 0), 59);
+                          
+                          const formatted = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+                          setFormData({ ...formData, payment_time: formatted });
                         }
                       }}
                       required
