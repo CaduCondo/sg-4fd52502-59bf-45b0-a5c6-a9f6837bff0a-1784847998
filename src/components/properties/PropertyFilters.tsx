@@ -35,13 +35,13 @@ export function PropertyFilters({
 }: PropertyFiltersProps) {
   return (
     <div className="flex flex-col gap-3">
-      {/* Linha 1: Counter + Labels */}
+      {/* Linha 1: Counter + Labels alinhados */}
       <div className="flex items-end justify-between">
         <div className="text-sm text-muted-foreground font-medium">
           {totalCount} {totalCount === 1 ? "imóvel encontrado" : "imóveis encontrados"}
         </div>
         
-        {/* Labels alinhados com os combos abaixo */}
+        {/* Labels - Hidden on mobile, shown on desktop */}
         <div className="hidden lg:flex items-end gap-3">
           <div className="w-[160px] text-sm font-medium text-foreground">Locais:</div>
           <div className="w-[140px] text-sm font-medium text-foreground">Status:</div>
@@ -49,9 +49,9 @@ export function PropertyFilters({
         </div>
       </div>
 
-      {/* Linha 2: Search + Filters */}
+      {/* Linha 2: Search + Combos alinhados */}
       <div className="flex flex-col lg:flex-row gap-3 lg:items-start">
-        {/* Search Bar - Takes more space */}
+        {/* Search Bar */}
         <div className="flex-1 lg:max-w-md">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -64,9 +64,9 @@ export function PropertyFilters({
           </div>
         </div>
 
-        {/* Filters Row - Aligned with labels above */}
+        {/* Combos Row - Aligned with labels above */}
         <div className="flex flex-col sm:flex-row gap-3 lg:gap-3">
-          {/* Location Filter - 160px to match label */}
+          {/* Location Filter */}
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="outline" className="w-full sm:w-[160px] justify-between h-10">
@@ -120,7 +120,7 @@ export function PropertyFilters({
             </PopoverContent>
           </Popover>
 
-          {/* Status Filter - 140px to match label */}
+          {/* Status Filter */}
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-full sm:w-[140px] h-10">
               <SelectValue placeholder="Status" />
@@ -133,7 +133,7 @@ export function PropertyFilters({
             </SelectContent>
           </Select>
 
-          {/* Sort Order - 140px to match label */}
+          {/* Sort Order */}
           <Select value={sortOrder} onValueChange={(value: any) => setSortOrder(value)}>
             <SelectTrigger className="w-full sm:w-[140px] h-10">
               <SelectValue placeholder="Ordenar" />
