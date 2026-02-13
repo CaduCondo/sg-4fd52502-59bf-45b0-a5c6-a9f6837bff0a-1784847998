@@ -43,7 +43,7 @@ export function useDashboardData(month: number, year: number, userId: string | u
     state: data.state,
     zipCode: data.zip_code,
     value: Number(data.value),
-    monthlyRent: Number(data.monthly_rent),
+    monthlyRent: 0, // monthly_rent não existe na tabela properties, definindo padrão 0
     description: data.description,
     area: Number(data.area),
     bathrooms: Number(data.bathrooms),
@@ -109,7 +109,7 @@ export function useDashboardData(month: number, year: number, userId: string | u
         // PASSO 2: Carregar dados principais (paralelo)
         let propertiesQuery = supabase
           .from("properties")
-          .select("id, status, location_id, value, monthly_rent, photos");
+          .select("id, status, location_id, value, photos"); // Removido monthly_rent
         
         if (userRole === "financial" && allowedLocations.length > 0) {
           propertiesQuery = propertiesQuery.in("location_id", allowedLocations);
