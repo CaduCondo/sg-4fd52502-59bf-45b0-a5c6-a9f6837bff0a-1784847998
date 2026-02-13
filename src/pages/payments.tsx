@@ -201,82 +201,192 @@ export default function PaymentsPage() {
           <Tabs defaultValue="pending" className="w-full">
             <TabsList className="grid w-full max-w-md grid-cols-2 mb-6">
               <TabsTrigger value="pending" className="gap-2">
-                Pendentes
+                Recebimentos Pendentes
                 <Badge variant="destructive" className="text-xs">
                   {pendingPayments.length}
                 </Badge>
               </TabsTrigger>
               <TabsTrigger value="paid" className="gap-2">
-                Pagos
+                Recebimentos Pagos
                 <Badge variant="default" className="bg-green-500 text-xs">
                   {paidPayments.length}
                 </Badge>
               </TabsTrigger>
             </TabsList>
 
+            {/* Aba: Recebimentos Pendentes */}
             <TabsContent value="pending" className="space-y-6">
-              <div className="flex items-center gap-3">
-                <h2 className="text-2xl font-bold">Recebimentos Pendentes</h2>
-                <Badge variant="destructive" className="text-sm">
-                  {pendingPayments.length}
-                </Badge>
-              </div>
+              {viewMode === "grid" ? (
+                pendingPayments.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {pendingPayments.map((payment) => {
+                      const rental = rentals.find((r) => r.id === payment.rentalId);
+                      const property = rental ? properties.find((p) => p.id === rental.propertyId) : undefined;
+                      const tenant = rental ? tenants.find((t) => t.id === rental.tenantId) : undefined;
 
-              {pendingPayments.length > 0 ? (
-                <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" : "space-y-4"}>
-                  {pendingPayments.map((payment) => (
-                    <PaymentCard
-                      key={payment.id}
-                      payment={payment}
-                      property={getPropertyForPayment(payment)}
-                      tenant={getTenantForPayment(payment)}
-                      isPaid={false}
-                      viewMode={viewMode}
-                      installment={getPaymentInstallment(payment) || "-"}
-                      expectedAmount={getExpectedAmount(payment)}
-                      onCardClick={() => handlePaymentClick(payment)}
-                      onCancelPayment={() => handleCancelPayment(payment.id)}
-                      onViewReceipt={() => handleViewReceipt(payment)}
-                      getMonthName={getMonthName}
-                    />
-                  ))}
+                      return (
+                        <PaymentCard
+                          key={payment.id}
+                          payment={payment}
+                          property={property || null}
+                          tenant={tenant || null}
+                          isPaid={false}
+                          viewMode={viewMode}
+                          installment={getPaymentInstallment(payment)}
+                          expectedAmount={getExpectedAmount(payment)}
+                          onCardClick={handlePaymentClick}
+                          onCancelPayment={
+                            (user?.role === "admin" || user?.role === "financeiro") && payment.status !== "paid"
+                              ? (paymentId, e) => {
+                                  e.stopPropagation();
+                                  handleCancelPayment(paymentId);
+                                }
+                              : undefined
+                          }
+                          onViewReceipt={
+                            payment.status === "paid"
+                              ? (paymentId, e) => {
+                                  e.stopPropagation();
+                                  handleViewReceipt(payment);
+                                }
+                              : undefined
+                          }
+                          getMonthName={getMonthName}
+                        />
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <p className="text-muted-foreground">Nenhum recebimento pendente encontrado</p>
+                  </div>
+                )
+              ) : pendingPayments.length > 0 ? (
+                <div className="space-y-4">
+                  {pendingPayments.map((payment) => {
+                    const rental = rentals.find((r) => r.id === payment.rentalId);
+                    const property = rental ? properties.find((p) => p.id === rental.propertyId) : undefined;
+                    const tenant = rental ? tenants.find((t) => t.id === rental.tenantId) : undefined;
+
+                    return (
+                      <PaymentCard
+                        key={payment.id}
+                        payment={payment}
+                        property={property || null}
+                        tenant={tenant || null}
+                        isPaid={false}
+                        viewMode={viewMode}
+                        installment={getPaymentInstallment(payment)}
+                        expectedAmount={getExpectedAmount(payment)}
+                        onCardClick={handlePaymentClick}
+                        onCancelPayment={
+                          (user?.role === "admin" || user?.role === "financeiro") && payment.status !== "paid"
+                            ? (paymentId, e) => {
+                                e.stopPropagation();
+                                handleCancelPayment(paymentId);
+                              }
+                            : undefined
+                        }
+                        onViewReceipt={
+                          payment.status === "paid"
+                            ? (paymentId, e) => {
+                                e.stopPropagation();
+                                handleViewReceipt(payment);
+                              }
+                            : undefined
+                        }
+                        getMonthName={getMonthName}
+                      />
+                    );
+                  })}
                 </div>
               ) : (
-                <div className="text-center py-12 bg-white dark:bg-slate-900 rounded-lg border border-dashed">
+                <div className="text-center py-12">
                   <p className="text-muted-foreground">Nenhum recebimento pendente encontrado</p>
                 </div>
               )}
             </TabsContent>
 
+            {/* Aba: Recebimentos Pagos */}
             <TabsContent value="paid" className="space-y-6">
-              <div className="flex items-center gap-3">
-                <h2 className="text-2xl font-bold">Recebimentos Pagos</h2>
-                <Badge variant="default" className="bg-green-500 text-sm">
-                  {paidPayments.length}
-                </Badge>
-              </div>
+              {viewMode === "grid" ? (
+                paidPayments.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {paidPayments.map((payment) => {
+                      const rental = rentals.find((r) => r.id === payment.rentalId);
+                      const property = rental ? properties.find((p) => p.id === rental.propertyId) : undefined;
+                      const tenant = rental ? tenants.find((t) => t.id === rental.tenantId) : undefined;
 
-              {paidPayments.length > 0 ? (
-                <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" : "space-y-4"}>
-                  {paidPayments.map((payment) => (
-                    <PaymentCard
-                      key={payment.id}
-                      payment={payment}
-                      property={getPropertyForPayment(payment)}
-                      tenant={getTenantForPayment(payment)}
-                      isPaid={true}
-                      viewMode={viewMode}
-                      installment={getPaymentInstallment(payment) || "-"}
-                      expectedAmount={getExpectedAmount(payment)}
-                      onCardClick={() => handlePaymentClick(payment)}
-                      onCancelPayment={() => handleCancelPayment(payment.id)}
-                      onViewReceipt={() => handleViewReceipt(payment)}
-                      getMonthName={getMonthName}
-                    />
-                  ))}
+                      return (
+                        <PaymentCard
+                          key={payment.id}
+                          payment={payment}
+                          property={property || null}
+                          tenant={tenant || null}
+                          isPaid={true}
+                          viewMode={viewMode}
+                          installment={getPaymentInstallment(payment)}
+                          expectedAmount={getExpectedAmount(payment)}
+                          onCardClick={handlePaymentClick}
+                          onCancelPayment={
+                            user?.role === "admin" || user?.role === "financeiro"
+                              ? (paymentId, e) => {
+                                  e.stopPropagation();
+                                  handleCancelPayment(paymentId);
+                                }
+                              : undefined
+                          }
+                          onViewReceipt={(paymentId, e) => {
+                            e.stopPropagation();
+                            handleViewReceipt(payment);
+                          }}
+                          getMonthName={getMonthName}
+                        />
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <p className="text-muted-foreground">Nenhum recebimento pago encontrado</p>
+                  </div>
+                )
+              ) : paidPayments.length > 0 ? (
+                <div className="space-y-4">
+                  {paidPayments.map((payment) => {
+                    const rental = rentals.find((r) => r.id === payment.rentalId);
+                    const property = rental ? properties.find((p) => p.id === rental.propertyId) : undefined;
+                    const tenant = rental ? tenants.find((t) => t.id === rental.tenantId) : undefined;
+
+                    return (
+                      <PaymentCard
+                        key={payment.id}
+                        payment={payment}
+                        property={property || null}
+                        tenant={tenant || null}
+                        isPaid={true}
+                        viewMode={viewMode}
+                        installment={getPaymentInstallment(payment)}
+                        expectedAmount={getExpectedAmount(payment)}
+                        onCardClick={handlePaymentClick}
+                        onCancelPayment={
+                          user?.role === "admin" || user?.role === "financeiro"
+                            ? (paymentId, e) => {
+                                e.stopPropagation();
+                                handleCancelPayment(paymentId);
+                              }
+                            : undefined
+                        }
+                        onViewReceipt={(paymentId, e) => {
+                          e.stopPropagation();
+                          handleViewReceipt(payment);
+                        }}
+                        getMonthName={getMonthName}
+                      />
+                    );
+                  })}
                 </div>
               ) : (
-                <div className="text-center py-12 bg-white dark:bg-slate-900 rounded-lg border border-dashed">
+                <div className="text-center py-12">
                   <p className="text-muted-foreground">Nenhum recebimento pago encontrado</p>
                 </div>
               )}
