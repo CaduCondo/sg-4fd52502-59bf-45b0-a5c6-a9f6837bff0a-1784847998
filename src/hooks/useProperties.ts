@@ -136,7 +136,7 @@ export function useProperties(): UsePropertiesReturn {
       acceptsPets: formData.acceptsPets,
       area: formData.area ? parseFloat(formData.area.replace(",", ".")) : 0,
       hasGarage: formData.hasGarage,
-      status: "available",
+      status: formData.status as "available" | "occupied" | "unavailable",
     };
 
     const newProperty = await propertyService.create(propertyData);
