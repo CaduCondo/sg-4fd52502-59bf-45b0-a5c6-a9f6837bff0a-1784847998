@@ -1,17 +1,19 @@
-import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useRouter } from "next/router";
 import { Layout } from "@/components/Layout";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PaymentCard } from "@/components/payments/PaymentCard";
 import { PaymentFilters } from "@/components/payments/PaymentFilters";
 import { PaymentReceipt } from "@/components/PaymentReceipt";
-import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { LayoutGrid, List, Plus, Search } from "lucide-react";
 import { usePayments } from "@/hooks/usePayments";
-import { useAuth } from "@/contexts/AuthContext";
 import { Payment } from "@/types";
-import { Plus, Grid3x3, List } from "lucide-react";
+import { PeriodSelector } from "@/components/dashboard/PeriodSelector";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 
 export default function PaymentsPage() {
   const router = useRouter();
@@ -26,6 +28,9 @@ export default function PaymentsPage() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
   const [showReceipt, setShowReceipt] = useState(false);
+  const [showReceiptDialog, setShowReceiptDialog] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const mountedRef = useRef(false);
 
   const [filters, setFilters] = useState({
     month: new Date().getMonth() + 1,
@@ -41,22 +46,25 @@ export default function PaymentsPage() {
     properties, 
     tenants, 
     loading, 
-    handleCancelPayment: deletePayment, 
-    loadPayments: refreshPayments,
-    getPaymentInstallment,
-    getExpectedAmount
+    handleCancelPayment: cancelPayment,
+    loadPayments
   } = usePayments();
 
   // Carregar pagamentos quando os filtros mudarem
   useEffect(() => {
-    refreshPayments(
-      filters.month.toString(), 
-      filters.year.toString()
-    );
-  }, [filters.month, filters.year]);
+    if (!mountedRef.current) {
+      mountedRef.current = true;
+      return;
+    }
+    loadPayments(filters.month.toString(), filters.year.toString());
+  }, [filters.month, filters.year, loadPayments]);
+
+  // Carregar inicial
+  useEffect(() => {
+    loadPayments(filters.month.toString(), filters.year.toString());
+  }, []); // Carrega apenas uma vez no mount
 
   const handleFilterChange = useCallback((newFilters: any) => {
-    // Converter valores string para números onde necessário
     const formattedFilters = {
       ...newFilters,
       month: Number(newFilters.month) || new Date().getMonth() + 1,
@@ -64,6 +72,14 @@ export default function PaymentsPage() {
     };
     setFilters(formattedFilters);
   }, []);
+
+  const handleMonthChange = (value: string | number) => {
+    setFilters(prev => ({ ...prev, month: Number(value) }));
+  };
+
+  const handleYearChange = (value: string | number) => {
+    setFilters(prev => ({ ...prev, year: Number(value) }));
+  };
 
   const handlePaymentClick = useCallback((payment: Payment) => {
     if (payment.status === "paid") {
@@ -85,7 +101,7 @@ export default function PaymentsPage() {
     }
 
     try {
-      await deletePayment(paymentId);
+      await cancelPayment(paymentId);
       // refreshPayments é chamado dentro de deletePayment ou precisa ser chamado aqui?
       // O hook usePayments não expõe o refresh automático no handleCancelPayment,
       // mas podemos chamar refreshPayments manualmente se necessário.
@@ -94,7 +110,7 @@ export default function PaymentsPage() {
     } catch (error) {
       // Erro já tratado no hook
     }
-  }, [canDelete, deletePayment, toast]);
+  }, [canDelete, cancelPayment, toast]);
 
   const handleViewReceipt = useCallback((payment: Payment) => {
     setSelectedPayment(payment);
@@ -114,6 +130,15 @@ export default function PaymentsPage() {
     return tenants.find(t => t.id === rental.tenantId) || null;
   }, [rentals, tenants]);
 
+  const getPaymentInstallment = (payment: Payment) => {
+    if (!payment.installment || !payment.totalInstallments) return "Única";
+    return `${payment.installment}/${payment.totalInstallments}`;
+  };
+
+  const getExpectedAmount = (payment: Payment) => {
+    return payment.expectedAmount;
+  };
+
   const filteredPayments = useMemo(() => {
     return payments.filter(p => {
       // Filtro de status
@@ -132,15 +157,50 @@ export default function PaymentsPage() {
     });
   }, [payments, rentals, filters]);
 
-  const pendingPayments = useMemo(
-    () => filteredPayments.filter((p) => p.status === "pending" || p.status === "partial" || p.status === "overdue"),
-    [filteredPayments]
-  );
+  const pendingPayments = useMemo(() => {
+    return payments.filter((p) => {
+      // Filtro de status base
+      const isStatusMatch = p.status === "pending" || p.status === "partial" || p.status === "overdue";
+      if (!isStatusMatch) return false;
 
-  const paidPayments = useMemo(
-    () => filteredPayments.filter((p) => p.status === "paid"),
-    [filteredPayments]
-  );
+      // Filtro de busca por texto
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        const rental = rentals.find(r => r.id === p.rentalId);
+        const property = rental ? properties.find(prop => prop.id === rental.propertyId) : null;
+        const tenant = rental ? tenants.find(t => t.id === rental.tenantId) : null;
+
+        const propertyAddress = property ? `${property.address} ${property.number} ${property.complement || ''}`.toLowerCase() : "";
+        const tenantName = tenant ? tenant.name.toLowerCase() : "";
+
+        return propertyAddress.includes(query) || tenantName.includes(query);
+      }
+
+      return true;
+    });
+  }, [payments, searchQuery, rentals, properties, tenants]);
+
+  const paidPayments = useMemo(() => {
+    return payments.filter((p) => {
+      // Filtro de status base
+      if (p.status !== "paid") return false;
+
+      // Filtro de busca por texto
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        const rental = rentals.find(r => r.id === p.rentalId);
+        const property = rental ? properties.find(prop => prop.id === rental.propertyId) : null;
+        const tenant = rental ? tenants.find(t => t.id === rental.tenantId) : null;
+
+        const propertyAddress = property ? `${property.address} ${property.number} ${property.complement || ''}`.toLowerCase() : "";
+        const tenantName = tenant ? tenant.name.toLowerCase() : "";
+
+        return propertyAddress.includes(query) || tenantName.includes(query);
+      }
+
+      return true;
+    });
+  }, [payments, searchQuery, rentals, properties, tenants]);
 
   const getMonthName = (month: number) => {
     const months = [
@@ -166,7 +226,7 @@ export default function PaymentsPage() {
               size="icon"
               onClick={() => setViewMode("grid")}
             >
-              <Grid3x3 className="h-4 w-4" />
+              <LayoutGrid className="h-4 w-4" />
             </Button>
             <Button
               variant={viewMode === "list" ? "default" : "outline"}
@@ -181,6 +241,46 @@ export default function PaymentsPage() {
                 Novo Recebimento
               </Button>
             )}
+          </div>
+        </div>
+
+        {/* Header com filtros */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+          <div className="flex items-center gap-4 flex-1 w-full sm:w-auto">
+            <PeriodSelector
+              month={filters.month}
+              year={filters.year}
+              onMonthChange={handleMonthChange}
+              onYearChange={handleYearChange}
+            />
+            
+            <div className="relative w-full max-w-sm ml-2">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Buscar por inquilino, endereço..."
+                className="pl-8 w-full"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-2">
+            <Button
+              variant={viewMode === "grid" ? "default" : "outline"}
+              size="icon"
+              onClick={() => setViewMode("grid")}
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={viewMode === "list" ? "default" : "outline"}
+              size="icon"
+              onClick={() => setViewMode("list")}
+            >
+              <List className="h-4 w-4" />
+            </Button>
           </div>
         </div>
 
@@ -199,14 +299,14 @@ export default function PaymentsPage() {
           </div>
         ) : (
           <Tabs defaultValue="pending" className="w-full">
-            <TabsList className="grid w-full max-w-md grid-cols-2 mb-6">
-              <TabsTrigger value="pending" className="gap-2">
+            <TabsList className="grid w-full max-w-md grid-cols-2 mb-6 h-auto p-1">
+              <TabsTrigger value="pending" className="gap-2 text-base py-2">
                 Recebimentos Pendentes
                 <Badge variant="destructive" className="text-xs">
                   {pendingPayments.length}
                 </Badge>
               </TabsTrigger>
-              <TabsTrigger value="paid" className="gap-2">
+              <TabsTrigger value="paid" className="gap-2 text-base py-2">
                 Recebimentos Pagos
                 <Badge variant="default" className="bg-green-500 text-xs">
                   {paidPayments.length}
