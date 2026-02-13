@@ -966,12 +966,19 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                     <Input
                       id="payment_time"
                       type="text"
+                      inputMode="numeric"
                       placeholder="HH:MM"
                       maxLength={5}
                       value={formData.payment_time}
                       onChange={(e) => {
-                        const masked = maskTime(e.target.value);
+                        const value = e.target.value.replace(/\D/g, '');
+                        const masked = maskTime(value);
                         setFormData({ ...formData, payment_time: masked });
+                      }}
+                      onKeyPress={(e) => {
+                        if (!/[0-9]/.test(e.key)) {
+                          e.preventDefault();
+                        }
                       }}
                       required
                       disabled={isReadOnly}
