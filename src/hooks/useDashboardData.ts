@@ -71,13 +71,18 @@ export function useDashboardData(month: number, year: number, userId: string | u
         setLoading(true);
 
         // ETAPA 1: Configurações globais + permissões (paralelo)
-        console.log("📊 Dashboard: Carregando configurações...");
+        console.log("📊 Dashboard ETAPA 1: Carregando configurações...");
         const [exemptResult, permissionsResult] = await Promise.all([
           supabase.from("admin_fee_exempt_locations").select("location_id"),
           userRole === "financial" 
             ? supabase.from("user_location_permissions").select("location_id").eq("user_id", userId)
             : Promise.resolve({ data: null, error: null })
         ]);
+
+        console.log("📊 Dashboard ETAPA 1 - Resultado:", {
+          exemptResult: { data: exemptResult.data?.length, error: exemptResult.error?.message },
+          permissionsResult: { data: permissionsResult.data?.length, error: permissionsResult.error?.message }
+        });
 
         if (!isMounted) return;
 
@@ -91,12 +96,12 @@ export function useDashboardData(month: number, year: number, userId: string | u
         const exemptIds = exemptResult.data?.map(e => e.location_id) || [];
         const allowedLocations = permissionsResult.data?.map(p => p.location_id) || [];
 
-        console.log("✅ Dashboard: Configurações carregadas", { exemptIds: exemptIds.length, allowedLocations: allowedLocations.length });
+        console.log("✅ Dashboard ETAPA 1 completa:", { exemptIds: exemptIds.length, allowedLocations: allowedLocations.length });
 
         setExemptLocationIds(exemptIds);
 
         // ETAPA 2: Properties + Tenants Count (paralelo, apenas campos essenciais)
-        console.log("📊 Dashboard: Carregando properties e tenants...");
+        console.log("📊 Dashboard ETAPA 2: Carregando properties e tenants...");
         let propertiesQuery = supabase
           .from("properties")
           .select("id, status, location_id");
@@ -113,6 +118,11 @@ export function useDashboardData(month: number, year: number, userId: string | u
             .neq("status", "inactive")
         ]);
 
+        console.log("📊 Dashboard ETAPA 2 - Resultado:", {
+          propertiesResult: { data: propertiesResult.data?.length, error: propertiesResult.error?.message },
+          tenantsCountResult: { count: tenantsCountResult.count, error: tenantsCountResult.error?.message }
+        });
+
         if (!isMounted) return;
 
         if (propertiesResult.error) {
@@ -124,7 +134,7 @@ export function useDashboardData(month: number, year: number, userId: string | u
           throw tenantsCountResult.error;
         }
 
-        console.log("✅ Dashboard: Properties e tenants carregados", { 
+        console.log("✅ Dashboard ETAPA 2 completa:", { 
           properties: propertiesResult.data?.length || 0, 
           tenants: tenantsCountResult.count || 0 
         });
@@ -144,7 +154,7 @@ export function useDashboardData(month: number, year: number, userId: string | u
         }
 
         // ETAPA 3: Rentals (apenas campos necessários)
-        console.log("📊 Dashboard: Carregando rentals...");
+        console.log("📊 Dashboard ETAPA 3: Carregando rentals...");
         let rentalsQuery = supabase
           .from("rentals")
           .select("id, property_id, tenant_id, start_date, end_date, monthly_rent, value, is_active, status");
@@ -155,6 +165,10 @@ export function useDashboardData(month: number, year: number, userId: string | u
 
         const rentalsResult = await rentalsQuery;
         
+        console.log("📊 Dashboard ETAPA 3 - Resultado:", {
+          rentalsResult: { data: rentalsResult.data?.length, error: rentalsResult.error?.message }
+        });
+        
         if (!isMounted) return;
         
         if (rentalsResult.error) {
@@ -162,7 +176,7 @@ export function useDashboardData(month: number, year: number, userId: string | u
           throw rentalsResult.error;
         }
 
-        console.log("✅ Dashboard: Rentals carregados", { rentals: rentalsResult.data?.length || 0 });
+        console.log("✅ Dashboard ETAPA 3 completa:", { rentals: rentalsResult.data?.length || 0 });
 
         const activeRentalIds = (rentalsResult.data || [])
           .filter(r => r.is_active)
@@ -181,7 +195,7 @@ export function useDashboardData(month: number, year: number, userId: string | u
         }
 
         // ETAPA 4: Payments + Expenses (paralelo, apenas campos necessários)
-        console.log("📊 Dashboard: Carregando payments e expenses...");
+        console.log("📊 Dashboard ETAPA 4: Carregando payments e expenses...");
         let paymentsQuery = supabase
           .from("payments")
           .select("id, rental_id, due_date, expected_amount, paid_amount, payment_date, status, reference_month, reference_year")
@@ -207,6 +221,11 @@ export function useDashboardData(month: number, year: number, userId: string | u
           expensesQuery
         ]);
 
+        console.log("📊 Dashboard ETAPA 4 - Resultado:", {
+          paymentsResult: { data: paymentsResult.data?.length, error: paymentsResult.error?.message },
+          expensesResult: { data: expensesResult.data?.length, error: expensesResult.error?.message }
+        });
+
         if (!isMounted) return;
 
         if (paymentsResult.error) {
@@ -218,7 +237,7 @@ export function useDashboardData(month: number, year: number, userId: string | u
           throw expensesResult.error;
         }
 
-        console.log("✅ Dashboard: Payments e expenses carregados", { 
+        console.log("✅ Dashboard ETAPA 4 completa:", { 
           payments: paymentsResult.data?.length || 0, 
           expenses: expensesResult.data?.length || 0 
         });
@@ -227,6 +246,7 @@ export function useDashboardData(month: number, year: number, userId: string | u
           .reduce((sum, e) => sum + (e.amount || 0), 0);
 
         // Atualizar estados
+        console.log("📊 Dashboard: Atualizando estados...");
         setPayments((paymentsResult.data || []).map(mapPaymentFromDB));
         setProperties((propertiesResult.data || []).map(mapPropertyFromDB));
         setRentals((rentalsResult.data || []).map(mapRentalFromDB));
