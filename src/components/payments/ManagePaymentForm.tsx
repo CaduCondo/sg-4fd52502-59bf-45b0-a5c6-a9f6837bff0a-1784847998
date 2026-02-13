@@ -966,35 +966,41 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                     <Label htmlFor="payment_time">
                       Horário do Recebimento <span className="text-red-500">*</span>
                     </Label>
-                    <Input
-                      id="payment_time"
-                      type="text"
-                      placeholder="HH:MM"
-                      maxLength={5}
-                      value={formData.payment_time}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        const numbers = value.replace(/\D/g, '');
-                        const masked = maskTime(numbers);
-                        setFormData({ ...formData, payment_time: masked });
-                      }}
-                      onBlur={(e) => {
-                        const value = e.target.value.replace(/\D/g, '');
-                        
-                        if (value.length > 0) {
-                          let hour = parseInt(value.substring(0, 2)) || 0;
-                          let minute = parseInt(value.substring(2, 4)) || 0;
-                          
-                          hour = Math.min(Math.max(hour, 0), 23);
-                          minute = Math.min(Math.max(minute, 0), 59);
-                          
-                          const formatted = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
-                          setFormData({ ...formData, payment_time: formatted });
-                        }
-                      }}
-                      required
-                      disabled={isReadOnly}
-                    />
+                    <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-center">
+                      <Input
+                        id="payment_hour"
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="HH"
+                        maxLength={2}
+                        value={paymentHour}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/\D/g, '');
+                          if (value === '' || (parseInt(value) >= 0 && parseInt(value) <= 23)) {
+                            setPaymentHour(value);
+                          }
+                        }}
+                        required
+                        disabled={isReadOnly}
+                      />
+                      <span className="text-2xl font-bold">:</span>
+                      <Input
+                        id="payment_minute"
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="MM"
+                        maxLength={2}
+                        value={paymentMinute}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/\D/g, '');
+                          if (value === '' || (parseInt(value) >= 0 && parseInt(value) <= 59)) {
+                            setPaymentMinute(value);
+                          }
+                        }}
+                        required
+                        disabled={isReadOnly}
+                      />
+                    </div>
                   </div>
                 )}
 

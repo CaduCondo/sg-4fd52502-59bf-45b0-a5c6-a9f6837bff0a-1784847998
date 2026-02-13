@@ -379,216 +379,151 @@ export default function Payments() {
             </div>
           ) : (
             <>
-              <div className="space-y-4">
-                <ScrollReveal delay={0.2}>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-2xl font-bold">Recebimentos Pendentes</h2>
-                    <Badge variant="destructive" className="text-sm">
-                      {payments.filter(
-                        (p) => p.status === "pending" || p.status === "partial" || p.status === "overdue"
-                      ).length}
-                    </Badge>
-                  </div>
-                </ScrollReveal>
-
-                {payments.filter(
-                  (p) => p.status === "pending" || p.status === "partial" || p.status === "overdue"
-                ).length === 0 ? (
-                  <ScrollReveal delay={0.3}>
-                    <Card>
-                      <CardContent className="py-12 text-center">
-                        <CheckCircle className="mx-auto h-12 w-12 text-green-500 mb-4" />
-                        <h3 className="text-lg font-semibold mb-2">Nenhum recebimento pendente</h3>
-                        <p className="text-muted-foreground">
-                          Todos os recebimentos foram pagos!
-                        </p>
-                      </CardContent>
-                    </Card>
-                  </ScrollReveal>
-                ) : viewMode === "grid" ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {payments
-                      .filter(
-                        (p) => p.status === "pending" || p.status === "partial" || p.status === "overdue"
-                      )
-                      .map((payment, index) => (
-                        <FloatingCard key={payment.id} delay={0.1 * (index + 3)}>
+              {viewMode === "grid" ? (
+                <>
+                  {/* Bloco Recebimentos Pendentes */}
+                  <div className="space-y-6">
+                    <div className="flex items-center gap-3">
+                      <h2 className="text-2xl font-bold">Recebimentos Pendentes</h2>
+                      <Badge variant="destructive" className="text-sm">
+                        {payments.filter((p) => p.status === "pending" || p.status === "partial" || p.status === "overdue").length}
+                      </Badge>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {payments
+                        .filter((p) => p.status === "pending" || p.status === "partial" || p.status === "overdue")
+                        .map((payment) => (
                           <PaymentCard
+                            key={payment.id}
                             payment={payment}
                             property={getPropertyInfo(payment.rentalId)}
                             tenant={getTenantInfo(payment.rentalId)}
-                            isPaid={false}
+                            isPaid={payment.status === "paid"}
                             viewMode={viewMode}
                             installment={getPaymentInstallment(payment)}
-                            expectedAmount={payment.expectedAmount}
-                            onCardClick={handleCardClick}
-                            onViewReceipt={handleViewReceipt}
-                            getMonthName={getMonthName}
-                          />
-                        </FloatingCard>
-                      ))}
-                  </div>
-                ) : (
-                  <div className="rounded-md border">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Imóvel</TableHead>
-                          <TableHead>Inquilino</TableHead>
-                          <TableHead>Vencimento</TableHead>
-                          <TableHead>Valor Esperado</TableHead>
-                          <TableHead>Valor Pago</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead className="text-right">Ações</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {payments
-                          .filter(
-                            (p) => p.status === "pending" || p.status === "partial" || p.status === "overdue"
-                          )
-                          .map((payment) => {
-                            const property = getPropertyInfo(payment.rentalId);
-                            const tenant = getTenantInfo(payment.rentalId);
-                            return (
-                              <TableRow
-                                key={payment.id}
-                                className={getPaymentRowClassName(payment)}
-                                onClick={() => handleCardClick(payment.id)}
-                              >
-                                <TableCell className="font-medium">
-                                  {property ? `${property.location} - ${property.complement}` : "-"}
-                                </TableCell>
-                                <TableCell>{tenant?.name || "-"}</TableCell>
-                                <TableCell>{format(new Date(payment.dueDate + "T00:00:00"), "dd/MM/yyyy", { locale: ptBR })}</TableCell>
-                                <TableCell>{formatCurrency(payment.expectedAmount)}</TableCell>
-                                <TableCell>{payment.paidAmount ? formatCurrency(payment.paidAmount) : "-"}</TableCell>
-                                <TableCell>{getStatusBadge(payment.status)}</TableCell>
-                                <TableCell className="text-right">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleCardClick(payment.id);
-                                    }}
-                                  >
-                                    <Eye className="h-4 w-4" />
-                                  </Button>
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                      </TableBody>
-                    </Table>
-                  </div>
-                )}
-              </div>
-
-              <div className="space-y-4">
-                <ScrollReveal delay={0.4}>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-2xl font-bold">Recebimentos Pagos</h2>
-                    <Badge variant="default" className="bg-green-500 text-sm">
-                      {payments.filter((p) => p.status === "paid").length}
-                    </Badge>
-                  </div>
-                </ScrollReveal>
-
-                {payments.filter((p) => p.status === "paid").length === 0 ? (
-                  <ScrollReveal delay={0.5}>
-                    <Card>
-                      <CardContent className="py-12 text-center">
-                        <AlertCircle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                        <h3 className="text-lg font-semibold mb-2">Nenhum recebimento pago</h3>
-                        <p className="text-muted-foreground">
-                          Ainda não há recebimentos pagos no período selecionado.
-                        </p>
-                      </CardContent>
-                    </Card>
-                  </ScrollReveal>
-                ) : viewMode === "grid" ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {payments
-                      .filter((p) => p.status === "paid")
-                      .map((payment, index) => (
-                        <FloatingCard key={payment.id} delay={0.1 * (index + 5)}>
-                          <PaymentCard
-                            payment={payment}
-                            property={getPropertyInfo(payment.rentalId)}
-                            tenant={getTenantInfo(payment.rentalId)}
-                            isPaid={true}
-                            viewMode={viewMode}
-                            installment={getPaymentInstallment(payment)}
-                            expectedAmount={payment.expectedAmount}
+                            expectedAmount={getExpectedAmount(payment)}
                             onCardClick={handleCardClick}
                             onCancelPayment={handleCancelPaymentClick}
                             onViewReceipt={handleViewReceipt}
                             getMonthName={getMonthName}
                           />
-                        </FloatingCard>
-                      ))}
+                        ))}
+                    </div>
+                    {payments.filter((p) => p.status === "pending" || p.status === "partial" || p.status === "overdue").length === 0 && (
+                      <div className="text-center py-12 text-muted-foreground">
+                        <p>Nenhum recebimento pendente encontrado</p>
+                      </div>
+                    )}
                   </div>
-                ) : (
-                  <div className="rounded-md border">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Imóvel</TableHead>
-                          <TableHead>Inquilino</TableHead>
-                          <TableHead>Vencimento</TableHead>
-                          <TableHead>Valor Esperado</TableHead>
-                          <TableHead>Valor Pago</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead className="text-right">Ações</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {payments
-                          .filter((p) => p.status === "paid")
-                          .map((payment) => {
-                            const property = getPropertyInfo(payment.rentalId);
-                            const tenant = getTenantInfo(payment.rentalId);
-                            return (
-                              <TableRow
-                                key={payment.id}
-                                className={getPaymentRowClassName(payment)}
-                                onClick={() => handleCardClick(payment.id)}
-                              >
-                                <TableCell className="font-medium">
-                                  {property ? `${property.location} - ${property.complement}` : "-"}
-                                </TableCell>
-                                <TableCell>{tenant?.name || "-"}</TableCell>
-                                <TableCell>{format(new Date(payment.dueDate + "T00:00:00"), "dd/MM/yyyy", { locale: ptBR })}</TableCell>
-                                <TableCell>{formatCurrency(payment.expectedAmount)}</TableCell>
-                                <TableCell>{formatCurrency(payment.paidAmount || 0)}</TableCell>
-                                <TableCell>{getStatusBadge(payment.status)}</TableCell>
-                                <TableCell className="text-right">
-                                  <div className="flex justify-end gap-2">
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={(e) => handleViewReceipt(payment.id, e)}
-                                    >
-                                      <Eye className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={(e) => handleCancelPaymentClick(payment.id, e)}
-                                    >
-                                      <XCircle className="h-4 w-4 text-destructive" />
-                                    </Button>
-                                  </div>
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                      </TableBody>
-                    </Table>
+
+                  {/* Bloco Recebimentos Pagos */}
+                  <div className="space-y-6">
+                    <div className="flex items-center gap-3">
+                      <h2 className="text-2xl font-bold">Recebimentos Pagos</h2>
+                      <Badge variant="default" className="bg-green-500 text-sm">
+                        {payments.filter((p) => p.status === "paid").length}
+                      </Badge>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {payments
+                        .filter((p) => p.status === "paid")
+                        .map((payment) => (
+                          <PaymentCard
+                            key={payment.id}
+                            payment={payment}
+                            property={getPropertyInfo(payment.rentalId)}
+                            tenant={getTenantInfo(payment.rentalId)}
+                            isPaid={payment.status === "paid"}
+                            viewMode={viewMode}
+                            installment={getPaymentInstallment(payment)}
+                            expectedAmount={getExpectedAmount(payment)}
+                            onCardClick={handleCardClick}
+                            onCancelPayment={handleCancelPaymentClick}
+                            onViewReceipt={handleViewReceipt}
+                            getMonthName={getMonthName}
+                          />
+                        ))}
+                    </div>
+                    {payments.filter((p) => p.status === "paid").length === 0 && (
+                      <div className="text-center py-12 text-muted-foreground">
+                        <p>Nenhum recebimento pago encontrado</p>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
+                </>
+              ) : (
+                <>
+                  {/* Bloco Recebimentos Pendentes - Lista */}
+                  <div className="space-y-6">
+                    <div className="flex items-center gap-3">
+                      <h2 className="text-2xl font-bold">Recebimentos Pendentes</h2>
+                      <Badge variant="destructive" className="text-sm">
+                        {payments.filter((p) => p.status === "pending" || p.status === "partial" || p.status === "overdue").length}
+                      </Badge>
+                    </div>
+                    <div className="space-y-4">
+                      {payments
+                        .filter((p) => p.status === "pending" || p.status === "partial" || p.status === "overdue")
+                        .map((payment) => (
+                          <PaymentCard
+                            key={payment.id}
+                            payment={payment}
+                            property={getPropertyInfo(payment.rentalId)}
+                            tenant={getTenantInfo(payment.rentalId)}
+                            isPaid={payment.status === "paid"}
+                            viewMode={viewMode}
+                            installment={getPaymentInstallment(payment)}
+                            expectedAmount={getExpectedAmount(payment)}
+                            onCardClick={handleCardClick}
+                            onCancelPayment={handleCancelPaymentClick}
+                            onViewReceipt={handleViewReceipt}
+                            getMonthName={getMonthName}
+                          />
+                        ))}
+                    </div>
+                    {payments.filter((p) => p.status === "pending" || p.status === "partial" || p.status === "overdue").length === 0 && (
+                      <div className="text-center py-12 text-muted-foreground">
+                        <p>Nenhum recebimento pendente encontrado</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Bloco Recebimentos Pagos - Lista */}
+                  <div className="space-y-6">
+                    <div className="flex items-center gap-3">
+                      <h2 className="text-2xl font-bold">Recebimentos Pagos</h2>
+                      <Badge variant="default" className="bg-green-500 text-sm">
+                        {payments.filter((p) => p.status === "paid").length}
+                      </Badge>
+                    </div>
+                    <div className="space-y-4">
+                      {payments
+                        .filter((p) => p.status === "paid")
+                        .map((payment) => (
+                          <PaymentCard
+                            key={payment.id}
+                            payment={payment}
+                            property={getPropertyInfo(payment.rentalId)}
+                            tenant={getTenantInfo(payment.rentalId)}
+                            isPaid={payment.status === "paid"}
+                            viewMode={viewMode}
+                            installment={getPaymentInstallment(payment)}
+                            expectedAmount={getExpectedAmount(payment)}
+                            onCardClick={handleCardClick}
+                            onCancelPayment={handleCancelPaymentClick}
+                            onViewReceipt={handleViewReceipt}
+                            getMonthName={getMonthName}
+                          />
+                        ))}
+                    </div>
+                    {payments.filter((p) => p.status === "paid").length === 0 && (
+                      <div className="text-center py-12 text-muted-foreground">
+                        <p>Nenhum recebimento pago encontrado</p>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
             </>
           )}
         </div>
