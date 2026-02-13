@@ -248,8 +248,8 @@ export default function PaymentsPage() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <div className="flex items-center gap-4 flex-1 w-full sm:w-auto">
             <PeriodSelector
-              month={filters.month}
-              year={filters.year}
+              selectedMonth={filters.month}
+              selectedYear={filters.year}
               onMonthChange={handleMonthChange}
               onYearChange={handleYearChange}
             />
