@@ -234,7 +234,7 @@ export default function PaymentsPage() {
                           viewMode={viewMode}
                           installment={getPaymentInstallment(payment)}
                           expectedAmount={getExpectedAmount(payment)}
-                          onCardClick={handlePaymentClick}
+                          onCardClick={() => handlePaymentClick(payment)}
                           onCancelPayment={
                             (user?.role === "admin" || user?.role === "financeiro") && payment.status !== "paid"
                               ? (paymentId, e) => {
@@ -278,7 +278,7 @@ export default function PaymentsPage() {
                         viewMode={viewMode}
                         installment={getPaymentInstallment(payment)}
                         expectedAmount={getExpectedAmount(payment)}
-                        onCardClick={handlePaymentClick}
+                        onCardClick={() => handlePaymentClick(payment)}
                         onCancelPayment={
                           (user?.role === "admin" || user?.role === "financeiro") && payment.status !== "paid"
                             ? (paymentId, e) => {
@@ -327,7 +327,7 @@ export default function PaymentsPage() {
                           viewMode={viewMode}
                           installment={getPaymentInstallment(payment)}
                           expectedAmount={getExpectedAmount(payment)}
-                          onCardClick={handlePaymentClick}
+                          onCardClick={() => handlePaymentClick(payment)}
                           onCancelPayment={
                             user?.role === "admin" || user?.role === "financeiro"
                               ? (paymentId, e) => {
@@ -367,7 +367,7 @@ export default function PaymentsPage() {
                         viewMode={viewMode}
                         installment={getPaymentInstallment(payment)}
                         expectedAmount={getExpectedAmount(payment)}
-                        onCardClick={handlePaymentClick}
+                        onCardClick={() => handlePaymentClick(payment)}
                         onCancelPayment={
                           user?.role === "admin" || user?.role === "financeiro"
                             ? (paymentId, e) => {
