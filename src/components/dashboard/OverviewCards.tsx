@@ -17,7 +17,7 @@ import { MetricCard } from "./MetricCard";
 import { FinancialMetricCard } from "./FinancialMetricCard";
 import { PeriodSelector } from "./PeriodSelector";
 
-// VERSION: 2026-02-12-23:55 - Final Order Fix
+// VERSION: 2026-02-13-00:15 - FORCE REBUILD
 
 interface OverviewCardsProps {
   data: {
@@ -25,7 +25,7 @@ interface OverviewCardsProps {
     availableProperties: number;
     unavailableProperties: number;
     totalTenants: number;
-    occupancyRate: number; // Adicionado
+    occupancyRate: number;
     activeContracts: number;
     expiringContracts: number;
     overduePayments: number;
@@ -59,10 +59,6 @@ export function OverviewCards({
       currency: "BRL",
     });
   };
-  
-  const formatPercent = (value: number) => {
-    return `${value.toFixed(1)}%`;
-  };
 
   const hasLinks = userRole === "admin" || userRole === "broker";
 
@@ -79,84 +75,87 @@ export function OverviewCards({
 
   return (
     <div className="space-y-5">
-      {/* 
-        PRIMEIRA LINHA - IMÓVEIS (5 cards)
-        1. Imóveis Cadastrados
-        2. Imóveis Disponíveis
-        3. Imóveis Indisponíveis
-        4. Total Inquilinos
-        5. Taxa de Ocupação
-      */}
-      <div>
-        <h2 className="text-xl font-semibold mb-4">Imóveis</h2>
+      {/* Primeira linha - Visão Geral dos Imóveis (5 CARDS) */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Building2 className="h-5 w-5 text-primary" />
+          <h2 className="text-lg font-semibold">Visão Geral dos Imóveis</h2>
+        </div>
+        
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          <MetricCard
-            title="Imóveis Cadastrados"
-            value={data.totalProperties}
-            icon={Building2}
-            subtitle="Total de imóveis cadastrados"
-            iconColor="text-blue-600"
-            iconBgClass="bg-blue-50 dark:bg-blue-900/20"
-            borderColorClass="border-l-blue-500"
-            clickable={false}
-          />
-
-          <MetricCard
-            title="Imóveis Disponíveis"
-            value={data.availableProperties}
-            icon={Home}
-            subtitle="Disponíveis para locação"
-            iconColor="text-green-600"
-            iconBgClass="bg-green-50 dark:bg-green-900/20"
-            borderColorClass="border-l-green-500"
-            clickable={false}
-          />
-
-          <MetricCard
-            title="Imóveis Indisponíveis"
-            value={data.unavailableProperties}
-            icon={Construction}
-            subtitle="Em obras ou reformas"
-            iconColor="text-orange-600"
-            iconBgClass="bg-orange-50 dark:bg-orange-900/20"
-            borderColorClass="border-l-orange-500"
-            clickable={false}
-          />
-
-          <CardWrapper href={hasLinks ? "/tenants" : undefined}>
+          {/* 1. Imóveis Cadastrados */}
+          <CardWrapper>
             <MetricCard
-              title="Total Inquilinos"
-              value={data.totalTenants}
-              icon={Users}
-              subtitle="Inquilinos ativos"
-              iconColor="text-cyan-600"
-              iconBgClass="bg-cyan-50 dark:bg-cyan-900/20"
-              borderColorClass="border-l-cyan-500"
-              clickable={hasLinks}
+              title="Imóveis Cadastrados"
+              value={data.totalProperties}
+              subtitle="Total cadastrado"
+              icon={Building2}
+              iconColor="text-blue-600"
+              iconBgClass="bg-blue-50"
+              borderColorClass="border-l-blue-500"
+              clickable={false}
             />
           </CardWrapper>
 
-          <MetricCard
-            title="Taxa de Ocupação"
-            value={formatPercent(data.occupancyRate)}
-            icon={Percent}
-            subtitle="Imóveis alugados vs total"
-            iconColor="text-teal-600"
-            iconBgClass="bg-teal-50 dark:bg-teal-900/20"
-            borderColorClass="border-l-teal-500"
-            clickable={false}
-          />
+          {/* 2. Imóveis Disponíveis */}
+          <CardWrapper>
+            <MetricCard
+              title="Imóveis Disponíveis"
+              value={data.availableProperties}
+              subtitle="Para locação"
+              icon={Home}
+              iconColor="text-green-600"
+              iconBgClass="bg-green-50"
+              borderColorClass="border-l-green-500"
+              clickable={false}
+            />
+          </CardWrapper>
+
+          {/* 3. Imóveis Indisponíveis */}
+          <CardWrapper>
+            <MetricCard
+              title="Imóveis Indisponíveis"
+              value={data.unavailableProperties}
+              subtitle="Em obra/reforma"
+              icon={Construction}
+              iconColor="text-orange-600"
+              iconBgClass="bg-orange-50"
+              borderColorClass="border-l-orange-500"
+              clickable={false}
+            />
+          </CardWrapper>
+
+          {/* 4. Total Inquilinos */}
+          <CardWrapper>
+            <MetricCard
+              title="Total Inquilinos"
+              value={data.totalTenants}
+              subtitle="Cadastrados no sistema"
+              icon={Users}
+              iconColor="text-cyan-600"
+              iconBgClass="bg-cyan-50"
+              borderColorClass="border-l-cyan-500"
+              clickable={false}
+            />
+          </CardWrapper>
+
+          {/* 5. Taxa de Ocupação */}
+          <CardWrapper>
+            <MetricCard
+              title="Taxa de Ocupação"
+              value={`${data.occupancyRate.toFixed(1)}%`}
+              subtitle="Ocupados vs Disponíveis"
+              icon={TrendingUp}
+              iconColor="text-teal-600"
+              iconBgClass="bg-teal-50"
+              borderColorClass="border-l-teal-500"
+              clickable={false}
+            />
+          </CardWrapper>
         </div>
       </div>
 
-      {/* 
-        SEGUNDA LINHA - CONTRATOS E PAGAMENTOS (5 cards)
-        1. Aluguéis Atrasados
-        2. Aluguéis Vencem Hoje
-        3. Aluguéis Recebidos
-        4. Contratos Vigentes
-        5. Locações a Vencer
-      */}
+      {/* Segunda linha - Contratos e Pagamentos (5 CARDS COM FILTRO) */}
       <div>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-3">
           <h2 className="text-sm font-semibold text-foreground px-1">
@@ -169,6 +168,7 @@ export function OverviewCards({
           />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          {/* 1. Aluguéis Atrasados */}
           <CardWrapper href="/payments?status=overdue">
             <MetricCard
               title="Aluguéis Atrasados"
@@ -182,6 +182,7 @@ export function OverviewCards({
             />
           </CardWrapper>
 
+          {/* 2. Aluguéis Vencem Hoje */}
           <CardWrapper href="/payments?status=due_today">
             <MetricCard
               title="Aluguéis Vencem Hoje"
@@ -195,6 +196,7 @@ export function OverviewCards({
             />
           </CardWrapper>
 
+          {/* 3. Aluguéis Recebidos */}
           <CardWrapper href="/payments?status=paid">
             <MetricCard
               title="Aluguéis Recebidos"
@@ -208,6 +210,7 @@ export function OverviewCards({
             />
           </CardWrapper>
 
+          {/* 4. Contratos Vigentes */}
           <CardWrapper href="/rentals">
             <MetricCard
               title="Contratos Vigentes"
@@ -221,6 +224,7 @@ export function OverviewCards({
             />
           </CardWrapper>
 
+          {/* 5. Locações a Vencer - NOVO! */}
           <CardWrapper href="/rentals?status=expiring">
             <MetricCard
               title="Locações a Vencer"
@@ -236,19 +240,13 @@ export function OverviewCards({
         </div>
       </div>
 
-      {/* 
-        TERCEIRA LINHA - RESUMO FINANCEIRO (5 cards)
-        1. Total em Atraso
-        2. Receita Esperada
-        3. Receita Bruta Recebida
-        4. Total Taxas e Contas
-        5. Receita Líquida
-      */}
+      {/* Terceira linha - Resumo Financeiro (5 CARDS) */}
       <div>
         <h2 className="text-sm font-semibold text-foreground mb-3 px-1">
           💰 Resumo Financeiro
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          {/* 1. Total em Atraso */}
           <CardWrapper href="/payments?status=overdue">
             <FinancialMetricCard
               title="Total em Atraso"
@@ -262,6 +260,7 @@ export function OverviewCards({
             />
           </CardWrapper>
 
+          {/* 2. Receita Esperada */}
           <CardWrapper href="/financial">
             <FinancialMetricCard
               title="Receita Esperada"
@@ -275,6 +274,7 @@ export function OverviewCards({
             />
           </CardWrapper>
 
+          {/* 3. Receita Bruta Recebida */}
           <CardWrapper href="/financial">
             <FinancialMetricCard
               title="Receita Bruta Recebida"
@@ -288,6 +288,7 @@ export function OverviewCards({
             />
           </CardWrapper>
 
+          {/* 4. Total Taxas e Contas */}
           <CardWrapper href="/financial">
             <FinancialMetricCard
               title="Total Taxas e Contas"
@@ -301,6 +302,7 @@ export function OverviewCards({
             />
           </CardWrapper>
 
+          {/* 5. Receita Líquida */}
           <CardWrapper href="/financial">
             <FinancialMetricCard
               title="Receita Líquida"
