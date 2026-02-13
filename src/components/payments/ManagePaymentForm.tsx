@@ -57,6 +57,9 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     notes: "",
     pix_code_type: "CP",
   });
+  
+  const [paymentHour, setPaymentHour] = useState<string>("");
+  const [paymentMinute, setPaymentMinute] = useState<string>("");
 
   const [payment, setPayment] = useState<any>(null);
   const [rental, setRental] = useState<any>(null);
