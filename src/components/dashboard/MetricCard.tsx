@@ -1,7 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ReactNode } from "react";
+import { ReactNode, memo } from "react";
 
 export interface MetricCardProps {
   title: string;
@@ -17,7 +17,7 @@ export interface MetricCardProps {
   clickable?: boolean;
 }
 
-export function MetricCard({
+export const MetricCard = memo(function MetricCard({
   title,
   value,
   subtitle,
@@ -40,12 +40,10 @@ export function MetricCard({
     )}>
       <CardContent className="p-4">
         <div className="flex flex-col gap-2">
-          {/* Título no topo */}
           <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
             {title}
           </div>
           
-          {/* Ícone + Valor (lado a lado) */}
           <div className="flex items-center gap-3">
             <div className={cn(
               "p-2.5 rounded-lg flex-shrink-0 shadow-sm",
@@ -62,7 +60,6 @@ export function MetricCard({
             </div>
           </div>
           
-          {/* Descrições embaixo */}
           {(subtitle || secondaryInfo) && (
             <div className="flex flex-col gap-0.5">
               {subtitle && (
@@ -81,4 +78,4 @@ export function MetricCard({
       </CardContent>
     </Card>
   );
-}
+});

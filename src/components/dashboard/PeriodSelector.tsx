@@ -1,18 +1,17 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Calendar, Filter } from "lucide-react";
+import { memo } from "react";
 
 interface PeriodSelectorProps {
   selectedMonth: number;
   selectedYear: number;
-  // Props opcionais para quando houver botão de filtrar separado
   filterMonth?: number;
   filterYear?: number;
   onMonthChange?: (month: number) => void;
   onYearChange?: (year: number) => void;
   onFilterMonthChange?: (month: number) => void;
   onFilterYearChange?: (year: number) => void;
-  // Prop legada para compatibilidade com outras páginas (mudança imediata)
   onPeriodChange?: (month: number, year: number) => void;
 }
 
@@ -21,7 +20,7 @@ const MONTHS = [
   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
 ];
 
-export function PeriodSelector({ 
+export const PeriodSelector = memo(function PeriodSelector({ 
   selectedMonth, 
   selectedYear, 
   onMonthChange,
@@ -36,12 +35,10 @@ export function PeriodSelector({
   const handleMonthChange = (value: string) => {
     const newMonth = parseInt(value);
     
-    // Novo padrão: atualiza apenas o estado da seleção
     if (onMonthChange) {
       onMonthChange(newMonth);
     }
     
-    // Padrão legado: atualiza tudo imediatamente
     if (onPeriodChange) {
       onPeriodChange(newMonth, selectedYear);
     }
@@ -50,12 +47,10 @@ export function PeriodSelector({
   const handleYearChange = (value: string) => {
     const newYear = parseInt(value);
     
-    // Novo padrão: atualiza apenas o estado da seleção
     if (onYearChange) {
       onYearChange(newYear);
     }
     
-    // Padrão legado: atualiza tudo imediatamente
     if (onPeriodChange) {
       onPeriodChange(selectedMonth, newYear);
     }
@@ -103,7 +98,6 @@ export function PeriodSelector({
         </SelectContent>
       </Select>
 
-      {/* Renderiza botão de filtrar apenas se as funções de filtro forem fornecidas */}
       {onFilterMonthChange && onFilterYearChange && (
         <Button 
           variant="outline" 
@@ -117,4 +111,4 @@ export function PeriodSelector({
       )}
     </div>
   );
-}
+});

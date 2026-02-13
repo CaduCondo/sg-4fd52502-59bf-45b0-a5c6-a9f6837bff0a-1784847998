@@ -10,14 +10,12 @@ import {
   TrendingUp,
   Wallet,
   Clock,
-  Percent,
 } from "lucide-react";
 import Link from "next/link";
 import { MetricCard } from "./MetricCard";
 import { FinancialMetricCard } from "./FinancialMetricCard";
 import { PeriodSelector } from "./PeriodSelector";
-
-// VERSION: 2026-02-13-00:15 - FORCE REBUILD
+import { memo, useMemo } from "react";
 
 interface OverviewCardsProps {
   data: {
@@ -45,7 +43,7 @@ interface OverviewCardsProps {
   userRole?: string;
 }
 
-export function OverviewCards({ 
+export const OverviewCards = memo(function OverviewCards({ 
   data, 
   selectedMonth, 
   selectedYear, 
@@ -53,12 +51,12 @@ export function OverviewCards({
   exemptLocationIds,
   userRole
 }: OverviewCardsProps) {
-  const formatCurrency = (value: number) => {
+  const formatCurrency = useMemo(() => (value: number) => {
     return value.toLocaleString("pt-BR", {
       style: "currency",
       currency: "BRL",
     });
-  };
+  }, []);
 
   const hasLinks = userRole === "admin" || userRole === "broker";
 
@@ -83,7 +81,6 @@ export function OverviewCards({
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          {/* 1. Imóveis Cadastrados */}
           <CardWrapper>
             <MetricCard
               title="Imóveis Cadastrados"
@@ -97,7 +94,6 @@ export function OverviewCards({
             />
           </CardWrapper>
 
-          {/* 2. Imóveis Disponíveis */}
           <CardWrapper>
             <MetricCard
               title="Imóveis Disponíveis"
@@ -111,7 +107,6 @@ export function OverviewCards({
             />
           </CardWrapper>
 
-          {/* 3. Imóveis Indisponíveis */}
           <CardWrapper>
             <MetricCard
               title="Imóveis Indisponíveis"
@@ -125,7 +120,6 @@ export function OverviewCards({
             />
           </CardWrapper>
 
-          {/* 4. Total Inquilinos */}
           <CardWrapper>
             <MetricCard
               title="Total Inquilinos"
@@ -139,7 +133,6 @@ export function OverviewCards({
             />
           </CardWrapper>
 
-          {/* 5. Taxa de Ocupação */}
           <CardWrapper>
             <MetricCard
               title="Taxa de Ocupação"
@@ -168,7 +161,6 @@ export function OverviewCards({
           />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-          {/* 1. Aluguéis Atrasados */}
           <CardWrapper href="/payments?status=overdue">
             <MetricCard
               title="Aluguéis Atrasados"
@@ -182,7 +174,6 @@ export function OverviewCards({
             />
           </CardWrapper>
 
-          {/* 2. Aluguéis Vencem Hoje */}
           <CardWrapper href="/payments?status=due_today">
             <MetricCard
               title="Aluguéis Vencem Hoje"
@@ -196,7 +187,6 @@ export function OverviewCards({
             />
           </CardWrapper>
 
-          {/* 3. Aluguéis Recebidos */}
           <CardWrapper href="/payments?status=paid">
             <MetricCard
               title="Aluguéis Recebidos"
@@ -210,7 +200,6 @@ export function OverviewCards({
             />
           </CardWrapper>
 
-          {/* 4. Contratos Vigentes */}
           <CardWrapper href="/rentals">
             <MetricCard
               title="Contratos Vigentes"
@@ -224,7 +213,6 @@ export function OverviewCards({
             />
           </CardWrapper>
 
-          {/* 5. Locações a Vencer - NOVO! */}
           <CardWrapper href="/rentals?status=expiring">
             <MetricCard
               title="Locações a Vencer"
@@ -246,7 +234,6 @@ export function OverviewCards({
           💰 Resumo Financeiro
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-          {/* 1. Total em Atraso */}
           <CardWrapper href="/payments?status=overdue">
             <FinancialMetricCard
               title="Total em Atraso"
@@ -260,7 +247,6 @@ export function OverviewCards({
             />
           </CardWrapper>
 
-          {/* 2. Receita Esperada */}
           <CardWrapper href="/financial">
             <FinancialMetricCard
               title="Receita Esperada"
@@ -274,7 +260,6 @@ export function OverviewCards({
             />
           </CardWrapper>
 
-          {/* 3. Receita Bruta Recebida */}
           <CardWrapper href="/financial">
             <FinancialMetricCard
               title="Receita Bruta Recebida"
@@ -288,7 +273,6 @@ export function OverviewCards({
             />
           </CardWrapper>
 
-          {/* 4. Total Taxas e Contas */}
           <CardWrapper href="/financial">
             <FinancialMetricCard
               title="Total Taxas e Contas"
@@ -302,7 +286,6 @@ export function OverviewCards({
             />
           </CardWrapper>
 
-          {/* 5. Receita Líquida */}
           <CardWrapper href="/financial">
             <FinancialMetricCard
               title="Receita Líquida"
@@ -319,4 +302,4 @@ export function OverviewCards({
       </div>
     </div>
   );
-}
+});

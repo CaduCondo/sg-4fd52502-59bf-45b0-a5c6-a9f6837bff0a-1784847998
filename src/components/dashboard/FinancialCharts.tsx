@@ -5,6 +5,7 @@ import {
 } from "recharts";
 import { formatCurrency } from "@/lib/masks";
 import { TrendingUp, PieChart as PieChartIcon, BarChart3 } from "lucide-react";
+import { memo } from "react";
 
 interface FinancialChartsProps {
   monthlyRevenueData: Array<{
@@ -33,13 +34,12 @@ const COLORS = {
   cyan: "#06b6d4",
 };
 
-export function FinancialCharts({ 
+export const FinancialCharts = memo(function FinancialCharts({ 
   monthlyRevenueData, 
   monthlyExpensesData,
   occupancyData 
 }: FinancialChartsProps) {
   
-  // Combine revenue and expenses data for comprehensive view
   const combinedFinancialData = monthlyRevenueData.map((item, index) => ({
     month: item.month,
     bruta: item.bruta,
@@ -47,20 +47,8 @@ export function FinancialCharts({
     despesas: (monthlyExpensesData[index]?.taxas || 0) + (monthlyExpensesData[index]?.contas || 0),
   }));
 
-  // Payment status data for pie chart
-  const getTotalsByType = () => {
-    const expensesTotal = monthlyExpensesData.reduce((sum, item) => sum + item.taxas + item.contas, 0);
-    return [
-      { name: "Taxas", value: monthlyExpensesData.reduce((sum, item) => sum + item.taxas, 0) },
-      { name: "Contas a Pagar", value: monthlyExpensesData.reduce((sum, item) => sum + item.contas, 0) },
-    ];
-  };
-
-  const expenseBreakdown = getTotalsByType();
-
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Receita Bruta vs Líquida (6 meses) */}
       <Card className="col-span-1 lg:col-span-2">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -111,7 +99,6 @@ export function FinancialCharts({
         </CardContent>
       </Card>
 
-      {/* Distribuição de Ocupação */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -144,7 +131,6 @@ export function FinancialCharts({
         </CardContent>
       </Card>
 
-      {/* Despesas Detalhadas (Taxas vs Contas) */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -172,7 +158,6 @@ export function FinancialCharts({
         </CardContent>
       </Card>
 
-      {/* Comparativo Bruta x Líquida (Barras) */}
       <Card className="col-span-1 lg:col-span-2">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -201,4 +186,4 @@ export function FinancialCharts({
       </Card>
     </div>
   );
-}
+});

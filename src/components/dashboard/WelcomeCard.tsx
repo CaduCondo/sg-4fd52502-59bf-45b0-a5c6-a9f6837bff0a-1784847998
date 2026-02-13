@@ -1,11 +1,11 @@
 import { Building2, TrendingUp } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, memo } from "react";
 
 interface WelcomeCardProps {
   userName: string;
 }
 
-export function WelcomeCard({ userName }: WelcomeCardProps) {
+export const WelcomeCard = memo(function WelcomeCard({ userName }: WelcomeCardProps) {
   const [greeting, setGreeting] = useState("Olá");
   const [mounted, setMounted] = useState(false);
 
@@ -23,7 +23,6 @@ export function WelcomeCard({ userName }: WelcomeCardProps) {
 
   return (
     <div className="bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 rounded-2xl p-5 sm:p-6 lg:p-8 text-white shadow-xl overflow-hidden relative">
-      {/* Background decoration */}
       <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none" />
       
       <div className="relative z-10">
@@ -53,4 +52,4 @@ export function WelcomeCard({ userName }: WelcomeCardProps) {
       </div>
     </div>
   );
-}
+});

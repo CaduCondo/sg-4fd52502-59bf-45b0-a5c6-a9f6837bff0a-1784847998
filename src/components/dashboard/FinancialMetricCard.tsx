@@ -1,7 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ReactNode } from "react";
+import { ReactNode, memo } from "react";
 
 export interface FinancialMetricCardProps {
   title: string;
@@ -15,7 +15,7 @@ export interface FinancialMetricCardProps {
   clickable?: boolean;
 }
 
-export function FinancialMetricCard({
+export const FinancialMetricCard = memo(function FinancialMetricCard({
   title,
   value,
   subtitle,
@@ -65,4 +65,4 @@ export function FinancialMetricCard({
       </CardContent>
     </Card>
   );
-}
+});

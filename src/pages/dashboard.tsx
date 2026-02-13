@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { Layout } from "@/components/Layout";
 import { OverviewCards } from "@/components/dashboard/OverviewCards";
 import { AnalyticsCharts } from "@/components/dashboard/AnalyticsCharts";
@@ -6,11 +6,8 @@ import { FinancialCharts } from "@/components/dashboard/FinancialCharts";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SEO } from "@/components/SEO";
-import { PeriodSelector } from "@/components/dashboard/PeriodSelector";
 import { useAuth } from "@/contexts/AuthContext";
 import { WelcomeCard } from "@/components/dashboard/WelcomeCard";
-
-// VERSION: 2026-02-13-00:15 - DASHBOARD REBUILD
 
 export default function Dashboard() {
   const now = new Date();
@@ -25,13 +22,12 @@ export default function Dashboard() {
     user?.role
   );
 
-  const handlePeriodChange = (month: number, year: number) => {
-    console.log("📅 Mudando período:", { month, year });
+  const handlePeriodChange = useCallback((month: number, year: number) => {
     setSelectedMonth(month);
     setSelectedYear(year);
-  };
+  }, []);
   
-  // Gerar dados dos últimos 6 meses para os gráficos
+  // Gerar dados dos últimos 6 meses (memoizado)
   const last6MonthsData = useMemo(() => {
     const months = [];
     const currentDate = new Date(selectedYear, selectedMonth - 1, 1);
@@ -49,60 +45,61 @@ export default function Dashboard() {
     return months;
   }, [selectedMonth, selectedYear]);
 
+  // Dados dos gráficos (memoizado)
   const chartData = useMemo(() => {
-    console.log("📊 Gerando dados dos gráficos...");
+    // Criar mapas para acesso rápido
+    const rentalMap = new Map(rentals.map(r => [r.id, r]));
+    const propertyMap = new Map(properties.map(p => [p.id, p]));
+    const exemptSet = new Set(exemptLocationIds);
     
     // Dados de receita mensal (últimos 6 meses)
     const revenueData = last6MonthsData.map(({ month, year, label }) => {
-      const monthPayments = payments.filter(p => {
-        const pDate = p.paymentDate ? new Date(p.paymentDate) : null;
-        return pDate && 
-               pDate.getMonth() + 1 === month && 
-               pDate.getFullYear() === year &&
-               p.status === 'paid';
-      });
+      const value = payments
+        .filter(p => {
+          if (p.status !== 'paid' || !p.paymentDate) return false;
+          const pDate = new Date(p.paymentDate);
+          return pDate.getMonth() + 1 === month && pDate.getFullYear() === year;
+        })
+        .reduce((sum, p) => sum + (p.paidAmount || 0), 0);
       
-      const value = monthPayments.reduce((sum, p) => sum + (p.paidAmount || 0), 0);
       return { month: label, value };
     });
 
     // Dados de ocupação mensal (últimos 6 meses)
-    const occupancyData = last6MonthsData.map(({ label }) => {
-      const totalProps = properties.length;
-      const occupiedProps = properties.filter(p => p.status === 'occupied').length;
-      const rate = totalProps > 0 ? Math.round((occupiedProps / totalProps) * 100) : 0;
-      return { month: label, rate };
-    });
+    const totalProps = properties.length;
+    const occupiedProps = properties.filter(p => p.status === 'occupied').length;
+    const rate = totalProps > 0 ? Math.round((occupiedProps / totalProps) * 100) : 0;
+    
+    const occupancyData = last6MonthsData.map(({ label }) => ({
+      month: label,
+      rate
+    }));
 
     // Dados financeiros detalhados (últimos 6 meses)
+    const isCurrentMonth = (month: number, year: number) => 
+      month === selectedMonth && year === selectedYear;
+
     const monthlyRevenueData = last6MonthsData.map(({ month, year, label }) => {
       const monthPayments = payments.filter(p => {
-        const pDate = p.paymentDate ? new Date(p.paymentDate) : null;
-        return pDate && 
-               pDate.getMonth() + 1 === month && 
-               pDate.getFullYear() === year &&
-               p.status === 'paid';
+        if (p.status !== 'paid' || !p.paymentDate) return false;
+        const pDate = new Date(p.paymentDate);
+        return pDate.getMonth() + 1 === month && pDate.getFullYear() === year;
       });
       
       const bruta = monthPayments.reduce((sum, p) => sum + (p.paidAmount || 0), 0);
       
-      // Calcular taxas do mês
       const monthTaxas = monthPayments.reduce((sum, p) => {
-        const rental = rentals.find(r => r.id === p.rentalId);
-        const property = properties.find(prop => prop.id === rental?.propertyId);
-        const isExempt = property?.locationId && exemptLocationIds.includes(property.locationId);
+        const rental = rentalMap.get(p.rentalId);
+        if (!rental) return sum;
+        
+        const property = propertyMap.get(rental.propertyId);
+        const isExempt = property?.locationId && exemptSet.has(property.locationId);
         const adminFee = isExempt ? 0 : (p.paidAmount || 0) * 0.05;
         const managementFee = (p.paidAmount || 0) * 0.03;
         return sum + adminFee + managementFee;
       }, 0);
 
-      // Buscar despesas do mês (location_expenses)
-      // Nota: locationExpenses vem do hook useDashboardData baseado no período selecionado
-      // Para gráficos históricos, precisaríamos buscar despesas de cada mês individualmente
-      // Por ora, vamos usar 0 para meses anteriores e locationExpenses para o mês atual
-      const isCurrentMonth = month === selectedMonth && year === selectedYear;
-      const monthExpenses = isCurrentMonth ? locationExpenses : 0;
-      
+      const monthExpenses = isCurrentMonth(month, year) ? locationExpenses : 0;
       const liquida = bruta - monthTaxas - monthExpenses;
       
       return { month: label, bruta, liquida };
@@ -111,24 +108,23 @@ export default function Dashboard() {
     // Dados de despesas mensais (últimos 6 meses)
     const monthlyExpensesData = last6MonthsData.map(({ month, year, label }) => {
       const monthPayments = payments.filter(p => {
-        const pDate = p.paymentDate ? new Date(p.paymentDate) : null;
-        return pDate && 
-               pDate.getMonth() + 1 === month && 
-               pDate.getFullYear() === year &&
-               p.status === 'paid';
+        if (p.status !== 'paid' || !p.paymentDate) return false;
+        const pDate = new Date(p.paymentDate);
+        return pDate.getMonth() + 1 === month && pDate.getFullYear() === year;
       });
       
       const taxas = monthPayments.reduce((sum, p) => {
-        const rental = rentals.find(r => r.id === p.rentalId);
-        const property = properties.find(prop => prop.id === rental?.propertyId);
-        const isExempt = property?.locationId && exemptLocationIds.includes(property.locationId);
+        const rental = rentalMap.get(p.rentalId);
+        if (!rental) return sum;
+        
+        const property = propertyMap.get(rental.propertyId);
+        const isExempt = property?.locationId && exemptSet.has(property.locationId);
         const adminFee = isExempt ? 0 : (p.paidAmount || 0) * 0.05;
         const managementFee = (p.paidAmount || 0) * 0.03;
         return sum + adminFee + managementFee;
       }, 0);
 
-      const isCurrentMonth = month === selectedMonth && year === selectedYear;
-      const contas = isCurrentMonth ? locationExpenses : 0;
+      const contas = isCurrentMonth(month, year) ? locationExpenses : 0;
       
       return { month: label, taxas, contas };
     });
@@ -137,20 +133,20 @@ export default function Dashboard() {
     const occupancyPieData = [
       { 
         name: 'Ocupados', 
-        value: properties.filter(p => p.status === 'occupied').length,
-        color: '#10b981' // green
+        value: occupiedProps,
+        color: '#10b981'
       },
       { 
         name: 'Disponíveis', 
         value: properties.filter(p => p.status === 'available').length,
-        color: '#3b82f6' // blue
+        color: '#3b82f6'
       },
       { 
         name: 'Indisponíveis', 
         value: properties.filter(p => p.status === 'unavailable').length,
-        color: '#ef4444' // red
+        color: '#ef4444'
       }
-    ].filter(item => item.value > 0); // Remove categorias com 0 imóveis
+    ].filter(item => item.value > 0);
 
     return {
       revenueData,
@@ -161,30 +157,17 @@ export default function Dashboard() {
     };
   }, [payments, properties, rentals, locationExpenses, exemptLocationIds, last6MonthsData, selectedMonth, selectedYear]);
   
+  // Dados de overview (memoizado)
   const overviewData = useMemo(() => {
-    console.log("📊 Recalculando overviewData...");
-    console.log("🔢 Calculando overviewData...", {
-      paymentsCount: payments.length,
-      propertiesCount: properties.length,
-      rentalsCount: rentals.length,
-      tenantsCount: tenants.length,
-      locationExpenses
-    });
-
     const totalProperties = properties.length;
     const availableProperties = properties.filter(p => p.status === 'available').length;
-    
-    // CORREÇÃO: Contratos Vigentes e Imóveis Alugados devem ter o mesmo número
-    // A fonte de verdade é a tabela 'rentals' com is_active = true
     const activeContracts = rentals.filter(r => r.isActive).length;
-    
     const unavailableProperties = properties.filter(p => p.status === 'unavailable').length;
-    
     const totalTenants = tenants.length;
     
+    // Contratos que vencem em até 2 meses
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
     const twoMonthsFromNow = new Date(today);
     twoMonthsFromNow.setMonth(twoMonthsFromNow.getMonth() + 2);
     
@@ -195,87 +178,44 @@ export default function Dashboard() {
       return endDate >= today && endDate <= twoMonthsFromNow;
     }).length;
     
-    console.log("⏰ Contratos que vencem em até 2 meses:", expiringContracts);
+    const todayStr = today.toISOString().split('T')[0];
+
+    // Aluguéis que vencem hoje
+    const dueTodayPayments = payments.filter(p => 
+      p.status !== 'paid' && p.dueDate.split('T')[0] === todayStr
+    ).length;
+
+    // Aluguéis atrasados
+    const overduePayments = payments.filter(p => 
+      p.status !== 'paid' && p.dueDate.split('T')[0] < todayStr
+    );
     
-    const todayStr = today.toISOString().split('T')[0]; // "2026-02-10"
-
-    console.log("📅 Data de hoje (UTC):", todayStr);
-
-    // CORREÇÃO: Aluguéis que vencem HOJE (dueDate = hoje E status != paid)
-    const dueTodayPayments = payments.filter(p => {
-      if (p.status === 'paid') return false;
-      
-      const dueDateStr = p.dueDate.split('T')[0]; // Pegar apenas YYYY-MM-DD
-      const isDueToday = dueDateStr === todayStr;
-      
-      if (isDueToday) {
-        console.log("✅ Vence hoje:", {
-          dueDate: dueDateStr,
-          status: p.status,
-          expectedAmount: p.expectedAmount
-        });
-      }
-      
-      return isDueToday;
-    }).length;
-
-    console.log("📅 Vencem Hoje - Debug:", {
-      today: todayStr,
-      dueTodayPayments,
-      allPayments: payments.length,
-      unpaidPayments: payments.filter(p => p.status !== 'paid').length
-    });
-
-    // CORREÇÃO: Aluguéis ATRASADOS (dueDate < hoje E status != paid)
-    const overduePayments = payments.filter((p) => {
-      if (p.status === "paid") return false;
-      
-      const dueDateStr = p.dueDate.split('T')[0]; // Pegar apenas YYYY-MM-DD
-      const isOverdue = dueDateStr < todayStr;
-      
-      if (isOverdue) {
-        console.log("⏰ Atrasado:", {
-          dueDate: dueDateStr,
-          status: p.status,
-          expectedAmount: p.expectedAmount
-        });
-      }
-      
-      return isOverdue;
-    });
-
     const overduePaymentsCount = overduePayments.length;
     const overdueAmount = overduePayments.reduce((acc, p) => acc + (p.expectedAmount || 0), 0);
-
-    console.log("⏰ Atrasados - Debug:", {
-      today: todayStr,
-      overduePaymentsCount,
-      overdueAmount,
-      sampleOverdue: overduePayments.slice(0, 3).map(p => ({
-        dueDate: p.dueDate,
-        status: p.status,
-        expectedAmount: p.expectedAmount
-      }))
-    });
 
     const completedPayments = payments.filter(p => p.status === 'paid').length;
     const expectedAmount = payments.reduce((acc, p) => acc + (p.expectedAmount || 0), 0);
 
     const occupancyRate = totalProperties > 0 ? (activeContracts / totalProperties) * 100 : 0;
 
-    const grossRevenue = payments.reduce((sum, p) => sum + (p.paidAmount || 0), 0);
+    const grossRevenue = payments
+      .filter(p => p.status === 'paid')
+      .reduce((sum, p) => sum + (p.paidAmount || 0), 0);
+
+    // Criar mapas para acesso rápido
+    const rentalMap = new Map(rentals.map(r => [r.id, r]));
+    const propertyMap = new Map(properties.map(p => [p.id, p]));
+    const exemptSet = new Set(exemptLocationIds);
 
     const totalFees = payments
       .filter(p => p.status === 'paid')
       .reduce((sum, p) => {
-        const rental = rentals.find(r => r.id === p.rentalId);
-        const property = properties.find(prop => prop.id === rental?.propertyId);
+        const rental = rentalMap.get(p.rentalId);
+        if (!rental) return sum;
         
-        // Taxa de Administração: 5% (isenta para locais marcados)
-        const isExempt = property?.locationId && exemptLocationIds.includes(property.locationId);
+        const property = propertyMap.get(rental.propertyId);
+        const isExempt = property?.locationId && exemptSet.has(property.locationId);
         const adminFee = isExempt ? 0 : (p.paidAmount || 0) * 0.05;
-        
-        // Taxa de Gerenciamento: 3% (SEMPRE cobra, sem isenção)
         const managementFee = (p.paidAmount || 0) * 0.03;
         
         return sum + adminFee + managementFee;
@@ -283,17 +223,7 @@ export default function Dashboard() {
 
     const totalFeesAndExpenses = totalFees + locationExpenses;
     const netRevenue = grossRevenue - totalFeesAndExpenses;
-    
-    // Definir totalRevenue (igual à receita bruta) para satisfazer a interface
     const totalRevenue = grossRevenue;
-
-    console.log("📊 RESUMO FINAL:", {
-      totalTenants,
-      activeContracts,
-      dueTodayPayments,
-      overduePaymentsCount,
-      todayStr
-    });
 
     return {
       totalProperties,
@@ -315,11 +245,16 @@ export default function Dashboard() {
     };
   }, [payments, properties, rentals, locationExpenses, exemptLocationIds, tenants]);
 
+  const userName = useMemo(() => 
+    user?.name || user?.email?.split('@')[0] || "Usuário",
+    [user]
+  );
+
   return (
     <Layout>
       <SEO title="Dashboard - Gerenciador de Locações" />
       <div className="p-4 md:p-6 space-y-6">
-        <WelcomeCard userName={user?.name || user?.email?.split('@')[0] || "Usuário"} />
+        <WelcomeCard userName={userName} />
 
         {loading ? (
           <div className="space-y-6">
