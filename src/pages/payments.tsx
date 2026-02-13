@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
@@ -53,7 +53,7 @@ export default function PaymentsPage() {
       filters.month.toString(), 
       filters.year.toString()
     );
-  }, [filters.month, filters.year, refreshPayments]);
+  }, [filters.month, filters.year]);
 
   const handleFilterChange = useCallback((newFilters: any) => {
     // Converter valores string para números onde necessário

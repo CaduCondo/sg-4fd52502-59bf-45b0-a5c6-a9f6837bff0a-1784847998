@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import type { Payment, Rental, Property, Tenant } from "@/types";
@@ -54,7 +54,7 @@ export function usePayments() {
     return results;
   };
 
-  const loadPayments = async (month?: string, year?: string) => {
+  const loadPayments = useCallback(async (month?: string, year?: string) => {
     try {
       setLoading(true);
       clearCacheIfExpired();
@@ -243,7 +243,7 @@ export function usePayments() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   const handleCancelPayment = async (paymentId: string) => {
     try {
