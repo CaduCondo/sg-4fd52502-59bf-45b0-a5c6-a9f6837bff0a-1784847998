@@ -35,22 +35,22 @@ export function PropertyFilters({
 }: PropertyFiltersProps) {
   return (
     <div className="flex flex-col gap-3">
-      {/* Linha 1: Counter + Labels alinhados */}
-      <div className="flex items-end justify-between">
+      {/* Linha 1: Counter à esquerda + Labels à direita na mesma linha */}
+      <div className="flex items-center justify-between">
         <div className="text-sm text-muted-foreground font-medium">
           {totalCount} {totalCount === 1 ? "imóvel encontrado" : "imóveis encontrados"}
         </div>
         
-        {/* Labels - Hidden on mobile, shown on desktop */}
-        <div className="hidden lg:flex items-end gap-3">
-          <div className="w-[160px] text-sm font-medium text-foreground">Locais:</div>
-          <div className="w-[140px] text-sm font-medium text-foreground">Status:</div>
-          <div className="w-[140px] text-sm font-medium text-foreground">Ordenação:</div>
+        {/* Labels inline - mesma linha do counter */}
+        <div className="hidden lg:flex items-center gap-6">
+          <div className="text-sm font-medium text-foreground">Locais:</div>
+          <div className="text-sm font-medium text-foreground">Status:</div>
+          <div className="text-sm font-medium text-foreground">Ordenação:</div>
         </div>
       </div>
 
-      {/* Linha 2: Search + Combos alinhados */}
-      <div className="flex flex-col lg:flex-row gap-3 lg:items-start">
+      {/* Linha 2: Search + Combos alinhados abaixo dos labels */}
+      <div className="flex flex-col lg:flex-row gap-3">
         {/* Search Bar */}
         <div className="flex-1 lg:max-w-md">
           <div className="relative">
@@ -64,8 +64,8 @@ export function PropertyFilters({
           </div>
         </div>
 
-        {/* Combos Row - Aligned with labels above */}
-        <div className="flex flex-col sm:flex-row gap-3 lg:gap-3">
+        {/* Combos alinhados abaixo dos labels */}
+        <div className="flex flex-col sm:flex-row gap-6 lg:gap-6">
           {/* Location Filter */}
           <Popover>
             <PopoverTrigger asChild>
