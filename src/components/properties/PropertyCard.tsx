@@ -43,11 +43,11 @@ export const PropertyCard = memo(function PropertyCard({ property, onCardClick, 
                 <span className="truncate">{locationName}</span>
               </div>
             )}
-            <h3 className="text-lg font-bold text-primary leading-tight line-clamp-1">
+            <h3 className="text-xl font-bold text-primary leading-tight line-clamp-1">
               {property.location}
             </h3>
             {(property.complement || property.propertyIdentifier) && (
-              <p className="text-sm text-muted-foreground mt-0.5 line-clamp-1">
+              <p className="text-base text-muted-foreground line-clamp-1">
                 {property.complement || property.propertyIdentifier}
               </p>
             )}
@@ -68,13 +68,13 @@ export const PropertyCard = memo(function PropertyCard({ property, onCardClick, 
 
       <CardContent className="p-3 pt-0 space-y-2">
         {property.description && (
-          <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+          <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
             {property.description}
           </p>
         )}
 
         {(property.rooms || property.bathrooms) && (
-          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          <div className="flex items-center gap-3 text-sm text-muted-foreground">
             {property.rooms && (
               <div className="flex items-center gap-1">
                 <Bed className="h-3.5 w-3.5 flex-shrink-0" />
@@ -90,9 +90,9 @@ export const PropertyCard = memo(function PropertyCard({ property, onCardClick, 
           </div>
         )}
 
-        <div className="flex items-center justify-between pt-1.5 border-t">
+        <div className="flex items-center justify-between pt-2 mt-2 border-t gap-2">
           <div className="flex items-center gap-1.5">
-            <span className="text-base font-bold text-primary">
+            <span className="text-xl font-bold text-primary">
               {property.value?.toLocaleString("pt-BR", {
                 style: "currency",
                 currency: "BRL",
