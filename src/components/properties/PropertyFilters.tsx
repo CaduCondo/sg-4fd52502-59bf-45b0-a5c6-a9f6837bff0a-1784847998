@@ -35,22 +35,22 @@ export function PropertyFilters({
 }: PropertyFiltersProps) {
   return (
     <div className="flex flex-col gap-3">
-      {/* Linha 1: Counter à esquerda + Labels à direita na mesma linha */}
+      {/* Linha 1: Counter à esquerda + Labels alinhados com combos */}
       <div className="flex items-center justify-between">
         <div className="text-sm text-muted-foreground font-medium">
           {totalCount} {totalCount === 1 ? "imóvel encontrado" : "imóveis encontrados"}
         </div>
         
-        {/* Labels inline - mesma linha do counter */}
-        <div className="hidden lg:flex items-center gap-6">
-          <div className="text-sm font-medium text-foreground">Locais:</div>
-          <div className="text-sm font-medium text-foreground">Status:</div>
-          <div className="text-sm font-medium text-foreground">Ordenação:</div>
+        {/* Labels em colunas alinhadas aos combos */}
+        <div className="hidden lg:flex gap-3">
+          <div className="w-[160px] text-sm font-medium text-foreground">Locais:</div>
+          <div className="w-[140px] text-sm font-medium text-foreground">Status:</div>
+          <div className="w-[140px] text-sm font-medium text-foreground">Ordenação:</div>
         </div>
       </div>
 
-      {/* Linha 2: Search + Combos alinhados abaixo dos labels */}
-      <div className="flex flex-col lg:flex-row gap-3">
+      {/* Linha 2: Search + Combos alinhados aos labels */}
+      <div className="flex gap-3">
         {/* Search Bar */}
         <div className="flex-1 lg:max-w-md">
           <div className="relative">
@@ -64,12 +64,12 @@ export function PropertyFilters({
           </div>
         </div>
 
-        {/* Combos alinhados abaixo dos labels */}
-        <div className="flex flex-col sm:flex-row gap-6 lg:gap-6">
-          {/* Location Filter */}
+        {/* Combos com mesmas larguras dos labels */}
+        <div className="hidden lg:flex gap-3">
+          {/* Location Filter - 160px */}
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="w-full sm:w-[160px] justify-between h-10">
+              <Button variant="outline" className="w-[160px] justify-between h-10">
                 <span className="truncate flex items-center gap-2">
                   <Filter className="h-4 w-4 flex-shrink-0" />
                   {selectedLocations.length === 0
@@ -120,9 +120,9 @@ export function PropertyFilters({
             </PopoverContent>
           </Popover>
 
-          {/* Status Filter */}
+          {/* Status Filter - 140px */}
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-full sm:w-[140px] h-10">
+            <SelectTrigger className="w-[140px] h-10">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -133,9 +133,9 @@ export function PropertyFilters({
             </SelectContent>
           </Select>
 
-          {/* Sort Order */}
+          {/* Sort Order - 140px */}
           <Select value={sortOrder} onValueChange={(value: any) => setSortOrder(value)}>
-            <SelectTrigger className="w-full sm:w-[140px] h-10">
+            <SelectTrigger className="w-[140px] h-10">
               <SelectValue placeholder="Ordenar" />
             </SelectTrigger>
             <SelectContent>
