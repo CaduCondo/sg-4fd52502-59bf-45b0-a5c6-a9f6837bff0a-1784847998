@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Payment, Property, Rental } from "@/types";
 
@@ -7,55 +7,35 @@ export function useDashboardData(month: number, year: number, userId: string | u
   const [payments, setPayments] = useState<Payment[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [rentals, setRentals] = useState<Rental[]>([]);
-  const [tenants, setTenants] = useState<any[]>([]);
-  const [allowedLocationIds, setAllowedLocationIds] = useState<string[]>([]);
-  const [locationExpenses, setLocationExpenses] = useState<number>(0);
+  const [tenantsCount, setTenantsCount] = useState(0);
+  const [locationExpenses, setLocationExpenses] = useState(0);
   const [exemptLocationIds, setExemptLocationIds] = useState<string[]>([]);
 
-  // Memoizar as funções de mapeamento
   const mapPaymentFromDB = useCallback((data: any): Payment => ({
-    ...data,
+    id: data.id,
     rentalId: data.rental_id,
     dueDate: data.due_date,
     expectedAmount: data.expected_amount,
     paidAmount: data.paid_amount,
     paymentDate: data.payment_date,
-    paymentMethod: data.payment_method,
+    status: data.status,
     referenceMonth: data.reference_month ? parseInt(data.reference_month) : undefined,
     referenceYear: data.reference_year ? parseInt(data.reference_year) : undefined,
-    receiptUrl: data.receipt_url,
-    penaltyAmount: data.penalty_amount,
-    interestAmount: data.interest_amount,
-    discountAmount: data.discount_amount,
-    paymentCode: data.payment_code,
-    lateFee: data.late_fee,
-    interest: data.interest,
-    paymentLocation: data.payment_location,
   }), []);
 
   const mapPropertyFromDB = useCallback((data: any): Property => ({
     id: data.id,
-    address: data.address,
-    number: data.number,
-    complement: data.complement,
-    neighborhood: data.neighborhood,
-    city: data.city,
-    state: data.state,
-    zipCode: data.zip_code,
-    value: Number(data.value),
-    monthlyRent: 0, // monthly_rent não existe na tabela properties, definindo padrão 0
-    description: data.description,
-    area: Number(data.area),
-    bathrooms: Number(data.bathrooms),
-    hasGarage: data.has_garage,
-    acceptsPets: data.accepts_pets,
-    hasFurniture: data.has_furniture,
-    hasPartnerBroker: data.has_partner_broker,
     status: data.status,
     locationId: data.location_id,
-    createdAt: data.created_at,
-    updatedAt: data.updated_at,
-    images: data.images || [], // Corrigido de photos para images
+    address: "",
+    number: "",
+    neighborhood: "",
+    city: "",
+    state: "",
+    zipCode: "",
+    value: 0,
+    monthlyRent: 0,
+    images: [],
   }), []);
 
   const mapRentalFromDB = useCallback((data: any): Rental => ({
@@ -64,21 +44,13 @@ export function useDashboardData(month: number, year: number, userId: string | u
     tenantId: data.tenant_id,
     startDate: data.start_date,
     endDate: data.end_date,
-    value: Number(data.value || data.monthly_rent),
-    paymentDay: Number(data.payment_day),
-    status: data.status,
+    value: Number(data.monthly_rent || data.value),
     isActive: data.is_active,
-    depositAmount: Number(data.deposit),
-    depositInstallments: data.deposit_installments,
-    depositInstallment1: data.deposit_installment_1,
-    depositInstallment2: data.deposit_installment_2,
-    depositInstallment3: data.deposit_installment_3,
-    hasGarage: data.has_garage,
-    garageValue: data.garage_value,
-    hasPartnerBroker: data.has_partner_broker,
-    contractAttachments: data.contract_attachments,
-    attachments: data.attachments,
-    autoRenew: false
+    paymentDay: 0,
+    status: data.status,
+    depositAmount: 0,
+    hasGarage: false,
+    hasPartnerBroker: false,
   }), []);
 
   useEffect(() => {
@@ -90,7 +62,7 @@ export function useDashboardData(month: number, year: number, userId: string | u
 
         setLoading(true);
 
-        // PASSO 1: Carregar configurações globais e permissões (paralelo)
+        // ETAPA 1: Configurações globais + permissões (paralelo)
         const [exemptResult, permissionsResult] = await Promise.all([
           supabase.from("admin_fee_exempt_locations").select("location_id"),
           userRole === "financial" 
@@ -104,26 +76,28 @@ export function useDashboardData(month: number, year: number, userId: string | u
         const allowedLocations = permissionsResult.data?.map(p => p.location_id) || [];
 
         setExemptLocationIds(exemptIds);
-        setAllowedLocationIds(allowedLocations);
 
-        // PASSO 2: Carregar dados principais (paralelo)
+        // ETAPA 2: Properties + Tenants Count (paralelo, apenas campos essenciais)
         let propertiesQuery = supabase
           .from("properties")
-          .select("id, status, location_id, value, images"); // Corrigido de photos para images e removido monthly_rent
+          .select("id, status, location_id");
         
         if (userRole === "financial" && allowedLocations.length > 0) {
           propertiesQuery = propertiesQuery.in("location_id", allowedLocations);
         }
 
-        const [propertiesResult, tenantsResult] = await Promise.all([
+        const [propertiesResult, tenantsCountResult] = await Promise.all([
           propertiesQuery,
-          supabase.from("tenants").select("id, status, name").neq("status", "inactive")
+          supabase
+            .from("tenants")
+            .select("id", { count: "exact", head: true })
+            .neq("status", "inactive")
         ]);
 
         if (!isMounted) return;
 
         if (propertiesResult.error) throw propertiesResult.error;
-        if (tenantsResult.error) throw tenantsResult.error;
+        if (tenantsCountResult.error) throw tenantsCountResult.error;
 
         const allowedPropertyIds = (propertiesResult.data || []).map(p => p.id);
 
@@ -132,14 +106,16 @@ export function useDashboardData(month: number, year: number, userId: string | u
           setPayments([]);
           setProperties([]);
           setRentals([]);
-          setTenants([]);
+          setTenantsCount(tenantsCountResult.count || 0);
           setLocationExpenses(0);
           setLoading(false);
           return;
         }
 
-        // PASSO 3: Carregar rentals e dados dependentes (paralelo)
-        let rentalsQuery = supabase.from("rentals").select("*");
+        // ETAPA 3: Rentals (apenas campos necessários)
+        let rentalsQuery = supabase
+          .from("rentals")
+          .select("id, property_id, tenant_id, start_date, end_date, monthly_rent, value, is_active, status");
         
         if (userRole === "financial" && allowedPropertyIds.length > 0) {
           rentalsQuery = rentalsQuery.in("property_id", allowedPropertyIds);
@@ -159,16 +135,16 @@ export function useDashboardData(month: number, year: number, userId: string | u
           setPayments([]);
           setProperties(propertiesResult.data.map(mapPropertyFromDB));
           setRentals(rentalsResult.data.map(mapRentalFromDB));
-          setTenants(tenantsResult.data || []);
+          setTenantsCount(tenantsCountResult.count || 0);
           setLocationExpenses(0);
           setLoading(false);
           return;
         }
 
-        // PASSO 4: Carregar payments e expenses (paralelo)
+        // ETAPA 4: Payments + Expenses (paralelo, apenas campos necessários)
         let paymentsQuery = supabase
           .from("payments")
-          .select("*")
+          .select("id, rental_id, due_date, expected_amount, paid_amount, payment_date, status, reference_month, reference_year")
           .eq("reference_month", month.toString())
           .eq("reference_year", year.toString());
 
@@ -199,15 +175,15 @@ export function useDashboardData(month: number, year: number, userId: string | u
         const totalExpenses = (expensesResult.data || [])
           .reduce((sum, e) => sum + (e.amount || 0), 0);
 
-        // Atualizar todos os estados de uma vez
+        // Atualizar estados
         setPayments((paymentsResult.data || []).map(mapPaymentFromDB));
         setProperties((propertiesResult.data || []).map(mapPropertyFromDB));
         setRentals((rentalsResult.data || []).map(mapRentalFromDB));
-        setTenants(tenantsResult.data || []);
+        setTenantsCount(tenantsCountResult.count || 0);
         setLocationExpenses(totalExpenses);
 
       } catch (error) {
-        console.error("❌ Erro ao carregar dados do dashboard:", error);
+        console.error("Erro ao carregar dashboard:", error);
       } finally {
         if (isMounted) {
           setLoading(false);
@@ -222,5 +198,5 @@ export function useDashboardData(month: number, year: number, userId: string | u
     };
   }, [month, year, userId, userRole, mapPaymentFromDB, mapPropertyFromDB, mapRentalFromDB]);
 
-  return { loading, payments, properties, rentals, tenants, allowedLocationIds, locationExpenses, exemptLocationIds };
+  return { loading, payments, properties, rentals, tenantsCount, locationExpenses, exemptLocationIds };
 }

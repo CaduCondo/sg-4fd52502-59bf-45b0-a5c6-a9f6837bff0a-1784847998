@@ -7,12 +7,10 @@ export interface MetricCardProps {
   title: string;
   value: string | number | React.ReactNode;
   subtitle?: string | ReactNode;
-  secondaryInfo?: string;
   icon: LucideIcon;
   iconColor: string;
   iconBgClass: string;
   borderColorClass: string;
-  layout?: "vertical" | "horizontal";
   valueClassName?: string;
   clickable?: boolean;
 }
@@ -21,12 +19,10 @@ export const MetricCard = memo(function MetricCard({
   title,
   value,
   subtitle,
-  secondaryInfo,
   icon: Icon,
   iconColor,
   iconBgClass,
   borderColorClass,
-  layout = "horizontal",
   valueClassName,
   clickable = false,
 }: MetricCardProps) {
@@ -60,18 +56,9 @@ export const MetricCard = memo(function MetricCard({
             </div>
           </div>
           
-          {(subtitle || secondaryInfo) && (
-            <div className="flex flex-col gap-0.5">
-              {subtitle && (
-                <div className="text-xs text-muted-foreground leading-snug">
-                  {subtitle}
-                </div>
-              )}
-              {secondaryInfo && (
-                <div className="text-xs text-muted-foreground font-medium">
-                  {secondaryInfo}
-                </div>
-              )}
+          {subtitle && (
+            <div className="text-xs text-muted-foreground leading-snug">
+              {subtitle}
             </div>
           )}
         </div>

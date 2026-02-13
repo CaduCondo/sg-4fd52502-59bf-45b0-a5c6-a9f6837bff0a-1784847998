@@ -1,7 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
 import { Layout } from "@/components/Layout";
 import { OverviewCards } from "@/components/dashboard/OverviewCards";
-import { AnalyticsCharts } from "@/components/dashboard/AnalyticsCharts";
 import { FinancialCharts } from "@/components/dashboard/FinancialCharts";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -15,7 +14,7 @@ export default function Dashboard() {
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
   const { user } = useAuth();
 
-  const { loading, payments, properties, rentals, allowedLocationIds, locationExpenses, exemptLocationIds, tenants } = useDashboardData(
+  const { loading, payments, properties, rentals, tenantsCount, locationExpenses, exemptLocationIds } = useDashboardData(
     selectedMonth,
     selectedYear,
     user?.id,
@@ -27,7 +26,6 @@ export default function Dashboard() {
     setSelectedYear(year);
   }, []);
   
-  // Gerar dados dos últimos 6 meses (memoizado)
   const last6MonthsData = useMemo(() => {
     const months = [];
     const currentDate = new Date(selectedYear, selectedMonth - 1, 1);
@@ -45,14 +43,11 @@ export default function Dashboard() {
     return months;
   }, [selectedMonth, selectedYear]);
 
-  // Dados dos gráficos (memoizado)
   const chartData = useMemo(() => {
-    // Criar mapas para acesso rápido
     const rentalMap = new Map(rentals.map(r => [r.id, r]));
     const propertyMap = new Map(properties.map(p => [p.id, p]));
     const exemptSet = new Set(exemptLocationIds);
     
-    // Dados de receita mensal (últimos 6 meses)
     const revenueData = last6MonthsData.map(({ month, year, label }) => {
       const value = payments
         .filter(p => {
@@ -65,7 +60,6 @@ export default function Dashboard() {
       return { month: label, value };
     });
 
-    // Dados de ocupação mensal (últimos 6 meses)
     const totalProps = properties.length;
     const occupiedProps = properties.filter(p => p.status === 'occupied').length;
     const rate = totalProps > 0 ? Math.round((occupiedProps / totalProps) * 100) : 0;
@@ -75,7 +69,6 @@ export default function Dashboard() {
       rate
     }));
 
-    // Dados financeiros detalhados (últimos 6 meses)
     const isCurrentMonth = (month: number, year: number) => 
       month === selectedMonth && year === selectedYear;
 
@@ -105,7 +98,6 @@ export default function Dashboard() {
       return { month: label, bruta, liquida };
     });
 
-    // Dados de despesas mensais (últimos 6 meses)
     const monthlyExpensesData = last6MonthsData.map(({ month, year, label }) => {
       const monthPayments = payments.filter(p => {
         if (p.status !== 'paid' || !p.paymentDate) return false;
@@ -129,7 +121,6 @@ export default function Dashboard() {
       return { month: label, taxas, contas };
     });
 
-    // Dados de distribuição de imóveis (atual)
     const occupancyPieData = [
       { 
         name: 'Ocupados', 
@@ -157,15 +148,12 @@ export default function Dashboard() {
     };
   }, [payments, properties, rentals, locationExpenses, exemptLocationIds, last6MonthsData, selectedMonth, selectedYear]);
   
-  // Dados de overview (memoizado)
   const overviewData = useMemo(() => {
     const totalProperties = properties.length;
     const availableProperties = properties.filter(p => p.status === 'available').length;
     const activeContracts = rentals.filter(r => r.isActive).length;
     const unavailableProperties = properties.filter(p => p.status === 'unavailable').length;
-    const totalTenants = tenants.length;
     
-    // Contratos que vencem em até 2 meses
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const twoMonthsFromNow = new Date(today);
@@ -180,12 +168,10 @@ export default function Dashboard() {
     
     const todayStr = today.toISOString().split('T')[0];
 
-    // Aluguéis que vencem hoje
     const dueTodayPayments = payments.filter(p => 
       p.status !== 'paid' && p.dueDate.split('T')[0] === todayStr
     ).length;
 
-    // Aluguéis atrasados
     const overduePayments = payments.filter(p => 
       p.status !== 'paid' && p.dueDate.split('T')[0] < todayStr
     );
@@ -202,7 +188,6 @@ export default function Dashboard() {
       .filter(p => p.status === 'paid')
       .reduce((sum, p) => sum + (p.paidAmount || 0), 0);
 
-    // Criar mapas para acesso rápido
     const rentalMap = new Map(rentals.map(r => [r.id, r]));
     const propertyMap = new Map(properties.map(p => [p.id, p]));
     const exemptSet = new Set(exemptLocationIds);
@@ -223,14 +208,13 @@ export default function Dashboard() {
 
     const totalFeesAndExpenses = totalFees + locationExpenses;
     const netRevenue = grossRevenue - totalFeesAndExpenses;
-    const totalRevenue = grossRevenue;
 
     return {
       totalProperties,
       availableProperties,
       unavailableProperties,
       occupancyRate,
-      totalTenants,
+      totalTenants: tenantsCount,
       activeContracts,
       expiringContracts,
       overduePayments: overduePaymentsCount,
@@ -238,12 +222,12 @@ export default function Dashboard() {
       dueTodayPayments,
       completedPayments,
       expectedAmount,
-      totalRevenue,
+      totalRevenue: grossRevenue,
       grossRevenue,
       totalFeesAndExpenses,
       netRevenue,
     };
-  }, [payments, properties, rentals, locationExpenses, exemptLocationIds, tenants]);
+  }, [payments, properties, rentals, locationExpenses, exemptLocationIds, tenantsCount]);
 
   const userName = useMemo(() => 
     user?.name || user?.email?.split('@')[0] || "Usuário",
@@ -264,7 +248,7 @@ export default function Dashboard() {
               ))}
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {[...Array(4)].map((_, i) => (
+              {[...Array(2)].map((_, i) => (
                 <Skeleton key={i} className="h-64" />
               ))}
             </div>
@@ -276,13 +260,7 @@ export default function Dashboard() {
               selectedMonth={selectedMonth}
               selectedYear={selectedYear}
               onPeriodChange={handlePeriodChange}
-              exemptLocationIds={exemptLocationIds}
               userRole={user?.role}
-            />
-            
-            <AnalyticsCharts 
-              revenueData={chartData.revenueData} 
-              occupancyData={chartData.occupancyData} 
             />
 
             <FinancialCharts

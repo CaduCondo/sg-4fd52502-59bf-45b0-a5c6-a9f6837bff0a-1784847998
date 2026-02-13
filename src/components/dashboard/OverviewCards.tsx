@@ -39,7 +39,6 @@ interface OverviewCardsProps {
   selectedMonth: number;
   selectedYear: number;
   onPeriodChange: (month: number, year: number) => void;
-  exemptLocationIds: string[];
   userRole?: string;
 }
 
@@ -48,7 +47,6 @@ export const OverviewCards = memo(function OverviewCards({
   selectedMonth, 
   selectedYear, 
   onPeriodChange, 
-  exemptLocationIds,
   userRole
 }: OverviewCardsProps) {
   const formatCurrency = useMemo(() => (value: number) => {
@@ -73,7 +71,6 @@ export const OverviewCards = memo(function OverviewCards({
 
   return (
     <div className="space-y-5">
-      {/* Primeira linha - Visão Geral dos Imóveis (5 CARDS) */}
       <div className="space-y-4">
         <div className="flex items-center gap-2">
           <Building2 className="h-5 w-5 text-primary" />
@@ -148,7 +145,6 @@ export const OverviewCards = memo(function OverviewCards({
         </div>
       </div>
 
-      {/* Segunda linha - Contratos e Pagamentos (5 CARDS COM FILTRO) */}
       <div>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-3">
           <h2 className="text-sm font-semibold text-foreground px-1">
@@ -228,7 +224,6 @@ export const OverviewCards = memo(function OverviewCards({
         </div>
       </div>
 
-      {/* Terceira linha - Resumo Financeiro (5 CARDS) */}
       <div>
         <h2 className="text-sm font-semibold text-foreground mb-3 px-1">
           💰 Resumo Financeiro
