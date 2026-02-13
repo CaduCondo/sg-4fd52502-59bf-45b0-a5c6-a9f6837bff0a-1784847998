@@ -154,7 +154,26 @@ export const create = async (property: Omit<Property, "id" | "createdAt" | "upda
       has_furniture: property.hasFurniture || false,
       accepts_pets: property.acceptsPets || false,
     })
-    .select()
+    .select(`
+      id,
+      location_id,
+      property_identifier,
+      complement,
+      description,
+      rooms,
+      bathrooms,
+      area,
+      has_garage,
+      value,
+      garage_value,
+      status,
+      images,
+      has_furniture,
+      accepts_pets,
+      created_at,
+      updated_at,
+      locations!properties_location_id_fkey(name, street, number)
+    `)
     .single();
 
   if (error) throw error;
@@ -162,7 +181,12 @@ export const create = async (property: Omit<Property, "id" | "createdAt" | "upda
   // Invalidate cache
   cacheService.remove("properties_all");
 
-  return mapDatabaseProperty(data);
+  return mapDatabaseProperty({
+    ...data,
+    location_name: data.locations?.name,
+    location_street: data.locations?.street,
+    location_number: data.locations?.number,
+  });
 };
 
 /**

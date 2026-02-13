@@ -62,7 +62,13 @@ export const PropertyCard = memo(function PropertyCard({ property, onCardClick, 
         </div>
       </CardHeader>
       <CardContent className="pt-0 p-4 sm:p-6">
-        <div className="space-y-2 sm:space-y-3">
+        <div className="space-y-2">
+          {property.description && (
+            <p className="text-xs sm:text-sm text-muted-foreground line-clamp-2">
+              {property.description}
+            </p>
+          )}
+
           {(property.rooms || property.bathrooms) && (
             <div className="flex gap-3 sm:gap-4 text-xs sm:text-sm text-muted-foreground flex-wrap">
               {property.rooms && (
@@ -80,13 +86,7 @@ export const PropertyCard = memo(function PropertyCard({ property, onCardClick, 
             </div>
           )}
 
-          {property.description && (
-            <p className="text-xs sm:text-sm text-muted-foreground line-clamp-2">
-              {property.description}
-            </p>
-          )}
-
-          <div className="flex items-center justify-between pt-3 mt-2 border-t gap-2">
+          <div className="flex items-center justify-between pt-2 mt-2 border-t gap-2">
             <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300 min-w-0 flex-1">
               <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-primary flex-shrink-0" />
               <span className="font-semibold text-sm sm:text-base truncate">
