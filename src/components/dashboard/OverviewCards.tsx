@@ -50,13 +50,33 @@ export const OverviewCards = memo(function OverviewCards({
   userRole
 }: OverviewCardsProps) {
   const formatCurrency = useMemo(() => (value: number) => {
-    return value.toLocaleString("pt-BR", {
+    return (value || 0).toLocaleString("pt-BR", {
       style: "currency",
       currency: "BRL",
     });
   }, []);
 
   const hasLinks = userRole === "admin" || userRole === "broker";
+
+  // Garantir valores seguros
+  const safeData = useMemo(() => ({
+    totalProperties: data?.totalProperties || 0,
+    availableProperties: data?.availableProperties || 0,
+    unavailableProperties: data?.unavailableProperties || 0,
+    totalTenants: data?.totalTenants || 0,
+    occupancyRate: data?.occupancyRate || 0,
+    activeContracts: data?.activeContracts || 0,
+    expiringContracts: data?.expiringContracts || 0,
+    overduePayments: data?.overduePayments || 0,
+    overdueAmount: data?.overdueAmount || 0,
+    dueTodayPayments: data?.dueTodayPayments || 0,
+    completedPayments: data?.completedPayments || 0,
+    expectedAmount: data?.expectedAmount || 0,
+    totalRevenue: data?.totalRevenue || 0,
+    grossRevenue: data?.grossRevenue || 0,
+    totalFeesAndExpenses: data?.totalFeesAndExpenses || 0,
+    netRevenue: data?.netRevenue || 0,
+  }), [data]);
 
   const CardWrapper = ({ href, children }: { href?: string; children: React.ReactNode }) => {
     if (hasLinks && href) {
@@ -81,7 +101,7 @@ export const OverviewCards = memo(function OverviewCards({
           <CardWrapper>
             <MetricCard
               title="Imóveis Cadastrados"
-              value={data.totalProperties}
+              value={safeData.totalProperties}
               subtitle="Total cadastrado"
               icon={Building2}
               iconColor="text-blue-600"
@@ -94,7 +114,7 @@ export const OverviewCards = memo(function OverviewCards({
           <CardWrapper>
             <MetricCard
               title="Imóveis Disponíveis"
-              value={data.availableProperties}
+              value={safeData.availableProperties}
               subtitle="Para locação"
               icon={Home}
               iconColor="text-green-600"
@@ -107,7 +127,7 @@ export const OverviewCards = memo(function OverviewCards({
           <CardWrapper>
             <MetricCard
               title="Imóveis Indisponíveis"
-              value={data.unavailableProperties}
+              value={safeData.unavailableProperties}
               subtitle="Em obra/reforma"
               icon={Construction}
               iconColor="text-orange-600"
@@ -120,7 +140,7 @@ export const OverviewCards = memo(function OverviewCards({
           <CardWrapper>
             <MetricCard
               title="Total Inquilinos"
-              value={data.totalTenants}
+              value={safeData.totalTenants}
               subtitle="Cadastrados no sistema"
               icon={Users}
               iconColor="text-cyan-600"
@@ -133,7 +153,7 @@ export const OverviewCards = memo(function OverviewCards({
           <CardWrapper>
             <MetricCard
               title="Taxa de Ocupação"
-              value={`${data.occupancyRate.toFixed(1)}%`}
+              value={`${safeData.occupancyRate.toFixed(1)}%`}
               subtitle="Ocupados vs Disponíveis"
               icon={TrendingUp}
               iconColor="text-teal-600"
@@ -160,7 +180,7 @@ export const OverviewCards = memo(function OverviewCards({
           <CardWrapper href="/payments?status=overdue">
             <MetricCard
               title="Aluguéis Atrasados"
-              value={data.overduePayments}
+              value={safeData.overduePayments}
               subtitle="Pagamentos em atraso"
               icon={AlertCircle}
               iconColor="text-red-600"
@@ -173,7 +193,7 @@ export const OverviewCards = memo(function OverviewCards({
           <CardWrapper href="/payments?status=due_today">
             <MetricCard
               title="Aluguéis Vencem Hoje"
-              value={data.dueTodayPayments}
+              value={safeData.dueTodayPayments}
               subtitle="Vencimento hoje"
               icon={Clock}
               iconColor="text-amber-600"
@@ -186,7 +206,7 @@ export const OverviewCards = memo(function OverviewCards({
           <CardWrapper href="/payments?status=paid">
             <MetricCard
               title="Aluguéis Recebidos"
-              value={data.completedPayments}
+              value={safeData.completedPayments}
               subtitle="Pagamentos concluídos"
               icon={CheckCircle}
               iconColor="text-green-600"
@@ -199,7 +219,7 @@ export const OverviewCards = memo(function OverviewCards({
           <CardWrapper href="/rentals">
             <MetricCard
               title="Contratos Vigentes"
-              value={data.activeContracts}
+              value={safeData.activeContracts}
               subtitle="Locações ativas"
               icon={FileCheck}
               iconColor="text-indigo-600"
@@ -212,7 +232,7 @@ export const OverviewCards = memo(function OverviewCards({
           <CardWrapper href="/rentals?status=expiring">
             <MetricCard
               title="Locações a Vencer"
-              value={data.expiringContracts}
+              value={safeData.expiringContracts}
               subtitle="Vencem em até 60 dias"
               icon={AlertCircle}
               iconColor="text-purple-600"
@@ -232,7 +252,7 @@ export const OverviewCards = memo(function OverviewCards({
           <CardWrapper href="/payments?status=overdue">
             <FinancialMetricCard
               title="Total em Atraso"
-              value={formatCurrency(data.overdueAmount)}
+              value={formatCurrency(safeData.overdueAmount)}
               subtitle="Valor acumulado"
               icon={AlertCircle}
               iconColor="text-red-600"
@@ -245,7 +265,7 @@ export const OverviewCards = memo(function OverviewCards({
           <CardWrapper href="/financial">
             <FinancialMetricCard
               title="Receita Esperada"
-              value={formatCurrency(data.expectedAmount)}
+              value={formatCurrency(safeData.expectedAmount)}
               subtitle="Total de recebimentos"
               icon={DollarSign}
               iconColor="text-blue-600"
@@ -258,7 +278,7 @@ export const OverviewCards = memo(function OverviewCards({
           <CardWrapper href="/financial">
             <FinancialMetricCard
               title="Receita Bruta Recebida"
-              value={formatCurrency(data.grossRevenue)}
+              value={formatCurrency(safeData.grossRevenue)}
               subtitle="Pagamentos realizados"
               icon={TrendingUp}
               iconColor="text-emerald-600"
@@ -271,7 +291,7 @@ export const OverviewCards = memo(function OverviewCards({
           <CardWrapper href="/financial">
             <FinancialMetricCard
               title="Total Taxas e Contas"
-              value={formatCurrency(data.totalFeesAndExpenses)}
+              value={formatCurrency(safeData.totalFeesAndExpenses)}
               subtitle="Taxas + Contas a Pagar"
               icon={AlertCircle}
               iconColor="text-orange-600"
@@ -284,12 +304,12 @@ export const OverviewCards = memo(function OverviewCards({
           <CardWrapper href="/financial">
             <FinancialMetricCard
               title="Receita Líquida"
-              value={formatCurrency(data.netRevenue)}
+              value={formatCurrency(safeData.netRevenue)}
               subtitle="Após taxas e despesas"
               icon={Wallet}
-              iconColor={data.netRevenue >= 0 ? "text-violet-600" : "text-red-600"}
-              iconBgClass={data.netRevenue >= 0 ? "bg-violet-50 dark:bg-violet-900/20" : "bg-red-50 dark:bg-red-900/20"}
-              borderColorClass={data.netRevenue >= 0 ? "border-l-violet-500" : "border-l-red-500"}
+              iconColor={safeData.netRevenue >= 0 ? "text-violet-600" : "text-red-600"}
+              iconBgClass={safeData.netRevenue >= 0 ? "bg-violet-50 dark:bg-violet-900/20" : "bg-red-50 dark:bg-red-900/20"}
+              borderColorClass={safeData.netRevenue >= 0 ? "border-l-violet-500" : "border-l-red-500"}
               clickable={hasLinks}
             />
           </CardWrapper>
