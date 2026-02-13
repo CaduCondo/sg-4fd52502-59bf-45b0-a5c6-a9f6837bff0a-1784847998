@@ -51,6 +51,9 @@ export function useDashboardData(month: number, year: number, userId: string | u
     depositAmount: 0,
     hasGarage: false,
     hasPartnerBroker: false,
+    attachments: [],
+    contractAttachments: [],
+    autoRenew: false,
   }), []);
 
   useEffect(() => {
