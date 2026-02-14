@@ -45,9 +45,11 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
   const [igpmCorrection, setIgpmCorrection] = useState<{
     originalAmount: number;
     correctedAmount: number;
-    igpmPercentage: number;
+    igpmPercentage?: number;
+    poupancaPercentage?: number;
     months: number;
-    igpmDetails: string;
+    igpmDetails?: string;
+    poupancaDetails?: string;
   } | null>(null);
 
   const [formData, setFormData] = useState({
@@ -783,12 +785,53 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                                           (corrigido pela Taxa da Poupança)
                                         </span>
                                       </TooltipTrigger>
-                                      <TooltipContent className="max-w-[350px] p-4 bg-white dark:bg-gray-800 border shadow-lg z-50">
-                                        <div className="space-y-2">
-                                          <p className="font-semibold text-sm border-b pb-2 mb-2">Detalhes da Correção (Taxa da Poupança)</p>
-                                          <div className="text-xs whitespace-pre-wrap max-h-[300px] overflow-y-auto font-mono">
-                                            {igpmCorrection?.igpmDetails || "Detalhes de correção não disponíveis."}
-                                          </div>
+                                      <TooltipContent className="max-w-[450px] p-0 bg-white dark:bg-gray-900 border-2 shadow-xl z-50">
+                                        <div className="space-y-3 p-4">
+                                          {igpmCorrection ? (
+                                            <>
+                                              {/* Card de Resumo */}
+                                              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 space-y-1.5">
+                                                <p className="font-semibold text-sm text-blue-900 dark:text-blue-100">
+                                                  💰 Resumo da Correção
+                                                </p>
+                                                <div className="grid grid-cols-2 gap-2 text-xs">
+                                                  <div>
+                                                    <span className="text-muted-foreground">Valor Original:</span>
+                                                    <p className="font-semibold text-blue-900 dark:text-blue-100">
+                                                      R$ {igpmCorrection.originalAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                    </p>
+                                                  </div>
+                                                  <div>
+                                                    <span className="text-muted-foreground">Valor Corrigido:</span>
+                                                    <p className="font-semibold text-green-600 dark:text-green-400">
+                                                      R$ {igpmCorrection.correctedAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                    </p>
+                                                  </div>
+                                                </div>
+                                                <div className="pt-1.5 border-t border-blue-200 dark:border-blue-800">
+                                                  <span className="text-muted-foreground text-xs">Correção Total:</span>
+                                                  <p className="font-bold text-base text-blue-900 dark:text-blue-100">
+                                                    {(igpmCorrection.poupancaPercentage ?? igpmCorrection.igpmPercentage ?? 0).toFixed(2)}% ({igpmCorrection.months} {igpmCorrection.months === 1 ? 'mês' : 'meses'})
+                                                  </p>
+                                                </div>
+                                              </div>
+                                              
+                                              {/* Card de Detalhes Mensais */}
+                                              <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
+                                                <p className="font-semibold text-xs text-gray-700 dark:text-gray-300 mb-2">
+                                                  📅 Taxas Mensais Aplicadas
+                                                </p>
+                                                <div className="text-[11px] font-mono leading-relaxed max-h-[250px] overflow-y-auto text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
+                                                  {igpmCorrection.poupancaDetails || igpmCorrection.igpmDetails || "Detalhes de correção não disponíveis."}
+                                                </div>
+                                              </div>
+                                            </>
+                                          ) : (
+                                            <div className="p-4 text-center text-muted-foreground">
+                                              <p className="text-sm">Dados de correção não disponíveis</p>
+                                              <p className="text-xs mt-1">Aguarde o carregamento dos dados...</p>
+                                            </div>
+                                          )}
                                         </div>
                                       </TooltipContent>
                                     </Tooltip>
