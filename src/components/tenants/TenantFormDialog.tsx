@@ -48,13 +48,14 @@ export function TenantFormDialog({
   const initializedRef = useRef(false);
 
   useEffect(() => {
-    if (open && !initializedRef.current) {
-      initializedRef.current = true;
+    if (open) {
       setIsEditing(!isViewMode);
+      
+      console.log("TenantFormDialog - Loading data:", { tenant, isViewMode, open });
       
       if (tenant) {
         const docType = tenant.document_type || tenant.documentType || "cpf";
-        setFormData({
+        const newFormData = {
           name: tenant.name || "",
           email: tenant.email || "",
           phone: tenant.phone || "",
@@ -71,15 +72,34 @@ export function TenantFormDialog({
           city: tenant.city || "",
           state: tenant.state || "",
           status: tenant.status || "active",
-        });
+        };
+        console.log("TenantFormDialog - Setting form data:", newFormData);
+        setFormData(newFormData);
         setDocumentType(docType);
+      } else {
+        console.log("TenantFormDialog - No tenant, resetting form");
+        setFormData({
+          name: "",
+          email: "",
+          phone: "",
+          documentType: "cpf",
+          document: "",
+          cpf: "",
+          cnpj: "",
+          rg: "",
+          cep: "",
+          street: "",
+          number: "",
+          complement: "",
+          neighborhood: "",
+          city: "",
+          state: "",
+          status: "active",
+        });
+        setDocumentType("cpf");
       }
     }
-
-    if (!open) {
-      initializedRef.current = false;
-    }
-  }, [open]);
+  }, [open, tenant, isViewMode]);
 
   const handleDocumentTypeChange = (type: "cpf" | "cnpj") => {
     setDocumentType(type);

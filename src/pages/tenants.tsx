@@ -58,6 +58,7 @@ export default function TenantsPage() {
   };
 
   const handleViewTenant = (tenant: Tenant) => {
+    console.log("handleViewTenant - Tenant data:", tenant);
     setSelectedTenant(tenant);
     setIsViewMode(true);
     setIsFormOpen(true);
