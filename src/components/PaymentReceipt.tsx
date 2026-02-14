@@ -1,16 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { FileText, Download, Mail, Share2, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/contexts/AuthContext";
 import type { Payment, Rental, Property, Tenant } from "@/types";
 import { formatCurrency } from "@/lib/masks";
-import { format, differenceInMonths } from "date-fns";
+import { format, differenceInMonths, addDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import Image from "next/image";
-import { supabase } from "@/integrations/supabase/client";
 
 interface PaymentReceiptProps {
   payment: Payment;
@@ -27,7 +25,6 @@ const numberToWords = (value: number): string => {
   const hundreds = ["", "cento", "duzentos", "trezentos", "quatrocentos", "quinhentos", "seiscentos", "setecentos", "oitocentos", "novecentos"];
 
   if (value === 0) return "zero reais";
-  if (value === 100) return "cem reais";
 
   let result = "";
   const intValue = Math.floor(value);
@@ -105,149 +102,94 @@ export function PaymentReceipt({
   onClose,
 }: PaymentReceiptProps) {
   const { toast } = useToast();
-  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
 
-  console.log("📄 PaymentReceipt renderizado com dados:", { payment, rental, property, tenant });
-
-  // Obter valores do breakdown se existir, senão usar valores diretos
+  // --- Recuperação de Valores (Lógica Prioritária: Breakdown > Propriedades do Objeto) ---
   const breakdown = payment.breakdown as any;
-  const isTermination = payment.payment_type === "termination";
+  const isTermination = payment.type === "termination" || !!(breakdown && (breakdown.terminationFee || breakdown.depositRefund));
   
   let totalAmount = 0;
   let baseAmount = 0;
   let lateFee = 0;
   let interest = 0;
   
-  // Valores para rescisão
+  // Variáveis específicas para rescisão
   let proportionalRent = 0;
   let terminationFee = 0;
   let depositRefund = 0;
   let additionalExpenses = 0;
 
   if (breakdown) {
-    console.log("📊 Breakdown encontrado:", breakdown);
-    
     if (isTermination) {
-      // Rescisão de contrato
-      proportionalRent = Math.abs(breakdown.proportionalRent || 0);
-      terminationFee = Math.abs(breakdown.terminationFee || 0);
-      depositRefund = Math.abs(breakdown.depositRefund || 0);
-      additionalExpenses = Math.abs(breakdown.additionalExpenses || 0);
-      
-      // Total é o paid_amount do pagamento
-      totalAmount = Math.abs(payment.paid_amount || 0);
+      proportionalRent = Number(breakdown.proportionalRent || 0);
+      terminationFee = Number(breakdown.terminationFee || 0);
+      depositRefund = Number(breakdown.depositRefund || 0);
+      additionalExpenses = Number(breakdown.additionalExpenses || 0);
+      // Na rescisão, o total é a soma dos débitos menos os créditos (se for positivo a pagar)
+      // Mas confiamos no paidAmount se disponível, ou recalculamos
+      totalAmount = payment.paidAmount || (proportionalRent + terminationFee + additionalExpenses - depositRefund);
     } else {
-      // Pagamento normal
-      baseAmount = breakdown.baseAmount || breakdown.rentValue || payment.expected_amount || 0;
-      lateFee = breakdown.lateFee || 0;
-      interest = breakdown.interest || 0;
-      totalAmount = payment.paid_amount || 0;
+      baseAmount = Number(breakdown.baseAmount || breakdown.rentValue || payment.expectedAmount || 0);
+      lateFee = Number(breakdown.lateFee || 0);
+      interest = Number(breakdown.interest || 0);
+      // Se tiver paidAmount, usa ele (pois pode ser parcial). Se for paid, deve bater com a soma.
+      totalAmount = payment.paidAmount || (baseAmount + lateFee + interest);
     }
   } else {
-    // Fallback: usar valores diretos do payment
-    console.log("⚠️ Usando valores diretos do payment (sem breakdown)");
-    baseAmount = payment.expected_amount || 0;
-    lateFee = payment.late_fee || 0;
+    // Fallback se não tiver breakdown salvo (para pagamentos antigos)
+    baseAmount = payment.expectedAmount || 0;
+    lateFee = payment.lateFee || 0;
     interest = payment.interest || 0;
-    totalAmount = payment.paid_amount || 0;
+    totalAmount = payment.paidAmount || 0;
   }
 
-  console.log("💰 Valores calculados:", { 
-    totalAmount, 
-    baseAmount, 
-    lateFee, 
-    interest,
-    isTermination,
-    proportionalRent,
-    terminationFee,
-    depositRefund,
-    additionalExpenses
-  });
-
+  // --- Formatação de Datas e Parcelas ---
   const monthNames = [
     "janeiro", "fevereiro", "março", "abril", "maio", "junho",
     "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"
   ];
   
-  const referenceMonthName = monthNames[(payment.reference_month || 1) - 1];
+  const refMonth = payment.referenceMonth || 1;
+  const refYear = payment.referenceYear || new Date().getFullYear();
+  const referenceMonthName = monthNames[refMonth - 1];
 
   const safeDate = (dateString: string | undefined | null): Date => {
-    if (!dateString) {
-      console.warn("⚠️ Data ausente, usando data atual");
-      return new Date();
-    }
-    
-    try {
-      const date = new Date(dateString.split('T')[0] + 'T12:00:00');
-      
-      if (isNaN(date.getTime())) {
-        console.error("❌ Data inválida:", dateString);
-        return new Date();
-      }
-      
-      return date;
-    } catch (error) {
-      console.error("❌ Erro ao processar data:", dateString, error);
-      return new Date();
-    }
+    if (!dateString) return new Date();
+    // Adiciona T12:00:00 para evitar problemas de fuso horário voltando um dia
+    const datePart = dateString.split('T')[0];
+    return new Date(`${datePart}T12:00:00`);
   };
 
-  const formatSafeDate = (date: Date | string | undefined | null, formatStr: string): string => {
-    try {
-      if (!date) {
-        console.warn("⚠️ Data ausente em formatSafeDate");
-        return format(new Date(), formatStr, { locale: ptBR });
-      }
-      
-      let dateObj: Date;
-      
-      if (typeof date === "string") {
-        const cleanDate = date.split('T')[0] + 'T12:00:00';
-        dateObj = new Date(cleanDate);
-      } else {
-        dateObj = date;
-      }
-      
-      if (isNaN(dateObj.getTime())) {
-        console.error("❌ Data inválida em formatSafeDate:", date);
-        return format(new Date(), formatStr, { locale: ptBR });
-      }
-      
-      return format(dateObj, formatStr, { locale: ptBR });
-    } catch (error) {
-      console.error("❌ Erro ao formatar data:", date, error);
-      return format(new Date(), formatStr, { locale: ptBR });
-    }
+  const formatSafeDate = (date: Date | string, formatStr: string): string => {
+    const d = typeof date === 'string' ? safeDate(date) : date;
+    return format(d, formatStr, { locale: ptBR });
   };
 
-  const dueDate = safeDate(payment.due_date);
-  const contractStartDate = safeDate(rental.start_date);
-  const contractEndDate = safeDate(rental.end_date);
+  const dueDate = safeDate(payment.dueDate);
+  const contractStartDate = safeDate(rental.startDate);
+  const contractEndDate = safeDate(rental.endDate);
+  const paymentDate = payment.paymentDate ? safeDate(payment.paymentDate) : new Date();
 
-  // Usar rental.installments (número de parcelas do contrato) ao invés de total_installments
-  const totalMonths = rental.installments || 1;
-  
+  // Cálculo de parcelas
+  // Total de meses = diferença em meses entre fim e início do contrato
+  // Adiciona 1 dia ao fim para garantir que diferença de exatos meses seja contabilizada corretamente
+  const totalMonths = differenceInMonths(addDays(contractEndDate, 1), contractStartDate) || 1;
+
+  // Parcela atual baseada na data de referência
   let currentPaymentNumber = 1;
-
-  if (rental.start_date && payment.reference_year && payment.reference_month) {
-    try {
-      const referenceDate = new Date(
-        payment.reference_year, 
-        (payment.reference_month || 1) - 1, 
-        1
-      );
-      if (!isNaN(referenceDate.getTime())) {
-        currentPaymentNumber = differenceInMonths(referenceDate, contractStartDate) + 1;
-      }
-    } catch (error) {
-      console.error("Erro ao calcular currentPaymentNumber:", error);
-      currentPaymentNumber = 1;
-    }
+  try {
+    const referenceDate = new Date(refYear, refMonth - 1, 1);
+    // Adiciona 1 porque a primeira parcela é o mês 0 da diferença + 1
+    currentPaymentNumber = differenceInMonths(referenceDate, new Date(contractStartDate.getFullYear(), contractStartDate.getMonth(), 1)) + 1;
+    
+    // Ajustes de limite
+    if (currentPaymentNumber < 1) currentPaymentNumber = 1;
+    // Não limitamos ao totalMonths pois contratos podem ter renovado tacitamente ou ter atraso
+  } catch (e) {
+    console.error("Erro calculando parcela atual", e);
   }
 
-  console.log("📅 Parcelas:", { currentPaymentNumber, totalMonths, installments: rental.installments });
-
+  // --- Ações ---
   const handleDownloadPDF = () => {
     setLoading(true);
     setTimeout(() => {
@@ -260,75 +202,33 @@ export function PaymentReceipt({
     const subject = encodeURIComponent(`Recibo de Pagamento - ${property.address || property.location}`);
     const body = encodeURIComponent(
       `Prezado(a) ${tenant.name},\n\n` +
-      `Segue recibo de pagamento referente ao aluguel.\n\n` +
+      `Segue recibo de pagamento referente ao aluguel de ${referenceMonthName}/${refYear}.\n\n` +
       `Atenciosamente.`
     );
-    
     window.location.href = `mailto:${tenant.email || ""}?subject=${subject}&body=${body}`;
-    
-    toast({
-      title: "Email preparado",
-      description: "O cliente de email foi aberto.",
-    });
   };
 
   const handleShare = async () => {
-    const addressParts = [
-      property.address,
-      property.number,
-      property.complement,
-      property.neighborhood,
-      property.city,
-      property.state,
-      property.zip_code ? `CEP ${property.zip_code}` : ""
-    ].filter(Boolean);
-
     const shareText = 
       `RECIBO DE ALUGUEL\n\n` +
-      `Recebi dos Srs. ${tenant.name.toUpperCase()}, a importância de: ${numberToWords(totalAmount).toUpperCase()}\n\n` +
-      `Referente ao mês de ${referenceMonthName}/${payment.reference_year}, tendo seu vencimento em ${formatSafeDate(dueDate, "dd/MM/yyyy")}\n` +
-      `Imóvel: ${addressParts.join(", ").toUpperCase()}\n\n` +
-      `Valor: ${formatCurrency(baseAmount)}\n` +
-      (lateFee > 0 ? `Multa: ${formatCurrency(lateFee)}\n` : "") +
-      (interest > 0 ? `Juros: ${formatCurrency(interest)}\n` : "") +
-      `Total: ${formatCurrency(totalAmount)}\n\n` +
-      `SÃO PAULO, ${formatSafeDate(new Date(), "dd/MM/yyyy 'às' HH:mm")}`;
-
-    const shareData = {
-      title: `Recibo de Pagamento - ${property.address || property.location}`,
-      text: shareText,
-    };
+      `Recebi de: ${tenant.name.toUpperCase()}\n` +
+      `Valor: ${formatCurrency(totalAmount)}\n` +
+      `Ref: ${referenceMonthName}/${refYear}\n` +
+      `Vencimento: ${formatSafeDate(dueDate, "dd/MM/yyyy")}\n\n` +
+      `Recibo gerado em: ${formatSafeDate(new Date(), "dd/MM/yyyy HH:mm")}`;
 
     if (navigator.share) {
       try {
-        await navigator.share(shareData);
-        toast({
-          title: "Compartilhado",
-          description: "Recibo compartilhado com sucesso!",
+        await navigator.share({
+          title: "Recibo de Aluguel",
+          text: shareText
         });
-      } catch (error) {
-        if ((error as Error).name !== "AbortError") {
-          toast({
-            title: "Erro ao compartilhar",
-            description: "Não foi possível compartilhar o recibo.",
-            variant: "destructive",
-          });
-        }
+      } catch (err) {
+        console.error(err);
       }
     } else {
-      try {
-        await navigator.clipboard.writeText(shareData.text);
-        toast({
-          title: "Copiado!",
-          description: "Recibo copiado para a área de transferência.",
-        });
-      } catch (error) {
-        toast({
-          title: "Erro",
-          description: "Seu navegador não suporta compartilhamento.",
-          variant: "destructive",
-        });
-      }
+      navigator.clipboard.writeText(shareText);
+      toast({ title: "Copiado!", description: "Texto do recibo copiado." });
     }
   };
 
@@ -338,8 +238,8 @@ export function PaymentReceipt({
     property.complement,
     property.neighborhood,
     property.city,
-    property.state ? `${property.state}` : "",
-    property.zip_code ? `CEP ${property.zip_code}` : ""
+    property.state,
+    property.zipCode ? `CEP ${property.zipCode}` : ""
   ].filter(Boolean);
 
   const fullAddress = addressParts.join(", ");
@@ -355,8 +255,9 @@ export function PaymentReceipt({
         </DialogHeader>
 
         <div className="space-y-4 sm:space-y-6 print:p-8">
-          <Card className="receipt-content">
+          <Card className="receipt-content border-none shadow-none print:shadow-none">
             <CardContent className="pt-4 sm:pt-6 space-y-4 sm:space-y-6">
+              {/* Cabeçalho do Recibo */}
               <div className="text-center border-b pb-3 sm:pb-4">
                 <h2 className="text-xl sm:text-2xl font-bold uppercase">Recibo de Aluguel</h2>
                 <p className="text-xs sm:text-sm text-muted-foreground mt-2">
@@ -364,33 +265,28 @@ export function PaymentReceipt({
                 </p>
               </div>
 
+              {/* Corpo do Texto */}
               <div className="space-y-3 sm:space-y-4 text-xs sm:text-sm leading-relaxed text-justify">
                 <p>
-                  Recebi dos Srs. <span className="font-semibold uppercase">{tenant.name}</span>, a importância de <span className="font-semibold uppercase">{numberToWords(totalAmount)}</span>, proveniente ao depósito de aluguel referente ao mês de <span className="font-semibold">{referenceMonthName} de {payment.reference_year}</span>, tendo seu vencimento em <span className="font-semibold">{formatSafeDate(dueDate, "dd/MM/yyyy")}</span>, do imóvel situado em <span className="font-semibold uppercase">{fullAddress}</span>, após a apresentação dos comprovantes de depósito bancário e contas de água e luz do mês anterior pagas, sendo este vinculado ao INSTRUMENTO PARTICULAR DE CONTRATO DE LOCAÇÃO PARA FIM RESIDENCIAL, assinado entre as partes em <span className="font-semibold">{formatSafeDate(rental.start_date, "dd/MM/yyyy")}</span>.
+                  Recebi dos Srs. <span className="font-semibold uppercase">{tenant.name}</span>, a importância de <span className="font-semibold uppercase">{numberToWords(totalAmount)}</span> ({formatCurrency(totalAmount)}), proveniente ao depósito de aluguel referente ao mês de <span className="font-semibold">{referenceMonthName} de {refYear}</span>, tendo seu vencimento em <span className="font-semibold">{formatSafeDate(dueDate, "dd/MM/yyyy")}</span>, do imóvel situado em <span className="font-semibold uppercase">{fullAddress}</span>, após a apresentação dos comprovantes de depósito bancário e contas de água e luz do mês anterior pagas, sendo este vinculado ao INSTRUMENTO PARTICULAR DE CONTRATO DE LOCAÇÃO PARA FIM RESIDENCIAL, assinado entre as partes em <span className="font-semibold">{formatSafeDate(rental.startDate, "dd/MM/yyyy")}</span>.
                 </p>
               </div>
 
+              {/* Detalhamento de Valores */}
               <div className="border-t pt-3 sm:pt-4 space-y-2">
                 <p className="font-semibold text-xs sm:text-sm mb-2 sm:mb-3">Valores:</p>
                 <div className="space-y-1 text-xs sm:text-sm">
                   {isTermination ? (
+                    // Layout para Rescisão
                     <>
-                      {proportionalRent > 0 && (
-                        <div className="flex justify-between">
-                          <span>Aluguel Proporcional:</span>
-                          <span className="font-semibold">{formatCurrency(proportionalRent)}</span>
-                        </div>
-                      )}
+                      <div className="flex justify-between">
+                        <span>Aluguel Proporcional:</span>
+                        <span className="font-semibold">{formatCurrency(proportionalRent)}</span>
+                      </div>
                       {terminationFee > 0 && (
                         <div className="flex justify-between">
                           <span>Multa Rescisória:</span>
                           <span className="font-semibold">{formatCurrency(terminationFee)}</span>
-                        </div>
-                      )}
-                      {depositRefund > 0 && (
-                        <div className="flex justify-between">
-                          <span>Devolução de Caução:</span>
-                          <span className="font-semibold text-red-600">-{formatCurrency(depositRefund)}</span>
                         </div>
                       )}
                       {additionalExpenses > 0 && (
@@ -399,11 +295,18 @@ export function PaymentReceipt({
                           <span className="font-semibold">{formatCurrency(additionalExpenses)}</span>
                         </div>
                       )}
+                      {depositRefund > 0 && (
+                        <div className="flex justify-between text-red-600">
+                          <span>Devolução de Caução:</span>
+                          <span className="font-semibold">-{formatCurrency(depositRefund)}</span>
+                        </div>
+                      )}
                     </>
                   ) : (
+                    // Layout Padrão
                     <>
                       <div className="flex justify-between">
-                        <span>Valor:</span>
+                        <span>Valor Base:</span>
                         <span className="font-semibold">{formatCurrency(baseAmount)}</span>
                       </div>
                       <div className="flex justify-between">
@@ -416,14 +319,17 @@ export function PaymentReceipt({
                       </div>
                     </>
                   )}
-                  <div className="flex justify-between border-t pt-1 mt-1">
-                    <span className="font-semibold">Total:</span>
-                    <span className="font-semibold text-base sm:text-lg">{formatCurrency(totalAmount)}</span>
+                  
+                  {/* Totalizador Geral */}
+                  <div className="flex justify-between border-t pt-2 mt-2">
+                    <span className="font-bold text-base">Total Pago:</span>
+                    <span className="font-bold text-base">{formatCurrency(totalAmount)}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="border-t pt-4 sm:pt-6 space-y-6 sm:space-y-8">
+              {/* Rodapé e Assinatura */}
+              <div className="border-t pt-4 sm:pt-6 space-y-6 sm:space-y-8 mt-4">
                 <div className="text-center">
                   <p className="font-semibold uppercase text-xs sm:text-sm">
                     São Paulo, {formatSafeDate(new Date(), "dd 'de' MMMM 'de' yyyy, HH:mm")}
@@ -453,6 +359,7 @@ export function PaymentReceipt({
             </CardContent>
           </Card>
 
+          {/* Botões de Ação */}
           <div className="flex flex-col sm:flex-row flex-wrap justify-end gap-2 print:hidden">
             <Button variant="outline" onClick={onClose} className="h-11 w-full sm:w-auto order-last sm:order-first">
               <X className="mr-2 h-4 w-4" />
