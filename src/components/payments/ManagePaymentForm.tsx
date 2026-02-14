@@ -14,7 +14,7 @@ import { Camera, Paperclip, Home, User, DollarSign, CreditCard, FileText, Edit, 
 import type { Payment, Rental, Property, Tenant } from "@/types";
 import { calculateCorrectedDeposit } from "@/services/igpmService";
 import { maskTime } from "@/lib/masks";
-import { Tooltip } from "sonnerie";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface ManagePaymentFormProps {
   paymentId: string;
@@ -223,6 +223,13 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         notes: paymentData.notes || "",
         pix_code_type: (paymentData as any).pix_code_type || "CP",
       });
+
+      if ((paymentData as any).payment_time) {
+        const [h, m, s] = (paymentData as any).payment_time.split(":");
+        setPaymentHour(h || "");
+        setPaymentMinute(m || "");
+        setPaymentSecond(s || "00");
+      }
       
     } catch (error) {
       console.error("Erro ao carregar dados do pagamento:", error);
@@ -537,7 +544,9 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       const paymentDataUpdate = {
         payment_date: formData.payment_date,
         payment_method: formData.payment_method,
-        payment_time: formData.payment_time || null,
+        payment_time: formData.payment_method === "pix" 
+          ? `${paymentHour.padStart(2, '0')}:${paymentMinute.padStart(2, '0')}:${paymentSecond.padStart(2, '0')}`
+          : null,
         paid_amount: totalPaid,
         notes: formData.notes,
         status: paymentStatus,
@@ -766,8 +775,24 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                                 {isDepositDeduction ? "Devolução de Caução" : item.description}
                               </span>
                               {isDepositDeduction && (
-                                <span className="block text-xs text-muted-foreground">
-                                  (corrigido pela Taxa da Poupança)
+                                <span className="block text-xs text-muted-foreground mt-1">
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <span className="cursor-help underline decoration-dotted hover:text-primary transition-colors">
+                                          (corrigido pela Taxa da Poupança)
+                                        </span>
+                                      </TooltipTrigger>
+                                      <TooltipContent className="max-w-[350px] p-4 bg-white dark:bg-gray-800 border shadow-lg z-50">
+                                        <div className="space-y-2">
+                                          <p className="font-semibold text-sm border-b pb-2 mb-2">Detalhes da Correção (Taxa da Poupança)</p>
+                                          <div className="text-xs whitespace-pre-wrap max-h-[300px] overflow-y-auto font-mono">
+                                            {igpmCorrection?.igpmDetails || "Detalhes de correção não disponíveis."}
+                                          </div>
+                                        </div>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
                                 </span>
                               )}
                             </div>
@@ -968,7 +993,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                     <Label htmlFor="payment_time">
                       Horário do Recebimento <span className="text-red-500">*</span>
                     </Label>
-                    <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-center">
+                    <div className="grid grid-cols-[1fr_auto_1fr_auto_1fr] gap-2 items-center">
                       <Input
                         id="payment_hour"
                         type="text"
@@ -997,6 +1022,23 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                           const value = e.target.value.replace(/\D/g, '');
                           if (value === '' || (parseInt(value) >= 0 && parseInt(value) <= 59)) {
                             setPaymentMinute(value);
+                          }
+                        }}
+                        required
+                        disabled={isReadOnly}
+                      />
+                      <span className="text-2xl font-bold">:</span>
+                      <Input
+                        id="payment_second"
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="SS"
+                        maxLength={2}
+                        value={paymentSecond}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/\D/g, '');
+                          if (value === '' || (parseInt(value) >= 0 && parseInt(value) <= 59)) {
+                            setPaymentSecond(value);
                           }
                         }}
                         required

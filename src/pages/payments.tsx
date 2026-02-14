@@ -388,7 +388,7 @@ export default function PaymentsPage() {
       <Dialog open={!!selectedPaymentId} onOpenChange={(open) => !open && setSelectedPaymentId(null)}>
         <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Detalhes do Recebimento</DialogTitle>
+            <DialogTitle className="hidden">Detalhes do Recebimento</DialogTitle>
           </DialogHeader>
           {selectedPaymentId && (
             <ManagePaymentForm
