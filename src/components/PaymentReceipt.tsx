@@ -338,7 +338,11 @@ export function PaymentReceipt({
                   </div>
                   <div className="flex justify-between">
                     <span>Multa:</span>
-                    <span className="font-semibold">{totalCharges > 0 ? formatCurrency(totalCharges) : "R$ ___"}</span>
+                    <span className="font-semibold">{lateFee > 0 ? formatCurrency(lateFee) : "R$ ___"}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Juros:</span>
+                    <span className="font-semibold">{interest > 0 ? formatCurrency(interest) : "R$ ___"}</span>
                   </div>
                   <div className="flex justify-between border-t pt-1 mt-1">
                     <span className="font-semibold">Total:</span>
