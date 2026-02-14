@@ -711,6 +711,8 @@ export function ManagePaymentForm({ paymentId, rentalId, onSuccess, onClose, emb
 
       } else if (rentalId) {
         // CREATE NEW PAYMENT
+        const paymentDateObj = new Date(formData.payment_date);
+        
         const newPaymentData = {
           rental_id: rentalId,
           payment_date: formData.payment_date,
@@ -724,6 +726,9 @@ export function ManagePaymentForm({ paymentId, rentalId, onSuccess, onClose, emb
           late_fee: 0,
           interest: 0,
           pix_code_type: formData.pix_code_type,
+          due_date: formData.payment_date,
+          reference_month: paymentDateObj.getMonth() + 1,
+          reference_year: paymentDateObj.getFullYear(),
         };
 
         const { data: insertedPayment, error: insertError } = await supabase
@@ -740,8 +745,25 @@ export function ManagePaymentForm({ paymentId, rentalId, onSuccess, onClose, emb
         });
 
         if (onSuccess) {
+          const paymentForReceipt: Payment = {
+            id: insertedPayment.id,
+            rentalId: insertedPayment.rental_id,
+            dueDate: insertedPayment.due_date,
+            expectedAmount: insertedPayment.expected_amount,
+            paidAmount: insertedPayment.paid_amount,
+            paymentDate: insertedPayment.payment_date,
+            status: insertedPayment.status as "pending" | "paid" | "partial" | "late",
+            paymentMethod: insertedPayment.payment_method,
+            notes: insertedPayment.notes,
+            referenceMonth: insertedPayment.reference_month,
+            referenceYear: insertedPayment.reference_year,
+            attachments: (insertedPayment.attachments as string[]) || [],
+            lateFee: insertedPayment.late_fee || 0,
+            interest: insertedPayment.interest || 0,
+          };
+
           onSuccess({
-             payment: insertedPayment, 
+             payment: paymentForReceipt, 
              rental, property, tenant 
           });
         } else if (onClose) {
