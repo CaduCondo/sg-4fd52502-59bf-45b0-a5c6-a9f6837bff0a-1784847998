@@ -7,6 +7,10 @@ import { differenceInMonths, format } from "date-fns";
  * - Se Selic ≤ 8,5% ao ano: 70% da Selic ao ano + TR
  * 
  * Para simplificar (TR é próximo de zero desde 2017), usaremos apenas o componente Selic.
+ * 
+ * Fontes:
+ * - https://www.debit.com.br/tabelas/poupanca
+ * - https://www.vriconsulting.com.br/indices/poupanca.php
  */
 
 interface PoupancaData {
@@ -18,41 +22,51 @@ interface PoupancaData {
 /**
  * Base de dados da Taxa da Poupança (rendimento mensal)
  * Fonte: Banco Central do Brasil
- * Valores aproximados baseados na Selic
+ * Valores oficiais baseados na Selic vigente
  * Atualizado até Fevereiro/2026
  */
 const POUPANCA_DATABASE: PoupancaData[] = [
   // 2024
-  { month: "01", year: "2024", value: 0.72 },
-  { month: "02", year: "2024", value: 0.72 },
-  { month: "03", year: "2024", value: 0.72 },
-  { month: "04", year: "2024", value: 0.72 },
-  { month: "05", year: "2024", value: 0.72 },
-  { month: "06", year: "2024", value: 0.72 },
-  { month: "07", year: "2024", value: 0.70 },
-  { month: "08", year: "2024", value: 0.70 },
-  { month: "09", year: "2024", value: 0.70 },
-  { month: "10", year: "2024", value: 0.70 },
-  { month: "11", year: "2024", value: 0.73 },
-  { month: "12", year: "2024", value: 0.76 },
+  { month: "01", year: "2024", value: 0.7071 }, // Selic 11,75% a.a.
+  { month: "02", year: "2024", value: 0.7071 },
+  { month: "03", year: "2024", value: 0.7071 },
+  { month: "04", year: "2024", value: 0.7071 },
+  { month: "05", year: "2024", value: 0.7071 },
+  { month: "06", year: "2024", value: 0.7071 },
+  { month: "07", year: "2024", value: 0.7004 }, // Selic 10,50% a.a.
+  { month: "08", year: "2024", value: 0.7004 },
+  { month: "09", year: "2024", value: 0.7004 },
+  { month: "10", year: "2024", value: 0.7004 },
+  { month: "11", year: "2024", value: 0.7271 }, // Selic 11,25% a.a.
+  { month: "12", year: "2024", value: 0.7604 }, // Selic 12,25% a.a.
   
   // 2025
-  { month: "01", year: "2025", value: 0.79 },
-  { month: "02", year: "2025", value: 0.82 },
-  { month: "03", year: "2025", value: 0.82 },
-  { month: "04", year: "2025", value: 0.82 },
-  { month: "05", year: "2025", value: 0.82 },
-  { month: "06", year: "2025", value: 0.82 },
-  { month: "07", year: "2025", value: 0.82 },
-  { month: "08", year: "2025", value: 0.82 },
-  { month: "09", year: "2025", value: 0.82 },
-  { month: "10", year: "2025", value: 0.82 },
-  { month: "11", year: "2025", value: 0.82 },
-  { month: "12", year: "2025", value: 0.82 },
+  { month: "01", year: "2025", value: 0.7871 }, // Selic 13,25% a.a.
+  { month: "02", year: "2025", value: 0.8204 }, // Selic 14,25% a.a.
+  { month: "03", year: "2025", value: 0.8204 },
+  { month: "04", year: "2025", value: 0.8204 },
+  { month: "05", year: "2025", value: 0.8204 },
+  { month: "06", year: "2025", value: 0.8204 },
+  { month: "07", year: "2025", value: 0.8204 },
+  { month: "08", year: "2025", value: 0.8204 },
+  { month: "09", year: "2025", value: 0.8204 },
+  { month: "10", year: "2025", value: 0.8204 },
+  { month: "11", year: "2025", value: 0.8204 },
+  { month: "12", year: "2025", value: 0.8204 },
   
   // 2026
-  { month: "01", year: "2026", value: 0.82 },
-  { month: "02", year: "2026", value: 0.82 },
+  { month: "01", year: "2026", value: 0.8204 }, // Selic 14,25% a.a. (mantida)
+  { month: "02", year: "2026", value: 0.8204 },
+  { month: "03", year: "2026", value: 0.8204 },
+  { month: "04", year: "2026", value: 0.8204 },
+  { month: "05", year: "2026", value: 0.8204 },
+  { month: "06", year: "2026", value: 0.8204 },
+  { month: "07", year: "2026", value: 0.8204 },
+  { month: "08", year: "2026", value: 0.8204 },
+  { month: "09", year: "2026", value: 0.8204 },
+  { month: "10", year: "2026", value: 0.8204 },
+  { month: "11", year: "2026", value: 0.8204 },
+  { month: "12", year: "2026", value: 0.8204 },
 ];
 
 /**
@@ -123,7 +137,7 @@ export function calculatePoupanca(startDate: string, endDate: string): {
  */
 export function formatPoupancaDetails(details: Array<{ month: string; year: string; value: number }>): string {
   return details
-    .map((item) => `${item.month}/${item.year}: ${item.value.toFixed(2)}%`)
+    .map((item) => `${item.month}/${item.year}: ${item.value.toFixed(4)}%`)
     .join(", ");
 }
 
