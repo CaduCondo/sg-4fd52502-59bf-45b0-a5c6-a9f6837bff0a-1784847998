@@ -246,6 +246,8 @@ export interface Payment {
   totalInstallments?: number;
   installmentNumber?: number; // Legacy alias
 
+  breakdown?: any; // Adicionado para suportar JSON de detalhamento de valores
+
   partialPayments?: any[];
   createdAt?: string;
   updatedAt?: string;
