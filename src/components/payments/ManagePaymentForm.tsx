@@ -137,30 +137,44 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       
       console.log("🔍 [DEBUG] É rescisão?", isTermination);
 
-      let igpmCorrectionValue = null;
+      const igpmCorrectionValue = null;
       if (isTermination && paymentData.rentals) {
         const startDate = paymentData.rentals.start_date;
         const endDate = paymentData.rentals.end_date || paymentData.due_date;
-        const originalDeposit = paymentData.rentals.security_deposit || 0;
+        
+        const depositFromSecurityDeposit = paymentData.rentals.security_deposit;
+        const depositFromDepositValue = paymentData.rentals.deposit_value;
+        const depositFromDepositText = paymentData.rentals.deposit 
+          ? parseFloat(paymentData.rentals.deposit) 
+          : 0;
+
+        console.log("📊 [DEBUG] VALORES DE CAUÇÃO DISPONÍVEIS:");
+        console.log("  • security_deposit:", depositFromSecurityDeposit);
+        console.log("  • deposit_value:", depositFromDepositValue);
+        console.log("  • deposit (texto):", paymentData.rentals.deposit);
+        console.log("  • deposit parseado:", depositFromDepositText);
+
+        const originalDeposit = depositFromSecurityDeposit || 
+                                depositFromDepositValue || 
+                                depositFromDepositText || 
+                                0;
+
+        console.log("💰 [DEBUG] Valor do caução escolhido:", originalDeposit);
+        if (depositFromSecurityDeposit) {
+          console.log("  Fonte: security_deposit");
+        } else if (depositFromDepositValue) {
+          console.log("  Fonte: deposit_value");
+        } else if (depositFromDepositText) {
+          console.log("  Fonte: deposit (texto parseado)");
+        } else {
+          console.log("  Fonte: nenhuma (todos zerados)");
+        }
         
         console.log("🔍 [DEBUG] Dados para IGPM:", {
           startDate,
           endDate,
           originalDeposit
         });
-        
-        if (originalDeposit > 0 && startDate && endDate) {
-          igpmCorrectionValue = calculateCorrectedDeposit(originalDeposit, startDate, endDate);
-          setIgpmCorrection(igpmCorrectionValue);
-          
-          console.log("💰 [DEBUG] Correção IGPM calculada e SALVA NO ESTADO:");
-          console.log("💰 [DEBUG] - Original:", igpmCorrectionValue.originalAmount);
-          console.log("💰 [DEBUG] - Corrigido:", igpmCorrectionValue.correctedAmount);
-          console.log("💰 [DEBUG] - Percentual:", igpmCorrectionValue.poupancaPercentage);
-          console.log("💰 [DEBUG] - Detalhes:", igpmCorrectionValue.poupancaDetails?.substring(0, 100) + "...");
-        } else {
-          console.log("⚠️ [DEBUG] Não calculou IGPM - dados faltando");
-        }
       }
 
       if (paymentData.breakdown) {
