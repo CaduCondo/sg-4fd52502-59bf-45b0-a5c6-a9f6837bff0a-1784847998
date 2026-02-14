@@ -1,6 +1,6 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -16,6 +16,25 @@ interface TenantFormDialogProps {
   isViewMode?: boolean;
 }
 
+const getInitialFormData = (): Partial<Tenant> => ({
+  name: "",
+  email: "",
+  phone: "",
+  documentType: "cpf",
+  document: "",
+  cpf: "",
+  cnpj: "",
+  rg: "",
+  cep: "",
+  street: "",
+  number: "",
+  complement: "",
+  neighborhood: "",
+  city: "",
+  state: "",
+  status: "active",
+});
+
 export function TenantFormDialog({
   open,
   onOpenChange,
@@ -26,74 +45,41 @@ export function TenantFormDialog({
   const [isEditing, setIsEditing] = useState(!isViewMode);
   const [documentType, setDocumentType] = useState<"cpf" | "cnpj">("cpf");
   const [loadingCep, setLoadingCep] = useState(false);
-  const [formData, setFormData] = useState<Partial<Tenant>>({
-    name: "",
-    email: "",
-    phone: "",
-    documentType: "cpf",
-    document: "",
-    cpf: "",
-    cnpj: "",
-    rg: "",
-    cep: "",
-    street: "",
-    number: "",
-    complement: "",
-    neighborhood: "",
-    city: "",
-    state: "",
-    status: "active",
-  });
+  const [formData, setFormData] = useState<Partial<Tenant>>(getInitialFormData());
 
-  const initializedRef = useRef(false);
-
+  // Carrega os dados quando o dialog abre ou o tenant muda
   useEffect(() => {
-    if (open) {
-      setIsEditing(!isViewMode);
+    if (!open) return;
+
+    setIsEditing(!isViewMode);
+
+    if (tenant) {
+      const docType = tenant.document_type || tenant.documentType || "cpf";
       
-      if (tenant) {
-        const docType = tenant.document_type || tenant.documentType || "cpf";
-        const newFormData = {
-          name: tenant.name || "",
-          email: tenant.email || "",
-          phone: tenant.phone || "",
-          documentType: docType,
-          document: tenant.document || "",
-          cpf: tenant.cpf || (docType === "cpf" ? tenant.document : "") || "",
-          cnpj: tenant.cnpj || (docType === "cnpj" ? tenant.document : "") || "",
-          rg: tenant.rg || "",
-          cep: tenant.cep || "",
-          street: tenant.street || "",
-          number: tenant.number || "",
-          complement: tenant.complement || "",
-          neighborhood: tenant.neighborhood || "",
-          city: tenant.city || "",
-          state: tenant.state || "",
-          status: tenant.status || "active",
-        };
-        setFormData(newFormData);
-        setDocumentType(docType);
-      } else {
-        setFormData({
-          name: "",
-          email: "",
-          phone: "",
-          documentType: "cpf",
-          document: "",
-          cpf: "",
-          cnpj: "",
-          rg: "",
-          cep: "",
-          street: "",
-          number: "",
-          complement: "",
-          neighborhood: "",
-          city: "",
-          state: "",
-          status: "active",
-        });
-        setDocumentType("cpf");
-      }
+      const newFormData: Partial<Tenant> = {
+        name: tenant.name || "",
+        email: tenant.email || "",
+        phone: tenant.phone || "",
+        documentType: docType,
+        document: tenant.document || "",
+        cpf: tenant.cpf || (docType === "cpf" ? tenant.document : "") || "",
+        cnpj: tenant.cnpj || (docType === "cnpj" ? tenant.document : "") || "",
+        rg: tenant.rg || "",
+        cep: tenant.cep || "",
+        street: tenant.street || "",
+        number: tenant.number || "",
+        complement: tenant.complement || "",
+        neighborhood: tenant.neighborhood || "",
+        city: tenant.city || "",
+        state: tenant.state || "",
+        status: tenant.status || "active",
+      };
+
+      setFormData(newFormData);
+      setDocumentType(docType);
+    } else {
+      setFormData(getInitialFormData());
+      setDocumentType("cpf");
     }
   }, [open, tenant, isViewMode]);
 
@@ -191,7 +177,7 @@ export function TenantFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent key={tenant ? tenant.id : "new"} className="max-w-2xl max-h-[90vh] sm:max-h-[85vh] overflow-y-auto p-4 sm:p-6">
+      <DialogContent className="max-w-2xl max-h-[90vh] sm:max-h-[85vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader className="space-y-2 pb-3">
           <DialogTitle className="text-base sm:text-lg font-bold">
             {tenant && isViewMode && !isEditing
@@ -214,7 +200,7 @@ export function TenantFormDialog({
                 <Label htmlFor="name" className="text-sm font-medium">Nome Completo *</Label>
                 <Input
                   id="name"
-                  value={formData.name}
+                  value={formData.name || ""}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="Nome completo"
                   required
@@ -227,7 +213,7 @@ export function TenantFormDialog({
                 <Label htmlFor="document" className="text-sm font-medium">CPF/CNPJ *</Label>
                 <Input
                   id="document"
-                  value={documentType === "cpf" ? formData.cpf : formData.cnpj}
+                  value={documentType === "cpf" ? (formData.cpf || "") : (formData.cnpj || "")}
                   onChange={documentType === "cpf" ? handleCpfChange : handleCnpjChange}
                   placeholder={documentType === "cpf" ? "000.000.000-00" : "00.000.000/0000-00"}
                   required
@@ -241,7 +227,7 @@ export function TenantFormDialog({
                   <Label htmlFor="rg" className="text-sm font-medium">RG</Label>
                   <Input
                     id="rg"
-                    value={formData.rg}
+                    value={formData.rg || ""}
                     onChange={handleRgChange}
                     placeholder="00.000.000-0"
                     disabled={!isEditing}
@@ -254,7 +240,7 @@ export function TenantFormDialog({
                 <Label htmlFor="phone" className="text-sm font-medium">Telefone *</Label>
                 <Input
                   id="phone"
-                  value={formData.phone}
+                  value={formData.phone || ""}
                   onChange={handlePhoneChange}
                   placeholder="(00) 00000-0000"
                   required
@@ -268,7 +254,7 @@ export function TenantFormDialog({
                 <Input
                   id="email"
                   type="email"
-                  value={formData.email}
+                  value={formData.email || ""}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   placeholder="email@exemplo.com"
                   required
@@ -307,7 +293,7 @@ export function TenantFormDialog({
                 <div className="relative">
                   <Input
                     id="cep"
-                    value={formData.cep}
+                    value={formData.cep || ""}
                     onChange={handleCepChange}
                     placeholder="00000-000"
                     disabled={!isEditing}
@@ -323,7 +309,7 @@ export function TenantFormDialog({
                 <Label htmlFor="street" className="text-sm font-medium">Rua/Logradouro</Label>
                 <Input
                   id="street"
-                  value={formData.street}
+                  value={formData.street || ""}
                   onChange={(e) => setFormData({ ...formData, street: e.target.value })}
                   placeholder="Rua, avenida, etc."
                   disabled={!isEditing}
@@ -335,7 +321,7 @@ export function TenantFormDialog({
                 <Label htmlFor="number" className="text-sm font-medium">Número</Label>
                 <Input
                   id="number"
-                  value={formData.number}
+                  value={formData.number || ""}
                   onChange={(e) => setFormData({ ...formData, number: e.target.value })}
                   placeholder="123"
                   disabled={!isEditing}
@@ -347,7 +333,7 @@ export function TenantFormDialog({
                 <Label htmlFor="complement" className="text-sm font-medium">Complemento</Label>
                 <Input
                   id="complement"
-                  value={formData.complement}
+                  value={formData.complement || ""}
                   onChange={(e) => setFormData({ ...formData, complement: e.target.value })}
                   placeholder="Apto, casa, etc."
                   disabled={!isEditing}
@@ -359,7 +345,7 @@ export function TenantFormDialog({
                 <Label htmlFor="neighborhood" className="text-sm font-medium">Bairro</Label>
                 <Input
                   id="neighborhood"
-                  value={formData.neighborhood}
+                  value={formData.neighborhood || ""}
                   onChange={(e) => setFormData({ ...formData, neighborhood: e.target.value })}
                   placeholder="Bairro"
                   disabled={!isEditing}
@@ -371,7 +357,7 @@ export function TenantFormDialog({
                 <Label htmlFor="city" className="text-sm font-medium">Cidade</Label>
                 <Input
                   id="city"
-                  value={formData.city}
+                  value={formData.city || ""}
                   onChange={(e) => setFormData({ ...formData, city: e.target.value })}
                   placeholder="Cidade"
                   disabled={!isEditing}
@@ -383,7 +369,7 @@ export function TenantFormDialog({
                 <Label htmlFor="state" className="text-sm font-medium">Estado</Label>
                 <Input
                   id="state"
-                  value={formData.state}
+                  value={formData.state || ""}
                   onChange={(e) => setFormData({ ...formData, state: e.target.value.toUpperCase().slice(0, 2) })}
                   placeholder="UF"
                   maxLength={2}
