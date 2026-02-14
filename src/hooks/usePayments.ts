@@ -267,7 +267,7 @@ export function usePayments() {
         description: "Pagamento cancelado com sucesso",
       });
 
-      await loadPayments();
+      // Não recarregar aqui - deixar a página controlar o reload com filtros
     } catch (error) {
       console.error("Erro ao cancelar pagamento:", error);
       toast({
@@ -275,6 +275,7 @@ export function usePayments() {
         description: "Erro ao cancelar pagamento",
         variant: "destructive",
       });
+      throw error; // Re-throw para a página tratar
     }
   };
 

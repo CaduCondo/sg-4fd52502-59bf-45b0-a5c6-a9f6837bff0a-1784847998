@@ -17,6 +17,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { ManagePaymentForm } from "@/components/payments/ManagePaymentForm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PaymentFilters } from "@/components/payments/PaymentFilters";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function PaymentsPage() {
   const router = useRouter();
@@ -35,6 +45,7 @@ export default function PaymentsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "paid" | "pending" | "overdue">("all");
   const [selectedPaymentId, setSelectedPaymentId] = useState<string | null>(null);
+  const [paymentToCancel, setPaymentToCancel] = useState<string | null>(null);
   const mountedRef = useRef(false);
 
   const [filters, setFilters] = useState({
@@ -96,6 +107,19 @@ export default function PaymentsPage() {
     }
   }, []);
 
+  const confirmCancelPayment = useCallback(async () => {
+    if (!paymentToCancel) return;
+
+    try {
+      await cancelPayment(paymentToCancel);
+      // Recarregar pagamentos mantendo os filtros atuais
+      await loadPayments(filters.month.toString(), filters.year.toString());
+      setPaymentToCancel(null);
+    } catch (error) {
+      // Erro já tratado no hook
+    }
+  }, [paymentToCancel, cancelPayment, loadPayments, filters.month, filters.year]);
+
   const handleCancelPayment = useCallback(async (paymentId: string) => {
     if (!canDelete) {
       toast({
@@ -106,17 +130,9 @@ export default function PaymentsPage() {
       return;
     }
 
-    try {
-      await cancelPayment(paymentId);
-      // refreshPayments é chamado dentro de deletePayment ou precisa ser chamado aqui?
-      // O hook usePayments não expõe o refresh automático no handleCancelPayment,
-      // mas podemos chamar refreshPayments manualmente se necessário.
-      // O hook original atualiza o estado local ou refaz o fetch?
-      // Analisando usePayments: handleCancelPayment chama loadPayments ao final.
-    } catch (error) {
-      // Erro já tratado no hook
-    }
-  }, [canDelete, cancelPayment, toast]);
+    // Mostrar dialog de confirmação
+    setPaymentToCancel(paymentId);
+  }, [canDelete, toast]);
 
   const handleViewReceipt = useCallback((payment: Payment) => {
     setSelectedPayment(payment);
@@ -371,6 +387,31 @@ export default function PaymentsPage() {
           </Tabs>
         )}
       </div>
+
+      {/* Dialog de confirmação de cancelamento */}
+      <AlertDialog open={!!paymentToCancel} onOpenChange={(open) => !open && setPaymentToCancel(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Cancelamento</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja cancelar este recebimento? Esta ação irá:
+              <ul className="list-disc list-inside mt-2 space-y-1">
+                <li>Alterar o status para "Pendente"</li>
+                <li>Remover a data e hora do pagamento</li>
+                <li>Zerar o valor pago</li>
+                <li>Remover o método de pagamento</li>
+                <li>Remover anexos</li>
+              </ul>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmCancelPayment} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Confirmar Cancelamento
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {showReceiptDialog && selectedPayment && (
         <PaymentReceipt
