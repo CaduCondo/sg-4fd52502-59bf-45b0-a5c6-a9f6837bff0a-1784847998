@@ -130,8 +130,14 @@ export default function PaymentsPage() {
       return;
     }
 
-    // Mostrar dialog de confirmação
-    setPaymentToCancel(paymentId);
+    // Fechar o dialog de recebimento antes de abrir o AlertDialog
+    setSelectedPaymentId(null);
+    setShowReceiptDialog(false);
+    
+    // Aguardar um pouco para o dialog fechar antes de abrir o AlertDialog
+    setTimeout(() => {
+      setPaymentToCancel(paymentId);
+    }, 100);
   }, [canDelete, toast]);
 
   const handleViewReceipt = useCallback((payment: Payment) => {
@@ -393,15 +399,17 @@ export default function PaymentsPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar Cancelamento</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja cancelar este recebimento? Esta ação irá:
-              <ul className="list-disc list-inside mt-2 space-y-1">
-                <li>Alterar o status para "Pendente"</li>
-                <li>Remover a data e hora do pagamento</li>
-                <li>Zerar o valor pago</li>
-                <li>Remover o método de pagamento</li>
-                <li>Remover anexos</li>
-              </ul>
+            <AlertDialogDescription asChild>
+              <div>
+                Tem certeza que deseja cancelar este recebimento? Esta ação irá:
+                <ul className="list-disc list-inside mt-2 space-y-1">
+                  <li>Alterar o status para "Pendente"</li>
+                  <li>Remover a data e hora do pagamento</li>
+                  <li>Zerar o valor pago</li>
+                  <li>Remover o método de pagamento</li>
+                  <li>Remover anexos</li>
+                </ul>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -435,8 +443,18 @@ export default function PaymentsPage() {
             <ManagePaymentForm
               paymentId={selectedPaymentId}
               onSuccess={() => {
+                const payment = payments.find(p => p.id === selectedPaymentId);
                 setSelectedPaymentId(null);
                 loadPayments(filters.month.toString(), filters.year.toString());
+                
+                // Se o pagamento foi confirmado (status = paid), abrir o recibo
+                if (payment && payment.status === "paid") {
+                  setTimeout(() => {
+                    setSelectedPayment(payment);
+                    setShowReceiptDialog(true);
+                  }, 300);
+                }
+                
                 toast({
                   title: "Sucesso!",
                   description: "Recebimento atualizado com sucesso.",
