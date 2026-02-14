@@ -42,7 +42,7 @@ export function TenantFormDialog({
   const [neighborhood, setNeighborhood] = useState("");
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
-  const [status, setStatus] = useState<"active" | "inactive">("active");
+  const [status, setStatus] = useState<"active" | "inactive" | "rented">("active");
 
   // Carrega os dados quando o dialog abre ou o tenant muda
   useEffect(() => {
@@ -273,7 +273,7 @@ export function TenantFormDialog({
                   <Label htmlFor="status" className="text-sm font-medium">Status *</Label>
                   <Select
                     value={status}
-                    onValueChange={(value) => setStatus(value as "active" | "inactive")}
+                    onValueChange={(value) => setStatus(value as "active" | "inactive" | "rented")}
                     disabled={!isEditing}
                   >
                     <SelectTrigger className="h-11 sm:h-10">
@@ -282,6 +282,7 @@ export function TenantFormDialog({
                     <SelectContent>
                       <SelectItem value="active">Ativo</SelectItem>
                       <SelectItem value="inactive">Inativo</SelectItem>
+                      {status === "rented" && <SelectItem value="rented">Alugado</SelectItem>}
                     </SelectContent>
                   </Select>
                 </div>
