@@ -440,7 +440,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       return;
     }
 
-    if (formData.payment_method === "pix" && !formData.payment_time) {
+    if (formData.payment_method === "pix" && (!paymentHour || !paymentMinute)) {
       toast({
         title: "Atenção",
         description: "Informe o horário do recebimento para pagamentos via PIX",
