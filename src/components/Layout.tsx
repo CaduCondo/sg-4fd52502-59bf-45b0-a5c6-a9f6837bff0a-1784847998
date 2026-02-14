@@ -45,7 +45,7 @@ interface LayoutProps {
 export function Layout({ children }: LayoutProps) {
   const router = useRouter();
   const { toast } = useToast();
-  const { user: authUser } = useAuth();
+  const { user: authUser, refreshUser } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showProfileDialog, setShowProfileDialog] = useState(false);
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
@@ -455,7 +455,7 @@ export function Layout({ children }: LayoutProps) {
           open={showProfileDialog}
           onOpenChange={setShowProfileDialog}
           onSuccess={() => {
-            window.location.reload();
+            refreshUser();
           }}
         />
       )}
