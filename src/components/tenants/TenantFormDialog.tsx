@@ -54,6 +54,19 @@ export function TenantFormDialog({
       console.log("TenantFormDialog - Loading data:", { tenant, isViewMode, open });
       
       if (tenant) {
+        console.log("TenantFormDialog - Tenant fields:", {
+          name: tenant.name,
+          email: tenant.email,
+          phone: tenant.phone,
+          document_type: tenant.document_type,
+          documentType: tenant.documentType,
+          document: tenant.document,
+          cpf: tenant.cpf,
+          cnpj: tenant.cnpj,
+          rg: tenant.rg,
+          cep: tenant.cep,
+        });
+        
         const docType = tenant.document_type || tenant.documentType || "cpf";
         const newFormData = {
           name: tenant.name || "",

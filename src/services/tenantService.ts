@@ -55,7 +55,7 @@ function toDatabase(data: Partial<Tenant>): any {
 
 // Transform database snake_case to frontend camelCase
 function fromDatabase(data: any): Tenant {
-  return {
+  const transformed = {
     ...data,
     documentType: data.document_type || (data.cpf ? "cpf" : data.document ? "cnpj" : "cpf"),
     document_type: data.document_type || (data.cpf ? "cpf" : data.document ? "cnpj" : "cpf"),
@@ -70,6 +70,13 @@ function fromDatabase(data: any): Tenant {
     city: data.city,
     state: data.state,
   };
+  
+  console.log("🔄 tenantService.fromDatabase - Transformação:", {
+    input: data,
+    output: transformed
+  });
+  
+  return transformed;
 }
 
 export async function getAllTenants(): Promise<Tenant[]> {
