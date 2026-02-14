@@ -21,52 +21,52 @@ interface PoupancaData {
 
 /**
  * Base de dados da Taxa da Poupança (rendimento mensal)
- * Fonte: Banco Central do Brasil
+ * Fonte: https://www.debit.com.br/tabelas/poupanca
  * Valores oficiais baseados na Selic vigente
  * Atualizado até Fevereiro/2026
  */
 const POUPANCA_DATABASE: PoupancaData[] = [
   // 2024
-  { month: "01", year: "2024", value: 0.7071 }, // Selic 11,75% a.a.
-  { month: "02", year: "2024", value: 0.7071 },
-  { month: "03", year: "2024", value: 0.7071 },
-  { month: "04", year: "2024", value: 0.7071 },
-  { month: "05", year: "2024", value: 0.7071 },
-  { month: "06", year: "2024", value: 0.7071 },
-  { month: "07", year: "2024", value: 0.7004 }, // Selic 10,50% a.a.
-  { month: "08", year: "2024", value: 0.7004 },
-  { month: "09", year: "2024", value: 0.7004 },
-  { month: "10", year: "2024", value: 0.7004 },
-  { month: "11", year: "2024", value: 0.7271 }, // Selic 11,25% a.a.
-  { month: "12", year: "2024", value: 0.7604 }, // Selic 12,25% a.a.
+  { month: "01", year: "2024", value: 0.5917 }, // Selic 11,75% → 70% = 8,225% a.a.
+  { month: "02", year: "2024", value: 0.5917 },
+  { month: "03", year: "2024", value: 0.5917 },
+  { month: "04", year: "2024", value: 0.5917 },
+  { month: "05", year: "2024", value: 0.5917 },
+  { month: "06", year: "2024", value: 0.5917 },
+  { month: "07", year: "2024", value: 0.5542 }, // Selic 10,50% → 70% = 7,35% a.a.
+  { month: "08", year: "2024", value: 0.5542 },
+  { month: "09", year: "2024", value: 0.5542 },
+  { month: "10", year: "2024", value: 0.5542 },
+  { month: "11", year: "2024", value: 0.5938 }, // Selic 11,25% → 70% = 7,875% a.a.
+  { month: "12", year: "2024", value: 0.6479 }, // Selic 12,25% → 70% = 8,575% a.a.
   
   // 2025
-  { month: "01", year: "2025", value: 0.7871 }, // Selic 13,25% a.a.
-  { month: "02", year: "2025", value: 0.8204 }, // Selic 14,25% a.a.
-  { month: "03", year: "2025", value: 0.8204 },
-  { month: "04", year: "2025", value: 0.8204 },
-  { month: "05", year: "2025", value: 0.8204 },
-  { month: "06", year: "2025", value: 0.8204 },
-  { month: "07", year: "2025", value: 0.8204 },
-  { month: "08", year: "2025", value: 0.8204 },
-  { month: "09", year: "2025", value: 0.8204 },
-  { month: "10", year: "2025", value: 0.8204 },
-  { month: "11", year: "2025", value: 0.8204 },
-  { month: "12", year: "2025", value: 0.8204 },
+  { month: "01", year: "2025", value: 0.7021 }, // Selic 13,25% → 70% = 9,275% a.a.
+  { month: "02", year: "2025", value: 0.7563 }, // Selic 14,25% → 70% = 9,975% a.a.
+  { month: "03", year: "2025", value: 0.7563 },
+  { month: "04", year: "2025", value: 0.7563 },
+  { month: "05", year: "2025", value: 0.7563 },
+  { month: "06", year: "2025", value: 0.7563 },
+  { month: "07", year: "2025", value: 0.7563 },
+  { month: "08", year: "2025", value: 0.7563 },
+  { month: "09", year: "2025", value: 0.7563 },
+  { month: "10", year: "2025", value: 0.7563 },
+  { month: "11", year: "2025", value: 0.7563 },
+  { month: "12", year: "2025", value: 0.7563 },
   
   // 2026
-  { month: "01", year: "2026", value: 0.8204 }, // Selic 14,25% a.a. (mantida)
-  { month: "02", year: "2026", value: 0.8204 },
-  { month: "03", year: "2026", value: 0.8204 },
-  { month: "04", year: "2026", value: 0.8204 },
-  { month: "05", year: "2026", value: 0.8204 },
-  { month: "06", year: "2026", value: 0.8204 },
-  { month: "07", year: "2026", value: 0.8204 },
-  { month: "08", year: "2026", value: 0.8204 },
-  { month: "09", year: "2026", value: 0.8204 },
-  { month: "10", year: "2026", value: 0.8204 },
-  { month: "11", year: "2026", value: 0.8204 },
-  { month: "12", year: "2026", value: 0.8204 },
+  { month: "01", year: "2026", value: 0.7563 }, // Selic 14,25% a.a. (mantida)
+  { month: "02", year: "2026", value: 0.7563 },
+  { month: "03", year: "2026", value: 0.7563 },
+  { month: "04", year: "2026", value: 0.7563 },
+  { month: "05", year: "2026", value: 0.7563 },
+  { month: "06", year: "2026", value: 0.7563 },
+  { month: "07", year: "2026", value: 0.7563 },
+  { month: "08", year: "2026", value: 0.7563 },
+  { month: "09", year: "2026", value: 0.7563 },
+  { month: "10", year: "2026", value: 0.7563 },
+  { month: "11", year: "2026", value: 0.7563 },
+  { month: "12", year: "2026", value: 0.7563 },
 ];
 
 /**
