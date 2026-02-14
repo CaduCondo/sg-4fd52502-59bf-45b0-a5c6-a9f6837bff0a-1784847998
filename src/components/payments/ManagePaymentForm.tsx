@@ -488,7 +488,8 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
             ? JSON.parse(payment.breakdown) 
             : (payment.breakdown || []);
           
-          if (igpmCorrection) {
+          // Atualizar breakdown com valor corrigido SOMENTE se igpmCorrection existir
+          if (igpmCorrection && igpmCorrection.correctedAmount > 0) {
             console.log("🔄 [DEBUG] Atualizando breakdown com valor corrigido:", igpmCorrection.correctedAmount);
             
             breakdownData = breakdownData.map((item: any) => {
@@ -500,6 +501,8 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
               }
               return item;
             });
+          } else {
+            console.log("⚠️ [DEBUG] igpmCorrection é null ou correctedAmount é 0 - mantendo breakdown original");
           }
           
           breakdownData = breakdownData.filter((item: any) => 
