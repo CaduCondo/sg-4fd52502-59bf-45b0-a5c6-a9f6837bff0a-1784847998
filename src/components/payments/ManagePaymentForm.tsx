@@ -16,8 +16,7 @@ import { calculateCorrectedDeposit } from "@/services/igpmService";
 import { maskTime } from "@/lib/masks";
 
 interface ManagePaymentFormProps {
-  paymentId?: string;
-  rentalId?: string;
+  paymentId: string;
   onSuccess?: (data: {
     payment: Payment;
     rental: Rental;
@@ -28,7 +27,7 @@ interface ManagePaymentFormProps {
   embedded?: boolean;
 }
 
-export function ManagePaymentForm({ paymentId, rentalId, onSuccess, onClose, embedded = false }: ManagePaymentFormProps) {
+export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = false }: ManagePaymentFormProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
@@ -73,64 +72,9 @@ export function ManagePaymentForm({ paymentId, rentalId, onSuccess, onClose, emb
   const [interestRatePercentage, setInterestRatePercentage] = useState(0);
 
   useEffect(() => {
-    if (paymentId) {
-      loadPaymentData();
-    } else if (rentalId) {
-      loadRentalData();
-    }
+    loadPaymentData();
     loadConfig();
-  }, [paymentId, rentalId]);
-
-  const loadRentalData = async () => {
-    if (!rentalId) return;
-    
-    try {
-      setLoading(true);
-      const { data: rentalData, error } = await supabase
-        .from("rentals")
-        .select(`
-          *,
-          properties!inner (
-            *,
-            locations!inner (*)
-          ),
-          tenants!inner (*)
-        `)
-        .eq("id", rentalId)
-        .single();
-
-      if (error) throw error;
-
-      setRental(rentalData);
-      setProperty(rentalData.properties);
-      setLocation(rentalData.properties.locations);
-      setTenant(rentalData.tenants);
-      setRentalValue(rentalData.monthly_rent || 0);
-      setGarageValue(rentalData.garage_value || 0);
-      
-      // Default values for new payment
-      setFormData({
-        payment_date: new Date().toISOString().split("T")[0],
-        payment_method: "pix",
-        payment_time: "",
-        amount_to_pay: formatCurrency(rentalData.monthly_rent + (rentalData.garage_value || 0)),
-        notes: "",
-        pix_code_type: "CP",
-      });
-      
-      setIsEditMode(true); // Always edit mode for new payment
-      
-    } catch (error) {
-      console.error("Erro ao carregar dados da locação:", error);
-      toast({
-        title: "Erro",
-        description: "Erro ao carregar dados da locação",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [paymentId]);
 
   const loadConfig = async () => {
     try {
@@ -152,8 +96,6 @@ export function ManagePaymentForm({ paymentId, rentalId, onSuccess, onClose, emb
   };
 
   const loadPaymentData = async () => {
-    if (!paymentId) return;
-
     try {
       const { data: paymentData, error: paymentError } = await supabase
         .from("payments")
@@ -524,250 +466,185 @@ export function ManagePaymentForm({ paymentId, rentalId, onSuccess, onClose, emb
       setIsSubmitting(true);
 
       const paidAmount = parseCurrency(formData.amount_to_pay);
+      const totalPaid = (payment?.paid_amount || 0) + paidAmount;
       
-      // Se estamos editando/pagando um existente
-      if (paymentId) {
-        const totalPaid = (payment?.paid_amount || 0) + paidAmount;
-        
-        let expectedTotal = 0;
-        let updatedBreakdown = payment?.breakdown;
-        const values = calculateValues();
+      let expectedTotal = 0;
+      let updatedBreakdown = payment?.breakdown;
+      const values = calculateValues();
 
-        if (isTerminationPayment && igpmCorrection) {
-          try {
-            let breakdownData = typeof payment.breakdown === 'string' 
-              ? JSON.parse(payment.breakdown) 
-              : (payment.breakdown || []);
-            
-            if (igpmCorrection) {
-              breakdownData = breakdownData.map((item: any) => {
-                if (item.description?.includes("Devolução de Caução")) {
-                  return {
-                    ...item,
-                    amount: -igpmCorrection.correctedAmount,
-                  };
-                }
-                return item;
-              });
-            }
-            
-            breakdownData = breakdownData.filter((item: any) => 
-              !item.description?.includes("Despesas") &&
-              !item.description?.includes("Multa por Atraso") &&
-              !item.description?.includes("Juros por Atraso")
-            );
-            
-            if (!removeFees && values.multa > 0) {
-              breakdownData.push({
-                description: "Multa por Atraso",
-                amount: values.multa,
-                type: "addition"
-              });
-            }
-            if (!removeFees && values.juros > 0) {
-              breakdownData.push({
-                description: "Juros por Atraso",
-                amount: values.juros,
-                type: "addition"
-              });
-            }
-            
-            if (repairExpenses > 0) {
-              breakdownData.push({
-                description: "Despesas Adicionais*",
-                amount: repairExpenses,
-                type: "addition"
-              });
-            }
-            
-            updatedBreakdown = JSON.stringify(breakdownData);
-            
-            expectedTotal = breakdownData.reduce((sum: number, item: any) => sum + item.amount, 0);
-          } catch (error) {
-            console.error("Erro ao atualizar breakdown:", error);
-            expectedTotal = calculatedTotal;
-          }
-        } else {
-          expectedTotal = values.valorAPagar;
-        }
-        
-        const paymentStatus: "paid" | "partial" = totalPaid >= expectedTotal ? "paid" : "partial";
-
-        const paymentDataUpdate = {
-          payment_date: formData.payment_date,
-          payment_method: formData.payment_method,
-          payment_time: formData.payment_time || null,
-          paid_amount: totalPaid,
-          notes: formData.notes,
-          status: paymentStatus,
-          attachments: attachments.length > 0 ? attachments : null,
-          late_fee: isTerminationPayment ? (removeFees ? 0 : values.multa) : (removeFees ? 0 : values.multa),
-          interest: isTerminationPayment ? (removeFees ? 0 : values.juros) : (removeFees ? 0 : values.juros),
-          updated_at: new Date().toISOString(),
-          pix_code_type: formData.pix_code_type,
-          breakdown: updatedBreakdown,
-        };
-
-        const { error: updateError } = await supabase
-          .from("payments")
-          .update(paymentDataUpdate)
-          .eq("id", paymentId);
-
-        if (updateError) throw updateError;
-
-        if (formData.payment_method === "pix" && formData.pix_code_type) {
-          const pixCode = generatePixCode(formData.payment_date, formData.pix_code_type);
+      if (isTerminationPayment) {
+        try {
+          let breakdownData = typeof payment.breakdown === 'string' 
+            ? JSON.parse(payment.breakdown) 
+            : (payment.breakdown || []);
           
-          await supabase
-            .from("rentals")
-            .update({ pix_code: pixCode })
-            .eq("id", payment.rental_id);
-        }
-
-        toast({
-          title: "Sucesso",
-          description: paymentStatus === "partial" 
-            ? `Pagamento parcial registrado! Restante: ${formatCurrency((expectedTotal - totalPaid).toFixed(2))}`
-            : isPaid ? "Pagamento atualizado com sucesso!" : "Pagamento registrado com sucesso!",
-        });
-
-        if (paymentStatus === "paid" && !isPaid && onSuccess) {
-          const paymentForReceipt: Payment = {
-            id: payment.id,
-            rentalId: payment.rental_id,
-            dueDate: payment.due_date,
-            expectedAmount: expectedTotal,
-            paidAmount: totalPaid,
-            paymentDate: formData.payment_date,
-            status: "paid",
-            paymentMethod: formData.payment_method,
-            notes: formData.notes,
-            referenceMonth: parseInt(payment.reference_month),
-            referenceYear: parseInt(payment.reference_year),
-            attachments: attachments,
-            lateFee: removeFees ? 0 : values.multa,
-            interest: removeFees ? 0 : values.juros,
-          };
-
-          const mockRental: Rental = {
-            id: payment.rental_id,
-            propertyId: property.id,
-            tenantId: tenant.id,
-            startDate: rental.start_date,
-            endDate: rental.end_date,
-            paymentDay: rental.payment_day,
-            value: rental.monthly_rent,
-            depositAmount: rental.security_deposit || 0,
-            status: rental.status,
-            isActive: rental.status === "active",
-            attachments: [],
-            contractAttachments: [],
-            autoRenew: false
-          };
-
-          const propertyForReceipt: Property = {
-            id: property.id,
-            locationId: property.location_id,
-            location: location?.name || "",
-            address: location?.street || "",
-            number: location?.number || "",
-            complement: property.complement || "",
-            neighborhood: location?.neighborhood || "",
-            city: location?.city || "",
-            state: location?.state || "",
-            zipCode: location?.zip_code || "",
-            rooms: property.rooms || 0,
-            bathrooms: property.bathrooms || 0,
-            area: property.area || 0,
-            status: property.status || "available",
-            value: property.value,
-          };
-
-          const tenantForReceipt: Tenant = {
-            id: tenant.id,
-            name: tenant.name,
-            email: tenant.email || "",
-            phone: tenant.phone || "",
-            documentType: tenant.document_type || "cpf",
-            document: tenant.document || "",
-            cpf: tenant.cpf || "",
-            rg: tenant.rg || "",
-            status: tenant.status || "active",
-          };
-
-          onSuccess({
-            payment: paymentForReceipt,
-            rental: mockRental,
-            property: propertyForReceipt,
-            tenant: tenantForReceipt,
-          });
-        } else if (paymentStatus === "partial" || isPaid) {
-          if (onClose) {
-            onClose();
-          } else {
-            router.push("/payments");
+          if (igpmCorrection) {
+            breakdownData = breakdownData.map((item: any) => {
+              if (item.description?.includes("Devolução de Caução")) {
+                return {
+                  ...item,
+                  amount: -igpmCorrection.correctedAmount,
+                };
+              }
+              return item;
+            });
           }
+          
+          breakdownData = breakdownData.filter((item: any) => 
+            !item.description?.includes("Despesas") &&
+            !item.description?.includes("Multa por Atraso") &&
+            !item.description?.includes("Juros por Atraso")
+          );
+          
+          if (!removeFees && values.multa > 0) {
+            breakdownData.push({
+              description: "Multa por Atraso",
+              amount: values.multa,
+              type: "addition"
+            });
+          }
+          if (!removeFees && values.juros > 0) {
+            breakdownData.push({
+              description: "Juros por Atraso",
+              amount: values.juros,
+              type: "addition"
+            });
+          }
+          
+          if (repairExpenses > 0) {
+            breakdownData.push({
+              description: "Despesas Adicionais*",
+              amount: repairExpenses,
+              type: "addition"
+            });
+          }
+          
+          updatedBreakdown = JSON.stringify(breakdownData);
+          
+          expectedTotal = breakdownData.reduce((sum: number, item: any) => sum + item.amount, 0);
+        } catch (error) {
+          console.error("Erro ao atualizar breakdown:", error);
+          expectedTotal = calculatedTotal;
         }
+      } else {
+        expectedTotal = values.valorAPagar;
+      }
+      
+      const paymentStatus: "paid" | "partial" = totalPaid >= expectedTotal ? "paid" : "partial";
 
-      } else if (rentalId) {
-        // CREATE NEW PAYMENT
-        const paymentDateObj = new Date(formData.payment_date);
+      const paymentDataUpdate = {
+        payment_date: formData.payment_date,
+        payment_method: formData.payment_method,
+        payment_time: formData.payment_time || null,
+        paid_amount: totalPaid,
+        notes: formData.notes,
+        status: paymentStatus,
+        attachments: attachments.length > 0 ? attachments : null,
+        late_fee: isTerminationPayment ? (removeFees ? 0 : values.multa) : (removeFees ? 0 : values.multa),
+        interest: isTerminationPayment ? (removeFees ? 0 : values.juros) : (removeFees ? 0 : values.juros),
+        updated_at: new Date().toISOString(),
+        pix_code_type: formData.pix_code_type,
+        breakdown: updatedBreakdown,
+      };
+
+      const { error: updateError } = await supabase
+        .from("payments")
+        .update(paymentDataUpdate)
+        .eq("id", paymentId);
+
+      if (updateError) throw updateError;
+
+      if (formData.payment_method === "pix" && formData.pix_code_type) {
+        const pixCode = generatePixCode(formData.payment_date, formData.pix_code_type);
         
-        const newPaymentData = {
-          rental_id: rentalId,
-          payment_date: formData.payment_date,
-          payment_method: formData.payment_method,
-          payment_time: formData.payment_time || null,
-          paid_amount: paidAmount,
-          expected_amount: paidAmount, // Assuming full payment for manual entry
-          notes: formData.notes,
+        await supabase
+          .from("rentals")
+          .update({ pix_code: pixCode })
+          .eq("id", payment.rental_id);
+      }
+
+      toast({
+        title: "Sucesso",
+        description: paymentStatus === "partial" 
+          ? `Pagamento parcial registrado! Restante: ${formatCurrency((expectedTotal - totalPaid).toFixed(2))}`
+          : isPaid ? "Pagamento atualizado com sucesso!" : "Pagamento registrado com sucesso!",
+      });
+
+      if (paymentStatus === "paid" && !isPaid && onSuccess) {
+        const paymentForReceipt: Payment = {
+          id: payment.id,
+          rentalId: payment.rental_id,
+          dueDate: payment.due_date,
+          expectedAmount: expectedTotal,
+          paidAmount: totalPaid,
+          paymentDate: formData.payment_date,
           status: "paid",
-          attachments: attachments.length > 0 ? attachments : null,
-          late_fee: 0,
-          interest: 0,
-          pix_code_type: formData.pix_code_type,
-          due_date: formData.payment_date,
-          reference_month: paymentDateObj.getMonth() + 1,
-          reference_year: paymentDateObj.getFullYear(),
+          paymentMethod: formData.payment_method,
+          notes: formData.notes,
+          referenceMonth: parseInt(payment.reference_month),
+          referenceYear: parseInt(payment.reference_year),
+          attachments: attachments,
+          lateFee: removeFees ? 0 : values.multa,
+          interest: removeFees ? 0 : values.juros,
         };
 
-        const { data: insertedPayment, error: insertError } = await supabase
-          .from("payments")
-          .insert(newPaymentData)
-          .select()
-          .single();
+        const mockRental: Rental = {
+          id: payment.rental_id,
+          propertyId: property.id,
+          tenantId: tenant.id,
+          startDate: rental.start_date,
+          endDate: rental.end_date,
+          paymentDay: rental.payment_day,
+          value: rental.monthly_rent,
+          depositAmount: rental.security_deposit || 0,
+          status: rental.status,
+          isActive: rental.status === "active",
+          attachments: [],
+          contractAttachments: [],
+          autoRenew: false
+        };
 
-        if (insertError) throw insertError;
+        const propertyForReceipt: Property = {
+          id: property.id,
+          locationId: property.location_id,
+          location: location?.name || "",
+          address: location?.street || "",
+          number: location?.number || "",
+          complement: property.complement || "",
+          neighborhood: location?.neighborhood || "",
+          city: location?.city || "",
+          state: location?.state || "",
+          zipCode: location?.zip_code || "",
+          rooms: property.rooms || 0,
+          bathrooms: property.bathrooms || 0,
+          area: property.area || 0,
+          status: property.status || "available",
+          value: property.value,
+        };
 
-        toast({
-          title: "Sucesso",
-          description: "Pagamento registrado com sucesso!",
+        const tenantForReceipt: Tenant = {
+          id: tenant.id,
+          name: tenant.name,
+          email: tenant.email || "",
+          phone: tenant.phone || "",
+          documentType: tenant.document_type || "cpf",
+          document: tenant.document || "",
+          cpf: tenant.cpf || "",
+          rg: tenant.rg || "",
+          status: tenant.status || "active",
+        };
+
+        onSuccess({
+          payment: paymentForReceipt,
+          rental: mockRental,
+          property: propertyForReceipt,
+          tenant: tenantForReceipt,
         });
-
-        if (onSuccess) {
-          const paymentForReceipt: Payment = {
-            id: insertedPayment.id,
-            rentalId: insertedPayment.rental_id,
-            dueDate: insertedPayment.due_date,
-            expectedAmount: insertedPayment.expected_amount,
-            paidAmount: insertedPayment.paid_amount,
-            paymentDate: insertedPayment.payment_date,
-            status: insertedPayment.status as "pending" | "paid" | "partial" | "late",
-            paymentMethod: insertedPayment.payment_method,
-            notes: insertedPayment.notes,
-            referenceMonth: insertedPayment.reference_month,
-            referenceYear: insertedPayment.reference_year,
-            attachments: (insertedPayment.attachments as string[]) || [],
-            lateFee: insertedPayment.late_fee || 0,
-            interest: insertedPayment.interest || 0,
-          };
-
-          onSuccess({
-             payment: paymentForReceipt, 
-             rental, property, tenant 
-          });
-        } else if (onClose) {
+      } else if (paymentStatus === "partial" || isPaid) {
+        if (onClose) {
           onClose();
+        } else {
+          router.push("/payments");
         }
       }
 
