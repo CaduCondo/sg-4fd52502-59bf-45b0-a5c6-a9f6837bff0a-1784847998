@@ -14,6 +14,7 @@ import { Camera, Paperclip, Home, User, DollarSign, CreditCard, FileText, Edit, 
 import type { Payment, Rental, Property, Tenant } from "@/types";
 import { calculateCorrectedDeposit } from "@/services/igpmService";
 import { maskTime } from "@/lib/masks";
+import { Tooltip } from "sonnerie";
 
 interface ManagePaymentFormProps {
   paymentId: string;
@@ -60,6 +61,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
   
   const [paymentHour, setPaymentHour] = useState<string>("");
   const [paymentMinute, setPaymentMinute] = useState<string>("");
+  const [paymentSecond, setPaymentSecond] = useState<string>("");
 
   const [payment, setPayment] = useState<any>(null);
   const [rental, setRental] = useState<any>(null);
