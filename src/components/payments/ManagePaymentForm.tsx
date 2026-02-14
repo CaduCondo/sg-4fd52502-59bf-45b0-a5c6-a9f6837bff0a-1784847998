@@ -153,7 +153,11 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           igpmCorrectionValue = calculateCorrectedDeposit(originalDeposit, startDate, endDate);
           setIgpmCorrection(igpmCorrectionValue);
           
-          console.log("💰 [DEBUG] Correção IGPM calculada:", igpmCorrectionValue);
+          console.log("💰 [DEBUG] Correção IGPM calculada e SALVA NO ESTADO:");
+          console.log("💰 [DEBUG] - Original:", igpmCorrectionValue.originalAmount);
+          console.log("💰 [DEBUG] - Corrigido:", igpmCorrectionValue.correctedAmount);
+          console.log("💰 [DEBUG] - Percentual:", igpmCorrectionValue.poupancaPercentage);
+          console.log("💰 [DEBUG] - Detalhes:", igpmCorrectionValue.poupancaDetails?.substring(0, 100) + "...");
         } else {
           console.log("⚠️ [DEBUG] Não calculou IGPM - dados faltando");
         }
