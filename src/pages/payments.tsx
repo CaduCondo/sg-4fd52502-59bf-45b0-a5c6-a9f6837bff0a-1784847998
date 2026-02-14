@@ -117,6 +117,7 @@ export default function PaymentsPage() {
       setPaymentToCancel(null);
     } catch (error) {
       // Erro já tratado no hook
+      setPaymentToCancel(null);
     }
   }, [paymentToCancel, cancelPayment, loadPayments, filters.month, filters.year]);
 

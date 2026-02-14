@@ -518,7 +518,17 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         expectedTotal = values.valorAPagar;
       }
       
-      const paymentStatus: "paid" | "partial" = totalPaid >= expectedTotal ? "paid" : "partial";
+      // CORRIGIDO: Comparar paidAmount (valor deste pagamento) com expectedTotal
+      // Para rescisão com valor negativo (devolução), considerar pago se valores são iguais
+      let paymentStatus: "paid" | "partial";
+      
+      if (isTerminationPayment && expectedTotal < 0) {
+        // Para valores negativos (devolução), considerar pago se o valor pago é igual ao esperado
+        paymentStatus = Math.abs(paidAmount - Math.abs(expectedTotal)) < 0.01 ? "paid" : "partial";
+      } else {
+        // Para valores positivos, verificar se o total pago é >= esperado
+        paymentStatus = totalPaid >= expectedTotal ? "paid" : "partial";
+      }
 
       const paymentDataUpdate = {
         payment_date: formData.payment_date,
