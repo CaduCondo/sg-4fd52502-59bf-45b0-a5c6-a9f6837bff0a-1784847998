@@ -727,8 +727,8 @@ export function ManagePaymentForm({ paymentId, rentalId, onSuccess, onClose, emb
           interest: 0,
           pix_code_type: formData.pix_code_type,
           due_date: formData.payment_date,
-          reference_month: paymentDateObj.getMonth() + 1,
-          reference_year: paymentDateObj.getFullYear(),
+          reference_month: (paymentDateObj.getMonth() + 1).toString(),
+          reference_year: paymentDateObj.getFullYear().toString(),
         };
 
         const { data: insertedPayment, error: insertError } = await supabase
@@ -752,11 +752,11 @@ export function ManagePaymentForm({ paymentId, rentalId, onSuccess, onClose, emb
             expectedAmount: insertedPayment.expected_amount,
             paidAmount: insertedPayment.paid_amount,
             paymentDate: insertedPayment.payment_date,
-            status: insertedPayment.status as "pending" | "paid" | "partial" | "late",
+            status: insertedPayment.status as "pending" | "paid" | "partial" | "overdue",
             paymentMethod: insertedPayment.payment_method,
             notes: insertedPayment.notes,
-            referenceMonth: insertedPayment.reference_month,
-            referenceYear: insertedPayment.reference_year,
+            referenceMonth: parseInt(insertedPayment.reference_month),
+            referenceYear: parseInt(insertedPayment.reference_year),
             attachments: (insertedPayment.attachments as string[]) || [],
             lateFee: insertedPayment.late_fee || 0,
             interest: insertedPayment.interest || 0,
