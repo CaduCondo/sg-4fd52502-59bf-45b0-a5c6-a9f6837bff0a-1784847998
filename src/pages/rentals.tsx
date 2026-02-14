@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/router";
 import { Layout } from "@/components/Layout";
 import { SEO } from "@/components/SEO";
@@ -167,26 +167,38 @@ export default function RentalsPage() {
     loadAvailableData();
   }, []);
 
-  const filteredRentals = rentals.filter((rental) => {
-    // Filtro de status
-    if (statusFilter === "active" && !rental.isActive) return false;
-    if (statusFilter === "terminated" && rental.isActive) return false;
-    
-    // Filtro de busca (se houver termo)
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      return (
-        rental.tenant?.name?.toLowerCase().includes(term) ||
-        rental.property?.location?.toLowerCase().includes(term) ||
-        rental.property?.complement?.toLowerCase().includes(term)
-      );
-    }
-    
-    return true;
-  });
+  // Filter rentals based on search and status
+  const filteredRentals = useMemo(() => {
+    return rentals.filter((rental) => {
+      // Search filter
+      const searchLower = searchTerm.toLowerCase();
+      const matchesSearch =
+        !searchTerm ||
+        rental.tenant?.name?.toLowerCase().includes(searchLower) ||
+        rental.property?.location?.toLowerCase().includes(searchLower) ||
+        rental.property?.complement?.toLowerCase().includes(searchLower);
+
+      // Status filter
+      if (statusFilter === "all") {
+        return matchesSearch;
+      }
+
+      // Calculate if rental is expired based on end date
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const isExpired = rental.endDate && new Date(rental.endDate) < today;
+
+      // Determine effective status considering both isActive and expiration
+      // Active: isActive = true AND not expired
+      // Terminated: isActive = false OR expired
+      const effectiveStatus = (rental.isActive && !isExpired) ? "active" : "terminated";
+
+      const matchesStatus = statusFilter === effectiveStatus;
+      return matchesSearch && matchesStatus;
+    });
+  }, [rentals, searchTerm, statusFilter]);
 
   const activeRentals = rentals.filter((r) => r.isActive);
-  const inactiveRentals = rentals.filter((r) => !r.isActive);
   const canCreateRental = availableProperties.length > 0 && availableTenants.length > 0;
 
   const formatDate = (dateString: string) => {
@@ -596,7 +608,7 @@ export default function RentalsPage() {
                                   )}
                                 </>
                               ) : (
-                                <Badge className={`${isExpired && rental.isActive ? "bg-red-100 text-red-700 border-red-200" : "bg-gray-500 hover:bg-gray-600 text-white"} px-3 py-1 text-xs font-medium rounded-md whitespace-nowrap`}>
+                                <Badge className={isExpired && rental.isActive ? "bg-red-100 text-red-700 border-red-200" : "bg-gray-500 hover:bg-gray-600 text-white"}>
                                   Encerrado
                                 </Badge>
                               )}
@@ -748,110 +760,7 @@ export default function RentalsPage() {
             </CardContent>
           </Card>
 
-          {inactiveRentals.length > 0 && (
-            <Card>
-              <CardHeader
-                className="cursor-pointer hover:bg-muted/50 transition-colors"
-                onClick={() => setShowInactive(!showInactive)}
-              >
-                <CardTitle className="flex items-center justify-between">
-                  <span>Locações Terminadas ({inactiveRentals.length})</span>
-                  {showInactive ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-                </CardTitle>
-              </CardHeader>
-              {showInactive && (
-                <CardContent>
-                  {viewMode === "grid" ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {inactiveRentals.map((rental) => {
-                        return (
-                          <Card key={rental.id} className="opacity-75">
-                            <CardContent className="p-4">
-                              <div className="flex items-start justify-between mb-3">
-                                <div className="flex items-center gap-2 flex-1 min-w-0">
-                                  <Home className="h-4 w-4 text-blue-600 flex-shrink-0" />
-                                  <h3 className="text-lg font-semibold text-blue-600 truncate">
-                                    {rental.property?.location || "Local não encontrado"}
-                                  </h3>
-                                </div>
-                                <Badge className="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 text-xs font-medium rounded-md flex-shrink-0">
-                                  Terminada
-                                </Badge>
-                              </div>
-
-                              {rental.property?.complement && (
-                                <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 ml-6">
-                                  {rental.property.complement}
-                                </p>
-                              )}
-
-                              <div className="mb-3 flex items-center gap-2">
-                                <User className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                                <p className="text-sm text-gray-600 dark:text-gray-400">{rental.tenant?.name || "-"}</p>
-                              </div>
-
-                              <div className="mb-3 flex items-center gap-2">
-                                <Calendar className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                                <p className="text-sm text-gray-600 dark:text-gray-400">
-                                  Término: {formatDate(rental.endDate || "")}
-                                </p>
-                              </div>
-
-                              <div className="pt-3 border-t">
-                                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Valor</p>
-                                <p className="text-2xl font-bold text-emerald-600">
-                                  {formatCurrency(rental.value || 0)}
-                                </p>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="rounded-md border bg-white">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Local</TableHead>
-                            <TableHead>Complemento</TableHead>
-                            <TableHead>Inquilino</TableHead>
-                            <TableHead>Valor</TableHead>
-                            <TableHead>Data Término</TableHead>
-                            <TableHead>Status</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {inactiveRentals.map((rental) => {
-                            return (
-                              <TableRow key={rental.id} className="opacity-75">
-                                <TableCell className="font-medium text-blue-600">
-                                  {rental.property?.location || "Local não encontrado"}
-                                </TableCell>
-                                <TableCell>{rental.property?.complement || "-"}</TableCell>
-                                <TableCell className="whitespace-nowrap">{rental.tenant?.name || "-"}</TableCell>
-                                <TableCell className="font-bold text-gray-600">
-                                  {formatCurrency(rental.value || 0)}
-                                </TableCell>
-                                <TableCell>{formatDate(rental.endDate || "")}</TableCell>
-                                <TableCell>
-                                  <Badge className="bg-gray-500 hover:bg-gray-600 text-white">
-                                    Terminada
-                                  </Badge>
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  )}
-                </CardContent>
-              )}
-            </Card>
-          )}
-
-          {activeRentals.length === 0 && inactiveRentals.length === 0 && !loading && (
+          {activeRentals.length === 0 && rentals.length === 0 && !loading && (
             <Card>
               <CardContent className="text-center py-12">
                 <Home className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
