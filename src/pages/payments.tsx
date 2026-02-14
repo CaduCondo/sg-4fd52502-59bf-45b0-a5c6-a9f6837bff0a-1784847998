@@ -2,7 +2,6 @@ import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useRouter } from "next/router";
 import { Layout } from "@/components/Layout";
 import { PaymentCard } from "@/components/payments/PaymentCard";
-import { PaymentFilters } from "@/components/payments/PaymentFilters";
 import { PaymentReceipt } from "@/components/PaymentReceipt";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +27,7 @@ export default function PaymentsPage() {
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
   const [showReceiptDialog, setShowReceiptDialog] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const mountedRef = useRef(false);
 
   const [filters, setFilters] = useState({
