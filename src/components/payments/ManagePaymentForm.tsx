@@ -137,93 +137,28 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       
       console.log("🔍 [DEBUG] É rescisão?", isTermination);
 
-      const igpmCorrectionValue = null;
-      if (isTermination && paymentData.rentals) {
-        const startDate = paymentData.rentals.start_date;
-        const endDate = paymentData.rentals.end_date || paymentData.due_date;
-        
-        const depositFromSecurityDeposit = paymentData.rentals.security_deposit;
-        const depositFromDepositValue = paymentData.rentals.deposit_value;
-        const depositFromDepositText = paymentData.rentals.deposit 
-          ? parseFloat(paymentData.rentals.deposit) 
-          : 0;
-
-        console.log("📊 [DEBUG] VALORES DE CAUÇÃO DISPONÍVEIS:");
-        console.log("  • security_deposit:", depositFromSecurityDeposit);
-        console.log("  • deposit_value:", depositFromDepositValue);
-        console.log("  • deposit (texto):", paymentData.rentals.deposit);
-        console.log("  • deposit parseado:", depositFromDepositText);
-
-        const originalDeposit = depositFromSecurityDeposit || 
-                                depositFromDepositValue || 
-                                depositFromDepositText || 
-                                0;
-
-        console.log("💰 [DEBUG] Valor do caução escolhido:", originalDeposit);
-        if (depositFromSecurityDeposit) {
-          console.log("  Fonte: security_deposit");
-        } else if (depositFromDepositValue) {
-          console.log("  Fonte: deposit_value");
-        } else if (depositFromDepositText) {
-          console.log("  Fonte: deposit (texto parseado)");
-        } else {
-          console.log("  Fonte: nenhuma (todos zerados)");
-        }
-        
-        console.log("🔍 [DEBUG] Dados para IGPM:", {
-          startDate,
-          endDate,
-          originalDeposit
-        });
-
-        if (originalDeposit > 0 && startDate && endDate) {
-          const igpmCorrectionValue = calculateCorrectedDeposit(
-            originalDeposit,
-            startDate,
-            endDate
-          );
-          
-          console.log("💰 [DEBUG] IGPM calculado:", igpmCorrectionValue);
-        } else {
-          console.log("⚠️ [DEBUG] Não calculou IGPM - dados faltando");
-        }
-      }
-
       if (paymentData.breakdown) {
         try {
-          const breakdownData = typeof paymentData.breakdown === 'string' 
-            ? JSON.parse(paymentData.breakdown) 
-            : paymentData.breakdown;
+          let breakdownData = typeof payment.breakdown === 'string' 
+            ? JSON.parse(payment.breakdown) 
+            : (payment.breakdown || []);
           
-          let updatedBreakdown = [...breakdownData];
-          
-          if (igpmCorrectionValue && isTermination) {
-            console.log("💰 [DEBUG] Aplicando IGPM ao breakdown IMEDIATAMENTE");
-            console.log("💰 [DEBUG] Valor original do caução no breakdown:", 
-              updatedBreakdown.find(item => item.description?.includes("Devolução de Caução"))?.amount
-            );
-            
-            updatedBreakdown = updatedBreakdown.map((item: any) => {
+          if (igpmCorrection) {
+            breakdownData = breakdownData.map((item: any) => {
               if (item.description?.includes("Devolução de Caução")) {
-                const correctedValue = -Math.abs(igpmCorrectionValue.correctedAmount);
-                console.log("💰 [DEBUG] Atualizando caução de", item.amount, "para", correctedValue);
                 return {
                   ...item,
-                  amount: correctedValue,
+                  amount: -igpmCorrection.correctedAmount,
                 };
               }
               return item;
             });
-            
-            console.log("💰 [DEBUG] Valor do caução após atualização:", 
-              updatedBreakdown.find(item => item.description?.includes("Devolução de Caução"))?.amount
-            );
           }
           
-          setOriginalBreakdown(updatedBreakdown || []);
+          setOriginalBreakdown(breakdownData || []);
           
           if (isTermination) {
-            const expensesItem = updatedBreakdown.find((item: any) => 
+            const expensesItem = breakdownData.find((item: any) => 
               item.description?.includes("Despesas")
             );
             
