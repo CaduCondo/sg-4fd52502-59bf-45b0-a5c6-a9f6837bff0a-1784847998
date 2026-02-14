@@ -4,7 +4,6 @@ import { Layout } from "@/components/Layout";
 import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Home, Plus, User, ChevronDown, ChevronUp, Trash2, XCircle, Grid3x3, List, AlertTriangle, RefreshCw, Ban, MapPin, Eye, FileText, Calendar, Search, DollarSign } from "lucide-react";
@@ -40,9 +39,9 @@ import {
 } from "@/components/ui/select";
 import { Building2 } from "lucide-react";
 import { RentalDetailsCard } from "@/components/rentals/RentalDetailsCard";
-import { ManagePaymentForm } from "@/components/payments/ManagePaymentForm";
 
 export default function RentalsPage() {
+  const router = useRouter();
   const { toast } = useToast();
   useContractExpiration(); // Auto-inativa contratos vencidos
   const [rentals, setRentals] = useState<Rental[]>([]);
@@ -70,6 +69,8 @@ export default function RentalsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "terminated">("active");
   const [selectedRentalForPayment, setSelectedRentalForPayment] = useState<string | null>(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isTerminationDialogOpen, setIsTerminationDialogOpen] = useState(false);
 
   const loadRentalsData = async () => {
     try {
@@ -657,15 +658,11 @@ export default function RentalsPage() {
                                 </Button>
                                 <Button
                                   variant="outline"
-                                  size="icon"
-                                  className="h-8 w-8 bg-emerald-500 hover:bg-emerald-600 text-white border-emerald-500"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setSelectedRentalForPayment(rental.id);
-                                  }}
-                                  title="Registrar Recebimento"
+                                  size="sm"
+                                  onClick={() => router.push(`/payments/manage/${rental.id}`)}
                                 >
                                   <DollarSign className="h-4 w-4" />
+                                  Registrar Recebimento
                                 </Button>
                                 <Button
                                   variant="outline"
@@ -847,25 +844,6 @@ export default function RentalsPage() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-
-        {/* Payment Registration Dialog */}
-        <Dialog open={!!selectedRentalForPayment} onOpenChange={(open) => !open && setSelectedRentalForPayment(null)}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Registrar Recebimento</DialogTitle>
-            </DialogHeader>
-            {selectedRentalForPayment && (
-              <ManagePaymentForm
-                rentalId={selectedRentalForPayment}
-                onSuccess={() => {
-                  setSelectedRentalForPayment(null);
-                  loadRentalsData();
-                }}
-                onClose={() => setSelectedRentalForPayment(null)}
-              />
-            )}
-          </DialogContent>
-        </Dialog>
       </Layout>
     </>
   );
