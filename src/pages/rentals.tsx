@@ -390,7 +390,7 @@ export default function RentalsPage() {
                           <div className="flex items-center gap-2 flex-1 min-w-0">
                             <Home className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                             <span className="text-sm font-medium truncate">
-                              {property.propertyIdentifier || location?.name || property.location || "Local não encontrado"}
+                              {location?.name || property.location || "Local não encontrado"}
                               {property.complement && ` - ${property.complement}`}
                             </span>
                           </div>

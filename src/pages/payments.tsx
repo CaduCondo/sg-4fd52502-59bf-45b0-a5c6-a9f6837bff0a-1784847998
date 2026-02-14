@@ -222,32 +222,23 @@ export default function PaymentsPage() {
               Gerencie os recebimentos de aluguel
             </p>
           </div>
-
           <div className="flex items-center gap-2">
             <Button
               variant={viewMode === "grid" ? "default" : "outline"}
               size="icon"
               onClick={() => setViewMode("grid")}
-              title="Visualização em Grade"
+              aria-label="Visualização em grade"
             >
               <LayoutGrid className="h-4 w-4" />
             </Button>
-            
             <Button
               variant={viewMode === "list" ? "default" : "outline"}
               size="icon"
               onClick={() => setViewMode("list")}
-              title="Visualização em Lista"
+              aria-label="Visualização em lista"
             >
               <List className="h-4 w-4" />
             </Button>
-
-            {canCreate && (
-              <Button onClick={() => router.push("/payments/manage/new")}>
-                <Plus className="h-4 w-4 mr-2" />
-                Novo Recebimento
-              </Button>
-            )}
           </div>
         </div>
 
