@@ -453,7 +453,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       setIsSubmitting(true);
 
       const paidAmount = parseCurrency(formData.amount_to_pay);
-      const totalPaid = (payment?.paid_amount || 0) + paidAmount;
       
       let expectedTotal = 0;
       let updatedBreakdown = payment?.breakdown;
@@ -518,16 +517,28 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         expectedTotal = values.valorAPagar;
       }
       
-      // CORRIGIDO: Comparar paidAmount (valor deste pagamento) com expectedTotal
-      // Para rescisão com valor negativo (devolução), considerar pago se valores são iguais
+      // CORRIGIDO: Para rescisões, comparar paidAmount com expectedTotal
+      // Para pagamentos normais, usar totalPaid se houver paid_amount anterior
       let paymentStatus: "paid" | "partial";
+      let finalPaidAmount: number;
       
-      if (isTerminationPayment && expectedTotal < 0) {
-        // Para valores negativos (devolução), considerar pago se o valor pago é igual ao esperado
-        paymentStatus = Math.abs(paidAmount - Math.abs(expectedTotal)) < 0.01 ? "paid" : "partial";
+      if (isTerminationPayment) {
+        // Para rescisões: comparar valor pago com valor esperado (absoluto)
+        const expectedAbs = Math.abs(expectedTotal);
+        const difference = Math.abs(paidAmount - expectedAbs);
+        
+        // Se a diferença for menor que 1 centavo, considerar pago
+        paymentStatus = difference < 0.01 ? "paid" : "partial";
+        
+        // Para rescisões, gravar apenas o paidAmount (não somar com anterior)
+        finalPaidAmount = paidAmount;
       } else {
-        // Para valores positivos, verificar se o total pago é >= esperado
-        paymentStatus = totalPaid >= expectedTotal ? "paid" : "partial";
+        // Para pagamentos normais: somar com paid_amount anterior se existir
+        const previousPaid = payment?.paid_amount || 0;
+        finalPaidAmount = previousPaid + paidAmount;
+        
+        // Verificar se o total pago é >= esperado
+        paymentStatus = finalPaidAmount >= expectedTotal ? "paid" : "partial";
       }
 
       const paymentDataUpdate = {
@@ -536,7 +547,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         payment_time: formData.payment_method === "pix" 
           ? `${paymentHour.padStart(2, '0')}:${paymentMinute.padStart(2, '0')}:${paymentSecond.padStart(2, '0')}`
           : null,
-        paid_amount: totalPaid,
+        paid_amount: finalPaidAmount,
         notes: formData.notes,
         status: paymentStatus,
         attachments: attachments.length > 0 ? attachments : null,
@@ -566,7 +577,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       toast({
         title: "Sucesso",
         description: paymentStatus === "partial" 
-          ? `Pagamento parcial registrado! Restante: ${formatCurrency((expectedTotal - totalPaid).toFixed(2))}`
+          ? `Pagamento parcial registrado! Restante: ${formatCurrency((Math.abs(expectedTotal) - paidAmount).toFixed(2))}`
           : isPaid ? "Pagamento atualizado com sucesso!" : "Pagamento registrado com sucesso!",
       });
 
@@ -576,7 +587,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           rentalId: payment.rental_id,
           dueDate: payment.due_date,
           expectedAmount: expectedTotal,
-          paidAmount: totalPaid,
+          paidAmount: finalPaidAmount,
           paymentDate: formData.payment_date,
           status: "paid",
           paymentMethod: formData.payment_method,
