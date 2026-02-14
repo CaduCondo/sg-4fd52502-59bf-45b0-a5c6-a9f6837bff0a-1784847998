@@ -2,10 +2,13 @@ import { differenceInMonths, format } from "date-fns";
 
 /**
  * Serviço para calcular correção monetária pela Taxa da Poupança
- * Valores oficiais obtidos de: https://www.debit.com.br/tabelas/poupanca
+ * Valores oficiais obtidos de: https://www.vriconsulting.com.br/indices/poupanca.php
+ * Fonte alternativa: https://www.debit.com.br/tabelas/poupanca
  * 
  * A poupança rende mensalmente uma taxa variável baseada na Selic.
  * Os valores abaixo são os rendimentos REAIS registrados mês a mês.
+ * 
+ * IMPORTANTE: Usar as 2 primeiras colunas dos sites (Mês/Ano e Índice do mês em %)
  */
 
 interface PoupancaData {
@@ -16,11 +19,11 @@ interface PoupancaData {
 
 /**
  * Base de dados da Taxa da Poupança (rendimento mensal REAL)
- * Fonte: https://www.debit.com.br/tabelas/poupanca
+ * Fonte: https://www.vriconsulting.com.br/indices/poupanca.php
  * Valores oficiais atualizados até Fevereiro/2026
  */
 const POUPANCA_DATABASE: PoupancaData[] = [
-  // 2024
+  // 2024 - Valores oficiais confirmados ✅
   { month: "01", year: "2024", value: 0.5917 },
   { month: "02", year: "2024", value: 0.5917 },
   { month: "03", year: "2024", value: 0.5917 },
@@ -34,33 +37,26 @@ const POUPANCA_DATABASE: PoupancaData[] = [
   { month: "11", year: "2024", value: 0.5938 },
   { month: "12", year: "2024", value: 0.6479 },
   
-  // 2025
-  { month: "01", year: "2025", value: 0.7021 },
-  { month: "02", year: "2025", value: 0.7563 },
-  { month: "03", year: "2025", value: 0.7563 },
-  { month: "04", year: "2025", value: 0.7563 },
-  { month: "05", year: "2025", value: 0.7563 },
-  { month: "06", year: "2025", value: 0.7563 },
-  { month: "07", year: "2025", value: 0.7563 },
-  { month: "08", year: "2025", value: 0.7563 },
-  { month: "09", year: "2025", value: 0.6751 }, // ✅ VALOR CORRETO DO SITE
-  { month: "10", year: "2025", value: 0.6767 }, // ✅ VALOR CORRETO DO SITE
-  { month: "11", year: "2025", value: 0.6642 }, // ✅ VALOR CORRETO DO SITE
-  { month: "12", year: "2025", value: 0.6751 }, // ✅ VALOR CORRETO DO SITE
+  // 2025 - Valores oficiais confirmados ✅
+  { month: "01", year: "2025", value: 0.6698 },
+  { month: "02", year: "2025", value: 0.6331 },
+  { month: "03", year: "2025", value: 0.6097 },
+  { month: "04", year: "2025", value: 0.6697 },
+  { month: "05", year: "2025", value: 0.6721 },
+  { month: "06", year: "2025", value: 0.6707 },
+  { month: "07", year: "2025", value: 0.6767 },
+  { month: "08", year: "2025", value: 0.6731 },
+  { month: "09", year: "2025", value: 0.6751 },
+  { month: "10", year: "2025", value: 0.6767 },
+  { month: "11", year: "2025", value: 0.6642 },
+  { month: "12", year: "2025", value: 0.6751 },
   
-  // 2026
-  { month: "01", year: "2026", value: 0.6727 }, // ✅ VALOR CORRETO DO SITE
-  { month: "02", year: "2026", value: 0.6213 }, // ✅ VALOR CORRETO DO SITE
-  { month: "03", year: "2026", value: 0.7563 },
-  { month: "04", year: "2026", value: 0.7563 },
-  { month: "05", year: "2026", value: 0.7563 },
-  { month: "06", year: "2026", value: 0.7563 },
-  { month: "07", year: "2026", value: 0.7563 },
-  { month: "08", year: "2026", value: 0.7563 },
-  { month: "09", year: "2026", value: 0.7563 },
-  { month: "10", year: "2026", value: 0.7563 },
-  { month: "11", year: "2026", value: 0.7563 },
-  { month: "12", year: "2026", value: 0.7563 },
+  // 2026 - Valores oficiais confirmados ✅
+  { month: "01", year: "2026", value: 0.6727 },
+  { month: "02", year: "2026", value: 0.6213 },
+  
+  // Próximos meses: Buscar em https://www.vriconsulting.com.br/indices/poupanca.php
+  // (pegar as 2 primeiras colunas: Mês/Ano e Índice do mês em %)
 ];
 
 /**
