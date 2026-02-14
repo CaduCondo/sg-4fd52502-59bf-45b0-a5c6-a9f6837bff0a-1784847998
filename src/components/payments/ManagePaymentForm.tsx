@@ -175,6 +175,18 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           endDate,
           originalDeposit
         });
+
+        if (originalDeposit > 0 && startDate && endDate) {
+          const igpmCorrectionValue = calculateCorrectedDeposit(
+            originalDeposit,
+            startDate,
+            endDate
+          );
+          
+          console.log("💰 [DEBUG] IGPM calculado:", igpmCorrectionValue);
+        } else {
+          console.log("⚠️ [DEBUG] Não calculou IGPM - dados faltando");
+        }
       }
 
       if (paymentData.breakdown) {
