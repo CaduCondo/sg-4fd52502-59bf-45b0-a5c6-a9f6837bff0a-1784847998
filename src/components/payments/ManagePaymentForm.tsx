@@ -139,23 +139,9 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
 
       if (paymentData.breakdown) {
         try {
-          let breakdownData = typeof payment.breakdown === 'string' 
-            ? JSON.parse(payment.breakdown) 
-            : (payment.breakdown || []);
-          
-          if (igpmCorrection) {
-            console.log("🔄 [DEBUG] Atualizando breakdown com valor corrigido:", igpmCorrection.correctedAmount);
-            
-            breakdownData = breakdownData.map((item: any) => {
-              if (item.description?.includes("Devolução de Caução")) {
-                return {
-                  ...item,
-                  amount: -igpmCorrection.correctedAmount,
-                };
-              }
-              return item;
-            });
-          }
+          const breakdownData = typeof paymentData.breakdown === 'string' 
+            ? JSON.parse(paymentData.breakdown) 
+            : (paymentData.breakdown || []);
           
           setOriginalBreakdown(breakdownData || []);
           
@@ -173,6 +159,50 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         } catch (error) {
           console.error("❌ [DEBUG] Erro ao parsear breakdown:", error);
           setOriginalBreakdown([]);
+        }
+      }
+
+      if (isTermination && paymentData.rentals) {
+        console.log("🔍 [DEBUG] VALORES DE CAUÇÃO DISPONÍVEIS:");
+        console.log("  • security_deposit:", paymentData.rentals.security_deposit);
+        console.log("  • deposit_value:", paymentData.rentals.deposit_value);
+        console.log("  • deposit (texto):", paymentData.rentals.deposit);
+        
+        const depositText = paymentData.rentals.deposit;
+        let originalDeposit = 0;
+        
+        if (depositText && typeof depositText === 'string') {
+          const parsed = parseFloat(depositText.replace(/[^\d,]/g, '').replace(',', '.'));
+          if (!isNaN(parsed)) {
+            originalDeposit = parsed;
+            console.log("  • deposit parseado:", originalDeposit);
+          }
+        }
+        
+        console.log("🔍 [DEBUG] Valor do caução escolhido:", originalDeposit);
+        console.log("  Fonte: deposit (texto parseado)");
+        
+        const startDate = paymentData.rentals.start_date;
+        const endDate = paymentData.rentals.end_date;
+        
+        console.log("🔍 [DEBUG] Dados para IGPM:", {
+          startDate,
+          endDate,
+          originalDeposit
+        });
+        
+        if (originalDeposit > 0 && startDate && endDate) {
+          const igpmCorrectionValue = calculateCorrectedDeposit(
+            originalDeposit,
+            startDate,
+            endDate
+          );
+          
+          console.log("💰 [DEBUG] IGPM calculado:", igpmCorrectionValue);
+          
+          setIgpmCorrection(igpmCorrectionValue);
+        } else {
+          console.log("⚠️ [DEBUG] Não calculou IGPM - dados faltando");
         }
       }
 
@@ -265,6 +295,8 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       let workingBreakdown = [...originalBreakdown];
       
       if (igpmCorrection) {
+        console.log("🔄 [DEBUG] Atualizando breakdown com valor corrigido:", igpmCorrection.correctedAmount);
+        
         workingBreakdown = workingBreakdown.map((item: any) => {
           if (item.description?.includes("Devolução de Caução")) {
             return {
@@ -738,6 +770,8 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                         ? igpmCorrection.correctedAmount 
                         : Math.abs(item.amount);
                       
+                      console.log("🎯 [TOOLTIP] Estado igpmCorrection:", igpmCorrection);
+                      
                       return (
                         <div key={index}>
                           <div className="flex justify-between items-start text-sm">
@@ -758,7 +792,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                                         <div className="space-y-3 p-4">
                                           {igpmCorrection ? (
                                             <>
-                                              {/* Card de Resumo */}
                                               <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 space-y-1.5">
                                                 <p className="font-semibold text-sm text-blue-900 dark:text-blue-100">
                                                   💰 Resumo da Correção
@@ -785,7 +818,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                                                 </div>
                                               </div>
                                               
-                                              {/* Card de Detalhes Mensais */}
                                               <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
                                                 <p className="font-semibold text-xs text-gray-700 dark:text-gray-300 mb-2">
                                                   📅 Taxas Mensais Aplicadas
