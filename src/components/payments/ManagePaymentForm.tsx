@@ -135,8 +135,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       const isTermination = paymentData.notes?.includes("Rescisão de Contrato") || false;
       setIsTerminationPayment(isTermination);
       
-      console.log("🔍 [DEBUG] É rescisão?", isTermination);
-
       if (paymentData.breakdown) {
         try {
           const breakdownData = typeof paymentData.breakdown === 'string' 
@@ -157,17 +155,12 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
             }
           }
         } catch (error) {
-          console.error("❌ [DEBUG] Erro ao parsear breakdown:", error);
+          console.error("Erro ao parsear breakdown:", error);
           setOriginalBreakdown([]);
         }
       }
 
       if (isTermination && paymentData.rentals) {
-        console.log("🔍 [DEBUG] VALORES DE CAUÇÃO DISPONÍVEIS:");
-        console.log("  • security_deposit:", paymentData.rentals.security_deposit);
-        console.log("  • deposit_value:", paymentData.rentals.deposit_value);
-        console.log("  • deposit (texto):", paymentData.rentals.deposit);
-        
         const depositText = paymentData.rentals.deposit;
         let originalDeposit = 0;
         
@@ -175,21 +168,11 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           const parsed = parseFloat(depositText.replace(/[^\d,]/g, '').replace(',', '.'));
           if (!isNaN(parsed)) {
             originalDeposit = parsed;
-            console.log("  • deposit parseado:", originalDeposit);
           }
         }
         
-        console.log("🔍 [DEBUG] Valor do caução escolhido:", originalDeposit);
-        console.log("  Fonte: deposit (texto parseado)");
-        
         const startDate = paymentData.rentals.start_date;
         const endDate = paymentData.rentals.end_date;
-        
-        console.log("🔍 [DEBUG] Dados para IGPM:", {
-          startDate,
-          endDate,
-          originalDeposit
-        });
         
         if (originalDeposit > 0 && startDate && endDate) {
           const igpmCorrectionValue = calculateCorrectedDeposit(
@@ -198,11 +181,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
             endDate
           );
           
-          console.log("💰 [DEBUG] IGPM calculado:", igpmCorrectionValue);
-          
           setIgpmCorrection(igpmCorrectionValue);
-        } else {
-          console.log("⚠️ [DEBUG] Não calculou IGPM - dados faltando");
         }
       }
 
@@ -294,9 +273,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     if (isTerminationPayment && originalBreakdown.length > 0) {
       let workingBreakdown = [...originalBreakdown];
       
-      if (igpmCorrection) {
-        console.log("🔄 [DEBUG] Atualizando breakdown com valor corrigido:", igpmCorrection.correctedAmount);
-        
+      if (igpmCorrection && igpmCorrection.correctedAmount > 0) {
         workingBreakdown = workingBreakdown.map((item: any) => {
           if (item.description?.includes("Devolução de Caução")) {
             return {
@@ -490,8 +467,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           
           // Atualizar breakdown com valor corrigido SOMENTE se igpmCorrection existir
           if (igpmCorrection && igpmCorrection.correctedAmount > 0) {
-            console.log("🔄 [DEBUG] Atualizando breakdown com valor corrigido:", igpmCorrection.correctedAmount);
-            
             breakdownData = breakdownData.map((item: any) => {
               if (item.description?.includes("Devolução de Caução")) {
                 return {
@@ -501,8 +476,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
               }
               return item;
             });
-          } else {
-            console.log("⚠️ [DEBUG] igpmCorrection é null ou correctedAmount é 0 - mantendo breakdown original");
           }
           
           breakdownData = breakdownData.filter((item: any) => 
@@ -769,11 +742,9 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                     .map((item, index) => {
                       const isDepositDeduction = item.description?.includes("Devolução de Caução");
                       
-                      const displayAmount = isDepositDeduction && igpmCorrection 
+                      const displayAmount = isDepositDeduction && igpmCorrection && igpmCorrection.correctedAmount > 0
                         ? igpmCorrection.correctedAmount 
                         : Math.abs(item.amount);
-                      
-                      console.log("🎯 [TOOLTIP] Estado igpmCorrection:", igpmCorrection);
                       
                       return (
                         <div key={index}>
@@ -782,7 +753,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                               <span className={isDepositDeduction ? "block" : ""}>
                                 {isDepositDeduction ? "Devolução de Caução" : item.description}
                               </span>
-                              {isDepositDeduction && (
+                              {isDepositDeduction && igpmCorrection && (
                                 <span className="block text-xs text-muted-foreground mt-1">
                                   <TooltipProvider>
                                     <Tooltip>
@@ -793,49 +764,40 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                                       </TooltipTrigger>
                                       <TooltipContent className="max-w-[450px] p-0 bg-white dark:bg-gray-900 border-2 shadow-xl z-50">
                                         <div className="space-y-3 p-4">
-                                          {igpmCorrection ? (
-                                            <>
-                                              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 space-y-1.5">
-                                                <p className="font-semibold text-sm text-blue-900 dark:text-blue-100">
-                                                  💰 Resumo da Correção
+                                          <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 space-y-1.5">
+                                            <p className="font-semibold text-sm text-blue-900 dark:text-blue-100">
+                                              💰 Resumo da Correção
+                                            </p>
+                                            <div className="grid grid-cols-2 gap-2 text-xs">
+                                              <div>
+                                                <span className="text-muted-foreground">Valor Original:</span>
+                                                <p className="font-semibold text-blue-900 dark:text-blue-100">
+                                                  R$ {igpmCorrection.originalAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                 </p>
-                                                <div className="grid grid-cols-2 gap-2 text-xs">
-                                                  <div>
-                                                    <span className="text-muted-foreground">Valor Original:</span>
-                                                    <p className="font-semibold text-blue-900 dark:text-blue-100">
-                                                      R$ {igpmCorrection.originalAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                    </p>
-                                                  </div>
-                                                  <div>
-                                                    <span className="text-muted-foreground">Valor Corrigido:</span>
-                                                    <p className="font-semibold text-green-600 dark:text-green-400">
-                                                      R$ {igpmCorrection.correctedAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                    </p>
-                                                  </div>
-                                                </div>
-                                                <div className="pt-1.5 border-t border-blue-200 dark:border-blue-800">
-                                                  <span className="text-muted-foreground text-xs">Correção Total:</span>
-                                                  <p className="font-bold text-base text-blue-900 dark:text-blue-100">
-                                                    {(igpmCorrection.poupancaPercentage ?? igpmCorrection.igpmPercentage ?? 0).toFixed(2)}% ({igpmCorrection.months} {igpmCorrection.months === 1 ? 'mês' : 'meses'})
-                                                  </p>
-                                                </div>
                                               </div>
-                                              
-                                              <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
-                                                <p className="font-semibold text-xs text-gray-700 dark:text-gray-300 mb-2">
-                                                  📅 Taxas Mensais Aplicadas
+                                              <div>
+                                                <span className="text-muted-foreground">Valor Corrigido:</span>
+                                                <p className="font-semibold text-green-600 dark:text-green-400">
+                                                  R$ {igpmCorrection.correctedAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                 </p>
-                                                <div className="text-[11px] font-mono leading-relaxed max-h-[250px] overflow-y-auto text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
-                                                  {igpmCorrection.poupancaDetails || igpmCorrection.igpmDetails || "Detalhes de correção não disponíveis."}
-                                                </div>
                                               </div>
-                                            </>
-                                          ) : (
-                                            <div className="p-4 text-center text-muted-foreground">
-                                              <p className="text-sm">Dados de correção não disponíveis</p>
-                                              <p className="text-xs mt-1">Aguarde o carregamento dos dados...</p>
                                             </div>
-                                          )}
+                                            <div className="pt-1.5 border-t border-blue-200 dark:border-blue-800">
+                                              <span className="text-muted-foreground text-xs">Correção Total:</span>
+                                              <p className="font-bold text-base text-blue-900 dark:text-blue-100">
+                                                {(igpmCorrection.poupancaPercentage ?? igpmCorrection.igpmPercentage ?? 0).toFixed(2)}% ({igpmCorrection.months} {igpmCorrection.months === 1 ? 'mês' : 'meses'})
+                                              </p>
+                                            </div>
+                                          </div>
+                                          
+                                          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
+                                            <p className="font-semibold text-xs text-gray-700 dark:text-gray-300 mb-2">
+                                              📅 Taxas Mensais Aplicadas
+                                            </p>
+                                            <div className="text-[11px] font-mono leading-relaxed max-h-[250px] overflow-y-auto text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
+                                              {igpmCorrection.poupancaDetails || igpmCorrection.igpmDetails || "Detalhes de correção não disponíveis."}
+                                            </div>
+                                          </div>
                                         </div>
                                       </TooltipContent>
                                     </Tooltip>
