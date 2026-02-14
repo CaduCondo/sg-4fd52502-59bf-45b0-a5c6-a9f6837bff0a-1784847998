@@ -452,28 +452,37 @@ export default function PaymentsPage() {
           {selectedPaymentId && (
             <ManagePaymentForm
               paymentId={selectedPaymentId}
-              onSuccess={() => {
+              onSuccess={async () => {
                 const paymentId = selectedPaymentId;
+                
+                // Fecha o dialog de gerenciamento primeiro
                 setSelectedPaymentId(null);
                 
-                // Recarregar pagamentos
-                loadPayments(filters.month.toString(), filters.year.toString()).then(() => {
-                  // Buscar o pagamento atualizado
+                // Recarrega os pagamentos e aguarda completar
+                await loadPayments(filters.month.toString(), filters.year.toString());
+                
+                // Aguarda um pouco para garantir que o estado foi atualizado
+                setTimeout(() => {
+                  // Busca o pagamento atualizado do estado
                   const updatedPayment = payments.find(p => p.id === paymentId);
                   
-                  // Se foi marcado como pago, abrir o recibo automaticamente
-                  if (updatedPayment && updatedPayment.status === "paid") {
-                    setTimeout(() => {
-                      setSelectedPayment(updatedPayment);
-                      setShowReceiptDialog(true);
-                    }, 300);
+                  if (updatedPayment) {
+                    // Se o pagamento foi encontrado, abre o recibo
+                    setSelectedPayment(updatedPayment);
+                    setShowReceiptDialog(true);
+                    
+                    toast({
+                      title: "Sucesso!",
+                      description: "Recebimento registrado com sucesso.",
+                    });
+                  } else {
+                    // Se não encontrou, só mostra o toast
+                    toast({
+                      title: "Sucesso!",
+                      description: "Recebimento registrado com sucesso.",
+                    });
                   }
-                  
-                  toast({
-                    title: "Sucesso!",
-                    description: "Recebimento atualizado com sucesso.",
-                  });
-                });
+                }, 500); // Aumentado para 500ms para garantir que o estado foi atualizado
               }}
               onClose={() => setSelectedPaymentId(null)}
               embedded
