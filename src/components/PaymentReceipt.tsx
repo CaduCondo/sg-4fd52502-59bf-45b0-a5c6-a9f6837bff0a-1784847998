@@ -6,9 +6,10 @@ import { FileText, Download, Mail, Share2, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Payment, Rental, Property, Tenant } from "@/types";
 import { formatCurrency } from "@/lib/masks";
-import { format, differenceInMonths, addDays } from "date-fns";
+import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import Image from "next/image";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface PaymentReceiptProps {
   payment: Payment;
@@ -104,9 +105,25 @@ export function PaymentReceipt({
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
-  // --- Recuperação de Valores (Lógica Prioritária: Breakdown > Propriedades do Objeto) ---
-  const breakdown = payment.breakdown as any;
-  const isTermination = payment.type === "termination" || !!(breakdown && (breakdown.terminationFee || breakdown.depositRefund));
+  // Parse breakdown se vier como string
+  let breakdown: any = null;
+  if (payment.breakdown) {
+    if (typeof payment.breakdown === 'string') {
+      try {
+        breakdown = JSON.parse(payment.breakdown);
+      } catch (e) {
+        console.error("Erro ao parsear breakdown:", e);
+        breakdown = null;
+      }
+    } else {
+      breakdown = payment.breakdown;
+    }
+  }
+
+  // Detectar se é rescisão
+  const isTermination = payment.type === "termination" || 
+                       payment.notes?.includes("Rescisão de Contrato") ||
+                       !!(breakdown && (breakdown.terminationFee || breakdown.depositRefund));
   
   let totalAmount = 0;
   let baseAmount = 0;
@@ -118,32 +135,85 @@ export function PaymentReceipt({
   let terminationFee = 0;
   let depositRefund = 0;
   let additionalExpenses = 0;
+  let igpmCorrectionData = null;
 
+  // LÓGICA DE EXTRAÇÃO DE VALORES
   if (breakdown) {
     if (isTermination) {
-      proportionalRent = Number(breakdown.proportionalRent || 0);
-      terminationFee = Number(breakdown.terminationFee || 0);
-      depositRefund = Number(breakdown.depositRefund || 0);
-      additionalExpenses = Number(breakdown.additionalExpenses || 0);
-      // Na rescisão, o total é a soma dos débitos menos os créditos (se for positivo a pagar)
-      // Mas confiamos no paidAmount se disponível, ou recalculamos
-      totalAmount = payment.paidAmount || (proportionalRent + terminationFee + additionalExpenses - depositRefund);
+      // RESCISÃO: Buscar valores do breakdown
+      // O breakdown pode ser um array ou objeto, vamos lidar com ambos
+      if (Array.isArray(breakdown)) {
+        // Breakdown é array de itens
+        breakdown.forEach((item: any) => {
+          const desc = item.description || "";
+          const amount = Number(item.amount || 0);
+          
+          if (desc.includes("Aluguel Proporcional")) {
+            proportionalRent = Math.abs(amount);
+          } else if (desc.includes("Multa Rescisória")) {
+            terminationFee = Math.abs(amount);
+          } else if (desc.includes("Devolução de Caução")) {
+            depositRefund = Math.abs(amount);
+          } else if (desc.includes("Despesas Adicionais") || desc.includes("Despesas")) {
+            additionalExpenses = Math.abs(amount);
+          } else if (desc.includes("Multa por Atraso")) {
+            lateFee = Math.abs(amount);
+          } else if (desc.includes("Juros por Atraso")) {
+            interest = Math.abs(amount);
+          }
+        });
+        
+        // Total = soma de débitos - créditos
+        totalAmount = proportionalRent + terminationFee + additionalExpenses + lateFee + interest - depositRefund;
+      } else {
+        // Breakdown é objeto direto
+        proportionalRent = Number(breakdown.proportionalRent || 0);
+        terminationFee = Number(breakdown.terminationFee || 0);
+        depositRefund = Number(breakdown.depositRefund || 0);
+        additionalExpenses = Number(breakdown.additionalExpenses || 0);
+        igpmCorrectionData = breakdown.igpmCorrection || null;
+        
+        totalAmount = proportionalRent + terminationFee + additionalExpenses - depositRefund;
+      }
+      
+      // Se tiver paidAmount, sobrescreve o total
+      if (payment.paidAmount) {
+        totalAmount = payment.paidAmount;
+      }
     } else {
-      baseAmount = Number(breakdown.baseAmount || breakdown.rentValue || payment.expectedAmount || 0);
-      lateFee = Number(breakdown.lateFee || 0);
-      interest = Number(breakdown.interest || 0);
-      // Se tiver paidAmount, usa ele (pois pode ser parcial). Se for paid, deve bater com a soma.
+      // PAGAMENTO NORMAL
+      if (Array.isArray(breakdown)) {
+        // Se vier como array (novo formato)
+        breakdown.forEach((item: any) => {
+          const desc = item.description || "";
+          const amount = Number(item.amount || 0);
+          
+          if (desc.includes("Valor Base") || desc.includes("Aluguel")) {
+            baseAmount = Math.abs(amount);
+          } else if (desc.includes("Multa")) {
+            lateFee = Math.abs(amount);
+          } else if (desc.includes("Juros")) {
+            interest = Math.abs(amount);
+          }
+        });
+      } else {
+        // Se vier como objeto (formato antigo)
+        baseAmount = Number(breakdown.baseAmount || breakdown.rentValue || 0);
+        lateFee = Number(breakdown.lateFee || 0);
+        interest = Number(breakdown.interest || 0);
+      }
+      
       totalAmount = payment.paidAmount || (baseAmount + lateFee + interest);
     }
   } else {
-    // Fallback se não tiver breakdown salvo (para pagamentos antigos)
+    // FALLBACK: Sem breakdown, usar propriedades diretas
     baseAmount = payment.expectedAmount || 0;
-    lateFee = payment.lateFee || 0;
-    interest = payment.interest || 0;
+    lateFee = payment.lateFee || payment.penaltyAmount || 0;
+    interest = payment.interest || payment.interestAmount || 0;
     totalAmount = payment.paidAmount || 0;
   }
 
-  // --- Formatação de Datas e Parcelas ---
+  // FORMATAÇÃO DE DATAS E PARCELAS
   const monthNames = [
     "janeiro", "fevereiro", "março", "abril", "maio", "junho",
     "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"
@@ -155,7 +225,6 @@ export function PaymentReceipt({
 
   const safeDate = (dateString: string | undefined | null): Date => {
     if (!dateString) return new Date();
-    // Adiciona T12:00:00 para evitar problemas de fuso horário voltando um dia
     const datePart = dateString.split('T')[0];
     return new Date(`${datePart}T12:00:00`);
   };
@@ -166,30 +235,13 @@ export function PaymentReceipt({
   };
 
   const dueDate = safeDate(payment.dueDate);
-  const contractStartDate = safeDate(rental.startDate);
-  const contractEndDate = safeDate(rental.endDate);
-  const paymentDate = payment.paymentDate ? safeDate(payment.paymentDate) : new Date();
 
-  // Cálculo de parcelas
-  // Total de meses = diferença em meses entre fim e início do contrato
-  // Adiciona 1 dia ao fim para garantir que diferença de exatos meses seja contabilizada corretamente
-  const totalMonths = differenceInMonths(addDays(contractEndDate, 1), contractStartDate) || 1;
+  // USAR OS CAMPOS installment E total_installments QUE JÁ VEM DO BANCO
+  // Esses campos são salvos corretamente no paymentService.ts
+  const currentPaymentNumber = (payment as any).installment || 1;
+  const totalMonths = (payment as any).total_installments || 1;
 
-  // Parcela atual baseada na data de referência
-  let currentPaymentNumber = 1;
-  try {
-    const referenceDate = new Date(refYear, refMonth - 1, 1);
-    // Adiciona 1 porque a primeira parcela é o mês 0 da diferença + 1
-    currentPaymentNumber = differenceInMonths(referenceDate, new Date(contractStartDate.getFullYear(), contractStartDate.getMonth(), 1)) + 1;
-    
-    // Ajustes de limite
-    if (currentPaymentNumber < 1) currentPaymentNumber = 1;
-    // Não limitamos ao totalMonths pois contratos podem ter renovado tacitamente ou ter atraso
-  } catch (e) {
-    console.error("Erro calculando parcela atual", e);
-  }
-
-  // --- Ações ---
+  // AÇÕES
   const handleDownloadPDF = () => {
     setLoading(true);
     setTimeout(() => {
@@ -268,7 +320,7 @@ export function PaymentReceipt({
               {/* Corpo do Texto */}
               <div className="space-y-3 sm:space-y-4 text-xs sm:text-sm leading-relaxed text-justify">
                 <p>
-                  Recebi dos Srs. <span className="font-semibold uppercase">{tenant.name}</span>, a importância de <span className="font-semibold uppercase">{numberToWords(totalAmount)}</span> ({formatCurrency(totalAmount)}), proveniente ao depósito de aluguel referente ao mês de <span className="font-semibold">{referenceMonthName} de {refYear}</span>, tendo seu vencimento em <span className="font-semibold">{formatSafeDate(dueDate, "dd/MM/yyyy")}</span>, do imóvel situado em <span className="font-semibold uppercase">{fullAddress}</span>, após a apresentação dos comprovantes de depósito bancário e contas de água e luz do mês anterior pagas, sendo este vinculado ao INSTRUMENTO PARTICULAR DE CONTRATO DE LOCAÇÃO PARA FIM RESIDENCIAL, assinado entre as partes em <span className="font-semibold">{formatSafeDate(rental.startDate, "dd/MM/yyyy")}</span>.
+                  Recebi dos Srs. <span className="font-semibold uppercase">{tenant.name}</span>, a importância de <span className="font-semibold uppercase">{numberToWords(Math.abs(totalAmount))}</span> ({formatCurrency(Math.abs(totalAmount))}), proveniente ao depósito de aluguel referente ao mês de <span className="font-semibold">{referenceMonthName} de {refYear}</span>, tendo seu vencimento em <span className="font-semibold">{formatSafeDate(dueDate, "dd/MM/yyyy")}</span>, do imóvel situado em <span className="font-semibold uppercase">{fullAddress}</span>, após a apresentação dos comprovantes de depósito bancário e contas de água e luz do mês anterior pagas, sendo este vinculado ao INSTRUMENTO PARTICULAR DE CONTRATO DE LOCAÇÃO PARA FIM RESIDENCIAL, assinado entre as partes em <span className="font-semibold">{formatSafeDate(rental.startDate, "dd/MM/yyyy")}</span>.
                 </p>
               </div>
 
@@ -277,22 +329,18 @@ export function PaymentReceipt({
                 <p className="font-semibold text-xs sm:text-sm mb-2 sm:mb-3">Valores:</p>
                 <div className="space-y-1 text-xs sm:text-sm">
                   {isTermination ? (
-                    // Layout para Rescisão
+                    // LAYOUT PARA RESCISÃO
                     <>
-                      <div className="flex justify-between">
-                        <span>Aluguel Proporcional:</span>
-                        <span className="font-semibold">{formatCurrency(proportionalRent)}</span>
-                      </div>
+                      {proportionalRent > 0 && (
+                        <div className="flex justify-between">
+                          <span>Aluguel Proporcional:</span>
+                          <span className="font-semibold">{formatCurrency(proportionalRent)}</span>
+                        </div>
+                      )}
                       {terminationFee > 0 && (
                         <div className="flex justify-between">
                           <span>Multa Rescisória:</span>
                           <span className="font-semibold">{formatCurrency(terminationFee)}</span>
-                        </div>
-                      )}
-                      {additionalExpenses > 0 && (
-                        <div className="flex justify-between">
-                          <span>Despesas Adicionais:</span>
-                          <span className="font-semibold">{formatCurrency(additionalExpenses)}</span>
                         </div>
                       )}
                       {depositRefund > 0 && (
@@ -301,9 +349,27 @@ export function PaymentReceipt({
                           <span className="font-semibold">-{formatCurrency(depositRefund)}</span>
                         </div>
                       )}
+                      {additionalExpenses > 0 && (
+                        <div className="flex justify-between">
+                          <span>Despesas Adicionais:</span>
+                          <span className="font-semibold">{formatCurrency(additionalExpenses)}</span>
+                        </div>
+                      )}
+                      {lateFee > 0 && (
+                        <div className="flex justify-between">
+                          <span>Multa por Atraso:</span>
+                          <span className="font-semibold">{formatCurrency(lateFee)}</span>
+                        </div>
+                      )}
+                      {interest > 0 && (
+                        <div className="flex justify-between">
+                          <span>Juros por Atraso:</span>
+                          <span className="font-semibold">{formatCurrency(interest)}</span>
+                        </div>
+                      )}
                     </>
                   ) : (
-                    // Layout Padrão
+                    // LAYOUT PADRÃO (PAGAMENTO NORMAL)
                     <>
                       <div className="flex justify-between">
                         <span>Valor Base:</span>
@@ -323,7 +389,7 @@ export function PaymentReceipt({
                   {/* Totalizador Geral */}
                   <div className="flex justify-between border-t pt-2 mt-2">
                     <span className="font-bold text-base">Total Pago:</span>
-                    <span className="font-bold text-base">{formatCurrency(totalAmount)}</span>
+                    <span className="font-bold text-base">{formatCurrency(Math.abs(totalAmount))}</span>
                   </div>
                 </div>
               </div>
