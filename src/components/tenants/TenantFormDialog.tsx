@@ -51,22 +51,7 @@ export function TenantFormDialog({
     if (open) {
       setIsEditing(!isViewMode);
       
-      console.log("TenantFormDialog - Loading data:", { tenant, isViewMode, open });
-      
       if (tenant) {
-        console.log("TenantFormDialog - Tenant fields:", {
-          name: tenant.name,
-          email: tenant.email,
-          phone: tenant.phone,
-          document_type: tenant.document_type,
-          documentType: tenant.documentType,
-          document: tenant.document,
-          cpf: tenant.cpf,
-          cnpj: tenant.cnpj,
-          rg: tenant.rg,
-          cep: tenant.cep,
-        });
-        
         const docType = tenant.document_type || tenant.documentType || "cpf";
         const newFormData = {
           name: tenant.name || "",
@@ -86,11 +71,9 @@ export function TenantFormDialog({
           state: tenant.state || "",
           status: tenant.status || "active",
         };
-        console.log("TenantFormDialog - Setting form data:", newFormData);
         setFormData(newFormData);
         setDocumentType(docType);
       } else {
-        console.log("TenantFormDialog - No tenant, resetting form");
         setFormData({
           name: "",
           email: "",
@@ -208,7 +191,7 @@ export function TenantFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] sm:max-h-[85vh] overflow-y-auto p-4 sm:p-6">
+      <DialogContent key={tenant ? tenant.id : "new"} className="max-w-2xl max-h-[90vh] sm:max-h-[85vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader className="space-y-2 pb-3">
           <DialogTitle className="text-base sm:text-lg font-bold">
             {tenant && isViewMode && !isEditing
