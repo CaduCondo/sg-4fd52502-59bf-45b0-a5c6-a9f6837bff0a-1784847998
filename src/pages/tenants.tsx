@@ -39,6 +39,8 @@ export default function TenantsPage() {
   const [tenantToDelete, setTenantToDelete] = useState<Tenant | null>(null);
   const [isViewMode, setIsViewMode] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
 
   useEffect(() => {
     const viewId = router.query.view as string;
@@ -88,8 +90,8 @@ export default function TenantsPage() {
   };
 
   const handleSave = async (data: Partial<Tenant>) => {
-    if (selectedTenant?.id) {
-      return await updateTenant(selectedTenant.id, data);
+    if (editingTenant?.id) {
+      return await updateTenant(editingTenant.id, data);
     } else {
       return await createTenant(data);
     }
@@ -207,9 +209,8 @@ export default function TenantsPage() {
               <TenantCard
                 key={tenant.id}
                 tenant={tenant}
-                onClick={() => handleViewTenant(tenant)}
+                onClick={() => setEditingTenant(tenant)}
                 onDelete={() => handleDelete(tenant.id)}
-                viewMode={viewMode}
               />
             ))}
           </div>
@@ -274,11 +275,13 @@ export default function TenantsPage() {
         )}
 
         <TenantFormDialog
-          open={isDialogOpen}
-          onOpenChange={setIsDialogOpen}
-          tenant={selectedTenant}
+          open={isFormOpen || !!editingTenant}
+          onOpenChange={(open) => {
+            setIsFormOpen(open);
+            if (!open) setEditingTenant(null);
+          }}
+          tenant={editingTenant || undefined}
           onSave={handleSave}
-          isViewMode={isViewMode}
         />
 
         <TenantDeleteAlert
