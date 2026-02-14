@@ -513,7 +513,7 @@ export default function RentalsPage() {
           {/* Rentals List */}
           <Card>
             <CardHeader>
-              <CardTitle>
+              <CardTitle className="text-4xl font-bold">
                 Contratos de Locação ({filteredRentals.length})
               </CardTitle>
             </CardHeader>
@@ -544,13 +544,18 @@ export default function RentalsPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {filteredRentals.map((rental) => {
                     const alert = calculateContractAlert(rental.endDate);
-                    const alertClasses = rental.isActive ? getAlertClasses(alert.level) : "";
+                    // Verifica se está vencido pela data
+                    const isExpired = rental.endDate && new Date(rental.endDate) < new Date(new Date().setHours(0,0,0,0));
+                    // Status visual: Se expirado ou não ativo -> Encerrado, senão -> Ativo
+                    const isVisuallyActive = rental.isActive && !isExpired;
+                    
+                    const alertClasses = isVisuallyActive ? getAlertClasses(alert.level) : "";
                     const badgeClasses = getAlertBadgeClasses(alert.level);
 
                     return (
                       <Card
                         key={rental.id}
-                        className={`hover:shadow-lg transition-shadow cursor-pointer border-2 ${alertClasses} ${!rental.isActive ? "opacity-75" : ""}`}
+                        className={`hover:shadow-lg transition-shadow cursor-pointer border-2 ${alertClasses} ${!isVisuallyActive ? "opacity-75 bg-slate-50" : ""}`}
                         onClick={() => handleViewRental(rental)}
                       >
                         <CardContent className="p-4">
@@ -569,7 +574,7 @@ export default function RentalsPage() {
                               )}
                             </div>
                             <div className="flex flex-col gap-1.5 items-end flex-shrink-0">
-                              {rental.isActive ? (
+                              {isVisuallyActive ? (
                                 <>
                                   <Badge className={`${badgeClasses} px-3 py-1 text-xs font-medium rounded-md whitespace-nowrap`}>
                                     Ativa
@@ -591,8 +596,8 @@ export default function RentalsPage() {
                                   )}
                                 </>
                               ) : (
-                                <Badge className="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 text-xs font-medium rounded-md whitespace-nowrap">
-                                  Terminada
+                                <Badge className={`${isExpired && rental.isActive ? "bg-red-100 text-red-700 border-red-200" : "bg-gray-500 hover:bg-gray-600 text-white"} px-3 py-1 text-xs font-medium rounded-md whitespace-nowrap`}>
+                                  Encerrado
                                 </Badge>
                               )}
                             </div>
@@ -619,6 +624,7 @@ export default function RentalsPage() {
                                 {formatCurrency(rental.value || 0)}
                               </p>
                             </div>
+                            {/* Botões aparecem se isActive é true, INDEPENDENTE da data (conforme pedido) */}
                             {rental.isActive && (
                               <div className="flex gap-1.5 flex-shrink-0">
                                 <Button
@@ -676,19 +682,21 @@ export default function RentalsPage() {
                         <TableHead>Valor</TableHead>
                         <TableHead>Data {statusFilter === 'terminated' ? 'Término' : 'Início'}</TableHead>
                         <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Ações</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredRentals.map((rental) => {
                         const alert = calculateContractAlert(rental.endDate);
-                        const alertClasses = rental.isActive ? getAlertClasses(alert.level) : "";
+                        const isExpired = rental.endDate && new Date(rental.endDate) < new Date(new Date().setHours(0,0,0,0));
+                        const isVisuallyActive = rental.isActive && !isExpired;
+                        
+                        const alertClasses = isVisuallyActive ? getAlertClasses(alert.level) : "";
                         const badgeClasses = getAlertBadgeClasses(alert.level);
 
                         return (
                           <TableRow
                             key={rental.id}
-                            className={`cursor-pointer ${alertClasses} ${!rental.isActive ? "opacity-75" : ""}`}
+                            className={`cursor-pointer ${alertClasses} ${!isVisuallyActive ? "opacity-75" : ""}`}
                             onClick={() => handleViewRental(rental)}
                           >
                             <TableCell className="font-medium text-blue-600">
@@ -702,7 +710,7 @@ export default function RentalsPage() {
                             <TableCell>{formatDate(statusFilter === 'terminated' ? rental.endDate : rental.startDate)}</TableCell>
                             <TableCell>
                               <div className="flex flex-col gap-1">
-                                {rental.isActive ? (
+                                {isVisuallyActive ? (
                                   <>
                                     <Badge className={badgeClasses}>
                                       Ativa
@@ -724,52 +732,11 @@ export default function RentalsPage() {
                                     )}
                                   </>
                                 ) : (
-                                  <Badge className="bg-gray-500 hover:bg-gray-600 text-white">
-                                    Terminada
+                                  <Badge className={isExpired && rental.isActive ? "bg-red-100 text-red-700 border-red-200" : "bg-gray-500 hover:bg-gray-600 text-white"}>
+                                    Encerrado
                                   </Badge>
                                 )}
                               </div>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {rental.isActive && (
-                                <div className="flex justify-end gap-2">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="bg-blue-500 hover:bg-blue-600 text-white border-blue-500"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setRentalToRenew(rental);
-                                    }}
-                                    title="Renovar Contrato"
-                                  >
-                                    <RefreshCw className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="bg-yellow-500 hover:bg-yellow-600 text-white border-yellow-500"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setRentalToEnd(rental);
-                                    }}
-                                    title="Rescisão de Contrato"
-                                  >
-                                    <XCircle className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    variant="destructive"
-                                    size="sm"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setRentalToDelete(rental);
-                                    }}
-                                    title="Excluir Locação"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              )}
                             </TableCell>
                           </TableRow>
                         );

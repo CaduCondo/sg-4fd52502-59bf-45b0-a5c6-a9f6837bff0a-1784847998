@@ -1,3 +1,4 @@
+import { useState, useMemo } from "react";
 import { Rental, Property, Tenant } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -60,6 +61,19 @@ export function RentalDetailsCard({ rental, property, tenant }: RentalDetailsCar
     }
   };
 
+  // Verifica se o contrato está expirado baseado na data de término
+  const isExpired = useMemo(() => {
+    if (!rental.endDate) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const endDate = new Date(rental.endDate);
+    endDate.setHours(0, 0, 0, 0);
+    return endDate < today;
+  }, [rental.endDate]);
+
+  // Status efetivo: encerrado se expirado OU se isActive é false
+  const effectiveStatus = isExpired || !rental.isActive ? "terminated" : "active";
+
   // Determinar se tem caução (simples ou parcelada)
   const hasDeposit = (rental.depositAmount && rental.depositAmount > 0) || 
                      (rental.depositInstallments && rental.depositInstallments > 0) ||
@@ -74,7 +88,14 @@ export function RentalDetailsCard({ rental, property, tenant }: RentalDetailsCar
             <span>Detalhes da Locação</span>
           </div>
           <div className="flex gap-2">
-            {getStatusBadge(rental.status)}
+            <Badge variant={effectiveStatus === "active" ? "default" : "secondary"}>
+              {effectiveStatus === "active" ? "Ativo" : "Encerrado"}
+            </Badge>
+            {rental.endDate && (
+              <div className="flex gap-2">
+                {getStatusBadge(effectiveStatus)}
+              </div>
+            )}
           </div>
         </CardTitle>
       </CardHeader>
