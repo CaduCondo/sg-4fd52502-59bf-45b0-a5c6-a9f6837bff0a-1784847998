@@ -144,6 +144,8 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
             : (payment.breakdown || []);
           
           if (igpmCorrection) {
+            console.log("🔄 [DEBUG] Atualizando breakdown com valor corrigido:", igpmCorrection.correctedAmount);
+            
             breakdownData = breakdownData.map((item: any) => {
               if (item.description?.includes("Devolução de Caução")) {
                 return {
@@ -455,6 +457,8 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
             : (payment.breakdown || []);
           
           if (igpmCorrection) {
+            console.log("🔄 [DEBUG] Atualizando breakdown com valor corrigido:", igpmCorrection.correctedAmount);
+            
             breakdownData = breakdownData.map((item: any) => {
               if (item.description?.includes("Devolução de Caução")) {
                 return {
