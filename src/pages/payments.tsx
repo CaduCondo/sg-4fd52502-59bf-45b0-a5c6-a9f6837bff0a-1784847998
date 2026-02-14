@@ -112,16 +112,31 @@ export default function PaymentsPage() {
 
     try {
       await cancelPayment(paymentToCancel);
+      
+      // Fechar o AlertDialog primeiro
+      setPaymentToCancel(null);
+      
       // Recarregar pagamentos mantendo os filtros atuais
       await loadPayments(filters.month.toString(), filters.year.toString());
-      setPaymentToCancel(null);
+      
+      toast({
+        title: "Recebimento cancelado",
+        description: "O recebimento foi cancelado com sucesso.",
+      });
     } catch (error) {
       // Erro já tratado no hook
+      // Fechar o AlertDialog mesmo em caso de erro
       setPaymentToCancel(null);
     }
-  }, [paymentToCancel, cancelPayment, loadPayments, filters.month, filters.year]);
+  }, [paymentToCancel, cancelPayment, loadPayments, filters.month, filters.year, toast]);
 
-  const handleCancelPayment = useCallback(async (paymentId: string) => {
+  const handleCancelPayment = useCallback(async (paymentId: string, e?: React.MouseEvent) => {
+    // Prevenir propagação do evento
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+
     if (!canDelete) {
       toast({
         title: "Acesso negado",
@@ -131,14 +146,8 @@ export default function PaymentsPage() {
       return;
     }
 
-    // Fechar o dialog de recebimento antes de abrir o AlertDialog
-    setSelectedPaymentId(null);
-    setShowReceiptDialog(false);
-    
-    // Aguardar um pouco para o dialog fechar antes de abrir o AlertDialog
-    setTimeout(() => {
-      setPaymentToCancel(paymentId);
-    }, 100);
+    // Abrir diretamente o AlertDialog de confirmação
+    setPaymentToCancel(paymentId);
   }, [canDelete, toast]);
 
   const handleViewReceipt = useCallback((payment: Payment) => {

@@ -183,7 +183,10 @@ export function PaymentCard({
                 variant="outline"
                 size="sm"
                 className="w-full text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 h-11 sm:h-9 touch-target"
-                onClick={(e) => onCancelPayment(payment.id, e)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onCancelPayment(payment.id, e);
+                }}
               >
                 <X className="h-4 w-4 mr-2" />
                 Cancelar Pagamento
@@ -296,7 +299,10 @@ export function PaymentCard({
                   variant="outline"
                   size="sm"
                   className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 h-11 sm:h-9 touch-target"
-                  onClick={(e) => onCancelPayment(payment.id, e)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onCancelPayment(payment.id, e);
+                  }}
                 >
                   <X className="h-4 w-4 sm:mr-2" />
                   <span className="hidden sm:inline">Cancelar</span>
