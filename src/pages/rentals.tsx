@@ -390,43 +390,7 @@ export default function RentalsPage() {
             </div>
           </div>
 
-          {/* Filtros de Busca e Status */}
-          <Card className="mb-6">
-            <CardContent className="pt-6">
-              <div className="flex flex-col sm:flex-row gap-4">
-                {/* Campo de Busca */}
-                <div className="flex-1">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Buscar por inquilino, local ou complemento..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                </div>
-
-                {/* Combo de Status */}
-                <div className="w-full sm:w-[200px]">
-                  <Select
-                    value={statusFilter}
-                    onValueChange={(value: "all" | "active" | "terminated") => setStatusFilter(value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todos</SelectItem>
-                      <SelectItem value="active">Ativo</SelectItem>
-                      <SelectItem value="terminated">Encerrado</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
+          {/* Vacant Properties Card */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <Card className="h-full">
               <CardHeader className="pb-2">
@@ -504,14 +468,53 @@ export default function RentalsPage() {
             </Card>
           </div>
 
+          {/* Filtros de Busca e Status - MOVIDO PARA CÁ */}
+          <Card className="mb-8">
+            <CardContent className="pt-6">
+              <div className="flex flex-col sm:flex-row gap-4">
+                {/* Campo de Busca */}
+                <div className="flex-1">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Buscar por inquilino, local ou complemento..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+
+                {/* Combo de Status */}
+                <div className="w-full sm:w-[250px]">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium whitespace-nowrap">
+                      Status:
+                    </span>
+                    <Select
+                      value={statusFilter}
+                      onValueChange={(value: "all" | "active" | "terminated") => setStatusFilter(value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="active">Ativo</SelectItem>
+                        <SelectItem value="terminated">Encerrado</SelectItem>
+                        <SelectItem value="all">Todos</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Rentals List */}
           <Card>
             <CardHeader>
               <CardTitle>
-                {statusFilter === "active" && "Locações Ativas"}
-                {statusFilter === "terminated" && "Locações Encerradas"}
-                {statusFilter === "all" && "Todas as Locações"}
-                {" "}({filteredRentals.length})
+                Contratos de Locação ({filteredRentals.length})
               </CardTitle>
             </CardHeader>
             <CardContent>
