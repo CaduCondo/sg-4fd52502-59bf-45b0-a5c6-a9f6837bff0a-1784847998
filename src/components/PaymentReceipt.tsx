@@ -110,18 +110,67 @@ export function PaymentReceipt({
 
   console.log("📄 PaymentReceipt renderizado com dados:", { payment, rental, property, tenant });
 
-  const totalAmount = payment.paidAmount || 0;
-  const baseAmount = payment.expectedAmount || 0;
-  const lateFee = payment.lateFee || 0;
-  const interest = payment.interest || 0;
-  const totalCharges = lateFee + interest;
+  // Obter valores do breakdown se existir, senão usar valores diretos
+  const breakdown = payment.breakdown as any;
+  const isTermination = payment.payment_type === "termination";
+  
+  let totalAmount = 0;
+  let baseAmount = 0;
+  let lateFee = 0;
+  let interest = 0;
+  
+  // Valores para rescisão
+  let proportionalRent = 0;
+  let terminationFee = 0;
+  let depositRefund = 0;
+  let additionalExpenses = 0;
+
+  if (breakdown) {
+    console.log("📊 Breakdown encontrado:", breakdown);
+    
+    if (isTermination) {
+      // Rescisão de contrato
+      proportionalRent = Math.abs(breakdown.proportionalRent || 0);
+      terminationFee = Math.abs(breakdown.terminationFee || 0);
+      depositRefund = Math.abs(breakdown.depositRefund || 0);
+      additionalExpenses = Math.abs(breakdown.additionalExpenses || 0);
+      
+      // Total é o paid_amount do pagamento
+      totalAmount = Math.abs(payment.paid_amount || 0);
+    } else {
+      // Pagamento normal
+      baseAmount = breakdown.baseAmount || breakdown.rentValue || payment.expected_amount || 0;
+      lateFee = breakdown.lateFee || 0;
+      interest = breakdown.interest || 0;
+      totalAmount = payment.paid_amount || 0;
+    }
+  } else {
+    // Fallback: usar valores diretos do payment
+    console.log("⚠️ Usando valores diretos do payment (sem breakdown)");
+    baseAmount = payment.expected_amount || 0;
+    lateFee = payment.late_fee || 0;
+    interest = payment.interest || 0;
+    totalAmount = payment.paid_amount || 0;
+  }
+
+  console.log("💰 Valores calculados:", { 
+    totalAmount, 
+    baseAmount, 
+    lateFee, 
+    interest,
+    isTermination,
+    proportionalRent,
+    terminationFee,
+    depositRefund,
+    additionalExpenses
+  });
 
   const monthNames = [
     "janeiro", "fevereiro", "março", "abril", "maio", "junho",
     "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"
   ];
   
-  const referenceMonthName = monthNames[(payment.referenceMonth || 1) - 1];
+  const referenceMonthName = monthNames[(payment.reference_month || 1) - 1];
 
   const safeDate = (dateString: string | undefined | null): Date => {
     if (!dateString) {
@@ -130,7 +179,6 @@ export function PaymentReceipt({
     }
     
     try {
-      // Remove timezone para evitar problemas de conversão
       const date = new Date(dateString.split('T')[0] + 'T12:00:00');
       
       if (isNaN(date.getTime())) {
@@ -155,7 +203,6 @@ export function PaymentReceipt({
       let dateObj: Date;
       
       if (typeof date === "string") {
-        // Remove timezone para evitar problemas
         const cleanDate = date.split('T')[0] + 'T12:00:00';
         dateObj = new Date(cleanDate);
       } else {
@@ -174,27 +221,20 @@ export function PaymentReceipt({
     }
   };
 
-  const dueDate = safeDate(payment.dueDate);
-  const contractStartDate = safeDate(rental.startDate);
-  const contractEndDate = safeDate(rental.endDate);
+  const dueDate = safeDate(payment.due_date);
+  const contractStartDate = safeDate(rental.start_date);
+  const contractEndDate = safeDate(rental.end_date);
 
-  let totalMonths = 1;
+  // Usar rental.installments (número de parcelas do contrato) ao invés de total_installments
+  const totalMonths = rental.installments || 1;
+  
   let currentPaymentNumber = 1;
 
-  if (rental.startDate && rental.endDate) {
-    try {
-      totalMonths = differenceInMonths(contractEndDate, contractStartDate) + 1;
-    } catch (error) {
-      console.error("Erro ao calcular totalMonths:", error);
-      totalMonths = 1;
-    }
-  }
-
-  if (rental.startDate && payment.referenceYear && payment.referenceMonth) {
+  if (rental.start_date && payment.reference_year && payment.reference_month) {
     try {
       const referenceDate = new Date(
-        payment.referenceYear, 
-        (payment.referenceMonth || 1) - 1, 
+        payment.reference_year, 
+        (payment.reference_month || 1) - 1, 
         1
       );
       if (!isNaN(referenceDate.getTime())) {
@@ -205,6 +245,8 @@ export function PaymentReceipt({
       currentPaymentNumber = 1;
     }
   }
+
+  console.log("📅 Parcelas:", { currentPaymentNumber, totalMonths, installments: rental.installments });
 
   const handleDownloadPDF = () => {
     setLoading(true);
@@ -238,16 +280,17 @@ export function PaymentReceipt({
       property.neighborhood,
       property.city,
       property.state,
-      property.zipCode ? `CEP ${property.zipCode}` : ""
+      property.zip_code ? `CEP ${property.zip_code}` : ""
     ].filter(Boolean);
 
     const shareText = 
       `RECIBO DE ALUGUEL\n\n` +
       `Recebi dos Srs. ${tenant.name.toUpperCase()}, a importância de: ${numberToWords(totalAmount).toUpperCase()}\n\n` +
-      `Referente ao mês de ${referenceMonthName}/${payment.referenceYear}, tendo seu vencimento em ${formatSafeDate(dueDate, "dd/MM/yyyy")}\n` +
+      `Referente ao mês de ${referenceMonthName}/${payment.reference_year}, tendo seu vencimento em ${formatSafeDate(dueDate, "dd/MM/yyyy")}\n` +
       `Imóvel: ${addressParts.join(", ").toUpperCase()}\n\n` +
       `Valor: ${formatCurrency(baseAmount)}\n` +
-      (totalCharges > 0 ? `Multa/Juros: ${formatCurrency(totalCharges)}\n` : "") +
+      (lateFee > 0 ? `Multa: ${formatCurrency(lateFee)}\n` : "") +
+      (interest > 0 ? `Juros: ${formatCurrency(interest)}\n` : "") +
       `Total: ${formatCurrency(totalAmount)}\n\n` +
       `SÃO PAULO, ${formatSafeDate(new Date(), "dd/MM/yyyy 'às' HH:mm")}`;
 
@@ -296,12 +339,10 @@ export function PaymentReceipt({
     property.neighborhood,
     property.city,
     property.state ? `${property.state}` : "",
-    property.zipCode ? `CEP ${property.zipCode}` : ""
+    property.zip_code ? `CEP ${property.zip_code}` : ""
   ].filter(Boolean);
 
   const fullAddress = addressParts.join(", ");
-
-  console.log("✅ Renderizando Dialog do PaymentReceipt");
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
@@ -325,25 +366,56 @@ export function PaymentReceipt({
 
               <div className="space-y-3 sm:space-y-4 text-xs sm:text-sm leading-relaxed text-justify">
                 <p>
-                  Recebi dos Srs. <span className="font-semibold uppercase">{tenant.name}</span>, a importância de <span className="font-semibold uppercase">{numberToWords(totalAmount)}</span>, proveniente ao depósito de aluguel referente ao mês de <span className="font-semibold">{referenceMonthName} de {payment.referenceYear}</span>, tendo seu vencimento em <span className="font-semibold">{formatSafeDate(dueDate, "dd/MM/yyyy")}</span>, do imóvel situado em <span className="font-semibold uppercase">{fullAddress}</span>, após a apresentação dos comprovantes de depósito bancário e contas de água e luz do mês anterior pagas, sendo este vinculado ao INSTRUMENTO PARTICULAR DE CONTRATO DE LOCAÇÃO PARA FIM RESIDENCIAL, assinado entre as partes em <span className="font-semibold">{formatSafeDate(rental.startDate, "dd/MM/yyyy")}</span>.
+                  Recebi dos Srs. <span className="font-semibold uppercase">{tenant.name}</span>, a importância de <span className="font-semibold uppercase">{numberToWords(totalAmount)}</span>, proveniente ao depósito de aluguel referente ao mês de <span className="font-semibold">{referenceMonthName} de {payment.reference_year}</span>, tendo seu vencimento em <span className="font-semibold">{formatSafeDate(dueDate, "dd/MM/yyyy")}</span>, do imóvel situado em <span className="font-semibold uppercase">{fullAddress}</span>, após a apresentação dos comprovantes de depósito bancário e contas de água e luz do mês anterior pagas, sendo este vinculado ao INSTRUMENTO PARTICULAR DE CONTRATO DE LOCAÇÃO PARA FIM RESIDENCIAL, assinado entre as partes em <span className="font-semibold">{formatSafeDate(rental.start_date, "dd/MM/yyyy")}</span>.
                 </p>
               </div>
 
               <div className="border-t pt-3 sm:pt-4 space-y-2">
                 <p className="font-semibold text-xs sm:text-sm mb-2 sm:mb-3">Valores:</p>
                 <div className="space-y-1 text-xs sm:text-sm">
-                  <div className="flex justify-between">
-                    <span>Valor:</span>
-                    <span className="font-semibold">{formatCurrency(baseAmount)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Multa:</span>
-                    <span className="font-semibold">{lateFee > 0 ? formatCurrency(lateFee) : "R$ ___"}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Juros:</span>
-                    <span className="font-semibold">{interest > 0 ? formatCurrency(interest) : "R$ ___"}</span>
-                  </div>
+                  {isTermination ? (
+                    <>
+                      {proportionalRent > 0 && (
+                        <div className="flex justify-between">
+                          <span>Aluguel Proporcional:</span>
+                          <span className="font-semibold">{formatCurrency(proportionalRent)}</span>
+                        </div>
+                      )}
+                      {terminationFee > 0 && (
+                        <div className="flex justify-between">
+                          <span>Multa Rescisória:</span>
+                          <span className="font-semibold">{formatCurrency(terminationFee)}</span>
+                        </div>
+                      )}
+                      {depositRefund > 0 && (
+                        <div className="flex justify-between">
+                          <span>Devolução de Caução:</span>
+                          <span className="font-semibold text-red-600">-{formatCurrency(depositRefund)}</span>
+                        </div>
+                      )}
+                      {additionalExpenses > 0 && (
+                        <div className="flex justify-between">
+                          <span>Despesas Adicionais:</span>
+                          <span className="font-semibold">{formatCurrency(additionalExpenses)}</span>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex justify-between">
+                        <span>Valor:</span>
+                        <span className="font-semibold">{formatCurrency(baseAmount)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Multa:</span>
+                        <span className="font-semibold">{lateFee > 0 ? formatCurrency(lateFee) : "R$ ___"}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Juros:</span>
+                        <span className="font-semibold">{interest > 0 ? formatCurrency(interest) : "R$ ___"}</span>
+                      </div>
+                    </>
+                  )}
                   <div className="flex justify-between border-t pt-1 mt-1">
                     <span className="font-semibold">Total:</span>
                     <span className="font-semibold text-base sm:text-lg">{formatCurrency(totalAmount)}</span>
