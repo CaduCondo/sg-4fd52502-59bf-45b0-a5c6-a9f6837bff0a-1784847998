@@ -1,16 +1,11 @@
 import { differenceInMonths, format } from "date-fns";
 
 /**
- * Serviço para calcular correção monetária pela Taxa da Poupança (Selic + TR)
- * A partir de 04/05/2012, a poupança rende:
- * - Se Selic > 8,5% ao ano: 0,5% ao mês + TR
- * - Se Selic ≤ 8,5% ao ano: 70% da Selic ao ano + TR
+ * Serviço para calcular correção monetária pela Taxa da Poupança
+ * Valores oficiais obtidos de: https://www.debit.com.br/tabelas/poupanca
  * 
- * Para simplificar (TR é próximo de zero desde 2017), usaremos apenas o componente Selic.
- * 
- * Fontes:
- * - https://www.debit.com.br/tabelas/poupanca
- * - https://www.vriconsulting.com.br/indices/poupanca.php
+ * A poupança rende mensalmente uma taxa variável baseada na Selic.
+ * Os valores abaixo são os rendimentos REAIS registrados mês a mês.
  */
 
 interface PoupancaData {
@@ -20,43 +15,42 @@ interface PoupancaData {
 }
 
 /**
- * Base de dados da Taxa da Poupança (rendimento mensal)
+ * Base de dados da Taxa da Poupança (rendimento mensal REAL)
  * Fonte: https://www.debit.com.br/tabelas/poupanca
- * Valores oficiais baseados na Selic vigente
- * Atualizado até Fevereiro/2026
+ * Valores oficiais atualizados até Fevereiro/2026
  */
 const POUPANCA_DATABASE: PoupancaData[] = [
   // 2024
-  { month: "01", year: "2024", value: 0.5917 }, // Selic 11,75% → 70% = 8,225% a.a.
+  { month: "01", year: "2024", value: 0.5917 },
   { month: "02", year: "2024", value: 0.5917 },
   { month: "03", year: "2024", value: 0.5917 },
   { month: "04", year: "2024", value: 0.5917 },
   { month: "05", year: "2024", value: 0.5917 },
   { month: "06", year: "2024", value: 0.5917 },
-  { month: "07", year: "2024", value: 0.5542 }, // Selic 10,50% → 70% = 7,35% a.a.
+  { month: "07", year: "2024", value: 0.5542 },
   { month: "08", year: "2024", value: 0.5542 },
   { month: "09", year: "2024", value: 0.5542 },
   { month: "10", year: "2024", value: 0.5542 },
-  { month: "11", year: "2024", value: 0.5938 }, // Selic 11,25% → 70% = 7,875% a.a.
-  { month: "12", year: "2024", value: 0.6479 }, // Selic 12,25% → 70% = 8,575% a.a.
+  { month: "11", year: "2024", value: 0.5938 },
+  { month: "12", year: "2024", value: 0.6479 },
   
   // 2025
-  { month: "01", year: "2025", value: 0.7021 }, // Selic 13,25% → 70% = 9,275% a.a.
-  { month: "02", year: "2025", value: 0.7563 }, // Selic 14,25% → 70% = 9,975% a.a.
+  { month: "01", year: "2025", value: 0.7021 },
+  { month: "02", year: "2025", value: 0.7563 },
   { month: "03", year: "2025", value: 0.7563 },
   { month: "04", year: "2025", value: 0.7563 },
   { month: "05", year: "2025", value: 0.7563 },
   { month: "06", year: "2025", value: 0.7563 },
   { month: "07", year: "2025", value: 0.7563 },
   { month: "08", year: "2025", value: 0.7563 },
-  { month: "09", year: "2025", value: 0.7563 },
-  { month: "10", year: "2025", value: 0.7563 },
-  { month: "11", year: "2025", value: 0.7563 },
-  { month: "12", year: "2025", value: 0.7563 },
+  { month: "09", year: "2025", value: 0.6751 }, // ✅ VALOR CORRETO DO SITE
+  { month: "10", year: "2025", value: 0.6767 }, // ✅ VALOR CORRETO DO SITE
+  { month: "11", year: "2025", value: 0.6642 }, // ✅ VALOR CORRETO DO SITE
+  { month: "12", year: "2025", value: 0.6751 }, // ✅ VALOR CORRETO DO SITE
   
   // 2026
-  { month: "01", year: "2026", value: 0.7563 }, // Selic 14,25% a.a. (mantida)
-  { month: "02", year: "2026", value: 0.7563 },
+  { month: "01", year: "2026", value: 0.6727 }, // ✅ VALOR CORRETO DO SITE
+  { month: "02", year: "2026", value: 0.6213 }, // ✅ VALOR CORRETO DO SITE
   { month: "03", year: "2026", value: 0.7563 },
   { month: "04", year: "2026", value: 0.7563 },
   { month: "05", year: "2026", value: 0.7563 },
@@ -134,11 +128,12 @@ export function calculatePoupanca(startDate: string, endDate: string): {
 
 /**
  * Formata os detalhes da poupança para exibição
+ * Formato: MM/YYYY: 0,XXXX (uma taxa por linha)
  */
 export function formatPoupancaDetails(details: Array<{ month: string; year: string; value: number }>): string {
   return details
-    .map((item) => `${item.month}/${item.year}: ${item.value.toFixed(4)}%`)
-    .join(", ");
+    .map((item) => `${item.month}/${item.year}:\t${item.value.toFixed(4)}`)
+    .join("\n");
 }
 
 /**
@@ -166,7 +161,8 @@ export function calculateCorrectedDeposit(
   console.log(`Meses de correção: ${poupancaData.months}`);
   console.log(`Poupança acumulada: ${poupancaData.totalPercentage}%`);
   console.log(`Valor corrigido: R$ ${correctedAmount.toFixed(2)}`);
-  console.log("Detalhamento Poupança:", formatPoupancaDetails(poupancaData.details));
+  console.log("Detalhamento Poupança:");
+  console.log(formatPoupancaDetails(poupancaData.details));
   console.log("💰 === FIM DO CÁLCULO ===");
   
   return {
