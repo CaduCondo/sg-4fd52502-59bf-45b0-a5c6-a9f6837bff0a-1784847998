@@ -16,25 +16,6 @@ interface TenantFormDialogProps {
   isViewMode?: boolean;
 }
 
-const getInitialFormData = (): Partial<Tenant> => ({
-  name: "",
-  email: "",
-  phone: "",
-  documentType: "cpf",
-  document: "",
-  cpf: "",
-  cnpj: "",
-  rg: "",
-  cep: "",
-  street: "",
-  number: "",
-  complement: "",
-  neighborhood: "",
-  city: "",
-  state: "",
-  status: "active",
-});
-
 export function TenantFormDialog({
   open,
   onOpenChange,
@@ -45,80 +26,107 @@ export function TenantFormDialog({
   const [isEditing, setIsEditing] = useState(!isViewMode);
   const [documentType, setDocumentType] = useState<"cpf" | "cnpj">("cpf");
   const [loadingCep, setLoadingCep] = useState(false);
-  const [formData, setFormData] = useState<Partial<Tenant>>(getInitialFormData());
+  
+  // Estados individuais para cada campo
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [document, setDocument] = useState("");
+  const [cpf, setCpf] = useState("");
+  const [cnpj, setCnpj] = useState("");
+  const [rg, setRg] = useState("");
+  const [cep, setCep] = useState("");
+  const [street, setStreet] = useState("");
+  const [number, setNumber] = useState("");
+  const [complement, setComplement] = useState("");
+  const [neighborhood, setNeighborhood] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
+  const [status, setStatus] = useState<"active" | "inactive">("active");
 
   // Carrega os dados quando o dialog abre ou o tenant muda
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      return;
+    }
 
     setIsEditing(!isViewMode);
 
     if (tenant) {
       const docType = tenant.document_type || tenant.documentType || "cpf";
       
-      const newFormData: Partial<Tenant> = {
-        name: tenant.name || "",
-        email: tenant.email || "",
-        phone: tenant.phone || "",
-        documentType: docType,
-        document: tenant.document || "",
-        cpf: tenant.cpf || (docType === "cpf" ? tenant.document : "") || "",
-        cnpj: tenant.cnpj || (docType === "cnpj" ? tenant.document : "") || "",
-        rg: tenant.rg || "",
-        cep: tenant.cep || "",
-        street: tenant.street || "",
-        number: tenant.number || "",
-        complement: tenant.complement || "",
-        neighborhood: tenant.neighborhood || "",
-        city: tenant.city || "",
-        state: tenant.state || "",
-        status: tenant.status || "active",
-      };
-
-      setFormData(newFormData);
+      setName(tenant.name || "");
+      setEmail(tenant.email || "");
+      setPhone(tenant.phone || "");
+      setDocument(tenant.document || "");
+      setCpf(tenant.cpf || (docType === "cpf" ? tenant.document : "") || "");
+      setCnpj(tenant.cnpj || (docType === "cnpj" ? tenant.document : "") || "");
+      setRg(tenant.rg || "");
+      setCep(tenant.cep || "");
+      setStreet(tenant.street || "");
+      setNumber(tenant.number || "");
+      setComplement(tenant.complement || "");
+      setNeighborhood(tenant.neighborhood || "");
+      setCity(tenant.city || "");
+      setState(tenant.state || "");
+      setStatus(tenant.status || "active");
       setDocumentType(docType);
     } else {
-      setFormData(getInitialFormData());
+      // Novo inquilino - limpa todos os campos
+      setName("");
+      setEmail("");
+      setPhone("");
+      setDocument("");
+      setCpf("");
+      setCnpj("");
+      setRg("");
+      setCep("");
+      setStreet("");
+      setNumber("");
+      setComplement("");
+      setNeighborhood("");
+      setCity("");
+      setState("");
+      setStatus("active");
       setDocumentType("cpf");
     }
   }, [open, tenant, isViewMode]);
 
   const handleDocumentTypeChange = (type: "cpf" | "cnpj") => {
     setDocumentType(type);
-    setFormData((prev) => ({
-      ...prev,
-      documentType: type,
-      document_type: type,
-      document: "",
-      cpf: "",
-      cnpj: "",
-      rg: type === "cnpj" ? "" : prev.rg,
-    }));
+    setDocument("");
+    setCpf("");
+    setCnpj("");
+    if (type === "cnpj") {
+      setRg("");
+    }
   };
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const masked = applyPhoneMask(e.target.value);
-    setFormData((prev) => ({ ...prev, phone: masked }));
+    setPhone(masked);
   };
 
   const handleCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const masked = applyCpfMask(e.target.value);
-    setFormData((prev) => ({ ...prev, cpf: masked, document: masked }));
+    setCpf(masked);
+    setDocument(masked);
   };
 
   const handleCnpjChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const masked = applyCnpjMask(e.target.value);
-    setFormData((prev) => ({ ...prev, cnpj: masked, document: masked }));
+    setCnpj(masked);
+    setDocument(masked);
   };
 
   const handleRgChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const masked = applyRgMask(e.target.value);
-    setFormData((prev) => ({ ...prev, rg: masked }));
+    setRg(masked);
   };
 
   const handleCepChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const masked = applyCepMask(e.target.value);
-    setFormData((prev) => ({ ...prev, cep: masked }));
+    setCep(masked);
 
     const cleanCep = masked.replace(/\D/g, "");
     if (cleanCep.length === 8) {
@@ -126,13 +134,10 @@ export function TenantFormDialog({
       try {
         const address = await fetchAddressByCEP(cleanCep);
         if (address && !address.erro) {
-          setFormData((prev) => ({
-            ...prev,
-            street: address.logradouro || "",
-            neighborhood: address.bairro || "",
-            city: address.localidade || "",
-            state: address.uf || "",
-          }));
+          setStreet(address.logradouro || "");
+          setNeighborhood(address.bairro || "");
+          setCity(address.localidade || "");
+          setState(address.uf || "");
         }
       } catch (error) {
         console.error("Erro ao buscar CEP:", error);
@@ -146,27 +151,27 @@ export function TenantFormDialog({
     e.preventDefault();
 
     const dataToSave: Partial<Tenant> = {
-      name: formData.name,
-      email: formData.email,
-      phone: formData.phone,
-      documentType: documentType,
-      cep: formData.cep,
-      street: formData.street,
-      number: formData.number,
-      complement: formData.complement,
-      neighborhood: formData.neighborhood,
-      city: formData.city,
-      state: formData.state,
-      status: formData.status,
+      name,
+      email,
+      phone,
+      documentType,
+      cep,
+      street,
+      number,
+      complement,
+      neighborhood,
+      city,
+      state,
+      status,
     };
 
     if (documentType === "cpf") {
-      dataToSave.document = formData.cpf;
-      dataToSave.cpf = formData.cpf;
-      dataToSave.rg = formData.rg;
+      dataToSave.document = cpf;
+      dataToSave.cpf = cpf;
+      dataToSave.rg = rg;
     } else {
-      dataToSave.document = formData.cnpj;
-      dataToSave.cnpj = formData.cnpj;
+      dataToSave.document = cnpj;
+      dataToSave.cnpj = cnpj;
     }
 
     const success = await onSave(dataToSave);
@@ -200,8 +205,8 @@ export function TenantFormDialog({
                 <Label htmlFor="name" className="text-sm font-medium">Nome Completo *</Label>
                 <Input
                   id="name"
-                  value={formData.name || ""}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
                   placeholder="Nome completo"
                   required
                   disabled={!isEditing}
@@ -213,7 +218,7 @@ export function TenantFormDialog({
                 <Label htmlFor="document" className="text-sm font-medium">CPF/CNPJ *</Label>
                 <Input
                   id="document"
-                  value={documentType === "cpf" ? (formData.cpf || "") : (formData.cnpj || "")}
+                  value={documentType === "cpf" ? cpf : cnpj}
                   onChange={documentType === "cpf" ? handleCpfChange : handleCnpjChange}
                   placeholder={documentType === "cpf" ? "000.000.000-00" : "00.000.000/0000-00"}
                   required
@@ -227,7 +232,7 @@ export function TenantFormDialog({
                   <Label htmlFor="rg" className="text-sm font-medium">RG</Label>
                   <Input
                     id="rg"
-                    value={formData.rg || ""}
+                    value={rg}
                     onChange={handleRgChange}
                     placeholder="00.000.000-0"
                     disabled={!isEditing}
@@ -240,7 +245,7 @@ export function TenantFormDialog({
                 <Label htmlFor="phone" className="text-sm font-medium">Telefone *</Label>
                 <Input
                   id="phone"
-                  value={formData.phone || ""}
+                  value={phone}
                   onChange={handlePhoneChange}
                   placeholder="(00) 00000-0000"
                   required
@@ -254,8 +259,8 @@ export function TenantFormDialog({
                 <Input
                   id="email"
                   type="email"
-                  value={formData.email || ""}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   placeholder="email@exemplo.com"
                   required
                   disabled={!isEditing}
@@ -267,8 +272,8 @@ export function TenantFormDialog({
                 <div className="space-y-2">
                   <Label htmlFor="status" className="text-sm font-medium">Status *</Label>
                   <Select
-                    value={formData.status}
-                    onValueChange={(value) => setFormData({ ...formData, status: value as "active" | "inactive" })}
+                    value={status}
+                    onValueChange={(value) => setStatus(value as "active" | "inactive")}
                     disabled={!isEditing}
                   >
                     <SelectTrigger className="h-11 sm:h-10">
@@ -293,7 +298,7 @@ export function TenantFormDialog({
                 <div className="relative">
                   <Input
                     id="cep"
-                    value={formData.cep || ""}
+                    value={cep}
                     onChange={handleCepChange}
                     placeholder="00000-000"
                     disabled={!isEditing}
@@ -309,8 +314,8 @@ export function TenantFormDialog({
                 <Label htmlFor="street" className="text-sm font-medium">Rua/Logradouro</Label>
                 <Input
                   id="street"
-                  value={formData.street || ""}
-                  onChange={(e) => setFormData({ ...formData, street: e.target.value })}
+                  value={street}
+                  onChange={(e) => setStreet(e.target.value)}
                   placeholder="Rua, avenida, etc."
                   disabled={!isEditing}
                   className="h-11 sm:h-10 text-sm mobile-input"
@@ -321,8 +326,8 @@ export function TenantFormDialog({
                 <Label htmlFor="number" className="text-sm font-medium">Número</Label>
                 <Input
                   id="number"
-                  value={formData.number || ""}
-                  onChange={(e) => setFormData({ ...formData, number: e.target.value })}
+                  value={number}
+                  onChange={(e) => setNumber(e.target.value)}
                   placeholder="123"
                   disabled={!isEditing}
                   className="h-11 sm:h-10 text-sm mobile-input"
@@ -333,8 +338,8 @@ export function TenantFormDialog({
                 <Label htmlFor="complement" className="text-sm font-medium">Complemento</Label>
                 <Input
                   id="complement"
-                  value={formData.complement || ""}
-                  onChange={(e) => setFormData({ ...formData, complement: e.target.value })}
+                  value={complement}
+                  onChange={(e) => setComplement(e.target.value)}
                   placeholder="Apto, casa, etc."
                   disabled={!isEditing}
                   className="h-11 sm:h-10 text-sm mobile-input"
@@ -345,8 +350,8 @@ export function TenantFormDialog({
                 <Label htmlFor="neighborhood" className="text-sm font-medium">Bairro</Label>
                 <Input
                   id="neighborhood"
-                  value={formData.neighborhood || ""}
-                  onChange={(e) => setFormData({ ...formData, neighborhood: e.target.value })}
+                  value={neighborhood}
+                  onChange={(e) => setNeighborhood(e.target.value)}
                   placeholder="Bairro"
                   disabled={!isEditing}
                   className="h-11 sm:h-10 text-sm mobile-input"
@@ -357,8 +362,8 @@ export function TenantFormDialog({
                 <Label htmlFor="city" className="text-sm font-medium">Cidade</Label>
                 <Input
                   id="city"
-                  value={formData.city || ""}
-                  onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
                   placeholder="Cidade"
                   disabled={!isEditing}
                   className="h-11 sm:h-10 text-sm mobile-input"
@@ -369,8 +374,8 @@ export function TenantFormDialog({
                 <Label htmlFor="state" className="text-sm font-medium">Estado</Label>
                 <Input
                   id="state"
-                  value={formData.state || ""}
-                  onChange={(e) => setFormData({ ...formData, state: e.target.value.toUpperCase().slice(0, 2) })}
+                  value={state}
+                  onChange={(e) => setState(e.target.value.toUpperCase().slice(0, 2))}
                   placeholder="UF"
                   maxLength={2}
                   disabled={!isEditing}
