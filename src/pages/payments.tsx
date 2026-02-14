@@ -453,21 +453,26 @@ export default function PaymentsPage() {
             <ManagePaymentForm
               paymentId={selectedPaymentId}
               onSuccess={() => {
-                const payment = payments.find(p => p.id === selectedPaymentId);
+                const paymentId = selectedPaymentId;
                 setSelectedPaymentId(null);
-                loadPayments(filters.month.toString(), filters.year.toString());
                 
-                // Se o pagamento foi confirmado (status = paid), abrir o recibo
-                if (payment && payment.status === "paid") {
-                  setTimeout(() => {
-                    setSelectedPayment(payment);
-                    setShowReceiptDialog(true);
-                  }, 300);
-                }
-                
-                toast({
-                  title: "Sucesso!",
-                  description: "Recebimento atualizado com sucesso.",
+                // Recarregar pagamentos
+                loadPayments(filters.month.toString(), filters.year.toString()).then(() => {
+                  // Buscar o pagamento atualizado
+                  const updatedPayment = payments.find(p => p.id === paymentId);
+                  
+                  // Se foi marcado como pago, abrir o recibo automaticamente
+                  if (updatedPayment && updatedPayment.status === "paid") {
+                    setTimeout(() => {
+                      setSelectedPayment(updatedPayment);
+                      setShowReceiptDialog(true);
+                    }, 300);
+                  }
+                  
+                  toast({
+                    title: "Sucesso!",
+                    description: "Recebimento atualizado com sucesso.",
+                  });
                 });
               }}
               onClose={() => setSelectedPaymentId(null)}
