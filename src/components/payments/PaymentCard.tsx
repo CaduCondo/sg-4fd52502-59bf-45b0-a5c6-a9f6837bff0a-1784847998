@@ -17,6 +17,7 @@ interface PaymentCardProps {
   onCancelPayment?: (paymentId: string, e: React.MouseEvent) => void;
   onViewReceipt?: (paymentId: string, e: React.MouseEvent) => void;
   getMonthName: (month: number) => string;
+  onClick?: () => void;
 }
 
 export function PaymentCard({
@@ -31,6 +32,7 @@ export function PaymentCard({
   onCancelPayment,
   onViewReceipt,
   getMonthName,
+  onClick,
 }: PaymentCardProps) {
   const getStatusBadge = (status: Payment["status"]) => {
     switch (status) {
@@ -85,7 +87,7 @@ export function PaymentCard({
     return (
       <Card
         className={`hover:shadow-lg transition-all duration-200 cursor-pointer border-l-4 ${colors.border} active:scale-[0.98] touch-target`}
-        onClick={() => onCardClick(payment.id)}
+        onClick={onClick}
       >
         <CardHeader className="pb-3 p-4">
           <div className="flex items-start justify-between gap-2">
@@ -197,7 +199,7 @@ export function PaymentCard({
   return (
     <Card
       className={`hover:shadow-lg transition-all duration-200 cursor-pointer border-l-4 ${colors.border} active:scale-[0.98]`}
-      onClick={() => onCardClick(payment.id)}
+      onClick={onClick}
     >
       <CardContent className="py-3 px-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">

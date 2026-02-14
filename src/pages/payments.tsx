@@ -13,6 +13,10 @@ import { Payment } from "@/types";
 import { PeriodSelector } from "@/components/dashboard/PeriodSelector";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ManagePaymentForm } from "@/components/payments/ManagePaymentForm";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PaymentFilters } from "@/components/payments/PaymentFilters";
 
 export default function PaymentsPage() {
   const router = useRouter();
@@ -28,6 +32,9 @@ export default function PaymentsPage() {
   const [showReceiptDialog, setShowReceiptDialog] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "paid" | "pending" | "overdue">("all");
+  const [selectedPaymentId, setSelectedPaymentId] = useState<string | null>(null);
   const mountedRef = useRef(false);
 
   const [filters, setFilters] = useState({
@@ -84,9 +91,10 @@ export default function PaymentsPage() {
       setSelectedPayment(payment);
       setShowReceiptDialog(true);
     } else {
-      router.push(`/payments/manage/${payment.id}`);
+      setSelectedPaymentId(payment.id);
+      setShowReceiptDialog(true);
     }
-  }, [router]);
+  }, []);
 
   const handleCancelPayment = useCallback(async (paymentId: string) => {
     if (!canDelete) {
@@ -295,42 +303,26 @@ export default function PaymentsPage() {
                       : "space-y-4"
                   }
                 >
-                  {pendingPayments.map((payment) => {
-                    const rental = rentals.find((r) => r.id === payment.rentalId);
-                    const property = rental ? properties.find((p) => p.id === rental.propertyId) : undefined;
-                    const tenant = rental ? tenants.find((t) => t.id === rental.tenantId) : undefined;
-
-                    return (
-                      <PaymentCard
-                        key={payment.id}
-                        payment={payment}
-                        property={property || null}
-                        tenant={tenant || null}
-                        isPaid={false}
-                        viewMode="grid"
-                        installment={getPaymentInstallment(payment)}
-                        expectedAmount={getExpectedAmount(payment)}
-                        onCardClick={() => handlePaymentClick(payment)}
-                        onCancelPayment={
-                          (user?.role === "admin" || user?.role === "financeiro") && payment.status !== "paid"
-                            ? (paymentId, e) => {
-                                e.stopPropagation();
-                                handleCancelPayment(paymentId);
-                              }
-                            : undefined
-                        }
-                        onViewReceipt={
-                          payment.status === "paid"
-                            ? (paymentId, e) => {
-                                e.stopPropagation();
-                                handleViewReceipt(payment);
-                              }
-                            : undefined
-                        }
-                        getMonthName={getMonthName}
-                      />
-                    );
-                  })}
+                  {pendingPayments.map((payment) => (
+                    <PaymentCard
+                      key={payment.id}
+                      payment={payment}
+                      property={getPropertyForPayment(payment)}
+                      tenant={getTenantForPayment(payment)}
+                      isPaid={payment.status === "paid"}
+                      viewMode={viewMode}
+                      installment={getPaymentInstallment(payment)}
+                      expectedAmount={getExpectedAmount(payment)}
+                      onCardClick={(id) => setSelectedPaymentId(id)}
+                      onClick={() => setSelectedPaymentId(payment.id)}
+                      getMonthName={getMonthName}
+                      onCancelPayment={canDelete ? handleCancelPayment : undefined}
+                      onViewReceipt={(id, e) => {
+                        e?.stopPropagation();
+                        handleViewReceipt(payment);
+                      }}
+                    />
+                  ))}
                 </div>
               ) : (
                 <div className="text-center py-12">
@@ -349,38 +341,26 @@ export default function PaymentsPage() {
                       : "space-y-4"
                   }
                 >
-                  {paidPayments.map((payment) => {
-                    const rental = rentals.find((r) => r.id === payment.rentalId);
-                    const property = rental ? properties.find((p) => p.id === rental.propertyId) : undefined;
-                    const tenant = rental ? tenants.find((t) => t.id === rental.tenantId) : undefined;
-
-                    return (
-                      <PaymentCard
-                        key={payment.id}
-                        payment={payment}
-                        property={property || null}
-                        tenant={tenant || null}
-                        isPaid={true}
-                        viewMode="grid"
-                        installment={getPaymentInstallment(payment)}
-                        expectedAmount={getExpectedAmount(payment)}
-                        onCardClick={() => handlePaymentClick(payment)}
-                        onCancelPayment={
-                          user?.role === "admin" || user?.role === "financeiro"
-                            ? (paymentId, e) => {
-                                e.stopPropagation();
-                                handleCancelPayment(paymentId);
-                              }
-                            : undefined
-                        }
-                        onViewReceipt={(paymentId, e) => {
-                          e.stopPropagation();
-                          handleViewReceipt(payment);
-                        }}
-                        getMonthName={getMonthName}
-                      />
-                    );
-                  })}
+                  {paidPayments.map((payment) => (
+                    <PaymentCard
+                      key={payment.id}
+                      payment={payment}
+                      property={getPropertyForPayment(payment)}
+                      tenant={getTenantForPayment(payment)}
+                      isPaid={payment.status === "paid"}
+                      viewMode={viewMode}
+                      installment={getPaymentInstallment(payment)}
+                      expectedAmount={getExpectedAmount(payment)}
+                      onCardClick={(id) => setSelectedPaymentId(id)}
+                      onClick={() => setSelectedPaymentId(payment.id)}
+                      getMonthName={getMonthName}
+                      onCancelPayment={canDelete ? handleCancelPayment : undefined}
+                      onViewReceipt={(id, e) => {
+                        e?.stopPropagation();
+                        handleViewReceipt(payment);
+                      }}
+                    />
+                  ))}
                 </div>
               ) : (
                 <div className="text-center py-12">
@@ -404,6 +384,29 @@ export default function PaymentsPage() {
           }}
         />
       )}
+
+      <Dialog open={!!selectedPaymentId} onOpenChange={(open) => !open && setSelectedPaymentId(null)}>
+        <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Detalhes do Recebimento</DialogTitle>
+          </DialogHeader>
+          {selectedPaymentId && (
+            <ManagePaymentForm
+              paymentId={selectedPaymentId}
+              onSuccess={() => {
+                setSelectedPaymentId(null);
+                loadPayments(filters.month.toString(), filters.year.toString());
+                toast({
+                  title: "Sucesso!",
+                  description: "Recebimento atualizado com sucesso.",
+                });
+              }}
+              onClose={() => setSelectedPaymentId(null)}
+              embedded
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 }
