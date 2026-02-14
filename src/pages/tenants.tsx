@@ -14,33 +14,29 @@ import { ScrollReveal } from "@/components/animations/ScrollReveal";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Eye, Pencil, Trash2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 export default function TenantsPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const {
     tenants,
-    locations,
     isLoading,
-    searchTerm,
-    setSearchTerm,
-    statusFilter,
-    setStatusFilter,
-    selectedLocations,
-    handleLocationToggle,
-    sortBy,
-    setSortBy,
     createTenant,
     updateTenant,
     deleteTenant,
   } = useTenants();
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedTenant, setSelectedTenant] = useState<Partial<Tenant> | null>(null);
+  const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
   const [tenantToDelete, setTenantToDelete] = useState<Tenant | null>(null);
   const [isViewMode, setIsViewMode] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
+  const [sortBy, setSortBy] = useState<"alphabetical" | "recent">("alphabetical");
 
   useEffect(() => {
     const viewId = router.query.view as string;
@@ -58,13 +54,13 @@ export default function TenantsPage() {
   const handleCreateNew = () => {
     setSelectedTenant(null);
     setIsViewMode(false);
-    setIsDialogOpen(true);
+    setIsFormOpen(true);
   };
 
   const handleViewTenant = (tenant: Tenant) => {
     setSelectedTenant(tenant);
     setIsViewMode(true);
-    setIsDialogOpen(true);
+    setIsFormOpen(true);
   };
 
   const handleEditTenant = (tenant: Tenant, e?: React.MouseEvent) => {
@@ -90,11 +86,32 @@ export default function TenantsPage() {
   };
 
   const handleSave = async (data: Partial<Tenant>) => {
-    if (editingTenant?.id) {
-      return await updateTenant(editingTenant.id, data);
+    let success = false;
+    
+    if (selectedTenant) {
+      // Edit existing
+      success = await updateTenant(selectedTenant.id, data);
+      if (success) {
+        toast({
+          title: "Sucesso!",
+          description: "Inquilino atualizado com sucesso.",
+        });
+      }
     } else {
-      return await createTenant(data);
+      // Create new
+      success = await createTenant(data);
+      if (success) {
+        toast({
+          title: "Sucesso!",
+          description: "Inquilino criado com sucesso.",
+        });
+      }
     }
+
+    if (success) {
+      setIsFormOpen(false);
+    }
+    return success;
   };
 
   const getStatusBadge = (status: string) => {
@@ -187,7 +204,7 @@ export default function TenantsPage() {
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}
           statusFilter={statusFilter}
-          onStatusFilterChange={setStatusFilter}
+          onStatusFilterChange={(value) => setStatusFilter(value as "all" | "active" | "inactive")}
           sortBy={sortBy as "alphabetical" | "recent"}
           onSortChange={(value) => setSortBy(value as "alphabetical" | "recent")}
           totalCount={tenants.length}
@@ -209,8 +226,9 @@ export default function TenantsPage() {
               <TenantCard
                 key={tenant.id}
                 tenant={tenant}
-                onClick={() => setEditingTenant(tenant)}
+                onClick={() => handleViewTenant(tenant)}
                 onDelete={() => handleDelete(tenant.id)}
+                viewMode={viewMode}
               />
             ))}
           </div>
@@ -275,13 +293,14 @@ export default function TenantsPage() {
         )}
 
         <TenantFormDialog
-          open={isFormOpen || !!editingTenant}
+          open={isFormOpen}
           onOpenChange={(open) => {
             setIsFormOpen(open);
-            if (!open) setEditingTenant(null);
+            if (!open) setSelectedTenant(null);
           }}
-          tenant={editingTenant || undefined}
           onSave={handleSave}
+          tenant={selectedTenant || undefined}
+          isViewMode={isViewMode}
         />
 
         <TenantDeleteAlert
