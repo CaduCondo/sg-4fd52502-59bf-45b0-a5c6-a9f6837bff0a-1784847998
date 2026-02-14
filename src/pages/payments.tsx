@@ -26,8 +26,8 @@ export default function PaymentsPage() {
 
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
   const [showReceiptDialog, setShowReceiptDialog] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [searchQuery, setSearchQuery] = useState("");
   const mountedRef = useRef(false);
 
   const [filters, setFilters] = useState({
@@ -157,7 +157,7 @@ export default function PaymentsPage() {
 
   const pendingPayments = useMemo(() => {
     return payments.filter((p) => {
-      // Filtro de status base
+      // Filtro base de status
       const isStatusMatch = p.status === "pending" || p.status === "partial" || p.status === "overdue";
       if (!isStatusMatch) return false;
 
@@ -168,7 +168,9 @@ export default function PaymentsPage() {
         const property = rental ? properties.find(prop => prop.id === rental.propertyId) : null;
         const tenant = rental ? tenants.find(t => t.id === rental.tenantId) : null;
 
-        const propertyAddress = property ? `${property.address} ${property.number} ${property.complement || ''}`.toLowerCase() : "";
+        // Busca em: endereço + número + complemento + nome inquilino
+        const propertyAddress = property ? 
+          `${property.address} ${property.number} ${property.complement || ''}`.toLowerCase() : "";
         const tenantName = tenant ? tenant.name.toLowerCase() : "";
 
         return propertyAddress.includes(query) || tenantName.includes(query);
@@ -180,7 +182,7 @@ export default function PaymentsPage() {
 
   const paidPayments = useMemo(() => {
     return payments.filter((p) => {
-      // Filtro de status base
+      // Filtro base de status
       if (p.status !== "paid") return false;
 
       // Filtro de busca por texto
@@ -190,7 +192,8 @@ export default function PaymentsPage() {
         const property = rental ? properties.find(prop => prop.id === rental.propertyId) : null;
         const tenant = rental ? tenants.find(t => t.id === rental.tenantId) : null;
 
-        const propertyAddress = property ? `${property.address} ${property.number} ${property.complement || ''}`.toLowerCase() : "";
+        const propertyAddress = property ? 
+          `${property.address} ${property.number} ${property.complement || ''}`.toLowerCase() : "";
         const tenantName = tenant ? tenant.name.toLowerCase() : "";
 
         return propertyAddress.includes(query) || tenantName.includes(query);
@@ -221,18 +224,25 @@ export default function PaymentsPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="relative w-full max-w-sm">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Buscar por inquilino, endereço..."
-                className="pl-8 w-full"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
+            <Button
+              variant={viewMode === "grid" ? "default" : "outline"}
+              size="icon"
+              onClick={() => setViewMode("grid")}
+              title="Visualização em Grade"
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </Button>
+            
+            <Button
+              variant={viewMode === "list" ? "default" : "outline"}
+              size="icon"
+              onClick={() => setViewMode("list")}
+              title="Visualização em Lista"
+            >
+              <List className="h-4 w-4" />
+            </Button>
 
-            {user?.role && (user?.role === "admin" || user?.role === "financial") && (
+            {canCreate && (
               <Button onClick={() => router.push("/payments/manage/new")}>
                 <Plus className="h-4 w-4 mr-2" />
                 Novo Recebimento
@@ -252,7 +262,6 @@ export default function PaymentsPage() {
             />
             
             <div className="relative w-full max-w-sm ml-0 sm:ml-2">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 type="search"
                 placeholder="Buscar por inquilino, endereço..."

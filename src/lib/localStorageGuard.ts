@@ -150,6 +150,7 @@ export function forceCleanLocalStorage(): void {
  * Sets up periodic checks and error handlers
  * 
  * DISABLED: Automatic cleanup was interfering with login sessions
+ * Periodic validation also DISABLED to prevent interrupting form filling
  */
 export function initializeLocalStorageGuard(): void {
   if (typeof window === "undefined") return;
@@ -169,23 +170,9 @@ export function initializeLocalStorageGuard(): void {
     }
   });
 
-  // Periodic validation (check only, don't clean)
-  const intervalId = setInterval(() => {
-    try {
-      const testKey = "__storage_test__";
-      localStorage.setItem(testKey, "test");
-      localStorage.removeItem(testKey);
-    } catch (error) {
-      console.warn("⚠️ Erro ao validar localStorage:", error);
-    }
-  }, 60000); // Check every minute
-
-  // Cleanup interval on page unload
-  if (typeof window !== "undefined") {
-    window.addEventListener("beforeunload", () => {
-      clearInterval(intervalId);
-    });
-  }
+  // DESABILITADO: Verificação periódica removida para evitar refreshes durante formulários
+  // A verificação só ocorrerá no carregamento inicial da página via validateAndCleanLocalStorage
+  console.log("⚠️ LocalStorage Guard: Verificação periódica DESABILITADA");
 }
 
 /**
