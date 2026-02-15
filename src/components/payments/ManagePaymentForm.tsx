@@ -275,7 +275,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         
         if (proportionalItem) {
           isProportional = true;
-          // Extrair número de dias da descrição (ex: "Aluguel Proporcional (17 dias)")
           const match = proportionalItem.description.match(/\((\d+)\s+dias?\)/);
           if (match) {
             proportionalDays = parseInt(match[1]);
@@ -290,6 +289,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     let juros = 0;
     let diasAtraso = 0;
 
+    // 🎯 CALCULAR MULTA/JUROS PARA TODOS OS TIPOS (normal E rescisão)
     if (payment && formData.payment_date) {
       const dueDate = new Date(payment.due_date + "T12:00:00");
       const paymentDate = new Date(formData.payment_date + "T12:00:00");
@@ -298,12 +298,31 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         const diffTime = paymentDate.getTime() - dueDate.getTime();
         diasAtraso = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-        const baseCalculo = Math.max(0, valorAluguel);
+        // 🎯 Para rescisões: calcular multa/juros sobre o VALOR TOTAL da rescisão (absoluto)
+        let baseCalculo = 0;
         
-        multa = Math.round((baseCalculo * lateFeePercentage / 100) * 100) / 100;
+        if (isTerminationPayment && originalBreakdown.length > 0) {
+          // Somar todos os itens do breakdown (exceto multa/juros já existentes)
+          baseCalculo = originalBreakdown
+            .filter(item => 
+              !item.description?.includes("Multa por Atraso") &&
+              !item.description?.includes("Juros por Atraso")
+            )
+            .reduce((sum, item) => sum + item.amount, 0);
+          
+          // Usar valor absoluto (se negativo, inverte)
+          baseCalculo = Math.abs(baseCalculo);
+        } else {
+          // Para pagamentos normais: usar valorAluguel
+          baseCalculo = Math.max(0, valorAluguel);
+        }
 
-        const jurosDiario = interestRatePercentage;
-        juros = Math.round((baseCalculo * jurosDiario / 100 * diasAtraso) * 100) / 100;
+        if (baseCalculo > 0 && !removeFees) {
+          multa = Math.round((baseCalculo * lateFeePercentage / 100) * 100) / 100;
+
+          const jurosDiario = interestRatePercentage;
+          juros = Math.round((baseCalculo * jurosDiario / 100 * diasAtraso) * 100) / 100;
+        }
       }
     }
 
@@ -336,6 +355,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     if (isTerminationPayment && originalBreakdown.length > 0) {
       let workingBreakdown = [...originalBreakdown];
       
+      // Atualizar caução corrigida se existir
       if (igpmCorrection && igpmCorrection.correctedAmount > 0) {
         workingBreakdown = workingBreakdown.map((item: any) => {
           if (item.description?.includes("Devolução de Caução")) {
@@ -348,19 +368,25 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         });
       }
       
+      // Remover multa/juros antigos do breakdown
       const cleanBreakdown = workingBreakdown.filter((item: any) => 
         !item.description?.includes("Despesas") && 
         !item.description?.includes("Multa por Atraso") && 
         !item.description?.includes("Juros por Atraso")
       );
       
+      // Calcular subtotal da rescisão (sem multa/juros de atraso)
       const breakdownTotal = cleanBreakdown.reduce((sum, item) => sum + item.amount, 0);
       
+      // 🎯 INCLUIR MULTA/JUROS NO TOTAL se houver atraso e não for removido
       const lateFees = removeFees ? 0 : (values.multa + values.juros);
-      const newTotal = breakdownTotal + lateFees + repairExpenses;
+      
+      // Total final: subtotal rescisão + despesas + multa/juros atraso
+      const newTotal = breakdownTotal + repairExpenses + lateFees;
       
       setCalculatedTotal(newTotal);
       
+      // Atualizar campo de valor a pagar automaticamente em modo de edição
       if (isEditMode) {
         setFormData(prev => ({
           ...prev,
@@ -368,6 +394,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         }));
       }
     } else if (!isTerminationPayment && isEditMode) {
+      // Para pagamentos normais
       setFormData(prev => ({
         ...prev,
         amount_to_pay: formatCurrency(values.valorAPagar.toFixed(2))
@@ -378,7 +405,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     originalBreakdown,
     repairExpenses,
     removeFees,
-    formData.payment_date,
+    formData.payment_date, // 🎯 IMPORTANTE: recalcular quando data de pagamento mudar
     lateFeePercentage,
     interestRatePercentage,
     isEditMode,
@@ -540,12 +567,14 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
             });
           }
           
+          // Remover itens antigos (despesas, multa, juros)
           breakdownData = breakdownData.filter((item: any) => 
             !item.description?.includes("Despesas") &&
             !item.description?.includes("Multa por Atraso") &&
             !item.description?.includes("Juros por Atraso")
           );
           
+          // 🎯 ADICIONAR MULTA/JUROS POR ATRASO se houver e não for removido
           if (!removeFees && values.multa > 0) {
             breakdownData.push({
               description: "Multa por Atraso",
@@ -561,6 +590,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
             });
           }
           
+          // Adicionar despesas adicionais
           if (repairExpenses > 0) {
             breakdownData.push({
               description: "Despesas Adicionais*",
@@ -878,6 +908,55 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                       )}
                     </div>
                   </div>
+
+                  {/* 🎯 MOSTRAR MULTA/JUROS POR ATRASO NA RESCISÃO */}
+                  {values.multa > 0 && (
+                    <>
+                      <div className="border-t border-dashed my-2"></div>
+                      <div className="bg-red-50 dark:bg-red-950 rounded-lg p-3 space-y-2">
+                        <p className="text-xs font-semibold text-red-800 dark:text-red-200 mb-2">
+                          🚨 ATRASO NO PAGAMENTO ({values.diasAtraso} {values.diasAtraso === 1 ? 'dia' : 'dias'})
+                        </p>
+                        
+                        <div className="flex justify-between text-sm">
+                          <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600"}>
+                            Multa por Atraso ({lateFeePercentage}%)
+                          </span>
+                          <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600 font-medium"}>
+                            + {formatCurrency(values.multa.toFixed(2))}
+                          </span>
+                        </div>
+
+                        {values.juros > 0 && (
+                          <div className="flex justify-between text-sm">
+                            <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600"}>
+                              Juros ({interestRatePercentage.toFixed(3)}% ao dia)
+                            </span>
+                            <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600 font-medium"}>
+                              + {formatCurrency(values.juros.toFixed(2))}
+                            </span>
+                          </div>
+                        )}
+
+                        {isEditMode && (
+                          <div className="flex items-center space-x-2 pt-2 border-t border-red-200 dark:border-red-800">
+                            <Checkbox
+                              id="remove-fees-termination"
+                              checked={removeFees}
+                              onCheckedChange={(checked) => setRemoveFees(checked as boolean)}
+                              disabled={isReadOnly}
+                            />
+                            <label
+                              htmlFor="remove-fees-termination"
+                              className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                            >
+                              Retirar multa/juros por atraso
+                            </label>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
 
                   <div className="flex justify-between pt-3 border-t-2 border-primary mt-2">
                     <span className="font-bold text-base">VALOR TOTAL</span>
