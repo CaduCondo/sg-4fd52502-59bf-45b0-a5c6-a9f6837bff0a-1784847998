@@ -381,7 +381,7 @@ export function DepositInstallmentsTable({
 
   const totalExpected = visibleData.reduce((acc, curr) => acc + (curr.amount || 0), 0);
   const totalReceived = visibleData
-    .filter((inst) => inst.status === "paid")
+    .filter((inst) => inst.pix_code && inst.pix_code.trim() !== "")
     .reduce((acc, curr) => acc + (curr.amount || 0), 0);
   const totalPartnerCommission = visibleData.reduce((acc, curr) => acc + (curr.partner_commission || 0), 0);
   const totalInternalCommission = visibleData.reduce((acc, curr) => acc + (curr.internal_commission || 0), 0);
