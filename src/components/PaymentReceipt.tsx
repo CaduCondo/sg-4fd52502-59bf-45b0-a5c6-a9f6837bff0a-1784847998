@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Download, X, Printer, Share2 } from "lucide-react";
@@ -22,25 +22,6 @@ interface BreakdownItem {
 export function PaymentReceipt({ payment: initialPayment, rental, property, tenant, onClose }: PaymentReceiptProps) {
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [payment, setPayment] = useState(initialPayment);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function fetchCompletePaymentData() {
-      try {
-        console.log("🔍 Buscando dados COMPLETOS do pagamento:", initialPayment.id);
-        const completePayment = await getPaymentById(initialPayment.id);
-        console.log("✅ Dados completos recebidos:", completePayment);
-        setPayment(completePayment);
-      } catch (error) {
-        console.error("❌ Erro ao buscar dados do pagamento:", error);
-        setPayment(initialPayment);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchCompletePaymentData();
-  }, [initialPayment.id]);
 
   const isTermination = payment.type === "termination";
 
@@ -365,19 +346,6 @@ export function PaymentReceipt({ payment: initialPayment, rental, property, tena
 
   const referenceYear = payment.referenceYear || new Date().getFullYear();
 
-  if (loading) {
-    return (
-      <Dialog open={true} onOpenChange={onClose}>
-        <DialogContent className="max-w-4xl">
-          <div className="flex items-center justify-center p-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            <span className="ml-3">Carregando dados do recibo...</span>
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  }
-
   return (
     <Dialog open={true} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -468,6 +436,22 @@ export function PaymentReceipt({ payment: initialPayment, rental, property, tena
                 hour: "2-digit", 
                 minute: "2-digit" 
               })}
+            </p>
+          </div>
+
+          <div className="flex flex-col items-end gap-2 pt-8 pb-6 border-t border-gray-300">
+            <div className="w-64 border-b border-gray-400 pb-1">
+              <span className="text-xs text-gray-600">Assinatura</span>
+            </div>
+            
+            <img 
+              src="/signature.png" 
+              alt="Assinatura Carlos Aparecido D'Uvo" 
+              className="w-32 h-auto"
+            />
+            
+            <p className="text-[10pt] text-gray-600 font-medium">
+              CARLOS APARECIDO D'UVO
             </p>
           </div>
         </div>
