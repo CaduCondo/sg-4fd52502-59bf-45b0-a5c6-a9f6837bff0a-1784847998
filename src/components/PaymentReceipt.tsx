@@ -1,9 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Download, X } from "lucide-react";
 import { Payment, Rental, Property, Tenant } from "@/types";
-import { getConfig } from "@/services/configService";
 
 interface PaymentReceiptProps {
   payment: Payment;
@@ -15,58 +14,9 @@ interface PaymentReceiptProps {
 
 export function PaymentReceipt({ payment, rental, property, tenant, onClose }: PaymentReceiptProps) {
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
-  const [calculatedLateFee, setCalculatedLateFee] = useState(0);
-  const [calculatedInterest, setCalculatedInterest] = useState(0);
 
-  // ===== CALCULAR MULTA E JUROS SE NECESSÁRIO =====
-  useEffect(() => {
-    async function calculateFeesIfNeeded() {
-      // Se já tem multa/juros no banco, usa eles
-      if (payment.lateFee > 0 || payment.interest > 0) {
-        setCalculatedLateFee(payment.lateFee || 0);
-        setCalculatedInterest(payment.interest || 0);
-        return;
-      }
-
-      // Se paidAmount for igual a expectedAmount, não tem atraso
-      if (payment.paidAmount === payment.expectedAmount) {
-        setCalculatedLateFee(0);
-        setCalculatedInterest(0);
-        return;
-      }
-
-      // Calcular multa/juros baseado em datas
-      try {
-        const config = await getConfig();
-        if (!config) return;
-
-        const dueDate = new Date(payment.dueDate + "T00:00:00");
-        const paymentDate = payment.paymentDate 
-          ? new Date(payment.paymentDate + "T00:00:00")
-          : new Date();
-
-        const diffTime = paymentDate.getTime() - dueDate.getTime();
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-        if (diffDays > 0) {
-          // Pagamento atrasado - calcular multa e juros
-          const baseAmount = payment.expectedAmount || 0;
-          const lateFeePercentage = config.late_fee_percentage || 10;
-          const interestRatePercentage = config.interest_rate_percentage || 1;
-
-          const multa = (baseAmount * lateFeePercentage) / 100;
-          const juros = (baseAmount * interestRatePercentage * diffDays) / 100;
-
-          setCalculatedLateFee(multa);
-          setCalculatedInterest(juros);
-        }
-      } catch (error) {
-        console.error("Erro ao calcular multa/juros:", error);
-      }
-    }
-
-    calculateFeesIfNeeded();
-  }, [payment]);
+  console.log("=== PAYMENT RECEIPT - CÁLCULO SIMPLES DE VALORES ===");
+  console.log("payment completo:", payment);
 
   // ===== PARCELAS =====
   const currentInstallment = payment.installment || 1;
@@ -134,21 +84,51 @@ export function PaymentReceipt({ payment, rental, property, tenant, onClose }: P
     totalAmount = Math.abs(payment.paidAmount || 0);
     
   } else {
-    // PAGAMENTO NORMAL
+    // ===== PAGAMENTO NORMAL - LÓGICA SIMPLES E PRECISA =====
+    
+    // 1. Valor base (aluguel esperado)
     baseAmount = payment.expectedAmount || 0;
+    console.log("1️⃣ Valor Base (expectedAmount):", baseAmount);
     
-    // Usar valores calculados (do hook useEffect)
-    lateFee = calculatedLateFee;
-    interest = calculatedInterest;
-    
-    // Total pago
+    // 2. Total pago (o que realmente foi pago)
     totalAmount = payment.paidAmount || 0;
+    console.log("2️⃣ Total Pago (paidAmount):", totalAmount);
     
-    // Se total for 0, calcular
+    // 3. Tentar pegar multa e juros do banco
+    lateFee = payment.lateFee || 0;
+    interest = payment.interest || 0;
+    console.log("3️⃣ Multa do banco (lateFee):", lateFee);
+    console.log("4️⃣ Juros do banco (interest):", interest);
+    
+    // 4. SE zerados E total > base → Extrair da diferença
+    if (lateFee === 0 && interest === 0 && totalAmount > baseAmount) {
+      const difference = totalAmount - baseAmount;
+      console.log("5️⃣ Diferença detectada (total - base):", difference);
+      console.log("   → Vai extrair multa e juros da diferença");
+      
+      // ESTRATÉGIA SIMPLES:
+      // Multa = 10% do valor base (padrão do sistema)
+      // Juros = restante da diferença
+      lateFee = Math.round((baseAmount * 0.10) * 100) / 100;
+      interest = Math.round((difference - lateFee) * 100) / 100;
+      
+      console.log("   → Multa extraída (10% do base):", lateFee);
+      console.log("   → Juros extraídos (diferença - multa):", interest);
+    }
+    
+    // 5. Se total ainda for zero, calcular
     if (totalAmount === 0) {
       totalAmount = baseAmount + lateFee + interest;
+      console.log("6️⃣ Total recalculado (base + multa + juros):", totalAmount);
     }
   }
+
+  console.log("=== VALORES FINAIS PARA EXIBIÇÃO ===");
+  console.log("baseAmount:", baseAmount);
+  console.log("lateFee:", lateFee);
+  console.log("interest:", interest);
+  console.log("totalAmount:", totalAmount);
+  console.log("=======================================");
 
   // ===== FORMATAÇÃO =====
   const formatCurrency = (value: number): string => {
