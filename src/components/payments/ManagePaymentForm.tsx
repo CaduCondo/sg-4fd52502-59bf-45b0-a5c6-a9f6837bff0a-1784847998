@@ -658,12 +658,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
 
       if (updateError) throw updateError;
 
-      // ✅ BUSCAR DADOS ATUALIZADOS DO BANCO
-      const freshPayment = await getPaymentById(paymentId);
-      const freshRental = await getRentalById(freshPayment.rental_id);
-      const freshProperty = await getPropertyById(freshRental.property_id);
-      const freshTenant = await getTenantById(freshRental.tenant_id);
-
       toast({
         title: "Sucesso",
         description: paymentStatus === "partial" 
@@ -671,19 +665,28 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           : isPaid ? "Pagamento atualizado com sucesso!" : "Pagamento registrado com sucesso!",
       });
 
-      // ✅ CORREÇÃO DEFINITIVA: SEMPRE passar valores calculados para o recibo
       if (onSuccess) {
-        console.log("\n✅ CHAMANDO onSuccess COM VALORES CALCULADOS:");
-        console.log("  values.multa:", values.multa);
-        console.log("  values.juros:", values.juros);
-        console.log("  removeFees:", removeFees);
-        
-        // ✅ USAR DADOS FRESCOS DO BANCO
+        // ✅ CONSTRUÇÃO MANUAL DO OBJETO ATUALIZADO
+        // Mesclamos dados existentes + atualizações enviadas ao banco
+        // Adicionamos camelCase explicitamente para o PaymentReceipt
+        const updatedPayment: any = {
+          ...payment,
+          ...paymentDataUpdate,
+          // Garante compatibilidade com componentes que esperam camelCase
+          lateFee: paymentDataUpdate.late_fee,
+          interest: paymentDataUpdate.interest,
+          paidAmount: paymentDataUpdate.paid_amount,
+          paymentDate: paymentDataUpdate.payment_date,
+          paymentMethod: paymentDataUpdate.payment_method,
+        };
+
+        console.log("✅ Calling onSuccess with constructed payment:", updatedPayment);
+
         onSuccess({
-          payment: freshPayment,
-          rental: freshRental,
-          property: freshProperty,
-          tenant: freshTenant,
+          payment: updatedPayment,
+          rental: rental,     // Usa o estado local que já temos
+          property: property, // Usa o estado local que já temos
+          tenant: tenant,     // Usa o estado local que já temos
         });
       } else if (onClose) {
         onClose();
