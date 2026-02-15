@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Download, X } from "lucide-react";
+import { Download, X, Printer, Share2 } from "lucide-react";
 import { Payment, Rental, Property, Tenant } from "@/types";
 import { getPaymentById } from "@/services/paymentService";
 
@@ -18,7 +18,6 @@ export function PaymentReceipt({ payment: initialPayment, rental, property, tena
   const [payment, setPayment] = useState(initialPayment);
   const [loading, setLoading] = useState(true);
 
-  // Buscar dados COMPLETOS do banco ao abrir o recibo
   useEffect(() => {
     async function fetchCompletePaymentData() {
       try {
@@ -40,27 +39,22 @@ export function PaymentReceipt({ payment: initialPayment, rental, property, tena
   console.log("=== PAYMENT RECEIPT - ANÁLISE DE VALORES ===");
   console.log("payment completo:", payment);
 
-  // ===== PARCELAS =====
   const currentInstallment = payment.installment || 1;
   const totalInstallments = payment.totalInstallments || rental.installments || rental.totalInstallments || 24;
 
-  // ===== DETECTAR RESCISÃO =====
   const isTermination = payment.type === "termination";
 
-  // ===== VALORES =====
   let baseAmount = 0;
   let lateFee = 0;
   let interest = 0;
   let totalAmount = 0;
 
-  // Valores de rescisão
   let proportionalRent = 0;
   let terminationFee = 0;
   let depositRefund = 0;
   let additionalExpenses = 0;
 
   if (isTermination) {
-    // RESCISÃO: Usar breakdown
     let breakdown: any = null;
     
     if (payment.breakdown) {
@@ -106,30 +100,23 @@ export function PaymentReceipt({ payment: initialPayment, rental, property, tena
     totalAmount = Math.abs(payment.paidAmount || 0);
     
   } else {
-    // ===== PAGAMENTO NORMAL =====
-    
     console.log("\n📊 EXTRAÇÃO DE VALORES:");
     
-    // 1. Valor base
     baseAmount = payment.expectedAmount || 0;
     console.log("1️⃣ Valor Base (expectedAmount):", baseAmount);
     
-    // 2. Total pago
     totalAmount = payment.paidAmount || 0;
     console.log("2️⃣ Total Pago (paidAmount):", totalAmount);
     
-    // 3. Multa e juros do banco
     lateFee = payment.lateFee || 0;
     interest = payment.interest || 0;
     console.log("3️⃣ Multa do banco (lateFee):", lateFee);
     console.log("4️⃣ Juros do banco (interest):", interest);
     
-    // 4. SE valores zerados E tem diferença → Extrair
     if (lateFee === 0 && interest === 0 && totalAmount > baseAmount) {
       const difference = totalAmount - baseAmount;
       console.log("5️⃣ Diferença detectada (total - base):", difference);
       
-      // Estratégia: 10% multa, resto juros
       lateFee = Math.round((baseAmount * 0.10) * 100) / 100;
       interest = Math.round((difference - lateFee) * 100) / 100;
       
@@ -137,7 +124,6 @@ export function PaymentReceipt({ payment: initialPayment, rental, property, tena
       console.log("   → Juros extraídos (diferença - multa):", interest);
     }
     
-    // 5. SE total ainda zerado, somar tudo
     if (totalAmount === 0) {
       totalAmount = baseAmount + lateFee + interest;
       console.log("6️⃣ Total recalculado (base + multa + juros):", totalAmount);
@@ -151,7 +137,6 @@ export function PaymentReceipt({ payment: initialPayment, rental, property, tena
   console.log("totalAmount:", totalAmount);
   console.log("=======================================\n");
 
-  // ===== FORMATAÇÃO =====
   const formatCurrency = (value: number): string => {
     return new Intl.NumberFormat("pt-BR", {
       style: "currency",
@@ -168,7 +153,6 @@ export function PaymentReceipt({ payment: initialPayment, rental, property, tena
     });
   };
 
-  // ===== EXTENSO =====
   const extenso = (num: number): string => {
     if (num === 0) return "ZERO REAIS";
     
@@ -242,6 +226,10 @@ export function PaymentReceipt({ payment: initialPayment, rental, property, tena
     }
   };
 
+  const handlePrint = () => {
+    window.print();
+  };
+
   const handleGeneratePDF = async () => {
     setIsGeneratingPDF(true);
     try {
@@ -264,6 +252,18 @@ export function PaymentReceipt({ payment: initialPayment, rental, property, tena
     } finally {
       setIsGeneratingPDF(false);
     }
+  };
+
+  const handleShareWhatsApp = () => {
+    const referenceMonthName = payment.referenceMonth 
+      ? new Date(2000, payment.referenceMonth - 1).toLocaleString("pt-BR", { month: "long" })
+      : "N/A";
+    const referenceYear = payment.referenceYear || new Date().getFullYear();
+
+    const message = `📄 *RECIBO DE PAGAMENTO*\n\nLocatário: ${tenant.name}\nValor Pago: ${formatCurrency(totalAmount)}\nReferência: ${referenceMonthName} de ${referenceYear}\nVencimento: ${formatDate(payment.dueDate)}\nImóvel: ${property.location?.toUpperCase() || property.address?.toUpperCase() || "N/A"}${property.complement ? `, ${property.complement.toUpperCase()}` : ""}\n\n✅ Pagamento confirmado e recibo gerado.`;
+    
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, "_blank");
   };
 
   const referenceMonthName = payment.referenceMonth 
@@ -405,15 +405,45 @@ export function PaymentReceipt({ payment: initialPayment, rental, property, tena
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 pt-4 border-t">
+        <div className="flex justify-between gap-2 pt-4 border-t">
           <Button
             variant="outline"
-            onClick={handleGeneratePDF}
-            disabled={isGeneratingPDF}
+            onClick={handlePrint}
+            className="flex items-center gap-2"
           >
-            <Download className="h-4 w-4 mr-2" />
-            {isGeneratingPDF ? "Gerando PDF..." : "Baixar PDF"}
+            <Printer className="h-4 w-4" />
+            Imprimir
           </Button>
+          
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={handleShareWhatsApp}
+              className="flex items-center gap-2"
+            >
+              <Share2 className="h-4 w-4" />
+              WhatsApp
+            </Button>
+            
+            <Button
+              variant="outline"
+              onClick={handleGeneratePDF}
+              disabled={isGeneratingPDF}
+              className="flex items-center gap-2"
+            >
+              <Download className="h-4 w-4" />
+              {isGeneratingPDF ? "Gerando PDF..." : "Baixar PDF"}
+            </Button>
+            
+            <Button
+              variant="default"
+              onClick={onClose}
+              className="flex items-center gap-2"
+            >
+              <X className="h-4 w-4" />
+              Fechar
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
