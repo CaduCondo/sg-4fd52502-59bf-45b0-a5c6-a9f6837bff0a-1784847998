@@ -18,6 +18,7 @@ import { Calendar, AlertTriangle, Info } from "lucide-react";
 import type { Rental } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 import { calculateCorrectedDeposit } from "@/services/igpmService";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 interface RentalTerminationDialogProps {
   open: boolean;
@@ -369,207 +370,209 @@ export function RentalTerminationDialog({
   const monthlyRent = rental.value || 0;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-yellow-600" />
-            Rescisão de Contrato
-          </DialogTitle>
-          <DialogDescription>
-            Encerramento de contrato de locação
-          </DialogDescription>
-        </DialogHeader>
+    <TooltipProvider>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-yellow-600" />
+              Rescisão de Contrato
+            </DialogTitle>
+            <DialogDescription>
+              Encerramento de contrato de locação
+            </DialogDescription>
+          </DialogHeader>
 
-        <div className="space-y-4 py-4">
-          <div className="rounded-lg bg-muted p-3 space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Imóvel:</span>
-              <span className="font-medium">
-                {typeof rental.property?.location === 'object' 
-                  ? (rental.property?.location as any)?.name 
-                  : rental.property?.location} - {rental.property?.complement}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Inquilino:</span>
-              <span className="font-medium">{rental.tenant?.name}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Aluguel:</span>
-              <span className="font-medium">
-                R$ {monthlyRent.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-              </span>
-            </div>
-          </div>
-
-          {depositAmount > 0 ? (
-            <Alert className="border-blue-500 bg-blue-50 dark:bg-blue-950">
-              <AlertDescription>
-                <div className="space-y-2">
-                  <p className="font-semibold text-blue-900 dark:text-blue-100">
-                    🔔 ATENÇÃO: VALOR DO CAUÇÃO
-                  </p>
-                  <p className="text-sm text-blue-800 dark:text-blue-200">
-                    Esta rescisão devolverá:
-                  </p>
-                  {correctedDepositAmount > 0 && poupancaPercentage > 0 ? (
-                    <>
-                      <div className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
-                        <p>Valor original: R$ {depositAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
-                        <p>Data base: {lastInstallmentDate ? format(parseISO(lastInstallmentDate), "dd/MM/yyyy", { locale: ptBR }) : "N/A"}</p>
-                        <p className="font-medium">Correção Poupança: +{poupancaPercentage.toFixed(4)}%</p>
-                      </div>
-                      <p className="text-2xl font-bold text-center text-blue-900 dark:text-blue-100">
-                        R$ {correctedDepositAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                      </p>
-                      <p className="text-xs text-blue-700 dark:text-blue-300">
-                        Valor corrigido pela Taxa da Poupança desde {lastInstallmentDate ? format(parseISO(lastInstallmentDate), "dd/MM/yyyy", { locale: ptBR }) : "data início"} até hoje.
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <p className="text-2xl font-bold text-center text-blue-900 dark:text-blue-100">
-                        R$ {depositAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                      </p>
-                      <p className="text-xs text-blue-700 dark:text-blue-300">
-                        Será adicionado ao recebimento final.
-                      </p>
-                    </>
-                  )}
-                </div>
-              </AlertDescription>
-            </Alert>
-          ) : (
-            <Alert className="border-red-500 bg-red-50 dark:bg-red-950">
-              <AlertDescription>
-                <div className="space-y-2">
-                  <p className="font-semibold text-red-900 dark:text-red-100">
-                    ⚠️ ATENÇÃO: CAUÇÃO NÃO ENCONTRADO
-                  </p>
-                  <p className="text-sm text-red-800 dark:text-red-200">
-                    O sistema não encontrou o valor do caução para esta locação.
-                  </p>
-                  <p className="text-xs text-red-700 dark:text-red-300">
-                    Não será possível prosseguir com a rescisão até que o caução seja cadastrado corretamente.
-                  </p>
-                </div>
-              </AlertDescription>
-            </Alert>
-          )}
-
-          <div className="space-y-2">
-            <Label htmlFor="termination-date" className="flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              Data da Saída do Inquilino *
-            </Label>
-            <Input
-              id="termination-date"
-              type="date"
-              value={terminationDate}
-              onChange={(e) => setTerminationDate(e.target.value)}
-              required
-            />
-            {proportionalDays > 0 && (
-              <p className="text-xs text-muted-foreground flex items-center gap-1">
-                <Info className="h-3 w-3" />
-                Aluguel proporcional: {proportionalDays} dias × R$ {(monthlyRent / 30).toFixed(2)}/dia = R$ {proportionalRent.toFixed(2)}
-              </p>
-            )}
-          </div>
-
-          <div className="space-y-3 border-t pt-4">
-            <Label className="text-base font-semibold">Multa Rescisória</Label>
-            
-            <div className="space-y-2">
-              <div className="flex items-start space-x-2">
-                <Checkbox
-                  id="apply-full-penalty"
-                  checked={applyFullContractPenalty}
-                  onCheckedChange={(checked) => {
-                    setApplyFullContractPenalty(checked as boolean);
-                    if (checked) setApply12MonthsPenalty(false);
-                  }}
-                />
-                <div className="grid gap-1 leading-none">
-                  <Label htmlFor="apply-full-penalty" className="cursor-pointer font-normal">
-                    Multa Proporcional ao Tempo Restante
-                  </Label>
-                  <p className="text-xs text-muted-foreground">
-                    (3 aluguéis ÷ meses totais) × meses restantes
-                  </p>
-                </div>
+          <div className="space-y-4 py-4">
+            <div className="rounded-lg bg-muted p-3 space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Imóvel:</span>
+                <span className="font-medium">
+                  {typeof rental.property?.location === 'object' 
+                    ? (rental.property?.location as any)?.name 
+                    : rental.property?.location} - {rental.property?.complement}
+                </span>
               </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Inquilino:</span>
+                <span className="font-medium">{rental.tenant?.name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Aluguel:</span>
+                <span className="font-medium">
+                  R$ {monthlyRent.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                </span>
+              </div>
+            </div>
 
-              <div className="flex items-start space-x-2">
-                <Checkbox
-                  id="apply-12months-penalty"
-                  checked={apply12MonthsPenalty}
-                  onCheckedChange={(checked) => {
-                    setApply12MonthsPenalty(checked as boolean);
-                    if (checked) setApplyFullContractPenalty(false);
-                  }}
-                  disabled={currentMonth >= 12}
-                />
-                <div className="grid gap-1 leading-none">
-                  <Label 
-                    htmlFor="apply-12months-penalty" 
-                    className={`cursor-pointer font-normal ${currentMonth >= 12 ? "opacity-50" : ""}`}
-                  >
-                    Multa Cláusula 12 Meses
-                  </Label>
-                  {currentMonth >= 12 ? (
-                    <span className="text-xs text-green-600 font-medium">Isento (após 12 meses)</span>
-                  ) : (
-                    <p className="text-xs text-muted-foreground">
-                      (3 aluguéis ÷ 12) × meses até completar 12
+            {depositAmount > 0 ? (
+              <Alert className="border-blue-500 bg-blue-50 dark:bg-blue-950">
+                <AlertDescription>
+                  <div className="space-y-2">
+                    <p className="font-semibold text-blue-900 dark:text-blue-100">
+                      🔔 ATENÇÃO: VALOR DO CAUÇÃO
                     </p>
-                  )}
-                </div>
-              </div>
+                    <p className="text-sm text-blue-800 dark:text-blue-200">
+                      Esta rescisão devolverá:
+                    </p>
+                    {correctedDepositAmount > 0 && poupancaPercentage > 0 ? (
+                      <>
+                        <div className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
+                          <p>Valor original: R$ {depositAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                          <p>Data base: {lastInstallmentDate ? format(parseISO(lastInstallmentDate), "dd/MM/yyyy", { locale: ptBR }) : "N/A"}</p>
+                          <p className="font-medium">Correção Poupança: +{poupancaPercentage.toFixed(4)}%</p>
+                        </div>
+                        <p className="text-2xl font-bold text-center text-blue-900 dark:text-blue-100">
+                          R$ {correctedDepositAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                        </p>
+                        <p className="text-xs text-blue-700 dark:text-blue-300">
+                          Valor corrigido pela Taxa da Poupança desde {lastInstallmentDate ? format(parseISO(lastInstallmentDate), "dd/MM/yyyy", { locale: ptBR }) : "data início"} até hoje.
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-2xl font-bold text-center text-blue-900 dark:text-blue-100">
+                          R$ {depositAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                        </p>
+                        <p className="text-xs text-blue-700 dark:text-blue-300">
+                          Será adicionado ao recebimento final.
+                        </p>
+                      </>
+                    )}
+                  </div>
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <Alert className="border-red-500 bg-red-50 dark:bg-red-950">
+                <AlertDescription>
+                  <div className="space-y-2">
+                    <p className="font-semibold text-red-900 dark:text-red-100">
+                      ⚠️ ATENÇÃO: CAUÇÃO NÃO ENCONTRADO
+                    </p>
+                    <p className="text-sm text-red-800 dark:text-red-200">
+                      O sistema não encontrou o valor do caução para esta locação.
+                    </p>
+                    <p className="text-xs text-red-700 dark:text-red-300">
+                      Não será possível prosseguir com a rescisão até que o caução seja cadastrado corretamente.
+                    </p>
+                  </div>
+                </AlertDescription>
+              </Alert>
+            )}
 
-              {penaltyAmount > 0 && (
-                <div className="flex justify-between items-center bg-red-50 dark:bg-red-950 p-2 rounded">
-                  <span className="text-sm text-red-700 dark:text-red-300 font-medium">Valor da Multa:</span>
-                  <span className="font-bold text-red-700 dark:text-red-300">
-                    R$ {penaltyAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                  </span>
-                </div>
+            <div className="space-y-2">
+              <Label htmlFor="termination-date" className="flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                Data da Saída do Inquilino *
+              </Label>
+              <Input
+                id="termination-date"
+                type="date"
+                value={terminationDate}
+                onChange={(e) => setTerminationDate(e.target.value)}
+                required
+              />
+              {proportionalDays > 0 && (
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Info className="h-3 w-3" />
+                  Aluguel proporcional: {proportionalDays} dias × R$ {(monthlyRent / 30).toFixed(2)}/dia = R$ {proportionalRent.toFixed(2)}
+                </p>
               )}
             </div>
+
+            <div className="space-y-3 border-t pt-4">
+              <Label className="text-base font-semibold">Multa Rescisória</Label>
+              
+              <div className="space-y-2">
+                <div className="flex items-start space-x-2">
+                  <Checkbox
+                    id="apply-full-penalty"
+                    checked={applyFullContractPenalty}
+                    onCheckedChange={(checked) => {
+                      setApplyFullContractPenalty(checked as boolean);
+                      if (checked) setApply12MonthsPenalty(false);
+                    }}
+                  />
+                  <div className="grid gap-1 leading-none">
+                    <Label htmlFor="apply-full-penalty" className="cursor-pointer font-normal">
+                      Multa Proporcional ao Tempo Restante
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      (3 aluguéis ÷ meses totais) × meses restantes
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start space-x-2">
+                  <Checkbox
+                    id="apply-12months-penalty"
+                    checked={apply12MonthsPenalty}
+                    onCheckedChange={(checked) => {
+                      setApply12MonthsPenalty(checked as boolean);
+                      if (checked) setApplyFullContractPenalty(false);
+                    }}
+                    disabled={currentMonth >= 12}
+                  />
+                  <div className="grid gap-1 leading-none">
+                    <Label 
+                      htmlFor="apply-12months-penalty" 
+                      className={`cursor-pointer font-normal ${currentMonth >= 12 ? "opacity-50" : ""}`}
+                    >
+                      Multa Cláusula 12 Meses
+                    </Label>
+                    {currentMonth >= 12 ? (
+                      <span className="text-xs text-green-600 font-medium">Isento (após 12 meses)</span>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        (3 aluguéis ÷ 12) × meses até completar 12
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {penaltyAmount > 0 && (
+                  <div className="flex justify-between items-center bg-red-50 dark:bg-red-950 p-2 rounded">
+                    <span className="text-sm text-red-700 dark:text-red-300 font-medium">Valor da Multa:</span>
+                    <span className="font-bold text-red-700 dark:text-red-300">
+                      R$ {penaltyAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <Alert>
+              <AlertDescription className="text-xs space-y-1">
+                <p className="font-medium">O que vai acontecer:</p>
+                <ul className="list-disc list-inside space-y-0.5 ml-2">
+                  <li>Recebimento do mês será atualizado com aluguel proporcional</li>
+                  <li>Recebimentos futuros serão excluídos</li>
+                  <li>Multa e caução serão adicionados ao recebimento</li>
+                  <li>Despesas de reforma podem ser adicionadas depois na tela de Recebimentos</li>
+                </ul>
+              </AlertDescription>
+            </Alert>
           </div>
 
-          <Alert>
-            <AlertDescription className="text-xs space-y-1">
-              <p className="font-medium">O que vai acontecer:</p>
-              <ul className="list-disc list-inside space-y-0.5 ml-2">
-                <li>Recebimento do mês será atualizado com aluguel proporcional</li>
-                <li>Recebimentos futuros serão excluídos</li>
-                <li>Multa e caução serão adicionados ao recebimento</li>
-                <li>Despesas de reforma podem ser adicionadas depois na tela de Recebimentos</li>
-              </ul>
-            </AlertDescription>
-          </Alert>
-        </div>
-
-        <DialogFooter className="gap-2 sm:gap-0">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={isSubmitting}
-          >
-            Cancelar
-          </Button>
-          <Button
-            type="button"
-            onClick={handleConfirm}
-            disabled={!terminationDate || isSubmitting || depositAmount === 0}
-          >
-            {isSubmitting ? "Processando..." : "Confirmar Rescisão"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={isSubmitting}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              onClick={handleConfirm}
+              disabled={!terminationDate || isSubmitting || depositAmount === 0}
+            >
+              {isSubmitting ? "Processando..." : "Confirmar Rescisão"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </TooltipProvider>
   );
 }
