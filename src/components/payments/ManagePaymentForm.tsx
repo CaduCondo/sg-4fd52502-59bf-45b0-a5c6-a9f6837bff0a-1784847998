@@ -597,6 +597,9 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           attachments: attachments,
           lateFee: removeFees ? 0 : values.multa,
           interest: removeFees ? 0 : values.juros,
+          breakdown: updatedBreakdown ? (typeof updatedBreakdown === 'string' ? JSON.parse(updatedBreakdown) : updatedBreakdown) : undefined,
+          installment: payment.installment,
+          totalInstallments: payment.total_installments,
         };
 
         const mockRental: Rental = {
@@ -612,7 +615,9 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           isActive: rental.status === "active",
           attachments: [],
           contractAttachments: [],
-          autoRenew: false
+          autoRenew: false,
+          installments: rental.installments,
+          totalInstallments: rental.total_installments,
         };
 
         const propertyForReceipt: Property = {

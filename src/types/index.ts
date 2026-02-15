@@ -192,6 +192,10 @@ export interface Rental {
 
   security_deposit?: number; // Adicionado campo do banco de dados
 
+  // Campos de parcelas
+  installments?: number; // Total de parcelas do contrato (ex: 24)
+  totalInstallments?: number; // Total de parcelas geradas/pagas
+
   // Dados relacionados (JOINs)
   property?: {
     id: string;
