@@ -135,7 +135,9 @@ export function PaymentReceipt({ payment: initialPayment, rental, property, tena
   console.log("=====================================\n");
 
   const currentInstallment = payment.installment || 1;
-  const totalInstallments = payment.totalInstallments || rental.installments || rental.totalInstallments || 24;
+  const totalInstallments = isTermination 
+    ? currentInstallment  // Para rescisões: última parcela = total
+    : (payment.totalInstallments || rental.installments || rental.totalInstallments || 24);
 
   const formatCurrency = (value: number): string => {
     return new Intl.NumberFormat("pt-BR", {
