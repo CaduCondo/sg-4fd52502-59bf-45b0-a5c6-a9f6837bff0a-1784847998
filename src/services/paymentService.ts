@@ -534,6 +534,9 @@ export async function createPaymentsForRental(rental: any): Promise<void> {
       firstDueDate = new Date(currentYear, currentMonth + 1, 0);
     }
 
+    // ✅ Calcular quantos dias estão sendo cobrados
+    const daysInProportional = calculateDaysBetweenDates(startDateStr, paymentDay);
+
     payments.push({
       rental_id: rental.id,
       due_date: firstDueDate.toISOString().split('T')[0],
@@ -541,9 +544,15 @@ export async function createPaymentsForRental(rental: any): Promise<void> {
       status: 'pending',
       reference_month: startDate.getMonth() + 1,
       reference_year: startDate.getFullYear(),
+      // ✅ ADICIONAR BREAKDOWN COM DETALHAMENTO
+      breakdown: JSON.stringify([{
+        description: `Aluguel Proporcional (${daysInProportional} dias)`,
+        amount: firstPaymentValue,
+        type: "addition"
+      }])
     });
 
-    console.log(`✅ Parcela Proporcional criada: ${firstDueDate.toISOString().split('T')[0]} | R$ ${firstPaymentValue.toFixed(2)}`);
+    console.log(`✅ Parcela Proporcional criada: ${firstDueDate.toISOString().split('T')[0]} | R$ ${firstPaymentValue.toFixed(2)} (${daysInProportional} dias)`);
 
     currentMonth++;
     if (currentMonth > 11) {
