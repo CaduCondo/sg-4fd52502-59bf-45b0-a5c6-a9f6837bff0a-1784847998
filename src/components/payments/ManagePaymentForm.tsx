@@ -674,47 +674,41 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           : isPaid ? "Pagamento atualizado com sucesso!" : "Pagamento registrado com sucesso!",
       });
 
-      if (paymentStatus === "paid" && !isPaid && onSuccess) {
-        try {
-          // Buscar dados completos do banco para garantir que o recibo seja idêntico ao salvo
-          const paymentFromDB = await getPaymentById(paymentId);
-          const rentalFromDB = await getRentalById(payment.rental_id);
-          const propertyFromDB = await getPropertyById(property.id);
-          const tenantFromDB = await getTenantById(tenant.id);
+      // ✅ CORREÇÃO DEFINITIVA: SEMPRE passar valores calculados para o recibo
+      if (onSuccess) {
+        console.log("\n🎯 PREPARANDO DADOS PARA O RECIBO:");
+        console.log("  values.multa:", values.multa);
+        console.log("  values.juros:", values.juros);
+        console.log("  removeFees:", removeFees);
+        
+        // Criar objeto payment com late_fee e interest SEMPRE
+        const paymentWithFees = {
+          ...payment,
+          late_fee: removeFees ? 0 : values.multa,
+          interest: removeFees ? 0 : values.juros,
+          paid_amount: finalPaidAmount,
+          status: paymentStatus,
+          payment_date: formData.payment_date,
+          payment_method: formData.payment_method,
+          notes: formData.notes,
+          attachments: attachments.length > 0 ? attachments : null,
+        };
 
-          // ✅ CRÍTICO: Adicionar late_fee e interest calculados
-          const paymentWithFees = {
-            ...paymentFromDB,
-            late_fee: removeFees ? 0 : values.multa,
-            interest: removeFees ? 0 : values.juros,
-          };
+        console.log("\n✅ CHAMANDO onSuccess COM:");
+        console.log("  payment.late_fee:", paymentWithFees.late_fee);
+        console.log("  payment.interest:", paymentWithFees.interest);
+        console.log("  payment completo:", paymentWithFees);
 
-          onSuccess({
-            payment: paymentWithFees,
-            rental: rentalFromDB,
-            property: propertyFromDB,
-            tenant: tenantFromDB,
-          });
-        } catch (error) {
-          console.error("Erro ao buscar dados do banco para o recibo:", error);
-          toast({
-            title: "Aviso",
-            description: "Pagamento salvo, mas não foi possível gerar o recibo. Acesse o pagamento para visualizar.",
-            variant: "destructive",
-          });
-          
-          if (onClose) {
-            onClose();
-          } else {
-            router.push("/payments");
-          }
-        }
-      } else if (paymentStatus === "partial" || isPaid) {
-        if (onClose) {
-          onClose();
-        } else {
-          router.push("/payments");
-        }
+        onSuccess({
+          payment: paymentWithFees,
+          rental: rental,
+          property: property,
+          tenant: tenant,
+        });
+      } else if (onClose) {
+        onClose();
+      } else {
+        router.push("/payments");
       }
 
     } catch (error) {
