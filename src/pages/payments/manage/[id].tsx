@@ -62,6 +62,7 @@ export default function ManagePaymentPage() {
     property: Property;
     tenant: Tenant;
   }) => {
+    console.log("Payment data received from ManagePaymentForm:", data.payment);
     setReceiptData(data);
     setShowReceipt(true);
   };
