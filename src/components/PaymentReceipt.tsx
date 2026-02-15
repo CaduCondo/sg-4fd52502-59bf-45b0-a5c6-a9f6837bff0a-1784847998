@@ -213,13 +213,13 @@ export function PaymentReceipt({
   // Se não tem breakdown, tentar ler direto do payment
   if (!breakdown || (baseAmount === 0 && proportionalRent === 0)) {
     console.log("Tentando ler valores direto do payment:");
-    baseAmount = Number(payment.expectedAmount || payment.amount || 0);
+    baseAmount = Number(payment.expectedAmount || 0);
     lateFee = Number(payment.lateFee || payment.penaltyAmount || 0);
     interest = Number(payment.interest || payment.interestAmount || 0);
   }
 
   // Total pago: primeiro tentar payment.paidAmount, depois calcular
-  totalAmount = Number(payment.paidAmount || payment.amount || 0);
+  totalAmount = Number(payment.paidAmount || 0);
   
   if (totalAmount === 0) {
     if (isTermination) {
