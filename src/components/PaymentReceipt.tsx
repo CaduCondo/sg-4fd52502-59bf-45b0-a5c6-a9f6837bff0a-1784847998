@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Download, X } from "lucide-react";
-import { formatCurrency, formatDate } from "@/lib/utils";
 import { Payment, Rental, Property, Tenant } from "@/types";
 
 interface PaymentReceiptProps {
@@ -16,24 +15,30 @@ interface PaymentReceiptProps {
 export function PaymentReceipt({ payment, rental, property, tenant, onClose }: PaymentReceiptProps) {
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
-  console.log("=== PAYMENT RECEIPT DEBUG ===");
-  console.log("Payment completo:", payment);
-  console.log("Rental completo:", rental);
-  console.log("payment.installment:", payment.installment);
-  console.log("payment.total_installments:", payment.totalInstallments);
-  console.log("payment.breakdown:", payment.breakdown);
-  console.log("payment.paidAmount:", payment.paidAmount);
-  console.log("payment.penaltyAmount:", payment.penaltyAmount);
-  console.log("payment.interestAmount:", payment.interestAmount);
-
   // ===== PARCELAS =====
-  // Prioridade: campos do payment direto do banco
+  // Prioridade: payment.installment e payment.totalInstallments do banco
   const currentInstallment = payment.installment || 1;
-  const totalInstallments = payment.totalInstallments || 1;
+  const totalInstallments = payment.totalInstallments || rental.installments || rental.totalInstallments || 24;
 
-  console.log("Parcelas finais:", `${currentInstallment}/${totalInstallments}`);
+  // ===== DETECTAR RESCISÃO =====
+  const isTermination = 
+    payment.type === "termination" || 
+    payment.notes?.includes("Rescisão de Contrato") ||
+    payment.notes?.includes("rescisão");
 
-  // ===== BREAKDOWN =====
+  // ===== VALORES =====
+  let baseAmount = 0;
+  let lateFee = 0;
+  let interest = 0;
+  let totalAmount = 0;
+
+  // Valores de rescisão
+  let proportionalRent = 0;
+  let terminationFee = 0;
+  let depositRefund = 0;
+  let additionalExpenses = 0;
+
+  // ===== PROCESSAR BREAKDOWN =====
   let breakdown: any = null;
   
   if (payment.breakdown) {
@@ -43,53 +48,29 @@ export function PaymentReceipt({ payment, rental, property, tenant, onClose }: P
       } else {
         breakdown = payment.breakdown;
       }
-      console.log("Breakdown parseado:", breakdown);
     } catch (e) {
       console.error("Erro ao parsear breakdown:", e);
     }
   }
 
-  // ===== DETECTAR TIPO DE PAGAMENTO =====
-  const isTermination = 
-    payment.type === "termination" || 
-    payment.notes?.includes("Rescisão de Contrato") ||
-    (breakdown && (breakdown.terminationFee || breakdown.depositRefund || breakdown.proportionalRent));
-
-  console.log("É rescisão?", isTermination);
-
-  // ===== VALORES =====
-  let baseAmount = 0;
-  let lateFee = 0;
-  let interest = 0;
-  let totalAmount = 0;
-
-  // Valores específicos de rescisão
-  let proportionalRent = 0;
-  let terminationFee = 0;
-  let depositRefund = 0;
-  let additionalExpenses = 0;
-
   if (breakdown) {
-    console.log("Processando breakdown...");
-    
     // Se breakdown é array (novo formato)
     if (Array.isArray(breakdown)) {
-      console.log("Breakdown é array:", breakdown);
       breakdown.forEach((item: any) => {
         const amount = Math.abs(Number(item.amount || 0));
-        const desc = item.description?.toLowerCase() || "";
+        const desc = (item.description || "").toLowerCase();
         
         if (desc.includes("aluguel proporcional") || desc.includes("proporcional")) {
           proportionalRent = amount;
         } else if (desc.includes("multa rescisória") || desc.includes("rescisória")) {
           terminationFee = amount;
         } else if (desc.includes("devolução") || desc.includes("caução")) {
-          depositRefund = amount; // Já positivo, vamos mostrar negativo no display
+          depositRefund = amount;
         } else if (desc.includes("despesas adicionais") || desc.includes("adicionais")) {
           additionalExpenses = amount;
-        } else if (desc.includes("multa") || desc.includes("penalty")) {
+        } else if (desc.includes("multa por atraso") || desc.includes("multa")) {
           lateFee = amount;
-        } else if (desc.includes("juros") || desc.includes("interest")) {
+        } else if (desc.includes("juros por atraso") || desc.includes("juros")) {
           interest = amount;
         } else if (desc.includes("aluguel") || desc.includes("rent")) {
           baseAmount = amount;
@@ -98,7 +79,6 @@ export function PaymentReceipt({ payment, rental, property, tenant, onClose }: P
     } 
     // Se breakdown é objeto
     else {
-      console.log("Breakdown é objeto:", breakdown);
       baseAmount = breakdown.baseAmount || breakdown.rentValue || 0;
       lateFee = breakdown.lateFee || breakdown.penaltyAmount || 0;
       interest = breakdown.interest || breakdown.interestAmount || 0;
@@ -106,35 +86,48 @@ export function PaymentReceipt({ payment, rental, property, tenant, onClose }: P
       // Rescisão
       proportionalRent = breakdown.proportionalRent || 0;
       terminationFee = breakdown.terminationFee || 0;
-      depositRefund = Math.abs(breakdown.depositRefund || 0); // Sempre positivo
+      depositRefund = Math.abs(breakdown.depositRefund || 0);
       additionalExpenses = breakdown.additionalExpenses || 0;
     }
-
-    // Total pago - priorizar payment.paidAmount
-    totalAmount = payment.paidAmount || 0;
-    
-    console.log("Valores extraídos do breakdown:", {
-      baseAmount,
-      lateFee,
-      interest,
-      proportionalRent,
-      terminationFee,
-      depositRefund,
-      additionalExpenses,
-      totalAmount
-    });
-  } 
-  
-  // Fallback: se não tem breakdown, tentar propriedades diretas
-  if (!breakdown || totalAmount === 0) {
-    console.log("Usando fallback - propriedades diretas do payment");
-    baseAmount = payment.expectedAmount || 0;
-    lateFee = payment.penaltyAmount || 0;
-    interest = payment.interestAmount || 0;
-    totalAmount = payment.paidAmount || (baseAmount + lateFee + interest);
-    
-    console.log("Valores do fallback:", { baseAmount, lateFee, interest, totalAmount });
   }
+
+  // ===== FALLBACK: Tentar pegar direto do payment =====
+  if (!breakdown || (baseAmount === 0 && proportionalRent === 0)) {
+    // Pagamento normal
+    baseAmount = payment.expectedAmount || 0;
+    lateFee = payment.lateFee || payment.penaltyAmount || 0;
+    interest = payment.interest || payment.interestAmount || 0;
+  }
+
+  // ===== TOTAL PAGO =====
+  // Prioridade máxima: payment.paidAmount (o que realmente foi pago)
+  totalAmount = payment.paidAmount || 0;
+
+  // Se ainda for 0, calcular
+  if (totalAmount === 0) {
+    if (isTermination) {
+      totalAmount = proportionalRent + terminationFee + additionalExpenses + lateFee + interest - depositRefund;
+    } else {
+      totalAmount = baseAmount + lateFee + interest;
+    }
+  }
+
+  // ===== FORMATAÇÃO =====
+  const formatCurrency = (value: number): string => {
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(value);
+  };
+
+  const formatDate = (dateString: string): string => {
+    const date = new Date(dateString + "T12:00:00");
+    return date.toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  };
 
   // ===== EXTENSO =====
   const extenso = (num: number): string => {
@@ -145,12 +138,11 @@ export function PaymentReceipt({ payment, rental, property, tenant, onClose }: P
     const dezenas = ["", "", "VINTE", "TRINTA", "QUARENTA", "CINQUENTA", "SESSENTA", "SETENTA", "OITENTA", "NOVENTA"];
     const centenas = ["", "CENTO", "DUZENTOS", "TREZENTOS", "QUATROCENTOS", "QUINHENTOS", "SEISCENTOS", "SETECENTOS", "OITOCENTOS", "NOVECENTOS"];
     
-    const inteiro = Math.floor(num);
-    const centavos = Math.round((num - inteiro) * 100);
+    const inteiro = Math.floor(Math.abs(num));
+    const centavos = Math.round((Math.abs(num) - inteiro) * 100);
     
     let resultado = "";
     
-    // Milhares
     const milhares = Math.floor(inteiro / 1000);
     const restante = inteiro % 1000;
     
@@ -167,7 +159,6 @@ export function PaymentReceipt({ payment, rental, property, tenant, onClose }: P
       }
     }
     
-    // Centenas, dezenas e unidades
     if (restante > 0) {
       resultado += converterCentenas(restante);
     }
@@ -266,12 +257,12 @@ export function PaymentReceipt({ payment, rental, property, tenant, onClose }: P
           <div className="space-y-4 text-justify leading-relaxed">
             <p>
               Recebi dos Srs. <strong>{tenant.name.toUpperCase()}</strong>, a importância de{" "}
-              <strong>{extenso(totalAmount)} (R$ {formatCurrency(totalAmount)})</strong>, proveniente ao depósito de aluguel
+              <strong>{extenso(totalAmount)} ({formatCurrency(totalAmount)})</strong>, proveniente ao depósito de aluguel
               referente ao mês de <strong>{referenceMonthName} de {referenceYear}</strong>, 
               tendo seu vencimento em <strong>{formatDate(payment.dueDate)}</strong>, 
               do imóvel situado em{" "}
               <strong>
-                {property.location?.toUpperCase() || "LOCAL NÃO INFORMADO"}
+                {property.location?.toUpperCase() || property.address?.toUpperCase() || "LOCAL NÃO INFORMADO"}
                 {property.complement ? `, ${property.complement.toUpperCase()}` : ""}
               </strong>, após a apresentação dos comprovantes de depósito bancário e contas de água e luz do mês
               anterior pagos, sendo este vinculado ao INSTRUMENTO PARTICULAR DE CONTRATO DE LOCAÇÃO PARA FIM RESIDENCIAL, assinado entre as partes em{" "}

@@ -582,6 +582,18 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       });
 
       if (paymentStatus === "paid" && !isPaid && onSuccess) {
+        // Parse breakdown se existir
+        let parsedBreakdown = undefined;
+        if (updatedBreakdown) {
+          try {
+            parsedBreakdown = typeof updatedBreakdown === 'string' 
+              ? JSON.parse(updatedBreakdown) 
+              : updatedBreakdown;
+          } catch (error) {
+            console.error("Erro ao parsear breakdown:", error);
+          }
+        }
+
         const paymentForReceipt: Payment = {
           id: payment.id,
           rentalId: payment.rental_id,
@@ -597,7 +609,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           attachments: attachments,
           lateFee: removeFees ? 0 : values.multa,
           interest: removeFees ? 0 : values.juros,
-          breakdown: updatedBreakdown ? (typeof updatedBreakdown === 'string' ? JSON.parse(updatedBreakdown) : updatedBreakdown) : undefined,
+          breakdown: parsedBreakdown,
           installment: payment.installment,
           totalInstallments: payment.total_installments,
         };
