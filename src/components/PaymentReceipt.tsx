@@ -11,6 +11,8 @@ interface PaymentReceiptProps {
   property: Property;
   tenant: Tenant;
   onClose: () => void;
+  lateFee: number;
+  interest: number;
 }
 
 interface BreakdownItem {
@@ -19,7 +21,7 @@ interface BreakdownItem {
   type: "addition" | "deduction";
 }
 
-export function PaymentReceipt({ payment: initialPayment, rental, property, tenant, onClose }: PaymentReceiptProps) {
+export function PaymentReceipt({ payment: initialPayment, rental, property, tenant, onClose, lateFee, interest }: PaymentReceiptProps) {
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
   const isTermination = initialPayment.type === "termination";
