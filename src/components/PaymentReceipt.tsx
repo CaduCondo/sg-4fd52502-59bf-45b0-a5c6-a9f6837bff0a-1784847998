@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Download, X } from "lucide-react";
 import { Payment, Rental, Property, Tenant } from "@/types";
+import { getPaymentById } from "@/services/paymentService";
 
 interface PaymentReceiptProps {
   payment: Payment;
@@ -12,10 +13,31 @@ interface PaymentReceiptProps {
   onClose: () => void;
 }
 
-export function PaymentReceipt({ payment, rental, property, tenant, onClose }: PaymentReceiptProps) {
+export function PaymentReceipt({ payment: initialPayment, rental, property, tenant, onClose }: PaymentReceiptProps) {
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [payment, setPayment] = useState(initialPayment);
+  const [loading, setLoading] = useState(true);
 
-  console.log("=== PAYMENT RECEIPT - CÁLCULO SIMPLES DE VALORES ===");
+  // Buscar dados COMPLETOS do banco ao abrir o recibo
+  useEffect(() => {
+    async function fetchCompletePaymentData() {
+      try {
+        console.log("🔍 Buscando dados COMPLETOS do pagamento:", initialPayment.id);
+        const completePayment = await getPaymentById(initialPayment.id);
+        console.log("✅ Dados completos recebidos:", completePayment);
+        setPayment(completePayment);
+      } catch (error) {
+        console.error("❌ Erro ao buscar dados do pagamento:", error);
+        setPayment(initialPayment);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchCompletePaymentData();
+  }, [initialPayment.id]);
+
+  console.log("=== PAYMENT RECEIPT - ANÁLISE DE VALORES ===");
   console.log("payment completo:", payment);
 
   // ===== PARCELAS =====
@@ -38,7 +60,7 @@ export function PaymentReceipt({ payment, rental, property, tenant, onClose }: P
   let additionalExpenses = 0;
 
   if (isTermination) {
-    // RESCISÃO: Tentar pegar do breakdown
+    // RESCISÃO: Usar breakdown
     let breakdown: any = null;
     
     if (payment.breakdown) {
@@ -84,31 +106,30 @@ export function PaymentReceipt({ payment, rental, property, tenant, onClose }: P
     totalAmount = Math.abs(payment.paidAmount || 0);
     
   } else {
-    // ===== PAGAMENTO NORMAL - LÓGICA SIMPLES E PRECISA =====
+    // ===== PAGAMENTO NORMAL =====
     
-    // 1. Valor base (aluguel esperado)
+    console.log("\n📊 EXTRAÇÃO DE VALORES:");
+    
+    // 1. Valor base
     baseAmount = payment.expectedAmount || 0;
     console.log("1️⃣ Valor Base (expectedAmount):", baseAmount);
     
-    // 2. Total pago (o que realmente foi pago)
+    // 2. Total pago
     totalAmount = payment.paidAmount || 0;
     console.log("2️⃣ Total Pago (paidAmount):", totalAmount);
     
-    // 3. Tentar pegar multa e juros do banco
+    // 3. Multa e juros do banco
     lateFee = payment.lateFee || 0;
     interest = payment.interest || 0;
     console.log("3️⃣ Multa do banco (lateFee):", lateFee);
     console.log("4️⃣ Juros do banco (interest):", interest);
     
-    // 4. SE zerados E total > base → Extrair da diferença
+    // 4. SE valores zerados E tem diferença → Extrair
     if (lateFee === 0 && interest === 0 && totalAmount > baseAmount) {
       const difference = totalAmount - baseAmount;
       console.log("5️⃣ Diferença detectada (total - base):", difference);
-      console.log("   → Vai extrair multa e juros da diferença");
       
-      // ESTRATÉGIA SIMPLES:
-      // Multa = 10% do valor base (padrão do sistema)
-      // Juros = restante da diferença
+      // Estratégia: 10% multa, resto juros
       lateFee = Math.round((baseAmount * 0.10) * 100) / 100;
       interest = Math.round((difference - lateFee) * 100) / 100;
       
@@ -116,19 +137,19 @@ export function PaymentReceipt({ payment, rental, property, tenant, onClose }: P
       console.log("   → Juros extraídos (diferença - multa):", interest);
     }
     
-    // 5. Se total ainda for zero, calcular
+    // 5. SE total ainda zerado, somar tudo
     if (totalAmount === 0) {
       totalAmount = baseAmount + lateFee + interest;
       console.log("6️⃣ Total recalculado (base + multa + juros):", totalAmount);
     }
   }
 
-  console.log("=== VALORES FINAIS PARA EXIBIÇÃO ===");
+  console.log("\n=== VALORES FINAIS PARA EXIBIÇÃO ===");
   console.log("baseAmount:", baseAmount);
   console.log("lateFee:", lateFee);
   console.log("interest:", interest);
   console.log("totalAmount:", totalAmount);
-  console.log("=======================================");
+  console.log("=======================================\n");
 
   // ===== FORMATAÇÃO =====
   const formatCurrency = (value: number): string => {
@@ -251,6 +272,19 @@ export function PaymentReceipt({ payment, rental, property, tenant, onClose }: P
 
   const referenceYear = payment.referenceYear || new Date().getFullYear();
 
+  if (loading) {
+    return (
+      <Dialog open={true} onOpenChange={onClose}>
+        <DialogContent className="max-w-4xl">
+          <div className="flex items-center justify-center p-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            <span className="ml-3">Carregando dados do recibo...</span>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   return (
     <Dialog open={true} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -292,7 +326,6 @@ export function PaymentReceipt({ payment, rental, property, tenant, onClose }: P
             <h3 className="font-semibold mb-3">Valores:</h3>
             
             {isTermination ? (
-              // Layout para Rescisão
               <div className="space-y-2">
                 {proportionalRent > 0 && (
                   <div className="flex justify-between">
@@ -332,7 +365,6 @@ export function PaymentReceipt({ payment, rental, property, tenant, onClose }: P
                 )}
               </div>
             ) : (
-              // Layout para Pagamento Normal
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span>Valor Base:</span>
