@@ -6,10 +6,9 @@ import { FileText, Download, Mail, Share2, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Payment, Rental, Property, Tenant } from "@/types";
 import { formatCurrency } from "@/lib/masks";
-import { format } from "date-fns";
+import { format, differenceInMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import Image from "next/image";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface PaymentReceiptProps {
   payment: Payment;
@@ -105,122 +104,149 @@ export function PaymentReceipt({
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
-  // Parse breakdown se vier como string
+  // DEBUG: Log completo dos dados recebidos
+  console.log("=== PAYMENT RECEIPT DEBUG ===");
+  console.log("Payment completo:", payment);
+  console.log("Rental completo:", rental);
+  console.log("Payment.breakdown:", payment.breakdown);
+  console.log("Payment keys:", Object.keys(payment));
+
+  // PASSO 1: CALCULAR PARCELAS CORRETAS
+  // Usar rental.startDate e rental.endDate para calcular total de meses
+  const rentalStart = new Date(rental.startDate);
+  const rentalEnd = new Date(rental.endDate);
+  const totalMonths = differenceInMonths(rentalEnd, rentalStart) + 1; // +1 para incluir o mês final
+
+  // Calcular a parcela atual baseado no referenceMonth e referenceYear
+  const refMonth = payment.referenceMonth || new Date().getMonth() + 1;
+  const refYear = payment.referenceYear || new Date().getFullYear();
+  const paymentDate = new Date(refYear, refMonth - 1, 1);
+  const currentPaymentNumber = differenceInMonths(paymentDate, rentalStart) + 1;
+
+  console.log("Cálculo de parcelas:", {
+    rentalStart,
+    rentalEnd,
+    totalMonths,
+    refMonth,
+    refYear,
+    paymentDate,
+    currentPaymentNumber
+  });
+
+  // PASSO 2: EXTRAIR VALORES DO BREAKDOWN OU PAYMENT
   let breakdown: any = null;
+  
+  // Se breakdown vier como string, fazer parse
   if (payment.breakdown) {
     if (typeof payment.breakdown === 'string') {
       try {
         breakdown = JSON.parse(payment.breakdown);
+        console.log("Breakdown parseado (era string):", breakdown);
       } catch (e) {
         console.error("Erro ao parsear breakdown:", e);
-        breakdown = null;
       }
     } else {
       breakdown = payment.breakdown;
+      console.log("Breakdown (já era objeto):", breakdown);
     }
   }
 
-  // Detectar se é rescisão
-  const isTermination = payment.type === "termination" || 
-                       payment.notes?.includes("Rescisão de Contrato") ||
-                       !!(breakdown && (breakdown.terminationFee || breakdown.depositRefund));
-  
+  // PASSO 3: EXTRAIR VALORES BASEADO NO TIPO DE PAGAMENTO
   let totalAmount = 0;
   let baseAmount = 0;
   let lateFee = 0;
   let interest = 0;
   
-  // Variáveis específicas para rescisão
+  // Variáveis para rescisão
   let proportionalRent = 0;
   let terminationFee = 0;
   let depositRefund = 0;
   let additionalExpenses = 0;
-  let igpmCorrectionData = null;
 
-  // LÓGICA DE EXTRAÇÃO DE VALORES
+  // Detectar se é rescisão
+  const isTermination = payment.type === "termination" || 
+                       payment.notes?.includes("Rescisão") ||
+                       !!(breakdown && (breakdown.terminationFee || breakdown.depositRefund));
+
+  console.log("É rescisão?", isTermination);
+
   if (breakdown) {
-    if (isTermination) {
-      // RESCISÃO: Buscar valores do breakdown
-      // O breakdown pode ser um array ou objeto, vamos lidar com ambos
-      if (Array.isArray(breakdown)) {
-        // Breakdown é array de itens
-        breakdown.forEach((item: any) => {
-          const desc = item.description || "";
-          const amount = Number(item.amount || 0);
-          
-          if (desc.includes("Aluguel Proporcional")) {
-            proportionalRent = Math.abs(amount);
-          } else if (desc.includes("Multa Rescisória")) {
-            terminationFee = Math.abs(amount);
-          } else if (desc.includes("Devolução de Caução")) {
-            depositRefund = Math.abs(amount);
-          } else if (desc.includes("Despesas Adicionais") || desc.includes("Despesas")) {
-            additionalExpenses = Math.abs(amount);
-          } else if (desc.includes("Multa por Atraso")) {
-            lateFee = Math.abs(amount);
-          } else if (desc.includes("Juros por Atraso")) {
-            interest = Math.abs(amount);
+    if (Array.isArray(breakdown)) {
+      // Breakdown como ARRAY (novo formato)
+      console.log("Breakdown é ARRAY, processando items:");
+      breakdown.forEach((item: any, index: number) => {
+        console.log(`Item ${index}:`, item);
+        const desc = (item.description || "").toLowerCase();
+        const amount = Math.abs(Number(item.amount || 0));
+        
+        if (desc.includes("aluguel") || desc.includes("proporcional") || desc.includes("valor base")) {
+          if (isTermination && desc.includes("proporcional")) {
+            proportionalRent = amount;
+          } else {
+            baseAmount = amount;
           }
-        });
-        
-        // Total = soma de débitos - créditos
-        totalAmount = proportionalRent + terminationFee + additionalExpenses + lateFee + interest - depositRefund;
-      } else {
-        // Breakdown é objeto direto
-        proportionalRent = Number(breakdown.proportionalRent || 0);
-        terminationFee = Number(breakdown.terminationFee || 0);
-        depositRefund = Number(breakdown.depositRefund || 0);
-        additionalExpenses = Number(breakdown.additionalExpenses || 0);
-        igpmCorrectionData = breakdown.igpmCorrection || null;
-        
-        totalAmount = proportionalRent + terminationFee + additionalExpenses - depositRefund;
-      }
-      
-      // Se tiver paidAmount, sobrescreve o total
-      if (payment.paidAmount) {
-        totalAmount = payment.paidAmount;
-      }
+        } else if (desc.includes("multa rescisória") || desc.includes("multa rescis")) {
+          terminationFee = amount;
+        } else if (desc.includes("devolução") || desc.includes("caução") || desc.includes("caucao")) {
+          depositRefund = amount;
+        } else if (desc.includes("despesas adicionais") || desc.includes("despesas")) {
+          additionalExpenses = amount;
+        } else if (desc.includes("multa")) {
+          lateFee = amount;
+        } else if (desc.includes("juros")) {
+          interest = amount;
+        }
+      });
     } else {
-      // PAGAMENTO NORMAL
-      if (Array.isArray(breakdown)) {
-        // Se vier como array (novo formato)
-        breakdown.forEach((item: any) => {
-          const desc = item.description || "";
-          const amount = Number(item.amount || 0);
-          
-          if (desc.includes("Valor Base") || desc.includes("Aluguel")) {
-            baseAmount = Math.abs(amount);
-          } else if (desc.includes("Multa")) {
-            lateFee = Math.abs(amount);
-          } else if (desc.includes("Juros")) {
-            interest = Math.abs(amount);
-          }
-        });
-      } else {
-        // Se vier como objeto (formato antigo)
-        baseAmount = Number(breakdown.baseAmount || breakdown.rentValue || 0);
-        lateFee = Number(breakdown.lateFee || 0);
-        interest = Number(breakdown.interest || 0);
-      }
-      
-      totalAmount = payment.paidAmount || (baseAmount + lateFee + interest);
+      // Breakdown como OBJETO (formato antigo)
+      console.log("Breakdown é OBJETO, extraindo propriedades:");
+      baseAmount = Number(breakdown.baseAmount || breakdown.rentValue || 0);
+      lateFee = Number(breakdown.lateFee || 0);
+      interest = Number(breakdown.interest || 0);
+      proportionalRent = Number(breakdown.proportionalRent || 0);
+      terminationFee = Number(breakdown.terminationFee || 0);
+      depositRefund = Number(breakdown.depositRefund || 0);
+      additionalExpenses = Number(breakdown.additionalExpenses || 0);
     }
-  } else {
-    // FALLBACK: Sem breakdown, usar propriedades diretas
-    baseAmount = payment.expectedAmount || 0;
-    lateFee = payment.lateFee || payment.penaltyAmount || 0;
-    interest = payment.interest || payment.interestAmount || 0;
-    totalAmount = payment.paidAmount || 0;
   }
 
-  // FORMATAÇÃO DE DATAS E PARCELAS
+  // Se não tem breakdown, tentar ler direto do payment
+  if (!breakdown || (baseAmount === 0 && proportionalRent === 0)) {
+    console.log("Tentando ler valores direto do payment:");
+    baseAmount = Number(payment.expectedAmount || payment.amount || 0);
+    lateFee = Number(payment.lateFee || payment.penaltyAmount || 0);
+    interest = Number(payment.interest || payment.interestAmount || 0);
+  }
+
+  // Total pago: primeiro tentar payment.paidAmount, depois calcular
+  totalAmount = Number(payment.paidAmount || payment.amount || 0);
+  
+  if (totalAmount === 0) {
+    if (isTermination) {
+      totalAmount = proportionalRent + terminationFee + additionalExpenses + lateFee + interest - depositRefund;
+    } else {
+      totalAmount = baseAmount + lateFee + interest;
+    }
+  }
+
+  console.log("Valores finais extraídos:", {
+    isTermination,
+    totalAmount,
+    baseAmount,
+    lateFee,
+    interest,
+    proportionalRent,
+    terminationFee,
+    depositRefund,
+    additionalExpenses
+  });
+
+  // FORMATAÇÃO DE DATAS
   const monthNames = [
     "janeiro", "fevereiro", "março", "abril", "maio", "junho",
     "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"
   ];
   
-  const refMonth = payment.referenceMonth || 1;
-  const refYear = payment.referenceYear || new Date().getFullYear();
   const referenceMonthName = monthNames[refMonth - 1];
 
   const safeDate = (dateString: string | undefined | null): Date => {
@@ -235,11 +261,6 @@ export function PaymentReceipt({
   };
 
   const dueDate = safeDate(payment.dueDate);
-
-  // USAR OS CAMPOS installment E total_installments QUE JÁ VEM DO BANCO
-  // Esses campos são salvos corretamente no paymentService.ts
-  const currentPaymentNumber = (payment as any).installment || 1;
-  const totalMonths = (payment as any).total_installments || 1;
 
   // AÇÕES
   const handleDownloadPDF = () => {
