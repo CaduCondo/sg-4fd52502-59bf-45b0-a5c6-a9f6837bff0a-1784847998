@@ -151,13 +151,14 @@ export default function Dashboard() {
   const overviewData = useMemo(() => {
     const totalProperties = properties.length;
     const availableProperties = properties.filter(p => p.status === 'available').length;
-    const activeContracts = rentals.filter(r => r.isActive).length;
     const unavailableProperties = properties.filter(p => p.status === 'unavailable').length;
     
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const twoMonthsFromNow = new Date(today);
     twoMonthsFromNow.setMonth(twoMonthsFromNow.getMonth() + 2);
+    
+    const activeContracts = rentals.filter(r => r.isActive).length;
     
     const expiringContracts = rentals.filter(rental => {
       if (!rental.isActive || !rental.endDate) return false;
