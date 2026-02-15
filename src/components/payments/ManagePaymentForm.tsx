@@ -676,28 +676,34 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
 
       // ✅ CORREÇÃO DEFINITIVA: SEMPRE passar valores calculados para o recibo
       if (onSuccess) {
-        console.log("\n🎯 PREPARANDO DADOS PARA O RECIBO:");
+        console.log("\n✅ CHAMANDO onSuccess COM VALORES CALCULADOS:");
         console.log("  values.multa:", values.multa);
         console.log("  values.juros:", values.juros);
         console.log("  removeFees:", removeFees);
         
-        // Criar objeto payment com late_fee e interest SEMPRE
+        // ✅ USAR DADOS JÁ DISPONÍVEIS (não buscar do banco)
+        // ✅ ADICIONAR late_fee e interest CALCULADOS
         const paymentWithFees = {
           ...payment,
-          late_fee: removeFees ? 0 : values.multa,
-          interest: removeFees ? 0 : values.juros,
+          // ✅ AMBOS os formatos para garantir compatibilidade
+          late_fee: removeFees ? 0 : values.multa,      // snake_case (banco)
+          lateFee: removeFees ? 0 : values.multa,       // camelCase (TypeScript)
+          interest: removeFees ? 0 : values.juros,      // Já está em camelCase
           paid_amount: finalPaidAmount,
+          paidAmount: finalPaidAmount,
           status: paymentStatus,
           payment_date: formData.payment_date,
+          paymentDate: formData.payment_date,
           payment_method: formData.payment_method,
+          paymentMethod: formData.payment_method,
           notes: formData.notes,
           attachments: attachments.length > 0 ? attachments : null,
         };
 
-        console.log("\n✅ CHAMANDO onSuccess COM VALORES CALCULADOS:");
+        console.log("\n📊 PAYMENT OBJECT ENVIADO PARA RECIBO:");
         console.log("  payment.late_fee:", paymentWithFees.late_fee);
+        console.log("  payment.lateFee:", paymentWithFees.lateFee);
         console.log("  payment.interest:", paymentWithFees.interest);
-        console.log("  payment completo:", paymentWithFees);
 
         onSuccess({
           payment: paymentWithFees,
