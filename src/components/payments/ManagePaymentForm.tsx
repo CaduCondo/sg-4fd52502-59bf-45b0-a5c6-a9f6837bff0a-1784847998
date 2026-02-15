@@ -15,6 +15,10 @@ import type { Payment, Rental, Property, Tenant } from "@/types";
 import { calculateCorrectedDeposit } from "@/services/igpmService";
 import { maskTime } from "@/lib/masks";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { getPaymentById } from "@/services/paymentService";
+import { getRentalById } from "@/services/rentalService";
+import { getPropertyById } from "@/services/propertyService";
+import { getTenantById } from "@/services/tenantService";
 
 interface ManagePaymentFormProps {
   paymentId: string;
@@ -582,92 +586,33 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       });
 
       if (paymentStatus === "paid" && !isPaid && onSuccess) {
-        // Parse breakdown se existir
-        let parsedBreakdown = undefined;
-        if (updatedBreakdown) {
-          try {
-            parsedBreakdown = typeof updatedBreakdown === 'string' 
-              ? JSON.parse(updatedBreakdown) 
-              : updatedBreakdown;
-          } catch (error) {
-            console.error("Erro ao parsear breakdown:", error);
+        try {
+          // Buscar dados completos do banco para garantir que o recibo seja idêntico ao salvo
+          const paymentFromDB = await getPaymentById(paymentId);
+          const rentalFromDB = await getRentalById(payment.rental_id);
+          const propertyFromDB = await getPropertyById(property.id);
+          const tenantFromDB = await getTenantById(tenant.id);
+
+          onSuccess({
+            payment: paymentFromDB,
+            rental: rentalFromDB,
+            property: propertyFromDB,
+            tenant: tenantFromDB,
+          });
+        } catch (error) {
+          console.error("Erro ao buscar dados do banco para o recibo:", error);
+          toast({
+            title: "Aviso",
+            description: "Pagamento salvo, mas não foi possível gerar o recibo. Acesse o pagamento para visualizar.",
+            variant: "destructive",
+          });
+          
+          if (onClose) {
+            onClose();
+          } else {
+            router.push("/payments");
           }
         }
-
-        const paymentForReceipt: Payment = {
-          id: payment.id,
-          rentalId: payment.rental_id,
-          dueDate: payment.due_date,
-          expectedAmount: expectedTotal,
-          paidAmount: finalPaidAmount,
-          paymentDate: formData.payment_date,
-          status: "paid",
-          paymentMethod: formData.payment_method,
-          notes: formData.notes,
-          referenceMonth: parseInt(payment.reference_month),
-          referenceYear: parseInt(payment.reference_year),
-          attachments: attachments,
-          lateFee: removeFees ? 0 : values.multa,
-          interest: removeFees ? 0 : values.juros,
-          breakdown: parsedBreakdown,
-          installment: payment.installment,
-          totalInstallments: payment.total_installments,
-        };
-
-        const mockRental: Rental = {
-          id: payment.rental_id,
-          propertyId: property.id,
-          tenantId: tenant.id,
-          startDate: rental.start_date,
-          endDate: rental.end_date,
-          paymentDay: rental.payment_day,
-          value: rental.monthly_rent,
-          depositAmount: rental.security_deposit || 0,
-          status: rental.status,
-          isActive: rental.status === "active",
-          attachments: [],
-          contractAttachments: [],
-          autoRenew: false,
-          installments: rental.installments,
-          totalInstallments: rental.total_installments,
-        };
-
-        const propertyForReceipt: Property = {
-          id: property.id,
-          locationId: property.location_id,
-          location: location?.name || "",
-          address: location?.street || "",
-          number: location?.number || "",
-          complement: property.complement || "",
-          neighborhood: location?.neighborhood || "",
-          city: location?.city || "",
-          state: location?.state || "",
-          zipCode: location?.zip_code || "",
-          rooms: property.rooms || 0,
-          bathrooms: property.bathrooms || 0,
-          area: property.area || 0,
-          status: property.status || "available",
-          value: property.value,
-        };
-
-        const tenantForReceipt: Tenant = {
-          id: tenant.id,
-          name: tenant.name,
-          email: tenant.email || "",
-          phone: tenant.phone || "",
-          documentType: tenant.document_type || "cpf",
-          document: tenant.document || "",
-          cpf: tenant.cpf || "",
-          rg: tenant.rg || "",
-          status: tenant.status || "active",
-        };
-
-        onSuccess({
-          payment: paymentForReceipt,
-          rental: mockRental,
-          property: propertyForReceipt,
-          tenant: tenantForReceipt,
-        });
       } else if (paymentStatus === "partial" || isPaid) {
         if (onClose) {
           onClose();
