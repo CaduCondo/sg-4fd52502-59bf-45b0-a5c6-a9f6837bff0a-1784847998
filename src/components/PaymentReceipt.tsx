@@ -36,8 +36,9 @@ export function PaymentReceipt({ payment: initialPayment, rental, property, tena
     fetchCompletePaymentData();
   }, [initialPayment.id]);
 
-  console.log("=== PAYMENT RECEIPT - ANÁLISE DE VALORES ===");
-  console.log("payment completo:", payment);
+  console.log("=== PAYMENT RECEIPT - ANÁLISE COMPLETA ===");
+  console.log("payment:", payment);
+  console.log("rental:", rental);
 
   const currentInstallment = payment.installment || 1;
   const totalInstallments = payment.totalInstallments || rental.installments || rental.totalInstallments || 24;
@@ -55,6 +56,8 @@ export function PaymentReceipt({ payment: initialPayment, rental, property, tena
   let additionalExpenses = 0;
 
   if (isTermination) {
+    console.log("\n🔴 RECIBO DE RESCISÃO - Processando breakdown:");
+    
     let breakdown: any = null;
     
     if (payment.breakdown) {
@@ -62,45 +65,61 @@ export function PaymentReceipt({ payment: initialPayment, rental, property, tena
         breakdown = typeof payment.breakdown === "string" 
           ? JSON.parse(payment.breakdown) 
           : payment.breakdown;
+        
+        console.log("📊 Breakdown parseado:", breakdown);
       } catch (e) {
-        console.error("Erro ao parsear breakdown:", e);
+        console.error("❌ Erro ao parsear breakdown:", e);
       }
     }
 
     if (breakdown) {
       if (Array.isArray(breakdown)) {
-        breakdown.forEach((item: any) => {
-          const amount = Math.abs(Number(item.amount || 0));
+        console.log("📋 Breakdown é array com", breakdown.length, "itens");
+        
+        breakdown.forEach((item: any, index: number) => {
+          const amount = Number(item.amount || 0);
           const desc = (item.description || "").toLowerCase();
           
+          console.log(`  Item ${index}:`, { desc, amount });
+          
           if (desc.includes("aluguel proporcional") || desc.includes("proporcional")) {
-            proportionalRent = amount;
+            proportionalRent = Math.abs(amount);
           } else if (desc.includes("multa rescisória") || desc.includes("rescisória")) {
-            terminationFee = amount;
+            terminationFee = Math.abs(amount);
           } else if (desc.includes("devolução") || desc.includes("caução")) {
-            depositRefund = amount;
+            depositRefund = Math.abs(amount);
           } else if (desc.includes("despesas adicionais") || desc.includes("adicionais")) {
-            additionalExpenses = amount;
+            additionalExpenses = Math.abs(amount);
           } else if (desc.includes("multa por atraso") || desc.includes("multa")) {
-            lateFee = amount;
+            lateFee = Math.abs(amount);
           } else if (desc.includes("juros por atraso") || desc.includes("juros")) {
-            interest = amount;
+            interest = Math.abs(amount);
           }
         });
       } else {
-        proportionalRent = breakdown.proportionalRent || 0;
-        terminationFee = breakdown.terminationFee || 0;
+        console.log("📦 Breakdown é objeto:", breakdown);
+        proportionalRent = Math.abs(breakdown.proportionalRent || 0);
+        terminationFee = Math.abs(breakdown.terminationFee || 0);
         depositRefund = Math.abs(breakdown.depositRefund || 0);
-        additionalExpenses = breakdown.additionalExpenses || 0;
-        lateFee = breakdown.lateFee || 0;
-        interest = breakdown.interest || 0;
+        additionalExpenses = Math.abs(breakdown.additionalExpenses || 0);
+        lateFee = Math.abs(breakdown.lateFee || 0);
+        interest = Math.abs(breakdown.interest || 0);
       }
     }
 
     totalAmount = Math.abs(payment.paidAmount || 0);
     
+    console.log("\n✅ VALORES EXTRAÍDOS DA RESCISÃO:");
+    console.log("  Aluguel Proporcional:", proportionalRent);
+    console.log("  Multa Rescisória:", terminationFee);
+    console.log("  Devolução Caução:", depositRefund);
+    console.log("  Despesas Adicionais:", additionalExpenses);
+    console.log("  Multa Atraso:", lateFee);
+    console.log("  Juros Atraso:", interest);
+    console.log("  Total Pago:", totalAmount);
+    
   } else {
-    console.log("\n📊 EXTRAÇÃO DE VALORES:");
+    console.log("\n🔵 RECIBO NORMAL - Extraindo valores:");
     
     baseAmount = payment.expectedAmount || 0;
     console.log("1️⃣ Valor Base (expectedAmount):", baseAmount);
@@ -131,9 +150,18 @@ export function PaymentReceipt({ payment: initialPayment, rental, property, tena
   }
 
   console.log("\n=== VALORES FINAIS PARA EXIBIÇÃO ===");
-  console.log("baseAmount:", baseAmount);
-  console.log("lateFee:", lateFee);
-  console.log("interest:", interest);
+  if (isTermination) {
+    console.log("proportionalRent:", proportionalRent);
+    console.log("terminationFee:", terminationFee);
+    console.log("depositRefund:", depositRefund);
+    console.log("additionalExpenses:", additionalExpenses);
+    console.log("lateFee:", lateFee);
+    console.log("interest:", interest);
+  } else {
+    console.log("baseAmount:", baseAmount);
+    console.log("lateFee:", lateFee);
+    console.log("interest:", interest);
+  }
   console.log("totalAmount:", totalAmount);
   console.log("=======================================\n");
 
@@ -260,7 +288,9 @@ export function PaymentReceipt({ payment: initialPayment, rental, property, tena
       : "N/A";
     const referenceYear = payment.referenceYear || new Date().getFullYear();
 
-    const message = `📄 *RECIBO DE PAGAMENTO*\n\nLocatário: ${tenant.name}\nValor Pago: ${formatCurrency(totalAmount)}\nReferência: ${referenceMonthName} de ${referenceYear}\nVencimento: ${formatDate(payment.dueDate)}\nImóvel: ${property.location?.toUpperCase() || property.address?.toUpperCase() || "N/A"}${property.complement ? `, ${property.complement.toUpperCase()}` : ""}\n\n✅ Pagamento confirmado e recibo gerado.`;
+    const message = isTermination
+      ? `📄 *RECIBO DE RESCISÃO DE CONTRATO*\n\nLocatário: ${tenant.name}\nValor: ${formatCurrency(totalAmount)}\nReferência: ${referenceMonthName} de ${referenceYear}\nImóvel: ${property.location?.toUpperCase() || property.address?.toUpperCase() || "N/A"}${property.complement ? `, ${property.complement.toUpperCase()}` : ""}\n\n✅ Rescisão processada e recibo gerado.`
+      : `📄 *RECIBO DE PAGAMENTO*\n\nLocatário: ${tenant.name}\nValor Pago: ${formatCurrency(totalAmount)}\nReferência: ${referenceMonthName} de ${referenceYear}\nVencimento: ${formatDate(payment.dueDate)}\nImóvel: ${property.location?.toUpperCase() || property.address?.toUpperCase() || "N/A"}${property.complement ? `, ${property.complement.toUpperCase()}` : ""}\n\n✅ Pagamento confirmado e recibo gerado.`;
     
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, "_blank");
@@ -292,7 +322,7 @@ export function PaymentReceipt({ payment: initialPayment, rental, property, tena
           <DialogTitle className="flex items-center justify-between">
             <span className="flex items-center gap-2">
               <span>📄</span>
-              Recibo de Pagamento
+              {isTermination ? "Recibo de Rescisão de Contrato" : "Recibo de Pagamento"}
             </span>
             <Button variant="ghost" size="icon" onClick={onClose}>
               <X className="h-4 w-4" />
@@ -302,24 +332,41 @@ export function PaymentReceipt({ payment: initialPayment, rental, property, tena
 
         <div id="receipt-content" className="space-y-6 p-8 bg-white text-black">
           <div className="text-center space-y-2">
-            <h1 className="text-2xl font-bold">RECIBO DE ALUGUEL</h1>
-            <p className="text-sm text-gray-600">({currentInstallment}/{totalInstallments})</p>
+            <h1 className="text-2xl font-bold">
+              {isTermination ? "RECIBO DE RESCISÃO DE CONTRATO" : "RECIBO DE ALUGUEL"}
+            </h1>
+            {!isTermination && (
+              <p className="text-sm text-gray-600">({currentInstallment}/{totalInstallments})</p>
+            )}
           </div>
 
           <div className="space-y-4 text-justify leading-relaxed">
-            <p>
-              Recebi dos Srs. <strong>{tenant.name.toUpperCase()}</strong>, a importância de{" "}
-              <strong>{extenso(totalAmount)} ({formatCurrency(totalAmount)})</strong>, proveniente ao depósito de aluguel
-              referente ao mês de <strong>{referenceMonthName} de {referenceYear}</strong>, 
-              tendo seu vencimento em <strong>{formatDate(payment.dueDate)}</strong>, 
-              do imóvel situado em{" "}
-              <strong>
-                {property.location?.toUpperCase() || property.address?.toUpperCase() || "LOCAL NÃO INFORMADO"}
-                {property.complement ? `, ${property.complement.toUpperCase()}` : ""}
-              </strong>, após a apresentação dos comprovantes de depósito bancário e contas de água e luz do mês
-              anterior pagos, sendo este vinculado ao INSTRUMENTO PARTICULAR DE CONTRATO DE LOCAÇÃO PARA FIM RESIDENCIAL, assinado entre as partes em{" "}
-              <strong>{formatDate(rental.startDate)}</strong>.
-            </p>
+            {isTermination ? (
+              <p>
+                Recebi dos Srs. <strong>{tenant.name.toUpperCase()}</strong>, a importância de{" "}
+                <strong>{extenso(totalAmount)} ({formatCurrency(totalAmount)})</strong>, referente à rescisão do contrato de locação
+                do imóvel situado em{" "}
+                <strong>
+                  {property.location?.toUpperCase() || property.address?.toUpperCase() || "LOCAL NÃO INFORMADO"}
+                  {property.complement ? `, ${property.complement.toUpperCase()}` : ""}
+                </strong>, conforme detalhamento abaixo, sendo este vinculado ao INSTRUMENTO PARTICULAR DE CONTRATO DE LOCAÇÃO PARA FIM RESIDENCIAL, 
+                assinado entre as partes em <strong>{formatDate(rental.startDate)}</strong>.
+              </p>
+            ) : (
+              <p>
+                Recebi dos Srs. <strong>{tenant.name.toUpperCase()}</strong>, a importância de{" "}
+                <strong>{extenso(totalAmount)} ({formatCurrency(totalAmount)})</strong>, proveniente ao depósito de aluguel
+                referente ao mês de <strong>{referenceMonthName} de {referenceYear}</strong>, 
+                tendo seu vencimento em <strong>{formatDate(payment.dueDate)}</strong>, 
+                do imóvel situado em{" "}
+                <strong>
+                  {property.location?.toUpperCase() || property.address?.toUpperCase() || "LOCAL NÃO INFORMADO"}
+                  {property.complement ? `, ${property.complement.toUpperCase()}` : ""}
+                </strong>, após a apresentação dos comprovantes de depósito bancário e contas de água e luz do mês
+                anterior pagos, sendo este vinculado ao INSTRUMENTO PARTICULAR DE CONTRATO DE LOCAÇÃO PARA FIM RESIDENCIAL, assinado entre as partes em{" "}
+                <strong>{formatDate(rental.startDate)}</strong>.
+              </p>
+            )}
           </div>
 
           <div className="border-t border-gray-300 pt-4">
@@ -342,7 +389,7 @@ export function PaymentReceipt({ payment: initialPayment, rental, property, tena
                 {depositRefund > 0 && (
                   <div className="flex justify-between">
                     <span>Devolução de Caução:</span>
-                    <span className="font-medium text-red-600">-{formatCurrency(depositRefund)}</span>
+                    <span className="font-medium text-red-600">- {formatCurrency(depositRefund)}</span>
                   </div>
                 )}
                 {additionalExpenses > 0 && (
@@ -368,7 +415,9 @@ export function PaymentReceipt({ payment: initialPayment, rental, property, tena
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span>Valor Base:</span>
-                  <span className="font-medium">{formatCurrency(baseAmount)}</span>
+                  <span className="font-medium">
+                    {formatCurrency(baseAmount)}
+                  </span>
                 </div>
                 {lateFee > 0 && (
                   <div className="flex justify-between">
@@ -386,7 +435,7 @@ export function PaymentReceipt({ payment: initialPayment, rental, property, tena
             )}
 
             <div className="border-t border-gray-400 mt-3 pt-3 flex justify-between font-bold text-lg">
-              <span>Total Pago:</span>
+              <span>Total {isTermination ? "" : "Pago"}:</span>
               <span>{formatCurrency(totalAmount)}</span>
             </div>
           </div>
