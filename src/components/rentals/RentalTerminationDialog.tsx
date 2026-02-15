@@ -18,7 +18,12 @@ import { Calendar, AlertTriangle, Info } from "lucide-react";
 import type { Rental } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 import { calculateCorrectedDeposit } from "@/services/igpmService";
-import { TooltipProvider } from "@/components/ui/tooltip";
+import { 
+  TooltipProvider,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface RentalTerminationDialogProps {
   open: boolean;
