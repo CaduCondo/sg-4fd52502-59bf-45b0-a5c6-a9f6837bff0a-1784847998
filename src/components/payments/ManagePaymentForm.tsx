@@ -694,7 +694,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           attachments: attachments.length > 0 ? attachments : null,
         };
 
-        console.log("\n✅ CHAMANDO onSuccess COM:");
+        console.log("\n✅ CHAMANDO onSuccess COM VALORES CALCULADOS:");
         console.log("  payment.late_fee:", paymentWithFees.late_fee);
         console.log("  payment.interest:", paymentWithFees.interest);
         console.log("  payment completo:", paymentWithFees);
