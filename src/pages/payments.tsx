@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LayoutGrid, List, Plus, Search } from "lucide-react";
+import { Grid3x3, List, Plus, Search } from "lucide-react";
 import { usePayments } from "@/hooks/usePayments";
 import { Payment } from "@/types";
 import { PeriodSelector } from "@/components/dashboard/PeriodSelector";
@@ -78,7 +78,7 @@ export default function PaymentsPage() {
   // Carregar inicial
   useEffect(() => {
     loadPayments(filters.month.toString(), filters.year.toString());
-  }, []); // Carrega apenas uma vez no mount
+  }, []);
 
   const handleFilterChange = useCallback((newFilters: any) => {
     const formattedFilters = {
@@ -262,22 +262,24 @@ export default function PaymentsPage() {
               Gerencie os recebimentos de aluguel
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex gap-1 border rounded-lg p-1">
             <Button
-              variant={viewMode === "grid" ? "default" : "outline"}
-              size="icon"
+              variant={viewMode === "grid" ? "default" : "ghost"}
+              size="sm"
               onClick={() => setViewMode("grid")}
-              aria-label="Visualização em grade"
+              className="h-8 px-3"
             >
-              <LayoutGrid className="h-4 w-4" />
+              <Grid3x3 className="h-4 w-4 mr-1.5" />
+              Grade
             </Button>
             <Button
-              variant={viewMode === "list" ? "default" : "outline"}
-              size="icon"
+              variant={viewMode === "list" ? "default" : "ghost"}
+              size="sm"
               onClick={() => setViewMode("list")}
-              aria-label="Visualização em lista"
+              className="h-8 px-3"
             >
-              <List className="h-4 w-4" />
+              <List className="h-4 w-4 mr-1.5" />
+              Lista
             </Button>
           </div>
         </div>
@@ -482,7 +484,7 @@ export default function PaymentsPage() {
                       description: "Recebimento registrado com sucesso.",
                     });
                   }
-                }, 500); // Aumentado para 500ms para garantir que o estado foi atualizado
+                }, 500);
               }}
               onClose={() => setSelectedPaymentId(null)}
               embedded
