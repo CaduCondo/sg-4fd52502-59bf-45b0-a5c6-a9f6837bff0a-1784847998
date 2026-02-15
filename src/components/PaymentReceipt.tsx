@@ -53,7 +53,7 @@ export function PaymentReceipt({ payment: initialPayment, rental, property, tena
           const description = item.description || "";
           const type = item.type || (amount >= 0 ? "addition" : "deduction");
 
-          if (amount !== 0) {
+          if (amount !== 0 && !description.includes("Multa") && !description.includes("Juros")) {
             breakdownItems.push({
               description,
               amount: Math.abs(amount),
@@ -87,7 +87,7 @@ export function PaymentReceipt({ payment: initialPayment, rental, property, tena
 
           const type = amount >= 0 ? "addition" : "deduction";
 
-          if (amount !== 0) {
+          if (amount !== 0 && key !== "lateFee" && key !== "interest") {
             breakdownItems.push({
               description,
               amount: Math.abs(amount),
@@ -102,11 +102,8 @@ export function PaymentReceipt({ payment: initialPayment, rental, property, tena
     }
   }
 
-  // FALLBACK: Se breakdown está vazio mas temos lateFee/interest, adicionar manualmente
+  // Se não tem itens, adicionar valor base
   if (breakdownItems.length === 0) {
-    console.log("⚠️ Breakdown vazio, usando fallback com lateFee e interest");
-    
-    // Adicionar valor base
     const baseAmount = payment.expectedAmount || 0;
     if (baseAmount > 0) {
       breakdownItems.push({
@@ -114,27 +111,28 @@ export function PaymentReceipt({ payment: initialPayment, rental, property, tena
         amount: baseAmount,
         type: "addition"
       });
+      console.log(`  ✓ Valor base adicionado: R$ ${baseAmount}`);
     }
+  }
 
-    // Adicionar multa se existir
-    if (payment.lateFee && payment.lateFee > 0) {
-      breakdownItems.push({
-        description: "Multa por Atraso",
-        amount: payment.lateFee,
-        type: "addition"
-      });
-      console.log(`  ✓ Multa adicionada: R$ ${payment.lateFee}`);
-    }
+  // SEMPRE ADICIONAR MULTA SE EXISTIR
+  if (payment.lateFee && payment.lateFee > 0) {
+    breakdownItems.push({
+      description: "Multa por Atraso",
+      amount: payment.lateFee,
+      type: "addition"
+    });
+    console.log(`  ✅ MULTA ADICIONADA: R$ ${payment.lateFee}`);
+  }
 
-    // Adicionar juros se existir
-    if (payment.interest && payment.interest > 0) {
-      breakdownItems.push({
-        description: "Juros por Atraso",
-        amount: payment.interest,
-        type: "addition"
-      });
-      console.log(`  ✓ Juros adicionados: R$ ${payment.interest}`);
-    }
+  // SEMPRE ADICIONAR JUROS SE EXISTIR
+  if (payment.interest && payment.interest > 0) {
+    breakdownItems.push({
+      description: "Juros por Atraso",
+      amount: payment.interest,
+      type: "addition"
+    });
+    console.log(`  ✅ JUROS ADICIONADOS: R$ ${payment.interest}`);
   }
 
   // Calcular total a partir dos itens do breakdown
