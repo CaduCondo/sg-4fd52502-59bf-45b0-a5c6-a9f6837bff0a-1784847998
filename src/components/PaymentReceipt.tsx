@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Download, X } from "lucide-react";
 import { Payment, Rental, Property, Tenant } from "@/types";
+import { getConfig } from "@/services/configService";
 
 interface PaymentReceiptProps {
   payment: Payment;
@@ -14,15 +15,58 @@ interface PaymentReceiptProps {
 
 export function PaymentReceipt({ payment, rental, property, tenant, onClose }: PaymentReceiptProps) {
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [calculatedLateFee, setCalculatedLateFee] = useState(0);
+  const [calculatedInterest, setCalculatedInterest] = useState(0);
 
-  // DEBUG: Ver o que está chegando
-  console.log("=== PAYMENT RECEIPT DEBUG ===");
-  console.log("payment completo:", payment);
-  console.log("payment.lateFee:", payment.lateFee);
-  console.log("payment.interest:", payment.interest);
-  console.log("payment.paidAmount:", payment.paidAmount);
-  console.log("payment.expectedAmount:", payment.expectedAmount);
-  console.log("payment.breakdown:", payment.breakdown);
+  // ===== CALCULAR MULTA E JUROS SE NECESSÁRIO =====
+  useEffect(() => {
+    async function calculateFeesIfNeeded() {
+      // Se já tem multa/juros no banco, usa eles
+      if (payment.lateFee > 0 || payment.interest > 0) {
+        setCalculatedLateFee(payment.lateFee || 0);
+        setCalculatedInterest(payment.interest || 0);
+        return;
+      }
+
+      // Se paidAmount for igual a expectedAmount, não tem atraso
+      if (payment.paidAmount === payment.expectedAmount) {
+        setCalculatedLateFee(0);
+        setCalculatedInterest(0);
+        return;
+      }
+
+      // Calcular multa/juros baseado em datas
+      try {
+        const config = await getConfig();
+        if (!config) return;
+
+        const dueDate = new Date(payment.dueDate + "T00:00:00");
+        const paymentDate = payment.paymentDate 
+          ? new Date(payment.paymentDate + "T00:00:00")
+          : new Date();
+
+        const diffTime = paymentDate.getTime() - dueDate.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        if (diffDays > 0) {
+          // Pagamento atrasado - calcular multa e juros
+          const baseAmount = payment.expectedAmount || 0;
+          const lateFeePercentage = config.late_fee_percentage || 10;
+          const interestRatePercentage = config.interest_rate_percentage || 1;
+
+          const multa = (baseAmount * lateFeePercentage) / 100;
+          const juros = (baseAmount * interestRatePercentage * diffDays) / 100;
+
+          setCalculatedLateFee(multa);
+          setCalculatedInterest(juros);
+        }
+      } catch (error) {
+        console.error("Erro ao calcular multa/juros:", error);
+      }
+    }
+
+    calculateFeesIfNeeded();
+  }, [payment]);
 
   // ===== PARCELAS =====
   const currentInstallment = payment.installment || 1;
@@ -31,7 +75,7 @@ export function PaymentReceipt({ payment, rental, property, tenant, onClose }: P
   // ===== DETECTAR RESCISÃO =====
   const isTermination = payment.type === "termination";
 
-  // ===== VALORES - LÓGICA SIMPLIFICADA =====
+  // ===== VALORES =====
   let baseAmount = 0;
   let lateFee = 0;
   let interest = 0;
@@ -43,15 +87,13 @@ export function PaymentReceipt({ payment, rental, property, tenant, onClose }: P
   let depositRefund = 0;
   let additionalExpenses = 0;
 
-  // ===== ESTRATÉGIA SUPER SIMPLES =====
-  
   if (isTermination) {
     // RESCISÃO: Tentar pegar do breakdown
     let breakdown: any = null;
     
     if (payment.breakdown) {
       try {
-        breakdown = typeof payment.breakdown === 'string' 
+        breakdown = typeof payment.breakdown === "string" 
           ? JSON.parse(payment.breakdown) 
           : payment.breakdown;
       } catch (e) {
@@ -92,18 +134,14 @@ export function PaymentReceipt({ payment, rental, property, tenant, onClose }: P
     totalAmount = Math.abs(payment.paidAmount || 0);
     
   } else {
-    // PAGAMENTO NORMAL: SUPER SIMPLES!
-    
-    // 1. Valor base (aluguel esperado)
+    // PAGAMENTO NORMAL
     baseAmount = payment.expectedAmount || 0;
     
-    // 2. Multa - PRIORIDADE MÁXIMA
-    lateFee = payment.lateFee || 0;
+    // Usar valores calculados (do hook useEffect)
+    lateFee = calculatedLateFee;
+    interest = calculatedInterest;
     
-    // 3. Juros - PRIORIDADE MÁXIMA  
-    interest = payment.interest || 0;
-    
-    // 4. Total pago
+    // Total pago
     totalAmount = payment.paidAmount || 0;
     
     // Se total for 0, calcular
@@ -111,12 +149,6 @@ export function PaymentReceipt({ payment, rental, property, tenant, onClose }: P
       totalAmount = baseAmount + lateFee + interest;
     }
   }
-
-  console.log("=== VALORES FINAIS ===");
-  console.log("baseAmount:", baseAmount);
-  console.log("lateFee:", lateFee);
-  console.log("interest:", interest);
-  console.log("totalAmount:", totalAmount);
 
   // ===== FORMATAÇÃO =====
   const formatCurrency = (value: number): string => {
@@ -326,14 +358,18 @@ export function PaymentReceipt({ payment, rental, property, tenant, onClose }: P
                   <span>Valor Base:</span>
                   <span className="font-medium">{formatCurrency(baseAmount)}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span>Multa:</span>
-                  <span className="font-medium">{formatCurrency(lateFee)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Juros:</span>
-                  <span className="font-medium">{formatCurrency(interest)}</span>
-                </div>
+                {lateFee > 0 && (
+                  <div className="flex justify-between">
+                    <span>Multa:</span>
+                    <span className="font-medium">{formatCurrency(lateFee)}</span>
+                  </div>
+                )}
+                {interest > 0 && (
+                  <div className="flex justify-between">
+                    <span>Juros:</span>
+                    <span className="font-medium">{formatCurrency(interest)}</span>
+                  </div>
+                )}
               </div>
             )}
 
