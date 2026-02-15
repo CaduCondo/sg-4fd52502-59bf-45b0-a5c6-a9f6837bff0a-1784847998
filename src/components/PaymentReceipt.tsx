@@ -437,21 +437,19 @@ export function PaymentReceipt({ payment: initialPayment, rental, property, tena
                 minute: "2-digit" 
               })}
             </p>
-          </div>
-
-          <div className="flex flex-col items-end gap-2 pt-8 pb-6 border-t border-gray-300">
-            <div className="w-64 border-b border-gray-400 pb-1">
-              <span className="text-xs text-gray-600">Assinatura</span>
-            </div>
+            
+            <div className="pt-8"></div>
             
             <img 
               src="/signature.png" 
               alt="Assinatura Carlos Aparecido D'Uvo" 
-              className="w-32 h-auto"
+              className="w-32 h-auto mx-auto mb-2"
             />
             
+            <div className="w-64 border-t border-gray-400 mx-auto mb-2"></div>
+            
             <p className="text-[10pt] text-gray-600 font-medium">
-              CARLOS APARECIDO D'UVO
+              Carlos Aparecido D'Uvo
             </p>
           </div>
         </div>
