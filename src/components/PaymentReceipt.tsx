@@ -297,22 +297,50 @@ export function PaymentReceipt({ payment: initialPayment, rental, property, tena
 
   // Formatar endereço do imóvel (SEM o nome do local)
   const getPropertyAddress = () => {
+    console.log("\n🏠 DADOS DO PROPERTY COMPLETO:", property);
+    
     const parts = [];
     
-    // Adicionar complemento (ex: "APTO 13")
-    if (property.complement) {
-      parts.push(property.complement.toUpperCase());
-    }
-    
-    // Adicionar cidade (ex: "Taboão da Serra")
-    if (property.city) {
-      parts.push(property.city.toUpperCase());
-    } else if (property.address) {
-      // Fallback: usar address se city não existir
+    // 1. RUA (já vem com "Rua" no texto)
+    if (property.address) {
+      console.log(`  ✓ RUA: ${property.address}`);
       parts.push(property.address.toUpperCase());
     }
     
-    return parts.length > 0 ? parts.join(", ") : "LOCAL NÃO INFORMADO";
+    // 2. NÚMERO
+    if (property.number) {
+      console.log(`  ✓ NÚMERO: ${property.number}`);
+      parts.push(`Nº ${property.number}`);
+    }
+    
+    // 3. COMPLEMENTO (APTO, CASA, etc) - do Property
+    if (property.complement) {
+      console.log(`  ✓ COMPLEMENTO: ${property.complement}`);
+      parts.push(property.complement.toUpperCase());
+    }
+    
+    // 4. BAIRRO
+    if (property.neighborhood) {
+      console.log(`  ✓ BAIRRO: ${property.neighborhood}`);
+      parts.push(property.neighborhood.toUpperCase());
+    }
+    
+    // 5. CIDADE
+    if (property.city) {
+      console.log(`  ✓ CIDADE: ${property.city}`);
+      parts.push(property.city.toUpperCase());
+    }
+    
+    // 6. ESTADO
+    if (property.state) {
+      console.log(`  ✓ ESTADO: ${property.state}`);
+      parts.push(property.state.toUpperCase());
+    }
+    
+    const finalAddress = parts.length > 0 ? parts.join(", ") : "LOCAL NÃO INFORMADO";
+    console.log(`\n📍 ENDEREÇO FINAL: ${finalAddress}\n`);
+    
+    return finalAddress;
   };
 
   const propertyAddress = getPropertyAddress();
