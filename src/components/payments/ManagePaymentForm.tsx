@@ -682,8 +682,15 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           const propertyFromDB = await getPropertyById(property.id);
           const tenantFromDB = await getTenantById(tenant.id);
 
+          // ✅ CRÍTICO: Adicionar late_fee e interest calculados
+          const paymentWithFees = {
+            ...paymentFromDB,
+            late_fee: removeFees ? 0 : values.multa,
+            interest: removeFees ? 0 : values.juros,
+          };
+
           onSuccess({
-            payment: paymentFromDB,
+            payment: paymentWithFees,
             rental: rentalFromDB,
             property: propertyFromDB,
             tenant: tenantFromDB,
@@ -1102,7 +1109,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {formData.payment_method !== "dinheiro" && formData.payment_method !== "boleto" && (
                   <div>
-                    <Label htmlFor="pix_code_type">
+                    <Label htmlFor="payment_code_type">
                       C/C Recebimento <span className="text-red-500">*</span>
                     </Label>
                     <Select
