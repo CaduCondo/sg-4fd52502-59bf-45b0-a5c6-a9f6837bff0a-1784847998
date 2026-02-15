@@ -129,8 +129,39 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       setLocation(paymentData.rentals.properties.locations);
       setTenant(paymentData.rentals.tenants);
 
-      setRentalValue(paymentData.rentals.monthly_rent || 0);
-      setGarageValue(paymentData.rentals.garage_value || 0);
+      // ✅ CORREÇÃO: Verificar se é primeira parcela proporcional
+      let effectiveRentalValue = paymentData.rentals.monthly_rent || 0;
+      let effectiveGarageValue = paymentData.rentals.garage_value || 0;
+      let isProportionalPayment = false;
+
+      // Verificar se tem breakdown com "Aluguel Proporcional"
+      if (paymentData.breakdown) {
+        try {
+          const breakdownData = typeof paymentData.breakdown === 'string' 
+            ? JSON.parse(paymentData.breakdown) 
+            : (paymentData.breakdown || []);
+          
+          const proportionalItem = breakdownData.find((item: any) => 
+            item.description?.includes("Aluguel Proporcional")
+          );
+          
+          if (proportionalItem && proportionalItem.amount > 0) {
+            // É primeira parcela proporcional!
+            isProportionalPayment = true;
+            effectiveRentalValue = proportionalItem.amount;
+            effectiveGarageValue = 0; // Garagem já está incluída no proporcional
+            
+            console.log("🎯 PRIMEIRA PARCELA PROPORCIONAL DETECTADA!");
+            console.log(`  Valor proporcional: R$ ${proportionalItem.amount}`);
+            console.log(`  Descrição: ${proportionalItem.description}`);
+          }
+        } catch (error) {
+          console.error("Erro ao parsear breakdown:", error);
+        }
+      }
+
+      setRentalValue(effectiveRentalValue);
+      setGarageValue(effectiveGarageValue);
 
       const alreadyPaid = paymentData.status === "paid";
       setIsPaid(alreadyPaid);
@@ -228,6 +259,33 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
   const calculateValues = () => {
     const valorAluguel = Math.round((rentalValue + garageValue) * 100) / 100;
     
+    // ✅ Verificar se é primeira parcela proporcional
+    let isProportional = false;
+    let proportionalDays = 0;
+    
+    if (payment?.breakdown) {
+      try {
+        const breakdownData = typeof payment.breakdown === 'string' 
+          ? JSON.parse(payment.breakdown) 
+          : (payment.breakdown || []);
+        
+        const proportionalItem = breakdownData.find((item: any) => 
+          item.description?.includes("Aluguel Proporcional")
+        );
+        
+        if (proportionalItem) {
+          isProportional = true;
+          // Extrair número de dias da descrição (ex: "Aluguel Proporcional (17 dias)")
+          const match = proportionalItem.description.match(/\((\d+)\s+dias?\)/);
+          if (match) {
+            proportionalDays = parseInt(match[1]);
+          }
+        }
+      } catch (error) {
+        console.error("Erro ao verificar proporcional:", error);
+      }
+    }
+    
     let multa = 0;
     let juros = 0;
     let diasAtraso = 0;
@@ -265,7 +323,8 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       valorRestante: Math.round(valorRestante * 100) / 100,
       diasAtraso,
       jurosDiario: interestRatePercentage,
-      isProportional: false,
+      isProportional,
+      proportionalDays,
     };
   };
 
@@ -835,13 +894,17 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
               ) : (
                 <>
                   <div className="flex justify-between text-sm">
-                    <span>Valor Aluguel</span>
+                    <span>
+                      {values.isProportional 
+                        ? `Aluguel Proporcional (${values.proportionalDays} dias)` 
+                        : "Valor Aluguel"}
+                    </span>
                     <span className="font-medium">
                       {formatCurrency(rentalValue.toFixed(2))}
                     </span>
                   </div>
 
-                  {garageValue > 0 && (
+                  {garageValue > 0 && !values.isProportional && (
                     <div className="flex justify-between text-sm">
                       <span>Valor Vaga</span>
                       <span className="font-medium">
