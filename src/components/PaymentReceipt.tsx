@@ -15,18 +15,23 @@ interface PaymentReceiptProps {
 export function PaymentReceipt({ payment, rental, property, tenant, onClose }: PaymentReceiptProps) {
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
+  // DEBUG: Ver o que está chegando
+  console.log("=== PAYMENT RECEIPT DEBUG ===");
+  console.log("payment completo:", payment);
+  console.log("payment.lateFee:", payment.lateFee);
+  console.log("payment.interest:", payment.interest);
+  console.log("payment.paidAmount:", payment.paidAmount);
+  console.log("payment.expectedAmount:", payment.expectedAmount);
+  console.log("payment.breakdown:", payment.breakdown);
+
   // ===== PARCELAS =====
-  // Prioridade: payment.installment e payment.totalInstallments do banco
   const currentInstallment = payment.installment || 1;
   const totalInstallments = payment.totalInstallments || rental.installments || rental.totalInstallments || 24;
 
   // ===== DETECTAR RESCISÃO =====
-  const isTermination = 
-    payment.type === "termination" || 
-    payment.notes?.includes("Rescisão de Contrato") ||
-    payment.notes?.includes("rescisão");
+  const isTermination = payment.type === "termination";
 
-  // ===== VALORES =====
+  // ===== VALORES - LÓGICA SIMPLIFICADA =====
   let baseAmount = 0;
   let lateFee = 0;
   let interest = 0;
@@ -38,79 +43,80 @@ export function PaymentReceipt({ payment, rental, property, tenant, onClose }: P
   let depositRefund = 0;
   let additionalExpenses = 0;
 
-  // ===== PROCESSAR BREAKDOWN =====
-  let breakdown: any = null;
+  // ===== ESTRATÉGIA SUPER SIMPLES =====
   
-  if (payment.breakdown) {
-    try {
-      if (typeof payment.breakdown === 'string') {
-        breakdown = JSON.parse(payment.breakdown);
-      } else {
-        breakdown = payment.breakdown;
+  if (isTermination) {
+    // RESCISÃO: Tentar pegar do breakdown
+    let breakdown: any = null;
+    
+    if (payment.breakdown) {
+      try {
+        breakdown = typeof payment.breakdown === 'string' 
+          ? JSON.parse(payment.breakdown) 
+          : payment.breakdown;
+      } catch (e) {
+        console.error("Erro ao parsear breakdown:", e);
       }
-    } catch (e) {
-      console.error("Erro ao parsear breakdown:", e);
     }
-  }
 
-  if (breakdown) {
-    // Se breakdown é array (novo formato)
-    if (Array.isArray(breakdown)) {
-      breakdown.forEach((item: any) => {
-        const amount = Math.abs(Number(item.amount || 0));
-        const desc = (item.description || "").toLowerCase();
-        
-        if (desc.includes("aluguel proporcional") || desc.includes("proporcional")) {
-          proportionalRent = amount;
-        } else if (desc.includes("multa rescisória") || desc.includes("rescisória")) {
-          terminationFee = amount;
-        } else if (desc.includes("devolução") || desc.includes("caução")) {
-          depositRefund = amount;
-        } else if (desc.includes("despesas adicionais") || desc.includes("adicionais")) {
-          additionalExpenses = amount;
-        } else if (desc.includes("multa por atraso") || desc.includes("multa")) {
-          lateFee = amount;
-        } else if (desc.includes("juros por atraso") || desc.includes("juros")) {
-          interest = amount;
-        } else if (desc.includes("aluguel") || desc.includes("rent")) {
-          baseAmount = amount;
-        }
-      });
-    } 
-    // Se breakdown é objeto
-    else {
-      baseAmount = breakdown.baseAmount || breakdown.rentValue || 0;
-      lateFee = breakdown.lateFee || breakdown.penaltyAmount || 0;
-      interest = breakdown.interest || breakdown.interestAmount || 0;
-      
-      // Rescisão
-      proportionalRent = breakdown.proportionalRent || 0;
-      terminationFee = breakdown.terminationFee || 0;
-      depositRefund = Math.abs(breakdown.depositRefund || 0);
-      additionalExpenses = breakdown.additionalExpenses || 0;
+    if (breakdown) {
+      if (Array.isArray(breakdown)) {
+        breakdown.forEach((item: any) => {
+          const amount = Math.abs(Number(item.amount || 0));
+          const desc = (item.description || "").toLowerCase();
+          
+          if (desc.includes("aluguel proporcional") || desc.includes("proporcional")) {
+            proportionalRent = amount;
+          } else if (desc.includes("multa rescisória") || desc.includes("rescisória")) {
+            terminationFee = amount;
+          } else if (desc.includes("devolução") || desc.includes("caução")) {
+            depositRefund = amount;
+          } else if (desc.includes("despesas adicionais") || desc.includes("adicionais")) {
+            additionalExpenses = amount;
+          } else if (desc.includes("multa por atraso") || desc.includes("multa")) {
+            lateFee = amount;
+          } else if (desc.includes("juros por atraso") || desc.includes("juros")) {
+            interest = amount;
+          }
+        });
+      } else {
+        proportionalRent = breakdown.proportionalRent || 0;
+        terminationFee = breakdown.terminationFee || 0;
+        depositRefund = Math.abs(breakdown.depositRefund || 0);
+        additionalExpenses = breakdown.additionalExpenses || 0;
+        lateFee = breakdown.lateFee || 0;
+        interest = breakdown.interest || 0;
+      }
     }
-  }
 
-  // ===== FALLBACK: Tentar pegar direto do payment =====
-  if (!breakdown || (baseAmount === 0 && proportionalRent === 0)) {
-    // Pagamento normal
+    totalAmount = Math.abs(payment.paidAmount || 0);
+    
+  } else {
+    // PAGAMENTO NORMAL: SUPER SIMPLES!
+    
+    // 1. Valor base (aluguel esperado)
     baseAmount = payment.expectedAmount || 0;
-    lateFee = payment.lateFee || payment.penaltyAmount || 0;
-    interest = payment.interest || payment.interestAmount || 0;
-  }
-
-  // ===== TOTAL PAGO =====
-  // Prioridade máxima: payment.paidAmount (o que realmente foi pago)
-  totalAmount = payment.paidAmount || 0;
-
-  // Se ainda for 0, calcular
-  if (totalAmount === 0) {
-    if (isTermination) {
-      totalAmount = proportionalRent + terminationFee + additionalExpenses + lateFee + interest - depositRefund;
-    } else {
+    
+    // 2. Multa - PRIORIDADE MÁXIMA
+    lateFee = payment.lateFee || 0;
+    
+    // 3. Juros - PRIORIDADE MÁXIMA  
+    interest = payment.interest || 0;
+    
+    // 4. Total pago
+    totalAmount = payment.paidAmount || 0;
+    
+    // Se total for 0, calcular
+    if (totalAmount === 0) {
       totalAmount = baseAmount + lateFee + interest;
     }
   }
+
+  console.log("=== VALORES FINAIS ===");
+  console.log("baseAmount:", baseAmount);
+  console.log("lateFee:", lateFee);
+  console.log("interest:", interest);
+  console.log("totalAmount:", totalAmount);
 
   // ===== FORMATAÇÃO =====
   const formatCurrency = (value: number): string => {
@@ -322,11 +328,11 @@ export function PaymentReceipt({ payment, rental, property, tenant, onClose }: P
                 </div>
                 <div className="flex justify-between">
                   <span>Multa:</span>
-                  <span className="font-medium">{lateFee > 0 ? formatCurrency(lateFee) : "R$ ___"}</span>
+                  <span className="font-medium">{formatCurrency(lateFee)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Juros:</span>
-                  <span className="font-medium">{interest > 0 ? formatCurrency(interest) : "R$ ___"}</span>
+                  <span className="font-medium">{formatCurrency(interest)}</span>
                 </div>
               </div>
             )}
