@@ -21,16 +21,15 @@ interface BreakdownItem {
 
 export function PaymentReceipt({ payment: initialPayment, rental, property, tenant, onClose }: PaymentReceiptProps) {
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
-  const [payment, setPayment] = useState(initialPayment);
 
-  const isTermination = payment.type === "termination";
+  const isTermination = initialPayment.type === "termination";
 
   console.log("\n=== PAYMENT RECEIPT - ANÁLISE COMPLETA ===");
-  console.log("payment:", payment);
-  console.log("payment.type:", payment.type);
-  console.log("payment.breakdown:", payment.breakdown);
-  console.log("payment.lateFee:", payment.lateFee);
-  console.log("payment.interest:", payment.interest);
+  console.log("payment:", initialPayment);
+  console.log("payment.type:", initialPayment.type);
+  console.log("payment.breakdown:", initialPayment.breakdown);
+  console.log("payment.lateFee:", initialPayment.lateFee);
+  console.log("payment.interest:", initialPayment.interest);
   console.log("isTermination:", isTermination);
 
   // Estrutura para armazenar os itens do breakdown
@@ -38,11 +37,11 @@ export function PaymentReceipt({ payment: initialPayment, rental, property, tena
   let totalAmount = 0;
 
   // LÓGICA MELHORADA PARA PARSEAR BREAKDOWN
-  if (payment.breakdown) {
+  if (initialPayment.breakdown) {
     try {
-      const breakdownData = typeof payment.breakdown === "string" 
-        ? JSON.parse(payment.breakdown) 
-        : payment.breakdown;
+      const breakdownData = typeof initialPayment.breakdown === "string" 
+        ? JSON.parse(initialPayment.breakdown) 
+        : initialPayment.breakdown;
 
       console.log("📊 BREAKDOWN PARSEADO:", breakdownData);
 
@@ -104,7 +103,7 @@ export function PaymentReceipt({ payment: initialPayment, rental, property, tena
 
   // Se não tem itens, adicionar valor base
   if (breakdownItems.length === 0) {
-    const baseAmount = payment.expectedAmount || 0;
+    const baseAmount = initialPayment.expectedAmount || 0;
     if (baseAmount > 0) {
       breakdownItems.push({
         description: "Valor do Aluguel",
@@ -116,23 +115,23 @@ export function PaymentReceipt({ payment: initialPayment, rental, property, tena
   }
 
   // SEMPRE ADICIONAR MULTA SE EXISTIR
-  if (payment.lateFee && payment.lateFee > 0) {
+  if (initialPayment.lateFee && initialPayment.lateFee > 0) {
     breakdownItems.push({
       description: "Multa por Atraso",
-      amount: payment.lateFee,
+      amount: initialPayment.lateFee,
       type: "addition"
     });
-    console.log(`  ✅ MULTA ADICIONADA: R$ ${payment.lateFee}`);
+    console.log(`  ✅ MULTA ADICIONADA: R$ ${initialPayment.lateFee}`);
   }
 
   // SEMPRE ADICIONAR JUROS SE EXISTIR
-  if (payment.interest && payment.interest > 0) {
+  if (initialPayment.interest && initialPayment.interest > 0) {
     breakdownItems.push({
       description: "Juros por Atraso",
-      amount: payment.interest,
+      amount: initialPayment.interest,
       type: "addition"
     });
-    console.log(`  ✅ JUROS ADICIONADOS: R$ ${payment.interest}`);
+    console.log(`  ✅ JUROS ADICIONADOS: R$ ${initialPayment.interest}`);
   }
 
   // Calcular total a partir dos itens do breakdown
@@ -144,7 +143,7 @@ export function PaymentReceipt({ payment: initialPayment, rental, property, tena
     }, 0);
   } else {
     // Fallback final: usar paidAmount se não houver breakdown
-    totalAmount = payment.paidAmount || payment.expectedAmount || 0;
+    totalAmount = initialPayment.paidAmount || initialPayment.expectedAmount || 0;
   }
 
   console.log("\n✅ VALORES FINAIS EXTRAÍDOS:");
@@ -152,10 +151,10 @@ export function PaymentReceipt({ payment: initialPayment, rental, property, tena
   console.log("totalAmount:", totalAmount);
   console.log("=====================================\n");
 
-  const currentInstallment = payment.installment || 1;
+  const currentInstallment = initialPayment.installment || 1;
   const totalInstallments = isTermination 
     ? currentInstallment
-    : (payment.totalInstallments || rental.installments || rental.totalInstallments || 24);
+    : (initialPayment.totalInstallments || rental.installments || rental.totalInstallments || 24);
 
   const formatCurrency = (value: number): string => {
     return new Intl.NumberFormat("pt-BR", {
@@ -260,7 +259,7 @@ export function PaymentReceipt({ payment: initialPayment, rental, property, tena
       
       const opt = {
         margin: 1,
-        filename: `recibo-${payment.id}.pdf`,
+        filename: `recibo-${initialPayment.id}.pdf`,
         image: { type: "jpeg", quality: 0.98 },
         html2canvas: { scale: 2 },
         jsPDF: { unit: "in", format: "letter", orientation: "portrait" }
@@ -325,24 +324,24 @@ export function PaymentReceipt({ payment: initialPayment, rental, property, tena
   const propertyAddress = getPropertyAddress();
 
   const handleShareWhatsApp = () => {
-    const referenceMonthName = payment.referenceMonth 
-      ? new Date(2000, payment.referenceMonth - 1).toLocaleString("pt-BR", { month: "long" })
+    const referenceMonthName = initialPayment.referenceMonth 
+      ? new Date(2000, initialPayment.referenceMonth - 1).toLocaleString("pt-BR", { month: "long" })
       : "N/A";
-    const referenceYear = payment.referenceYear || new Date().getFullYear();
+    const referenceYear = initialPayment.referenceYear || new Date().getFullYear();
 
     const message = isTermination
       ? `📄 *RECIBO DE RESCISÃO DE CONTRATO*\n\nLocatário: ${tenant.name}\nValor Total: ${formatCurrency(totalAmount)}\nReferência: ${referenceMonthName} de ${referenceYear}\nImóvel: ${propertyAddress}\n\n✅ Rescisão processada e recibo gerado.`
-      : `📄 *RECIBO DE PAGAMENTO*\n\nLocatário: ${tenant.name}\nValor Pago: ${formatCurrency(totalAmount)}\nReferência: ${referenceMonthName} de ${referenceYear}\nVencimento: ${formatDate(payment.dueDate)}\nImóvel: ${propertyAddress}\n\n✅ Pagamento confirmado e recibo gerado.`;
+      : `📄 *RECIBO DE PAGAMENTO*\n\nLocatário: ${tenant.name}\nValor Pago: ${formatCurrency(totalAmount)}\nReferência: ${referenceMonthName} de ${referenceYear}\nVencimento: ${formatDate(initialPayment.dueDate)}\nImóvel: ${propertyAddress}\n\n✅ Pagamento confirmado e recibo gerado.`;
     
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, "_blank");
   };
 
-  const referenceMonthName = payment.referenceMonth 
-    ? new Date(2000, payment.referenceMonth - 1).toLocaleString("pt-BR", { month: "long" })
+  const referenceMonthName = initialPayment.referenceMonth 
+    ? new Date(2000, initialPayment.referenceMonth - 1).toLocaleString("pt-BR", { month: "long" })
     : "N/A";
 
-  const referenceYear = payment.referenceYear || new Date().getFullYear();
+  const referenceYear = initialPayment.referenceYear || new Date().getFullYear();
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
@@ -383,7 +382,7 @@ export function PaymentReceipt({ payment: initialPayment, rental, property, tena
                 Recebi dos Srs. <strong>{tenant.name.toUpperCase()}</strong>, a importância de{" "}
                 <strong>{extenso(totalAmount)} ({formatCurrency(totalAmount)})</strong>, proveniente ao depósito de aluguel
                 referente ao mês de <strong>{referenceMonthName} de {referenceYear}</strong>, 
-                tendo seu vencimento em <strong>{formatDate(payment.dueDate)}</strong>, 
+                tendo seu vencimento em <strong>{formatDate(initialPayment.dueDate)}</strong>, 
                 do imóvel situado em{" "}
                 <strong>{propertyAddress}</strong>, após a apresentação dos comprovantes de depósito bancário e contas de água e luz do mês
                 anterior pagos, sendo este vinculado ao INSTRUMENTO PARTICULAR DE CONTRATO DE LOCAÇÃO PARA FIM RESIDENCIAL, assinado entre as partes em{" "}
