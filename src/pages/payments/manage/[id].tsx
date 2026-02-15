@@ -98,6 +98,8 @@ export default function ManagePaymentPage() {
             property={receiptData.property}
             tenant={receiptData.tenant}
             onClose={handleCloseReceipt}
+            lateFee={(receiptData.payment as any).lateFee || (receiptData.payment as any).late_fee}
+            interest={(receiptData.payment as any).interest}
           />
         )}
       </Layout>

@@ -11,8 +11,8 @@ interface PaymentReceiptProps {
   property: Property;
   tenant: Tenant;
   onClose: () => void;
-  lateFee: number;
-  interest: number;
+  lateFee?: number;
+  interest?: number;
 }
 
 interface BreakdownItem {
@@ -21,122 +21,106 @@ interface BreakdownItem {
   type: "addition" | "deduction";
 }
 
-export function PaymentReceipt({ payment: initialPayment, rental, property, tenant, onClose, lateFee, interest }: PaymentReceiptProps) {
+export function PaymentReceipt({ payment, rental, property, tenant, onClose, lateFee: propLateFee, interest: propInterest }: PaymentReceiptProps) {
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
-  const isTermination = initialPayment.type === "termination";
-
-  console.log("\n=== PAYMENT RECEIPT - ANÁLISE COMPLETA ===");
-  console.log("payment:", initialPayment);
-  console.log("payment.type:", initialPayment.type);
-  console.log("payment.breakdown:", initialPayment.breakdown);
-  console.log("payment.lateFee:", initialPayment.lateFee);
-  console.log("payment.interest:", initialPayment.interest);
-  console.log("isTermination:", isTermination);
+  const isTermination = payment.type === "termination";
+  
+  // Usar props passadas explicitamente OU valores do objeto payment
+  const lateFee = propLateFee !== undefined ? propLateFee : (payment.lateFee || (payment as any).late_fee || 0);
+  const interest = propInterest !== undefined ? propInterest : (payment.interest || 0);
+  
+  console.log("Recibo Valores:", { lateFee, interest, paymentLateFee: payment.lateFee });
 
   // Estrutura para armazenar os itens do breakdown
   const breakdownItems: BreakdownItem[] = [];
   let totalAmount = 0;
+  
+  // Se não tem itens, adicionar valor base
+  const baseAmount = payment.expectedAmount || 0;
+  if (baseAmount > 0) {
+    breakdownItems.push({
+      description: "Valor do Aluguel",
+      amount: baseAmount,
+      type: "addition"
+    });
+  }
 
-  // LÓGICA MELHORADA PARA PARSEAR BREAKDOWN
-  if (initialPayment.breakdown) {
+  // SEMPRE ADICIONAR MULTA SE EXISTIR (priorizando a prop)
+  if (lateFee > 0) {
+    breakdownItems.push({
+      description: "Multa por Atraso",
+      amount: lateFee,
+      type: "addition"
+    });
+  }
+
+  // SEMPRE ADICIONAR JUROS SE EXISTIR (priorizando a prop)
+  if (interest > 0) {
+    breakdownItems.push({
+      description: "Juros por Atraso",
+      amount: interest,
+      type: "addition"
+    });
+  }
+  
+  // Outros itens do breakdown original (excluindo aluguel, multa e juros já adicionados)
+  if (payment.breakdown) {
     try {
-      const breakdownData = typeof initialPayment.breakdown === "string" 
-        ? JSON.parse(initialPayment.breakdown) 
-        : initialPayment.breakdown;
-
-      console.log("📊 BREAKDOWN PARSEADO:", breakdownData);
+      const breakdownData = typeof payment.breakdown === "string" 
+        ? JSON.parse(payment.breakdown) 
+        : payment.breakdown;
 
       if (Array.isArray(breakdownData)) {
-        // Breakdown em formato de array
         breakdownData.forEach((item: any) => {
           const amount = Number(item.amount || 0);
           const description = item.description || "";
           const type = item.type || (amount >= 0 ? "addition" : "deduction");
 
-          if (amount !== 0 && !description.includes("Multa") && !description.includes("Juros")) {
+          if (amount !== 0 && 
+              !description.includes("Multa") && 
+              !description.includes("Juros") && 
+              !description.includes("Aluguel")) {
             breakdownItems.push({
               description,
               amount: Math.abs(amount),
               type
             });
-            console.log(`  ✓ Item: ${description} = ${amount} (${type})`);
           }
         });
       } else if (typeof breakdownData === "object") {
-        // Breakdown em formato de objeto
-        Object.entries(breakdownData).forEach(([key, value]: [string, any]) => {
+         Object.entries(breakdownData).forEach(([key, value]: [string, any]) => {
           const amount = Number(value || 0);
-          
           let description = key;
-          // Traduzir chaves técnicas para descrições amigáveis
+          
+          // Traduzir chaves
           const translations: Record<string, string> = {
             proportionalRent: "Aluguel Proporcional",
             terminationFee: "Multa Rescisória",
             depositRefund: "Devolução de Caução",
             additionalExpenses: "Despesas Adicionais",
-            lateFee: "Multa por Atraso",
-            interest: "Juros por Atraso",
             baseAmount: "Valor Base",
-            discount: "Desconto",
-            rentAmount: "Valor do Aluguel"
+            discount: "Desconto"
           };
           
-          if (translations[key]) {
-            description = translations[key];
-          }
-
+          if (translations[key]) description = translations[key];
           const type = amount >= 0 ? "addition" : "deduction";
 
-          if (amount !== 0 && key !== "lateFee" && key !== "interest") {
-            breakdownItems.push({
-              description,
-              amount: Math.abs(amount),
-              type
-            });
-            console.log(`  ✓ Item: ${description} = ${amount} (${type})`);
+          if (amount !== 0 && 
+              key !== "lateFee" && 
+              key !== "interest" && 
+              key !== "rentAmount" &&
+              key !== "expectedAmount") {
+            breakdownItems.push({ description, amount: Math.abs(amount), type });
           }
         });
       }
-    } catch (error) {
-      console.error("❌ Erro ao parsear breakdown:", error);
+    } catch (e) {
+      console.error("Erro breakdown", e);
     }
   }
 
-  // Se não tem itens, adicionar valor base
-  if (breakdownItems.length === 0) {
-    const baseAmount = initialPayment.expectedAmount || 0;
-    if (baseAmount > 0) {
-      breakdownItems.push({
-        description: "Valor do Aluguel",
-        amount: baseAmount,
-        type: "addition"
-      });
-      console.log(`  ✓ Valor base adicionado: R$ ${baseAmount}`);
-    }
-  }
-
-  // SEMPRE ADICIONAR MULTA SE EXISTIR
-  if (initialPayment.lateFee && initialPayment.lateFee > 0) {
-    breakdownItems.push({
-      description: "Multa por Atraso",
-      amount: initialPayment.lateFee,
-      type: "addition"
-    });
-    console.log(`  ✅ MULTA ADICIONADA: R$ ${initialPayment.lateFee}`);
-  }
-
-  // SEMPRE ADICIONAR JUROS SE EXISTIR
-  if (initialPayment.interest && initialPayment.interest > 0) {
-    breakdownItems.push({
-      description: "Juros por Atraso",
-      amount: initialPayment.interest,
-      type: "addition"
-    });
-    console.log(`  ✅ JUROS ADICIONADOS: R$ ${initialPayment.interest}`);
-  }
-
-  // Calcular total a partir dos itens do breakdown
+  // Calcular total
   if (breakdownItems.length > 0) {
     totalAmount = breakdownItems.reduce((sum, item) => {
       return item.type === "addition" 
@@ -144,19 +128,13 @@ export function PaymentReceipt({ payment: initialPayment, rental, property, tena
         : sum - item.amount;
     }, 0);
   } else {
-    // Fallback final: usar paidAmount se não houver breakdown
-    totalAmount = initialPayment.paidAmount || initialPayment.expectedAmount || 0;
+    totalAmount = payment.paidAmount || payment.expectedAmount || 0;
   }
 
-  console.log("\n✅ VALORES FINAIS EXTRAÍDOS:");
-  console.log("breakdownItems:", breakdownItems);
-  console.log("totalAmount:", totalAmount);
-  console.log("=====================================\n");
-
-  const currentInstallment = initialPayment.installment || 1;
+  const currentInstallment = payment.installment || 1;
   const totalInstallments = isTermination 
     ? currentInstallment
-    : (initialPayment.totalInstallments || rental.installments || rental.totalInstallments || 24);
+    : (payment.totalInstallments || rental.installments || rental.totalInstallments || 24);
 
   const formatCurrency = (value: number): string => {
     return new Intl.NumberFormat("pt-BR", {
@@ -261,7 +239,7 @@ export function PaymentReceipt({ payment: initialPayment, rental, property, tena
       
       const opt = {
         margin: 1,
-        filename: `recibo-${initialPayment.id}.pdf`,
+        filename: `recibo-${payment.id}.pdf`,
         image: { type: "jpeg", quality: 0.98 },
         html2canvas: { scale: 2 },
         jsPDF: { unit: "in", format: "letter", orientation: "portrait" }
@@ -326,24 +304,24 @@ export function PaymentReceipt({ payment: initialPayment, rental, property, tena
   const propertyAddress = getPropertyAddress();
 
   const handleShareWhatsApp = () => {
-    const referenceMonthName = initialPayment.referenceMonth 
-      ? new Date(2000, initialPayment.referenceMonth - 1).toLocaleString("pt-BR", { month: "long" })
+    const referenceMonthName = payment.referenceMonth 
+      ? new Date(2000, payment.referenceMonth - 1).toLocaleString("pt-BR", { month: "long" })
       : "N/A";
-    const referenceYear = initialPayment.referenceYear || new Date().getFullYear();
+    const referenceYear = payment.referenceYear || new Date().getFullYear();
 
     const message = isTermination
       ? `📄 *RECIBO DE RESCISÃO DE CONTRATO*\n\nLocatário: ${tenant.name}\nValor Total: ${formatCurrency(totalAmount)}\nReferência: ${referenceMonthName} de ${referenceYear}\nImóvel: ${propertyAddress}\n\n✅ Rescisão processada e recibo gerado.`
-      : `📄 *RECIBO DE PAGAMENTO*\n\nLocatário: ${tenant.name}\nValor Pago: ${formatCurrency(totalAmount)}\nReferência: ${referenceMonthName} de ${referenceYear}\nVencimento: ${formatDate(initialPayment.dueDate)}\nImóvel: ${propertyAddress}\n\n✅ Pagamento confirmado e recibo gerado.`;
+      : `📄 *RECIBO DE PAGAMENTO*\n\nLocatário: ${tenant.name}\nValor Pago: ${formatCurrency(totalAmount)}\nReferência: ${referenceMonthName} de ${referenceYear}\nVencimento: ${formatDate(payment.dueDate)}\nImóvel: ${propertyAddress}\n\n✅ Pagamento confirmado e recibo gerado.`;
     
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, "_blank");
   };
 
-  const referenceMonthName = initialPayment.referenceMonth 
-    ? new Date(2000, initialPayment.referenceMonth - 1).toLocaleString("pt-BR", { month: "long" })
+  const referenceMonthName = payment.referenceMonth 
+    ? new Date(2000, payment.referenceMonth - 1).toLocaleString("pt-BR", { month: "long" })
     : "N/A";
 
-  const referenceYear = initialPayment.referenceYear || new Date().getFullYear();
+  const referenceYear = payment.referenceYear || new Date().getFullYear();
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
@@ -384,7 +362,7 @@ export function PaymentReceipt({ payment: initialPayment, rental, property, tena
                 Recebi dos Srs. <strong>{tenant.name.toUpperCase()}</strong>, a importância de{" "}
                 <strong>{extenso(totalAmount)} ({formatCurrency(totalAmount)})</strong>, proveniente ao depósito de aluguel
                 referente ao mês de <strong>{referenceMonthName} de {referenceYear}</strong>, 
-                tendo seu vencimento em <strong>{formatDate(initialPayment.dueDate)}</strong>, 
+                tendo seu vencimento em <strong>{formatDate(payment.dueDate)}</strong>, 
                 do imóvel situado em{" "}
                 <strong>{propertyAddress}</strong>, após a apresentação dos comprovantes de depósito bancário e contas de água e luz do mês
                 anterior pagos, sendo este vinculado ao INSTRUMENTO PARTICULAR DE CONTRATO DE LOCAÇÃO PARA FIM RESIDENCIAL, assinado entre as partes em{" "}
