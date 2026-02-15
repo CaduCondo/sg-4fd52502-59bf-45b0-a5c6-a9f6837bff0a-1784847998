@@ -16,8 +16,8 @@ import { calculateCorrectedDeposit } from "@/services/igpmService";
 import { maskTime } from "@/lib/masks";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { getPaymentById } from "@/services/paymentService";
-import { getRentalById } from "@/services/rentalService";
-import { getPropertyById } from "@/services/propertyService";
+import { getById as getRentalById } from "@/services/rentalService";
+import { getById as getPropertyById } from "@/services/propertyService";
 import { getTenantById } from "@/services/tenantService";
 
 interface ManagePaymentFormProps {
