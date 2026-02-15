@@ -425,8 +425,65 @@ export function RentalTerminationDialog({
                         <p className="text-2xl font-bold text-center text-blue-900 dark:text-blue-100">
                           R$ {correctedDepositAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                         </p>
-                        <p className="text-xs text-blue-700 dark:text-blue-300">
-                          Valor corrigido pela Taxa da Poupança desde {lastInstallmentDate ? format(parseISO(lastInstallmentDate), "dd/MM/yyyy", { locale: ptBR }) : "data início"} até hoje.
+                        <p className="text-xs text-blue-700 dark:text-blue-300 flex items-center gap-1">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button className="underline decoration-dotted cursor-help hover:text-blue-900 dark:hover:text-blue-100">
+                                Valor corrigido pela Taxa da Poupança
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-md p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg">
+                              <div className="space-y-3">
+                                <div className="space-y-2">
+                                  <p className="font-semibold text-sm">💰 Resumo da Correção:</p>
+                                  <div className="text-xs space-y-1 pl-2">
+                                    <div className="flex justify-between">
+                                      <span>Valor Original:</span>
+                                      <span className="font-medium">R$ {depositAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                                    </div>
+                                    <div className="flex justify-between text-green-600 dark:text-green-400">
+                                      <span>Correção Poupança:</span>
+                                      <span className="font-medium">
+                                        +R$ {(correctedDepositAmount - depositAmount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                                        {' '}(+{poupancaPercentage.toFixed(4)}%)
+                                      </span>
+                                    </div>
+                                    <div className="flex justify-between font-semibold border-t pt-1">
+                                      <span>Valor Corrigido:</span>
+                                      <span>R$ {correctedDepositAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                                {(() => {
+                                  try {
+                                    const poupancaData = calculateCorrectedDeposit(
+                                      depositAmount,
+                                      lastInstallmentDate,
+                                      format(new Date(), "yyyy-MM-dd")
+                                    );
+                                    return (
+                                      <div className="space-y-2 border-t pt-2">
+                                        <p className="font-semibold text-sm">📅 Taxas Mensais Aplicadas:</p>
+                                        <div className="text-xs space-y-0.5 max-h-40 overflow-y-auto pl-2">
+                                          {poupancaData.poupancaDetails.split('\n').map((line, idx) => (
+                                            <div key={idx} className="text-muted-foreground">
+                                              {line}
+                                            </div>
+                                          ))}
+                                        </div>
+                                        <div className="text-xs font-medium border-t pt-1">
+                                          Total Acumulado: +{poupancaPercentage.toFixed(4)}%
+                                        </div>
+                                      </div>
+                                    );
+                                  } catch (error) {
+                                    return null;
+                                  }
+                                })()}
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                          {' '}desde {lastInstallmentDate ? format(parseISO(lastInstallmentDate), "dd/MM/yyyy", { locale: ptBR }) : "data início"} até hoje.
                         </p>
                       </>
                     ) : (
