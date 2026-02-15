@@ -658,14 +658,11 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
 
       if (updateError) throw updateError;
 
-      if (formData.payment_method === "pix" && formData.pix_code_type) {
-        const pixCode = generatePixCode(formData.payment_date, formData.pix_code_type);
-        
-        await supabase
-          .from("rentals")
-          .update({ pix_code: pixCode })
-          .eq("id", payment.rental_id);
-      }
+      // ✅ BUSCAR DADOS ATUALIZADOS DO BANCO
+      const freshPayment = await getPaymentById(paymentId);
+      const freshRental = await getRentalById(freshPayment.rental_id);
+      const freshProperty = await getPropertyById(freshRental.property_id);
+      const freshTenant = await getTenantById(freshRental.tenant_id);
 
       toast({
         title: "Sucesso",
@@ -681,35 +678,12 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         console.log("  values.juros:", values.juros);
         console.log("  removeFees:", removeFees);
         
-        // ✅ USAR DADOS JÁ DISPONÍVEIS (não buscar do banco)
-        // ✅ ADICIONAR late_fee e interest CALCULADOS
-        const paymentWithFees = {
-          ...payment,
-          // ✅ AMBOS os formatos para garantir compatibilidade
-          late_fee: removeFees ? 0 : values.multa,      // snake_case (banco)
-          lateFee: removeFees ? 0 : values.multa,       // camelCase (TypeScript)
-          interest: removeFees ? 0 : values.juros,      // Já está em camelCase
-          paid_amount: finalPaidAmount,
-          paidAmount: finalPaidAmount,
-          status: paymentStatus,
-          payment_date: formData.payment_date,
-          paymentDate: formData.payment_date,
-          payment_method: formData.payment_method,
-          paymentMethod: formData.payment_method,
-          notes: formData.notes,
-          attachments: attachments.length > 0 ? attachments : null,
-        };
-
-        console.log("\n📊 PAYMENT OBJECT ENVIADO PARA RECIBO:");
-        console.log("  payment.late_fee:", paymentWithFees.late_fee);
-        console.log("  payment.lateFee:", paymentWithFees.lateFee);
-        console.log("  payment.interest:", paymentWithFees.interest);
-
+        // ✅ USAR DADOS FRESCOS DO BANCO
         onSuccess({
-          payment: paymentWithFees,
-          rental: rental,
-          property: property,
-          tenant: tenant,
+          payment: freshPayment,
+          rental: freshRental,
+          property: freshProperty,
+          tenant: freshTenant,
         });
       } else if (onClose) {
         onClose();
