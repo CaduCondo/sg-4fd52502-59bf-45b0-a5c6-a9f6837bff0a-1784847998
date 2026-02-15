@@ -13,6 +13,12 @@ interface PaymentReceiptProps {
   onClose: () => void;
 }
 
+interface BreakdownItem {
+  description: string;
+  amount: number;
+  type: "addition" | "deduction";
+}
+
 export function PaymentReceipt({ payment: initialPayment, rental, property, tenant, onClose }: PaymentReceiptProps) {
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [payment, setPayment] = useState(initialPayment);
@@ -36,134 +42,100 @@ export function PaymentReceipt({ payment: initialPayment, rental, property, tena
     fetchCompletePaymentData();
   }, [initialPayment.id]);
 
-  console.log("=== PAYMENT RECEIPT - ANÁLISE COMPLETA ===");
+  const isTermination = payment.type === "termination";
+
+  console.log("\n=== PAYMENT RECEIPT - ANÁLISE COMPLETA ===");
   console.log("payment:", payment);
-  console.log("rental:", rental);
+  console.log("payment.type:", payment.type);
+  console.log("payment.breakdown:", payment.breakdown);
+  console.log("isTermination:", isTermination);
+
+  // Estrutura para armazenar os itens do breakdown
+  const breakdownItems: BreakdownItem[] = [];
+  let totalAmount = 0;
+
+  if (payment.breakdown) {
+    try {
+      const breakdownData = typeof payment.breakdown === "string" 
+        ? JSON.parse(payment.breakdown) 
+        : payment.breakdown;
+
+      console.log("\n📊 BREAKDOWN PARSEADO:", breakdownData);
+
+      if (Array.isArray(breakdownData)) {
+        // Breakdown em formato de array
+        breakdownData.forEach((item: any) => {
+          const amount = Number(item.amount || 0);
+          const description = item.description || "";
+          const type = item.type || (amount >= 0 ? "addition" : "deduction");
+
+          breakdownItems.push({
+            description,
+            amount: Math.abs(amount),
+            type
+          });
+
+          console.log(`  ✓ Item: ${description} = ${amount} (${type})`);
+        });
+      } else if (typeof breakdownData === "object") {
+        // Breakdown em formato de objeto
+        Object.entries(breakdownData).forEach(([key, value]: [string, any]) => {
+          const amount = Number(value || 0);
+          
+          let description = key;
+          // Traduzir chaves técnicas para descrições amigáveis
+          const translations: Record<string, string> = {
+            proportionalRent: "Aluguel Proporcional",
+            terminationFee: "Multa Rescisória",
+            depositRefund: "Devolução de Caução",
+            additionalExpenses: "Despesas Adicionais",
+            lateFee: "Multa por Atraso",
+            interest: "Juros por Atraso",
+            baseAmount: "Valor Base",
+            discount: "Desconto"
+          };
+          
+          if (translations[key]) {
+            description = translations[key];
+          }
+
+          const type = amount >= 0 ? "addition" : "deduction";
+
+          if (amount !== 0) {
+            breakdownItems.push({
+              description,
+              amount: Math.abs(amount),
+              type
+            });
+
+            console.log(`  ✓ Item: ${description} = ${amount} (${type})`);
+          }
+        });
+      }
+    } catch (error) {
+      console.error("❌ Erro ao parsear breakdown:", error);
+    }
+  }
+
+  // Calcular total a partir dos itens do breakdown
+  if (breakdownItems.length > 0) {
+    totalAmount = breakdownItems.reduce((sum, item) => {
+      return item.type === "addition" 
+        ? sum + item.amount 
+        : sum - item.amount;
+    }, 0);
+  } else {
+    // Fallback: usar paidAmount se não houver breakdown
+    totalAmount = payment.paidAmount || payment.expectedAmount || 0;
+  }
+
+  console.log("\n✅ VALORES FINAIS EXTRAÍDOS:");
+  console.log("breakdownItems:", breakdownItems);
+  console.log("totalAmount:", totalAmount);
+  console.log("=====================================\n");
 
   const currentInstallment = payment.installment || 1;
   const totalInstallments = payment.totalInstallments || rental.installments || rental.totalInstallments || 24;
-
-  const isTermination = payment.type === "termination";
-
-  let baseAmount = 0;
-  let lateFee = 0;
-  let interest = 0;
-  let totalAmount = 0;
-
-  let proportionalRent = 0;
-  let terminationFee = 0;
-  let depositRefund = 0;
-  let additionalExpenses = 0;
-
-  if (isTermination) {
-    console.log("\n🔴 RECIBO DE RESCISÃO - Processando breakdown:");
-    
-    let breakdown: any = null;
-    
-    if (payment.breakdown) {
-      try {
-        breakdown = typeof payment.breakdown === "string" 
-          ? JSON.parse(payment.breakdown) 
-          : payment.breakdown;
-        
-        console.log("📊 Breakdown parseado:", breakdown);
-      } catch (e) {
-        console.error("❌ Erro ao parsear breakdown:", e);
-      }
-    }
-
-    if (breakdown) {
-      if (Array.isArray(breakdown)) {
-        console.log("📋 Breakdown é array com", breakdown.length, "itens");
-        
-        breakdown.forEach((item: any, index: number) => {
-          const amount = Number(item.amount || 0);
-          const desc = (item.description || "").toLowerCase();
-          
-          console.log(`  Item ${index}:`, { desc, amount });
-          
-          if (desc.includes("aluguel proporcional") || desc.includes("proporcional")) {
-            proportionalRent = Math.abs(amount);
-          } else if (desc.includes("multa rescisória") || desc.includes("rescisória")) {
-            terminationFee = Math.abs(amount);
-          } else if (desc.includes("devolução") || desc.includes("caução")) {
-            depositRefund = Math.abs(amount);
-          } else if (desc.includes("despesas adicionais") || desc.includes("adicionais")) {
-            additionalExpenses = Math.abs(amount);
-          } else if (desc.includes("multa por atraso") || desc.includes("multa")) {
-            lateFee = Math.abs(amount);
-          } else if (desc.includes("juros por atraso") || desc.includes("juros")) {
-            interest = Math.abs(amount);
-          }
-        });
-      } else {
-        console.log("📦 Breakdown é objeto:", breakdown);
-        proportionalRent = Math.abs(breakdown.proportionalRent || 0);
-        terminationFee = Math.abs(breakdown.terminationFee || 0);
-        depositRefund = Math.abs(breakdown.depositRefund || 0);
-        additionalExpenses = Math.abs(breakdown.additionalExpenses || 0);
-        lateFee = Math.abs(breakdown.lateFee || 0);
-        interest = Math.abs(breakdown.interest || 0);
-      }
-    }
-
-    totalAmount = Math.abs(payment.paidAmount || 0);
-    
-    console.log("\n✅ VALORES EXTRAÍDOS DA RESCISÃO:");
-    console.log("  Aluguel Proporcional:", proportionalRent);
-    console.log("  Multa Rescisória:", terminationFee);
-    console.log("  Devolução Caução:", depositRefund);
-    console.log("  Despesas Adicionais:", additionalExpenses);
-    console.log("  Multa Atraso:", lateFee);
-    console.log("  Juros Atraso:", interest);
-    console.log("  Total Pago:", totalAmount);
-    
-  } else {
-    console.log("\n🔵 RECIBO NORMAL - Extraindo valores:");
-    
-    baseAmount = payment.expectedAmount || 0;
-    console.log("1️⃣ Valor Base (expectedAmount):", baseAmount);
-    
-    totalAmount = payment.paidAmount || 0;
-    console.log("2️⃣ Total Pago (paidAmount):", totalAmount);
-    
-    lateFee = payment.lateFee || 0;
-    interest = payment.interest || 0;
-    console.log("3️⃣ Multa do banco (lateFee):", lateFee);
-    console.log("4️⃣ Juros do banco (interest):", interest);
-    
-    if (lateFee === 0 && interest === 0 && totalAmount > baseAmount) {
-      const difference = totalAmount - baseAmount;
-      console.log("5️⃣ Diferença detectada (total - base):", difference);
-      
-      lateFee = Math.round((baseAmount * 0.10) * 100) / 100;
-      interest = Math.round((difference - lateFee) * 100) / 100;
-      
-      console.log("   → Multa extraída (10% do base):", lateFee);
-      console.log("   → Juros extraídos (diferença - multa):", interest);
-    }
-    
-    if (totalAmount === 0) {
-      totalAmount = baseAmount + lateFee + interest;
-      console.log("6️⃣ Total recalculado (base + multa + juros):", totalAmount);
-    }
-  }
-
-  console.log("\n=== VALORES FINAIS PARA EXIBIÇÃO ===");
-  if (isTermination) {
-    console.log("proportionalRent:", proportionalRent);
-    console.log("terminationFee:", terminationFee);
-    console.log("depositRefund:", depositRefund);
-    console.log("additionalExpenses:", additionalExpenses);
-    console.log("lateFee:", lateFee);
-    console.log("interest:", interest);
-  } else {
-    console.log("baseAmount:", baseAmount);
-    console.log("lateFee:", lateFee);
-    console.log("interest:", interest);
-  }
-  console.log("totalAmount:", totalAmount);
-  console.log("=======================================\n");
 
   const formatCurrency = (value: number): string => {
     return new Intl.NumberFormat("pt-BR", {
@@ -289,7 +261,7 @@ export function PaymentReceipt({ payment: initialPayment, rental, property, tena
     const referenceYear = payment.referenceYear || new Date().getFullYear();
 
     const message = isTermination
-      ? `📄 *RECIBO DE RESCISÃO DE CONTRATO*\n\nLocatário: ${tenant.name}\nValor: ${formatCurrency(totalAmount)}\nReferência: ${referenceMonthName} de ${referenceYear}\nImóvel: ${property.location?.toUpperCase() || property.address?.toUpperCase() || "N/A"}${property.complement ? `, ${property.complement.toUpperCase()}` : ""}\n\n✅ Rescisão processada e recibo gerado.`
+      ? `📄 *RECIBO DE RESCISÃO DE CONTRATO*\n\nLocatário: ${tenant.name}\nValor Total: ${formatCurrency(totalAmount)}\nReferência: ${referenceMonthName} de ${referenceYear}\nImóvel: ${property.location?.toUpperCase() || property.address?.toUpperCase() || "N/A"}${property.complement ? `, ${property.complement.toUpperCase()}` : ""}\n\n✅ Rescisão processada e recibo gerado.`
       : `📄 *RECIBO DE PAGAMENTO*\n\nLocatário: ${tenant.name}\nValor Pago: ${formatCurrency(totalAmount)}\nReferência: ${referenceMonthName} de ${referenceYear}\nVencimento: ${formatDate(payment.dueDate)}\nImóvel: ${property.location?.toUpperCase() || property.address?.toUpperCase() || "N/A"}${property.complement ? `, ${property.complement.toUpperCase()}` : ""}\n\n✅ Pagamento confirmado e recibo gerado.`;
     
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
@@ -372,71 +344,32 @@ export function PaymentReceipt({ payment: initialPayment, rental, property, tena
           <div className="border-t border-gray-300 pt-4">
             <h3 className="font-semibold mb-3">Valores:</h3>
             
-            {isTermination ? (
+            {breakdownItems.length > 0 ? (
               <div className="space-y-2">
-                {proportionalRent > 0 && (
-                  <div className="flex justify-between">
-                    <span>Aluguel Proporcional:</span>
-                    <span className="font-medium">{formatCurrency(proportionalRent)}</span>
+                {breakdownItems.map((item, index) => (
+                  <div key={index} className="flex justify-between">
+                    <span>{item.description}:</span>
+                    <span className={`font-medium ${item.type === "deduction" ? "text-red-600" : ""}`}>
+                      {item.type === "deduction" ? "- " : ""}
+                      {formatCurrency(item.amount)}
+                    </span>
                   </div>
-                )}
-                {terminationFee > 0 && (
-                  <div className="flex justify-between">
-                    <span>Multa Rescisória:</span>
-                    <span className="font-medium">{formatCurrency(terminationFee)}</span>
-                  </div>
-                )}
-                {depositRefund > 0 && (
-                  <div className="flex justify-between">
-                    <span>Devolução de Caução:</span>
-                    <span className="font-medium text-red-600">- {formatCurrency(depositRefund)}</span>
-                  </div>
-                )}
-                {additionalExpenses > 0 && (
-                  <div className="flex justify-between">
-                    <span>Despesas Adicionais:</span>
-                    <span className="font-medium">{formatCurrency(additionalExpenses)}</span>
-                  </div>
-                )}
-                {lateFee > 0 && (
-                  <div className="flex justify-between">
-                    <span>Multa por Atraso:</span>
-                    <span className="font-medium">{formatCurrency(lateFee)}</span>
-                  </div>
-                )}
-                {interest > 0 && (
-                  <div className="flex justify-between">
-                    <span>Juros por Atraso:</span>
-                    <span className="font-medium">{formatCurrency(interest)}</span>
-                  </div>
-                )}
+                ))}
               </div>
             ) : (
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span>Valor Base:</span>
-                  <span className="font-medium">
-                    {formatCurrency(baseAmount)}
-                  </span>
+                  <span>Valor:</span>
+                  <span className="font-medium">{formatCurrency(totalAmount)}</span>
                 </div>
-                {lateFee > 0 && (
-                  <div className="flex justify-between">
-                    <span>Multa:</span>
-                    <span className="font-medium">{formatCurrency(lateFee)}</span>
-                  </div>
-                )}
-                {interest > 0 && (
-                  <div className="flex justify-between">
-                    <span>Juros:</span>
-                    <span className="font-medium">{formatCurrency(interest)}</span>
-                  </div>
-                )}
               </div>
             )}
 
             <div className="border-t border-gray-400 mt-3 pt-3 flex justify-between font-bold text-lg">
-              <span>Total {isTermination ? "" : "Pago"}:</span>
-              <span>{formatCurrency(totalAmount)}</span>
+              <span>{isTermination ? "Valor Total:" : "Total Pago:"}</span>
+              <span className={totalAmount < 0 ? "text-red-600" : ""}>
+                {formatCurrency(totalAmount)}
+              </span>
             </div>
           </div>
 
