@@ -13,6 +13,7 @@ const mapRentalData = (data: any): Rental => {
     endDate: data.end_date,
     paymentDay: data.payment_day,
     value: Number(data.value || data.monthly_rent || 0),
+    monthlyRent: Number(data.value || data.monthly_rent || 0),
     depositAmount: data.deposit ? Number(data.deposit) : 0,
     status: data.status,
     isActive: data.is_active,
@@ -42,17 +43,33 @@ const mapRentalData = (data: any): Rental => {
     property: data.properties ? {
       id: data.properties.id,
       locationId: data.properties.location_id,
+      location: data.properties.location_name || "", // Fix property name
       propertyIdentifier: data.properties.property_identifier,
       complement: data.properties.complement,
+      description: data.properties.description,
+      rooms: data.properties.rooms,
+      bathrooms: data.properties.bathrooms,
+      area: data.properties.area,
       value: data.properties.value,
-      location: data.properties.locations?.name || '',
-      locationName: data.properties.locations?.name || '',
+      garageValue: data.properties.garage_value,
+      hasGarage: data.properties.has_garage,
+      hasFurniture: data.properties.has_furniture,
+      acceptsPets: data.properties.accepts_pets,
+      status: data.properties.status,
+      images: data.properties.images || [],
+      createdAt: data.properties.created_at,
+      address: "",
+      features: [],
     } : undefined,
     
     tenant: data.tenants ? {
       id: data.tenants.id,
       name: data.tenants.name,
       phone: data.tenants.phone,
+      email: "",
+      document: data.tenants.cpf || data.tenants.cnpj || "", // Add document
+      cpf: "",
+      status: "active",
     } : undefined,
   };
 };

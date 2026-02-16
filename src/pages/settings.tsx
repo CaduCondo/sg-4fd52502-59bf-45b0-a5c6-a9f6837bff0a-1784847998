@@ -98,6 +98,11 @@ export default function Settings() {
     management_fee_percentage: 0,
     late_fee_percentage: 0,
     interest_rate_percentage: 0,
+    logo_url: null,
+    primary_color: null,
+    secondary_color: null,
+    created_at: "",
+    updated_at: "",
   });
 
   // State for form inputs (strings to handle formatting)
@@ -112,6 +117,7 @@ export default function Settings() {
   const [searchLocation, setSearchLocation] = useState("");
   const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false);
   const [editingLocation, setEditingLocation] = useState<Location | null>(null);
+  const [editingLocationId, setEditingLocationId] = useState<string | null>(null);
   const [isEditingLocation, setIsEditingLocation] = useState(false);
   const [locationForm, setLocationForm] = useState({
     name: "",
@@ -122,6 +128,7 @@ export default function Settings() {
     city: "",
     state: "",
     zip_code: "",
+    is_active: true,
   });
   const [selectedLocationForExpenses, setSelectedLocationForExpenses] = useState<Location | null>(null);
   const [locationToDelete, setLocationToDelete] = useState<Location | null>(null);
@@ -155,7 +162,7 @@ export default function Settings() {
       try {
         await Promise.all([
           loadConfig(),
-          loadLocations()
+          fetchLocations()
         ]);
       } catch (err) {
         console.error("Error loading settings data:", err);
@@ -185,7 +192,7 @@ export default function Settings() {
     }
   };
 
-  const loadLocations = async () => {
+  const fetchLocations = async () => {
     setIsLoadingLocations(true);
     try {
       const data = await locationService.getAll();
@@ -223,19 +230,15 @@ export default function Settings() {
       const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
       const data = await response.json();
 
-      if (!data.erro) {
-        setLocationForm(prev => ({
+      if (data && !data.erro) {
+        setLocationForm((prev) => ({
           ...prev,
-          street: data.logradouro || "",
-          neighborhood: data.bairro || "",
-          city: data.localidade || "",
-          state: data.uf || "",
+          street: data.logradouro,
+          neighborhood: data.bairro,
+          city: data.localidade,
+          state: data.uf,
+          is_active: prev.is_active,
         }));
-
-        toast({
-          title: "CEP encontrado",
-          description: "Endereço preenchido automaticamente.",
-        });
       } else {
         toast({
           title: "CEP não encontrado",
@@ -266,7 +269,9 @@ export default function Settings() {
         city: locationForm.city,
         state: locationForm.state,
         zip_code: locationForm.zip_code,
-        is_active: true,
+        active: locationForm.is_active,
+        address: `${locationForm.street}, ${locationForm.number} - ${locationForm.neighborhood}, ${locationForm.city} - ${locationForm.state}`,
+        manager_id: null,
       };
 
       if (editingLocation) {
@@ -295,8 +300,10 @@ export default function Settings() {
         city: "",
         state: "",
         zip_code: "",
+        is_active: true,
       });
-      loadLocations();
+      setEditingLocationId(null);
+      fetchLocations();
     } catch (error) {
       console.error("Error saving location:", error);
       toast({
@@ -333,6 +340,7 @@ export default function Settings() {
         city: "",
         state: "",
         zip_code: "",
+        is_active: true,
       });
     }
     setIsLocationDialogOpen(true);
@@ -382,6 +390,36 @@ export default function Settings() {
       console.error("Erro ao resetar senha:", error);
       toast({ title: "Erro ao resetar senha", variant: "destructive" });
     }
+  };
+
+  const handleEditLocation = (location: Location) => {
+    setEditingLocationId(location.id);
+    setLocationForm({
+      name: location.name,
+      street: location.street || "",
+      number: location.number || "",
+      complement: location.complement || "",
+      neighborhood: location.neighborhood || "",
+      city: location.city,
+      state: location.state,
+      zip_code: location.zip_code,
+      is_active: location.active, // Map active to is_active
+    });
+  };
+
+  const handleCancelLocationEdit = () => {
+    setEditingLocationId(null);
+    setLocationForm({
+      name: "",
+      street: "",
+      number: "",
+      complement: "",
+      neighborhood: "",
+      city: "",
+      state: "",
+      zip_code: "",
+      is_active: true,
+    });
   };
 
   return (
@@ -840,6 +878,7 @@ export default function Settings() {
               city: "",
               state: "",
               zip_code: "",
+              is_active: true,
             });
           }
         }}>
@@ -994,6 +1033,7 @@ export default function Settings() {
                             city: "",
                             state: "",
                             zip_code: "",
+                            is_active: true,
                           });
                         }
                       }}

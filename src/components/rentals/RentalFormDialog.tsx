@@ -279,11 +279,13 @@ export const RentalFormDialog = memo(function RentalFormDialog({
           id: mergedRental.id,
           startDate: new Date(mergedRental.startDate),
           endDate: mergedRental.endDate ? new Date(mergedRental.endDate) : null,
-          monthlyRent: Number(mergedRental.monthlyRent),
+          monthlyRent: Number(mergedRental.value), // Usar o valor total (value)
           paymentDay: Number(mergedRental.paymentDay),
           propertyId: mergedRental.propertyId,
           tenantId: mergedRental.tenantId,
           locationId: selectedProperty.locationId,
+          hasGarage: mergedRental.hasGarage,
+          garageValue: mergedRental.garageValue,
         });
         
         setCreatedRentalData({
@@ -314,11 +316,13 @@ export const RentalFormDialog = memo(function RentalFormDialog({
           id: mappedRental.id,
           startDate: new Date(mappedRental.startDate),
           endDate: mappedRental.endDate ? new Date(mappedRental.endDate) : null,
-          monthlyRent: Number(mappedRental.monthlyRent),
+          monthlyRent: Number(mappedRental.monthlyRent), // monthlyRent aqui já é o totalValue calculado antes
           paymentDay: Number(mappedRental.paymentDay),
           propertyId: mappedRental.propertyId,
           tenantId: mappedRental.tenantId,
           locationId: selectedProperty.locationId,
+          hasGarage: mappedRental.hasGarage,
+          garageValue: mappedRental.garageValue,
         });
 
         const selectedLocation = locations.find((loc) => loc.id === selectedProperty.locationId);

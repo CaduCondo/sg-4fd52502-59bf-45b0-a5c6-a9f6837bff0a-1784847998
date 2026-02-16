@@ -31,6 +31,28 @@ export const siteConfig = {
   whatsappMessage: "Olá! Gostaria de mais informações sobre os imóveis disponíveis.",
 };
 
+const mapConfigFromDb = (data: any): CompanyConfig => ({
+  id: data.id,
+  company_name: data.company_name,
+  cnpj: data.cnpj,
+  email: data.email,
+  phone: data.phone,
+  address: data.address,
+  city: data.city,
+  state: data.state,
+  zip_code: data.zip_code,
+  admin_fee_percentage: Number(data.admin_fee_percentage),
+  broker_fee_percentage: Number(data.broker_fee_percentage),
+  interest_rate_percentage: Number(data.interest_rate_percentage),
+  late_fee_percentage: Number(data.late_fee_percentage),
+  management_fee_percentage: Number(data.management_fee_percentage),
+  logo_url: data.logo_url || null,
+  primary_color: data.primary_color || null,
+  secondary_color: data.secondary_color || null,
+  created_at: data.created_at,
+  updated_at: data.updated_at,
+});
+
 // Funções para gerenciar configurações dinâmicas do sistema (banco de dados)
 export async function getConfig(): Promise<CompanyConfig | null> {
   const { data, error } = await supabase
@@ -44,7 +66,9 @@ export async function getConfig(): Promise<CompanyConfig | null> {
     throw error;
   }
 
-  return data;
+  if (!data) return null;
+
+  return mapConfigFromDb(data);
 }
 
 export const updateConfig = async (config: CompanyConfig) => {
@@ -64,7 +88,34 @@ export const updateConfig = async (config: CompanyConfig) => {
       late_fee_percentage: config.late_fee_percentage,
       interest_rate_percentage: config.interest_rate_percentage,
     })
-    .eq("id", config.id); // Assuming we update by ID, or just take the first one if singleton
+    .eq("id", config.id); 
   
   if (error) throw error;
+};
+
+export const createConfig = async (config: CompanyConfig) => {
+  const { data, error } = await supabase
+    .from("configs")
+    .insert({
+      company_name: config.company_name,
+      cnpj: config.cnpj,
+      email: config.email,
+      phone: config.phone,
+      address: config.address,
+      city: config.city,
+      state: config.state,
+      zip_code: config.zip_code,
+      admin_fee_percentage: config.admin_fee_percentage,
+      management_fee_percentage: config.management_fee_percentage || 0,
+      late_fee_percentage: config.late_fee_percentage,
+      interest_rate_percentage: config.interest_rate_percentage,
+    })
+    .select("*")
+    .single();
+
+  if (error) throw error;
+
+  if (!data) throw new Error("Erro ao criar configuração");
+
+  return mapConfigFromDb(data);
 };

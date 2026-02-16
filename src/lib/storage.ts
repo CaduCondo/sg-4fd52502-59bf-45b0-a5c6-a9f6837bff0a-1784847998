@@ -104,7 +104,12 @@ function getEmptyConfig(): CompanyConfig {
     zip_code: "",
     admin_fee_percentage: 0,
     late_fee_percentage: 0,
-    interest_rate_percentage: 0
+    interest_rate_percentage: 0,
+    logo_url: null,
+    primary_color: null,
+    secondary_color: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
   };
 }
 
@@ -124,7 +129,12 @@ export const MOCK_COMPANY_CONFIG: CompanyConfig = {
   zip_code: "00000-000",
   admin_fee_percentage: 10,
   late_fee_percentage: 2,
-  interest_rate_percentage: 1
+  interest_rate_percentage: 1,
+  logo_url: null,
+  primary_color: null,
+  secondary_color: null,
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString(),
 };
 
 export const initializeStorage = () => {

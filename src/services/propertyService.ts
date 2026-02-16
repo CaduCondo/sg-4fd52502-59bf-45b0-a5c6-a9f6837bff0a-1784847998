@@ -25,7 +25,34 @@ const mapDatabaseProperty = (item: any): Property => {
     status: item.status as "available" | "occupied" | "unavailable",
     images: Array.isArray(item.images) ? (item.images as string[]) : [],
     createdAt: item.created_at,
-    updatedAt: item.updated_at,
+    address: "", // Add default address
+    features: [], // Add default features
+  };
+};
+
+const mapPropertyFromDb = (data: any): Property => {
+  return {
+    id: data.id,
+    locationId: data.location_id,
+    location: data.locations?.name || "",
+    propertyIdentifier: data.property_identifier,
+    complement: data.complement,
+    rooms: data.rooms,
+    bathrooms: data.bathrooms,
+    area: data.area,
+    value: data.value,
+    garageValue: data.garage_value,
+    hasGarage: data.has_garage,
+    hasFurniture: data.has_furniture,
+    acceptsPets: data.accepts_pets,
+    description: data.description,
+    status: data.status,
+    images: data.images || [],
+    createdAt: data.created_at,
+    // updatedAt: data.updated_at, // Remove updatedAt
+    address: data.locations?.address || "",
+    features: data.features || [],
+    locationDetails: data.locations,
   };
 };
 

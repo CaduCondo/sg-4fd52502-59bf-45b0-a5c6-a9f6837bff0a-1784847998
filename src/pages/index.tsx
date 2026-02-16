@@ -201,9 +201,18 @@ export default function PublicHomePage() {
 
                 {viewMode === "grid" ?
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {displayedProperties.map((property) =>
-                <PropertyPublicCard key={property.id} property={property} />
-                )}
+                    {displayedProperties.map((property) => {
+                      const type = property.description?.includes("Comercial") ? "Comercial" : "Residencial"; // Infer type
+                      
+                      return (
+                        <PropertyPublicCard
+                          key={property.id}
+                          property={property}
+                          // @ts-expect-error type property not in interface
+                          type={type}
+                        />
+                      );
+                    })}
                   </div> :
 
               <div className="space-y-6">

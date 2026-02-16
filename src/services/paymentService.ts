@@ -309,11 +309,39 @@ export const createPaymentsForRental = async (rental: {
   propertyId: string;
   tenantId: string;
   locationId: string;
+  hasGarage?: boolean;
+  garageValue?: number;
 }): Promise<void> => {
   try {
     const payments: any[] = [];
     const start = new Date(rental.startDate);
     const end = rental.endDate ? new Date(rental.endDate) : new Date(start.getFullYear() + 1, start.getMonth(), start.getDate());
+
+    // Calcular breakdown (formação de valores)
+    const breakdown = [];
+    let baseRent = rental.monthlyRent;
+    
+    if (rental.hasGarage && rental.garageValue && rental.garageValue > 0) {
+      baseRent = rental.monthlyRent - rental.garageValue;
+      
+      // Garantir que não fique negativo por erro de dados
+      if (baseRent < 0) baseRent = 0;
+      
+      breakdown.push({
+        description: "Aluguel",
+        value: baseRent
+      });
+      
+      breakdown.push({
+        description: "Garagem",
+        value: rental.garageValue
+      });
+    } else {
+      breakdown.push({
+        description: "Aluguel",
+        value: rental.monthlyRent
+      });
+    }
 
     let current = new Date(start);
 
@@ -336,6 +364,7 @@ export const createPaymentsForRental = async (rental: {
         receipt_url: "",
         location_id: rental.locationId,
         payment_time: null,
+        breakdown: breakdown // Adicionando o breakdown
       });
 
       current = new Date(current.getFullYear(), current.getMonth() + 1, rental.paymentDay);

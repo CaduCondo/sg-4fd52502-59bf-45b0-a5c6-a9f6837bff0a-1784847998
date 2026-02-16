@@ -31,7 +31,7 @@ interface FormState {
   neighborhood: string;
   city: string;
   state: string;
-  status: "active" | "inactive" | "rented";
+  status: "active" | "inactive" | "rented" | "late" | "debt";
 }
 
 const INITIAL_FORM_STATE: FormState = {
@@ -55,6 +55,7 @@ const INITIAL_FORM_STATE: FormState = {
 const PersonalDataSection = memo(function PersonalDataSection({
   formData,
   documentType,
+  setDocumentType,
   isEditing,
   onFieldChange,
   onPhoneChange,
@@ -66,6 +67,7 @@ const PersonalDataSection = memo(function PersonalDataSection({
 }: {
   formData: FormState;
   documentType: "cpf" | "cnpj";
+  setDocumentType: (type: "cpf" | "cnpj") => void;
   isEditing: boolean;
   onFieldChange: (field: keyof FormState, value: string) => void;
   onPhoneChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -94,6 +96,28 @@ const PersonalDataSection = memo(function PersonalDataSection({
 
         <div className="space-y-2">
           <Label htmlFor="document" className="text-sm font-medium">CPF/CNPJ *</Label>
+          <div className="flex gap-2 mb-2">
+            <Button
+              type="button"
+              variant={documentType === "cpf" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setDocumentType("cpf")}
+              disabled={!isEditing}
+              className="flex-1"
+            >
+              CPF
+            </Button>
+            <Button
+              type="button"
+              variant={documentType === "cnpj" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setDocumentType("cnpj")}
+              disabled={!isEditing}
+              className="flex-1"
+            >
+              CNPJ
+            </Button>
+          </div>
           <Input
             id="document"
             value={documentType === "cpf" ? formData.cpf : formData.cnpj}
@@ -151,7 +175,7 @@ const PersonalDataSection = memo(function PersonalDataSection({
             <Label htmlFor="status" className="text-sm font-medium">Status *</Label>
             <Select
               value={formData.status}
-              onValueChange={onStatusChange}
+              onValueChange={(value) => onStatusChange(value)}
               disabled={!isEditing}
             >
               <SelectTrigger className="h-11 sm:h-10">
@@ -160,7 +184,9 @@ const PersonalDataSection = memo(function PersonalDataSection({
               <SelectContent>
                 <SelectItem value="active">Ativo</SelectItem>
                 <SelectItem value="inactive">Inativo</SelectItem>
-                {formData.status === "rented" && <SelectItem value="rented">Alugado</SelectItem>}
+                <SelectItem value="rented">Alugado</SelectItem>
+                <SelectItem value="late">Inadimplente</SelectItem>
+                <SelectItem value="debt">Em Débito</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -382,10 +408,13 @@ export const TenantFormDialog = memo(function TenantFormDialog({
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const dataToSave: Partial<Tenant> = {
+    const newTenantData = {
       name: formData.name,
       email: formData.email,
       phone: formData.phone,
+      cpf: formData.cpf,
+      cnpj: formData.cnpj,
+      rg: formData.rg,
       documentType,
       cep: formData.cep,
       street: formData.street,
@@ -394,19 +423,10 @@ export const TenantFormDialog = memo(function TenantFormDialog({
       neighborhood: formData.neighborhood,
       city: formData.city,
       state: formData.state,
-      status: formData.status,
+      status: formData.status as "active" | "inactive" | "rented", // Fix casting
     };
 
-    if (documentType === "cpf") {
-      dataToSave.document = formData.cpf;
-      dataToSave.cpf = formData.cpf;
-      dataToSave.rg = formData.rg;
-    } else {
-      dataToSave.document = formData.cnpj;
-      dataToSave.cnpj = formData.cnpj;
-    }
-
-    const success = await onSave(dataToSave);
+    const success = await onSave(newTenantData);
     if (success) {
       onOpenChange(false);
     }
@@ -438,6 +458,7 @@ export const TenantFormDialog = memo(function TenantFormDialog({
           <PersonalDataSection
             formData={formData}
             documentType={documentType}
+            setDocumentType={setDocumentType}
             isEditing={isEditing}
             onFieldChange={handleFieldChange}
             onPhoneChange={handlePhoneChange}

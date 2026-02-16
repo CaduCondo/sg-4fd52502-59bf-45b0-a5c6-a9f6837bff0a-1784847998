@@ -196,13 +196,15 @@ export function usePayments() {
         return {
           id: p.id,
           rentalId: p.rental_id,
+          propertyId: "", // Default, updated later via map or logic if needed, but here we construct basic payment
+          tenantId: "", // Default
           dueDate: p.due_date,
           expectedAmount: p.expected_amount,
           paidAmount: p.paid_amount || 0,
           paymentDate: p.payment_date || undefined,
           status: p.status as "paid" | "pending" | "overdue" | "partial",
-          paymentMethod: p.payment_method || undefined,
-          notes: p.notes || undefined,
+          paymentMethod: p.payment_method || "",
+          notes: p.notes || "",
           referenceMonth: parseInt(p.reference_month),
           referenceYear: parseInt(p.reference_year),
           attachments: (p.attachments as unknown as string[]) || [],
@@ -210,6 +212,10 @@ export function usePayments() {
           interest: p.interest || 0,
           installment: p.installment || undefined,
           totalInstallments: p.total_installments || undefined,
+          discount: 0,
+          receiptUrl: "",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         };
       });
 

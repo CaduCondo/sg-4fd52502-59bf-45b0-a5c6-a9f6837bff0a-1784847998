@@ -1,30 +1,41 @@
 import { Location } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 import { 
-  getAll as fetchAll, 
-  createSingle, 
-  updateSingle, 
-  deleteSingle,
-  getSingle 
+  updateSingle 
 } from "@/lib/supabaseHelpers";
 
 const TABLE = "locations";
 
-export async function getAllLocations(): Promise<Location[]> {
-  return fetchAll<Location>(TABLE);
-}
+const mapLocationFromDb = (data: any): Location => ({
+  id: data.id,
+  name: data.name,
+  city: data.city,
+  state: data.state,
+  zip_code: data.zip_code,
+  street: data.street,
+  number: data.number,
+  neighborhood: data.neighborhood,
+  complement: data.complement,
+  is_active: data.is_active,
+  active: data.is_active,
+  address: `${data.street || ''}, ${data.number || ''} - ${data.neighborhood || ''}, ${data.city || ''} - ${data.state || ''}`,
+  manager_id: null,
+  created_at: data.created_at,
+  updated_at: data.updated_at,
+});
 
-// Alias for compatibility
-export const getAll = async (): Promise<Location[]> => {
+export async function getAllLocations(): Promise<Location[]> {
   const { data, error } = await supabase
     .from("locations")
     .select("*")
-    .eq("is_active", true) // ✅ Filtra apenas ativos
     .order("name");
 
   if (error) throw error;
-  return data;
-};
+  return (data || []).map(mapLocationFromDb);
+}
+
+// Alias for compatibility
+export const getAll = getAllLocations;
 
 export const getById = async (id: string): Promise<Location | null> => {
   const { data, error } = await supabase
@@ -34,19 +45,38 @@ export const getById = async (id: string): Promise<Location | null> => {
     .single();
 
   if (error) throw error;
-  return data;
+  return data ? mapLocationFromDb(data) : null;
 };
 
 export const getLocations = getAllLocations;
 
 export async function getLocationById(id: string): Promise<Location> {
-  const location = await getSingle<Location>(TABLE, id);
+  const location = await getById(id);
   if (!location) throw new Error("Local não encontrado");
   return location;
 }
 
-export async function createLocation(location: Omit<Location, "id" | "created_at" | "updated_at">): Promise<Location> {
-  return createSingle<Location>(TABLE, location);
+export async function createLocation(location: Omit<Location, "id" | "created_at" | "updated_at" | "address" | "manager_id" | "active">): Promise<Location> {
+  const dbLocation = {
+    name: location.name,
+    street: location.street,
+    number: location.number,
+    complement: location.complement,
+    neighborhood: location.neighborhood,
+    city: location.city,
+    state: location.state,
+    zip_code: location.zip_code,
+    is_active: location.is_active,
+  };
+
+  const { data, error } = await supabase
+    .from("locations")
+    .insert(dbLocation)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return mapLocationFromDb(data);
 }
 
 export async function updateLocation(id: string, updates: Partial<Location>): Promise<Location> {
@@ -56,7 +86,6 @@ export async function updateLocation(id: string, updates: Partial<Location>): Pr
 export async function deleteLocation(id: string): Promise<void> {
   console.log(`Iniciando exclusão (soft delete) do local com ID: ${id}`);
   
-  // ✅ Usa UPDATE para desativar em vez de DELETE físico
   const { error } = await supabase
     .from(TABLE)
     .update({ is_active: false })

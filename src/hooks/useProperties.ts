@@ -134,10 +134,12 @@ export function useProperties(): UsePropertiesReturn {
       area: formData.area ? parseFloat(formData.area.replace(",", ".")) : 0,
       hasGarage: formData.hasGarage,
       status: formData.status as "available" | "occupied" | "unavailable",
+      address: "", // Added missing property
+      features: [], // Added missing property
     };
 
-    const newProperty = await propertyService.create(propertyData);
-    setProperties(prev => [newProperty, ...prev]);
+    const createdProperty = await propertyService.create(propertyData);
+    setProperties(prev => [createdProperty, ...prev]);
   }, [locations]);
 
   const updateProperty = useCallback(async (id: string, formData: PropertyFormData) => {

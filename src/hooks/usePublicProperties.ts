@@ -100,7 +100,15 @@ export function usePublicProperties(options: UsePublicPropertiesOptions = {}) {
 
       console.log(`[usePublicProperties] 📦 Recebidos ${data?.length || 0} imóveis`);
 
-      const mappedProperties: Property[] = (data || []).map((prop: any) => {
+      const propertiesWithLocation = (data || []).map((property: any) => ({
+        ...property,
+        address: property.locations?.address || "",
+        features: [],
+        location: property.locations?.name || "Localização não encontrada",
+        locationDetails: property.locations,
+      }));
+
+      const mappedProperties: Property[] = (propertiesWithLocation || []).map((prop: any) => {
         const location = prop.locations;
         return {
           id: prop.id,
@@ -124,6 +132,8 @@ export function usePublicProperties(options: UsePublicPropertiesOptions = {}) {
             : [],
           propertyIdentifier: prop.property_identifier || "",
           createdAt: prop.created_at || new Date().toISOString(),
+          address: location?.address || "", // Added missing property
+          features: [], // Added missing property
           locationDetails: location ? {
             id: location.id,
             name: location.name,

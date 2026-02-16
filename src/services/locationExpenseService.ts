@@ -27,8 +27,7 @@ export const locationExpenseService = {
       status: item.status,
       notes: item.notes,
       attachments: item.attachments || [],
-      createdAt: item.created_at,
-      updatedAt: item.updated_at,
+      // updatedAt: item.updated_at, // Remove updatedAt
     }));
   },
 
@@ -55,8 +54,7 @@ export const locationExpenseService = {
       status: item.status,
       notes: item.notes,
       attachments: item.attachments || [],
-      createdAt: item.created_at,
-      updatedAt: item.updated_at,
+      // updatedAt: item.updated_at, // Remove updatedAt
     }));
   },
 
@@ -82,8 +80,7 @@ export const locationExpenseService = {
       status: item.status,
       notes: item.notes,
       attachments: item.attachments || [],
-      createdAt: item.created_at,
-      updatedAt: item.updated_at,
+      // updatedAt: item.updated_at, // Remove updatedAt
     }));
   },
 
@@ -111,18 +108,17 @@ export const locationExpenseService = {
     return {
       id: data.id,
       locationId: data.location_id,
-      expenseType: data.expense_type,
       description: data.description,
-      amount: data.amount,
+      amount: Number(data.amount),
+      dueDate: data.due_date,
+      status: data.status,
+      category: data.expense_type, // Map expense_type to category as fallback
+      recurrent: false, // Default
+      locationName: data.locations?.name,
       referenceMonth: data.reference_month,
       referenceYear: data.reference_year,
-      dueDate: data.due_date,
-      paymentDate: data.payment_date,
-      status: data.status,
-      notes: data.notes,
+      expenseType: data.expense_type,
       attachments: data.attachments || [],
-      createdAt: data.created_at,
-      updatedAt: data.updated_at,
     };
   },
 

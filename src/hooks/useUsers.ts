@@ -22,7 +22,13 @@ export function useUsers() {
       // Cast explícito para garantir a tipagem correta do role
       const typedUsers: SystemUser[] = (data || []).map((user) => ({
         ...user,
-        role: user.role as "admin" | "broker" | "financial",
+        active: !!user.active,
+        status: user.active ? "active" : "inactive",
+        role: user.role as "admin" | "financial" | "broker",
+        cpf: user.cpf || "",
+        auth_user_id: user.auth_user_id || "",
+        created_at: user.created_at || new Date().toISOString(),
+        usuario: user.usuario || user.email,
       }));
       
       setUsers(typedUsers);

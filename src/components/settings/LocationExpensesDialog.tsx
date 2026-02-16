@@ -38,6 +38,14 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
   const [amount, setAmount] = useState("");
   const [referenceMonth, setReferenceMonth] = useState(new Date().getMonth() + 1);
   const [referenceYear, setReferenceYear] = useState(new Date().getFullYear());
+  
+  // New state variables for dedicated form
+  const [newExpenseValue, setNewExpenseValue] = useState<number>(0);
+  const [newExpenseDescription, setNewExpenseDescription] = useState("");
+  const [newExpenseCategory, setNewExpenseCategory] = useState("other");
+  const [newExpenseDueDate, setNewExpenseDueDate] = useState("");
+  const [newExpenseStatus, setNewExpenseStatus] = useState<"pending" | "paid" | "overdue">("pending");
+  const [selectedLocationId, setSelectedLocationId] = useState<string>("");
 
   useEffect(() => {
     if (open) {
@@ -197,7 +205,7 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
             <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg border">
               <Filter className="h-4 w-4 text-muted-foreground" />
               <Label className="text-sm font-medium">Filtrar por:</Label>
-              <Select value={filterMonth.toString()} onValueChange={(v) => setFilterMonth(parseInt(v))}>
+              <Select value={filterMonth.toString()} onValueChange={(v) => setFilterMonth(Number(v))}>
                 <SelectTrigger className="h-9 w-32">
                   <SelectValue />
                 </SelectTrigger>
@@ -209,7 +217,7 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
                   ))}
                 </SelectContent>
               </Select>
-              <Select value={filterYear.toString()} onValueChange={(v) => setFilterYear(parseInt(v))}>
+              <Select value={filterYear.toString()} onValueChange={(v) => setFilterYear(Number(v))}>
                 <SelectTrigger className="h-9 w-28">
                   <SelectValue />
                 </SelectTrigger>
@@ -345,7 +353,7 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
                 <Label>Mês</Label>
                 <Select 
                   value={referenceMonth.toString()} 
-                  onValueChange={(v) => setReferenceMonth(parseInt(v))}
+                  onValueChange={(v) => setReferenceMonth(Number(v))}
                   disabled={!isEditing && !!editingExpense}
                 >
                   <SelectTrigger className="h-9">
@@ -365,7 +373,7 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
                 <Label>Ano</Label>
                 <Select 
                   value={referenceYear.toString()} 
-                  onValueChange={(v) => setReferenceYear(parseInt(v))}
+                  onValueChange={(v) => setReferenceYear(Number(v))}
                   disabled={!isEditing && !!editingExpense}
                 >
                   <SelectTrigger className="h-9">
@@ -382,13 +390,13 @@ export function LocationExpensesDialog({ open, onOpenChange, location }: Locatio
               </div>
 
               <div className="space-y-2 col-span-2">
-                <Label>Valor</Label>
+                <Label htmlFor="expense-value">Valor</Label>
                 <Input
-                  value={amount}
-                  onChange={(e) => setAmount(applyRealMask(e.target.value))}
-                  placeholder="R$ 0,00"
-                  disabled={!isEditing && !!editingExpense}
-                  className="h-9"
+                  id="expense-value"
+                  type="number"
+                  value={newExpenseValue}
+                  onChange={(e) => setNewExpenseValue(Number(e.target.value))}
+                  placeholder="0.00"
                 />
               </div>
             </div>
