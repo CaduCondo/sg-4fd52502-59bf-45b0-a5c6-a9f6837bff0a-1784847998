@@ -1,9 +1,10 @@
-import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useRef, useEffect, useState } from "react";
+import { X, Printer, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Download, X, Printer, Share2 } from "lucide-react";
-import { Payment, Rental, Property, Tenant } from "@/types";
-import { getPaymentById } from "@/services/paymentService";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import type { Payment, Rental, Property, Tenant } from "@/types";
+import html2pdf from "html2pdf.js";
+import { supabase } from "@/integrations/supabase/client";
 
 interface PaymentReceiptProps {
   payment: Payment;
@@ -21,16 +22,52 @@ interface BreakdownItem {
   type: "addition" | "deduction";
 }
 
-export function PaymentReceipt({ payment, rental, property, tenant, onClose, lateFee: propLateFee, interest: propInterest }: PaymentReceiptProps) {
-  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+export function PaymentReceipt({
+  payment,
+  rental,
+  property,
+  tenant,
+  onClose,
+  lateFee: propLateFee,
+  interest: propInterest,
+}: PaymentReceiptProps) {
+  const printRef = useRef<HTMLDivElement>(null);
+  const [lateFeeFromDB, setLateFeeFromDB] = useState<number>(0);
+  const [interestFromDB, setInterestFromDB] = useState<number>(0);
+
+  useEffect(() => {
+    const fetchPaymentDetails = async () => {
+      try {
+        console.log("🔍 BUSCANDO VALORES DO BANCO para payment.id:", payment.id);
+        
+        const { data, error } = await supabase
+          .from("payments")
+          .select("late_fee, interest")
+          .eq("id", payment.id)
+          .single();
+
+        if (error) throw error;
+
+        console.log("✅ VALORES RETORNADOS DO BANCO:", data);
+        console.log("  late_fee:", data.late_fee);
+        console.log("  interest:", data.interest);
+
+        setLateFeeFromDB(data.late_fee || 0);
+        setInterestFromDB(data.interest || 0);
+      } catch (error) {
+        console.error("❌ Erro ao buscar detalhes do pagamento:", error);
+      }
+    };
+
+    fetchPaymentDetails();
+  }, [payment.id]);
 
   const isTermination = payment.type === "termination";
   
-  // Usar props passadas explicitamente OU valores do objeto payment
-  const lateFee = propLateFee !== undefined ? propLateFee : (payment.lateFee || (payment as any).late_fee || 0);
-  const interest = propInterest !== undefined ? propInterest : (payment.interest || 0);
+  const lateFee = lateFeeFromDB || propLateFee || (payment.lateFee || (payment as any).late_fee || 0);
+  const interest = interestFromDB || propInterest || (payment.interest || 0);
   
-  console.log("Recibo Valores:", { lateFee, interest, paymentLateFee: payment.lateFee });
+  console.log("Recibo Valores:", { lateFee, interest, lateFeeFromDB, interestFromDB, paymentLateFee: payment.lateFee });
 
   // Estrutura para armazenar os itens do breakdown
   const breakdownItems: BreakdownItem[] = [];
