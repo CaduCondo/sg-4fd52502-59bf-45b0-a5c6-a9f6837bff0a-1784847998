@@ -222,19 +222,27 @@ export interface Rental {
 export interface Payment {
   id: string;
   rentalId: string;
+  rental_id?: string; // Compatibilidade DB
   dueDate: string;
+  due_date?: string; // Compatibilidade DB
   expectedAmount: number;
+  amount?: number; // Compatibilidade DB
   paidAmount?: number;
+  paid_amount?: number; // Compatibilidade DB
   paymentDate?: string;
+  payment_date?: string; // Compatibilidade DB
   status: "pending" | "paid" | "overdue" | "partial";
   type?: "monthly" | "termination" | "deposit_installment" | "repair";
   paymentMethod?: string;
+  payment_method?: string; // Compatibilidade DB
   paymentLocation?: string;
   paymentCode?: string;
   paymentTime?: string; // Horário do recebimento (HH:MM)
   notes?: string;
   referenceMonth: number;
+  reference_month?: number; // Compatibilidade DB
   referenceYear: number;
+  reference_year?: number; // Compatibilidade DB
   receiptUrl?: string;
   attachments?: string[];
   
@@ -242,6 +250,7 @@ export interface Payment {
   penaltyAmount?: number;
   interestAmount?: number;
   discountAmount?: number;
+  discount?: number; // Compatibilidade DB
   adminFee?: number;
   lateFee?: number; // Alias
   interest?: number; // Alias
@@ -250,12 +259,54 @@ export interface Payment {
   installment?: number;
   totalInstallments?: number;
   installmentNumber?: number; // Legacy alias
+  installment_number?: number; // Compatibilidade DB
 
   breakdown?: any; // Adicionado para suportar JSON de detalhamento de valores
 
   partialPayments?: any[];
   createdAt?: string;
+  created_at?: string; // Compatibilidade DB
   updatedAt?: string;
+  updated_at?: string; // Compatibilidade DB
+  
+  // Dados relacionados (para UI)
+  property_address?: string;
+  tenant_name?: string;
+}
+
+export interface PaymentInstallment {
+  id: string;
+  rental_id: string;
+  rentalId?: string;
+  installment_number: number;
+  installmentNumber?: number;
+  amount: number;
+  due_date: string;
+  dueDate?: string;
+  status: "pending" | "paid" | "overdue" | "partial";
+  paid_amount?: number;
+  paidAmount?: number;
+  payment_date?: string;
+  paymentDate?: string;
+  payment_time?: string;
+  paymentTime?: string;
+  discount?: number;
+  fine?: number;
+  interest?: number;
+  payment_method?: string;
+  paymentMethod?: string;
+  notes?: string;
+  created_at?: string;
+  createdAt?: string;
+  updated_at?: string;
+  updatedAt?: string;
+}
+
+export interface PaymentFilters {
+  status?: string;
+  location_id?: string;
+  month?: string;
+  year?: string;
 }
 
 export interface Location {
