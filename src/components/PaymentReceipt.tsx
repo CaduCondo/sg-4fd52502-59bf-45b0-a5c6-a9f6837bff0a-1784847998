@@ -34,6 +34,8 @@ export function PaymentReceipt({
   const printRef = useRef<HTMLDivElement>(null);
   const [lateFeeFromDB, setLateFeeFromDB] = useState<number>(0);
   const [interestFromDB, setInterestFromDB] = useState<number>(0);
+  const [breakdownFromDB, setBreakdownFromDB] = useState<any>(null);
+  const [typeFromDB, setTypeFromDB] = useState<string>("");
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
   useEffect(() => {
@@ -45,7 +47,7 @@ export function PaymentReceipt({
       try {
         const { data, error } = await supabase
           .from("payments")
-          .select("late_fee, interest, breakdown")
+          .select("late_fee, interest, breakdown, type")
           .eq("id", payment.id)
           .maybeSingle();
 
@@ -59,10 +61,21 @@ export function PaymentReceipt({
         if (data) {
           setLateFeeFromDB(Number(data.late_fee) || 0);
           setInterestFromDB(Number(data.interest) || 0);
+          setTypeFromDB(data.type || "");
           
           if (data.breakdown) {
-            console.log("📦 BREAKDOWN DO BANCO (RAW):", typeof data.breakdown === "string" ? data.breakdown : JSON.stringify(data.breakdown, null, 2));
+            console.log("📦 BREAKDOWN DO BANCO (RAW):", data.breakdown);
+            
+            // Parse breakdown se for string
+            const parsedBreakdown = typeof data.breakdown === "string" 
+              ? JSON.parse(data.breakdown)
+              : data.breakdown;
+            
+            setBreakdownFromDB(parsedBreakdown);
+            console.log("✅ BREAKDOWN SALVO NO ESTADO:", JSON.stringify(parsedBreakdown, null, 2));
           }
+          
+          console.log("✅ TYPE SALVO NO ESTADO:", data.type);
         }
       } catch (error) {
         console.error("❌ Erro ao buscar detalhes do pagamento:", error);
@@ -72,13 +85,19 @@ export function PaymentReceipt({
     fetchPaymentDetails();
   }, [payment.id]);
 
-  const isTermination = payment.type === "termination";
-  
   // Prioridade: 1. Banco de Dados (mais confiável/recente) -> 2. Props passadas -> 3. Objeto payment original
   const lateFee = lateFeeFromDB || propLateFee || (payment.lateFee || (payment as any).late_fee || 0);
   const interest = interestFromDB || propInterest || (payment.interest || 0);
   
   console.log("Recibo Valores Finais:", { lateFee, interest });
+
+  // Usar type e breakdown do banco, com fallback para payment
+  const paymentType = typeFromDB || payment.type || "";
+  const paymentBreakdown = breakdownFromDB || payment.breakdown;
+  
+  console.log("🔍 FONTE DOS DADOS:");
+  console.log("  typeFromDB:", typeFromDB, "→ usando:", paymentType);
+  console.log("  breakdownFromDB:", breakdownFromDB ? "EXISTS" : "NULL", "→ usando:", paymentBreakdown ? "EXISTS" : "NULL");
 
   // Estrutura para armazenar os itens do breakdown
   const breakdownItems: BreakdownItem[] = [];
@@ -86,66 +105,97 @@ export function PaymentReceipt({
   
   console.log("🔍 INICIANDO PROCESSAMENTO DO BREAKDOWN");
   console.log("  payment.type:", payment.type);
-  console.log("  isTermination:", isTermination);
+  console.log("  paymentType (do banco):", paymentType);
+  console.log("  isTermination:", paymentType === "termination");
   console.log("  payment.breakdown (tipo):", typeof payment.breakdown);
-  console.log("  payment.breakdown (conteúdo):", JSON.stringify(payment.breakdown, null, 2));
+  console.log("  payment.breakdown (conteúdo):", payment.breakdown);
+  console.log("  paymentBreakdown (do banco - tipo):", typeof paymentBreakdown);
+  console.log("  paymentBreakdown (do banco - conteúdo):", JSON.stringify(paymentBreakdown, null, 2));
+  
+  const isTermination = paymentType === "termination";
   
   // Se é rescisão e tem breakdown, processar os valores específicos
-  if (isTermination && payment.breakdown) {
+  if (isTermination && paymentBreakdown) {
     console.log("✅ ENTRANDO NO BLOCO DE RESCISÃO");
     try {
-      const breakdownData = typeof payment.breakdown === "string" 
-        ? JSON.parse(payment.breakdown) 
-        : payment.breakdown;
+      let breakdownData = paymentBreakdown;
+      
+      // Se for string, fazer parse
+      if (typeof breakdownData === "string") {
+        breakdownData = JSON.parse(breakdownData);
+      }
 
       console.log("📊 BREAKDOWN PARSEADO:", JSON.stringify(breakdownData, null, 2));
 
-      const proportionalRent = Number(breakdownData.proportionalRent || 0);
-      const terminationFee = Number(breakdownData.terminationFee || 0);
-      const depositRefund = Number(breakdownData.depositRefund || 0);
-      const additionalExpenses = Number(breakdownData.additionalExpenses || 0);
-
-      console.log("📊 VALORES EXTRAÍDOS:", {
-        proportionalRent,
-        terminationFee,
-        depositRefund,
-        additionalExpenses
-      });
-
-      if (proportionalRent > 0) {
-        console.log("  ✅ Adicionando Aluguel Proporcional:", proportionalRent);
-        breakdownItems.push({
-          description: "Aluguel Proporcional",
-          amount: proportionalRent,
-          type: "addition"
+      // Se o breakdown já é um array (formato novo do banco)
+      if (Array.isArray(breakdownData)) {
+        console.log("✅ BREAKDOWN É UM ARRAY - processando diretamente");
+        
+        breakdownData.forEach((item: any) => {
+          const amount = Math.abs(Number(item.amount || 0));
+          const description = item.description || "";
+          const type = item.type || "addition";
+          
+          if (amount > 0) {
+            console.log(`  ✅ Adicionando item: ${description} = ${amount} (${type})`);
+            breakdownItems.push({
+              description,
+              amount,
+              type: type as "addition" | "deduction"
+            });
+          }
         });
-      }
+      } else {
+        // Formato antigo (objeto com propriedades)
+        console.log("✅ BREAKDOWN É UM OBJETO - extraindo propriedades");
+        
+        const proportionalRent = Number(breakdownData.proportionalRent || 0);
+        const terminationFee = Number(breakdownData.terminationFee || 0);
+        const depositRefund = Number(breakdownData.depositRefund || 0);
+        const additionalExpenses = Number(breakdownData.additionalExpenses || 0);
 
-      if (terminationFee > 0) {
-        console.log("  ✅ Adicionando Multa Rescisória:", terminationFee);
-        breakdownItems.push({
-          description: "Multa Rescisória",
-          amount: terminationFee,
-          type: "addition"
+        console.log("📊 VALORES EXTRAÍDOS:", {
+          proportionalRent,
+          terminationFee,
+          depositRefund,
+          additionalExpenses
         });
-      }
 
-      if (depositRefund !== 0) {
-        console.log("  ✅ Adicionando Devolução de Caução:", depositRefund);
-        breakdownItems.push({
-          description: "Devolução de Caução",
-          amount: Math.abs(depositRefund),
-          type: depositRefund < 0 ? "deduction" : "addition"
-        });
-      }
+        if (proportionalRent > 0) {
+          console.log("  ✅ Adicionando Aluguel Proporcional:", proportionalRent);
+          breakdownItems.push({
+            description: "Aluguel Proporcional",
+            amount: proportionalRent,
+            type: "addition"
+          });
+        }
 
-      if (additionalExpenses > 0) {
-        console.log("  ✅ Adicionando Despesas Adicionais:", additionalExpenses);
-        breakdownItems.push({
-          description: "Despesas Adicionais",
-          amount: additionalExpenses,
-          type: "addition"
-        });
+        if (terminationFee > 0) {
+          console.log("  ✅ Adicionando Multa Rescisória:", terminationFee);
+          breakdownItems.push({
+            description: "Multa Rescisória",
+            amount: terminationFee,
+            type: "addition"
+          });
+        }
+
+        if (depositRefund !== 0) {
+          console.log("  ✅ Adicionando Devolução de Caução:", depositRefund);
+          breakdownItems.push({
+            description: "Devolução de Caução",
+            amount: Math.abs(depositRefund),
+            type: depositRefund < 0 ? "deduction" : "addition"
+          });
+        }
+
+        if (additionalExpenses > 0) {
+          console.log("  ✅ Adicionando Despesas Adicionais:", additionalExpenses);
+          breakdownItems.push({
+            description: "Despesas Adicionais",
+            amount: additionalExpenses,
+            type: "addition"
+          });
+        }
       }
     } catch (e) {
       console.error("❌ ERRO ao processar breakdown de rescisão:", e);
