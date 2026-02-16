@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Tenant, Location } from "@/types";
 import {
   getAll as getAllTenants,
@@ -30,7 +30,6 @@ export function useTenants() {
       setTenants(tenantsData);
       setLocations(locationsData);
     } catch (error) {
-      console.error("Error loading tenants:", error);
       // Não mostrar toast de erro - pode ser simplesmente que não há dados ainda
     } finally {
       setIsLoading(false);
@@ -38,7 +37,6 @@ export function useTenants() {
   }, []);
 
   useEffect(() => {
-    // loadData é memorizado por useCallback, então este efeito não causa loops
     loadData();
   }, [loadData]);
 
@@ -59,7 +57,6 @@ export function useTenants() {
         await loadData();
         return true;
       } catch (error) {
-        console.error("Error creating tenant:", error);
         toast({
           title: "Erro",
           description: "Não foi possível criar o inquilino.",
@@ -82,7 +79,6 @@ export function useTenants() {
         await loadData();
         return true;
       } catch (error) {
-        console.error("Error updating tenant:", error);
         toast({
           title: "Erro",
           description: "Não foi possível atualizar o inquilino.",
@@ -104,7 +100,6 @@ export function useTenants() {
         });
         await loadData();
       } catch (error) {
-        console.error("Error deleting tenant:", error);
         toast({
           title: "Erro",
           description: "Não foi possível remover o inquilino.",
@@ -116,28 +111,30 @@ export function useTenants() {
   );
 
   const filteredTenants = useMemo(() => {
-    const list = tenants.filter((tenant) => {
+    let list = tenants;
+
+    // Filtro de busca
+    if (searchTerm) {
       const term = searchTerm.toLowerCase();
-      const matchesSearch =
+      list = list.filter((tenant) =>
         tenant.name?.toLowerCase().includes(term) ||
         tenant.email?.toLowerCase().includes(term) ||
-        tenant.document?.includes(searchTerm);
+        tenant.document?.includes(searchTerm)
+      );
+    }
 
-      const matchesStatus = statusFilter === "all" || tenant.status === statusFilter;
+    // Filtro de status
+    if (statusFilter !== "all") {
+      list = list.filter((tenant) => tenant.status === statusFilter);
+    }
 
-      // Filtro de localização removido pois tenants não possuem location_id direto
-      // Se necessário filtrar por localização, precisaria fazer join com rentals
-      const matchesLocation = true;
-
-      return matchesSearch && matchesStatus && matchesLocation;
-    });
-
+    // Ordenação
     if (sortBy === "alphabetical") {
       return [...list].sort((a, b) => a.name.localeCompare(b.name));
     }
 
     return list;
-  }, [tenants, searchTerm, statusFilter, selectedLocations, sortBy]);
+  }, [tenants, searchTerm, statusFilter, sortBy]);
 
   return {
     tenants: filteredTenants,

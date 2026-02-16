@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/router";
 import { Layout } from "@/components/Layout";
 import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
-import { Plus, Search, User, LayoutGrid, List } from "lucide-react";
+import { Plus, LayoutGrid, List, Eye, Pencil, Trash2 } from "lucide-react";
 import { useTenants } from "@/hooks/useTenants";
 import { TenantCard } from "@/components/tenants/TenantCard";
 import { TenantFilters } from "@/components/tenants/TenantFilters";
@@ -13,8 +13,14 @@ import { Tenant } from "@/types";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Eye, Pencil, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+
+const STATUS_CONFIG = {
+  active: { label: "Ativo", variant: "default" as const },
+  inactive: { label: "Inativo", variant: "secondary" as const },
+  rented: { label: "Locado", variant: "default" as const },
+  locatario: { label: "Locatário", variant: "default" as const },
+} as const;
 
 export default function TenantsPage() {
   const router = useRouter();
@@ -27,13 +33,14 @@ export default function TenantsPage() {
     deleteTenant,
   } = useTenants();
 
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
-  const [tenantToDelete, setTenantToDelete] = useState<Tenant | null>(null);
-  const [isViewMode, setIsViewMode] = useState(false);
+  const [dialogState, setDialogState] = useState({
+    isOpen: false,
+    selectedTenant: null as Tenant | null,
+    isViewMode: false,
+  });
+  
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
+  const [tenantToDelete, setTenantToDelete] = useState<Tenant | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
   const [sortBy, setSortBy] = useState<"alphabetical" | "recent">("alphabetical");
@@ -43,54 +50,61 @@ export default function TenantsPage() {
     if (viewId && tenants.length > 0) {
       const tenant = tenants.find((t) => t.id === viewId);
       if (tenant) {
-        setSelectedTenant(tenant);
-        setIsViewMode(true);
-        setIsDialogOpen(true);
+        setDialogState({
+          isOpen: true,
+          selectedTenant: tenant,
+          isViewMode: true,
+        });
         router.replace("/tenants", undefined, { shallow: true });
       }
     }
   }, [router.query.view, tenants, router]);
 
-  const handleCreateNew = () => {
-    setSelectedTenant(null);
-    setIsViewMode(false);
-    setIsFormOpen(true);
-  };
+  const handleCreateNew = useCallback(() => {
+    setDialogState({
+      isOpen: true,
+      selectedTenant: null,
+      isViewMode: false,
+    });
+  }, []);
 
-  const handleViewTenant = (tenant: Tenant) => {
-    console.log("handleViewTenant - Tenant data:", tenant);
-    setSelectedTenant(tenant);
-    setIsViewMode(true);
-    setIsFormOpen(true);
-  };
+  const handleViewTenant = useCallback((tenant: Tenant) => {
+    setDialogState({
+      isOpen: true,
+      selectedTenant: tenant,
+      isViewMode: true,
+    });
+  }, []);
 
-  const handleEditTenant = (tenant: Tenant, e?: React.MouseEvent) => {
+  const handleEditTenant = useCallback((tenant: Tenant, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    setSelectedTenant(tenant);
-    setIsViewMode(false);
-    setIsDialogOpen(true);
-  };
+    setDialogState({
+      isOpen: true,
+      selectedTenant: tenant,
+      isViewMode: false,
+    });
+  }, []);
 
-  const handleDelete = async (id: string, e?: React.MouseEvent) => {
+  const handleDelete = useCallback((id: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     const tenant = tenants.find(t => t.id === id);
     if (tenant) {
       setTenantToDelete(tenant);
     }
-  };
+  }, [tenants]);
 
-  const handleConfirmDelete = async () => {
+  const handleConfirmDelete = useCallback(async () => {
     if (tenantToDelete) {
       await deleteTenant(tenantToDelete.id);
       setTenantToDelete(null);
     }
-  };
+  }, [tenantToDelete, deleteTenant]);
 
-  const handleSave = async (data: Partial<Tenant>) => {
+  const handleSave = useCallback(async (data: Partial<Tenant>) => {
+    const { selectedTenant } = dialogState;
     let success = false;
     
     if (selectedTenant) {
-      // Edit existing
       success = await updateTenant(selectedTenant.id, data);
       if (success) {
         toast({
@@ -99,7 +113,6 @@ export default function TenantsPage() {
         });
       }
     } else {
-      // Create new
       success = await createTenant(data);
       if (success) {
         toast({
@@ -110,23 +123,31 @@ export default function TenantsPage() {
     }
 
     if (success) {
-      setIsFormOpen(false);
+      setDialogState({
+        isOpen: false,
+        selectedTenant: null,
+        isViewMode: false,
+      });
     }
     return success;
-  };
+  }, [dialogState, createTenant, updateTenant, toast]);
 
-  const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      active: { label: "Ativo", variant: "default" as const },
-      inactive: { label: "Inativo", variant: "secondary" as const },
-      rented: { label: "Locado", variant: "default" as const },
-      locatario: { label: "Locatário", variant: "default" as const },
-    };
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.active;
+  const handleDialogClose = useCallback((open: boolean) => {
+    if (!open) {
+      setDialogState({
+        isOpen: false,
+        selectedTenant: null,
+        isViewMode: false,
+      });
+    }
+  }, []);
+
+  const getStatusBadge = useCallback((status: string) => {
+    const config = STATUS_CONFIG[status as keyof typeof STATUS_CONFIG] || STATUS_CONFIG.active;
     return <Badge variant={config.variant}>{config.label}</Badge>;
-  };
+  }, []);
 
-  const formatDocument = (tenant: Tenant) => {
+  const formatDocument = useCallback((tenant: Tenant) => {
     if (tenant.documentType === "cpf" && tenant.cpf) {
       return tenant.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
     }
@@ -134,20 +155,64 @@ export default function TenantsPage() {
       return tenant.document.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
     }
     return tenant.document || tenant.cpf || "-";
-  };
+  }, []);
 
-  const formatPhone = (phone?: string) => {
+  const formatPhone = useCallback((phone?: string) => {
     if (!phone) return "-";
     return phone.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
-  };
+  }, []);
 
-  const getRowClassName = (tenant: Tenant) => {
+  const getRowClassName = useCallback((tenant: Tenant) => {
     const baseClasses = "cursor-pointer hover:bg-muted/50 transition-colors";
     if (tenant.status === "active" || tenant.status === "rented") {
       return `${baseClasses} bg-green-50 dark:bg-green-950/20`;
     }
     return `${baseClasses} bg-gray-100 dark:bg-gray-800`;
-  };
+  }, []);
+
+  const tableRows = useMemo(() => (
+    tenants.map((tenant) => (
+      <TableRow
+        key={tenant.id}
+        className={getRowClassName(tenant)}
+        onClick={() => handleViewTenant(tenant)}
+      >
+        <TableCell className="font-medium">{tenant.name}</TableCell>
+        <TableCell>{formatDocument(tenant)}</TableCell>
+        <TableCell>{formatPhone(tenant.phone)}</TableCell>
+        <TableCell>{tenant.email || "-"}</TableCell>
+        <TableCell>{getStatusBadge(tenant.status)}</TableCell>
+        <TableCell className="text-right">
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleViewTenant(tenant);
+              }}
+            >
+              <Eye className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => handleEditTenant(tenant, e)}
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => handleDelete(tenant.id, e)}
+            >
+              <Trash2 className="h-4 w-4 text-destructive" />
+            </Button>
+          </div>
+        </TableCell>
+      </TableRow>
+    ))
+  ), [tenants, getRowClassName, formatDocument, formatPhone, getStatusBadge, handleViewTenant, handleEditTenant, handleDelete]);
 
   if (isLoading) {
     return (
@@ -206,7 +271,7 @@ export default function TenantsPage() {
           onSearchChange={setSearchTerm}
           statusFilter={statusFilter}
           onStatusFilterChange={(value) => setStatusFilter(value as "all" | "active" | "inactive")}
-          sortBy={sortBy as "alphabetical" | "recent"}
+          sortBy={sortBy}
           onSortChange={(value) => setSortBy(value as "alphabetical" | "recent")}
           totalCount={tenants.length}
         />
@@ -247,61 +312,18 @@ export default function TenantsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {tenants.map((tenant) => (
-                  <TableRow
-                    key={tenant.id}
-                    className={getRowClassName(tenant)}
-                    onClick={() => handleViewTenant(tenant)}
-                  >
-                    <TableCell className="font-medium">{tenant.name}</TableCell>
-                    <TableCell>{formatDocument(tenant)}</TableCell>
-                    <TableCell>{formatPhone(tenant.phone)}</TableCell>
-                    <TableCell>{tenant.email || "-"}</TableCell>
-                    <TableCell>{getStatusBadge(tenant.status)}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleViewTenant(tenant);
-                          }}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => handleEditTenant(tenant, e)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => handleDelete(tenant.id, e)}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {tableRows}
               </TableBody>
             </Table>
           </div>
         )}
 
         <TenantFormDialog
-          open={isFormOpen}
-          onOpenChange={(open) => {
-            setIsFormOpen(open);
-            if (!open) setSelectedTenant(null);
-          }}
+          open={dialogState.isOpen}
+          onOpenChange={handleDialogClose}
           onSave={handleSave}
-          tenant={selectedTenant || undefined}
-          isViewMode={isViewMode}
+          tenant={dialogState.selectedTenant || undefined}
+          isViewMode={dialogState.isViewMode}
         />
 
         <TenantDeleteAlert

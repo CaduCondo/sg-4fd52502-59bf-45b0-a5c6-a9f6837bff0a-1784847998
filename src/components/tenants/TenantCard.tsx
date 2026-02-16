@@ -1,3 +1,4 @@
+import { memo, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,32 +12,34 @@ interface TenantCardProps {
   viewMode?: "grid" | "list";
 }
 
-export function TenantCard({ tenant, onClick, onDelete, viewMode = "grid" }: TenantCardProps) {
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "active":
-        return "bg-green-500 hover:bg-green-600";
-      case "rented":
-        return "bg-blue-500 hover:bg-blue-600";
-      case "inactive":
-        return "bg-red-500 hover:bg-red-600";
-      default:
-        return "bg-gray-500 hover:bg-gray-600";
-    }
-  };
+const STATUS_STYLES = {
+  active: "bg-green-500 hover:bg-green-600",
+  rented: "bg-blue-500 hover:bg-blue-600",
+  inactive: "bg-red-500 hover:bg-red-600",
+  default: "bg-gray-500 hover:bg-gray-600",
+} as const;
 
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case "active":
-        return "Ativo";
-      case "rented":
-        return "Locatário";
-      case "inactive":
-        return "Inativo";
-      default:
-        return status;
-    }
-  };
+const STATUS_LABELS = {
+  active: "Ativo",
+  rented: "Locatário",
+  inactive: "Inativo",
+} as const;
+
+export const TenantCard = memo(function TenantCard({ tenant, onClick, onDelete, viewMode = "grid" }: TenantCardProps) {
+  const statusColor = useMemo(() => 
+    STATUS_STYLES[tenant.status as keyof typeof STATUS_STYLES] || STATUS_STYLES.default,
+    [tenant.status]
+  );
+
+  const statusLabel = useMemo(() => 
+    STATUS_LABELS[tenant.status as keyof typeof STATUS_LABELS] || tenant.status,
+    [tenant.status]
+  );
+
+  const displayDocument = useMemo(() => 
+    tenant.document || tenant.cpf || "N/A",
+    [tenant.document, tenant.cpf]
+  );
 
   if (viewMode === "list") {
     return (
@@ -55,14 +58,14 @@ export function TenantCard({ tenant, onClick, onDelete, viewMode = "grid" }: Ten
                   <h3 className="text-base sm:text-lg font-semibold text-blue-600 dark:text-blue-400 truncate">
                     {tenant.name}
                   </h3>
-                  <Badge className={`${getStatusColor(tenant.status)} text-white px-2 sm:px-3 py-0.5 sm:py-1 text-xs font-medium rounded-md flex-shrink-0 sm:hidden`}>
-                    {getStatusLabel(tenant.status)}
+                  <Badge className={`${statusColor} text-white px-2 sm:px-3 py-0.5 sm:py-1 text-xs font-medium rounded-md flex-shrink-0 sm:hidden`}>
+                    {statusLabel}
                   </Badge>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 text-xs sm:text-sm text-slate-600 dark:text-slate-400">
                   <div className="flex items-center gap-2 truncate">
                     <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-400 flex-shrink-0" />
-                    <span className="truncate">CPF: {tenant.document || tenant.cpf || "N/A"}</span>
+                    <span className="truncate">CPF: {displayDocument}</span>
                   </div>
                   <div className="flex items-center gap-2 truncate">
                     <Mail className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-400 flex-shrink-0" />
@@ -76,8 +79,8 @@ export function TenantCard({ tenant, onClick, onDelete, viewMode = "grid" }: Ten
               </div>
             </div>
             <div className="flex items-center justify-between sm:justify-end gap-3 flex-shrink-0">
-              <Badge className={`${getStatusColor(tenant.status)} text-white px-3 sm:px-4 py-1 sm:py-1.5 text-xs sm:text-sm font-medium rounded-md hidden sm:inline-flex`}>
-                {getStatusLabel(tenant.status)}
+              <Badge className={`${statusColor} text-white px-3 sm:px-4 py-1 sm:py-1.5 text-xs sm:text-sm font-medium rounded-md hidden sm:inline-flex`}>
+                {statusLabel}
               </Badge>
               <Button
                 variant="ghost"
@@ -112,15 +115,15 @@ export function TenantCard({ tenant, onClick, onDelete, viewMode = "grid" }: Ten
               {tenant.name}
             </h3>
           </div>
-          <Badge className={`${getStatusColor(tenant.status)} text-white px-2 sm:px-3 py-0.5 sm:py-1 text-xs font-medium rounded-md flex-shrink-0`}>
-            {getStatusLabel(tenant.status)}
+          <Badge className={`${statusColor} text-white px-2 sm:px-3 py-0.5 sm:py-1 text-xs font-medium rounded-md flex-shrink-0`}>
+            {statusLabel}
           </Badge>
         </div>
         
         <div className="space-y-2 text-xs sm:text-sm text-slate-600 dark:text-slate-400">
           <div className="flex items-center gap-2">
             <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-400 flex-shrink-0" strokeWidth={1.5} />
-            <span className="truncate">CPF: {tenant.document || tenant.cpf || "N/A"}</span>
+            <span className="truncate">CPF: {displayDocument}</span>
           </div>
           <div className="flex items-center gap-2">
             <CreditCard className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-400 flex-shrink-0" strokeWidth={1.5} />
@@ -150,4 +153,4 @@ export function TenantCard({ tenant, onClick, onDelete, viewMode = "grid" }: Ten
       </CardContent>
     </Card>
   );
-}
+});

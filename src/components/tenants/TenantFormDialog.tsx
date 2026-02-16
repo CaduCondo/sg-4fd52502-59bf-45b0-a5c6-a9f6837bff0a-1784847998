@@ -1,6 +1,6 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, memo } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -16,7 +16,272 @@ interface TenantFormDialogProps {
   isViewMode?: boolean;
 }
 
-export function TenantFormDialog({
+interface FormState {
+  name: string;
+  email: string;
+  phone: string;
+  document: string;
+  cpf: string;
+  cnpj: string;
+  rg: string;
+  cep: string;
+  street: string;
+  number: string;
+  complement: string;
+  neighborhood: string;
+  city: string;
+  state: string;
+  status: "active" | "inactive" | "rented";
+}
+
+const INITIAL_FORM_STATE: FormState = {
+  name: "",
+  email: "",
+  phone: "",
+  document: "",
+  cpf: "",
+  cnpj: "",
+  rg: "",
+  cep: "",
+  street: "",
+  number: "",
+  complement: "",
+  neighborhood: "",
+  city: "",
+  state: "",
+  status: "active",
+};
+
+const PersonalDataSection = memo(function PersonalDataSection({
+  formData,
+  documentType,
+  isEditing,
+  onFieldChange,
+  onPhoneChange,
+  onCpfChange,
+  onCnpjChange,
+  onRgChange,
+  onStatusChange,
+  showStatus,
+}: {
+  formData: FormState;
+  documentType: "cpf" | "cnpj";
+  isEditing: boolean;
+  onFieldChange: (field: keyof FormState, value: string) => void;
+  onPhoneChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onCpfChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onCnpjChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onRgChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onStatusChange: (value: string) => void;
+  showStatus: boolean;
+}) {
+  return (
+    <div className="space-y-3">
+      <h3 className="text-sm font-semibold text-muted-foreground">Dados Pessoais</h3>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+        <div className="space-y-2 sm:col-span-2">
+          <Label htmlFor="name" className="text-sm font-medium">Nome Completo *</Label>
+          <Input
+            id="name"
+            value={formData.name}
+            onChange={(e) => onFieldChange("name", e.target.value)}
+            placeholder="Nome completo"
+            required
+            disabled={!isEditing}
+            className="h-11 sm:h-10 text-sm mobile-input"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="document" className="text-sm font-medium">CPF/CNPJ *</Label>
+          <Input
+            id="document"
+            value={documentType === "cpf" ? formData.cpf : formData.cnpj}
+            onChange={documentType === "cpf" ? onCpfChange : onCnpjChange}
+            placeholder={documentType === "cpf" ? "000.000.000-00" : "00.000.000/0000-00"}
+            required
+            disabled={!isEditing}
+            className="h-11 sm:h-10 text-sm mobile-input"
+          />
+        </div>
+
+        {documentType === "cpf" && (
+          <div className="space-y-2">
+            <Label htmlFor="rg" className="text-sm font-medium">RG</Label>
+            <Input
+              id="rg"
+              value={formData.rg}
+              onChange={onRgChange}
+              placeholder="00.000.000-0"
+              disabled={!isEditing}
+              className="h-11 sm:h-10 text-sm mobile-input"
+            />
+          </div>
+        )}
+
+        <div className="space-y-2">
+          <Label htmlFor="phone" className="text-sm font-medium">Telefone *</Label>
+          <Input
+            id="phone"
+            value={formData.phone}
+            onChange={onPhoneChange}
+            placeholder="(00) 00000-0000"
+            required
+            disabled={!isEditing}
+            className="h-11 sm:h-10 text-sm mobile-input"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="email" className="text-sm font-medium">E-mail *</Label>
+          <Input
+            id="email"
+            type="email"
+            value={formData.email}
+            onChange={(e) => onFieldChange("email", e.target.value)}
+            placeholder="email@exemplo.com"
+            required
+            disabled={!isEditing}
+            className="h-11 sm:h-10 text-sm mobile-input"
+          />
+        </div>
+
+        {showStatus && (
+          <div className="space-y-2">
+            <Label htmlFor="status" className="text-sm font-medium">Status *</Label>
+            <Select
+              value={formData.status}
+              onValueChange={onStatusChange}
+              disabled={!isEditing}
+            >
+              <SelectTrigger className="h-11 sm:h-10">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="active">Ativo</SelectItem>
+                <SelectItem value="inactive">Inativo</SelectItem>
+                {formData.status === "rented" && <SelectItem value="rented">Alugado</SelectItem>}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+});
+
+const AddressSection = memo(function AddressSection({
+  formData,
+  isEditing,
+  loadingCep,
+  onFieldChange,
+  onCepChange,
+}: {
+  formData: FormState;
+  isEditing: boolean;
+  loadingCep: boolean;
+  onFieldChange: (field: keyof FormState, value: string) => void;
+  onCepChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+}) {
+  return (
+    <div className="space-y-3 pt-2 border-t">
+      <h3 className="text-sm font-semibold text-muted-foreground">Endereço</h3>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="cep" className="text-sm font-medium">CEP</Label>
+          <div className="relative">
+            <Input
+              id="cep"
+              value={formData.cep}
+              onChange={onCepChange}
+              placeholder="00000-000"
+              disabled={!isEditing}
+              className="h-11 sm:h-10 text-sm mobile-input"
+            />
+            {loadingCep && (
+              <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+            )}
+          </div>
+        </div>
+
+        <div className="space-y-2 sm:col-span-2 lg:col-span-3">
+          <Label htmlFor="street" className="text-sm font-medium">Rua/Logradouro</Label>
+          <Input
+            id="street"
+            value={formData.street}
+            onChange={(e) => onFieldChange("street", e.target.value)}
+            placeholder="Rua, avenida, etc."
+            disabled={!isEditing}
+            className="h-11 sm:h-10 text-sm mobile-input"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="number" className="text-sm font-medium">Número</Label>
+          <Input
+            id="number"
+            value={formData.number}
+            onChange={(e) => onFieldChange("number", e.target.value)}
+            placeholder="123"
+            disabled={!isEditing}
+            className="h-11 sm:h-10 text-sm mobile-input"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="complement" className="text-sm font-medium">Complemento</Label>
+          <Input
+            id="complement"
+            value={formData.complement}
+            onChange={(e) => onFieldChange("complement", e.target.value)}
+            placeholder="Apto, casa, etc."
+            disabled={!isEditing}
+            className="h-11 sm:h-10 text-sm mobile-input"
+          />
+        </div>
+
+        <div className="space-y-2 lg:col-span-2">
+          <Label htmlFor="neighborhood" className="text-sm font-medium">Bairro</Label>
+          <Input
+            id="neighborhood"
+            value={formData.neighborhood}
+            onChange={(e) => onFieldChange("neighborhood", e.target.value)}
+            placeholder="Bairro"
+            disabled={!isEditing}
+            className="h-11 sm:h-10 text-sm mobile-input"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="city" className="text-sm font-medium">Cidade</Label>
+          <Input
+            id="city"
+            value={formData.city}
+            onChange={(e) => onFieldChange("city", e.target.value)}
+            placeholder="Cidade"
+            disabled={!isEditing}
+            className="h-11 sm:h-10 text-sm mobile-input"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="state" className="text-sm font-medium">Estado</Label>
+          <Input
+            id="state"
+            value={formData.state}
+            onChange={(e) => onFieldChange("state", e.target.value.toUpperCase().slice(0, 2))}
+            placeholder="UF"
+            maxLength={2}
+            disabled={!isEditing}
+            className="h-11 sm:h-10 text-sm mobile-input uppercase"
+          />
+        </div>
+      </div>
+    </div>
+  );
+});
+
+export const TenantFormDialog = memo(function TenantFormDialog({
   open,
   onOpenChange,
   tenant,
@@ -26,107 +291,67 @@ export function TenantFormDialog({
   const [isEditing, setIsEditing] = useState(!isViewMode);
   const [documentType, setDocumentType] = useState<"cpf" | "cnpj">("cpf");
   const [loadingCep, setLoadingCep] = useState(false);
-  
-  // Estados individuais para cada campo
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [document, setDocument] = useState("");
-  const [cpf, setCpf] = useState("");
-  const [cnpj, setCnpj] = useState("");
-  const [rg, setRg] = useState("");
-  const [cep, setCep] = useState("");
-  const [street, setStreet] = useState("");
-  const [number, setNumber] = useState("");
-  const [complement, setComplement] = useState("");
-  const [neighborhood, setNeighborhood] = useState("");
-  const [city, setCity] = useState("");
-  const [state, setState] = useState("");
-  const [status, setStatus] = useState<"active" | "inactive" | "rented">("active");
+  const [formData, setFormData] = useState<FormState>(INITIAL_FORM_STATE);
 
-  // Carrega os dados quando o dialog abre ou o tenant muda
   useEffect(() => {
-    if (!open) {
-      return;
-    }
+    if (!open) return;
 
     setIsEditing(!isViewMode);
 
     if (tenant) {
       const docType = tenant.document_type || tenant.documentType || "cpf";
       
-      setName(tenant.name || "");
-      setEmail(tenant.email || "");
-      setPhone(tenant.phone || "");
-      setDocument(tenant.document || "");
-      setCpf(tenant.cpf || (docType === "cpf" ? tenant.document : "") || "");
-      setCnpj(tenant.cnpj || (docType === "cnpj" ? tenant.document : "") || "");
-      setRg(tenant.rg || "");
-      setCep(tenant.cep || "");
-      setStreet(tenant.street || "");
-      setNumber(tenant.number || "");
-      setComplement(tenant.complement || "");
-      setNeighborhood(tenant.neighborhood || "");
-      setCity(tenant.city || "");
-      setState(tenant.state || "");
-      setStatus(tenant.status || "active");
+      setFormData({
+        name: tenant.name || "",
+        email: tenant.email || "",
+        phone: tenant.phone || "",
+        document: tenant.document || "",
+        cpf: tenant.cpf || (docType === "cpf" ? tenant.document : "") || "",
+        cnpj: tenant.cnpj || (docType === "cnpj" ? tenant.document : "") || "",
+        rg: tenant.rg || "",
+        cep: tenant.cep || "",
+        street: tenant.street || "",
+        number: tenant.number || "",
+        complement: tenant.complement || "",
+        neighborhood: tenant.neighborhood || "",
+        city: tenant.city || "",
+        state: tenant.state || "",
+        status: tenant.status || "active",
+      });
       setDocumentType(docType);
     } else {
-      // Novo inquilino - limpa todos os campos
-      setName("");
-      setEmail("");
-      setPhone("");
-      setDocument("");
-      setCpf("");
-      setCnpj("");
-      setRg("");
-      setCep("");
-      setStreet("");
-      setNumber("");
-      setComplement("");
-      setNeighborhood("");
-      setCity("");
-      setState("");
-      setStatus("active");
+      setFormData(INITIAL_FORM_STATE);
       setDocumentType("cpf");
     }
   }, [open, tenant, isViewMode]);
 
-  const handleDocumentTypeChange = (type: "cpf" | "cnpj") => {
-    setDocumentType(type);
-    setDocument("");
-    setCpf("");
-    setCnpj("");
-    if (type === "cnpj") {
-      setRg("");
-    }
-  };
+  const handleFieldChange = useCallback((field: keyof FormState, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  }, []);
 
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhoneChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const masked = applyPhoneMask(e.target.value);
-    setPhone(masked);
-  };
+    setFormData(prev => ({ ...prev, phone: masked }));
+  }, []);
 
-  const handleCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCpfChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const masked = applyCpfMask(e.target.value);
-    setCpf(masked);
-    setDocument(masked);
-  };
+    setFormData(prev => ({ ...prev, cpf: masked, document: masked }));
+  }, []);
 
-  const handleCnpjChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCnpjChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const masked = applyCnpjMask(e.target.value);
-    setCnpj(masked);
-    setDocument(masked);
-  };
+    setFormData(prev => ({ ...prev, cnpj: masked, document: masked }));
+  }, []);
 
-  const handleRgChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleRgChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const masked = applyRgMask(e.target.value);
-    setRg(masked);
-  };
+    setFormData(prev => ({ ...prev, rg: masked }));
+  }, []);
 
-  const handleCepChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCepChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const masked = applyCepMask(e.target.value);
-    setCep(masked);
+    setFormData(prev => ({ ...prev, cep: masked }));
 
     const cleanCep = masked.replace(/\D/g, "");
     if (cleanCep.length === 8) {
@@ -134,51 +359,64 @@ export function TenantFormDialog({
       try {
         const address = await fetchAddressByCEP(cleanCep);
         if (address && !address.erro) {
-          setStreet(address.logradouro || "");
-          setNeighborhood(address.bairro || "");
-          setCity(address.localidade || "");
-          setState(address.uf || "");
+          setFormData(prev => ({
+            ...prev,
+            street: address.logradouro || "",
+            neighborhood: address.bairro || "",
+            city: address.localidade || "",
+            state: address.uf || "",
+          }));
         }
       } catch (error) {
-        console.error("Erro ao buscar CEP:", error);
+        // Silently fail
       } finally {
         setLoadingCep(false);
       }
     }
-  };
+  }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleStatusChange = useCallback((value: string) => {
+    setFormData(prev => ({ ...prev, status: value as "active" | "inactive" | "rented" }));
+  }, []);
+
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
 
     const dataToSave: Partial<Tenant> = {
-      name,
-      email,
-      phone,
+      name: formData.name,
+      email: formData.email,
+      phone: formData.phone,
       documentType,
-      cep,
-      street,
-      number,
-      complement,
-      neighborhood,
-      city,
-      state,
-      status,
+      cep: formData.cep,
+      street: formData.street,
+      number: formData.number,
+      complement: formData.complement,
+      neighborhood: formData.neighborhood,
+      city: formData.city,
+      state: formData.state,
+      status: formData.status,
     };
 
     if (documentType === "cpf") {
-      dataToSave.document = cpf;
-      dataToSave.cpf = cpf;
-      dataToSave.rg = rg;
+      dataToSave.document = formData.cpf;
+      dataToSave.cpf = formData.cpf;
+      dataToSave.rg = formData.rg;
     } else {
-      dataToSave.document = cnpj;
-      dataToSave.cnpj = cnpj;
+      dataToSave.document = formData.cnpj;
+      dataToSave.cnpj = formData.cnpj;
     }
 
     const success = await onSave(dataToSave);
     if (success) {
       onOpenChange(false);
     }
-  };
+  }, [formData, documentType, onSave, onOpenChange]);
+
+  const handleEdit = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsEditing(true);
+  }, []);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -197,194 +435,26 @@ export function TenantFormDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Dados Pessoais */}
-          <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-muted-foreground">Dados Pessoais</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-              <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="name" className="text-sm font-medium">Nome Completo *</Label>
-                <Input
-                  id="name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Nome completo"
-                  required
-                  disabled={!isEditing}
-                  className="h-11 sm:h-10 text-sm mobile-input"
-                />
-              </div>
+          <PersonalDataSection
+            formData={formData}
+            documentType={documentType}
+            isEditing={isEditing}
+            onFieldChange={handleFieldChange}
+            onPhoneChange={handlePhoneChange}
+            onCpfChange={handleCpfChange}
+            onCnpjChange={handleCnpjChange}
+            onRgChange={handleRgChange}
+            onStatusChange={handleStatusChange}
+            showStatus={!!tenant}
+          />
 
-              <div className="space-y-2">
-                <Label htmlFor="document" className="text-sm font-medium">CPF/CNPJ *</Label>
-                <Input
-                  id="document"
-                  value={documentType === "cpf" ? cpf : cnpj}
-                  onChange={documentType === "cpf" ? handleCpfChange : handleCnpjChange}
-                  placeholder={documentType === "cpf" ? "000.000.000-00" : "00.000.000/0000-00"}
-                  required
-                  disabled={!isEditing}
-                  className="h-11 sm:h-10 text-sm mobile-input"
-                />
-              </div>
-
-              {documentType === "cpf" && (
-                <div className="space-y-2">
-                  <Label htmlFor="rg" className="text-sm font-medium">RG</Label>
-                  <Input
-                    id="rg"
-                    value={rg}
-                    onChange={handleRgChange}
-                    placeholder="00.000.000-0"
-                    disabled={!isEditing}
-                    className="h-11 sm:h-10 text-sm mobile-input"
-                  />
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <Label htmlFor="phone" className="text-sm font-medium">Telefone *</Label>
-                <Input
-                  id="phone"
-                  value={phone}
-                  onChange={handlePhoneChange}
-                  placeholder="(00) 00000-0000"
-                  required
-                  disabled={!isEditing}
-                  className="h-11 sm:h-10 text-sm mobile-input"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-medium">E-mail *</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="email@exemplo.com"
-                  required
-                  disabled={!isEditing}
-                  className="h-11 sm:h-10 text-sm mobile-input"
-                />
-              </div>
-
-              {tenant && (
-                <div className="space-y-2">
-                  <Label htmlFor="status" className="text-sm font-medium">Status *</Label>
-                  <Select
-                    value={status}
-                    onValueChange={(value) => setStatus(value as "active" | "inactive" | "rented")}
-                    disabled={!isEditing}
-                  >
-                    <SelectTrigger className="h-11 sm:h-10">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="active">Ativo</SelectItem>
-                      <SelectItem value="inactive">Inativo</SelectItem>
-                      {status === "rented" && <SelectItem value="rented">Alugado</SelectItem>}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Endereço */}
-          <div className="space-y-3 pt-2 border-t">
-            <h3 className="text-sm font-semibold text-muted-foreground">Endereço</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="cep" className="text-sm font-medium">CEP</Label>
-                <div className="relative">
-                  <Input
-                    id="cep"
-                    value={cep}
-                    onChange={handleCepChange}
-                    placeholder="00000-000"
-                    disabled={!isEditing}
-                    className="h-11 sm:h-10 text-sm mobile-input"
-                  />
-                  {loadingCep && (
-                    <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-2 sm:col-span-2 lg:col-span-3">
-                <Label htmlFor="street" className="text-sm font-medium">Rua/Logradouro</Label>
-                <Input
-                  id="street"
-                  value={street}
-                  onChange={(e) => setStreet(e.target.value)}
-                  placeholder="Rua, avenida, etc."
-                  disabled={!isEditing}
-                  className="h-11 sm:h-10 text-sm mobile-input"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="number" className="text-sm font-medium">Número</Label>
-                <Input
-                  id="number"
-                  value={number}
-                  onChange={(e) => setNumber(e.target.value)}
-                  placeholder="123"
-                  disabled={!isEditing}
-                  className="h-11 sm:h-10 text-sm mobile-input"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="complement" className="text-sm font-medium">Complemento</Label>
-                <Input
-                  id="complement"
-                  value={complement}
-                  onChange={(e) => setComplement(e.target.value)}
-                  placeholder="Apto, casa, etc."
-                  disabled={!isEditing}
-                  className="h-11 sm:h-10 text-sm mobile-input"
-                />
-              </div>
-
-              <div className="space-y-2 lg:col-span-2">
-                <Label htmlFor="neighborhood" className="text-sm font-medium">Bairro</Label>
-                <Input
-                  id="neighborhood"
-                  value={neighborhood}
-                  onChange={(e) => setNeighborhood(e.target.value)}
-                  placeholder="Bairro"
-                  disabled={!isEditing}
-                  className="h-11 sm:h-10 text-sm mobile-input"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="city" className="text-sm font-medium">Cidade</Label>
-                <Input
-                  id="city"
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  placeholder="Cidade"
-                  disabled={!isEditing}
-                  className="h-11 sm:h-10 text-sm mobile-input"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="state" className="text-sm font-medium">Estado</Label>
-                <Input
-                  id="state"
-                  value={state}
-                  onChange={(e) => setState(e.target.value.toUpperCase().slice(0, 2))}
-                  placeholder="UF"
-                  maxLength={2}
-                  disabled={!isEditing}
-                  className="h-11 sm:h-10 text-sm mobile-input uppercase"
-                />
-              </div>
-            </div>
-          </div>
+          <AddressSection
+            formData={formData}
+            isEditing={isEditing}
+            loadingCep={loadingCep}
+            onFieldChange={handleFieldChange}
+            onCepChange={handleCepChange}
+          />
 
           <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2 pt-3 border-t">
             {isViewMode && !isEditing ? (
@@ -399,11 +469,7 @@ export function TenantFormDialog({
                 </Button>
                 <Button 
                   type="button" 
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setIsEditing(true);
-                  }}
+                  onClick={handleEdit}
                   className="h-11 sm:h-10 touch-target"
                 >
                   <Pencil className="h-4 w-4 mr-2" />
@@ -433,4 +499,4 @@ export function TenantFormDialog({
       </DialogContent>
     </Dialog>
   );
-}
+});
