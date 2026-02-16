@@ -24,6 +24,7 @@ function mapPaymentFromDB(data: any): Payment {
     expectedAmount: data.expected_amount,
     paidAmount: data.paid_amount,
     paymentDate: data.payment_date,
+    paymentTime: data.payment_time, // Mapped from DB
     paymentMethod: data.payment_method,
     referenceMonth: data.reference_month ? parseInt(data.reference_month) : undefined,
     referenceYear: data.reference_year ? parseInt(data.reference_year) : undefined,
@@ -49,6 +50,7 @@ function mapPaymentToDB(data: Partial<Payment>): any {
   if (data.expectedAmount) dbData.expected_amount = data.expectedAmount;
   if (data.paidAmount) dbData.paid_amount = data.paidAmount;
   if (data.paymentDate) dbData.payment_date = data.paymentDate;
+  if (data.paymentTime) dbData.payment_time = data.paymentTime; // Mapped to DB
   if (data.paymentMethod) dbData.payment_method = data.paymentMethod;
   if (data.referenceMonth !== undefined) dbData.reference_month = data.referenceMonth;
   if (data.referenceYear !== undefined) dbData.reference_year = data.referenceYear;

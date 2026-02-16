@@ -231,6 +231,7 @@ export interface Payment {
   paymentMethod?: string;
   paymentLocation?: string;
   paymentCode?: string;
+  paymentTime?: string; // Horário do recebimento (HH:MM)
   notes?: string;
   referenceMonth: number;
   referenceYear: number;
