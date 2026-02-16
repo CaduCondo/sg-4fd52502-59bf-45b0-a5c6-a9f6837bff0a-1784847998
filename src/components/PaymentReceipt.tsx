@@ -90,28 +90,37 @@ export function PaymentReceipt({
   
   console.log("Recibo Valores Finais:", { lateFee, interest });
 
-  // Usar type e breakdown do banco, com fallback para payment
-  const paymentType = typeFromDB || payment.type || "";
+  // Usar breakdown do banco, com fallback para payment
   const paymentBreakdown = breakdownFromDB || payment.breakdown;
   
-  console.log("🔍 FONTE DOS DADOS:");
-  console.log("  typeFromDB:", typeFromDB, "→ usando:", paymentType);
-  console.log("  breakdownFromDB:", breakdownFromDB ? "EXISTS" : "NULL", "→ usando:", paymentBreakdown ? "EXISTS" : "NULL");
+  console.log("🔍 FONTE DO BREAKDOWN:", breakdownFromDB ? "BANCO" : (payment.breakdown ? "PROP" : "NENHUM"));
 
   // Estrutura para armazenar os itens do breakdown
   const breakdownItems: BreakdownItem[] = [];
   let totalAmount = 0;
   
-  console.log("🔍 INICIANDO PROCESSAMENTO DO BREAKDOWN");
-  console.log("  payment.type:", payment.type);
-  console.log("  paymentType (do banco):", paymentType);
-  console.log("  isTermination:", paymentType === "termination");
-  console.log("  payment.breakdown (tipo):", typeof payment.breakdown);
-  console.log("  payment.breakdown (conteúdo):", payment.breakdown);
-  console.log("  paymentBreakdown (do banco - tipo):", typeof paymentBreakdown);
-  console.log("  paymentBreakdown (do banco - conteúdo):", JSON.stringify(paymentBreakdown, null, 2));
+  // Detectar rescisão baseada no conteúdo do breakdown
+  let isTermination = payment.type === "termination"; // Fallback inicial
+  let isTerminationDetectedFromBreakdown = false;
+
+  if (paymentBreakdown) {
+    const breakdownStr = JSON.stringify(paymentBreakdown);
+    if (breakdownStr.includes("Multa Rescisória") || 
+        breakdownStr.includes("Devolução de Caução") || 
+        breakdownStr.includes("Aluguel Proporcional") ||
+        breakdownStr.includes("terminationFee") ||
+        breakdownStr.includes("depositRefund") ||
+        breakdownStr.includes("proportionalRent")) {
+      isTermination = true;
+      isTerminationDetectedFromBreakdown = true;
+      console.log("✅ DETECTADA RESCISÃO PELO CONTEÚDO DO BREAKDOWN!");
+    }
+  }
   
-  const isTermination = paymentType === "termination";
+  console.log("🔍 DIAGNÓSTICO DE TIPO:");
+  console.log("  payment.type:", payment.type);
+  console.log("  isTerminationDetectedFromBreakdown:", isTerminationDetectedFromBreakdown);
+  console.log("  isTermination (FINAL):", isTermination);
   
   // Se é rescisão e tem breakdown, processar os valores específicos
   if (isTermination && paymentBreakdown) {
