@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { useRouter } from "next/router";
 import { Layout } from "@/components/Layout";
 import { PaymentCard } from "@/components/payments/PaymentCard";
@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Grid3x3, List, Plus, Search } from "lucide-react";
+import { Grid3x3, List, Search } from "lucide-react";
 import { usePayments } from "@/hooks/usePayments";
 import { Payment } from "@/types";
 import { PeriodSelector } from "@/components/dashboard/PeriodSelector";
@@ -15,8 +15,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ManagePaymentForm } from "@/components/payments/ManagePaymentForm";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PaymentFilters } from "@/components/payments/PaymentFilters";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,32 +26,37 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
+const MONTH_NAMES = [
+  "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+];
+
 export default function PaymentsPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { user } = useAuth();
+  const mountedRef = useRef(false);
   
   // Permissões baseadas na role do usuário
-  const isAdmin = user?.role === "admin";
-  const canCreate = isAdmin || user?.role === "financial";
-  const canDelete = isAdmin;
+  const permissions = useMemo(() => ({
+    isAdmin: user?.role === "admin",
+    canCreate: user?.role === "admin" || user?.role === "financial",
+    canDelete: user?.role === "admin",
+  }), [user?.role]);
 
-  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
-  const [showReceiptDialog, setShowReceiptDialog] = useState(false);
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "paid" | "pending" | "overdue">("all");
-  const [selectedPaymentId, setSelectedPaymentId] = useState<string | null>(null);
-  const [paymentToCancel, setPaymentToCancel] = useState<string | null>(null);
-  const mountedRef = useRef(false);
+  // Estados consolidados
+  const [uiState, setUiState] = useState({
+    viewMode: "grid" as "grid" | "list",
+    searchQuery: "",
+    selectedPaymentId: null as string | null,
+    paymentToCancel: null as string | null,
+    showReceiptDialog: false,
+    selectedPayment: null as Payment | null,
+  });
 
   const [filters, setFilters] = useState({
     month: new Date().getMonth() + 1,
     year: new Date().getFullYear(),
-    status: "all" as "all" | "pending" | "paid" | "overdue" | "partial",
-    propertyId: "all",
-    tenantId: "all",
   });
 
   const { 
@@ -66,96 +69,7 @@ export default function PaymentsPage() {
     loadPayments
   } = usePayments();
 
-  // Carregar pagamentos quando os filtros mudarem
-  useEffect(() => {
-    if (!mountedRef.current) {
-      mountedRef.current = true;
-      return;
-    }
-    loadPayments(filters.month.toString(), filters.year.toString());
-  }, [filters.month, filters.year, loadPayments]);
-
-  // Carregar inicial
-  useEffect(() => {
-    loadPayments(filters.month.toString(), filters.year.toString());
-  }, []);
-
-  const handleFilterChange = useCallback((newFilters: any) => {
-    const formattedFilters = {
-      ...newFilters,
-      month: Number(newFilters.month) || new Date().getMonth() + 1,
-      year: Number(newFilters.year) || new Date().getFullYear(),
-    };
-    setFilters(formattedFilters);
-  }, []);
-
-  const handleMonthChange = (value: string | number) => {
-    setFilters(prev => ({ ...prev, month: Number(value) }));
-  };
-
-  const handleYearChange = (value: string | number) => {
-    setFilters(prev => ({ ...prev, year: Number(value) }));
-  };
-
-  const handlePaymentClick = useCallback((payment: Payment) => {
-    if (payment.status === "paid") {
-      setSelectedPayment(payment);
-      setShowReceiptDialog(true);
-    } else {
-      setSelectedPaymentId(payment.id);
-      setShowReceiptDialog(true);
-    }
-  }, []);
-
-  const confirmCancelPayment = useCallback(async () => {
-    if (!paymentToCancel) return;
-
-    try {
-      await cancelPayment(paymentToCancel);
-      
-      // Fechar o AlertDialog primeiro
-      setPaymentToCancel(null);
-      
-      // Recarregar pagamentos mantendo os filtros atuais
-      await loadPayments(filters.month.toString(), filters.year.toString());
-      
-      toast({
-        title: "Recebimento cancelado",
-        description: "O recebimento foi cancelado com sucesso.",
-      });
-    } catch (error) {
-      // Erro já tratado no hook
-      // Fechar o AlertDialog mesmo em caso de erro
-      setPaymentToCancel(null);
-    }
-  }, [paymentToCancel, cancelPayment, loadPayments, filters.month, filters.year, toast]);
-
-  const handleCancelPayment = useCallback(async (paymentId: string, e?: React.MouseEvent) => {
-    // Prevenir propagação do evento
-    if (e) {
-      e.stopPropagation();
-      e.preventDefault();
-    }
-
-    if (!canDelete) {
-      toast({
-        title: "Acesso negado",
-        description: "Você não tem permissão para cancelar recebimentos",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Abrir diretamente o AlertDialog de confirmação
-    setPaymentToCancel(paymentId);
-  }, [canDelete, toast]);
-
-  const handleViewReceipt = useCallback((payment: Payment) => {
-    setSelectedPayment(payment);
-    setShowReceiptDialog(true);
-  }, []);
-
-  // Helpers para buscar dados relacionados
+  // Helpers memoizados
   const getPropertyForPayment = useCallback((payment: Payment) => {
     const rental = rentals.find(r => r.id === payment.rentalId);
     if (!rental) return null;
@@ -168,88 +82,162 @@ export default function PaymentsPage() {
     return tenants.find(t => t.id === rental.tenantId) || null;
   }, [rentals, tenants]);
 
-  const getPaymentInstallment = (payment: Payment) => {
+  const getPaymentInstallment = useCallback((payment: Payment) => {
     if (!payment.installment || !payment.totalInstallments) return "Única";
     return `${payment.installment}/${payment.totalInstallments}`;
-  };
+  }, []);
 
-  const getExpectedAmount = (payment: Payment) => {
+  const getExpectedAmount = useCallback((payment: Payment) => {
     return payment.expectedAmount;
-  };
+  }, []);
 
-  const filteredPayments = useMemo(() => {
-    return payments.filter(p => {
-      // Filtro de status
-      if (filters.status !== "all" && p.status !== filters.status) return false;
+  const getMonthName = useCallback((month: number) => {
+    return MONTH_NAMES[month - 1] || "";
+  }, []);
+
+  // Carregar pagamentos quando os filtros mudarem
+  const loadPaymentsEffect = useCallback(() => {
+    if (!mountedRef.current) {
+      mountedRef.current = true;
+      loadPayments(filters.month.toString(), filters.year.toString());
+      return;
+    }
+    loadPayments(filters.month.toString(), filters.year.toString());
+  }, [filters.month, filters.year, loadPayments]);
+
+  // Effect simplificado
+  useEffect(() => {
+    loadPaymentsEffect();
+  }, [loadPaymentsEffect]);
+
+  // Handlers otimizados
+  const handleMonthChange = useCallback((value: string | number) => {
+    setFilters(prev => ({ ...prev, month: Number(value) }));
+  }, []);
+
+  const handleYearChange = useCallback((value: string | number) => {
+    setFilters(prev => ({ ...prev, year: Number(value) }));
+  }, []);
+
+  const handlePaymentClick = useCallback((payment: Payment) => {
+    if (payment.status === "paid") {
+      setUiState(prev => ({
+        ...prev,
+        selectedPayment: payment,
+        showReceiptDialog: true,
+      }));
+    } else {
+      setUiState(prev => ({
+        ...prev,
+        selectedPaymentId: payment.id,
+        showReceiptDialog: true,
+      }));
+    }
+  }, []);
+
+  const confirmCancelPayment = useCallback(async () => {
+    if (!uiState.paymentToCancel) return;
+
+    try {
+      await cancelPayment(uiState.paymentToCancel);
       
-      // Filtro de propriedade e inquilino
-      if (filters.propertyId !== "all" || filters.tenantId !== "all") {
-        const rental = rentals.find(r => r.id === p.rentalId);
-        if (!rental) return false;
+      setUiState(prev => ({ ...prev, paymentToCancel: null }));
+      
+      await loadPayments(filters.month.toString(), filters.year.toString());
+      
+      toast({
+        title: "Recebimento cancelado",
+        description: "O recebimento foi cancelado com sucesso.",
+      });
+    } catch (error) {
+      setUiState(prev => ({ ...prev, paymentToCancel: null }));
+    }
+  }, [uiState.paymentToCancel, cancelPayment, loadPayments, filters.month, filters.year, toast]);
+
+  const handleCancelPayment = useCallback((paymentId: string, e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+
+    if (!permissions.canDelete) {
+      toast({
+        title: "Acesso negado",
+        description: "Você não tem permissão para cancelar recebimentos",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUiState(prev => ({ ...prev, paymentToCancel: paymentId }));
+  }, [permissions.canDelete, toast]);
+
+  const handleViewReceipt = useCallback((payment: Payment) => {
+    setUiState(prev => ({
+      ...prev,
+      selectedPayment: payment,
+      showReceiptDialog: true,
+    }));
+  }, []);
+
+  const handleManagePaymentSuccess = useCallback(async () => {
+    const paymentId = uiState.selectedPaymentId;
+    
+    setUiState(prev => ({ ...prev, selectedPaymentId: null }));
+    
+    await loadPayments(filters.month.toString(), filters.year.toString());
+    
+    setTimeout(() => {
+      const updatedPayment = payments.find(p => p.id === paymentId);
+      
+      if (updatedPayment) {
+        setUiState(prev => ({
+          ...prev,
+          selectedPayment: updatedPayment,
+          showReceiptDialog: true,
+        }));
         
-        if (filters.propertyId !== "all" && rental.propertyId !== filters.propertyId) return false;
-        if (filters.tenantId !== "all" && rental.tenantId !== filters.tenantId) return false;
+        toast({
+          title: "Sucesso!",
+          description: "Recebimento registrado com sucesso.",
+        });
+      } else {
+        toast({
+          title: "Sucesso!",
+          description: "Recebimento registrado com sucesso.",
+        });
       }
+    }, 500);
+  }, [uiState.selectedPaymentId, loadPayments, filters.month, filters.year, payments, toast]);
+
+  // Pagamentos filtrados por busca e separados por status
+  const { pendingPayments, paidPayments } = useMemo(() => {
+    const filterBySearch = (p: Payment) => {
+      if (!uiState.searchQuery) return true;
       
-      return true;
-    });
-  }, [payments, rentals, filters]);
+      const query = uiState.searchQuery.toLowerCase();
+      const rental = rentals.find(r => r.id === p.rentalId);
+      const property = rental ? properties.find(prop => prop.id === rental.propertyId) : null;
+      const tenant = rental ? tenants.find(t => t.id === rental.tenantId) : null;
 
-  const pendingPayments = useMemo(() => {
-    return payments.filter((p) => {
-      // Filtro base de status
+      const propertyAddress = property ? 
+        `${property.address} ${property.number} ${property.complement || ''}`.toLowerCase() : "";
+      const tenantName = tenant ? tenant.name.toLowerCase() : "";
+
+      return propertyAddress.includes(query) || tenantName.includes(query);
+    };
+
+    const pending = payments.filter((p) => {
       const isStatusMatch = p.status === "pending" || p.status === "partial" || p.status === "overdue";
-      if (!isStatusMatch) return false;
-
-      // Filtro de busca por texto
-      if (searchQuery) {
-        const query = searchQuery.toLowerCase();
-        const rental = rentals.find(r => r.id === p.rentalId);
-        const property = rental ? properties.find(prop => prop.id === rental.propertyId) : null;
-        const tenant = rental ? tenants.find(t => t.id === rental.tenantId) : null;
-
-        // Busca em: endereço + número + complemento + nome inquilino
-        const propertyAddress = property ? 
-          `${property.address} ${property.number} ${property.complement || ''}`.toLowerCase() : "";
-        const tenantName = tenant ? tenant.name.toLowerCase() : "";
-
-        return propertyAddress.includes(query) || tenantName.includes(query);
-      }
-
-      return true;
+      return isStatusMatch && filterBySearch(p);
     });
-  }, [payments, searchQuery, rentals, properties, tenants]);
 
-  const paidPayments = useMemo(() => {
-    return payments.filter((p) => {
-      // Filtro base de status
-      if (p.status !== "paid") return false;
-
-      // Filtro de busca por texto
-      if (searchQuery) {
-        const query = searchQuery.toLowerCase();
-        const rental = rentals.find(r => r.id === p.rentalId);
-        const property = rental ? properties.find(prop => prop.id === rental.propertyId) : null;
-        const tenant = rental ? tenants.find(t => t.id === rental.tenantId) : null;
-
-        const propertyAddress = property ? 
-          `${property.address} ${property.number} ${property.complement || ''}`.toLowerCase() : "";
-        const tenantName = tenant ? tenant.name.toLowerCase() : "";
-
-        return propertyAddress.includes(query) || tenantName.includes(query);
-      }
-
-      return true;
+    const paid = payments.filter((p) => {
+      return p.status === "paid" && filterBySearch(p);
     });
-  }, [payments, searchQuery, rentals, properties, tenants]);
 
-  const getMonthName = (month: number) => {
-    const months = [
-      "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
-      "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
-    ];
-    return months[month - 1] || "";
-  };
+    return { pendingPayments: pending, paidPayments: paid };
+  }, [payments, uiState.searchQuery, rentals, properties, tenants]);
 
   return (
     <Layout>
@@ -264,18 +252,18 @@ export default function PaymentsPage() {
           </div>
           <div className="flex gap-1 border rounded-lg p-1">
             <Button
-              variant={viewMode === "grid" ? "default" : "ghost"}
+              variant={uiState.viewMode === "grid" ? "default" : "ghost"}
               size="sm"
-              onClick={() => setViewMode("grid")}
+              onClick={() => setUiState(prev => ({ ...prev, viewMode: "grid" }))}
               className="h-8 px-3"
             >
               <Grid3x3 className="h-4 w-4 mr-1.5" />
               Grade
             </Button>
             <Button
-              variant={viewMode === "list" ? "default" : "ghost"}
+              variant={uiState.viewMode === "list" ? "default" : "ghost"}
               size="sm"
-              onClick={() => setViewMode("list")}
+              onClick={() => setUiState(prev => ({ ...prev, viewMode: "list" }))}
               className="h-8 px-3"
             >
               <List className="h-4 w-4 mr-1.5" />
@@ -284,7 +272,7 @@ export default function PaymentsPage() {
           </div>
         </div>
 
-        {/* Header com filtros */}
+        {/* Filtros */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 flex-1 w-full">
             <PeriodSelector
@@ -299,8 +287,8 @@ export default function PaymentsPage() {
                 type="search"
                 placeholder="Buscar por inquilino, endereço..."
                 className="pl-8 w-full"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                value={uiState.searchQuery}
+                onChange={(e) => setUiState(prev => ({ ...prev, searchQuery: e.target.value }))}
               />
             </div>
           </div>
@@ -332,7 +320,7 @@ export default function PaymentsPage() {
               {pendingPayments.length > 0 ? (
                 <div
                   className={
-                    viewMode === "grid"
+                    uiState.viewMode === "grid"
                       ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
                       : "space-y-4"
                   }
@@ -344,13 +332,13 @@ export default function PaymentsPage() {
                       property={getPropertyForPayment(payment)}
                       tenant={getTenantForPayment(payment)}
                       isPaid={payment.status === "paid"}
-                      viewMode={viewMode}
+                      viewMode={uiState.viewMode}
                       installment={getPaymentInstallment(payment)}
                       expectedAmount={getExpectedAmount(payment)}
-                      onCardClick={(id) => setSelectedPaymentId(id)}
-                      onClick={() => setSelectedPaymentId(payment.id)}
+                      onCardClick={(id) => setUiState(prev => ({ ...prev, selectedPaymentId: id }))}
+                      onClick={() => setUiState(prev => ({ ...prev, selectedPaymentId: payment.id }))}
                       getMonthName={getMonthName}
-                      onCancelPayment={canDelete ? handleCancelPayment : undefined}
+                      onCancelPayment={permissions.canDelete ? handleCancelPayment : undefined}
                       onViewReceipt={(id, e) => {
                         e?.stopPropagation();
                         handleViewReceipt(payment);
@@ -370,7 +358,7 @@ export default function PaymentsPage() {
               {paidPayments.length > 0 ? (
                 <div
                   className={
-                    viewMode === "grid"
+                    uiState.viewMode === "grid"
                       ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
                       : "space-y-4"
                   }
@@ -382,13 +370,13 @@ export default function PaymentsPage() {
                       property={getPropertyForPayment(payment)}
                       tenant={getTenantForPayment(payment)}
                       isPaid={payment.status === "paid"}
-                      viewMode={viewMode}
+                      viewMode={uiState.viewMode}
                       installment={getPaymentInstallment(payment)}
                       expectedAmount={getExpectedAmount(payment)}
-                      onCardClick={(id) => setSelectedPaymentId(id)}
-                      onClick={() => setSelectedPaymentId(payment.id)}
+                      onCardClick={(id) => setUiState(prev => ({ ...prev, selectedPaymentId: id }))}
+                      onClick={() => setUiState(prev => ({ ...prev, selectedPaymentId: payment.id }))}
                       getMonthName={getMonthName}
-                      onCancelPayment={canDelete ? handleCancelPayment : undefined}
+                      onCancelPayment={permissions.canDelete ? handleCancelPayment : undefined}
                       onViewReceipt={(id, e) => {
                         e?.stopPropagation();
                         handleViewReceipt(payment);
@@ -407,7 +395,7 @@ export default function PaymentsPage() {
       </div>
 
       {/* Dialog de confirmação de cancelamento */}
-      <AlertDialog open={!!paymentToCancel} onOpenChange={(open) => !open && setPaymentToCancel(null)}>
+      <AlertDialog open={!!uiState.paymentToCancel} onOpenChange={(open) => !open && setUiState(prev => ({ ...prev, paymentToCancel: null }))}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar Cancelamento</AlertDialogTitle>
@@ -433,60 +421,32 @@ export default function PaymentsPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {showReceiptDialog && selectedPayment && (
+      {uiState.showReceiptDialog && uiState.selectedPayment && (
         <PaymentReceipt
-          payment={selectedPayment}
-          rental={rentals.find(r => r.id === selectedPayment.rentalId) as any}
-          property={getPropertyForPayment(selectedPayment) as any}
-          tenant={getTenantForPayment(selectedPayment) as any}
+          payment={uiState.selectedPayment}
+          rental={rentals.find(r => r.id === uiState.selectedPayment!.rentalId) as any}
+          property={getPropertyForPayment(uiState.selectedPayment) as any}
+          tenant={getTenantForPayment(uiState.selectedPayment) as any}
           onClose={() => {
-            setShowReceiptDialog(false);
-            setSelectedPayment(null);
+            setUiState(prev => ({
+              ...prev,
+              showReceiptDialog: false,
+              selectedPayment: null,
+            }));
           }}
         />
       )}
 
-      <Dialog open={!!selectedPaymentId} onOpenChange={(open) => !open && setSelectedPaymentId(null)}>
+      <Dialog open={!!uiState.selectedPaymentId} onOpenChange={(open) => !open && setUiState(prev => ({ ...prev, selectedPaymentId: null }))}>
         <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="hidden">Detalhes do Recebimento</DialogTitle>
           </DialogHeader>
-          {selectedPaymentId && (
+          {uiState.selectedPaymentId && (
             <ManagePaymentForm
-              paymentId={selectedPaymentId}
-              onSuccess={async () => {
-                const paymentId = selectedPaymentId;
-                
-                // Fecha o dialog de gerenciamento primeiro
-                setSelectedPaymentId(null);
-                
-                // Recarrega os pagamentos e aguarda completar
-                await loadPayments(filters.month.toString(), filters.year.toString());
-                
-                // Aguarda um pouco para garantir que o estado foi atualizado
-                setTimeout(() => {
-                  // Busca o pagamento atualizado do estado
-                  const updatedPayment = payments.find(p => p.id === paymentId);
-                  
-                  if (updatedPayment) {
-                    // Se o pagamento foi encontrado, abre o recibo
-                    setSelectedPayment(updatedPayment);
-                    setShowReceiptDialog(true);
-                    
-                    toast({
-                      title: "Sucesso!",
-                      description: "Recebimento registrado com sucesso.",
-                    });
-                  } else {
-                    // Se não encontrou, só mostra o toast
-                    toast({
-                      title: "Sucesso!",
-                      description: "Recebimento registrado com sucesso.",
-                    });
-                  }
-                }, 500);
-              }}
-              onClose={() => setSelectedPaymentId(null)}
+              paymentId={uiState.selectedPaymentId}
+              onSuccess={handleManagePaymentSuccess}
+              onClose={() => setUiState(prev => ({ ...prev, selectedPaymentId: null }))}
               embedded
             />
           )}

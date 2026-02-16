@@ -1,3 +1,4 @@
+import { memo, useMemo } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,7 +21,58 @@ interface PaymentCardProps {
   onClick?: () => void;
 }
 
-export function PaymentCard({
+// Helper para determinar cores baseado na data de vencimento
+const getDueDateColor = (dueDate: string, isPaid: boolean): { border: string; icon: string; amount: string } => {
+  if (isPaid) {
+    return { 
+      border: "border-l-green-500", 
+      icon: "text-green-600", 
+      amount: "text-green-600" 
+    };
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const due = new Date(dueDate + "T00:00:00");
+  due.setHours(0, 0, 0, 0);
+  
+  if (due < today) {
+    return { 
+      border: "border-l-red-500", 
+      icon: "text-red-600", 
+      amount: "text-red-600" 
+    };
+  } else if (due.getTime() === today.getTime()) {
+    return { 
+      border: "border-l-yellow-500", 
+      icon: "text-yellow-600", 
+      amount: "text-yellow-600" 
+    };
+  } else {
+    return { 
+      border: "border-l-blue-500", 
+      icon: "text-blue-600", 
+      amount: "text-blue-600" 
+    };
+  }
+};
+
+// Helper para badge de status
+const getStatusBadge = (status: Payment["status"]) => {
+  switch (status) {
+    case "paid":
+      return <Badge className="bg-green-500 text-white text-xs">Pago</Badge>;
+    case "partial":
+      return <Badge className="bg-yellow-500 text-white text-xs">Parcial</Badge>;
+    case "overdue":
+      return <Badge className="bg-red-500 text-white text-xs">Atrasado</Badge>;
+    default:
+      return <Badge className="bg-gray-500 text-white text-xs">Pendente</Badge>;
+  }
+};
+
+export const PaymentCard = memo(function PaymentCard({
   payment,
   property,
   tenant,
@@ -34,54 +86,24 @@ export function PaymentCard({
   getMonthName,
   onClick,
 }: PaymentCardProps) {
-  const getStatusBadge = (status: Payment["status"]) => {
-    switch (status) {
-      case "paid":
-        return <Badge className="bg-green-500 text-white text-xs">Pago</Badge>;
-      case "partial":
-        return <Badge className="bg-yellow-500 text-white text-xs">Parcial</Badge>;
-      case "overdue":
-        return <Badge className="bg-red-500 text-white text-xs">Atrasado</Badge>;
-      default:
-        return <Badge className="bg-gray-500 text-white text-xs">Pendente</Badge>;
-    }
-  };
-
   const isPartial = payment.status === "partial";
   const remainingAmount = isPartial ? expectedAmount - payment.paidAmount : expectedAmount;
   const displayAmount = isPaid ? payment.paidAmount : remainingAmount;
 
-  const getDueDateColor = (dueDate: string): { border: string; icon: string; amount: string } => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const due = new Date(dueDate + "T00:00:00");
-    due.setHours(0, 0, 0, 0);
-    
-    if (due < today) {
-      return { 
-        border: "border-l-red-500", 
-        icon: "text-red-600", 
-        amount: "text-red-600" 
-      };
-    } else if (due.getTime() === today.getTime()) {
-      return { 
-        border: "border-l-yellow-500", 
-        icon: "text-yellow-600", 
-        amount: "text-yellow-600" 
-      };
-    } else {
-      return { 
-        border: "border-l-blue-500", 
-        icon: "text-blue-600", 
-        amount: "text-blue-600" 
-      };
-    }
-  };
+  const colors = useMemo(() => 
+    getDueDateColor(payment.dueDate, isPaid),
+    [payment.dueDate, isPaid]
+  );
 
-  const colors = isPaid 
-    ? { border: "border-l-green-500", icon: "text-green-600", amount: "text-green-600" }
-    : getDueDateColor(payment.dueDate);
+  const formattedDisplayAmount = useMemo(() => 
+    formatCurrency(displayAmount),
+    [displayAmount]
+  );
+
+  const formattedPaidAmount = useMemo(() => 
+    formatCurrency(payment.paidAmount),
+    [payment.paidAmount]
+  );
 
   if (viewMode === "grid") {
     return (
@@ -144,7 +166,7 @@ export function PaymentCard({
               {isPaid ? "Valor Pago" : (isPartial ? "Valor Restante" : "Valor Esperado")}
             </p>
             <p className={`text-2xl sm:text-3xl font-bold ${colors.amount}`}>
-              {formatCurrency(displayAmount)}
+              {formattedDisplayAmount}
             </p>
           </div>
 
@@ -152,7 +174,7 @@ export function PaymentCard({
             <div className="pt-2 border-t">
               <p className="text-xs text-muted-foreground mb-1">Valor Já Pago</p>
               <p className="text-lg font-semibold text-green-600">
-                {formatCurrency(payment.paidAmount)}
+                {formattedPaidAmount}
               </p>
             </div>
           )}
@@ -161,7 +183,7 @@ export function PaymentCard({
             <div className="pt-2 border-t">
               <p className="text-xs text-muted-foreground mb-1">Valor Pago</p>
               <p className="text-lg font-semibold text-yellow-600">
-                {formatCurrency(payment.paidAmount)}
+                {formattedPaidAmount}
               </p>
             </div>
           )}
@@ -198,7 +220,7 @@ export function PaymentCard({
     );
   }
 
-  // List view - otimizado para mobile
+  // List view
   return (
     <Card
       className={`hover:shadow-lg transition-all duration-200 cursor-pointer border-l-4 ${colors.border} active:scale-[0.98]`}
@@ -206,7 +228,6 @@ export function PaymentCard({
     >
       <CardContent className="py-3 px-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          {/* Mobile: Stack vertical */}
           <div className="flex items-start gap-3 flex-1 min-w-0">
             <Home className={`h-6 w-6 ${colors.icon} flex-shrink-0 mt-1`} />
             <div className="flex-1 min-w-0">
@@ -236,7 +257,6 @@ export function PaymentCard({
             </div>
           </div>
           
-          {/* Desktop: lado a lado */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
             <div className="grid grid-cols-2 sm:flex sm:gap-4">
               <div className="text-left sm:text-right">
@@ -268,16 +288,16 @@ export function PaymentCard({
                 {isPaid ? "Valor Pago" : (isPartial ? "Valor Restante" : "Valor Esperado")}
               </p>
               <p className={`text-xl sm:text-2xl font-bold ${colors.amount}`}>
-                {formatCurrency(displayAmount)}
+                {formattedDisplayAmount}
               </p>
               {isPartial && payment.paidAmount > 0 && (
                 <p className="text-xs text-green-600 font-semibold mt-1">
-                  Já pago: {formatCurrency(payment.paidAmount)}
+                  Já pago: {formattedPaidAmount}
                 </p>
               )}
               {!isPaid && !isPartial && payment.paidAmount > 0 && (
                 <p className="text-xs text-yellow-600 font-semibold mt-1">
-                  Pago: {formatCurrency(payment.paidAmount)}
+                  Pago: {formattedPaidAmount}
                 </p>
               )}
             </div>
@@ -314,4 +334,4 @@ export function PaymentCard({
       </CardContent>
     </Card>
   );
-}
+});

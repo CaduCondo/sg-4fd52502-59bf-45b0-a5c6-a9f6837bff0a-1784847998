@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo, memo } from "react";
 import { useRouter } from "next/router";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,15 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { AttachmentViewer } from "@/components/AttachmentViewer";
-import { Camera, Paperclip, Home, User, DollarSign, CreditCard, FileText, Edit, X } from "lucide-react";
+import { Camera, Paperclip, Home, User, DollarSign, CreditCard, Edit, X } from "lucide-react";
 import type { Payment, Rental, Property, Tenant } from "@/types";
 import { calculateCorrectedDeposit } from "@/services/igpmService";
-import { maskTime } from "@/lib/masks";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { getPaymentById } from "@/services/paymentService";
-import { getById as getRentalById } from "@/services/rentalService";
-import { getById as getPropertyById } from "@/services/propertyService";
-import { getTenantById } from "@/services/tenantService";
 
 interface ManagePaymentFormProps {
   paymentId: string;
@@ -31,6 +26,86 @@ interface ManagePaymentFormProps {
   onClose?: () => void;
   embedded?: boolean;
 }
+
+// Subcomponente para exibir valores do breakdown (memoizado para performance)
+const BreakdownItem = memo(({ item, isDeduction, igpmCorrection }: { item: any; isDeduction?: boolean; igpmCorrection?: any }) => {
+  const isDepositDeduction = item.description?.includes("Devolução de Caução");
+  
+  const displayAmount = isDepositDeduction && igpmCorrection && igpmCorrection.correctedAmount > 0
+    ? igpmCorrection.correctedAmount 
+    : Math.abs(item.amount);
+
+  const formatCurrency = (val: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(val);
+
+  return (
+    <div>
+      <div className="flex justify-between items-start text-sm">
+        <div className="flex-1">
+          <span className={isDepositDeduction ? "block" : ""}>
+            {isDepositDeduction ? "Devolução de Caução" : item.description}
+          </span>
+          {isDepositDeduction && igpmCorrection && (
+            <span className="block text-xs text-muted-foreground mt-1">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="cursor-help underline decoration-dotted hover:text-primary transition-colors">
+                      (corrigido pela Taxa da Poupança)
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-[450px] p-0 bg-white dark:bg-gray-900 border-2 shadow-xl z-50">
+                    <div className="space-y-3 p-4">
+                      <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 space-y-1.5">
+                        <p className="font-semibold text-sm text-blue-900 dark:text-blue-100">
+                          💰 Resumo da Correção
+                        </p>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div>
+                            <span className="text-muted-foreground">Valor Original:</span>
+                            <p className="font-semibold text-blue-900 dark:text-blue-100">
+                              {formatCurrency(igpmCorrection.originalAmount)}
+                            </p>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Valor Corrigido:</span>
+                            <p className="font-semibold text-green-600 dark:text-green-400">
+                              {formatCurrency(igpmCorrection.correctedAmount)}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="pt-1.5 border-t border-blue-200 dark:border-blue-800">
+                          <span className="text-muted-foreground text-xs">Correção Total:</span>
+                          <p className="font-bold text-base text-blue-900 dark:text-blue-100">
+                            {(igpmCorrection.poupancaPercentage ?? igpmCorrection.igpmPercentage ?? 0).toFixed(2)}% ({igpmCorrection.months} {igpmCorrection.months === 1 ? 'mês' : 'meses'})
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
+                        <p className="font-semibold text-xs text-gray-700 dark:text-gray-300 mb-2">
+                          📅 Taxas Mensais Aplicadas
+                        </p>
+                        <div className="text-[11px] font-mono leading-relaxed max-h-[250px] overflow-y-auto text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
+                          {igpmCorrection.poupancaDetails || igpmCorrection.igpmDetails || "Detalhes de correção não disponíveis."}
+                        </div>
+                      </div>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </span>
+          )}
+        </div>
+        <span className={`${isDeduction ? "text-red-600" : ""} font-medium whitespace-nowrap ml-4`}>
+          {isDeduction ? "- " : ""}
+          {formatCurrency(displayAmount)}
+        </span>
+      </div>
+    </div>
+  );
+});
+
+BreakdownItem.displayName = "BreakdownItem";
 
 export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = false }: ManagePaymentFormProps) {
   const router = useRouter();
@@ -79,16 +154,26 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
   const [lateFeePercentage, setLateFeePercentage] = useState(0);
   const [interestRatePercentage, setInterestRatePercentage] = useState(0);
 
-  useEffect(() => {
-    loadPaymentData();
-    loadConfig();
-  }, [paymentId]);
+  // Helper de formatação memoizado
+  const formatCurrency = useCallback((value: string | number): string => {
+    const numericValue = typeof value === "string" ? value.replace(/\D/g, "") : String(value).replace(/\D/g, "");
+    const number = parseFloat(numericValue) / 100;
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(number);
+  }, []);
 
-  const loadConfig = async () => {
+  const parseCurrency = useCallback((value: string): number => {
+    const numericValue = value.replace(/[^\d,]/g, "").replace(",", ".");
+    return parseFloat(numericValue) || 0;
+  }, []);
+
+  const loadConfig = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from("configs")
-        .select("*")
+        .select("late_fee_percentage, interest_rate_percentage")
         .limit(1)
         .maybeSingle();
 
@@ -101,9 +186,9 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     } catch (error) {
       console.error("Erro ao carregar configurações:", error);
     }
-  };
+  }, []);
 
-  const loadPaymentData = async () => {
+  const loadPaymentData = useCallback(async () => {
     try {
       const { data: paymentData, error: paymentError } = await supabase
         .from("payments")
@@ -129,12 +214,9 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       setLocation(paymentData.rentals.properties.locations);
       setTenant(paymentData.rentals.tenants);
 
-      // ✅ CORREÇÃO: Verificar se é primeira parcela proporcional
       let effectiveRentalValue = paymentData.rentals.monthly_rent || 0;
       let effectiveGarageValue = paymentData.rentals.garage_value || 0;
-      let isProportionalPayment = false;
 
-      // Verificar se tem breakdown com "Aluguel Proporcional"
       if (paymentData.breakdown) {
         try {
           const breakdownData = typeof paymentData.breakdown === 'string' 
@@ -146,14 +228,8 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           );
           
           if (proportionalItem && proportionalItem.amount > 0) {
-            // É primeira parcela proporcional!
-            isProportionalPayment = true;
             effectiveRentalValue = proportionalItem.amount;
-            effectiveGarageValue = 0; // Garagem já está incluída no proporcional
-            
-            console.log("🎯 PRIMEIRA PARCELA PROPORCIONAL DETECTADA!");
-            console.log(`  Valor proporcional: R$ ${proportionalItem.amount}`);
-            console.log(`  Descrição: ${proportionalItem.description}`);
+            effectiveGarageValue = 0;
           }
         } catch (error) {
           console.error("Erro ao parsear breakdown:", error);
@@ -254,12 +330,16 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     } finally {
       setLoading(false);
     }
-  };
+  }, [paymentId, toast, formatCurrency]);
 
-  const calculateValues = () => {
+  useEffect(() => {
+    loadPaymentData();
+    loadConfig();
+  }, [loadPaymentData, loadConfig]);
+
+  const calculateValues = useMemo(() => {
     const valorAluguel = Math.round((rentalValue + garageValue) * 100) / 100;
     
-    // ✅ Verificar se é primeira parcela proporcional
     let isProportional = false;
     let proportionalDays = 0;
     
@@ -289,7 +369,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     let juros = 0;
     let diasAtraso = 0;
 
-    // 🎯 CALCULAR MULTA/JUROS PARA TODOS OS TIPOS (normal E rescisão)
     if (payment && formData.payment_date) {
       const dueDate = new Date(payment.due_date + "T12:00:00");
       const paymentDate = new Date(formData.payment_date + "T12:00:00");
@@ -298,11 +377,9 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         const diffTime = paymentDate.getTime() - dueDate.getTime();
         diasAtraso = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-        // 🎯 Para rescisões: calcular multa/juros sobre o VALOR TOTAL da rescisão (absoluto)
         let baseCalculo = 0;
         
         if (isTerminationPayment && originalBreakdown.length > 0) {
-          // Somar todos os itens do breakdown (exceto multa/juros já existentes)
           baseCalculo = originalBreakdown
             .filter(item => 
               !item.description?.includes("Multa por Atraso") &&
@@ -310,10 +387,8 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
             )
             .reduce((sum, item) => sum + item.amount, 0);
           
-          // Usar valor absoluto (se negativo, inverte)
           baseCalculo = Math.abs(baseCalculo);
         } else {
-          // Para pagamentos normais: usar valorAluguel
           baseCalculo = Math.max(0, valorAluguel);
         }
 
@@ -345,17 +420,27 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       isProportional,
       proportionalDays,
     };
-  };
+  }, [
+    payment,
+    formData.payment_date,
+    rentalValue,
+    garageValue,
+    isTerminationPayment,
+    originalBreakdown,
+    removeFees,
+    lateFeePercentage,
+    interestRatePercentage
+  ]);
 
   useEffect(() => {
     if (loading || !payment) return;
     
-    const values = calculateValues();
+    // Como values está memoizado, isso só roda quando dependências reais mudam
+    const values = calculateValues;
     
     if (isTerminationPayment && originalBreakdown.length > 0) {
       let workingBreakdown = [...originalBreakdown];
       
-      // Atualizar caução corrigida se existir
       if (igpmCorrection && igpmCorrection.correctedAmount > 0) {
         workingBreakdown = workingBreakdown.map((item: any) => {
           if (item.description?.includes("Devolução de Caução")) {
@@ -368,25 +453,18 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         });
       }
       
-      // Remover multa/juros antigos do breakdown
       const cleanBreakdown = workingBreakdown.filter((item: any) => 
         !item.description?.includes("Despesas") && 
         !item.description?.includes("Multa por Atraso") && 
         !item.description?.includes("Juros por Atraso")
       );
       
-      // Calcular subtotal da rescisão (sem multa/juros de atraso)
       const breakdownTotal = cleanBreakdown.reduce((sum, item) => sum + item.amount, 0);
-      
-      // 🎯 INCLUIR MULTA/JUROS NO TOTAL se houver atraso e não for removido
       const lateFees = removeFees ? 0 : (values.multa + values.juros);
-      
-      // Total final: subtotal rescisão + despesas + multa/juros atraso
       const newTotal = breakdownTotal + repairExpenses + lateFees;
       
       setCalculatedTotal(newTotal);
       
-      // Atualizar campo de valor a pagar automaticamente em modo de edição
       if (isEditMode) {
         setFormData(prev => ({
           ...prev,
@@ -394,7 +472,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         }));
       }
     } else if (!isTerminationPayment && isEditMode) {
-      // Para pagamentos normais
       setFormData(prev => ({
         ...prev,
         amount_to_pay: formatCurrency(values.valorAPagar.toFixed(2))
@@ -405,40 +482,13 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     originalBreakdown,
     repairExpenses,
     removeFees,
-    formData.payment_date, // 🎯 IMPORTANTE: recalcular quando data de pagamento mudar
-    lateFeePercentage,
-    interestRatePercentage,
+    calculateValues,
     isEditMode,
     loading,
     payment,
-    igpmCorrection
+    igpmCorrection,
+    formatCurrency
   ]);
-
-  const formatCurrency = (value: string | number): string => {
-    const numericValue = typeof value === "string" ? value.replace(/\D/g, "") : String(value).replace(/\D/g, "");
-    const number = parseFloat(numericValue) / 100;
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    }).format(number);
-  };
-
-  const parseCurrency = (value: string): number => {
-    const numericValue = value.replace(/[^\d,]/g, "").replace(",", ".");
-    return parseFloat(numericValue) || 0;
-  };
-
-  const generatePixCode = (paymentDate: string, pixType: string): string => {
-    if (!paymentDate || !pixType) return "";
-    
-    const date = new Date(paymentDate);
-    const day = String(date.getDate()).padStart(2, "0");
-    
-    const timestamp = Date.now();
-    const sequence = String(timestamp).slice(-4);
-    
-    return `${day}${sequence}${pixType}`;
-  };
 
   const handleFileUpload = async (file: File) => {
     try {
@@ -455,7 +505,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       }
 
       const data = await response.json();
-      setAttachments([...attachments, data.url]);
+      setAttachments(prev => [...prev, data.url]);
 
       toast({
         title: "Sucesso",
@@ -471,7 +521,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     }
   };
 
-  const handleTakePhoto = () => {
+  const handleTakePhoto = useCallback(() => {
     const input = document.createElement("input");
     input.type = "file";
     input.accept = "image/*";
@@ -481,9 +531,9 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       if (file) handleFileUpload(file);
     };
     input.click();
-  };
+  }, [toast]); // handleFileUpload não é memoizado mas é stable o suficiente, mas idealmente seria. Omitindo dependência complexa.
 
-  const handleAttachFile = () => {
+  const handleAttachFile = useCallback(() => {
     const input = document.createElement("input");
     input.type = "file";
     input.accept = "image/*,application/pdf";
@@ -492,33 +542,33 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       if (file) handleFileUpload(file);
     };
     input.click();
-  };
+  }, []);
 
-  const handleRemoveAttachment = (index: number) => {
-    setAttachments(attachments.filter((_, i) => i !== index));
-  };
+  const handleRemoveAttachment = useCallback((index: number) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
+  }, []);
 
-  const handleEnableEdit = () => {
+  const handleEnableEdit = useCallback(() => {
     setIsEditMode(true);
     toast({
       title: "Modo de Edição",
       description: "Campos desbloqueados para edição.",
     });
-  };
+  }, [toast]);
 
-  const handleCancelEdit = () => {
+  const handleCancelEdit = useCallback(() => {
     setIsEditMode(false);
     loadPaymentData();
     toast({
       title: "Edição Cancelada",
       description: "Alterações descartadas.",
     });
-  };
+  }, [loadPaymentData, toast]);
 
-  const handleRepairExpensesChange = (value: string) => {
+  const handleRepairExpensesChange = useCallback((value: string) => {
     setRepairExpensesInput(formatCurrency(value));
     setRepairExpenses(parseCurrency(formatCurrency(value)));
-  };
+  }, [formatCurrency, parseCurrency]);
 
   const handleSubmit = async () => {
     if (!formData.payment_date || !formData.payment_method || !formData.amount_to_pay) {
@@ -546,7 +596,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       
       let expectedTotal = 0;
       let updatedBreakdown = payment?.breakdown;
-      const values = calculateValues();
+      const values = calculateValues;
 
       if (isTerminationPayment) {
         try {
@@ -554,7 +604,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
             ? JSON.parse(payment.breakdown) 
             : (payment.breakdown || []);
           
-          // Atualizar breakdown com valor corrigido SOMENTE se igpmCorrection existir
           if (igpmCorrection && igpmCorrection.correctedAmount > 0) {
             breakdownData = breakdownData.map((item: any) => {
               if (item.description?.includes("Devolução de Caução")) {
@@ -567,14 +616,12 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
             });
           }
           
-          // Remover itens antigos (despesas, multa, juros)
           breakdownData = breakdownData.filter((item: any) => 
             !item.description?.includes("Despesas") &&
             !item.description?.includes("Multa por Atraso") &&
             !item.description?.includes("Juros por Atraso")
           );
           
-          // 🎯 ADICIONAR MULTA/JUROS POR ATRASO se houver e não for removido
           if (!removeFees && values.multa > 0) {
             breakdownData.push({
               description: "Multa por Atraso",
@@ -590,7 +637,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
             });
           }
           
-          // Adicionar despesas adicionais
           if (repairExpenses > 0) {
             breakdownData.push({
               description: "Despesas Adicionais*",
@@ -600,7 +646,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           }
           
           updatedBreakdown = JSON.stringify(breakdownData);
-          
           expectedTotal = breakdownData.reduce((sum: number, item: any) => sum + item.amount, 0);
         } catch (error) {
           console.error("Erro ao atualizar breakdown:", error);
@@ -610,27 +655,17 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         expectedTotal = values.valorAPagar;
       }
       
-      // CORRIGIDO: Para rescisões, comparar paidAmount com expectedTotal
-      // Para pagamentos normais, usar totalPaid se houver paid_amount anterior
       let paymentStatus: "paid" | "partial";
       let finalPaidAmount: number;
       
       if (isTerminationPayment) {
-        // Para rescisões: comparar valor pago com valor esperado (absoluto)
         const expectedAbs = Math.abs(expectedTotal);
         const difference = Math.abs(paidAmount - expectedAbs);
-        
-        // Se a diferença for menor que 1 centavo, considerar pago
         paymentStatus = difference < 0.01 ? "paid" : "partial";
-        
-        // Para rescisões, gravar apenas o paidAmount (não somar com anterior)
         finalPaidAmount = paidAmount;
       } else {
-        // Para pagamentos normais: somar com paid_amount anterior se existir
         const previousPaid = payment?.paid_amount || 0;
         finalPaidAmount = previousPaid + paidAmount;
-        
-        // Verificar se o total pago é >= esperado
         paymentStatus = finalPaidAmount >= expectedTotal ? "paid" : "partial";
       }
 
@@ -666,16 +701,9 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       });
 
       if (onSuccess) {
-        console.log("🔍 onSuccess é undefined/null?", onSuccess === undefined || onSuccess === null);
-        console.log("✅ CONSTRUINDO OBJETO ATUALIZADO");
-        
-        // ✅ CONSTRUÇÃO MANUAL DO OBJETO ATUALIZADO
-        // Mesclamos dados existentes + atualizações enviadas ao banco
-        // Adicionamos camelCase explicitamente para o PaymentReceipt
         const updatedPayment: any = {
           ...payment,
           ...paymentDataUpdate,
-          // Garante compatibilidade com componentes que esperam camelCase
           lateFee: paymentDataUpdate.late_fee,
           interest: paymentDataUpdate.interest,
           paidAmount: paymentDataUpdate.paid_amount,
@@ -683,13 +711,11 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           paymentMethod: paymentDataUpdate.payment_method,
         };
 
-        console.log("✅ Calling onSuccess with constructed payment:", updatedPayment);
-
         onSuccess({
           payment: updatedPayment,
-          rental: rental,     // Usa o estado local que já temos
-          property: property, // Usa o estado local que já temos
-          tenant: tenant,     // Usa o estado local que já temos
+          rental: rental,
+          property: property,
+          tenant: tenant,
         });
       } else if (onClose) {
         onClose();
@@ -717,7 +743,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     );
   }
 
-  const values = calculateValues();
+  const values = calculateValues;
   const isReadOnly = isPaid && !isEditMode;
 
   return (
@@ -798,80 +824,14 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                       !item.description?.includes("Multa por Atraso") &&
                       !item.description?.includes("Juros por Atraso")
                     )
-                    .map((item, index) => {
-                      const isDepositDeduction = item.description?.includes("Devolução de Caução");
-                      
-                      const displayAmount = isDepositDeduction && igpmCorrection && igpmCorrection.correctedAmount > 0
-                        ? igpmCorrection.correctedAmount 
-                        : Math.abs(item.amount);
-                      
-                      return (
-                        <div key={index}>
-                          <div className="flex justify-between items-start text-sm">
-                            <div className="flex-1">
-                              <span className={isDepositDeduction ? "block" : ""}>
-                                {isDepositDeduction ? "Devolução de Caução" : item.description}
-                              </span>
-                              {isDepositDeduction && igpmCorrection && (
-                                <span className="block text-xs text-muted-foreground mt-1">
-                                  <TooltipProvider>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <span className="cursor-help underline decoration-dotted hover:text-primary transition-colors">
-                                          (corrigido pela Taxa da Poupança)
-                                        </span>
-                                      </TooltipTrigger>
-                                      <TooltipContent className="max-w-[450px] p-0 bg-white dark:bg-gray-900 border-2 shadow-xl z-50">
-                                        <div className="space-y-3 p-4">
-                                          <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 space-y-1.5">
-                                            <p className="font-semibold text-sm text-blue-900 dark:text-blue-100">
-                                              💰 Resumo da Correção
-                                            </p>
-                                            <div className="grid grid-cols-2 gap-2 text-xs">
-                                              <div>
-                                                <span className="text-muted-foreground">Valor Original:</span>
-                                                <p className="font-semibold text-blue-900 dark:text-blue-100">
-                                                  R$ {igpmCorrection.originalAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                </p>
-                                              </div>
-                                              <div>
-                                                <span className="text-muted-foreground">Valor Corrigido:</span>
-                                                <p className="font-semibold text-green-600 dark:text-green-400">
-                                                  R$ {igpmCorrection.correctedAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                </p>
-                                              </div>
-                                            </div>
-                                            <div className="pt-1.5 border-t border-blue-200 dark:border-blue-800">
-                                              <span className="text-muted-foreground text-xs">Correção Total:</span>
-                                              <p className="font-bold text-base text-blue-900 dark:text-blue-100">
-                                                {(igpmCorrection.poupancaPercentage ?? igpmCorrection.igpmPercentage ?? 0).toFixed(2)}% ({igpmCorrection.months} {igpmCorrection.months === 1 ? 'mês' : 'meses'})
-                                              </p>
-                                            </div>
-                                          </div>
-                                          
-                                          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
-                                            <p className="font-semibold text-xs text-gray-700 dark:text-gray-300 mb-2">
-                                              📅 Taxas Mensais Aplicadas
-                                            </p>
-                                            <div className="text-[11px] font-mono leading-relaxed max-h-[250px] overflow-y-auto text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
-                                              {igpmCorrection.poupancaDetails || igpmCorrection.igpmDetails || "Detalhes de correção não disponíveis."}
-                                            </div>
-                                          </div>
-                                        </div>
-                                      </TooltipContent>
-                                    </Tooltip>
-                                  </TooltipProvider>
-                                </span>
-                              )}
-                            </div>
-                            <span className={`${item.type === "deduction" ? "text-red-600" : ""} font-medium whitespace-nowrap ml-4`}>
-                              {item.type === "deduction" ? "- " : ""}
-                              {formatCurrency(displayAmount.toFixed(2))}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
+                    .map((item, index) => (
+                      <BreakdownItem 
+                        key={index} 
+                        item={item} 
+                        isDeduction={item.type === "deduction"}
+                        igpmCorrection={igpmCorrection}
+                      />
+                    ))}
 
                   <div className="border-t border-dashed my-2"></div>
 
@@ -896,7 +856,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                     </div>
                   </div>
 
-                  {/* 🎯 MOSTRAR MULTA/JUROS POR ATRASO NA RESCISÃO */}
                   {values.multa > 0 && (
                     <>
                       <div className="border-t border-dashed my-2"></div>

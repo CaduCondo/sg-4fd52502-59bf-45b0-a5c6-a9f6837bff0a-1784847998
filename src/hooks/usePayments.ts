@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import type { Payment, Rental, Property, Tenant } from "@/types";
@@ -12,6 +12,40 @@ const cache = {
   TTL: 30000, // 30 segundos
 };
 
+// Limpar cache se expirado
+const clearCacheIfExpired = () => {
+  const now = Date.now();
+  if (now - cache.lastFetch > cache.TTL) {
+    cache.rentals.clear();
+    cache.properties.clear();
+    cache.tenants.clear();
+  }
+  cache.lastFetch = now;
+};
+
+// Buscar dados em lotes (batch)
+const fetchInBatches = async <T,>(
+  table: string,
+  ids: string[],
+  select: string,
+  batchSize: number = 20
+): Promise<T[]> => {
+  const results: T[] = [];
+  
+  for (let i = 0; i < ids.length; i += batchSize) {
+    const batch = ids.slice(i, i + batchSize);
+    const { data, error } = await supabase
+      .from(table as any)
+      .select(select)
+      .in("id", batch);
+
+    if (error) throw error;
+    if (data) results.push(...(data as T[]));
+  }
+
+  return results;
+};
+
 export function usePayments() {
   const { toast } = useToast();
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -20,46 +54,10 @@ export function usePayments() {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Limpar cache se expirado
-  const clearCacheIfExpired = () => {
-    const now = Date.now();
-    if (now - cache.lastFetch > cache.TTL) {
-      cache.rentals.clear();
-      cache.properties.clear();
-      cache.tenants.clear();
-    }
-    cache.lastFetch = now;
-  };
-
-  // Buscar dados em lotes (batch)
-  const fetchInBatches = async <T,>(
-    table: string,
-    ids: string[],
-    select: string,
-    batchSize: number = 20
-  ): Promise<T[]> => {
-    const results: T[] = [];
-    
-    for (let i = 0; i < ids.length; i += batchSize) {
-      const batch = ids.slice(i, i + batchSize);
-      const { data, error } = await supabase
-        .from(table as any)
-        .select(select)
-        .in("id", batch);
-
-      if (error) throw error;
-      if (data) results.push(...(data as T[]));
-    }
-
-    return results;
-  };
-
   const loadPayments = useCallback(async (month?: string, year?: string) => {
     try {
       setLoading(true);
       clearCacheIfExpired();
-
-      console.log("🔍 loadPayments chamado com filtros:", { month, year });
 
       // PASSO 1: Buscar apenas payments (query rápida)
       let query = supabase
@@ -67,40 +65,35 @@ export function usePayments() {
         .select("id, rental_id, due_date, expected_amount, paid_amount, payment_date, status, payment_method, notes, reference_month, reference_year, attachments, late_fee, interest, installment, total_installments")
         .order("due_date", { ascending: true });
 
-      // CRÍTICO: Aplicar filtros de mês/ano SEMPRE (nunca buscar tudo)
+      // Aplicar filtros de mês/ano SEMPRE
       if (month && month !== "all") {
         query = query.eq("reference_month", month);
-        console.log("✅ Filtro de mês aplicado:", month);
       }
       if (year && year !== "all") {
         query = query.eq("reference_year", year);
-        console.log("✅ Filtro de ano aplicado:", year);
       }
 
       const { data: paymentsData, error: paymentsError } = await query;
 
       if (paymentsError) throw paymentsError;
 
-      console.log("📊 Payments retornados do banco:", paymentsData?.length || 0);
-
       if (!paymentsData || paymentsData.length === 0) {
         setPayments([]);
         setRentals([]);
         setProperties([]);
         setTenants([]);
-        setLoading(false);
         return;
       }
 
       // PASSO 2: Extrair rental IDs únicos
       const rentalIds = [...new Set(paymentsData.map(p => p.rental_id))];
 
-      // PASSO 3: Buscar rentals em lotes (apenas campos essenciais)
+      // PASSO 3: Buscar rentals em lotes
       const rentalsData = await fetchInBatches<any>(
         "rentals",
         rentalIds,
         "id, property_id, tenant_id, monthly_rent, garage_value, status, start_date, end_date, payment_day, security_deposit",
-        20 // Lotes de 20
+        20
       );
 
       // PASSO 4: Extrair property_ids e tenant_ids únicos
@@ -112,7 +105,7 @@ export function usePayments() {
         "properties",
         propertyIds,
         "id, location_id, complement, rooms, bathrooms, area, status, value",
-        30 // Lotes de 30
+        30
       );
 
       // PASSO 6: Buscar locations
@@ -198,7 +191,7 @@ export function usePayments() {
         ])
       );
 
-      // PASSO 9: Mapear payments usando os valores do banco de dados
+      // PASSO 9: Mapear payments
       const paymentsMap: Payment[] = paymentsData.map(p => {
         return {
           id: p.id,
@@ -231,10 +224,7 @@ export function usePayments() {
       setProperties(Array.from(propertiesMap.values()));
       setTenants(Array.from(tenantsMap.values()));
 
-      console.log("✅ Estados atualizados. Total de payments:", paymentsMap.length);
-
     } catch (error) {
-      console.error("❌ Erro ao carregar pagamentos:", error);
       toast({
         title: "Erro",
         description: "Erro ao carregar pagamentos. Tente novamente.",
@@ -243,9 +233,9 @@ export function usePayments() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [toast]);
 
-  const handleCancelPayment = async (paymentId: string) => {
+  const handleCancelPayment = useCallback(async (paymentId: string) => {
     try {
       const { error } = await supabase
         .from("payments")
@@ -267,40 +257,38 @@ export function usePayments() {
         description: "Pagamento cancelado com sucesso",
       });
 
-      // Não recarregar aqui - deixar a página controlar o reload com filtros
     } catch (error) {
-      console.error("Erro ao cancelar pagamento:", error);
       toast({
         title: "Erro",
         description: "Erro ao cancelar pagamento",
         variant: "destructive",
       });
-      throw error; // Re-throw para a página tratar
+      throw error;
     }
-  };
+  }, [toast]);
 
-  const getPropertyInfo = (rentalId: string) => {
+  const getPropertyInfo = useCallback((rentalId: string) => {
     const rental = rentals.find(r => r.id === rentalId);
     if (!rental) return null;
     return properties.find(p => p.id === rental.propertyId) || null;
-  };
+  }, [rentals, properties]);
 
-  const getTenantInfo = (rentalId: string) => {
+  const getTenantInfo = useCallback((rentalId: string) => {
     const rental = rentals.find(r => r.id === rentalId);
     if (!rental) return null;
     return tenants.find(t => t.id === rental.tenantId) || null;
-  };
+  }, [rentals, tenants]);
 
-  const getExpectedAmount = (payment: Payment) => {
+  const getExpectedAmount = useCallback((payment: Payment) => {
     const rental = rentals.find(r => r.id === payment.rentalId);
     if (!rental) return payment.expectedAmount;
     return rental.value + (rental.depositAmount || 0);
-  };
+  }, [rentals]);
 
-  const getPaymentInstallment = (payment: Payment) => {
+  const getPaymentInstallment = useCallback((payment: Payment) => {
     if (!payment.installment || !payment.totalInstallments) return null;
     return `${payment.installment}/${payment.totalInstallments}`;
-  };
+  }, []);
 
   return {
     payments,
