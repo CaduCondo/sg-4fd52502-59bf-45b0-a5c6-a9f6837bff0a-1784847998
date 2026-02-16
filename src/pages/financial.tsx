@@ -131,7 +131,6 @@ export default function Financial() {
           console.error("❌ Erro ao buscar locais isentos:", exemptError);
         } else {
           const exemptIds = exemptions?.map(e => e.location_id) || [];
-          console.log("🔐 Locais isentos de taxa de administração:", exemptIds);
           setExemptLocationIds(exemptIds);
         }
 
@@ -216,7 +215,6 @@ export default function Financial() {
     } catch (error: any) {
       // Ignorar erros de abort
       if (error?.name === 'AbortError') {
-        console.log("🚫 Requisição cancelada");
         return;
       }
       
@@ -242,6 +240,7 @@ export default function Financial() {
       tenantName: tenant?.name || "N/A",
       rental: rental,
       pixCode: payment.paymentCode || rental?.pixCode || "",
+      paymentTime: payment.paymentTime || "",
     };
   };
 
@@ -386,6 +385,7 @@ export default function Financial() {
                  payment.status === "overdue" ? "Atrasado" : "Parcial",
         "Data Vencimento": format(new Date(payment.dueDate + "T00:00:00"), "dd/MM/yyyy"),
         "Data Recebida": payment.paymentDate ? format(new Date(payment.paymentDate + "T00:00:00"), "dd/MM/yyyy") : "-",
+        "Horário Recebido": details.paymentTime || "-",
         "Valor Esperado": payment.expectedAmount,
         "Valor Pago": payment.paidAmount || 0,
         "Código PIX": details.pixCode || "-",
@@ -397,7 +397,7 @@ export default function Financial() {
     ws["!cols"] = [
       { wch: 8 }, { wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 8 }, 
       { wch: 12 }, { wch: 12 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, 
-      { wch: 15 }, { wch: 20 }
+      { wch: 15 }, { wch: 15 }, { wch: 20 }
     ];
 
     const wb = XLSX.utils.book_new();
@@ -800,6 +800,7 @@ export default function Financial() {
                                 <SortIcon field="paymentDate" />
                               </div>
                             </TableHead>
+                            <TableHead>Horário Recebido</TableHead>
                             <TableHead className="cursor-pointer text-right" onClick={() => handleSort("expectedAmount")}>
                               <div className="flex items-center justify-end">
                                 Valor Esperado
@@ -870,6 +871,11 @@ export default function Financial() {
                                   {payment.paymentDate
                                     ? format(new Date(payment.paymentDate + "T00:00:00"), "dd/MM/yyyy")
                                     : "-"}
+                                </TableCell>
+                                <TableCell>
+                                  <span className="text-sm font-mono">
+                                    {details.paymentTime || "-"}
+                                  </span>
                                 </TableCell>
                                 <TableCell className="text-right">
                                   {new Intl.NumberFormat("pt-BR", {
@@ -944,7 +950,7 @@ export default function Financial() {
                           })}
                           {/* Linha de Totais */}
                           <TableRow className="bg-muted/50 font-bold">
-                            <TableCell colSpan={9} className="text-right">
+                            <TableCell colSpan={10} className="text-right">
                               Totais:
                             </TableCell>
                             <TableCell className="text-right">
