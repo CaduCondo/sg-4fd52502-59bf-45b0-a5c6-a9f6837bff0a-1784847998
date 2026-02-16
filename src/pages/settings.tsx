@@ -327,6 +327,7 @@ export default function Settings() {
         city: location.city,
         state: location.state,
         zip_code: location.zip_code || "",
+        is_active: location.active, // Fix: Map active property
       });
     } else {
       setEditingLocation(null);
@@ -356,7 +357,7 @@ export default function Settings() {
         description: "Local excluído com sucesso." 
       });
       setLocationToDelete(null);
-      loadLocations();
+      fetchLocations();
     } catch (error) {
       console.error("Erro ao excluir local:", error);
       toast({ 
