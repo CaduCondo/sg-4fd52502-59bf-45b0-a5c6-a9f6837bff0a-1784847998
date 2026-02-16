@@ -40,24 +40,29 @@ export function PaymentReceipt({
     const fetchPaymentDetails = async () => {
       if (!payment.id) return;
       
+      console.log("🔍 BUSCANDO VALORES DO BANCO para payment.id:", payment.id);
+      
       try {
-        console.log("🔍 BUSCANDO VALORES DO BANCO para payment.id:", payment.id);
-        
         const { data, error } = await supabase
           .from("payments")
-          .select("late_fee, interest")
+          .select("late_fee, interest, breakdown")
           .eq("id", payment.id)
           .maybeSingle();
 
         if (error) {
-          console.error("Erro Supabase:", error);
+          console.error("❌ Erro Supabase:", error);
           return;
         }
 
+        console.log("✅ VALORES RETORNADOS DO BANCO:", JSON.stringify(data, null, 2));
+
         if (data) {
-          console.log("✅ VALORES RETORNADOS DO BANCO:", data);
           setLateFeeFromDB(Number(data.late_fee) || 0);
           setInterestFromDB(Number(data.interest) || 0);
+          
+          if (data.breakdown) {
+            console.log("📦 BREAKDOWN DO BANCO (RAW):", typeof data.breakdown === "string" ? data.breakdown : JSON.stringify(data.breakdown, null, 2));
+          }
         }
       } catch (error) {
         console.error("❌ Erro ao buscar detalhes do pagamento:", error);
@@ -79,20 +84,36 @@ export function PaymentReceipt({
   const breakdownItems: BreakdownItem[] = [];
   let totalAmount = 0;
   
+  console.log("🔍 INICIANDO PROCESSAMENTO DO BREAKDOWN");
+  console.log("  payment.type:", payment.type);
+  console.log("  isTermination:", isTermination);
+  console.log("  payment.breakdown (tipo):", typeof payment.breakdown);
+  console.log("  payment.breakdown (conteúdo):", JSON.stringify(payment.breakdown, null, 2));
+  
   // Se é rescisão e tem breakdown, processar os valores específicos
   if (isTermination && payment.breakdown) {
+    console.log("✅ ENTRANDO NO BLOCO DE RESCISÃO");
     try {
       const breakdownData = typeof payment.breakdown === "string" 
         ? JSON.parse(payment.breakdown) 
         : payment.breakdown;
+
+      console.log("📊 BREAKDOWN PARSEADO:", JSON.stringify(breakdownData, null, 2));
 
       const proportionalRent = Number(breakdownData.proportionalRent || 0);
       const terminationFee = Number(breakdownData.terminationFee || 0);
       const depositRefund = Number(breakdownData.depositRefund || 0);
       const additionalExpenses = Number(breakdownData.additionalExpenses || 0);
 
+      console.log("📊 VALORES EXTRAÍDOS:", {
+        proportionalRent,
+        terminationFee,
+        depositRefund,
+        additionalExpenses
+      });
+
       if (proportionalRent > 0) {
-        console.log("Proportional Rent:", proportionalRent);
+        console.log("  ✅ Adicionando Aluguel Proporcional:", proportionalRent);
         breakdownItems.push({
           description: "Aluguel Proporcional",
           amount: proportionalRent,
@@ -101,7 +122,7 @@ export function PaymentReceipt({
       }
 
       if (terminationFee > 0) {
-        console.log("Termination Fee:", terminationFee);
+        console.log("  ✅ Adicionando Multa Rescisória:", terminationFee);
         breakdownItems.push({
           description: "Multa Rescisória",
           amount: terminationFee,
@@ -110,7 +131,7 @@ export function PaymentReceipt({
       }
 
       if (depositRefund !== 0) {
-        console.log("Deposit Refund:", depositRefund);
+        console.log("  ✅ Adicionando Devolução de Caução:", depositRefund);
         breakdownItems.push({
           description: "Devolução de Caução",
           amount: Math.abs(depositRefund),
@@ -119,7 +140,7 @@ export function PaymentReceipt({
       }
 
       if (additionalExpenses > 0) {
-        console.log("Additional Expenses:", additionalExpenses);
+        console.log("  ✅ Adicionando Despesas Adicionais:", additionalExpenses);
         breakdownItems.push({
           description: "Despesas Adicionais",
           amount: additionalExpenses,
@@ -127,9 +148,10 @@ export function PaymentReceipt({
         });
       }
     } catch (e) {
-      console.error("Erro ao processar breakdown de rescisão:", e);
+      console.error("❌ ERRO ao processar breakdown de rescisão:", e);
     }
   } else {
+    console.log("⚠️ NÃO É RESCISÃO OU NÃO TEM BREAKDOWN");
     // Se não tem itens, adicionar valor base
     const baseAmount = payment.expectedAmount || 0;
     if (baseAmount > 0) {
@@ -215,7 +237,7 @@ export function PaymentReceipt({
     }
   }
 
-  console.log("Breakdown Items Finais:", breakdownItems);
+  console.log("📋 BREAKDOWN ITEMS FINAIS:", JSON.stringify(breakdownItems, null, 2));
 
   // Calcular total
   if (breakdownItems.length > 0) {
@@ -227,6 +249,8 @@ export function PaymentReceipt({
   } else {
     totalAmount = payment.paidAmount || payment.expectedAmount || 0;
   }
+
+  console.log("💰 TOTAL AMOUNT CALCULADO:", totalAmount);
 
   const currentInstallment = payment.installment || 1;
   const totalInstallments = isTermination 
