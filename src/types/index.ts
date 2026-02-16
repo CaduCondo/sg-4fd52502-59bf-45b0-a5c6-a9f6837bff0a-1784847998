@@ -1,137 +1,77 @@
+export interface Permission {
+  id: string;
+  code: string;
+  description: string;
+}
+
 export interface User {
-  id?: string;
-  name: string;
+  id: string;
   email: string;
-  photo?: string;
-  role: "admin" | "user" | "broker" | "financial";
-  token?: string;
-  username?: string;
-  password?: string;
-  phone?: string;
-  rg?: string;
-  cpf?: string;
-  active?: boolean;
-  createdAt?: string;
+  name: string;
+  role: "admin" | "manager" | "employee";
+  permissions: Permission[];
 }
 
 export interface SystemUser {
   id: string;
   name: string;
   email: string;
-  photo?: string;
-  phone?: string;
-  username?: string;
-  password?: string;
-  role: "admin" | "broker" | "financial";
-  active: boolean;
-  locationId?: string;
+  role: string;
+  status: boolean;
   last_login?: string;
-  created_at: string;
-  updated_at: string;
-  cpf?: string;
-  rg?: string;
-  birthDate?: string;
-  cep?: string;
+  created_at?: string;
+}
+
+export interface Location {
+  id: string;
+  name: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  // Campos snake_case para compatibilidade
+  zip_code?: string;
   street?: string;
   number?: string;
   complement?: string;
   neighborhood?: string;
-  city?: string;
-  state?: string;
-}
-
-export interface CompanyConfig {
-  id: string;
-  company_name: string;
-  cnpj: string;
-  email: string;
-  phone: string;
-  address: string;
-  city: string;
-  state: string;
-  zip_code: string;
-  admin_fee_percentage: number;
-  management_fee_percentage?: number; // Nova taxa
-  late_fee_percentage: number;
-  interest_rate_percentage: number;
-}
-
-export interface RoleMenuPermission {
-  id: string;
-  role: string;
-  menu_id: string;
-  created_at?: string;
-}
-
-export interface UserLocationPermission {
-  id: string;
-  user_id: string;
-  location_id: string;
-  created_at?: string;
+  is_active?: boolean;
 }
 
 export interface Property {
   id: string;
-  // Location info
+  description: string;
+  address: string;
+  value: number;
+  monthlyRent?: number; // Alias for value
+  status: "available" | "rented" | "maintenance" | "occupied" | "unavailable";
   locationId: string;
-  location?: string; // Derived name
-  complement?: string; // DB field
+  location_id?: string; // Alias
+  location?: string; // Nome do local para exibição
+  locationDetails?: Location;
+  features: string[];
+  images: string[];
+  ownerId?: string;
+  complement?: string;
+  iptu?: number;
+  energy_meter?: string;
+  water_meter?: string;
+  notes?: string;
   
-  // Address details mapped from Location
-  address?: string; // Mapped from street
+  // Campos adicionais
+  propertyIdentifier?: string;
   number?: string;
   neighborhood?: string;
   city?: string;
   state?: string;
   zipCode?: string;
-
-  // Details
-  description?: string; // DB field
-  rooms?: number; // DB field - Total de cômodos (não confundir com quartos)
-  bathrooms?: number; // DB field
-  area?: number; // DB field
-  hasGarage?: boolean; // Mapped from has_garage
-  
-  // Novos campos
-  images?: string[]; // Array de URLs das imagens
-  hasFurniture?: boolean; // Móveis planejados
-  acceptsPets?: boolean; // Aceita pets
-  hasPartnerBroker?: boolean; // Corretor parceiro
-  
-  // Financial
-  value?: number; // DB field - Valor do imóvel/aluguel
-  garageValue?: number; // Mapped from garage_value
-
-  // Status & Metadata
-  status: "available" | "occupied" | "unavailable";
-  propertyIdentifier?: string; // Mapped from property_identifier
-  createdAt?: string;
-  updatedAt?: string;
-  
-  // Detalhes da localização (objeto completo para UI rica)
-  locationDetails?: {
-    id: string;
-    name: string;
-    city: string;
-    state: string;
-    neighborhood?: string;
-    address?: string;
-    zipCode?: string;
-  };
-
-  // Database snake_case fallbacks (optional, for raw data)
-  location_id?: string;
-  has_garage?: boolean;
-  garage_value?: number;
-  property_identifier?: string;
-  has_furniture?: boolean;
-  accepts_pets?: boolean;
-  
-  // DEPRECATED/LEGACY FIELDS (mantidos para compatibilidade, mas NÃO existem no banco)
-  // Estes campos eram usados no código antigo mas não existem na tabela properties
-  type?: string; // DEPRECATED - Não existe no banco
-  bedrooms?: number; // DEPRECATED - Use 'rooms' ao invés
-  monthlyRent?: number; // DEPRECATED - Use 'value' ao invés
+  rooms?: number;
+  bathrooms?: number;
+  area?: number;
+  hasGarage?: boolean;
+  garageValue?: number;
+  hasFurniture?: boolean;
+  acceptsPets?: boolean;
 }
 
 export interface Tenant {
@@ -139,12 +79,18 @@ export interface Tenant {
   name: string;
   email: string;
   phone: string;
-  document: string;
-  documentType?: "cpf" | "cnpj";
-  document_type?: "cpf" | "cnpj";
-  cpf?: string;
-  cnpj?: string;
+  cpf: string;
+  status: "active" | "late" | "debt" | "rented" | "inactive";
   rg?: string;
+  birthDate?: string;
+  profession?: string;
+  income?: number;
+
+  // Campos adicionais
+  document?: string;
+  documentType?: string;
+  document_type?: string; // Alias
+  cnpj?: string;
   cep?: string;
   street?: string;
   number?: string;
@@ -152,9 +98,6 @@ export interface Tenant {
   neighborhood?: string;
   city?: string;
   state?: string;
-  status: "active" | "inactive" | "rented";
-  created_at?: string;
-  updated_at?: string;
 }
 
 export interface Rental {
@@ -162,144 +105,105 @@ export interface Rental {
   propertyId: string;
   tenantId: string;
   startDate: string;
-  endDate: string;
-  paymentDay: number;
-  value: number; // Valor TOTAL (Aluguel + Vaga)
-  monthlyRent?: number; // Valor APENAS do Aluguel
-  monthly_rent?: number; // Compatibilidade DB snake_case
-  depositAmount: number;
-  status: "active" | "inactive" | "terminated" | "pending";
+  endDate: string | null;
+  value: number;
+  monthlyRent: number; // Alias for value
+  status: "active" | "terminated";
   isActive: boolean;
-  attachments: string[];
-  contractAttachments: string[];
+  paymentDay: number;
+  contractUrl?: string;
   autoRenew: boolean;
-  pixCode?: string;
-  createdAt?: string;
-
-  // Campos para parcelamento do caução
+  property?: Property;
+  tenant?: Tenant;
+  depositAmount?: number;
   depositInstallments?: number;
   depositInstallment1?: number;
-  depositPaymentDate?: string;
-  depositPixCode?: string;
-  
   depositInstallment2?: number;
-  depositInstallment2PaymentDate?: string;
-  depositInstallment2PixCode?: string;
-  
   depositInstallment3?: number;
+  depositPaymentDate?: string;
+  depositInstallment2PaymentDate?: string;
   depositInstallment3PaymentDate?: string;
+  depositPixCode?: string;
+  depositInstallment2PixCode?: string;
   depositInstallment3PixCode?: string;
-
-  security_deposit?: number; // Adicionado campo do banco de dados
-
-  // Campos de parcelas
-  installments?: number; // Total de parcelas do contrato (ex: 24)
-  totalInstallments?: number; // Total de parcelas geradas/pagas
-
-  // Dados relacionados (JOINs)
-  property?: {
-    id: string;
-    locationId: string;
-    propertyIdentifier: string;
-    complement?: string;
-    value: number;
-    location: string;
-    locationName: string;
-  };
-  
-  tenant?: {
-    id: string;
-    name: string;
-    phone?: string;
-  };
-
-  // Novos campos adicionados
+  attachments?: string[];
+  contractAttachments?: string[];
+  guaranteeType?: string;
+  guaranteeValue?: number;
+  guarantorName?: string;
+  guarantorCpf?: string;
+  guarantorPhone?: string;
+  guarantorIncome?: number;
   hasGarage?: boolean;
   garageValue?: number;
   hasPartnerBroker?: boolean;
+  partnerBrokerName?: string;
+  partnerBrokerPhone?: string;
+  partnerBrokerCpf?: string;
+  partnerBrokerCommission?: number;
+  
+  // Campos de compatibilidade
+  security_deposit?: number;
+  installments?: any[];
+  totalInstallments?: number;
+  pixCode?: string;
 }
 
 export interface Payment {
   id: string;
   rentalId: string;
-  rental_id?: string; // Compatibilidade DB
-  dueDate: string;
-  due_date?: string; // Compatibilidade DB
+  rental_id?: string;
+  propertyId: string;
+  property_id?: string;
+  tenantId: string;
+  tenant_id?: string;
   expectedAmount: number;
-  amount?: number; // Compatibilidade DB
-  paidAmount?: number;
-  paid_amount?: number; // Compatibilidade DB
-  paymentDate?: string;
-  payment_date?: string; // Compatibilidade DB
-  status: "pending" | "paid" | "overdue" | "partial";
-  type?: "monthly" | "termination" | "deposit_installment" | "repair";
-  paymentMethod?: string;
-  payment_method?: string; // Compatibilidade DB
-  paymentLocation?: string;
-  paymentCode?: string;
-  paymentTime?: string; // Horário do recebimento (HH:MM)
-  notes?: string;
+  expected_amount?: number;
+  paidAmount: number;
+  paid_amount?: number;
+  paymentDate: string | null;
+  payment_date?: string | null;
   referenceMonth: number;
-  reference_month?: number; // Compatibilidade DB
+  reference_month?: string | number;
   referenceYear: number;
-  reference_year?: number; // Compatibilidade DB
-  receiptUrl?: string;
-  attachments?: string[];
-  
-  // Fees & Discounts
-  penaltyAmount?: number;
-  interestAmount?: number;
-  discountAmount?: number;
-  discount?: number; // Compatibilidade DB
-  adminFee?: number;
-  lateFee?: number; // Alias
-  interest?: number; // Alias
-  
-  // Installment info
+  reference_year?: string | number;
+  status: "paid" | "pending" | "overdue" | "partial";
+  discount: number;
+  lateFee: number;
+  late_fee?: number;
+  interest: number;
+  notes: string;
+  paymentMethod: string;
+  payment_method?: string;
+  receiptUrl: string;
+  receipt_url?: string;
+  createdAt: string;
+  created_at?: string;
+  updatedAt: string;
+  updated_at?: string;
+  locationId: string;
+  location_id?: string;
+  paymentTime: string | null;
+  payment_time?: string | null;
+  rental?: Rental;
+  property?: Property;
+  tenant?: Tenant;
+
+  // Campos adicionais usados em componentes
+  dueDate?: string; // Data de vencimento calculada ou salva
+  breakdown?: any; // Detalhamento do pagamento
+  type?: string; // Tipo de pagamento (aluguel, depósito, etc)
   installment?: number;
   totalInstallments?: number;
-  installmentNumber?: number; // Legacy alias
-  installment_number?: number; // Compatibilidade DB
-
-  breakdown?: any; // Adicionado para suportar JSON de detalhamento de valores
-
-  partialPayments?: any[];
-  createdAt?: string;
-  created_at?: string; // Compatibilidade DB
-  updatedAt?: string;
-  updated_at?: string; // Compatibilidade DB
-  
-  // Dados relacionados (para UI)
-  property_address?: string;
-  tenant_name?: string;
+  installmentNumber?: number;
+  paymentCode?: string; // Pix code ou similar
 }
 
 export interface PaymentInstallment {
-  id: string;
-  rental_id: string;
-  rentalId?: string;
-  installment_number: number;
-  installmentNumber?: number;
-  amount: number;
-  due_date: string;
-  dueDate?: string;
-  status: "pending" | "paid" | "overdue" | "partial";
-  paid_amount?: number;
-  paidAmount?: number;
-  payment_date?: string;
-  paymentDate?: string;
-  payment_time?: string;
-  paymentTime?: string;
-  discount?: number;
-  fine?: number;
-  interest?: number;
-  payment_method?: string;
-  paymentMethod?: string;
-  notes?: string;
-  created_at?: string;
-  createdAt?: string;
-  updated_at?: string;
-  updatedAt?: string;
+  installmentNumber: number;
+  value: number;
+  dueDate: Date;
+  status: "pending" | "paid" | "overdue";
 }
 
 export interface PaymentFilters {
@@ -309,72 +213,57 @@ export interface PaymentFilters {
   year?: string;
 }
 
-export interface Location {
-  id: string;
-  name: string;
-  street?: string;
-  number?: string;
-  complement?: string;
-  neighborhood?: string;
-  city: string;
-  state: string;
-  zip_code?: string;
-  is_active?: boolean;
-  created_at?: string;
-  updated_at?: string;
-  
-  // Aliases
-  address?: string;
-  cep?: string;
-  zipCode?: string;
+export interface DashboardMetric {
+  label: string;
+  value: string | number;
+  change?: number;
+  trend?: "up" | "down" | "neutral";
+  icon?: any;
 }
 
-export type TenantStatus = "active" | "inactive" | "rented";
-export type RentalStatus = "active" | "completed" | "canceled";
-
-export interface DepositInstallment {
+export interface FinancialRecord {
   id: string;
-  rentalId: string;
-  installmentNumber: number;
-  dueDate: string;
+  type: "income" | "expense";
+  category: string;
   amount: number;
-  status: "pending" | "paid" | "overdue" | "partial";
-  paidAmount?: number;
-  paymentDate?: string;
-  paymentMethod?: string;
-  paymentLocation?: string;
-  paymentCode?: string;
-  notes?: string;
-  referenceMonth: number;
-  referenceYear: number;
-  receiptUrl?: string;
-  attachments?: string[];
-  
-  // Fees & Discounts
-  penaltyAmount?: number;
-  interestAmount?: number;
-  discountAmount?: number;
-  lateFee?: number; // Alias
-  interest?: number; // Alias
-  
-  createdAt?: string;
-  updatedAt?: string;
+  date: string;
+  description: string;
+  status: "pending" | "completed";
 }
 
-// Location Expenses (contas a pagar por local)
+export interface CompanyConfig {
+  id: string;
+  company_name: string;
+  cnpj?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  logo_url?: string;
+  primary_color?: string;
+  secondary_color?: string;
+}
+
 export interface LocationExpense {
   id: string;
-  locationId: string;
-  expenseType: 'water' | 'electricity' | 'gas' | 'internet' | 'maintenance' | 'other';
-  description?: string;
+  location_id: string;
+  description: string;
   amount: number;
-  referenceMonth: number;
-  referenceYear: number;
-  dueDate?: string;
-  paymentDate?: string;
-  status: 'pending' | 'paid' | 'overdue';
-  notes?: string;
-  attachments?: string[];
-  createdAt?: string;
-  updatedAt?: string;
+  date: string;
+  category: string;
+  status: string;
+}
+
+export interface RoleMenuPermission {
+  id: string;
+  role: string;
+  menu: string;
+  can_view: boolean;
+  can_edit: boolean;
+  can_delete: boolean;
+}
+
+export interface UserLocationPermission {
+  id: string;
+  user_id: string;
+  location_id: string;
 }
