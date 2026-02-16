@@ -35,7 +35,6 @@ export function PaymentReceipt({
   const [lateFeeFromDB, setLateFeeFromDB] = useState<number>(0);
   const [interestFromDB, setInterestFromDB] = useState<number>(0);
   const [breakdownFromDB, setBreakdownFromDB] = useState<any>(null);
-  const [typeFromDB, setTypeFromDB] = useState<string>("");
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
   useEffect(() => {
@@ -47,7 +46,7 @@ export function PaymentReceipt({
       try {
         const { data, error } = await supabase
           .from("payments")
-          .select("late_fee, interest, breakdown, type")
+          .select("late_fee, interest, breakdown")
           .eq("id", payment.id)
           .maybeSingle();
 
@@ -64,7 +63,6 @@ export function PaymentReceipt({
           
           setLateFeeFromDB(Number(paymentData.late_fee) || 0);
           setInterestFromDB(Number(paymentData.interest) || 0);
-          setTypeFromDB(paymentData.type || "");
           
           if (paymentData.breakdown) {
             console.log("📦 BREAKDOWN DO BANCO (RAW):", paymentData.breakdown);
@@ -77,8 +75,6 @@ export function PaymentReceipt({
             setBreakdownFromDB(parsedBreakdown);
             console.log("✅ BREAKDOWN SALVO NO ESTADO:", JSON.stringify(parsedBreakdown, null, 2));
           }
-          
-          console.log("✅ TYPE SALVO NO ESTADO:", paymentData.type);
         }
       } catch (error) {
         console.error("❌ Erro ao buscar detalhes do pagamento:", error);
