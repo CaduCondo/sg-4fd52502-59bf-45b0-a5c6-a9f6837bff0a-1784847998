@@ -48,12 +48,10 @@ const mapPaymentFromDb = (row: any): Payment => {
   const interest = Number(row.interest || 0);
 
   // CORREÇÃO DE LÓGICA: O status deve ser calculado sobre o TOTAL esperado (com taxas/descontos)
-  // e não apenas sobre o valor base do aluguel.
   const totalExpected = expectedAmount + lateFee + interest - discount;
   
   const dueDate = row.due_date;
   
-  // Calcula o status correto baseado nos valores TOTAIS
   let correctStatus = calculatePaymentStatus(totalExpected, paidAmount, row.payment_date);
   
   // Verificação adicional de OVERDUE se estiver pendente e vencido
@@ -73,7 +71,7 @@ const mapPaymentFromDb = (row: any): Payment => {
     correctStatus = 'paid';
   }
   
-  // CORREÇÃO FINAL: Força status pago se diferença for insignificante,
+  // Força status pago se diferença for insignificante
   if (Math.abs(totalExpected - paidAmount) <= 0.05) {
     correctStatus = 'paid';
   }
@@ -120,15 +118,14 @@ const mapPaymentFromDb = (row: any): Payment => {
   };
 };
 
+// Esta função agora é usada apenas para CREATE, onde temos todos os dados
 const mapPaymentToDb = (payment: Partial<Payment>) => {
   const expectedAmount = Number(payment.expectedAmount || payment.amount || 0);
   const paidAmount = Number(payment.paidAmount || payment.paid_amount || 0);
   const discount = Number(payment.discountAmount || payment.discount || 0);
-  const lateFee = Number(payment.lateFee || 0); // Note: frontend might not pass lateFee in update usually, but if it does
+  const lateFee = Number(payment.lateFee || 0); 
   const interest = Number(payment.interest || 0);
   
-  // Para salvar no banco, calculamos o status baseado no que está sendo salvo
-  // Assumindo que se estamos atualizando, temos os valores finais
   const totalExpected = expectedAmount + lateFee + interest - discount;
   
   let correctStatus = calculatePaymentStatus(
@@ -153,6 +150,8 @@ const mapPaymentToDb = (payment: Partial<Payment>) => {
     payment_date: payment.paymentDate || payment.payment_date || null,
     payment_time: payment.paymentTime || null,
     discount_amount: discount,
+    late_fee: lateFee,
+    interest: interest,
     paid_amount: paidAmount || null,
     payment_method: payment.paymentMethod || payment.payment_method || null,
     notes: payment.notes || null,
@@ -166,10 +165,9 @@ const mapPaymentToDb = (payment: Partial<Payment>) => {
 
 export const getAll = async (filters?: PaymentFilters): Promise<Payment[]> => {
   try {
-    // Casting forçado para any na ORIGEM da query para evitar erro TS2589 de profundidade excessiva
-    const queryBuilder = (supabase.from(PAYMENTS_TABLE) as any);
-      
-    let query = queryBuilder
+    // Cast supabase to any to prevent TS2589 deep type instantiation error
+    let query = (supabase as any)
+      .from(PAYMENTS_TABLE)
       .select(`
         *,
         rentals!payments_rental_id_fkey(
@@ -187,13 +185,13 @@ export const getAll = async (filters?: PaymentFilters): Promise<Payment[]> => {
       }
 
       if (location_id) {
-        const { data: rentals } = await supabase
+        const { data: rentals } = await (supabase as any)
           .from("rentals")
           .select("id")
           .eq("location_id", location_id);
 
         if (rentals && rentals.length > 0) {
-          const rentalIds = rentals.map((r) => r.id);
+          const rentalIds = rentals.map((r: any) => r.id);
           query = query.in("rental_id", rentalIds);
         } else {
           return [];
@@ -219,10 +217,8 @@ export const getAll = async (filters?: PaymentFilters): Promise<Payment[]> => {
 
 export const getSingle = async (id: string): Promise<Payment | null> => {
   try {
-    // Casting forçado para any para evitar erro TS2589
-    const queryBuilder = (supabase.from(PAYMENTS_TABLE) as any);
-
-    const { data, error } = await queryBuilder
+    const { data, error } = await (supabase as any)
+      .from(PAYMENTS_TABLE)
       .select(`
         *,
         rentals!payments_rental_id_fkey(
@@ -248,7 +244,7 @@ export const create = async (payment: Omit<Payment, "id">): Promise<Payment> => 
   try {
     const paymentData = mapPaymentToDb(payment);
 
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from(PAYMENTS_TABLE)
       .insert(paymentData)
       .select()
@@ -264,11 +260,57 @@ export const create = async (payment: Omit<Payment, "id">): Promise<Payment> => 
 
 export const update = async (id: string, payment: Partial<Payment>): Promise<Payment> => {
   try {
-    const paymentData = mapPaymentToDb(payment);
+    // 1. Busca dados atuais para garantir cálculo correto do status
+    const current = await getSingle(id);
+    if (!current) throw new Error("Payment not found");
 
-    const { data, error } = await supabase
+    // 2. Mescla dados para cálculo
+    const merged = { ...current, ...payment };
+    
+    // 3. Recalcula status com dados completos
+    const expectedAmount = merged.expectedAmount || merged.amount || 0;
+    const paidAmount = merged.paidAmount || merged.paid_amount || 0;
+    const discount = merged.discountAmount || merged.discount || 0;
+    const lateFee = merged.lateFee || 0;
+    const interest = merged.interest || 0;
+    
+    const totalExpected = expectedAmount + lateFee + interest - discount;
+    
+    let newStatus = calculatePaymentStatus(
+      totalExpected, 
+      paidAmount, 
+      payment.paymentDate !== undefined ? payment.paymentDate : current.paymentDate
+    );
+    
+    if (payment.status === 'paid') newStatus = 'paid';
+    
+    // 4. Prepara payload APENAS com campos enviados + status calculado
+    // Não usamos mapPaymentToDb aqui para evitar sobrescrever com 0 campos não enviados
+    const payload: any = {
+      status: newStatus,
+      updated_at: new Date().toISOString()
+    };
+    
+    if (payment.expectedAmount !== undefined) payload.expected_amount = payment.expectedAmount;
+    if (payment.amount !== undefined) payload.expected_amount = payment.amount;
+    if (payment.dueDate !== undefined) payload.due_date = payment.dueDate;
+    if (payment.paymentDate !== undefined) payload.payment_date = payment.paymentDate;
+    if (payment.paymentTime !== undefined) payload.payment_time = payment.paymentTime;
+    if (payment.discountAmount !== undefined) payload.discount_amount = payment.discountAmount;
+    if (payment.paidAmount !== undefined) payload.paid_amount = payment.paidAmount;
+    if (payment.paymentMethod !== undefined) payload.payment_method = payment.paymentMethod;
+    if (payment.notes !== undefined) payload.notes = payment.notes;
+    if (payment.installmentNumber !== undefined) payload.installment = payment.installmentNumber;
+    if (payment.lateFee !== undefined) payload.late_fee = payment.lateFee;
+    if (payment.interest !== undefined) payload.interest = payment.interest;
+    if (payment.referenceMonth !== undefined) payload.reference_month = String(payment.referenceMonth);
+    if (payment.referenceYear !== undefined) payload.reference_year = String(payment.referenceYear);
+    if (payment.breakdown !== undefined) payload.breakdown = payment.breakdown;
+    if (payment.attachments !== undefined) payload.attachments = payment.attachments;
+
+    const { data, error } = await (supabase as any)
       .from(PAYMENTS_TABLE)
-      .update(paymentData)
+      .update(payload)
       .eq("id", id)
       .select()
       .single();
@@ -283,7 +325,7 @@ export const update = async (id: string, payment: Partial<Payment>): Promise<Pay
 
 export const remove = async (id: string): Promise<void> => {
   try {
-    const { error } = await supabase.from(PAYMENTS_TABLE).delete().eq("id", id);
+    const { error } = await (supabase as any).from(PAYMENTS_TABLE).delete().eq("id", id);
 
     if (error) throw error;
   } catch (error) {
@@ -293,7 +335,7 @@ export const remove = async (id: string): Promise<void> => {
 
 export const getByRental = async (rentalId: string): Promise<Payment[]> => {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from(PAYMENTS_TABLE)
       .select("*")
       .eq("rental_id", rentalId)
@@ -311,7 +353,7 @@ export const getByRentalId = getByRental;
 
 export const deletePaymentsByRentalId = async (rentalId: string): Promise<void> => {
   try {
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from(PAYMENTS_TABLE)
       .delete()
       .eq("rental_id", rentalId)
@@ -394,7 +436,7 @@ export const createPaymentsForRental = async (
 
     const paymentsData = payments.map(mapPaymentToDb);
 
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from(PAYMENTS_TABLE)
       .insert(paymentsData)
       .select();
@@ -415,7 +457,7 @@ export const updateFuturePayments = async (
   try {
     const today = new Date().toISOString().split('T')[0];
     
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from(PAYMENTS_TABLE)
       .update({ expected_amount: newAmount })
       .eq("rental_id", rentalId)
@@ -435,7 +477,7 @@ export const updateFuturePaymentsOnPaymentDayChange = async (
   try {
     const today = new Date().toISOString().split('T')[0];
     
-    const { data: payments, error: fetchError } = await supabase
+    const { data: payments, error: fetchError } = await (supabase as any)
       .from(PAYMENTS_TABLE)
       .select("id, due_date, reference_month, reference_year")
       .eq("rental_id", rentalId)
@@ -446,7 +488,7 @@ export const updateFuturePaymentsOnPaymentDayChange = async (
 
     if (!payments || payments.length === 0) return;
 
-    const updates = payments.map(payment => {
+    const updates = payments.map((payment: any) => {
       let newDateStr = payment.due_date;
       
       const refMonth = parseInt(payment.reference_month);
@@ -469,7 +511,7 @@ export const updateFuturePaymentsOnPaymentDayChange = async (
     });
 
     for (const update of updates) {
-      await supabase
+      await (supabase as any)
         .from(PAYMENTS_TABLE)
         .update({ due_date: update.due_date })
         .eq("id", update.id);
@@ -567,7 +609,7 @@ export const getDepositInstallmentsByRental = async (
   rentalId: string
 ): Promise<PaymentInstallment[]> => {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from(DEPOSIT_INSTALLMENTS_TABLE)
       .select("*")
       .eq("rental_id", rentalId)
@@ -585,7 +627,7 @@ export const getDepositInstallment = async (
   id: string
 ): Promise<PaymentInstallment | null> => {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from(DEPOSIT_INSTALLMENTS_TABLE)
       .select("*")
       .eq("id", id)
@@ -605,6 +647,8 @@ export const updateDepositInstallment = async (
   installment: Partial<PaymentInstallment>
 ): Promise<PaymentInstallment> => {
   try {
+    // Para parcelas de caução, como é mais simples, mantemos a lógica,
+    // mas adicionamos o cálculo correto
     const amount = Number(installment.amount || 0);
     const paidAmount = Number(installment.paidAmount || installment.paid_amount || 0);
     const discount = Number(installment.discount || 0);
@@ -634,7 +678,7 @@ export const updateDepositInstallment = async (
       notes: installment.notes || null,
     };
 
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from(DEPOSIT_INSTALLMENTS_TABLE)
       .update(updateData)
       .eq("id", id)
@@ -653,7 +697,7 @@ export const getAllDepositInstallments = async (
   filters?: PaymentFilters
 ): Promise<PaymentInstallment[]> => {
   try {
-    let query = supabase
+    let query = (supabase as any)
       .from(DEPOSIT_INSTALLMENTS_TABLE)
       .select("*")
       .order("due_date", { ascending: false });
@@ -666,13 +710,13 @@ export const getAllDepositInstallments = async (
       }
 
       if (location_id) {
-        const { data: rentals } = await supabase
+        const { data: rentals } = await (supabase as any)
           .from("rentals")
           .select("id")
           .eq("location_id", location_id);
 
         if (rentals && rentals.length > 0) {
-          const rentalIds = rentals.map((r) => r.id);
+          const rentalIds = rentals.map((r: any) => r.id);
           query = query.in("rental_id", rentalIds);
         } else {
           return [];
@@ -700,7 +744,7 @@ export const createMany = async (payments: Omit<Payment, "id">[]): Promise<Payme
   try {
     const paymentsData = payments.map(mapPaymentToDb);
 
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from(PAYMENTS_TABLE)
       .insert(paymentsData)
       .select();
@@ -718,7 +762,7 @@ export const updateRentalPaymentStatus = async (
   newStatus: string
 ): Promise<void> => {
   try {
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from("rentals")
       .update({ status: newStatus })
       .eq("id", rentalId);
