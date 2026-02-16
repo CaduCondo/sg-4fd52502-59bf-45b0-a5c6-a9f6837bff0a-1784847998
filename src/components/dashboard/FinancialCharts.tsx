@@ -5,7 +5,7 @@ import {
 } from "recharts";
 import { formatCurrency } from "@/lib/masks";
 import { TrendingUp, PieChart as PieChartIcon, BarChart3 } from "lucide-react";
-import { memo } from "react";
+import { memo, useMemo } from "react";
 
 interface FinancialChartsProps {
   monthlyRevenueData: Array<{
@@ -32,7 +32,12 @@ const COLORS = {
   danger: "#ef4444",
   purple: "#8b5cf6",
   cyan: "#06b6d4",
-};
+} as const;
+
+const tooltipStyle = { 
+  backgroundColor: 'rgba(255, 255, 255, 0.95)', 
+  borderRadius: '8px' 
+} as const;
 
 export const FinancialCharts = memo(function FinancialCharts({ 
   monthlyRevenueData, 
@@ -40,12 +45,15 @@ export const FinancialCharts = memo(function FinancialCharts({
   occupancyData 
 }: FinancialChartsProps) {
   
-  const combinedFinancialData = monthlyRevenueData.map((item, index) => ({
-    month: item.month,
-    bruta: item.bruta,
-    liquida: item.liquida,
-    despesas: (monthlyExpensesData[index]?.taxas || 0) + (monthlyExpensesData[index]?.contas || 0),
-  }));
+  const combinedFinancialData = useMemo(() => 
+    monthlyRevenueData.map((item, index) => ({
+      month: item.month,
+      bruta: item.bruta,
+      liquida: item.liquida,
+      despesas: (monthlyExpensesData[index]?.taxas || 0) + (monthlyExpensesData[index]?.contas || 0),
+    })),
+    [monthlyRevenueData, monthlyExpensesData]
+  );
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -65,7 +73,7 @@ export const FinancialCharts = memo(function FinancialCharts({
                 <YAxis tickFormatter={(value) => formatCurrency(value)} />
                 <Tooltip 
                   formatter={(value: number) => formatCurrency(value)}
-                  contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', borderRadius: '8px' }}
+                  contentStyle={tooltipStyle}
                 />
                 <Legend />
                 <Line 
@@ -147,7 +155,7 @@ export const FinancialCharts = memo(function FinancialCharts({
                 <YAxis tickFormatter={(value) => formatCurrency(value)} />
                 <Tooltip 
                   formatter={(value: number) => formatCurrency(value)}
-                  contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', borderRadius: '8px' }}
+                  contentStyle={tooltipStyle}
                 />
                 <Legend />
                 <Bar dataKey="taxas" fill={COLORS.purple} name="Taxas Administrativas" />
@@ -174,7 +182,7 @@ export const FinancialCharts = memo(function FinancialCharts({
                 <YAxis tickFormatter={(value) => formatCurrency(value)} />
                 <Tooltip 
                   formatter={(value: number) => formatCurrency(value)}
-                  contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', borderRadius: '8px' }}
+                  contentStyle={tooltipStyle}
                 />
                 <Legend />
                 <Bar dataKey="bruta" fill={COLORS.primary} name="Receita Bruta" radius={[8, 8, 0, 0]} />

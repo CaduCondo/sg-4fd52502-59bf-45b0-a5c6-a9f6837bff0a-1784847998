@@ -42,6 +42,25 @@ interface OverviewCardsProps {
   userRole?: string;
 }
 
+const CardWrapper = memo(function CardWrapper({ 
+  hasLinks, 
+  href, 
+  children 
+}: { 
+  hasLinks: boolean;
+  href?: string; 
+  children: React.ReactNode;
+}) {
+  if (hasLinks && href) {
+    return (
+      <Link href={href} className="block">
+        {children}
+      </Link>
+    );
+  }
+  return <>{children}</>;
+});
+
 export const OverviewCards = memo(function OverviewCards({ 
   data, 
   selectedMonth, 
@@ -56,9 +75,11 @@ export const OverviewCards = memo(function OverviewCards({
     });
   }, []);
 
-  const hasLinks = userRole === "admin" || userRole === "broker";
+  const hasLinks = useMemo(() => 
+    userRole === "admin" || userRole === "broker",
+    [userRole]
+  );
 
-  // Garantir valores seguros
   const safeData = useMemo(() => ({
     totalProperties: data?.totalProperties || 0,
     availableProperties: data?.availableProperties || 0,
@@ -78,17 +99,6 @@ export const OverviewCards = memo(function OverviewCards({
     netRevenue: data?.netRevenue || 0,
   }), [data]);
 
-  const CardWrapper = ({ href, children }: { href?: string; children: React.ReactNode }) => {
-    if (hasLinks && href) {
-      return (
-        <Link href={href} className="block">
-          {children}
-        </Link>
-      );
-    }
-    return <>{children}</>;
-  };
-
   return (
     <div className="space-y-5">
       <div className="space-y-4">
@@ -98,7 +108,7 @@ export const OverviewCards = memo(function OverviewCards({
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          <CardWrapper>
+          <CardWrapper hasLinks={hasLinks}>
             <MetricCard
               title="Imóveis Cadastrados"
               value={safeData.totalProperties}
@@ -111,7 +121,7 @@ export const OverviewCards = memo(function OverviewCards({
             />
           </CardWrapper>
 
-          <CardWrapper>
+          <CardWrapper hasLinks={hasLinks}>
             <MetricCard
               title="Imóveis Disponíveis"
               value={safeData.availableProperties}
@@ -124,7 +134,7 @@ export const OverviewCards = memo(function OverviewCards({
             />
           </CardWrapper>
 
-          <CardWrapper>
+          <CardWrapper hasLinks={hasLinks}>
             <MetricCard
               title="Imóveis Indisponíveis"
               value={safeData.unavailableProperties}
@@ -137,7 +147,7 @@ export const OverviewCards = memo(function OverviewCards({
             />
           </CardWrapper>
 
-          <CardWrapper>
+          <CardWrapper hasLinks={hasLinks}>
             <MetricCard
               title="Total Inquilinos"
               value={safeData.totalTenants}
@@ -150,7 +160,7 @@ export const OverviewCards = memo(function OverviewCards({
             />
           </CardWrapper>
 
-          <CardWrapper>
+          <CardWrapper hasLinks={hasLinks}>
             <MetricCard
               title="Taxa de Ocupação"
               value={`${safeData.occupancyRate.toFixed(1)}%`}
@@ -177,7 +187,7 @@ export const OverviewCards = memo(function OverviewCards({
           />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-          <CardWrapper href="/payments?status=overdue">
+          <CardWrapper hasLinks={hasLinks} href="/payments?status=overdue">
             <MetricCard
               title="Aluguéis Atrasados"
               value={safeData.overduePayments}
@@ -190,7 +200,7 @@ export const OverviewCards = memo(function OverviewCards({
             />
           </CardWrapper>
 
-          <CardWrapper href="/payments?status=due_today">
+          <CardWrapper hasLinks={hasLinks} href="/payments?status=due_today">
             <MetricCard
               title="Aluguéis Vencem Hoje"
               value={safeData.dueTodayPayments}
@@ -203,7 +213,7 @@ export const OverviewCards = memo(function OverviewCards({
             />
           </CardWrapper>
 
-          <CardWrapper href="/payments?status=paid">
+          <CardWrapper hasLinks={hasLinks} href="/payments?status=paid">
             <MetricCard
               title="Aluguéis Recebidos"
               value={safeData.completedPayments}
@@ -216,7 +226,7 @@ export const OverviewCards = memo(function OverviewCards({
             />
           </CardWrapper>
 
-          <CardWrapper href="/rentals">
+          <CardWrapper hasLinks={hasLinks} href="/rentals">
             <MetricCard
               title="Contratos Vigentes"
               value={safeData.activeContracts}
@@ -229,7 +239,7 @@ export const OverviewCards = memo(function OverviewCards({
             />
           </CardWrapper>
 
-          <CardWrapper href="/rentals?status=expiring">
+          <CardWrapper hasLinks={hasLinks} href="/rentals?status=expiring">
             <MetricCard
               title="Locações a Vencer"
               value={safeData.expiringContracts}
@@ -249,7 +259,7 @@ export const OverviewCards = memo(function OverviewCards({
           💰 Resumo Financeiro
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-          <CardWrapper href="/payments?status=overdue">
+          <CardWrapper hasLinks={hasLinks} href="/payments?status=overdue">
             <FinancialMetricCard
               title="Total em Atraso"
               value={formatCurrency(safeData.overdueAmount)}
@@ -262,7 +272,7 @@ export const OverviewCards = memo(function OverviewCards({
             />
           </CardWrapper>
 
-          <CardWrapper href="/financial">
+          <CardWrapper hasLinks={hasLinks} href="/financial">
             <FinancialMetricCard
               title="Receita Esperada"
               value={formatCurrency(safeData.expectedAmount)}
@@ -275,7 +285,7 @@ export const OverviewCards = memo(function OverviewCards({
             />
           </CardWrapper>
 
-          <CardWrapper href="/financial">
+          <CardWrapper hasLinks={hasLinks} href="/financial">
             <FinancialMetricCard
               title="Receita Bruta Recebida"
               value={formatCurrency(safeData.grossRevenue)}
@@ -288,7 +298,7 @@ export const OverviewCards = memo(function OverviewCards({
             />
           </CardWrapper>
 
-          <CardWrapper href="/financial">
+          <CardWrapper hasLinks={hasLinks} href="/financial">
             <FinancialMetricCard
               title="Total Taxas e Contas"
               value={formatCurrency(safeData.totalFeesAndExpenses)}
@@ -301,7 +311,7 @@ export const OverviewCards = memo(function OverviewCards({
             />
           </CardWrapper>
 
-          <CardWrapper href="/financial">
+          <CardWrapper hasLinks={hasLinks} href="/financial">
             <FinancialMetricCard
               title="Receita Líquida"
               value={formatCurrency(safeData.netRevenue)}

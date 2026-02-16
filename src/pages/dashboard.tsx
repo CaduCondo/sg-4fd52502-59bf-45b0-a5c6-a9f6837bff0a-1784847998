@@ -8,6 +8,23 @@ import { SEO } from "@/components/SEO";
 import { useAuth } from "@/contexts/AuthContext";
 import { WelcomeCard } from "@/components/dashboard/WelcomeCard";
 
+const generateLast6Months = (month: number, year: number) => {
+  const months = [];
+  const currentDate = new Date(year, month - 1, 1);
+  
+  for (let i = 5; i >= 0; i--) {
+    const date = new Date(currentDate);
+    date.setMonth(date.getMonth() - i);
+    months.push({
+      month: date.getMonth() + 1,
+      year: date.getFullYear(),
+      label: date.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')
+    });
+  }
+  
+  return months;
+};
+
 export default function Dashboard() {
   const now = new Date();
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1);
@@ -26,62 +43,28 @@ export default function Dashboard() {
     setSelectedYear(year);
   }, []);
   
-  const last6MonthsData = useMemo(() => {
-    const months = [];
-    const currentDate = new Date(selectedYear, selectedMonth - 1, 1);
-    
-    for (let i = 5; i >= 0; i--) {
-      const date = new Date(currentDate);
-      date.setMonth(date.getMonth() - i);
-      months.push({
-        month: date.getMonth() + 1,
-        year: date.getFullYear(),
-        label: date.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')
-      });
-    }
-    
-    return months;
-  }, [selectedMonth, selectedYear]);
+  const last6MonthsData = useMemo(
+    () => generateLast6Months(selectedMonth, selectedYear),
+    [selectedMonth, selectedYear]
+  );
+
+  const rentalMap = useMemo(() => new Map(rentals.map(r => [r.id, r])), [rentals]);
+  const propertyMap = useMemo(() => new Map(properties.map(p => [p.id, p])), [properties]);
+  const exemptSet = useMemo(() => new Set(exemptLocationIds), [exemptLocationIds]);
 
   const chartData = useMemo(() => {
-    const rentalMap = new Map(rentals.map(r => [r.id, r]));
-    const propertyMap = new Map(properties.map(p => [p.id, p]));
-    const exemptSet = new Set(exemptLocationIds);
-    
-    const revenueData = last6MonthsData.map(({ month, year, label }) => {
-      const value = payments
-        .filter(p => {
-          if (p.status !== 'paid' || !p.paymentDate) return false;
-          const pDate = new Date(p.paymentDate);
-          return pDate.getMonth() + 1 === month && pDate.getFullYear() === year;
-        })
-        .reduce((sum, p) => sum + (p.paidAmount || 0), 0);
-      
-      return { month: label, value };
-    });
-
-    const totalProps = properties.length;
-    const occupiedProps = properties.filter(p => p.status === 'occupied').length;
-    const rate = totalProps > 0 ? Math.round((occupiedProps / totalProps) * 100) : 0;
-    
-    const occupancyData = last6MonthsData.map(({ label }) => ({
-      month: label,
-      rate
-    }));
-
     const isCurrentMonth = (month: number, year: number) => 
       month === selectedMonth && year === selectedYear;
 
-    const monthlyRevenueData = last6MonthsData.map(({ month, year, label }) => {
-      const monthPayments = payments.filter(p => {
+    const getMonthPayments = (month: number, year: number) => 
+      payments.filter(p => {
         if (p.status !== 'paid' || !p.paymentDate) return false;
         const pDate = new Date(p.paymentDate);
         return pDate.getMonth() + 1 === month && pDate.getFullYear() === year;
       });
-      
-      const bruta = monthPayments.reduce((sum, p) => sum + (p.paidAmount || 0), 0);
-      
-      const monthTaxas = monthPayments.reduce((sum, p) => {
+
+    const calculateFees = (monthPayments: typeof payments) => 
+      monthPayments.reduce((sum, p) => {
         const rental = rentalMap.get(p.rentalId);
         if (!rental) return sum;
         
@@ -92,6 +75,10 @@ export default function Dashboard() {
         return sum + adminFee + managementFee;
       }, 0);
 
+    const monthlyRevenueData = last6MonthsData.map(({ month, year, label }) => {
+      const monthPayments = getMonthPayments(month, year);
+      const bruta = monthPayments.reduce((sum, p) => sum + (p.paidAmount || 0), 0);
+      const monthTaxas = calculateFees(monthPayments);
       const monthExpenses = isCurrentMonth(month, year) ? locationExpenses : 0;
       const liquida = bruta - monthTaxas - monthExpenses;
       
@@ -99,54 +86,30 @@ export default function Dashboard() {
     });
 
     const monthlyExpensesData = last6MonthsData.map(({ month, year, label }) => {
-      const monthPayments = payments.filter(p => {
-        if (p.status !== 'paid' || !p.paymentDate) return false;
-        const pDate = new Date(p.paymentDate);
-        return pDate.getMonth() + 1 === month && pDate.getFullYear() === year;
-      });
-      
-      const taxas = monthPayments.reduce((sum, p) => {
-        const rental = rentalMap.get(p.rentalId);
-        if (!rental) return sum;
-        
-        const property = propertyMap.get(rental.propertyId);
-        const isExempt = property?.locationId && exemptSet.has(property.locationId);
-        const adminFee = isExempt ? 0 : (p.paidAmount || 0) * 0.05;
-        const managementFee = (p.paidAmount || 0) * 0.03;
-        return sum + adminFee + managementFee;
-      }, 0);
-
+      const monthPayments = getMonthPayments(month, year);
+      const taxas = calculateFees(monthPayments);
       const contas = isCurrentMonth(month, year) ? locationExpenses : 0;
       
       return { month: label, taxas, contas };
     });
 
+    const totalProps = properties.length;
+    const occupiedProps = properties.filter(p => p.status === 'occupied').length;
+    const availableProps = properties.filter(p => p.status === 'available').length;
+    const unavailableProps = properties.filter(p => p.status === 'unavailable').length;
+
     const occupancyPieData = [
-      { 
-        name: 'Ocupados', 
-        value: occupiedProps,
-        color: '#10b981'
-      },
-      { 
-        name: 'Disponíveis', 
-        value: properties.filter(p => p.status === 'available').length,
-        color: '#3b82f6'
-      },
-      { 
-        name: 'Indisponíveis', 
-        value: properties.filter(p => p.status === 'unavailable').length,
-        color: '#ef4444'
-      }
+      { name: 'Ocupados', value: occupiedProps, color: '#10b981' },
+      { name: 'Disponíveis', value: availableProps, color: '#3b82f6' },
+      { name: 'Indisponíveis', value: unavailableProps, color: '#ef4444' }
     ].filter(item => item.value > 0);
 
     return {
-      revenueData,
-      occupancyData,
       monthlyRevenueData,
       monthlyExpensesData,
       occupancyPieData
     };
-  }, [payments, properties, rentals, locationExpenses, exemptLocationIds, last6MonthsData, selectedMonth, selectedYear]);
+  }, [payments, properties, rentals, locationExpenses, exemptLocationIds, last6MonthsData, selectedMonth, selectedYear, rentalMap, propertyMap, exemptSet]);
   
   const overviewData = useMemo(() => {
     const totalProperties = properties.length;
@@ -189,10 +152,6 @@ export default function Dashboard() {
       .filter(p => p.status === 'paid')
       .reduce((sum, p) => sum + (p.paidAmount || 0), 0);
 
-    const rentalMap = new Map(rentals.map(r => [r.id, r]));
-    const propertyMap = new Map(properties.map(p => [p.id, p]));
-    const exemptSet = new Set(exemptLocationIds);
-
     const totalFees = payments
       .filter(p => p.status === 'paid')
       .reduce((sum, p) => {
@@ -228,7 +187,7 @@ export default function Dashboard() {
       totalFeesAndExpenses,
       netRevenue,
     };
-  }, [payments, properties, rentals, locationExpenses, exemptLocationIds, tenantsCount]);
+  }, [payments, properties, rentals, locationExpenses, tenantsCount, rentalMap, propertyMap, exemptSet]);
 
   const userName = useMemo(() => 
     user?.name || user?.email?.split('@')[0] || "Usuário",
