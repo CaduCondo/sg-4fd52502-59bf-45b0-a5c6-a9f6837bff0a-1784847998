@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/lib/masks";
 import { calculateProportionalRent, calculateDaysBetweenDates, shouldUseProportionalRent } from "@/lib/rentalCalculations";
@@ -13,6 +13,12 @@ interface UseRentalFormProps {
   locations: Location[];
 }
 
+interface ProportionalRentInfo {
+  isProportional: boolean;
+  days: number;
+  firstRentValue: number;
+}
+
 export function useRentalForm({
   open,
   rental,
@@ -23,6 +29,8 @@ export function useRentalForm({
 }: UseRentalFormProps) {
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(!isViewMode);
+  
+  // Estados principais
   const [selectedPropertyId, setSelectedPropertyId] = useState("");
   const [selectedTenantId, setSelectedTenantId] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -31,31 +39,25 @@ export function useRentalForm({
   const [hasGarage, setHasGarage] = useState(false);
   const [garageValue, setGarageValue] = useState("");
   const [hasPartnerBroker, setHasPartnerBroker] = useState(false);
-  const [depositAmount, setDepositAmount] = useState("");
-  const [attachments, setAttachments] = useState<string[]>([]);
   
-  // Estados para caução parcelado
+  // Estados de caução
+  const [depositAmount, setDepositAmount] = useState("");
   const [isDepositInstallment, setIsDepositInstallment] = useState(false);
   const [depositInstallmentCount, setDepositInstallmentCount] = useState("");
-  
   const [depositPaymentDate, setDepositPaymentDate] = useState("");
   const [depositPixCode, setDepositPixCode] = useState("");
   
+  // Estados de parcelas 2 e 3
   const [depositInstallment2, setDepositInstallment2] = useState("");
   const [depositInstallment3, setDepositInstallment3] = useState("");
-  
   const [depositInstallment2PaymentDate, setDepositInstallment2PaymentDate] = useState("");
   const [depositInstallment3PaymentDate, setDepositInstallment3PaymentDate] = useState("");
-  
   const [depositInstallment2PixCode, setDepositInstallment2PixCode] = useState("");
   const [depositInstallment3PixCode, setDepositInstallment3PixCode] = useState("");
   
-  // Estado para valor proporcional
-  const [proportionalRentInfo, setProportionalRentInfo] = useState<{
-    isProportional: boolean;
-    days: number;
-    firstRentValue: number;
-  }>({
+  // Outros estados
+  const [attachments, setAttachments] = useState<string[]>([]);
+  const [proportionalRentInfo, setProportionalRentInfo] = useState<ProportionalRentInfo>({
     isProportional: false,
     days: 30,
     firstRentValue: 0,
@@ -64,38 +66,76 @@ export function useRentalForm({
   const initializedRef = useRef(false);
   const prevRentalIdRef = useRef<string | null>(null);
 
-  // Calcular valor proporcional quando startDate, paymentDay ou property mudarem
-  useEffect(() => {
-    if (startDate && paymentDay && selectedPropertyId) {
-      const selectedProperty = properties.find(p => p.id === selectedPropertyId);
-      if (selectedProperty) {
-        const propertyValue = selectedProperty.value || 0;
-        const garage = hasGarage
-          ? parseFloat(garageValue.replace(/[^\d,]/g, "").replace(",", ".") || "0")
-          : 0;
-        const totalMonthlyRent = propertyValue + garage;
-        
-        const isProportional = shouldUseProportionalRent(startDate, parseInt(paymentDay));
-        const days = calculateDaysBetweenDates(startDate, parseInt(paymentDay));
-        const firstRentValue = isProportional 
-          ? calculateProportionalRent(totalMonthlyRent, startDate, parseInt(paymentDay))
-          : totalMonthlyRent;
-        
-        setProportionalRentInfo({
-          isProportional,
-          days,
-          firstRentValue,
-        });
-      }
+  // Helper para formatar data
+  const formatDate = useCallback((dateString?: string | Date) => {
+    if (!dateString) return "";
+    try {
+      const date = typeof dateString === 'string' 
+        ? new Date(dateString)
+        : dateString;
+      return date.toISOString().split('T')[0];
+    } catch {
+      return "";
     }
+  }, []);
+
+  // Calcular valor proporcional
+  useEffect(() => {
+    if (!startDate || !paymentDay || !selectedPropertyId) return;
+
+    const selectedProperty = properties.find(p => p.id === selectedPropertyId);
+    if (!selectedProperty) return;
+
+    const propertyValue = selectedProperty.value || 0;
+    const garage = hasGarage
+      ? parseFloat(garageValue.replace(/[^\d,]/g, "").replace(",", ".") || "0")
+      : 0;
+    const totalMonthlyRent = propertyValue + garage;
+    
+    const isProportional = shouldUseProportionalRent(startDate, parseInt(paymentDay));
+    const days = calculateDaysBetweenDates(startDate, parseInt(paymentDay));
+    const firstRentValue = isProportional 
+      ? calculateProportionalRent(totalMonthlyRent, startDate, parseInt(paymentDay))
+      : totalMonthlyRent;
+    
+    setProportionalRentInfo({
+      isProportional,
+      days,
+      firstRentValue,
+    });
   }, [startDate, paymentDay, selectedPropertyId, properties, hasGarage, garageValue]);
 
+  // Função para resetar formulário
+  const resetForm = useCallback(() => {
+    setSelectedPropertyId("");
+    setSelectedTenantId("");
+    setStartDate("");
+    setEndDate("");
+    setPaymentDay("");
+    setHasGarage(false);
+    setGarageValue("");
+    setHasPartnerBroker(false);
+    setDepositAmount("");
+    setIsDepositInstallment(false);
+    setDepositInstallmentCount("");
+    setDepositPaymentDate("");
+    setDepositPixCode("");
+    setDepositInstallment2("");
+    setDepositInstallment3("");
+    setDepositInstallment2PaymentDate("");
+    setDepositInstallment3PaymentDate("");
+    setDepositInstallment2PixCode("");
+    setDepositInstallment3PixCode("");
+    setAttachments([]);
+    setProportionalRentInfo({
+      isProportional: false,
+      days: 30,
+      firstRentValue: 0,
+    });
+  }, []);
+
   // Função para inicializar campos com dados do rental
-  const initializeFromRental = (rentalData: Rental) => {
-    console.log("🔧 Inicializando formulário com rental:", rentalData);
-    console.log("📦 Properties disponíveis:", properties.length);
-    console.log("👥 Tenants disponíveis:", tenants.length);
-    
+  const initializeFromRental = useCallback((rentalData: Rental) => {
     setSelectedPropertyId(rentalData.propertyId || "");
     setSelectedTenantId(rentalData.tenantId || "");
     setStartDate(rentalData.startDate || "");
@@ -114,79 +154,45 @@ export function useRentalForm({
     setIsDepositInstallment(hasInstallments);
     setDepositInstallmentCount(rentalData.depositInstallments ? rentalData.depositInstallments.toString() : "");
     
-    console.log("📅 depositPaymentDate do rental:", rentalData.depositPaymentDate);
-    console.log("🔑 depositPixCode do rental:", rentalData.depositPixCode);
-    
-    setDepositPaymentDate(
-      rentalData.depositPaymentDate 
-        ? (typeof rentalData.depositPaymentDate === 'string' 
-            ? rentalData.depositPaymentDate.split('T')[0] 
-            : new Date(rentalData.depositPaymentDate).toISOString().split('T')[0])
-        : ""
-    );
+    setDepositPaymentDate(formatDate(rentalData.depositPaymentDate));
     setDepositPixCode(rentalData.depositPixCode || "");
     
     setDepositInstallment2(rentalData.depositInstallment2 ? formatCurrency(rentalData.depositInstallment2) : "");
     setDepositInstallment3(rentalData.depositInstallment3 ? formatCurrency(rentalData.depositInstallment3) : "");
     
-    setDepositInstallment2PaymentDate(
-      rentalData.depositInstallment2PaymentDate 
-        ? (typeof rentalData.depositInstallment2PaymentDate === 'string'
-            ? rentalData.depositInstallment2PaymentDate.split('T')[0]
-            : new Date(rentalData.depositInstallment2PaymentDate).toISOString().split('T')[0])
-        : ""
-    );
-    setDepositInstallment3PaymentDate(
-      rentalData.depositInstallment3PaymentDate 
-        ? (typeof rentalData.depositInstallment3PaymentDate === 'string'
-            ? rentalData.depositInstallment3PaymentDate.split('T')[0]
-            : new Date(rentalData.depositInstallment3PaymentDate).toISOString().split('T')[0])
-        : ""
-    );
+    setDepositInstallment2PaymentDate(formatDate(rentalData.depositInstallment2PaymentDate));
+    setDepositInstallment3PaymentDate(formatDate(rentalData.depositInstallment3PaymentDate));
     
     setDepositInstallment2PixCode(rentalData.depositInstallment2PixCode || "");
     setDepositInstallment3PixCode(rentalData.depositInstallment3PixCode || "");
     
     setAttachments(rentalData.contractAttachments || rentalData.attachments || []);
-    
-    console.log("✅ Campos inicializados - PropertyId:", rentalData.propertyId, "TenantId:", rentalData.tenantId);
-  };
+  }, [formatDate]);
 
   // Inicializar formulário quando o modal abrir
   useEffect(() => {
     if (open) {
-      // Resetar flag de inicialização quando modal abre
       initializedRef.current = false;
-      
-      // Define se inicia em modo de edição ou visualização
       setIsEditing(!isViewMode);
 
       if (rental) {
-        // Verificar se temos os dados necessários
         const hasRequiredData = properties.length > 0 && tenants.length > 0;
-        
-        if (!hasRequiredData) {
-          console.warn("⚠️ Dados incompletos - aguardando carregamento...");
-          return;
-        }
+        if (!hasRequiredData) return;
 
-        // Marcar como inicializado e preencher campos
         initializedRef.current = true;
         prevRentalIdRef.current = rental.id;
         initializeFromRental(rental);
       } else {
-        // Novo rental - apenas resetar
         initializedRef.current = true;
         resetForm();
       }
     } else {
-      // Modal fechou - resetar tudo
       initializedRef.current = false;
       prevRentalIdRef.current = null;
       resetForm();
       setIsEditing(false);
     }
-  }, [open, rental?.id, isViewMode]);
+  }, [open, rental?.id, isViewMode, initializeFromRental, resetForm, properties.length, tenants.length]);
 
   // Effect para reinicializar quando dados completos chegarem
   useEffect(() => {
@@ -194,69 +200,35 @@ export function useRentalForm({
       const hasRequiredData = properties.length > 0 && tenants.length > 0;
       
       if (hasRequiredData) {
-        console.log("✨ Dados completos chegaram - inicializando campos");
         initializedRef.current = true;
         prevRentalIdRef.current = rental.id;
         initializeFromRental(rental);
       }
     }
-  }, [open, rental, properties.length, tenants.length]);
+  }, [open, rental, properties.length, tenants.length, initializeFromRental]);
 
   // Effect para garantir que propertyId e tenantId estejam sempre corretos
   useEffect(() => {
     if (open && rental && initializedRef.current) {
-      // Se os campos estão vazios mas deveriam estar preenchidos, preencher
       if (!selectedPropertyId && rental.propertyId) {
-        console.log("🔄 Corrigindo propertyId vazio");
         setSelectedPropertyId(rental.propertyId);
       }
       if (!selectedTenantId && rental.tenantId) {
-        console.log("🔄 Corrigindo tenantId vazio");
         setSelectedTenantId(rental.tenantId);
       }
     }
-  }, [open, rental?.id, selectedPropertyId, selectedTenantId, properties.length, tenants.length]);
+  }, [open, rental?.id, selectedPropertyId, selectedTenantId, properties.length, tenants.length, rental]);
 
   // Effect adicional para forçar atualização quando rental mudar
   useEffect(() => {
     if (rental && open) {
-      console.log("🔄 Rental mudou, atualizando campos:", rental);
       setSelectedPropertyId(rental.propertyId || "");
       setSelectedTenantId(rental.tenantId || "");
     }
-  }, [rental?.id, open]);
+  }, [rental?.id, open, rental]);
 
-  const resetForm = () => {
-    setSelectedPropertyId("");
-    setSelectedTenantId("");
-    setStartDate("");
-    setEndDate("");
-    setPaymentDay("");
-    setHasGarage(false);
-    setGarageValue("");
-    setHasPartnerBroker(false);
-    setDepositAmount("");
-    
-    setIsDepositInstallment(false);
-    setDepositInstallmentCount("");
-    setDepositPaymentDate("");
-    setDepositPixCode("");
-    setDepositInstallment2("");
-    setDepositInstallment3("");
-    setDepositInstallment2PaymentDate("");
-    setDepositInstallment3PaymentDate("");
-    setDepositInstallment2PixCode("");
-    setDepositInstallment3PixCode("");
-    
-    setAttachments([]);
-    setProportionalRentInfo({
-      isProportional: false,
-      days: 30,
-      firstRentValue: 0,
-    });
-  };
-
-  const handleFileUpload = async (file: File) => {
+  // Handler de upload de arquivo
+  const handleFileUpload = useCallback(async (file: File) => {
     const uuid = crypto.randomUUID();
     const extension = file.name.split(".").pop();
     const fileName = `rental_${uuid}.${extension}`;
@@ -287,28 +259,31 @@ export function useRentalForm({
           reject();
         });
     });
-  };
+  }, [toast]);
 
-  const removeAttachment = (index: number) => {
+  // Remover anexo
+  const removeAttachment = useCallback((index: number) => {
     setAttachments((prev) => prev.filter((_, i) => i !== index));
     toast({
       title: "Anexo removido",
       description: "Anexo removido com sucesso.",
     });
-  };
+  }, [toast]);
 
-  const getSelectedProperty = (): Property | undefined => {
+  // Obter propriedade selecionada
+  const getSelectedProperty = useCallback((): Property | undefined => {
     return properties.find((p) => p.id === selectedPropertyId);
-  };
+  }, [properties, selectedPropertyId]);
 
-  const calculateTotal = (): number => {
+  // Calcular total
+  const calculateTotal = useCallback((): number => {
     const property = getSelectedProperty();
     const propertyValue = property?.value || 0;
     const garage = hasGarage
       ? parseFloat(garageValue.replace(/[^\d,]/g, "").replace(",", ".") || "0")
       : 0;
     return propertyValue + garage;
-  };
+  }, [getSelectedProperty, hasGarage, garageValue]);
 
   return {
     // Estado

@@ -5,8 +5,7 @@ import { updatePendingPaymentsOnRentalEdit } from "./paymentService";
 
 // Helper para mapear dados do banco para o tipo Rental
 const mapRentalData = (data: any): Rental => {
-  console.log("📋 MAPPED RENTAL DATA:", data);
-  const mapped = {
+  return {
     id: data.id,
     propertyId: data.property_id,
     tenantId: data.tenant_id,
@@ -39,7 +38,7 @@ const mapRentalData = (data: any): Rental => {
     depositInstallment3PaymentDate: data.deposit_installment_3_payment_date,
     depositInstallment3PixCode: data.deposit_installment_3_pix_code,
 
-    // Incluir dados relacionados para facilitar renderização
+    // Incluir dados relacionados
     property: data.properties ? {
       id: data.properties.id,
       locationId: data.properties.location_id,
@@ -56,58 +55,10 @@ const mapRentalData = (data: any): Rental => {
       phone: data.tenants.phone,
     } : undefined,
   };
-
-  console.log("📋 MAPPED RENTAL DATA - VALORES MAPEADOS:", mapped);
-
-  return mapped;
 };
-
-function mapRentalFromDB(r: any): Rental {
-  const mapped = {
-    id: r.id,
-    propertyId: r.property_id,
-    tenantId: r.tenant_id,
-    startDate: r.start_date,
-    endDate: r.end_date,
-    paymentDay: r.payment_day,
-    depositAmount: r.deposit || 0,
-    status: (r.status || "active") as "active" | "terminated" | "pending",
-    attachments: Array.isArray(r.attachments) ? r.attachments : [],
-    contractAttachments: Array.isArray(r.contract_attachments) ? r.contract_attachments : [],
-    value: r.value || r.monthly_rent || 0,
-    isActive: r.is_active ?? true,
-    autoRenew: r.auto_renew ?? false,
-    hasGarage: r.has_garage ?? false,
-    garageValue: r.garage_value,
-    hasPartnerBroker: r.has_partner_broker ?? false,
-    property: r.properties,
-    tenant: r.tenants,
-    depositInstallments: r.deposit_installments,
-    depositInstallment1: r.deposit_installment_1,
-    depositInstallment2: r.deposit_installment_2,
-    depositInstallment3: r.deposit_installment_3,
-    depositPaymentDate: r.deposit_payment_date,
-    depositInstallment2PaymentDate: r.deposit_installment_2_payment_date,
-    depositInstallment3PaymentDate: r.deposit_installment_3_payment_date,
-    depositPixCode: r.deposit_pix_code,
-    depositInstallment2PixCode: r.deposit_installment_2_pix_code,
-    depositInstallment3PixCode: r.deposit_installment_3_pix_code,
-  };
-
-  console.log("📋 MAPPED RENTAL:", {
-    id: mapped.id,
-    depositPaymentDate: mapped.depositPaymentDate,
-    depositPixCode: mapped.depositPixCode,
-    depositInstallments: mapped.depositInstallments,
-  });
-
-  return mapped;
-}
 
 export const rentalService = {
   async getAll(): Promise<Rental[]> {
-    console.time("⏱️ Rental Query Performance");
-    
     const { data, error } = await supabase
       .from("rentals")
       .select(`
@@ -153,13 +104,7 @@ export const rentalService = {
       `)
       .order("created_at", { ascending: false });
 
-    if (error) {
-      console.error("Error fetching rentals:", error);
-      throw error;
-    }
-
-    console.log("✅ Rentals fetched:", data?.length, "records");
-
+    if (error) throw error;
     return (data || []).map(mapRentalData);
   },
 
@@ -217,25 +162,10 @@ export const rentalService = {
       .single();
 
     if (error) throw error;
-    
-    console.log("🔍 rentalService.getById - Dados do banco:", data);
-    console.log("🔍 deposit_payment_date:", data.deposit_payment_date);
-    console.log("🔍 deposit_pix_code:", data.deposit_pix_code);
-    
     return mapRentalData(data);
   },
 
   async create(rental: Partial<Rental>): Promise<Rental> {
-    console.log("🏠 === CRIANDO NOVA LOCAÇÃO ===");
-    console.log("📥 Dados recebidos do formulário:", {
-      value: rental.value,
-      hasGarage: rental.hasGarage,
-      garageValue: rental.garageValue,
-      startDate: rental.startDate,
-      endDate: rental.endDate,
-      paymentDay: rental.paymentDay,
-    });
-
     const dbData = {
       property_id: rental.propertyId,
       tenant_id: rental.tenantId,
@@ -263,8 +193,6 @@ export const rentalService = {
       deposit_installment_3_pix_code: rental.depositInstallment3PixCode
     };
 
-    console.log("📤 Dados sendo enviados ao banco:", dbData);
-
     const { data, error } = await supabase
       .from("rentals")
       .insert([dbData])
@@ -273,29 +201,8 @@ export const rentalService = {
 
     if (error) throw error;
 
-    console.log("✅ Locação criada no banco:", data);
-    console.log("🔍 Verificando campos críticos:");
-    console.log("  - value:", data.value);
-    console.log("  - monthly_rent:", data.monthly_rent);
-    console.log("  - has_garage:", data.has_garage);
-    console.log("  - garage_value:", data.garage_value);
-
-    // Sincronizar parcelas do caução APENAS se houver
+    // Sincronizar parcelas do caução se houver
     if (rental.depositInstallments && rental.depositInstallments > 0) {
-      console.log("🔄 Iniciando sincronização de parcelas do caução...");
-      console.log("📊 Dados das parcelas:", {
-        depositInstallments: rental.depositInstallments,
-        installment1: rental.depositInstallment1,
-        paymentDate1: rental.depositPaymentDate,
-        pixCode1: rental.depositPixCode,
-        installment2: rental.depositInstallment2,
-        paymentDate2: rental.depositInstallment2PaymentDate,
-        pixCode2: rental.depositInstallment2PixCode,
-        installment3: rental.depositInstallment3,
-        paymentDate3: rental.depositInstallment3PaymentDate,
-        pixCode3: rental.depositInstallment3PixCode,
-      });
-
       await depositInstallmentService.syncDepositInstallments(
         data.id,
         rental.depositInstallments,
@@ -312,32 +219,20 @@ export const rentalService = {
         },
         rental.hasPartnerBroker || false
       );
-      
-      console.log("✅ Sincronização de parcelas concluída");
-    } else {
-      console.log("ℹ️ Caução não parcelado ou sem valor - pulando sincronização");
     }
 
-    // Atualizar status do inquilino para 'rented'
+    // Atualizar status do inquilino
     if (rental.tenantId) {
-      const { error: tenantError } = await supabase
+      await supabase
         .from("tenants")
         .update({ status: "rented" })
         .eq("id", rental.tenantId);
-
-      if (tenantError) {
-        console.error("⚠️ Erro ao atualizar status do inquilino:", tenantError);
-      } else {
-        console.log("✅ Status do inquilino atualizado para 'rented'");
-      }
     }
 
     return mapRentalData(data);
   },
 
   async update(id: string, rental: Partial<Rental>): Promise<Rental> {
-    console.log("🔧 rentalService.update - Dados recebidos:", rental);
-    
     const dbData: any = {};
     if (rental.propertyId !== undefined) dbData.property_id = rental.propertyId;
     if (rental.tenantId !== undefined) dbData.tenant_id = rental.tenantId;
@@ -368,8 +263,6 @@ export const rentalService = {
     if (rental.depositInstallment3PaymentDate !== undefined) dbData.deposit_installment_3_payment_date = rental.depositInstallment3PaymentDate;
     if (rental.depositInstallment3PixCode !== undefined) dbData.deposit_installment_3_pix_code = rental.depositInstallment3PixCode;
 
-    console.log("📤 rentalService.update - Enviando para banco:", dbData);
-
     const { data, error } = await supabase
       .from("rentals")
       .update(dbData)
@@ -377,12 +270,7 @@ export const rentalService = {
       .select()
       .single();
 
-    if (error) {
-      console.error("❌ rentalService.update - Erro:", error);
-      throw error;
-    }
-
-    console.log("✅ rentalService.update - Locação atualizada:", data);
+    if (error) throw error;
 
     // Sincronizar parcelas do caução se houver mudanças
     if (rental.depositInstallments !== undefined) {
@@ -404,25 +292,19 @@ export const rentalService = {
       );
     }
 
-    // Sincronizar status do inquilino quando houver mudança de status da locação
+    // Sincronizar status do inquilino
     if (rental.status !== undefined) {
       const tenantId = rental.tenantId || data.tenant_id;
       if (tenantId) {
         const newTenantStatus = rental.status === "active" ? "rented" : "active";
-        const { error: tenantError } = await supabase
+        await supabase
           .from("tenants")
           .update({ status: newTenantStatus })
           .eq("id", tenantId);
-
-        if (tenantError) {
-          console.error("⚠️ Erro ao sincronizar status do inquilino:", tenantError);
-        } else {
-          console.log(`✅ Status do inquilino atualizado para '${newTenantStatus}'`);
-        }
       }
     }
 
-    // Atualizar recebimentos pendentes com as mudanças da locação
+    // Atualizar recebimentos pendentes
     await updatePendingPaymentsOnRentalEdit({
       id,
       startDate: data.start_date,
@@ -440,7 +322,6 @@ export const rentalService = {
   },
 
   async terminateContract(id: string): Promise<void> {
-    // Buscar tenant_id antes de terminar o contrato
     const { data: rentalData, error: fetchError } = await supabase
       .from("rentals")
       .select("tenant_id")
@@ -459,32 +340,20 @@ export const rentalService = {
 
     if (error) throw error;
 
-    // Atualizar status do inquilino para 'active' após encerrar o contrato
+    // Atualizar status do inquilino
     if (rentalData?.tenant_id) {
-      const { error: tenantError } = await supabase
+      await supabase
         .from("tenants")
         .update({ status: "active" })
         .eq("id", rentalData.tenant_id);
-
-      if (tenantError) {
-        console.error("⚠️ Erro ao atualizar status do inquilino:", tenantError);
-      } else {
-        console.log("✅ Status do inquilino atualizado para 'active' após encerramento");
-      }
     }
   }
 };
 
-// Aliases para compatibilidade com código existente
+// Aliases para compatibilidade
 export const getAll = rentalService.getAll;
 export const getById = rentalService.getById;
 export const remove = rentalService.remove;
 export const terminateContract = rentalService.terminateContract;
-
-export const create = async (rental: Omit<Rental, "id">) => {
-  return rentalService.create(rental);
-};
-
-export const update = async (id: string, rental: Partial<Rental>) => {
-  return rentalService.update(id, rental);
-};
+export const create = async (rental: Omit<Rental, "id">) => rentalService.create(rental);
+export const update = async (id: string, rental: Partial<Rental>) => rentalService.update(id, rental);

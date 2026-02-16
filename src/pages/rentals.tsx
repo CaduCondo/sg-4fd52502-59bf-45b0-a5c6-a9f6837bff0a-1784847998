@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/router";
 import { Layout } from "@/components/Layout";
 import { SEO } from "@/components/SEO";
@@ -39,55 +39,49 @@ import {
 } from "@/components/ui/select";
 import { Building2 } from "lucide-react";
 
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
+
 export default function RentalsPage() {
   const { toast } = useToast();
-  useContractExpiration(); // Auto-inativa contratos vencidos
+  useContractExpiration();
+  
   const [rentals, setRentals] = useState<Rental[]>([]);
   const [availableProperties, setAvailableProperties] = useState<Property[]>([]);
   const [availableTenants, setAvailableTenants] = useState<Tenant[]>([]);
   const [allProperties, setAllProperties] = useState<Property[]>([]);
   const [allTenants, setAllTenants] = useState<Tenant[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
+  
   const [loading, setLoading] = useState(true);
   const [loadingAvailable, setLoadingAvailable] = useState(true);
   const [loadingAdditionalData, setLoadingAdditionalData] = useState(false);
+  
   const [dataCache, setDataCache] = useState({
     loaded: false,
     timestamp: 0,
   });
+  
   const [isRentalDialogOpen, setIsRentalDialogOpen] = useState(false);
   const [selectedRental, setSelectedRental] = useState<Rental | null>(null);
   const [isViewMode, setIsViewMode] = useState(false);
   const [rentalToDelete, setRentalToDelete] = useState<Rental | null>(null);
   const [rentalToEnd, setRentalToEnd] = useState<Rental | null>(null);
   const [rentalToRenew, setRentalToRenew] = useState<Rental | null>(null);
-  const [showInactive, setShowInactive] = useState(false);
+  
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
   const [rentalTerminations, setRentalTerminations] = useState<Record<string, boolean>>({});
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "terminated">("active");
 
-  const loadRentalsData = async () => {
-    try {
-      setLoading(true);
-      const rentalsData = await getAllRentals();
-      setRentals(rentalsData);
-      
-      // Carregar informações de rescisão para locações ativas
-      await loadTerminationInfo(rentalsData.filter(r => r.isActive));
-    } catch (error) {
-      console.error("Erro ao carregar locações:", error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível carregar as locações.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Helper para formatar data
+  const formatDate = useCallback((dateString: string) => {
+    if (!dateString) return "-";
+    const [year, month, day] = dateString.split("-");
+    return `${day}/${month}/${year}`;
+  }, []);
 
-  const loadTerminationInfo = async (activeRentals: Rental[]) => {
+  // Carregar informações de rescisão
+  const loadTerminationInfo = useCallback(async (activeRentals: Rental[]) => {
     try {
       const { getByRentalId } = await import("@/services/paymentService");
       const terminationMap: Record<string, boolean> = {};
@@ -104,12 +98,31 @@ export default function RentalsPage() {
     } catch (error) {
       console.error("Erro ao carregar informações de rescisão:", error);
     }
-  };
+  }, []);
 
-  const loadAvailableData = async () => {
+  // Carregar dados de locações
+  const loadRentalsData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const rentalsData = await getAllRentals();
+      setRentals(rentalsData);
+      await loadTerminationInfo(rentalsData.filter(r => r.isActive));
+    } catch (error) {
+      console.error("Erro ao carregar locações:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar as locações.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [toast, loadTerminationInfo]);
+
+  // Carregar dados disponíveis
+  const loadAvailableData = useCallback(async () => {
     try {
       setLoadingAvailable(true);
-      // Buscar apenas dados essenciais para os blocos (otimização)
       const [propertiesData, tenantsData] = await Promise.all([
         getAvailableProperties(),
         getActiveTenants(),
@@ -121,21 +134,18 @@ export default function RentalsPage() {
     } finally {
       setLoadingAvailable(false);
     }
-  };
+  }, []);
 
-  const loadAdditionalData = async () => {
+  // Carregar dados adicionais com cache
+  const loadAdditionalData = useCallback(async () => {
     const now = Date.now();
-    const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
     
-    // Se dados já foram carregados recentemente, não recarregar
     if (dataCache.loaded && (now - dataCache.timestamp) < CACHE_DURATION) {
-      console.log("✅ Usando dados do cache (carregados há", Math.round((now - dataCache.timestamp) / 1000), "segundos)");
       return;
     }
 
     try {
       setLoadingAdditionalData(true);
-      console.log("🔄 Carregando dados adicionais...");
       
       const [locationsData, allPropertiesData, allTenantsData] = await Promise.all([
         getAllLocations(),
@@ -147,8 +157,6 @@ export default function RentalsPage() {
       setAllProperties(allPropertiesData);
       setAllTenants(allTenantsData);
       setDataCache({ loaded: true, timestamp: now });
-      
-      console.log("✅ Dados carregados com sucesso!");
     } catch (error) {
       console.error("❌ Erro ao carregar dados adicionais:", error);
       toast({
@@ -160,17 +168,16 @@ export default function RentalsPage() {
     } finally {
       setLoadingAdditionalData(false);
     }
-  };
+  }, [dataCache.loaded, dataCache.timestamp, toast]);
 
   useEffect(() => {
     loadRentalsData();
     loadAvailableData();
-  }, []);
+  }, [loadRentalsData, loadAvailableData]);
 
-  // Filter rentals based on search and status
+  // Filtrar locações
   const filteredRentals = useMemo(() => {
     return rentals.filter((rental) => {
-      // Search filter
       const searchLower = searchTerm.toLowerCase();
       const matchesSearch =
         !searchTerm ||
@@ -178,36 +185,25 @@ export default function RentalsPage() {
         rental.property?.location?.toLowerCase().includes(searchLower) ||
         rental.property?.complement?.toLowerCase().includes(searchLower);
 
-      // Status filter
-      if (statusFilter === "all") {
-        return matchesSearch;
-      }
+      if (statusFilter === "all") return matchesSearch;
 
-      // Calculate if rental is expired based on end date
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const isExpired = rental.endDate && new Date(rental.endDate) < today;
-
-      // Determine effective status considering both isActive and expiration
-      // Active: isActive = true AND not expired
-      // Terminated: isActive = false OR expired
       const effectiveStatus = (rental.isActive && !isExpired) ? "active" : "terminated";
 
-      const matchesStatus = statusFilter === effectiveStatus;
-      return matchesSearch && matchesStatus;
+      return matchesSearch && statusFilter === effectiveStatus;
     });
   }, [rentals, searchTerm, statusFilter]);
 
-  const activeRentals = rentals.filter((r) => r.isActive);
-  const canCreateRental = availableProperties.length > 0 && availableTenants.length > 0;
+  const activeRentals = useMemo(() => rentals.filter((r) => r.isActive), [rentals]);
+  const canCreateRental = useMemo(() => 
+    availableProperties.length > 0 && availableTenants.length > 0, 
+    [availableProperties.length, availableTenants.length]
+  );
 
-  const formatDate = (dateString: string) => {
-    if (!dateString) return "-";
-    const [year, month, day] = dateString.split("-");
-    return `${day}/${month}/${year}`;
-  };
-
-  const handleTerminateRental = async (data: {
+  // Handler para rescisão
+  const handleTerminateRental = useCallback(async (data: {
     terminationDate: string;
     applyPenalty: boolean;
     penaltyAmount: number;
@@ -218,9 +214,6 @@ export default function RentalsPage() {
     try {
       const { processContractTermination } = await import("@/services/terminationService");
       
-      console.log("=== INICIANDO RESCISÃO ===");
-      console.log("Data de rescisão:", data.terminationDate);
-      
       await processContractTermination({
         rentalId: rentalToEnd.id,
         terminationDate: data.terminationDate,
@@ -230,26 +223,21 @@ export default function RentalsPage() {
         monthlyRent: rentalToEnd.value || 0,
       });
 
-      console.log("✅ Rescisão processada com sucesso!");
-      console.log("🔄 Recarregando dados das locações...");
-
       toast({
         title: "Sucesso",
         description: "Rescisão processada com sucesso! Aguardando pagamento final.",
         className: "bg-green-500 text-white border-none",
       });
       
-      // CRÍTICO: Recarregar dados ANTES de fechar o modal
       await loadRentalsData();
-      console.log("✅ Dados recarregados!");
-      
     } catch (error) {
       console.error("❌ Erro ao processar rescisão:", error);
       throw error;
     }
-  };
+  }, [rentalToEnd, toast, loadRentalsData]);
 
-  const handleConfirmTermination = async (data: {
+  // Handler para confirmar rescisão
+  const handleConfirmTermination = useCallback(async (data: {
     terminationDate: string;
     applyPenalty: boolean;
     penaltyAmount: number;
@@ -257,7 +245,6 @@ export default function RentalsPage() {
   }) => {
     try {
       await handleTerminateRental(data);
-      // Só fecha o modal DEPOIS que os dados foram recarregados
       setRentalToEnd(null);
     } catch (error) {
       console.error("❌ Error ending contract:", error);
@@ -267,9 +254,10 @@ export default function RentalsPage() {
         variant: "destructive",
       });
     }
-  };
+  }, [handleTerminateRental, toast]);
 
-  const handleRenewRental = async () => {
+  // Handler para renovar locação
+  const handleRenewRental = useCallback(async () => {
     if (!rentalToRenew) return;
 
     try {
@@ -297,20 +285,16 @@ export default function RentalsPage() {
         variant: "destructive",
       });
     }
-  };
+  }, [rentalToRenew, toast, formatDate, loadRentalsData]);
 
-  const handleDeleteRental = async () => {
+  // Handler para deletar locação
+  const handleDeleteRental = useCallback(async () => {
     if (!rentalToDelete) return;
 
     try {
-      // 1. Excluir TODOS os pagamentos associados primeiro
       const { deletePaymentsByRentalId } = await import("@/services/paymentService");
       await deletePaymentsByRentalId(rentalToDelete.id);
-
-      // 2. Depois excluir a locação
       await deleteRental(rentalToDelete.id);
-
-      // 3. Por fim, liberar imóvel e inquilino
       await updateProperty(rentalToDelete.propertyId, { status: "available" });
       await updateTenant(rentalToDelete.tenantId, { status: "active" });
 
@@ -329,40 +313,37 @@ export default function RentalsPage() {
         variant: "destructive",
       });
     }
-  };
+  }, [rentalToDelete, toast, loadRentalsData, loadAvailableData]);
 
-  const handleViewRental = async (rental: Rental) => {
+  // Handler para visualizar locação
+  const handleViewRental = useCallback(async (rental: Rental) => {
     try {
-      // Carregar dados adicionais e aguardar conclusão ANTES de abrir modal
       await loadAdditionalData();
-      
-      // Só após dados carregados, atualizar estado e abrir modal
       setSelectedRental(rental);
       setIsViewMode(true);
       setIsRentalDialogOpen(true);
     } catch (error) {
       // Erro já foi tratado no loadAdditionalData
     }
-  };
+  }, [loadAdditionalData]);
 
-  const handleCreateNew = async () => {
+  // Handler para criar nova locação
+  const handleCreateNew = useCallback(async () => {
     try {
-      // Carregar dados adicionais e aguardar conclusão ANTES de abrir modal
       await loadAdditionalData();
-      
-      // Só após dados carregados, atualizar estado e abrir modal
       setSelectedRental(null);
       setIsViewMode(false);
       setIsRentalDialogOpen(true);
     } catch (error) {
       // Erro já foi tratado no loadAdditionalData
     }
-  };
+  }, [loadAdditionalData]);
 
-  const handleDialogSuccess = async () => {
+  // Handler de sucesso do diálogo
+  const handleDialogSuccess = useCallback(async () => {
     await loadRentalsData();
     await loadAvailableData();
-  };
+  }, [loadRentalsData, loadAvailableData]);
 
   return (
     <>
@@ -480,11 +461,10 @@ export default function RentalsPage() {
             </Card>
           </div>
 
-          {/* Filtros de Busca e Status - MOVIDO PARA CÁ */}
+          {/* Filtros de Busca e Status */}
           <Card className="mb-8">
             <CardContent className="pt-6">
               <div className="flex flex-col sm:flex-row gap-4">
-                {/* Campo de Busca */}
                 <div className="flex-1">
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -497,7 +477,6 @@ export default function RentalsPage() {
                   </div>
                 </div>
 
-                {/* Combo de Status */}
                 <div className="w-full sm:w-[250px]">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium whitespace-nowrap">
@@ -556,9 +535,7 @@ export default function RentalsPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {filteredRentals.map((rental) => {
                     const alert = calculateContractAlert(rental.endDate);
-                    // Verifica se está vencido pela data
                     const isExpired = rental.endDate && new Date(rental.endDate) < new Date(new Date().setHours(0,0,0,0));
-                    // Status visual: Se expirado ou não ativo -> Encerrado, senão -> Ativo
                     const isVisuallyActive = rental.isActive && !isExpired;
                     
                     const alertClasses = isVisuallyActive ? getAlertClasses(alert.level) : "";
@@ -636,7 +613,6 @@ export default function RentalsPage() {
                                 {formatCurrency(rental.value || 0)}
                               </p>
                             </div>
-                            {/* Botões aparecem se isActive é true, INDEPENDENTE da data (conforme pedido) */}
                             {rental.isActive && (
                               <div className="flex gap-1.5 flex-shrink-0">
                                 <Button

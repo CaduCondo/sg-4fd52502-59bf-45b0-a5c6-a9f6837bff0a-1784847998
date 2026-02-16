@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, memo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,12 +8,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Camera, Paperclip } from "lucide-react";
 import { formatCurrency, parseCurrencyToNumber, formatCurrencyInput } from "@/lib/masks";
-import { supabase } from "@/integrations/supabase/client";
 import { create as createRental, update as updateRentalService } from "@/services/rentalService";
 import { update as updateProperty } from "@/services/propertyService";
 import { update as updateTenant } from "@/services/tenantService";
 import { getAll as getAllLocations } from "@/services/locationService";
-import { depositInstallmentService } from "@/services/depositInstallmentService";
 import {
   createPaymentsForRental,
   updateFuturePayments,
@@ -23,7 +21,6 @@ import type { Property, Tenant, Location, Rental } from "@/types";
 import { AttachmentViewer } from "@/components/AttachmentViewer";
 import { RentalContract } from "@/components/RentalContract";
 import { useRentalForm } from "@/hooks/useRentalForm";
-import { validateRentalForm, validateRentalValue, prepareRentalData } from "@/lib/rentalCalculations";
 
 interface RentalFormDialogProps {
   open: boolean;
@@ -39,7 +36,7 @@ interface RentalFormDialogProps {
   isLoadingData?: boolean;
 }
 
-export function RentalFormDialog({
+export const RentalFormDialog = memo(function RentalFormDialog({
   open,
   onOpenChange,
   availableProperties,
@@ -111,7 +108,7 @@ export function RentalFormDialog({
     setDepositInstallment3PixCode,
     
     attachments,
-    setAttachments,
+    // setAttachments, 
     proportionalRentInfo,
     resetForm,
     handleFileUpload,
@@ -148,19 +145,13 @@ export function RentalFormDialog({
     fetchLocations();
   }, [open, locations.length]);
 
-  useEffect(() => {
-    if (!open) {
-      setLocations([]);
-    }
-  }, [open]);
-
-  const onFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const onFileInputChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
     await handleFileUpload(files[0]);
-  };
+  }, [handleFileUpload]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!selectedPropertyId || !selectedTenantId || !startDate || !paymentDay) {
@@ -259,11 +250,7 @@ export function RentalFormDialog({
 
       const fullUpdateData = { ...commonData, ...depositData };
 
-      console.log("📤 DADOS COMPLETOS PARA CRIAR/ATUALIZAR:", fullUpdateData);
-
       if (rental) {
-        console.log("📤 Atualizando locação com dados:", fullUpdateData);
-        
         const updatedRental = await updateRentalService(rental.id, fullUpdateData);
         await updateFuturePayments(rental.id, totalValue);
 
@@ -271,20 +258,11 @@ export function RentalFormDialog({
           await updateFuturePaymentsOnPaymentDayChange(rental.id, parseInt(paymentDay));
         }
 
-        const finalStatus = (updatedRental.status || "active") as "active" | "terminated" | "pending";
-
         const mergedRental: Rental = {
           ...rental,
           ...updatedRental,
-          status: isViewMode ? "active" : finalStatus,
-          attachments: updatedRental.attachments || [],
-          contractAttachments: updatedRental.contractAttachments || [],
+          status: isViewMode ? "active" : (updatedRental.status || "active"),
           value: Number(updatedRental.value || 0),
-          isActive: Boolean(updatedRental.isActive),
-          hasGarage: Boolean(updatedRental.hasGarage),
-          garageValue: updatedRental.garageValue ? Number(updatedRental.garageValue) : undefined,
-          hasPartnerBroker: Boolean(updatedRental.hasPartnerBroker),
-          
           depositInstallments: Number(depositData.depositInstallments),
           depositInstallment1: Number(depositData.depositInstallment1),
           depositInstallment2: depositData.depositInstallment2 ? Number(depositData.depositInstallment2) : undefined,
@@ -298,13 +276,6 @@ export function RentalFormDialog({
         };
 
         await createPaymentsForRental(mergedRental);
-
-        const statusTyped = mergedRental.status as "active" | "terminated" | "pending";
-        mergedRental.status = statusTyped;
-
-        if (isViewMode) {
-          mergedRental.status = "active" as "active" | "terminated" | "pending";
-        }
         
         setCreatedRentalData({
           rental: mergedRental,
@@ -320,57 +291,16 @@ export function RentalFormDialog({
 
         setShowContract(true);
       } else {
-        // Criar nova locação usando o serviço que já implementa a sincronização do caução
-        console.log("📤 CRIANDO NOVA LOCAÇÃO COM DADOS:", fullUpdateData);
-
         const createdRental = await createRental(fullUpdateData);
         
-        console.log("✅ LOCAÇÃO CRIADA:", createdRental);
-
-        // Update property and tenant status
-        console.log("\n=== UPDATING PROPERTY ===");
-        await updateProperty(propertyId, {
-          status: "occupied",
-        });
-
-        console.log("✅ Property updated successfully");
-
-        console.log("\nupdateSingle: Atualizando tenants");
-        console.log("ID:", tenantId);
+        await updateProperty(propertyId, { status: "occupied" });
         await updateTenant(tenantId, { status: "rented" });
 
         const mappedRental: Rental = {
-          id: createdRental.id,
-          propertyId: createdRental.propertyId,
-          tenantId: createdRental.tenantId,
-          startDate: createdRental.startDate,
-          endDate: createdRental.endDate,
-          paymentDay: createdRental.paymentDay,
-          value: createdRental.value,
+          ...createdRental,
           monthlyRent: baseRent,
-          depositAmount: createdRental.depositAmount,
-          status: createdRental.status,
-          isActive: createdRental.isActive,
-          attachments: createdRental.attachments || [],
-          contractAttachments: createdRental.contractAttachments || [],
-          autoRenew: createdRental.autoRenew || false,
-          hasGarage: createdRental.hasGarage,
-          garageValue: createdRental.garageValue,
-          hasPartnerBroker: createdRental.hasPartnerBroker,
-          depositInstallments: createdRental.depositInstallments,
-          depositInstallment1: createdRental.depositInstallment1,
-          depositInstallment2: createdRental.depositInstallment2,
-          depositInstallment3: createdRental.depositInstallment3,
-          depositPaymentDate: createdRental.depositPaymentDate,
-          depositInstallment2PaymentDate: createdRental.depositInstallment2PaymentDate,
-          depositInstallment3PaymentDate: createdRental.depositInstallment3PaymentDate,
-          depositPixCode: createdRental.depositPixCode,
-          depositInstallment2PixCode: createdRental.depositInstallment2PixCode,
-          depositInstallment3PixCode: createdRental.depositInstallment3PixCode,
-          createdAt: createdRental.createdAt,
         };
 
-        console.log("\n=== INICIO createPaymentsForRental ===");
         await createPaymentsForRental(mappedRental);
 
         const selectedLocation = locations.find((loc) => loc.id === selectedProperty.locationId);
@@ -399,9 +329,17 @@ export function RentalFormDialog({
     } finally {
       setLoading(false);
     }
-  };
+  }, [
+    selectedPropertyId, selectedTenantId, startDate, paymentDay, properties, tenants, 
+    hasGarage, garageValue, isDepositInstallment, depositInstallmentCount, 
+    depositInstallment2, depositInstallment3, depositAmount, endDate, 
+    hasPartnerBroker, attachments, depositPaymentDate, depositPixCode, 
+    depositInstallment2PaymentDate, depositInstallment2PixCode, 
+    depositInstallment3PaymentDate, depositInstallment3PixCode, 
+    rental, isViewMode, locations, toast
+  ]);
 
-  const calculateTotalDeposit = () => {
+  const calculateTotalDeposit = useCallback(() => {
     let total = 0;
     if (depositAmount) total += parseCurrencyToNumber(depositAmount);
     if (isDepositInstallment && depositInstallmentCount) {
@@ -409,17 +347,11 @@ export function RentalFormDialog({
       if (parseInt(depositInstallmentCount) === 3 && depositInstallment3) total += parseCurrencyToNumber(depositInstallment3);
     }
     return total;
-  };
-
-  const getLocationName = (locationId: string) => {
-    const location = locations.find((loc) => loc.id === locationId);
-    return location?.name || "Local não encontrado";
-  };
+  }, [depositAmount, isDepositInstallment, depositInstallmentCount, depositInstallment2, depositInstallment3]);
 
   const propertiesToDisplay = rental ? properties : availableProperties;
   const tenantsToDisplay = rental ? tenants : availableTenants;
   const selectedProperty = getSelectedProperty();
-
   const isFieldDisabled = isViewMode && !isEditing;
 
   if (!open) return null;
@@ -482,7 +414,6 @@ export function RentalFormDialog({
                       return 0;
                     })
                     .map((property) => {
-                      // Estratégia robusta para encontrar o nome do local
                       const locationName = 
                         property.location || 
                         locations.find(l => l.id === property.locationId)?.name || 
@@ -938,4 +869,4 @@ export function RentalFormDialog({
       )}
     </Dialog>
   );
-}
+});
