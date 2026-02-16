@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { Layout } from "@/components/Layout";
 import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
@@ -32,6 +32,18 @@ const INITIAL_FORM_DATA: PropertyFormData = {
   hasGarage: false,
 };
 
+const STATUS_VARIANTS: Record<string, "default" | "secondary" | "destructive"> = {
+  available: "default",
+  occupied: "secondary",
+  unavailable: "destructive",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  available: "Disponível",
+  occupied: "Ocupado",
+  unavailable: "Indisponível",
+};
+
 export default function PropertiesPage() {
   const {
     filteredProperties,
@@ -63,11 +75,9 @@ export default function PropertiesPage() {
   const [isViewMode, setIsViewMode] = useState(false);
   const [formData, setFormData] = useState<PropertyFormData>(INITIAL_FORM_DATA);
 
-  // Handlers memoizados
   const handleNumberChange = useCallback((field: "rooms" | "bathrooms", value: string) => {
-    const numbersOnly = value.replace(/[^0-9]/g, "");
-    const limitedValue = numbersOnly.slice(0, 2);
-    setFormData(prev => ({ ...prev, [field]: limitedValue }));
+    const numbersOnly = value.replace(/[^0-9]/g, "").slice(0, 2);
+    setFormData(prev => ({ ...prev, [field]: numbersOnly }));
   }, []);
 
   const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -75,13 +85,15 @@ export default function PropertiesPage() {
     if (!files) return;
 
     const newImages: string[] = [];
-    Array.from(files).forEach((file) => {
+    const fileArray = Array.from(files);
+    
+    fileArray.forEach((file) => {
       const reader = new FileReader();
       reader.onloadend = () => {
         if (reader.result) {
           newImages.push(reader.result as string);
-          if (newImages.length === files.length) {
-            setFormData((prev) => ({
+          if (newImages.length === fileArray.length) {
+            setFormData(prev => ({
               ...prev,
               images: [...prev.images, ...newImages],
             }));
@@ -93,7 +105,7 @@ export default function PropertiesPage() {
   }, []);
 
   const removeImage = useCallback((index: number) => {
-    setFormData((prev) => ({
+    setFormData(prev => ({
       ...prev,
       images: prev.images.filter((_, i) => i !== index),
     }));
@@ -106,25 +118,27 @@ export default function PropertiesPage() {
     setIsViewMode(false);
   }, []);
 
+  const prepareFormDataFromProperty = useCallback((property: Property): PropertyFormData => ({
+    location_id: property.locationId || "",
+    property_identifier: property.propertyIdentifier || "",
+    complement: property.complement || "",
+    rooms: String(property.rooms || ""),
+    bathrooms: String(property.bathrooms || ""),
+    monthly_rent: formatCurrency(property.value || 0),
+    description: property.description || "",
+    status: property.status || "available",
+    images: property.images || [],
+    hasFurniture: property.hasFurniture || false,
+    acceptsPets: property.acceptsPets || false,
+    area: String(property.area || ""),
+    hasGarage: property.hasGarage || false,
+  }), []);
+
   const handleEdit = useCallback((property: Property) => {
     setEditingProperty(property);
-    setFormData({
-      location_id: property.locationId,
-      property_identifier: property.propertyIdentifier || "",
-      complement: property.complement || "",
-      monthly_rent: formatCurrency(property.value || 0),
-      status: property.status,
-      description: property.description || "",
-      rooms: property.rooms?.toString() || "",
-      bathrooms: property.bathrooms?.toString() || "",
-      images: property.images || [],
-      hasFurniture: property.hasFurniture || false,
-      acceptsPets: property.acceptsPets || false,
-      area: property.area?.toString() || "",
-      hasGarage: property.hasGarage || false,
-    });
+    setFormData(prepareFormDataFromProperty(property));
     setIsDialogOpen(true);
-  }, []);
+  }, [prepareFormDataFromProperty]);
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -147,7 +161,6 @@ export default function PropertiesPage() {
       setIsDialogOpen(false);
       resetForm();
     } catch (error: unknown) {
-      console.error("Erro ao salvar imóvel:", error);
       toast({
         title: "Erro",
         description: error instanceof Error ? error.message : "Erro ao salvar o imóvel. Tente novamente.",
@@ -160,25 +173,11 @@ export default function PropertiesPage() {
 
   const handleCardClick = useCallback((property: Property) => {
     setEditingProperty(property);
-    setFormData({
-      location_id: property.locationId || "",
-      property_identifier: property.propertyIdentifier || "",
-      complement: property.complement || "",
-      rooms: String(property.rooms || ""),
-      bathrooms: String(property.bathrooms || ""),
-      monthly_rent: formatCurrency(property.value || 0),
-      description: property.description || "",
-      status: property.status || "available",
-      images: property.images || [],
-      hasFurniture: property.hasFurniture || false,
-      acceptsPets: property.acceptsPets || false,
-      area: String(property.area || ""),
-      hasGarage: property.hasGarage || false,
-    });
+    setFormData(prepareFormDataFromProperty(property));
     setIsDialogOpen(true);
     setIsViewMode(true);
     setIsEditMode(true);
-  }, []);
+  }, [prepareFormDataFromProperty]);
 
   const handleEnableEdit = useCallback(() => {
     setIsViewMode(false);
@@ -202,19 +201,64 @@ export default function PropertiesPage() {
     }
   }, [propertyToDelete, deleteProperty]);
 
-  const getStatusBadge = (status: string) => {
-    const variants: Record<string, "default" | "secondary" | "destructive"> = {
-      available: "default",
-      occupied: "secondary",
-      unavailable: "destructive",
-    };
-    const labels: Record<string, string> = {
-      available: "Disponível",
-      occupied: "Ocupado",
-      unavailable: "Indisponível",
-    };
-    return <Badge variant={variants[status]}>{labels[status]}</Badge>;
-  };
+  const getStatusBadge = useCallback((status: string) => (
+    <Badge variant={STATUS_VARIANTS[status]}>
+      {STATUS_LABELS[status]}
+    </Badge>
+  ), []);
+
+  const handleOpenDialog = useCallback(() => {
+    resetForm();
+    setIsDialogOpen(true);
+  }, [resetForm]);
+
+  const handleCloseDialog = useCallback((open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open) resetForm();
+  }, [resetForm]);
+
+  const tableRows = useMemo(() => 
+    filteredProperties.map((property) => (
+      <TableRow 
+        key={property.id}
+        className="cursor-pointer"
+        onClick={() => handleCardClick(property)}
+      >
+        <TableCell className="font-medium text-blue-600">
+          {property.location}
+        </TableCell>
+        <TableCell>
+          {property.complement || "-"}
+        </TableCell>
+        <TableCell>
+          {property.rooms ? (
+            <div className="flex items-center gap-1">
+              <Bed className="h-4 w-4" />
+              <span>{property.rooms}</span>
+            </div>
+          ) : "-"}
+        </TableCell>
+        <TableCell>
+          {property.bathrooms ? (
+            <div className="flex items-center gap-1">
+              <Bath className="h-4 w-4" />
+              <span>{property.bathrooms}</span>
+            </div>
+          ) : "-"}
+        </TableCell>
+        <TableCell>{formatCurrency(property.value || 0)}</TableCell>
+        <TableCell>{getStatusBadge(property.status)}</TableCell>
+        <TableCell className="text-right">
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={(e) => confirmDelete(e, property.id)}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </TableCell>
+      </TableRow>
+    )), [filteredProperties, handleCardClick, getStatusBadge, confirmDelete]);
 
   if (loading) {
     return (
@@ -258,12 +302,7 @@ export default function PropertiesPage() {
                 Lista
               </Button>
             </div>
-            <Button
-              onClick={() => {
-                resetForm();
-                setIsDialogOpen(true);
-              }}
-            >
+            <Button onClick={handleOpenDialog}>
               <Plus className="mr-2 h-4 w-4" />
               Novo Imóvel
             </Button>
@@ -319,47 +358,7 @@ export default function PropertiesPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredProperties.map((property) => (
-                    <TableRow 
-                      key={property.id}
-                      className="cursor-pointer"
-                      onClick={() => handleCardClick(property)}
-                    >
-                      <TableCell className="font-medium text-blue-600">
-                        {property.location}
-                      </TableCell>
-                      <TableCell>
-                        {property.complement || "-"}
-                      </TableCell>
-                      <TableCell>
-                        {property.rooms ? (
-                          <div className="flex items-center gap-1">
-                            <Bed className="h-4 w-4" />
-                            <span>{property.rooms}</span>
-                          </div>
-                        ) : "-"}
-                      </TableCell>
-                      <TableCell>
-                        {property.bathrooms ? (
-                          <div className="flex items-center gap-1">
-                            <Bath className="h-4 w-4" />
-                            <span>{property.bathrooms}</span>
-                          </div>
-                        ) : "-"}
-                      </TableCell>
-                      <TableCell>{formatCurrency(property.value || 0)}</TableCell>
-                      <TableCell>{getStatusBadge(property.status)}</TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={(e) => confirmDelete(e, property.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {tableRows}
                 </TableBody>
               </Table>
             </div>
@@ -368,10 +367,7 @@ export default function PropertiesPage() {
 
         <PropertyFormDialog
           open={isDialogOpen}
-          onOpenChange={(open) => {
-            setIsDialogOpen(open);
-            if (!open) resetForm();
-          }}
+          onOpenChange={handleCloseDialog}
           onSubmit={handleSubmit}
           formData={formData}
           setFormData={setFormData}

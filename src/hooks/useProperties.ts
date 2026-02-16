@@ -42,6 +42,12 @@ export interface PropertyFormData {
   hasGarage: boolean;
 }
 
+const SORT_FUNCTIONS = {
+  alphabetical: (a: Property, b: Property) => (a.location || "").localeCompare(b.location || ""),
+  "price-asc": (a: Property, b: Property) => (a.value || 0) - (b.value || 0),
+  "price-desc": (a: Property, b: Property) => (b.value || 0) - (a.value || 0),
+};
+
 export function useProperties(): UsePropertiesReturn {
   const { toast } = useToast();
   const [properties, setProperties] = useState<Property[]>([]);
@@ -53,7 +59,6 @@ export function useProperties(): UsePropertiesReturn {
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
   const [loading, setLoading] = useState(true);
 
-  // Carregamento de dados otimizado
   const loadData = useCallback(async () => {
     try {
       const [propertiesData, locationsData] = await Promise.all([
@@ -69,38 +74,33 @@ export function useProperties(): UsePropertiesReturn {
     }
   }, []);
 
-  // Filtragem memoizada
   const filteredProperties = useMemo(() => {
+    const searchLower = searchTerm.toLowerCase();
+    
     let filtered = properties.filter((property) => {
-      const matchesSearch =
-        property.location?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        property.complement?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        property.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        property.propertyIdentifier?.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesSearch = !searchTerm || 
+        property.location?.toLowerCase().includes(searchLower) ||
+        property.complement?.toLowerCase().includes(searchLower) ||
+        property.description?.toLowerCase().includes(searchLower) ||
+        property.propertyIdentifier?.toLowerCase().includes(searchLower);
       
       const matchesStatus = statusFilter === "all" || property.status === statusFilter;
       
       const propertyLocationId = property.location_id || property.locationId;
-      const matchesLocation = 
-        selectedLocations.length === 0 || 
+      const matchesLocation = selectedLocations.length === 0 || 
         (propertyLocationId && selectedLocations.includes(propertyLocationId));
 
       return matchesSearch && matchesStatus && matchesLocation;
     });
 
-    // Ordenação
-    if (sortOrder === "alphabetical") {
-      filtered = filtered.sort((a, b) => (a.location || "").localeCompare(b.location || ""));
-    } else if (sortOrder === "price-asc") {
-      filtered = filtered.sort((a, b) => (a.value || 0) - (b.value || 0));
-    } else if (sortOrder === "price-desc") {
-      filtered = filtered.sort((a, b) => (b.value || 0) - (a.value || 0));
+    const sortFn = SORT_FUNCTIONS[sortOrder];
+    if (sortFn) {
+      filtered = [...filtered].sort(sortFn);
     }
 
     return filtered;
   }, [properties, searchTerm, statusFilter, selectedLocations, sortOrder]);
 
-  // Toggle de localização memoizado
   const handleLocationToggle = useCallback((locationId: string) => {
     setSelectedLocations((prev) =>
       prev.includes(locationId)
@@ -109,7 +109,6 @@ export function useProperties(): UsePropertiesReturn {
     );
   }, []);
 
-  // Criar imóvel
   const createProperty = useCallback(async (formData: PropertyFormData) => {
     if (!formData.location_id?.trim()) {
       throw new Error("Por favor, selecione um local");
@@ -120,8 +119,6 @@ export function useProperties(): UsePropertiesReturn {
       throw new Error("Local selecionado inválido. Por favor, selecione novamente.");
     }
 
-    const parsedValue = parseCurrencyToFloat(formData.monthly_rent);
-
     const propertyData: Omit<Property, "id" | "createdAt" | "updatedAt"> = {
       locationId: formData.location_id,
       location: selectedLocation.name,
@@ -129,7 +126,7 @@ export function useProperties(): UsePropertiesReturn {
       complement: formData.complement,
       rooms: Number(formData.rooms) || 0,
       bathrooms: Number(formData.bathrooms) || 0,
-      value: parsedValue,
+      value: parseCurrencyToFloat(formData.monthly_rent),
       description: formData.description,
       images: formData.images,
       hasFurniture: formData.hasFurniture,
@@ -140,10 +137,9 @@ export function useProperties(): UsePropertiesReturn {
     };
 
     const newProperty = await propertyService.create(propertyData);
-    setProperties([newProperty, ...properties]);
-  }, [locations, properties]);
+    setProperties(prev => [newProperty, ...prev]);
+  }, [locations]);
 
-  // Atualizar imóvel
   const updateProperty = useCallback(async (id: string, formData: PropertyFormData) => {
     if (!formData.location_id?.trim()) {
       throw new Error("Por favor, selecione um local");
@@ -154,14 +150,12 @@ export function useProperties(): UsePropertiesReturn {
       throw new Error("Local selecionado inválido. Por favor, selecione novamente.");
     }
 
-    const parsedValue = parseCurrencyToFloat(formData.monthly_rent);
-
     const propertyData: Partial<Property> = {
       locationId: formData.location_id,
       location: selectedLocation.name,
       propertyIdentifier: formData.property_identifier || "Apartamento",
       complement: formData.complement || undefined,
-      value: parsedValue,
+      value: parseCurrencyToFloat(formData.monthly_rent),
       status: formData.status as "available" | "occupied" | "unavailable",
       description: formData.description,
       rooms: formData.rooms ? parseInt(formData.rooms) : undefined,
@@ -177,13 +171,9 @@ export function useProperties(): UsePropertiesReturn {
     await loadData();
   }, [locations, loadData]);
 
-  // Deletar imóvel
   const deleteProperty = useCallback(async (id: string) => {
     try {
-      // Remove da UI imediatamente
       setProperties(prev => prev.filter(p => p.id !== id));
-      
-      // Deleta do banco
       await propertyService.remove(id);
       
       toast({
@@ -191,9 +181,6 @@ export function useProperties(): UsePropertiesReturn {
         description: "Imóvel deletado com sucesso.",
       });
     } catch (error: any) {
-      console.error("Erro ao deletar imóvel:", error);
-      
-      // Recarrega em caso de erro
       await loadData();
       
       toast({

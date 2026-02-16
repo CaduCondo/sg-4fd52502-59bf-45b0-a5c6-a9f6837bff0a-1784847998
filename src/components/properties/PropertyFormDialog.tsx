@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, memo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -43,7 +43,44 @@ interface PropertyFormDialogProps {
   onEdit?: () => void;
 }
 
-export function PropertyFormDialog({
+const ImageGallery = memo(function ImageGallery({ 
+  images, 
+  onRemove, 
+  isReadOnly 
+}: { 
+  images: string[]; 
+  onRemove?: (index: number) => void;
+  isReadOnly?: boolean;
+}) {
+  if (images.length === 0) return null;
+
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-3">
+      {images.map((image, index) => (
+        <div key={index} className="relative aspect-video group">
+          <img
+            src={image}
+            alt={`Foto ${index + 1}`}
+            className="w-full h-full object-cover rounded-lg border"
+          />
+          {!isReadOnly && onRemove && (
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              onClick={() => onRemove(index)}
+              className="absolute top-1 right-1 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+});
+
+export const PropertyFormDialog = memo(function PropertyFormDialog({
   open,
   onOpenChange,
   onSubmit,
@@ -69,18 +106,31 @@ export function PropertyFormDialog({
   const isReadOnly = viewOnly && !isInternalEditMode;
   const showEditButton = viewOnly && !isInternalEditMode && isEditMode;
 
-  const handleEditClick = () => {
+  const handleEditClick = useCallback(() => {
     setIsInternalEditMode(true);
     if (onEdit) {
       onEdit();
     }
-  };
+  }, [onEdit]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     onSubmit(e);
     setIsInternalEditMode(false);
-  };
+  }, [onSubmit]);
+
+  const handleFieldChange = useCallback((field: keyof PropertyFormData, value: any) => {
+    setFormData({ ...formData, [field]: value });
+  }, [formData, setFormData]);
+
+  const handleMonthlyRentChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatCurrencyInput(e.target.value);
+    handleFieldChange("monthly_rent", formatted);
+  }, [handleFieldChange]);
+
+  const triggerFileInput = useCallback((inputId: string) => {
+    document.getElementById(inputId)?.click();
+  }, []);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -99,7 +149,6 @@ export function PropertyFormDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
-          {/* Linha 1: Local e Complemento */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div className="space-y-2">
               <Label htmlFor="location_id" className="text-sm font-medium">
@@ -107,9 +156,7 @@ export function PropertyFormDialog({
               </Label>
               <Select
                 value={formData.location_id}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, location_id: value })
-                }
+                onValueChange={(value) => handleFieldChange("location_id", value)}
                 disabled={isReadOnly}
               >
                 <SelectTrigger id="location_id" className="h-11 sm:h-10 text-sm mobile-input">
@@ -132,9 +179,7 @@ export function PropertyFormDialog({
               <Input
                 id="complement"
                 value={formData.complement}
-                onChange={(e) =>
-                  setFormData({ ...formData, complement: e.target.value })
-                }
+                onChange={(e) => handleFieldChange("complement", e.target.value)}
                 placeholder="Ex: Apto 102, Bloco A"
                 className="h-11 sm:h-10 text-sm mobile-input"
                 disabled={isReadOnly}
@@ -142,7 +187,6 @@ export function PropertyFormDialog({
             </div>
           </div>
 
-          {/* Linha 2: Quartos, Banheiros, Área e Valor */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
             <div className="space-y-2">
               <Label htmlFor="rooms" className="text-sm font-medium">
@@ -156,7 +200,7 @@ export function PropertyFormDialog({
                 value={formData.rooms}
                 onChange={(e) => {
                   const value = e.target.value.replace(/\D/g, "");
-                  setFormData({ ...formData, rooms: value });
+                  handleFieldChange("rooms", value);
                 }}
                 placeholder="3"
                 required
@@ -177,7 +221,7 @@ export function PropertyFormDialog({
                 value={formData.bathrooms}
                 onChange={(e) => {
                   const value = e.target.value.replace(/\D/g, "");
-                  setFormData({ ...formData, bathrooms: value });
+                  handleFieldChange("bathrooms", value);
                 }}
                 placeholder="2"
                 required
@@ -193,9 +237,7 @@ export function PropertyFormDialog({
               <Input
                 id="area"
                 value={formData.area}
-                onChange={(e) =>
-                  setFormData({ ...formData, area: e.target.value })
-                }
+                onChange={(e) => handleFieldChange("area", e.target.value)}
                 placeholder="80"
                 className="h-11 sm:h-10 text-sm mobile-input"
                 disabled={isReadOnly}
@@ -209,10 +251,7 @@ export function PropertyFormDialog({
               <Input
                 id="monthly_rent"
                 value={formData.monthly_rent}
-                onChange={(e) => {
-                  const formatted = formatCurrencyInput(e.target.value);
-                  setFormData({ ...formData, monthly_rent: formatted });
-                }}
+                onChange={handleMonthlyRentChange}
                 placeholder="R$ 0,00"
                 className="h-11 sm:h-10 text-sm mobile-input"
                 disabled={isReadOnly}
@@ -220,19 +259,13 @@ export function PropertyFormDialog({
             </div>
           </div>
 
-          {/* Status */}
           <div className="space-y-2">
             <Label htmlFor="status" className="text-sm font-medium">
               Status *
             </Label>
             <Select
               value={formData.status}
-              onValueChange={(value) =>
-                setFormData({
-                  ...formData,
-                  status: value as "available" | "occupied" | "unavailable",
-                })
-              }
+              onValueChange={(value) => handleFieldChange("status", value)}
               disabled={isReadOnly}
             >
               <SelectTrigger className="h-11 sm:h-10 text-sm mobile-input">
@@ -246,15 +279,12 @@ export function PropertyFormDialog({
             </Select>
           </div>
 
-          {/* Checkboxes - Mobile optimized */}
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
             <div className="flex items-center space-x-3 touch-target">
               <Checkbox
                 id="hasFurniture"
                 checked={formData.hasFurniture}
-                onCheckedChange={(checked) =>
-                  setFormData({ ...formData, hasFurniture: checked as boolean })
-                }
+                onCheckedChange={(checked) => handleFieldChange("hasFurniture", checked)}
                 disabled={isReadOnly}
                 className="h-5 w-5"
               />
@@ -267,9 +297,7 @@ export function PropertyFormDialog({
               <Checkbox
                 id="acceptsPets"
                 checked={formData.acceptsPets}
-                onCheckedChange={(checked) =>
-                  setFormData({ ...formData, acceptsPets: checked as boolean })
-                }
+                onCheckedChange={(checked) => handleFieldChange("acceptsPets", checked)}
                 disabled={isReadOnly}
                 className="h-5 w-5"
               />
@@ -282,9 +310,7 @@ export function PropertyFormDialog({
               <Checkbox
                 id="hasGarage"
                 checked={formData.hasGarage}
-                onCheckedChange={(checked) =>
-                  setFormData({ ...formData, hasGarage: checked as boolean })
-                }
+                onCheckedChange={(checked) => handleFieldChange("hasGarage", checked)}
                 disabled={isReadOnly}
                 className="h-5 w-5"
               />
@@ -294,7 +320,6 @@ export function PropertyFormDialog({
             </div>
           </div>
 
-          {/* Description */}
           <div className="space-y-2">
             <Label htmlFor="description" className="text-sm font-medium">
               Descrição
@@ -302,7 +327,7 @@ export function PropertyFormDialog({
             <Textarea
               id="description"
               value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              onChange={(e) => handleFieldChange("description", e.target.value)}
               className="text-sm resize-none min-h-[80px] mobile-input"
               placeholder="Descreva o imóvel..."
               rows={3}
@@ -310,40 +335,21 @@ export function PropertyFormDialog({
             />
           </div>
 
-          {/* Image Upload - Edit mode only */}
           {!isReadOnly && (
             <div className="space-y-3">
               <Label className="text-sm font-medium">Fotos do Imóvel</Label>
               
-              {/* Existing Images Gallery with Remove Button */}
-              {formData.images.length > 0 && (
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-3">
-                  {formData.images.map((image, index) => (
-                    <div key={index} className="relative aspect-video group">
-                      <img
-                        src={image}
-                        alt={`Foto ${index + 1}`}
-                        className="w-full h-full object-cover rounded-lg border"
-                      />
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => removeImage(index)}
-                        className="absolute top-1 right-1 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <ImageGallery 
+                images={formData.images} 
+                onRemove={removeImage}
+                isReadOnly={false}
+              />
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => document.getElementById("photo-upload")?.click()}
+                  onClick={() => triggerFileInput("photo-upload")}
                   className="h-11 sm:h-10 text-sm touch-target"
                 >
                   <ImageIcon className="h-4 w-4 mr-2" />
@@ -352,7 +358,7 @@ export function PropertyFormDialog({
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => document.getElementById("camera-capture")?.click()}
+                  onClick={() => triggerFileInput("camera-capture")}
                   className="h-11 sm:h-10 text-sm touch-target"
                 >
                   <Camera className="h-4 w-4 mr-2" />
@@ -378,25 +384,16 @@ export function PropertyFormDialog({
             </div>
           )}
 
-          {/* Image Gallery - View mode */}
           {isReadOnly && formData.images.length > 0 && (
             <div className="space-y-3">
               <Label className="text-sm font-medium">Fotos do Imóvel</Label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-                {formData.images.map((image, index) => (
-                  <div key={index} className="relative aspect-video">
-                    <img
-                      src={image}
-                      alt={`Preview ${index + 1}`}
-                      className="w-full h-full object-cover rounded-lg border"
-                    />
-                  </div>
-                ))}
-              </div>
+              <ImageGallery 
+                images={formData.images}
+                isReadOnly={true}
+              />
             </div>
           )}
 
-          {/* Action Buttons - Mobile optimized */}
           <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 pt-3 border-t">
             {showEditButton && (
               <Button 
@@ -444,4 +441,4 @@ export function PropertyFormDialog({
       </DialogContent>
     </Dialog>
   );
-}
+});

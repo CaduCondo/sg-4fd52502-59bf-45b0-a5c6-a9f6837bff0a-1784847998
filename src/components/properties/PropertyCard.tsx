@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Bed, Bath, Trash2, Camera, MapPin } from "lucide-react";
 import type { Property } from "@/types";
-import { memo } from "react";
+import { memo, useMemo } from "react";
 
 interface PropertyCardProps {
   property: Property;
@@ -12,22 +12,47 @@ interface PropertyCardProps {
   locationName?: string;
 }
 
-export const PropertyCard = memo(function PropertyCard({ property, onCardClick, onDeleteClick, locationName }: PropertyCardProps) {
-  const getStatusBadge = (status: string) => {
-    const variants: Record<string, "default" | "secondary" | "destructive"> = {
-      available: "default",
-      occupied: "secondary",
-      unavailable: "destructive",
-    };
-    const labels: Record<string, string> = {
-      available: "Disponível",
-      occupied: "Ocupado",
-      unavailable: "Indisponível",
-    };
-    return <Badge variant={variants[status]} className="text-xs font-medium px-2 py-0.5">{labels[status]}</Badge>;
-  };
+const STATUS_VARIANTS: Record<string, "default" | "secondary" | "destructive"> = {
+  available: "default",
+  occupied: "secondary",
+  unavailable: "destructive",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  available: "Disponível",
+  occupied: "Ocupado",
+  unavailable: "Indisponível",
+};
+
+export const PropertyCard = memo(function PropertyCard({ 
+  property, 
+  onCardClick, 
+  onDeleteClick, 
+  locationName 
+}: PropertyCardProps) {
+  const statusBadge = useMemo(() => (
+    <Badge variant={STATUS_VARIANTS[property.status]} className="text-xs font-medium px-2 py-0.5">
+      {STATUS_LABELS[property.status]}
+    </Badge>
+  ), [property.status]);
 
   const hasImages = property.images && property.images.length > 0;
+  const displayPrice = useMemo(() => 
+    property.value?.toLocaleString("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }), [property.value]
+  );
+
+  const roomsText = useMemo(() => 
+    property.rooms === 1 ? 'Quarto' : 'Quartos', 
+    [property.rooms]
+  );
+
+  const bathroomsText = useMemo(() => 
+    property.bathrooms === 1 ? 'Banheiro' : 'Banheiros', 
+    [property.bathrooms]
+  );
 
   return (
     <Card 
@@ -61,7 +86,7 @@ export const PropertyCard = memo(function PropertyCard({ property, onCardClick, 
                 <Camera className="h-4 w-4 text-muted-foreground" />
               </div>
             )}
-            {getStatusBadge(property.status)}
+            {statusBadge}
           </div>
         </div>
       </CardHeader>
@@ -78,13 +103,13 @@ export const PropertyCard = memo(function PropertyCard({ property, onCardClick, 
             {property.rooms && (
               <div className="flex items-center gap-1">
                 <Bed className="h-3.5 w-3.5 flex-shrink-0" />
-                <span>{property.rooms} {property.rooms === 1 ? 'Quarto' : 'Quartos'}</span>
+                <span>{property.rooms} {roomsText}</span>
               </div>
             )}
             {property.bathrooms && (
               <div className="flex items-center gap-1">
                 <Bath className="h-3.5 w-3.5 flex-shrink-0" />
-                <span>{property.bathrooms} {property.bathrooms === 1 ? 'Banheiro' : 'Banheiros'}</span>
+                <span>{property.bathrooms} {bathroomsText}</span>
               </div>
             )}
           </div>
@@ -93,10 +118,7 @@ export const PropertyCard = memo(function PropertyCard({ property, onCardClick, 
         <div className="flex items-center justify-between pt-2 mt-2 border-t gap-2">
           <div className="flex items-center gap-1.5">
             <span className="text-xl font-bold text-primary">
-              {property.value?.toLocaleString("pt-BR", {
-                style: "currency",
-                currency: "BRL",
-              })}
+              {displayPrice}
             </span>
           </div>
           <Button
