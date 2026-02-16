@@ -16,21 +16,28 @@ const calculatePaymentStatus = (
   if (paid === 0) {
     if (!paymentDate) {
       const today = new Date();
-      const dueDate = new Date(paymentDate || "");
-      return dueDate < today ? "overdue" : "pending";
+      // Resetar horas para comparar apenas datas
+      today.setHours(0, 0, 0, 0);
+      
+      if (paymentDate) {
+        const dueDate = new Date(paymentDate);
+        dueDate.setHours(0, 0, 0, 0);
+        return dueDate < today ? "overdue" : "pending";
+      }
+      return "pending"; // Sem data de vencimento assume pending
     }
     return "pending";
   }
   
-  // Se pagou tudo, está pago
+  // Se pagou tudo (ou mais), está pago
   if (paid >= expectedAmount) {
     return "paid";
   }
   
   // Se pagou algo mas não tudo, está parcial
-  // IMPORTANTE: Nunca deve ficar "partial" se o valor restante é zero!
+  // IMPORTANTE: Nunca deve ficar "partial" se o valor restante é insignificante (erro de arredondamento)
   const remaining = expectedAmount - paid;
-  if (remaining <= 0.01) { // Tolerância para erros de arredondamento
+  if (remaining <= 0.05) { // Tolerância aumentada para 5 centavos para garantir
     return "paid";
   }
   
@@ -38,11 +45,35 @@ const calculatePaymentStatus = (
 };
 
 const mapPaymentFromDb = (row: any): Payment => {
-  const expectedAmount = row.expected_amount || row.amount || 0;
-  const paidAmount = row.paid_amount || 0;
+  const expectedAmount = Number(row.expected_amount || row.amount || 0);
+  const paidAmount = Number(row.paid_amount || 0);
+  const dueDate = row.due_date;
   
-  // Calcula o status correto baseado nos valores
-  const correctStatus = calculatePaymentStatus(expectedAmount, paidAmount, row.due_date);
+  // Calcula o status correto baseado nos valores REAIS, ignorando o status do banco se estiver inconsistente
+  // Passamos dueDate para verificar se está atrasado caso não tenha sido pago
+  let correctStatus = calculatePaymentStatus(expectedAmount, paidAmount, null);
+  
+  // Se o status calculado for "pending" (valor pago = 0), verificamos se está vencido
+  if (correctStatus === "pending" && dueDate) {
+     const today = new Date();
+     today.setHours(0, 0, 0, 0);
+     const due = new Date(dueDate);
+     due.setHours(0, 0, 0, 0);
+     
+     if (due < today) {
+       correctStatus = "overdue";
+     }
+  }
+
+  // Se o banco diz que está pago, confiamos (pode ter sido perdoado o restante)
+  if (row.status === 'paid' && correctStatus === 'partial') {
+    correctStatus = 'paid';
+  }
+
+  // Se o status calculado for paid, forçamos paid
+  if (Math.abs(expectedAmount - paidAmount) < 0.05) {
+    correctStatus = 'paid';
+  }
   
   return {
     id: row.id,
@@ -52,15 +83,15 @@ const mapPaymentFromDb = (row: any): Payment => {
     amount: expectedAmount,
     dueDate: row.due_date,
     due_date: row.due_date,
-    // Usa o status correto calculado, não o que vem do banco
+    // Usa o status correto calculado
     status: correctStatus,
     paymentDate: row.payment_date || undefined,
     payment_date: row.payment_date || undefined,
     paymentTime: row.payment_time || undefined,
-    discountAmount: row.discount_amount || row.discount || 0,
-    discount: row.discount_amount || row.discount || 0,
-    lateFee: 0,
-    interest: 0,
+    discountAmount: Number(row.discount_amount || row.discount || 0),
+    discount: Number(row.discount_amount || row.discount || 0),
+    lateFee: Number(row.late_fee || 0),
+    interest: Number(row.interest || 0),
     paidAmount: paidAmount || undefined,
     paid_amount: paidAmount || undefined,
     paymentMethod: row.payment_method || undefined,
@@ -68,51 +99,56 @@ const mapPaymentFromDb = (row: any): Payment => {
     notes: row.notes || undefined,
     installmentNumber: row.installment || row.installment_number || undefined,
     installment_number: row.installment || row.installment_number || undefined,
-    totalInstallments: undefined,
+    totalInstallments: row.total_installments,
     type: "monthly",
     property_address: row.rentals?.properties
-      ? `${row.rentals.properties.address}, ${row.rentals.properties.number}`
+      ? `${row.rentals.properties.address || ''}, ${row.rentals.properties.number || ''}`
       : undefined,
     tenant_name: row.rentals?.tenants?.name,
     createdAt: row.created_at,
     created_at: row.created_at,
     updatedAt: row.updated_at,
     updated_at: row.updated_at,
-    referenceMonth: row.reference_month,
-    reference_month: row.reference_month,
-    referenceYear: row.reference_year,
-    reference_year: row.reference_year,
+    referenceMonth: Number(row.reference_month),
+    reference_month: Number(row.reference_month),
+    referenceYear: Number(row.reference_year),
+    reference_year: Number(row.reference_year),
     breakdown: row.breakdown,
     attachments: row.attachments
   };
 };
 
 const mapPaymentToDb = (payment: Partial<Payment>) => {
-  const expectedAmount = payment.expectedAmount || payment.amount || 0;
-  const paidAmount = payment.paidAmount || payment.paid_amount || 0;
+  const expectedAmount = Number(payment.expectedAmount || payment.amount || 0);
+  const paidAmount = Number(payment.paidAmount || payment.paid_amount || 0);
   
   // Calcula o status correto antes de salvar
-  const correctStatus = calculatePaymentStatus(
+  let correctStatus = calculatePaymentStatus(
     expectedAmount,
     paidAmount,
     payment.paymentDate || payment.payment_date || null
   );
   
+  // Se foi marcado manualmente como pago na UI, respeitamos
+  if (payment.status === 'paid') {
+    correctStatus = 'paid';
+  }
+  
   return {
     rental_id: payment.rentalId || payment.rental_id,
     expected_amount: expectedAmount,
     due_date: payment.dueDate || payment.due_date,
-    // Força o status correto
     status: correctStatus,
     payment_date: payment.paymentDate || payment.payment_date || null,
     payment_time: payment.paymentTime || null,
-    discount_amount: payment.discountAmount || payment.discount || 0,
+    discount_amount: Number(payment.discountAmount || payment.discount || 0),
     paid_amount: paidAmount || null,
     payment_method: payment.paymentMethod || payment.payment_method || null,
     notes: payment.notes || null,
     installment: payment.installmentNumber || payment.installment_number || null,
-    reference_month: payment.referenceMonth || payment.reference_month,
-    reference_year: payment.referenceYear || payment.reference_year,
+    // Converte para string pois o banco espera text
+    reference_month: String(payment.referenceMonth || payment.reference_month || ''),
+    reference_year: String(payment.referenceYear || payment.reference_year || ''),
     breakdown: payment.breakdown,
     attachments: payment.attachments
   };
@@ -344,8 +380,12 @@ export const updateFuturePaymentsOnPaymentDayChange = async (
     const updates = payments.map(payment => {
       let newDateStr = payment.due_date;
       
-      if (payment.reference_month && payment.reference_year) {
-        const newDate = new Date(payment.reference_year, payment.reference_month - 1, newPaymentDay);
+      // Parse seguro de month/year que são text
+      const refMonth = parseInt(payment.reference_month);
+      const refYear = parseInt(payment.reference_year);
+      
+      if (!isNaN(refMonth) && !isNaN(refYear)) {
+        const newDate = new Date(refYear, refMonth - 1, newPaymentDay);
         newDateStr = newDate.toISOString().split('T')[0];
       } else {
         const currentDate = new Date(payment.due_date);
@@ -398,11 +438,27 @@ export const migrateProportionalFirstPayments = async (): Promise<void> => {
 // --- Deposit Installments ---
 
 const mapDepositInstallmentFromDb = (row: any): PaymentInstallment => {
-  const amount = row.amount || 0;
-  const paidAmount = row.paid_amount || 0;
+  const amount = Number(row.amount || 0);
+  const paidAmount = Number(row.paid_amount || 0);
   
   // Calcula o status correto
-  const correctStatus = calculatePaymentStatus(amount, paidAmount, row.due_date);
+  let correctStatus = calculatePaymentStatus(amount, paidAmount, null);
+  
+   // Se o status calculado for "pending" (valor pago = 0), verificamos se está vencido
+  if (correctStatus === "pending" && row.due_date) {
+     const today = new Date();
+     today.setHours(0, 0, 0, 0);
+     const due = new Date(row.due_date);
+     due.setHours(0, 0, 0, 0);
+     
+     if (due < today) {
+       correctStatus = "overdue";
+     }
+  }
+  
+  if (Math.abs(amount - paidAmount) < 0.05) {
+    correctStatus = 'paid';
+  }
   
   return {
     id: row.id,
@@ -418,9 +474,9 @@ const mapDepositInstallmentFromDb = (row: any): PaymentInstallment => {
     paymentDate: row.payment_date || undefined,
     payment_time: row.payment_time || undefined,
     paymentTime: row.payment_time || undefined,
-    discount: row.discount || 0,
-    fine: row.fine || 0,
-    interest: row.interest || 0,
+    discount: Number(row.discount_amount || row.discount || 0),
+    fine: Number(row.penalty_amount || row.fine || 0),
+    interest: Number(row.interest_amount || row.interest || 0),
     paid_amount: paidAmount || undefined,
     paidAmount: paidAmount || undefined,
     payment_method: row.payment_method || undefined,
@@ -475,23 +531,26 @@ export const updateDepositInstallment = async (
   installment: Partial<PaymentInstallment>
 ): Promise<PaymentInstallment> => {
   try {
-    const amount = installment.amount || 0;
-    const paidAmount = installment.paidAmount || installment.paid_amount || 0;
+    const amount = Number(installment.amount || 0);
+    const paidAmount = Number(installment.paidAmount || installment.paid_amount || 0);
     
     // Calcula o status correto
-    const correctStatus = calculatePaymentStatus(
+    let correctStatus = calculatePaymentStatus(
       amount,
       paidAmount,
       installment.paymentDate || installment.payment_date || null
     );
     
+    if (installment.status === 'paid') correctStatus = 'paid';
+    if (Math.abs(amount - paidAmount) < 0.05) correctStatus = 'paid';
+    
     const updateData = {
       status: correctStatus,
       payment_date: installment.paymentDate || installment.payment_date || null,
       payment_time: installment.paymentTime || installment.payment_time || null,
-      discount: installment.discount || 0,
-      fine: installment.fine || 0,
-      interest: installment.interest || 0,
+      discount_amount: Number(installment.discount || 0),
+      penalty_amount: Number(installment.fine || 0),
+      interest_amount: Number(installment.interest || 0),
       paid_amount: paidAmount || null,
       payment_method: installment.paymentMethod || installment.payment_method || null,
       notes: installment.notes || null,
