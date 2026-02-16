@@ -666,6 +666,9 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       });
 
       if (onSuccess) {
+        console.log("🔍 onSuccess é undefined/null?", onSuccess === undefined || onSuccess === null);
+        console.log("✅ CONSTRUINDO OBJETO ATUALIZADO");
+        
         // ✅ CONSTRUÇÃO MANUAL DO OBJETO ATUALIZADO
         // Mesclamos dados existentes + atualizações enviadas ao banco
         // Adicionamos camelCase explicitamente para o PaymentReceipt
