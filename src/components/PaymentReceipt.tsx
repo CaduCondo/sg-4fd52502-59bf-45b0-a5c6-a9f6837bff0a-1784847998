@@ -79,89 +79,143 @@ export function PaymentReceipt({
   const breakdownItems: BreakdownItem[] = [];
   let totalAmount = 0;
   
-  // Se não tem itens, adicionar valor base
-  const baseAmount = payment.expectedAmount || 0;
-  if (baseAmount > 0) {
-    breakdownItems.push({
-      description: "Valor do Aluguel",
-      amount: baseAmount,
-      type: "addition"
-    });
-  }
-
-  // SEMPRE ADICIONAR MULTA SE EXISTIR (priorizando a prop)
-  if (lateFee > 0) {
-    breakdownItems.push({
-      description: "Multa por Atraso",
-      amount: lateFee,
-      type: "addition"
-    });
-  }
-
-  // SEMPRE ADICIONAR JUROS SE EXISTIR (priorizando a prop)
-  if (interest > 0) {
-    breakdownItems.push({
-      description: "Juros por Atraso",
-      amount: interest,
-      type: "addition"
-    });
-  }
-  
-  // Outros itens do breakdown original (excluindo aluguel, multa e juros já adicionados)
-  if (payment.breakdown) {
+  // Se é rescisão e tem breakdown, processar os valores específicos
+  if (isTermination && payment.breakdown) {
     try {
       const breakdownData = typeof payment.breakdown === "string" 
         ? JSON.parse(payment.breakdown) 
         : payment.breakdown;
 
-      if (Array.isArray(breakdownData)) {
-        breakdownData.forEach((item: any) => {
-          const amount = Number(item.amount || 0);
-          const description = item.description || "";
-          const type = item.type || (amount >= 0 ? "addition" : "deduction");
+      const proportionalRent = Number(breakdownData.proportionalRent || 0);
+      const terminationFee = Number(breakdownData.terminationFee || 0);
+      const depositRefund = Number(breakdownData.depositRefund || 0);
+      const additionalExpenses = Number(breakdownData.additionalExpenses || 0);
 
-          if (amount !== 0 && 
-              !description.includes("Multa") && 
-              !description.includes("Juros") && 
-              !description.includes("Aluguel")) {
-            breakdownItems.push({
-              description,
-              amount: Math.abs(amount),
-              type
-            });
-          }
+      if (proportionalRent > 0) {
+        console.log("Proportional Rent:", proportionalRent);
+        breakdownItems.push({
+          description: "Aluguel Proporcional",
+          amount: proportionalRent,
+          type: "addition"
         });
-      } else if (typeof breakdownData === "object") {
-         Object.entries(breakdownData).forEach(([key, value]: [string, any]) => {
-          const amount = Number(value || 0);
-          let description = key;
-          
-          // Traduzir chaves
-          const translations: Record<string, string> = {
-            proportionalRent: "Aluguel Proporcional",
-            terminationFee: "Multa Rescisória",
-            depositRefund: "Devolução de Caução",
-            additionalExpenses: "Despesas Adicionais",
-            baseAmount: "Valor Base",
-            discount: "Desconto"
-          };
-          
-          if (translations[key]) description = translations[key];
-          const type = amount >= 0 ? "addition" : "deduction";
+      }
 
-          if (amount !== 0 && 
-              key !== "lateFee" && 
-              key !== "interest" && 
-              key !== "rentAmount" &&
-              key !== "expectedAmount") {
-            breakdownItems.push({ description, amount: Math.abs(amount), type });
-          }
+      if (terminationFee > 0) {
+        console.log("Termination Fee:", terminationFee);
+        breakdownItems.push({
+          description: "Multa Rescisória",
+          amount: terminationFee,
+          type: "addition"
+        });
+      }
+
+      if (depositRefund !== 0) {
+        console.log("Deposit Refund:", depositRefund);
+        breakdownItems.push({
+          description: "Devolução de Caução",
+          amount: Math.abs(depositRefund),
+          type: depositRefund < 0 ? "deduction" : "addition"
+        });
+      }
+
+      if (additionalExpenses > 0) {
+        console.log("Additional Expenses:", additionalExpenses);
+        breakdownItems.push({
+          description: "Despesas Adicionais",
+          amount: additionalExpenses,
+          type: "addition"
         });
       }
     } catch (e) {
-      console.error("Erro breakdown", e);
+      console.error("Erro ao processar breakdown de rescisão:", e);
+    }
+  } else {
+    // Se não tem itens, adicionar valor base
+    const baseAmount = payment.expectedAmount || 0;
+    if (baseAmount > 0) {
+      breakdownItems.push({
+        description: "Valor do Aluguel",
+        amount: baseAmount,
+        type: "addition"
+      });
+    }
+
+    // SEMPRE ADICIONAR MULTA SE EXISTIR (priorizando a prop)
+    if (lateFee > 0) {
+      breakdownItems.push({
+        description: "Multa por Atraso",
+        amount: lateFee,
+        type: "addition"
+      });
+    }
+
+    // SEMPRE ADICIONAR JUROS SE EXISTIR (priorizando a prop)
+    if (interest > 0) {
+      breakdownItems.push({
+        description: "Juros por Atraso",
+        amount: interest,
+        type: "addition"
+      });
+    }
+    
+    // Outros itens do breakdown original (excluindo aluguel, multa e juros já adicionados)
+    if (payment.breakdown) {
+      try {
+        const breakdownData = typeof payment.breakdown === "string" 
+          ? JSON.parse(payment.breakdown) 
+          : payment.breakdown;
+
+        if (Array.isArray(breakdownData)) {
+          breakdownData.forEach((item: any) => {
+            const amount = Number(item.amount || 0);
+            const description = item.description || "";
+            const type = item.type || (amount >= 0 ? "addition" : "deduction");
+
+            if (amount !== 0 && 
+                !description.includes("Multa") && 
+                !description.includes("Juros") && 
+                !description.includes("Aluguel")) {
+              breakdownItems.push({
+                description,
+                amount: Math.abs(amount),
+                type
+              });
+            }
+          });
+        } else if (typeof breakdownData === "object") {
+           Object.entries(breakdownData).forEach(([key, value]: [string, any]) => {
+            const amount = Number(value || 0);
+            let description = key;
+            
+            // Traduzir chaves
+            const translations: Record<string, string> = {
+              proportionalRent: "Aluguel Proporcional",
+              terminationFee: "Multa Rescisória",
+              depositRefund: "Devolução de Caução",
+              additionalExpenses: "Despesas Adicionais",
+              baseAmount: "Valor Base",
+              discount: "Desconto"
+            };
+            
+            if (translations[key]) description = translations[key];
+            const type = amount >= 0 ? "addition" : "deduction";
+
+            if (amount !== 0 && 
+                key !== "lateFee" && 
+                key !== "interest" && 
+                key !== "rentAmount" &&
+                key !== "expectedAmount") {
+              breakdownItems.push({ description, amount: Math.abs(amount), type });
+            }
+          });
+        }
+      } catch (e) {
+        console.error("Erro breakdown", e);
+      }
     }
   }
+
+  console.log("Breakdown Items Finais:", breakdownItems);
 
   // Calcular total
   if (breakdownItems.length > 0) {
