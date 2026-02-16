@@ -249,7 +249,7 @@ export default function Financial() {
     
     const contractStartDate = new Date(rental.startDate + "T00:00:00");
     const contractEndDate = new Date(rental.endDate + "T00:00:00");
-    const totalMonths = differenceInMonths(contractEndDate, contractStartDate) + 1;
+    const totalMonths = differenceInMonths(contractEndDate, contractStartDate);
     
     const referenceDate = new Date(payment.referenceYear || 0, (payment.referenceMonth || 1) - 1, 1);
     const currentPaymentNumber = differenceInMonths(referenceDate, contractStartDate) + 1;
