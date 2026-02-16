@@ -166,9 +166,8 @@ const mapPaymentToDb = (payment: Partial<Payment>) => {
 
 export const getAll = async (filters?: PaymentFilters): Promise<Payment[]> => {
   try {
-    // Casting forçado para any para evitar erro TS2589 de profundidade excessiva
-    const queryBuilder = supabase
-      .from(PAYMENTS_TABLE) as any;
+    // Casting forçado para any na ORIGEM da query para evitar erro TS2589 de profundidade excessiva
+    const queryBuilder = (supabase.from(PAYMENTS_TABLE) as any);
       
     let query = queryBuilder
       .select(`
@@ -220,8 +219,8 @@ export const getAll = async (filters?: PaymentFilters): Promise<Payment[]> => {
 
 export const getSingle = async (id: string): Promise<Payment | null> => {
   try {
-    const queryBuilder = supabase
-      .from(PAYMENTS_TABLE) as any;
+    // Casting forçado para any para evitar erro TS2589
+    const queryBuilder = (supabase.from(PAYMENTS_TABLE) as any);
 
     const { data, error } = await queryBuilder
       .select(`
