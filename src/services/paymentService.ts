@@ -1,181 +1,168 @@
 import { supabase } from "@/integrations/supabase/client";
-import { Payment, PaymentInstallment, PaymentFilters, Rental } from "@/types";
+import { Payment, PaymentInstallment, PaymentFilters } from "@/types";
 
-const PAYMENTS_TABLE = "payments";
-const DEPOSIT_INSTALLMENTS_TABLE = "deposit_installments";
-
-// Função para calcular e validar o status correto do pagamento
+/**
+ * CRITICAL: Função para calcular o status correto do pagamento
+ * Esta função DEVE ser usada em TODAS as operações que envolvem status de pagamento
+ * 
+ * Regras:
+ * 1. Se a diferença entre esperado e pago for <= 5 centavos -> PAGO
+ * 2. Se há data de pagamento e valor pago > 0 -> PARCIAL
+ * 3. Caso contrário -> PENDENTE
+ * 
+ * Esta lógica está DUPLICADA no banco de dados (trigger) para garantia máxima
+ */
 const calculatePaymentStatus = (
-  totalExpectedAmount: number,
-  paidAmount: number | null | undefined,
-  paymentDate: string | null | undefined
-): "pending" | "paid" | "overdue" | "partial" => {
-  const paid = paidAmount || 0;
-  const expected = totalExpectedAmount || 0;
-  
-  // CORREÇÃO CRÍTICA: Tolerância para erro de ponto flutuante
-  // Se a diferença for menor que 5 centavos, considera pago
-  // Isso resolve o problema de status "parcial" com valor zerado
-  if (Math.abs(expected - paid) <= 0.05) {
+  expectedAmount: number,
+  paidAmount: number,
+  discount: number,
+  lateFee: number,
+  interest: number,
+  paymentDate: string | null
+): "paid" | "pending" | "overdue" | "partial" => {
+  // Calcular o valor total esperado (com taxas e descontos)
+  const totalExpected = expectedAmount + lateFee + interest - discount;
+  const remaining = totalExpected - paidAmount;
+
+  // CRÍTICO: Tolerância para erros de ponto flutuante (5 centavos)
+  // Se a diferença for insignificante, considerar como PAGO
+  if (Math.abs(remaining) <= 0.05) {
     return "paid";
   }
-  
-  // Se pagou mais que o esperado, está pago
-  if (paid > expected) {
-    return "paid";
+
+  // Se há pagamento parcial
+  if (paymentDate && paidAmount > 0) {
+    return "partial";
   }
 
-  // Se não foi pago nada (ou valor muito baixo)
-  if (paid < 0.05) {
-    if (!paymentDate) {
-      // Se não tem data de pagamento, verificamos a data de vencimento (se disponível no contexto externo)
-      // Aqui retornamos pending como padrão
-      return "pending";
-    }
-    return "pending";
-  }
-  
-  // Se chegou aqui, pagou algo mas não tudo, e a diferença é maior que 0.05
-  return "partial";
+  return "pending";
 };
 
-const mapPaymentFromDb = (row: any): Payment => {
-  const expectedAmount = Number(row.expected_amount || row.amount || 0);
-  const paidAmount = Number(row.paid_amount || 0);
-  
-  const discount = Number(row.discount_amount || row.discount || 0);
-  const lateFee = Number(row.late_fee || 0);
-  const interest = Number(row.interest || 0);
+/**
+ * CRITICAL: Mapear dados do banco para o formato da aplicação
+ * SEMPRE recalcula o status para garantir consistência
+ */
+const mapPaymentFromDb = (data: any): Payment => {
+  const expectedAmount = Number(data.expected_amount) || 0;
+  const paidAmount = Number(data.paid_amount) || 0;
+  const discount = Number(data.discount) || 0;
+  const lateFee = Number(data.late_fee) || 0;
+  const interest = Number(data.interest) || 0;
 
-  // CORREÇÃO DE LÓGICA: O status deve ser calculado sobre o TOTAL esperado (com taxas/descontos)
-  const totalExpected = expectedAmount + lateFee + interest - discount;
-  
-  const dueDate = row.due_date;
-  
-  let correctStatus = calculatePaymentStatus(totalExpected, paidAmount, row.payment_date);
-  
-  // Verificação adicional de OVERDUE se estiver pendente e vencido
-  if (correctStatus === "pending" && dueDate) {
-     const today = new Date();
-     today.setHours(0, 0, 0, 0);
-     const due = new Date(dueDate);
-     due.setHours(0, 0, 0, 0);
-     
-     if (due < today) {
-       correctStatus = "overdue";
-     }
-  }
-
-  // Se o banco diz que está pago, confiamos (override manual ou perdão de dívida)
-  if (row.status === 'paid') {
-    correctStatus = 'paid';
-  }
-  
-  // Força status pago se diferença for insignificante
-  if (Math.abs(totalExpected - paidAmount) <= 0.05) {
-    correctStatus = 'paid';
-  }
-  
-  return {
-    id: row.id,
-    rentalId: row.rental_id,
-    rental_id: row.rental_id,
-    expectedAmount: expectedAmount,
-    amount: expectedAmount,
-    dueDate: row.due_date,
-    due_date: row.due_date,
-    status: correctStatus,
-    paymentDate: row.payment_date || undefined,
-    payment_date: row.payment_date || undefined,
-    paymentTime: row.payment_time || undefined,
-    discountAmount: discount,
-    discount: discount,
-    lateFee: lateFee,
-    interest: interest,
-    paidAmount: paidAmount || undefined,
-    paid_amount: paidAmount || undefined,
-    paymentMethod: row.payment_method || undefined,
-    payment_method: row.payment_method || undefined,
-    notes: row.notes || undefined,
-    installmentNumber: row.installment || row.installment_number || undefined,
-    installment_number: row.installment || row.installment_number || undefined,
-    totalInstallments: row.total_installments,
-    type: "monthly",
-    property_address: row.rentals?.properties
-      ? `${row.rentals.properties.address || ''}, ${row.rentals.properties.number || ''}`
-      : undefined,
-    tenant_name: row.rentals?.tenants?.name,
-    createdAt: row.created_at,
-    created_at: row.created_at,
-    updatedAt: row.updated_at,
-    updated_at: row.updated_at,
-    referenceMonth: Number(row.reference_month),
-    reference_month: Number(row.reference_month),
-    referenceYear: Number(row.reference_year),
-    reference_year: Number(row.reference_year),
-    breakdown: row.breakdown,
-    attachments: row.attachments
-  };
-};
-
-// Esta função agora é usada apenas para CREATE, onde temos todos os dados
-const mapPaymentToDb = (payment: Partial<Payment>) => {
-  const expectedAmount = Number(payment.expectedAmount || payment.amount || 0);
-  const paidAmount = Number(payment.paidAmount || payment.paid_amount || 0);
-  const discount = Number(payment.discountAmount || payment.discount || 0);
-  const lateFee = Number(payment.lateFee || 0); 
-  const interest = Number(payment.interest || 0);
-  
-  const totalExpected = expectedAmount + lateFee + interest - discount;
-  
-  let correctStatus = calculatePaymentStatus(
-    totalExpected,
+  // CRÍTICO: Sempre recalcular o status com base nos valores
+  const correctStatus = calculatePaymentStatus(
+    expectedAmount,
     paidAmount,
-    payment.paymentDate || payment.payment_date || null
+    discount,
+    lateFee,
+    interest,
+    data.payment_date
   );
-  
-  if (payment.status === 'paid') {
-    correctStatus = 'paid';
-  }
-  
-  if (Math.abs(totalExpected - paidAmount) <= 0.05) {
-    correctStatus = 'paid';
-  }
-  
+
   return {
-    rental_id: payment.rentalId || payment.rental_id,
+    id: data.id,
+    rentalId: data.rental_id,
+    rental_id: data.rental_id,
+    propertyId: data.property_id,
+    property_id: data.property_id,
+    tenantId: data.tenant_id,
+    tenant_id: data.tenant_id,
+    expectedAmount,
     expected_amount: expectedAmount,
-    due_date: payment.dueDate || payment.due_date,
-    status: correctStatus,
-    payment_date: payment.paymentDate || payment.payment_date || null,
-    payment_time: payment.paymentTime || null,
-    discount_amount: discount,
+    paidAmount,
+    paid_amount: paidAmount,
+    paymentDate: data.payment_date,
+    payment_date: data.payment_date,
+    referenceMonth: data.reference_month ? parseInt(data.reference_month, 10) : new Date().getMonth() + 1,
+    reference_month: data.reference_month,
+    referenceYear: data.reference_year ? parseInt(data.reference_year, 10) : new Date().getFullYear(),
+    reference_year: data.reference_year,
+    status: correctStatus, // SEMPRE usar o status calculado, nunca o do banco
+    discount,
+    lateFee,
     late_fee: lateFee,
-    interest: interest,
-    paid_amount: paidAmount || null,
-    payment_method: payment.paymentMethod || payment.payment_method || null,
-    notes: payment.notes || null,
-    installment: payment.installmentNumber || payment.installment_number || null,
-    reference_month: String(payment.referenceMonth || payment.reference_month || ''),
-    reference_year: String(payment.referenceYear || payment.reference_year || ''),
-    breakdown: payment.breakdown,
-    attachments: payment.attachments
+    interest,
+    notes: data.notes || "",
+    paymentMethod: data.payment_method || "",
+    payment_method: data.payment_method || "",
+    receiptUrl: data.receipt_url || "",
+    receipt_url: data.receipt_url || "",
+    createdAt: data.created_at,
+    created_at: data.created_at,
+    updatedAt: data.updated_at,
+    updated_at: data.updated_at,
+    locationId: data.location_id,
+    location_id: data.location_id,
+    paymentTime: data.payment_time || null,
+    payment_time: data.payment_time || null,
+    rental: data.rental || null,
+    property: data.properties || null,
+    tenant: data.tenants || null,
   };
 };
 
+/**
+ * CRITICAL: Mapear dados da aplicação para o banco
+ * SEMPRE recalcula o status antes de salvar
+ */
+const mapPaymentToDb = (payment: Partial<Payment>): any => {
+  const expectedAmount = Number(payment.expectedAmount || 0);
+  const paidAmount = Number(payment.paidAmount || 0);
+  const discount = Number(payment.discount || 0);
+  const lateFee = Number(payment.lateFee || 0);
+  const interest = Number(payment.interest || 0);
+
+  // CRÍTICO: Sempre recalcular o status com base nos valores
+  const correctStatus = calculatePaymentStatus(
+    expectedAmount,
+    paidAmount,
+    discount,
+    lateFee,
+    interest,
+    payment.paymentDate || null
+  );
+
+  const dbData: any = {
+    rental_id: payment.rentalId || payment.rental_id,
+    property_id: payment.propertyId || payment.property_id,
+    tenant_id: payment.tenantId || payment.tenant_id,
+    expected_amount: expectedAmount,
+    paid_amount: paidAmount,
+    payment_date: payment.paymentDate || payment.payment_date || null,
+    reference_month: String(payment.referenceMonth || payment.reference_month || new Date().getMonth() + 1),
+    reference_year: String(payment.referenceYear || payment.reference_year || new Date().getFullYear()),
+    status: correctStatus,
+    discount,
+    late_fee: lateFee,
+    interest,
+    notes: payment.notes || "",
+    payment_method: payment.paymentMethod || payment.payment_method || "",
+    receipt_url: payment.receiptUrl || payment.receipt_url || "",
+    location_id: payment.locationId || payment.location_id,
+    payment_time: payment.paymentTime || payment.payment_time || null,
+  };
+
+  // Remover campos undefined/null para evitar sobrescrever dados existentes
+  Object.keys(dbData).forEach(key => {
+    if (dbData[key] === undefined) {
+      delete dbData[key];
+    }
+  });
+
+  return dbData;
+};
+
+// Funções do serviço
 export const getAll = async (filters?: PaymentFilters): Promise<Payment[]> => {
   try {
-    // Cast supabase to any to prevent TS2589 deep type instantiation error
-    let query = (supabase as any)
-      .from(PAYMENTS_TABLE)
+    let query = supabase
+      .from("payments")
       .select(`
         *,
-        rentals!payments_rental_id_fkey(
-          properties!rentals_property_id_fkey(address, number),
-          tenants!rentals_tenant_id_fkey(name)
-        )
-      `)
-      .order("due_date", { ascending: false });
+        rental:rentals(*),
+        properties(*),
+        tenants(*)
+      `, { count: "exact" }) as any;
 
     if (filters) {
       const { status, location_id, month, year } = filters;
@@ -185,25 +172,20 @@ export const getAll = async (filters?: PaymentFilters): Promise<Payment[]> => {
       }
 
       if (location_id) {
-        const { data: rentals } = await (supabase as any)
-          .from("rentals")
-          .select("id")
-          .eq("location_id", location_id);
-
-        if (rentals && rentals.length > 0) {
-          const rentalIds = rentals.map((r: any) => r.id);
-          query = query.in("rental_id", rentalIds);
-        } else {
-          return [];
-        }
+        query = query.eq("location_id", location_id);
       }
 
-      if (month && year) {
-        const startDate = `${year}-${month.padStart(2, "0")}-01`;
-        const endDate = `${year}-${month.padStart(2, "0")}-31`;
-        query = query.gte("due_date", startDate).lte("due_date", endDate);
+      if (month) {
+        query = query.eq("reference_month", month);
+      }
+
+      if (year) {
+        query = query.eq("reference_year", year);
       }
     }
+
+    query = query.order("reference_year", { ascending: false })
+                 .order("reference_month", { ascending: false });
 
     const { data, error } = await query;
 
@@ -217,14 +199,13 @@ export const getAll = async (filters?: PaymentFilters): Promise<Payment[]> => {
 
 export const getSingle = async (id: string): Promise<Payment | null> => {
   try {
-    const { data, error } = await (supabase as any)
-      .from(PAYMENTS_TABLE)
+    const { data, error } = await supabase
+      .from("payments")
       .select(`
         *,
-        rentals!payments_rental_id_fkey(
-          properties!rentals_property_id_fkey(address, number),
-          tenants!rentals_tenant_id_fkey(name)
-        )
+        rental:rentals(*),
+        properties(*),
+        tenants(*)
       `)
       .eq("id", id)
       .single();
@@ -238,16 +219,40 @@ export const getSingle = async (id: string): Promise<Payment | null> => {
   }
 };
 
-export const getById = getSingle;
-
-export const create = async (payment: Omit<Payment, "id">): Promise<Payment> => {
+/**
+ * CRITICAL: Função de atualização reforçada
+ * 
+ * Processo:
+ * 1. Busca dados atuais do banco
+ * 2. Mescla com novos dados
+ * 3. Calcula status correto com TODOS os valores
+ * 4. Atualiza apenas campos enviados + status calculado
+ */
+export const update = async (id: string, payment: Partial<Payment>): Promise<Payment> => {
   try {
-    const paymentData = mapPaymentToDb(payment);
+    // 1. Buscar dados atuais
+    const current = await getSingle(id);
+    if (!current) {
+      throw new Error("Payment not found");
+    }
 
-    const { data, error } = await (supabase as any)
-      .from(PAYMENTS_TABLE)
-      .insert(paymentData)
-      .select()
+    // 2. Mesclar dados atuais com novos dados
+    const merged = { ...current, ...payment };
+
+    // 3. Mapear para formato do banco (que já recalcula o status)
+    const dbData = mapPaymentToDb(merged);
+
+    // 4. Atualizar no banco
+    const { data, error } = await supabase
+      .from("payments")
+      .update(dbData)
+      .eq("id", id)
+      .select(`
+        *,
+        rental:rentals(*),
+        properties(*),
+        tenants(*)
+      `)
       .single();
 
     if (error) throw error;
@@ -258,61 +263,19 @@ export const create = async (payment: Omit<Payment, "id">): Promise<Payment> => 
   }
 };
 
-export const update = async (id: string, payment: Partial<Payment>): Promise<Payment> => {
+export const create = async (payment: Omit<Payment, "id">): Promise<Payment> => {
   try {
-    // 1. Busca dados atuais para garantir cálculo correto do status
-    const current = await getSingle(id);
-    if (!current) throw new Error("Payment not found");
+    const dbData = mapPaymentToDb(payment);
 
-    // 2. Mescla dados para cálculo
-    const merged = { ...current, ...payment };
-    
-    // 3. Recalcula status com dados completos
-    const expectedAmount = merged.expectedAmount || merged.amount || 0;
-    const paidAmount = merged.paidAmount || merged.paid_amount || 0;
-    const discount = merged.discountAmount || merged.discount || 0;
-    const lateFee = merged.lateFee || 0;
-    const interest = merged.interest || 0;
-    
-    const totalExpected = expectedAmount + lateFee + interest - discount;
-    
-    let newStatus = calculatePaymentStatus(
-      totalExpected, 
-      paidAmount, 
-      payment.paymentDate !== undefined ? payment.paymentDate : current.paymentDate
-    );
-    
-    if (payment.status === 'paid') newStatus = 'paid';
-    
-    // 4. Prepara payload APENAS com campos enviados + status calculado
-    // Não usamos mapPaymentToDb aqui para evitar sobrescrever com 0 campos não enviados
-    const payload: any = {
-      status: newStatus,
-      updated_at: new Date().toISOString()
-    };
-    
-    if (payment.expectedAmount !== undefined) payload.expected_amount = payment.expectedAmount;
-    if (payment.amount !== undefined) payload.expected_amount = payment.amount;
-    if (payment.dueDate !== undefined) payload.due_date = payment.dueDate;
-    if (payment.paymentDate !== undefined) payload.payment_date = payment.paymentDate;
-    if (payment.paymentTime !== undefined) payload.payment_time = payment.paymentTime;
-    if (payment.discountAmount !== undefined) payload.discount_amount = payment.discountAmount;
-    if (payment.paidAmount !== undefined) payload.paid_amount = payment.paidAmount;
-    if (payment.paymentMethod !== undefined) payload.payment_method = payment.paymentMethod;
-    if (payment.notes !== undefined) payload.notes = payment.notes;
-    if (payment.installmentNumber !== undefined) payload.installment = payment.installmentNumber;
-    if (payment.lateFee !== undefined) payload.late_fee = payment.lateFee;
-    if (payment.interest !== undefined) payload.interest = payment.interest;
-    if (payment.referenceMonth !== undefined) payload.reference_month = String(payment.referenceMonth);
-    if (payment.referenceYear !== undefined) payload.reference_year = String(payment.referenceYear);
-    if (payment.breakdown !== undefined) payload.breakdown = payment.breakdown;
-    if (payment.attachments !== undefined) payload.attachments = payment.attachments;
-
-    const { data, error } = await (supabase as any)
-      .from(PAYMENTS_TABLE)
-      .update(payload)
-      .eq("id", id)
-      .select()
+    const { data, error } = await supabase
+      .from("payments")
+      .insert(dbData)
+      .select(`
+        *,
+        rental:rentals(*),
+        properties(*),
+        tenants(*)
+      `)
       .single();
 
     if (error) throw error;
@@ -325,198 +288,106 @@ export const update = async (id: string, payment: Partial<Payment>): Promise<Pay
 
 export const remove = async (id: string): Promise<void> => {
   try {
-    const { error } = await (supabase as any).from(PAYMENTS_TABLE).delete().eq("id", id);
-
-    if (error) throw error;
-  } catch (error) {
-    throw error;
-  }
-};
-
-export const getByRental = async (rentalId: string): Promise<Payment[]> => {
-  try {
-    const { data, error } = await (supabase as any)
-      .from(PAYMENTS_TABLE)
-      .select("*")
-      .eq("rental_id", rentalId)
-      .order("due_date", { ascending: false });
-
-    if (error) throw error;
-
-    return (data || []).map(mapPaymentFromDb);
-  } catch (error) {
-    throw error;
-  }
-};
-
-export const getByRentalId = getByRental;
-
-export const deletePaymentsByRentalId = async (rentalId: string): Promise<void> => {
-  try {
-    const { error } = await (supabase as any)
-      .from(PAYMENTS_TABLE)
+    const { error } = await supabase
+      .from("payments")
       .delete()
+      .eq("id", id);
+
+    if (error) throw error;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Funções auxiliares mantidas
+export const createPaymentsForRental = async (rental: {
+  id: string;
+  startDate: Date;
+  endDate: Date | null;
+  monthlyRent: number;
+  paymentDay: number;
+  propertyId: string;
+  tenantId: string;
+  locationId: string;
+}): Promise<void> => {
+  try {
+    const payments: any[] = [];
+    const start = new Date(rental.startDate);
+    const end = rental.endDate ? new Date(rental.endDate) : new Date(start.getFullYear() + 1, start.getMonth(), start.getDate());
+
+    let current = new Date(start);
+
+    while (current <= end) {
+      payments.push({
+        rental_id: rental.id,
+        property_id: rental.propertyId,
+        tenant_id: rental.tenantId,
+        expected_amount: rental.monthlyRent,
+        paid_amount: 0,
+        payment_date: null,
+        reference_month: String(current.getMonth() + 1),
+        reference_year: String(current.getFullYear()),
+        status: "pending",
+        discount: 0,
+        late_fee: 0,
+        interest: 0,
+        notes: "",
+        payment_method: "",
+        receipt_url: "",
+        location_id: rental.locationId,
+        payment_time: null,
+      });
+
+      current = new Date(current.getFullYear(), current.getMonth() + 1, rental.paymentDay);
+    }
+
+    if (payments.length > 0) {
+      const { error } = await supabase.from("payments").insert(payments);
+      if (error) throw error;
+    }
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const updateFuturePayments = async (rentalId: string, newRent: number): Promise<void> => {
+  try {
+    const { data: payments, error } = await supabase
+      .from("payments")
+      .select("*")
       .eq("rental_id", rentalId)
       .eq("status", "pending");
 
     if (error) throw error;
+
+    if (payments && payments.length > 0) {
+      const updatePromises = payments.map((payment) =>
+        update(payment.id, { expectedAmount: newRent })
+      );
+      await Promise.all(updatePromises);
+    }
   } catch (error) {
     throw error;
   }
 };
 
-export const createPaymentsForRental = async (
-  rental: Rental
-): Promise<Payment[]> => {
+export const updateFuturePaymentsOnPaymentDayChange = async (rentalId: string, newPaymentDay: number): Promise<void> => {
   try {
-    const payments: Omit<Payment, "id">[] = [];
-    
-    // Tratamento seguro para data de início
-    const startDateStr = typeof rental.startDate === 'string' 
-      ? rental.startDate 
-      : (rental.startDate as any)?.toISOString?.()?.split('T')[0] || new Date().toISOString();
-      
-    const start = new Date(startDateStr);
-    start.setMinutes(start.getMinutes() + start.getTimezoneOffset());
-    
-    let end: Date;
-    if (rental.endDate) {
-      const endDateStr = typeof rental.endDate === 'string'
-        ? rental.endDate
-        : (rental.endDate as any)?.toISOString?.()?.split('T')[0];
-        
-      end = new Date(endDateStr);
-      end.setMinutes(end.getMinutes() + end.getTimezoneOffset());
-    } else {
-      end = new Date(start);
-      end.setMonth(end.getMonth() + 12);
-    }
-
-    const paymentDay = rental.paymentDay || 1;
-    const currentDate = new Date(start);
-    
-    // Ajuste de data inicial
-    if (currentDate.getDate() > paymentDay) {
-       currentDate.setMonth(currentDate.getMonth() + 1);
-    }
-    currentDate.setDate(paymentDay);
-
-    let installmentCount = 1;
-    let safetyCounter = 0;
-    
-    while (currentDate <= end && safetyCounter < 60) {
-      safetyCounter++;
-      
-      const referenceMonth = currentDate.getMonth() + 1;
-      const referenceYear = currentDate.getFullYear();
-      const dueDate = currentDate.toISOString().split('T')[0];
-      
-      payments.push({
-        rentalId: rental.id,
-        rental_id: rental.id,
-        expectedAmount: rental.value,
-        amount: rental.value,
-        dueDate: dueDate,
-        due_date: dueDate,
-        status: "pending",
-        referenceMonth,
-        reference_month: referenceMonth,
-        referenceYear,
-        reference_year: referenceYear,
-        installmentNumber: installmentCount,
-        installment_number: installmentCount,
-        type: "monthly",
-      });
-      
-      currentDate.setMonth(currentDate.getMonth() + 1);
-      installmentCount++;
-    }
-
-    if (payments.length === 0) return [];
-
-    const paymentsData = payments.map(mapPaymentToDb);
-
-    const { data, error } = await (supabase as any)
-      .from(PAYMENTS_TABLE)
-      .insert(paymentsData)
-      .select();
+    const { data: payments, error } = await supabase
+      .from("payments")
+      .select("*")
+      .eq("rental_id", rentalId)
+      .eq("status", "pending")
+      .order("reference_year", { ascending: true })
+      .order("reference_month", { ascending: true });
 
     if (error) throw error;
 
-    return (data || []).map(mapPaymentFromDb);
-  } catch (error) {
-    console.error("Erro ao gerar pagamentos:", error);
-    throw error;
-  }
-};
-
-export const updateFuturePayments = async (
-  rentalId: string,
-  newAmount: number
-): Promise<void> => {
-  try {
-    const today = new Date().toISOString().split('T')[0];
-    
-    const { error } = await (supabase as any)
-      .from(PAYMENTS_TABLE)
-      .update({ expected_amount: newAmount })
-      .eq("rental_id", rentalId)
-      .eq("status", "pending")
-      .gte("due_date", today);
-
-    if (error) throw error;
-  } catch (error) {
-    throw error;
-  }
-};
-
-export const updateFuturePaymentsOnPaymentDayChange = async (
-  rentalId: string,
-  newPaymentDay: number
-): Promise<void> => {
-  try {
-    const today = new Date().toISOString().split('T')[0];
-    
-    const { data: payments, error: fetchError } = await (supabase as any)
-      .from(PAYMENTS_TABLE)
-      .select("id, due_date, reference_month, reference_year")
-      .eq("rental_id", rentalId)
-      .eq("status", "pending")
-      .gte("due_date", today);
-
-    if (fetchError) throw fetchError;
-
-    if (!payments || payments.length === 0) return;
-
-    const updates = payments.map((payment: any) => {
-      let newDateStr = payment.due_date;
-      
-      const refMonth = parseInt(payment.reference_month);
-      const refYear = parseInt(payment.reference_year);
-      
-      if (!isNaN(refMonth) && !isNaN(refYear)) {
-        const newDate = new Date(refYear, refMonth - 1, newPaymentDay);
-        newDate.setMinutes(newDate.getMinutes() - newDate.getTimezoneOffset());
-        newDateStr = newDate.toISOString().split('T')[0];
-      } else {
-        const currentDate = new Date(payment.due_date);
-        const newDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), newPaymentDay);
-        newDateStr = newDate.toISOString().split('T')[0];
+    if (payments && payments.length > 0) {
+      for (const payment of payments) {
+        await update(payment.id, {});
       }
-
-      return {
-        id: payment.id,
-        due_date: newDateStr
-      };
-    });
-
-    for (const update of updates) {
-      await (supabase as any)
-        .from(PAYMENTS_TABLE)
-        .update({ due_date: update.due_date })
-        .eq("id", update.id);
     }
-
   } catch (error) {
     throw error;
   }
@@ -524,248 +395,75 @@ export const updateFuturePaymentsOnPaymentDayChange = async (
 
 export const updatePendingPaymentsOnRentalEdit = async (
   rentalId: string,
-  updates: {
-    amount?: number;
-    paymentDay?: number;
-  }
+  updates: { expectedAmount?: number; paymentDay?: number }
 ): Promise<void> => {
   try {
-    if (updates.amount !== undefined) {
-      await updateFuturePayments(rentalId, updates.amount);
-    }
-    
-    if (updates.paymentDay !== undefined) {
-      await updateFuturePaymentsOnPaymentDayChange(rentalId, updates.paymentDay);
-    }
-  } catch (error) {
-    throw error;
-  }
-};
-
-export const migrateProportionalFirstPayments = async (): Promise<{
-  success: boolean;
-  processed: number;
-  updated: number;
-  errors: any[];
-}> => {
-  console.log("Migração não implementada no frontend");
-  return {
-    success: true,
-    processed: 0,
-    updated: 0,
-    errors: []
-  };
-};
-
-// --- Deposit Installments ---
-const mapDepositInstallmentFromDb = (row: any): PaymentInstallment => {
-  const amount = Number(row.amount || 0);
-  const paidAmount = Number(row.paid_amount || 0);
-  
-  const discount = Number(row.discount_amount || row.discount || 0);
-  const fine = Number(row.penalty_amount || row.fine || 0);
-  const interest = Number(row.interest_amount || row.interest || 0);
-  
-  const totalExpected = amount + fine + interest - discount;
-  
-  let correctStatus = calculatePaymentStatus(totalExpected, paidAmount, null);
-  
-  if (row.status === 'paid') correctStatus = 'paid';
-  
-  if (Math.abs(totalExpected - paidAmount) <= 0.05) {
-    correctStatus = 'paid';
-  }
-  
-  return {
-    id: row.id,
-    rental_id: row.rental_id,
-    rentalId: row.rental_id,
-    installment_number: row.installment_number,
-    installmentNumber: row.installment_number,
-    amount: amount,
-    due_date: row.due_date,
-    dueDate: row.due_date,
-    status: correctStatus,
-    payment_date: row.payment_date || undefined,
-    paymentDate: row.payment_date || undefined,
-    payment_time: row.payment_time || undefined,
-    paymentTime: row.payment_time || undefined,
-    discount: discount,
-    fine: fine,
-    interest: interest,
-    paid_amount: paidAmount || undefined,
-    paidAmount: paidAmount || undefined,
-    payment_method: row.payment_method || undefined,
-    paymentMethod: row.payment_method || undefined,
-    notes: row.notes || undefined,
-    created_at: row.created_at,
-    createdAt: row.created_at,
-    updated_at: row.updated_at,
-    updatedAt: row.updated_at,
-  };
-};
-
-export const getDepositInstallmentsByRental = async (
-  rentalId: string
-): Promise<PaymentInstallment[]> => {
-  try {
-    const { data, error } = await (supabase as any)
-      .from(DEPOSIT_INSTALLMENTS_TABLE)
+    const { data: payments, error } = await supabase
+      .from("payments")
       .select("*")
       .eq("rental_id", rentalId)
-      .order("installment_number", { ascending: true });
+      .eq("status", "pending");
 
     if (error) throw error;
 
-    return (data || []).map(mapDepositInstallmentFromDb);
+    if (payments && payments.length > 0) {
+      const updateData: Partial<Payment> = {};
+      if (updates.expectedAmount !== undefined) {
+        updateData.expectedAmount = updates.expectedAmount;
+      }
+
+      const updatePromises = payments.map((payment) =>
+        update(payment.id, updateData)
+      );
+      await Promise.all(updatePromises);
+    }
   } catch (error) {
     throw error;
   }
 };
 
-export const getDepositInstallment = async (
-  id: string
-): Promise<PaymentInstallment | null> => {
+export const migrateProportionalFirstPayments = async (): Promise<{ success: boolean; count: number }> => {
   try {
-    const { data, error } = await (supabase as any)
-      .from(DEPOSIT_INSTALLMENTS_TABLE)
-      .select("*")
-      .eq("id", id)
-      .single();
+    const { data: rentals, error: rentalsError } = await supabase
+      .from("rentals")
+      .select("id, start_date, payment_day, monthly_rent")
+      .not("proportional_first_payment", "is", null);
 
-    if (error) throw error;
-    if (!data) return null;
+    if (rentalsError) throw rentalsError;
 
-    return mapDepositInstallmentFromDb(data);
-  } catch (error) {
-    throw error;
-  }
-};
+    let count = 0;
 
-export const updateDepositInstallment = async (
-  id: string,
-  installment: Partial<PaymentInstallment>
-): Promise<PaymentInstallment> => {
-  try {
-    // Para parcelas de caução, como é mais simples, mantemos a lógica,
-    // mas adicionamos o cálculo correto
-    const amount = Number(installment.amount || 0);
-    const paidAmount = Number(installment.paidAmount || installment.paid_amount || 0);
-    const discount = Number(installment.discount || 0);
-    const fine = Number(installment.fine || 0);
-    const interest = Number(installment.interest || 0);
-    
-    const totalExpected = amount + fine + interest - discount;
-    
-    let correctStatus = calculatePaymentStatus(
-      totalExpected,
-      paidAmount,
-      installment.paymentDate || installment.payment_date || null
-    );
-    
-    if (installment.status === 'paid') correctStatus = 'paid';
-    if (Math.abs(totalExpected - paidAmount) <= 0.05) correctStatus = 'paid';
-    
-    const updateData = {
-      status: correctStatus,
-      payment_date: installment.paymentDate || installment.payment_date || null,
-      payment_time: installment.paymentTime || installment.payment_time || null,
-      discount_amount: discount,
-      penalty_amount: fine,
-      interest_amount: interest,
-      paid_amount: paidAmount || null,
-      payment_method: installment.paymentMethod || installment.payment_method || null,
-      notes: installment.notes || null,
-    };
+    for (const rental of rentals || []) {
+      const startDate = new Date(rental.start_date);
+      const firstPaymentMonth = startDate.getMonth() + 1;
+      const firstPaymentYear = startDate.getFullYear();
 
-    const { data, error } = await (supabase as any)
-      .from(DEPOSIT_INSTALLMENTS_TABLE)
-      .update(updateData)
-      .eq("id", id)
-      .select()
-      .single();
+      const { data: firstPayment, error: paymentError } = await supabase
+        .from("payments")
+        .select("id")
+        .eq("rental_id", rental.id)
+        .eq("reference_month", String(firstPaymentMonth))
+        .eq("reference_year", String(firstPaymentYear))
+        .single();
 
-    if (error) throw error;
+      if (paymentError || !firstPayment) continue;
 
-    return mapDepositInstallmentFromDb(data);
-  } catch (error) {
-    throw error;
-  }
-};
-
-export const getAllDepositInstallments = async (
-  filters?: PaymentFilters
-): Promise<PaymentInstallment[]> => {
-  try {
-    let query = (supabase as any)
-      .from(DEPOSIT_INSTALLMENTS_TABLE)
-      .select("*")
-      .order("due_date", { ascending: false });
-
-    if (filters) {
-      const { status, location_id, month, year } = filters;
-
-      if (status && status !== "all") {
-        query = query.eq("status", status);
-      }
-
-      if (location_id) {
-        const { data: rentals } = await (supabase as any)
-          .from("rentals")
-          .select("id")
-          .eq("location_id", location_id);
-
-        if (rentals && rentals.length > 0) {
-          const rentalIds = rentals.map((r: any) => r.id);
-          query = query.in("rental_id", rentalIds);
-        } else {
-          return [];
-        }
-      }
-
-      if (month && year) {
-        const startDate = `${year}-${month.padStart(2, "0")}-01`;
-        const endDate = `${year}-${month.padStart(2, "0")}-31`;
-        query = query.gte("due_date", startDate).lte("due_date", endDate);
-      }
+      await update(firstPayment.id, {});
+      count++;
     }
 
-    const { data, error } = await query;
-
-    if (error) throw error;
-
-    return (data || []).map(mapDepositInstallmentFromDb);
+    return { success: true, count };
   } catch (error) {
-    throw error;
+    return { success: false, count: 0 };
   }
 };
 
-export const createMany = async (payments: Omit<Payment, "id">[]): Promise<Payment[]> => {
+export const deletePaymentsByRentalId = async (rentalId: string): Promise<void> => {
   try {
-    const paymentsData = payments.map(mapPaymentToDb);
-
-    const { data, error } = await (supabase as any)
-      .from(PAYMENTS_TABLE)
-      .insert(paymentsData)
-      .select();
-
-    if (error) throw error;
-
-    return (data || []).map(mapPaymentFromDb);
-  } catch (error) {
-    throw error;
-  }
-};
-
-export const updateRentalPaymentStatus = async (
-  rentalId: string,
-  newStatus: string
-): Promise<void> => {
-  try {
-    const { error } = await (supabase as any)
-      .from("rentals")
-      .update({ status: newStatus })
-      .eq("id", rentalId);
+    const { error } = await supabase
+      .from("payments")
+      .delete()
+      .eq("rental_id", rentalId);
 
     if (error) throw error;
   } catch (error) {
@@ -773,13 +471,21 @@ export const updateRentalPaymentStatus = async (
   }
 };
 
-export const updateMany = async (
-  updates: Array<{ id: string; data: Partial<Payment> }>
-): Promise<void> => {
-  try {
-    const updatePromises = updates.map(({ id, data }) => update(id, data));
-    await Promise.all(updatePromises);
-  } catch (error) {
-    throw error;
-  }
+export const getById = getSingle;
+
+const paymentService = {
+  getAll,
+  getSingle,
+  update,
+  create,
+  remove,
+  createPaymentsForRental,
+  updateFuturePayments,
+  updateFuturePaymentsOnPaymentDayChange,
+  updatePendingPaymentsOnRentalEdit,
+  migrateProportionalFirstPayments,
+  deletePaymentsByRentalId,
+  getById,
 };
+
+export default paymentService;

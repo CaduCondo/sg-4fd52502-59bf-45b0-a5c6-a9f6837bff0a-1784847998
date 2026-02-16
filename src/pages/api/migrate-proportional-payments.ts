@@ -5,39 +5,31 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  // Apenas permitir POST
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
+    return res.status(405).json({ message: "Method not allowed" });
   }
 
   try {
-    console.log("🚀 Iniciando migração de parcelas proporcionais...");
-    
     const result = await migrateProportionalFirstPayments();
 
     if (result.success) {
       return res.status(200).json({
         success: true,
-        message: "Migração concluída com sucesso!",
-        processed: result.processed,
-        updated: result.updated,
-        errors: result.errors,
+        message: `Migration completed. ${result.count} payments updated.`,
+        count: result.count,
       });
     } else {
       return res.status(500).json({
         success: false,
-        message: "Migração concluída com erros",
-        processed: result.processed,
-        updated: result.updated,
-        errors: result.errors,
+        message: "Migration failed",
+        count: 0,
       });
     }
   } catch (error: any) {
-    console.error("❌ Erro crítico na migração:", error);
     return res.status(500).json({
       success: false,
-      message: "Erro ao executar migração",
-      error: error.message,
+      message: error.message || "Migration failed",
+      count: 0,
     });
   }
 }

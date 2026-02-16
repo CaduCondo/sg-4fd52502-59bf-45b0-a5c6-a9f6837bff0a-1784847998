@@ -275,7 +275,16 @@ export const RentalFormDialog = memo(function RentalFormDialog({
           depositInstallment3PixCode: depositData.depositInstallment3PixCode,
         };
 
-        await createPaymentsForRental(mergedRental);
+        await createPaymentsForRental({
+          id: mergedRental.id,
+          startDate: new Date(mergedRental.startDate),
+          endDate: mergedRental.endDate ? new Date(mergedRental.endDate) : null,
+          monthlyRent: Number(mergedRental.monthlyRent),
+          paymentDay: Number(mergedRental.paymentDay),
+          propertyId: mergedRental.propertyId,
+          tenantId: mergedRental.tenantId,
+          locationId: selectedProperty.locationId,
+        });
         
         setCreatedRentalData({
           rental: mergedRental,
@@ -301,7 +310,16 @@ export const RentalFormDialog = memo(function RentalFormDialog({
           monthlyRent: baseRent,
         };
 
-        await createPaymentsForRental(mappedRental);
+        await createPaymentsForRental({
+          id: mappedRental.id,
+          startDate: new Date(mappedRental.startDate),
+          endDate: mappedRental.endDate ? new Date(mappedRental.endDate) : null,
+          monthlyRent: Number(mappedRental.monthlyRent),
+          paymentDay: Number(mappedRental.paymentDay),
+          propertyId: mappedRental.propertyId,
+          tenantId: mappedRental.tenantId,
+          locationId: selectedProperty.locationId,
+        });
 
         const selectedLocation = locations.find((loc) => loc.id === selectedProperty.locationId);
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { useRouter } from "next/router";
 import { Layout } from "@/components/Layout";
 import { SEO } from "@/components/SEO";
@@ -43,6 +43,7 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
 
 export default function RentalsPage() {
   const { toast } = useToast();
+  const router = useRouter();
   useContractExpiration();
   
   const [rentals, setRentals] = useState<Rental[]>([]);
@@ -83,14 +84,17 @@ export default function RentalsPage() {
   // Carregar informações de rescisão
   const loadTerminationInfo = useCallback(async (activeRentals: Rental[]) => {
     try {
-      const { getByRentalId } = await import("@/services/paymentService");
       const terminationMap: Record<string, boolean> = {};
       
       await Promise.all(
         activeRentals.map(async (rental) => {
-          const payments = await getByRentalId(rental.id);
-          const hasTermination = payments.some(p => p.notes?.includes("Rescisão de Contrato"));
-          terminationMap[rental.id] = hasTermination;
+          const { data: payments } = await supabase
+            .from("payments")
+            .select("notes")
+            .eq("rental_id", rental.id);
+          
+          const hasTermination = payments?.some(p => p.notes?.includes("Rescisão de Contrato"));
+          terminationMap[rental.id] = hasTermination || false;
         })
       );
       
@@ -344,6 +348,10 @@ export default function RentalsPage() {
     await loadRentalsData();
     await loadAvailableData();
   }, [loadRentalsData, loadAvailableData]);
+
+  const handleViewDetails = useCallback((rental: Rental) => {
+    router.push(`/rentals/${rental.id}`);
+  }, [router]);
 
   return (
     <>

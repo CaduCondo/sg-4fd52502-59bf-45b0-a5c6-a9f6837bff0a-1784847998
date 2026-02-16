@@ -950,6 +950,17 @@ export type Database = {
           user_usuario: string
         }[]
       }
+      calculate_correct_payment_status: {
+        Args: {
+          p_discount: number
+          p_expected_amount: number
+          p_interest: number
+          p_late_fee: number
+          p_paid_amount: number
+          p_payment_date: string
+        }
+        Returns: string
+      }
       create_auth_mapping_for_migration: {
         Args: { p_auth_user_id: string; p_system_user_id: string }
         Returns: undefined
