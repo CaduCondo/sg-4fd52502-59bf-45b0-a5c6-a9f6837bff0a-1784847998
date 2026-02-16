@@ -154,9 +154,9 @@ const mapPaymentToDb = (payment: Partial<Payment>) => {
 
 export const getAll = async (filters?: PaymentFilters): Promise<Payment[]> => {
   try {
-    // Usando 'any' para evitar erro de profundidade de tipos do TypeScript (TS2589)
+    // Casting inicial para evitar erro TS2589 (Type instantiation excessively deep)
     // A estrutura de retorno é garantida pelo mapPaymentFromDb
-    let query = supabase
+    const queryBuilder: any = supabase
       .from(PAYMENTS_TABLE)
       .select(`
         *,
@@ -164,9 +164,9 @@ export const getAll = async (filters?: PaymentFilters): Promise<Payment[]> => {
           properties!rentals_property_id_fkey(address, number),
           tenants!rentals_tenant_id_fkey(name)
         )
-      `) as any;
+      `);
 
-    query = query.order("due_date", { ascending: false });
+    let query = queryBuilder.order("due_date", { ascending: false });
 
     if (filters) {
       const { status, location_id, month, year } = filters;
@@ -209,8 +209,8 @@ export const getAll = async (filters?: PaymentFilters): Promise<Payment[]> => {
 
 export const getSingle = async (id: string): Promise<Payment | null> => {
   try {
-    // Usando 'any' para evitar erro de profundidade de tipos do TypeScript
-    const { data, error } = await supabase
+    // Casting para evitar erro TS2589 (Type instantiation excessively deep)
+    const queryBuilder: any = supabase
       .from(PAYMENTS_TABLE)
       .select(`
         *,
@@ -218,9 +218,11 @@ export const getSingle = async (id: string): Promise<Payment | null> => {
           properties!rentals_property_id_fkey(address, number),
           tenants!rentals_tenant_id_fkey(name)
         )
-      `)
+      `);
+
+    const { data, error } = await queryBuilder
       .eq("id", id)
-      .single() as any;
+      .single();
 
     if (error) throw error;
     if (!data) return null;
