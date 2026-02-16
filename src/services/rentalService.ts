@@ -305,12 +305,9 @@ export const rentalService = {
     }
 
     // Atualizar recebimentos pendentes
-    await updatePendingPaymentsOnRentalEdit({
-      id,
-      startDate: data.start_date,
-      endDate: data.end_date,
+    await updatePendingPaymentsOnRentalEdit(id, {
+      amount: Number(data.value || data.monthly_rent),
       paymentDay: data.payment_day,
-      value: data.value || data.monthly_rent,
     });
 
     return mapRentalData(data);
