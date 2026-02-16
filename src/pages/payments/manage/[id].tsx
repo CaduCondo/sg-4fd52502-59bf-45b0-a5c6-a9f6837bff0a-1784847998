@@ -62,7 +62,12 @@ export default function ManagePaymentPage() {
     property: Property;
     tenant: Tenant;
   }) => {
-    console.log("Payment data received from ManagePaymentForm:", data.payment);
+    console.log("🔍 handlePaymentSuccess RECEBEU:");
+    console.log("  data.payment:", data.payment);
+    console.log("  data.payment.lateFee:", (data.payment as any).lateFee);
+    console.log("  data.payment.late_fee:", (data.payment as any).late_fee);
+    console.log("  data.payment.interest:", (data.payment as any).interest);
+    
     setReceiptData(data);
     setShowReceipt(true);
   };
