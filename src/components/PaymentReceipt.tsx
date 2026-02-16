@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState } from "react";
-import { X, Printer, Download } from "lucide-react";
+import { X, Printer, Download, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { Payment, Rental, Property, Tenant } from "@/types";
 import html2pdf from "html2pdf.js";
 import { supabase } from "@/integrations/supabase/client";
@@ -34,9 +34,12 @@ export function PaymentReceipt({
   const printRef = useRef<HTMLDivElement>(null);
   const [lateFeeFromDB, setLateFeeFromDB] = useState<number>(0);
   const [interestFromDB, setInterestFromDB] = useState<number>(0);
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
   useEffect(() => {
     const fetchPaymentDetails = async () => {
+      if (!payment.id) return;
+      
       try {
         console.log("🔍 BUSCANDO VALORES DO BANCO para payment.id:", payment.id);
         
@@ -44,16 +47,18 @@ export function PaymentReceipt({
           .from("payments")
           .select("late_fee, interest")
           .eq("id", payment.id)
-          .single();
+          .maybeSingle();
 
-        if (error) throw error;
+        if (error) {
+          console.error("Erro Supabase:", error);
+          return;
+        }
 
-        console.log("✅ VALORES RETORNADOS DO BANCO:", data);
-        console.log("  late_fee:", data.late_fee);
-        console.log("  interest:", data.interest);
-
-        setLateFeeFromDB(data.late_fee || 0);
-        setInterestFromDB(data.interest || 0);
+        if (data) {
+          console.log("✅ VALORES RETORNADOS DO BANCO:", data);
+          setLateFeeFromDB(Number(data.late_fee) || 0);
+          setInterestFromDB(Number(data.interest) || 0);
+        }
       } catch (error) {
         console.error("❌ Erro ao buscar detalhes do pagamento:", error);
       }
@@ -64,10 +69,11 @@ export function PaymentReceipt({
 
   const isTermination = payment.type === "termination";
   
+  // Prioridade: 1. Banco de Dados (mais confiável/recente) -> 2. Props passadas -> 3. Objeto payment original
   const lateFee = lateFeeFromDB || propLateFee || (payment.lateFee || (payment as any).late_fee || 0);
   const interest = interestFromDB || propInterest || (payment.interest || 0);
   
-  console.log("Recibo Valores:", { lateFee, interest, lateFeeFromDB, interestFromDB, paymentLateFee: payment.lateFee });
+  console.log("Recibo Valores Finais:", { lateFee, interest });
 
   // Estrutura para armazenar os itens do breakdown
   const breakdownItems: BreakdownItem[] = [];
