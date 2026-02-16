@@ -59,23 +59,26 @@ export function PaymentReceipt({
         console.log("✅ VALORES RETORNADOS DO BANCO:", JSON.stringify(data, null, 2));
 
         if (data) {
-          setLateFeeFromDB(Number(data.late_fee) || 0);
-          setInterestFromDB(Number(data.interest) || 0);
-          setTypeFromDB(data.type || "");
+          // Cast para any para evitar erros de tipagem com colunas novas
+          const paymentData = data as any;
           
-          if (data.breakdown) {
-            console.log("📦 BREAKDOWN DO BANCO (RAW):", data.breakdown);
+          setLateFeeFromDB(Number(paymentData.late_fee) || 0);
+          setInterestFromDB(Number(paymentData.interest) || 0);
+          setTypeFromDB(paymentData.type || "");
+          
+          if (paymentData.breakdown) {
+            console.log("📦 BREAKDOWN DO BANCO (RAW):", paymentData.breakdown);
             
             // Parse breakdown se for string
-            const parsedBreakdown = typeof data.breakdown === "string" 
-              ? JSON.parse(data.breakdown)
-              : data.breakdown;
+            const parsedBreakdown = typeof paymentData.breakdown === "string" 
+              ? JSON.parse(paymentData.breakdown)
+              : paymentData.breakdown;
             
             setBreakdownFromDB(parsedBreakdown);
             console.log("✅ BREAKDOWN SALVO NO ESTADO:", JSON.stringify(parsedBreakdown, null, 2));
           }
           
-          console.log("✅ TYPE SALVO NO ESTADO:", data.type);
+          console.log("✅ TYPE SALVO NO ESTADO:", paymentData.type);
         }
       } catch (error) {
         console.error("❌ Erro ao buscar detalhes do pagamento:", error);
