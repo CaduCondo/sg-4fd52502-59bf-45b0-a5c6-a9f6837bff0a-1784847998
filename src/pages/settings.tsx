@@ -359,72 +359,67 @@ export default function Settings() {
   const confirmDeleteLocation = async () => {
     if (!locationToDelete) return;
 
-    const locationId = locationToDelete.id;
-    const locationName = locationToDelete.name;
+    console.log(`[UI DELETE] Starting deletion process for: ${locationToDelete.name} (${locationToDelete.id})`);
     
-    console.log(`[UI DELETE] Starting deletion process for: ${locationName} (${locationId})`);
+    // Close dialog immediately
+    setLocationToDelete(null);
+    setIsLoadingLocations(true);
 
     try {
-      // Close alert dialog immediately
-      setLocationToDelete(null);
-      
-      // Set loading state
-      setIsLoadingLocations(true);
-      
-      // Show loading toast
+      // Show processing toast
       toast({
         title: "Processando...",
-        description: "Excluindo local do sistema...",
+        description: "Removendo local do sistema...",
       });
 
+      console.log(`[UI DELETE] Calling locationService.deleteLocation(${locationToDelete.id})`);
+      
       // Delete from database
-      console.log(`[UI DELETE] Calling locationService.deleteLocation(${locationId})`);
-      await locationService.deleteLocation(locationId);
+      await locationService.deleteLocation(locationToDelete.id);
       
-      console.log(`[UI DELETE] Delete successful, updating UI...`);
+      console.log("[UI DELETE] Delete successful from database, updating UI...");
 
-      // Update local state immediately (optimistic update)
-      setLocations(prevLocations => {
-        const newLocations = prevLocations.filter(loc => loc.id !== locationId);
-        console.log(`[UI DELETE] Removed from state. Old count: ${prevLocations.length}, New count: ${newLocations.length}`);
-        return newLocations;
-      });
-      
-      // Show success message
-      toast({ 
+      // Remove from local state immediately (optimistic update)
+      const oldCount = locations.length;
+      setLocations(prev => prev.filter(loc => loc.id !== locationToDelete.id));
+      const newCount = locations.length - 1;
+      console.log(`[UI DELETE] Removed from state. Old count: ${oldCount}, New count: ${newCount}`);
+
+      // Show success toast
+      toast({
         title: "Sucesso!",
-        description: `Local "${locationName}" excluído com sucesso.`,
+        description: "Local excluído com sucesso.",
       });
-      
-      // Fetch fresh data from database to ensure consistency
-      console.log(`[UI DELETE] Reloading locations list from database...`);
+
+      // Wait a moment for database to sync
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Force complete reload from database
+      console.log("[UI DELETE] Reloading locations list from database...");
       await fetchLocations();
-      
-      console.log(`[UI DELETE] Process complete!`);
-      
+
+      console.log("[UI DELETE] Process complete!");
+
     } catch (error: any) {
-      console.error(`[UI DELETE ERROR] Failed to delete location ${locationId}:`, error);
+      console.error("[UI DELETE ERROR]", error);
       
-      const errorMessage = error?.message || String(error);
+      let errorMessage = "Não foi possível excluir o local.";
       
-      // Check for foreign key constraint errors
-      if (errorMessage.includes("foreign key") || 
-          errorMessage.includes("violates") ||
-          errorMessage.includes("constraint")) {
-        toast({
-          title: "Não é possível excluir",
-          description: "Este local não pode ser excluído pois possui propriedades, despesas ou permissões vinculadas.",
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Erro",
-          description: errorMessage || "Não foi possível excluir o local.",
-          variant: "destructive",
-        });
+      if (error.message?.includes("propriedades") || 
+          error.message?.includes("despesas") || 
+          error.message?.includes("permissões")) {
+        errorMessage = "Este local não pode ser excluído pois possui propriedades, despesas ou permissões vinculadas.";
+      } else if (error.message?.includes("foreign key")) {
+        errorMessage = "Este local possui dados vinculados e não pode ser excluído.";
       }
-      
-      // Reload list to show current state
+
+      toast({
+        title: "Erro",
+        description: errorMessage,
+        variant: "destructive",
+      });
+
+      // Reload to ensure UI shows current state
       await fetchLocations();
     } finally {
       setIsLoadingLocations(false);

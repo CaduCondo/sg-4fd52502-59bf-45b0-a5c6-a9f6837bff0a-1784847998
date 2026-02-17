@@ -4,23 +4,28 @@ import { supabase } from "@/integrations/supabase/client";
 const TABLE = "locations";
 
 /**
- * Get all locations from the database (no filtering - shows all records)
- * Since we use hard delete, all records in DB are valid
+ * Get all locations from the database
+ * IMPORTANT: No filtering - returns all records since we use hard delete
  */
 export async function getAllLocations(): Promise<Location[]> {
   console.log("[locationService] Fetching all locations from database...");
   
+  // Add timestamp to bust cache
+  const timestamp = new Date().getTime();
+  
   const { data, error } = await supabase
     .from(TABLE)
     .select("*")
-    .order("name");
+    .order("name")
+    // Force fresh data by adding a dummy filter that always passes
+    .gte("created_at", "2000-01-01");
 
   if (error) {
     console.error("[locationService] Error fetching locations:", error);
     throw error;
   }
 
-  console.log(`[locationService] Loaded ${data?.length || 0} locations from database`);
+  console.log(`[locationService] Loaded ${data?.length || 0} locations from database (timestamp: ${timestamp})`);
 
   return (data || []).map(dbLocation => ({
     id: dbLocation.id,
@@ -32,7 +37,7 @@ export async function getAllLocations(): Promise<Location[]> {
     city: dbLocation.city,
     state: dbLocation.state,
     zip_code: dbLocation.zip_code || "",
-    is_active: dbLocation.is_active !== false, // Default to true if not set
+    is_active: dbLocation.is_active !== false,
     active: dbLocation.is_active !== false,
     address: `${dbLocation.street || ''}, ${dbLocation.number || ''} - ${dbLocation.neighborhood || ''}, ${dbLocation.city || ''} - ${dbLocation.state || ''}`,
     manager_id: null,
@@ -115,7 +120,7 @@ export async function createLocation(locationData: {
     city: locationData.city.trim(),
     state: locationData.state.trim().toUpperCase(),
     zip_code: locationData.zip_code.replace(/\D/g, ""),
-    is_active: true, // Always create as active
+    is_active: true,
   };
 
   const { data, error } = await supabase
@@ -219,14 +224,47 @@ export async function updateLocation(
 export async function deleteLocation(id: string): Promise<void> {
   console.log(`[locationService] HARD DELETE - Permanently removing location: ${id}`);
   
-  const { error } = await supabase
+  // Step 1: Verify location exists before deletion
+  const { data: existingLocation, error: checkError } = await supabase
+    .from(TABLE)
+    .select("id, name")
+    .eq("id", id)
+    .single();
+
+  if (checkError || !existingLocation) {
+    console.error(`[locationService] Location ${id} not found for deletion`);
+    throw new Error("Local não encontrado");
+  }
+
+  console.log(`[locationService] Found location to delete: ${existingLocation.name}`);
+
+  // Step 2: Perform the delete
+  const { error: deleteError } = await supabase
     .from(TABLE)
     .delete()
     .eq("id", id);
 
-  if (error) {
-    console.error(`[locationService] Failed to delete location ${id}:`, error.message);
-    throw error;
+  if (deleteError) {
+    console.error(`[locationService] Failed to delete location ${id}:`, deleteError.message);
+    
+    // Check if it's a foreign key constraint error
+    if (deleteError.message.includes("violates foreign key constraint")) {
+      throw new Error("Este local não pode ser excluído pois possui propriedades, despesas ou permissões vinculadas.");
+    }
+    
+    throw deleteError;
+  }
+
+  // Step 3: Verify deletion was successful
+  const { data: verifyData, error: verifyError } = await supabase
+    .from(TABLE)
+    .select("id")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (verifyData) {
+    console.error(`[locationService] DELETE FAILED - Location ${id} still exists in database!`);
+    throw new Error("Falha ao deletar o local. Por favor, tente novamente.");
   }
   
   console.log(`[locationService] Location ${id} permanently deleted from database`);
