@@ -184,7 +184,20 @@ export default function Financial() {
             startDate: rental.start_date,
             endDate: rental.end_date,
             propertyId: property?.id || "",
-            tenantId: tenant?.id || ""
+            tenantId: tenant?.id || "",
+            
+            // Campos obrigatórios para satisfazer o tipo Rental
+            value: rental.monthly_rent || 0,
+            depositAmount: 0,
+            status: "active",
+            isActive: true,
+            attachments: [],
+            contractAttachments: [],
+            autoRenew: false,
+            hasPartnerBroker: false,
+            installments: 1,
+            totalInstallments: 1,
+            pixCode: rental.pix_code // Importante para exibir o código PIX
           } : undefined,
           property: property ? {
             id: property.id,
