@@ -111,6 +111,13 @@ export default function RentalsPage() {
       setLoading(true);
       const rentalsData = await getAllRentals();
       setRentals(rentalsData);
+      
+      // DEBUG: Log rental data structure
+      console.log("🔍 DEBUG Rentals - Sample rental:", rentalsData[0]);
+      console.log("🔍 DEBUG Rentals - Property data:", rentalsData[0]?.property);
+      console.log("🔍 DEBUG Rentals - LocationId:", rentalsData[0]?.property?.locationId);
+      console.log("🔍 DEBUG Rentals - Location name:", rentalsData[0]?.property?.location);
+      
       await loadTerminationInfo(rentalsData.filter(r => r.isActive));
     } catch (error) {
       console.error("Erro ao carregar locações:", error);
@@ -157,6 +164,10 @@ export default function RentalsPage() {
         getAllProperties(),
         getAllTenants(),
       ]);
+      
+      // DEBUG: Log locations data
+      console.log("🔍 DEBUG Locations - Total:", locationsData.length);
+      console.log("🔍 DEBUG Locations - Sample:", locationsData[0]);
       
       setLocations(locationsData);
       setAllProperties(allPropertiesData);
@@ -561,7 +572,18 @@ export default function RentalsPage() {
                               <div className="flex items-center gap-2 mb-1">
                                 <Home className="h-4 w-4 text-blue-600 flex-shrink-0" />
                                 <h3 className="text-lg font-semibold text-blue-600 truncate">
-                                  {rental.property?.location || "Local não encontrado"}
+                                  {(() => {
+                                    const foundLocation = locations.find(loc => loc.id === rental.property?.locationId);
+                                    console.log("🔍 DEBUG Card Render:", {
+                                      rentalId: rental.id,
+                                      propertyId: rental.property?.id,
+                                      locationId: rental.property?.locationId,
+                                      foundLocation: foundLocation?.name,
+                                      propertyLocation: rental.property?.location,
+                                      locationsArrayLength: locations.length
+                                    });
+                                    return foundLocation?.name || rental.property?.location || "Local não encontrado";
+                                  })()}
                                 </h3>
                               </div>
                               {rental.property?.complement && (
