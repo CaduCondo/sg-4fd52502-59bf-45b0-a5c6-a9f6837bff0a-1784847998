@@ -226,7 +226,10 @@ export default function Financial() {
             name: tenant.name,
             cpf: tenant.cpf,
             email: tenant.email,
-            phone: tenant.phone
+            phone: tenant.phone,
+            // Campos obrigatórios para satisfazer o tipo Tenant
+            document: tenant.cpf || "",
+            status: "active"
           } : undefined,
           propertyId: property?.id || "",
           tenantId: tenant?.id || "",
