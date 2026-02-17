@@ -171,7 +171,6 @@ export default function Financial() {
         tenant: payment.rental?.tenants,
         propertyId: payment.rental?.properties?.id || "",
         tenantId: payment.rental?.tenants?.id || "",
-        // Removed non-existent properties
       }));
 
       console.log("🔍 DEBUG Financial - Dados formatados:", {
@@ -272,9 +271,9 @@ export default function Financial() {
   };
 
   const getPaymentDetails = (payment: Payment) => {
-    const rental = rentals.find((r) => r.id === payment.rentalId);
-    const property = properties.find((p) => p.id === rental?.propertyId);
-    const tenant = tenants.find((t) => t.id === rental?.tenantId);
+    const rental = payment.rental || rentals.find((r) => r.id === payment.rentalId);
+    const property = payment.property || properties.find((p) => p.id === rental?.propertyId);
+    const tenant = payment.tenant || tenants.find((t) => t.id === rental?.tenantId);
 
     return {
       local: property?.location || "N/A",
