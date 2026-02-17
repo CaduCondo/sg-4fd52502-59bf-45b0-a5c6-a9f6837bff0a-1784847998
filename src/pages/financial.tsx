@@ -597,14 +597,9 @@ export default function Financial() {
   const adminFee = payments
     .filter((p) => p.status === "paid" || p.status === "partial")
     .reduce((sum, p) => {
-      // CORREÇÃO: Usar o objeto property que já está aninhado no pagamento
       const property = p.property;
-      
-      // ISENÇÃO APENAS PARA TAXA DE ADMINISTRAÇÃO
-      // Verifica se a propriedade existe e se sua locationId está na lista de isenções
       const isExempt = property && exemptLocationIds.includes(property.locationId);
       
-      // Taxa configurada ou padrão de 5% (conforme interface)
       const feePercentage = config?.admin_fee_percentage ?? 5;
       const feeRate = feePercentage / 100;
       
@@ -618,8 +613,6 @@ export default function Financial() {
   const managementFee = payments
     .filter((p) => p.status === "paid" || p.status === "partial")
     .reduce((sum, p) => {
-       // TAXA DE GERENCIAMENTO SEMPRE É COBRADA
-       // Taxa configurada ou padrão de 3% (conforme interface)
        const mgmtPercentage = config?.management_fee_percentage ?? 3;
        const mgmtRate = mgmtPercentage / 100;
        
@@ -629,6 +622,7 @@ export default function Financial() {
   }, 0);
 
   console.log("💰 DEBUG Financial - Management Fee Total:", managementFee);
+
   const netRevenue = totalReceived - adminFee - managementFee - locationExpenses;
   
   const totalPaid = payments
