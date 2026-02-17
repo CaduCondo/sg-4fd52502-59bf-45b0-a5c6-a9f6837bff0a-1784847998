@@ -423,7 +423,6 @@ export default function RentalsPage() {
                             <Home className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                             <span className="text-sm font-medium truncate">
                               {location?.name || property.location || "Local não encontrado"}
-                              {property.complement && ` - ${property.complement}`}
                             </span>
                           </div>
                           <span className="text-sm font-semibold text-emerald-600 whitespace-nowrap ml-2">
