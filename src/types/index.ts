@@ -222,6 +222,7 @@ export interface Payment {
   expectedAmount: number;
   paidAmount: number;
   paymentDate?: string;
+  paymentTime?: string;
   status: "paid" | "pending" | "overdue" | "partial";
   paymentMethod: string;
   referenceMonth?: number;

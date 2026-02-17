@@ -111,6 +111,7 @@ export default function Financial() {
           paid_amount,
           due_date,
           payment_date,
+          payment_time,
           status,
           reference_month,
           reference_year,
@@ -162,6 +163,7 @@ export default function Financial() {
           paidAmount: payment.paid_amount,
           dueDate: payment.due_date,
           paymentDate: payment.payment_date,
+          paymentTime: payment.payment_time,
           status: payment.status as "paid" | "pending" | "overdue" | "partial",
           referenceMonth: Number(payment.reference_month),
           referenceYear: Number(payment.reference_year),
@@ -347,25 +349,9 @@ export default function Financial() {
       propertyLocation: property?.location,
       propertyLocationId: property?.locationId,
       hasRental: !!rental,
-      hasTenant: !!tenant
+      hasTenant: !!tenant,
+      paymentTime: payment.paymentTime
     });
-
-    // Extrair horário do paymentDate (se existir)
-    let paymentTime = "";
-    if (payment.paymentDate) {
-      try {
-        // If paymentDate includes time (ISO format with T)
-        const dateStr = payment.paymentDate.toString();
-        if (dateStr.includes('T')) {
-          const timePart = dateStr.split('T')[1];
-          if (timePart) {
-            paymentTime = timePart.substring(0, 5); // Get HH:MM
-          }
-        }
-      } catch (error) {
-        console.warn("⚠️ Could not extract time from paymentDate:", payment.paymentDate);
-      }
-    }
 
     return {
       local: property?.location || "N/A",
@@ -373,7 +359,7 @@ export default function Financial() {
       tenantName: tenant?.name || "N/A",
       rental: rental,
       pixCode: rental?.pixCode || "",
-      paymentTime: paymentTime,
+      paymentTime: payment.paymentTime || "",
     };
   };
 
