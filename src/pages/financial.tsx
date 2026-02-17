@@ -167,8 +167,6 @@ export default function Financial() {
         // Removed non-existent properties
       }));
 
-      setPayments(formattedPayments);
-
       // Remove references to propertiesData, rentalsData, tenantsData which caused errors
       // If we need them, we should fetch them or derive them.
       // For now, let's just use empty arrays if they were used for state,
@@ -182,6 +180,12 @@ export default function Financial() {
       // setProperties(uniqueProperties); // If these states exist
       // setRentals(uniqueRentals);
       // setTenants(uniqueTenants);
+
+      const totalExpenses = paymentsData
+        ? paymentsData.reduce((sum, e) => sum + (e.amount || 0), 0)
+        : 0;
+      
+      setLocationExpenses(totalExpenses);
 
       // Buscar permissões de locais do usuário logado
       let allowedLocations: string[] = [];
@@ -213,48 +217,8 @@ export default function Financial() {
         }
       }
 
-      // Buscar despesas de locais para o período selecionado
-      let expensesQuery = supabase
-        .from("location_expenses")
-        .select("amount, status, location_id")
-        .eq("reference_month", filterMonth)
-        .eq("reference_year", filterYear);
-      
-      if (user?.role === "financial" && allowedLocations.length > 0) {
-        expensesQuery = expensesQuery.in("location_id", allowedLocations);
-      }
-      
-      const { data: expensesData, error: expensesError } = await expensesQuery;
-      
-      if (expensesError) {
-        console.error("❌ Error fetching location expenses:", expensesError);
-      }
-      
-      const totalExpenses = expensesData
-        ? expensesData.reduce((sum, e) => sum + (e.amount || 0), 0)
-        : 0;
-      
-      setLocationExpenses(totalExpenses);
-
-      // Filtrar pagamentos
-      const allowedRentalIds = formattedPayments.map(p => p.rentalId);
-      
-      // We filter the RAW data (paymentsData) but need to be careful with property names
-      // Or better, filter the formatted payments which is safer
-      const filteredPaymentsList = formattedPayments.filter((payment) => {
-        const matchesDate = 
-          payment.referenceMonth === filterMonth &&
-          payment.referenceYear === filterYear;
-        
-        const matchesPermission = 
-          user?.role !== "financial" || 
-          allowedLocations.length === 0 ||
-          allowedRentalIds.includes(payment.rentalId);
-
-        return matchesDate && matchesPermission;
-      });
-      
-      setPayments(filteredPaymentsList);
+      // Set ALL payments without filtering by period
+      setPayments(formattedPayments);
 
     } catch (error: any) {
       // Ignorar erros de abort
@@ -318,9 +282,26 @@ export default function Financial() {
   };
 
   const getSortedPayments = () => {
-    if (!sortField || !sortDirection) return payments;
+    // First filter by selected period
+    const filtered = payments.filter((payment) => {
+      const matchesDate = 
+        payment.referenceMonth === filterMonth &&
+        payment.referenceYear === filterYear;
+      
+      // Check location permissions for financial users
+      if (user?.role === "financial" && allowedLocationIds.length > 0) {
+        const rental = payment.rental;
+        const property = rental?.properties;
+        return matchesDate && property && allowedLocationIds.includes(property.location_id);
+      }
+      
+      return matchesDate;
+    });
 
-    return [...payments].sort((a, b) => {
+    // Then apply sorting if specified
+    if (!sortField || !sortDirection) return filtered;
+
+    return [...filtered].sort((a, b) => {
       let aValue: any;
       let bValue: any;
 
