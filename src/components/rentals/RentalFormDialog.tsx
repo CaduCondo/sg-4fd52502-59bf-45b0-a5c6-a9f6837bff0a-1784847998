@@ -252,7 +252,10 @@ export const RentalFormDialog = memo(function RentalFormDialog({
 
       if (rental) {
         const updatedRental = await updateRentalService(rental.id, fullUpdateData);
-        await updateFuturePayments(rental.id, totalValue);
+        
+        // Passar o objeto rental atualizado como terceiro argumento
+        const rentalForUpdate = { ...rental, ...updatedRental };
+        await updateFuturePayments(rental.id, totalValue, rentalForUpdate);
 
         if (rental.paymentDay !== parseInt(paymentDay)) {
           await updateFuturePaymentsOnPaymentDayChange(rental.id, parseInt(paymentDay));
@@ -276,16 +279,13 @@ export const RentalFormDialog = memo(function RentalFormDialog({
         };
 
         await createPaymentsForRental({
-          id: mergedRental.id,
+          rental: mergedRental,
           startDate: new Date(mergedRental.startDate),
-          endDate: mergedRental.endDate ? new Date(mergedRental.endDate) : null,
-          monthlyRent: Number(mergedRental.value), // Usar o valor total (value)
+          endDate: mergedRental.endDate ? new Date(mergedRental.endDate) : new Date(new Date(mergedRental.startDate).setFullYear(new Date(mergedRental.startDate).getFullYear() + 1)), // Default 1 year if null
+          monthlyRent: Number(mergedRental.value),
           paymentDay: Number(mergedRental.paymentDay),
-          propertyId: mergedRental.propertyId,
-          tenantId: mergedRental.tenantId,
-          locationId: selectedProperty.locationId,
           hasGarage: mergedRental.hasGarage,
-          garageValue: mergedRental.garageValue,
+          garageValue: mergedRental.garageValue || 0,
         });
         
         setCreatedRentalData({
@@ -313,16 +313,13 @@ export const RentalFormDialog = memo(function RentalFormDialog({
         };
 
         await createPaymentsForRental({
-          id: mappedRental.id,
+          rental: mappedRental,
           startDate: new Date(mappedRental.startDate),
-          endDate: mappedRental.endDate ? new Date(mappedRental.endDate) : null,
-          monthlyRent: Number(mappedRental.monthlyRent), // monthlyRent aqui já é o totalValue calculado antes
+          endDate: mappedRental.endDate ? new Date(mappedRental.endDate) : new Date(new Date(mappedRental.startDate).setFullYear(new Date(mappedRental.startDate).getFullYear() + 1)), // Default 1 year if null
+          monthlyRent: Number(mappedRental.monthlyRent),
           paymentDay: Number(mappedRental.paymentDay),
-          propertyId: mappedRental.propertyId,
-          tenantId: mappedRental.tenantId,
-          locationId: selectedProperty.locationId,
           hasGarage: mappedRental.hasGarage,
-          garageValue: mappedRental.garageValue,
+          garageValue: mappedRental.garageValue || 0,
         });
 
         const selectedLocation = locations.find((loc) => loc.id === selectedProperty.locationId);

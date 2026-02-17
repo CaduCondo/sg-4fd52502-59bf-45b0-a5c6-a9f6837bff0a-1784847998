@@ -296,6 +296,87 @@ export function usePayments() {
     return `${payment.installment}/${payment.totalInstallments}`;
   }, []);
 
+  const fetchPayments = useCallback(async () => {
+    try {
+      setLoading(true);
+      
+      const { data, error } = await supabase
+        .from("payments")
+        .select(`
+          id,
+          rental_id,
+          expected_amount,
+          paid_amount,
+          due_date,
+          payment_date,
+          status,
+          reference_month,
+          reference_year,
+          discount_amount,
+          late_fee,
+          interest,
+          notes,
+          payment_method,
+          breakdown,
+          installment,
+          total_installments,
+          rental:rentals(
+            id,
+            monthly_rent,
+            garage_value,
+            has_garage,
+            payment_day,
+            start_date,
+            end_date,
+            properties(id, property_identifier, location_id, complement),
+            tenants(id, name, cpf, email, phone)
+          )
+        `)
+        .order("reference_year", { ascending: false })
+        .order("reference_month", { ascending: false })
+        .limit(500);
+
+      if (error) throw error;
+
+      const formattedPayments: Payment[] = (data || []).map((payment: any) => ({
+        id: payment.id,
+        rentalId: payment.rental_id,
+        expectedAmount: payment.expected_amount,
+        paidAmount: payment.paid_amount,
+        dueDate: payment.due_date,
+        paymentDate: payment.payment_date,
+        status: payment.status,
+        referenceMonth: Number(payment.reference_month),
+        referenceYear: Number(payment.reference_year),
+        discount: payment.discount_amount,
+        lateFee: payment.late_fee,
+        interest: payment.interest,
+        notes: payment.notes,
+        paymentMethod: payment.payment_method,
+        breakdown: payment.breakdown,
+        installment: payment.installment,
+        totalInstallments: payment.total_installments,
+        createdAt: payment.created_at,
+        updatedAt: payment.updated_at,
+        rental: payment.rental,
+        property: payment.rental?.properties,
+        tenant: payment.rental?.tenants,
+        propertyId: payment.rental?.properties?.id || "",
+        tenantId: payment.rental?.tenants?.id || "",
+      }));
+
+      setPayments(formattedPayments);
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Erro ao carregar pagamentos. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
+
   return {
     payments,
     rentals,
@@ -308,5 +389,6 @@ export function usePayments() {
     getTenantInfo,
     getExpectedAmount,
     getPaymentInstallment,
+    fetchPayments,
   };
 }

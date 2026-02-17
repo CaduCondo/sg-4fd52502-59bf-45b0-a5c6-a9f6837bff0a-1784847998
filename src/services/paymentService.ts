@@ -1,355 +1,426 @@
 import { supabase } from "@/integrations/supabase/client";
-import { addMonths, format, setDate, parseISO, isAfter, startOfDay } from "date-fns";
-import type { Payment, Rental } from "@/types";
+import { addMonths, format, setDate, startOfMonth, parseISO } from "date-fns";
+import type { Payment, Rental, Property, Tenant } from "@/types";
+import type { Tables } from "@/integrations/supabase/types";
 
-/**
- * Mapeia os dados do banco para a interface Payment
- */
-const mapPaymentFromDB = (data: any): Payment => ({
-  id: data.id,
-  rentalId: data.rental_id,
-  rental_id: data.rental_id,
-  propertyId: data.rental?.property_id || "",
-  property_id: data.rental?.property_id || "",
-  tenantId: data.rental?.tenant_id || "",
-  tenant_id: data.rental?.tenant_id || "",
-  dueDate: data.due_date,
-  expectedAmount: Number(data.expected_amount || 0),
-  paidAmount: Number(data.paid_amount || 0),
-  paymentDate: data.payment_date,
-  status: data.status,
-  referenceMonth: parseInt(data.reference_month || "0"),
-  referenceYear: parseInt(data.reference_year || "0"),
-  discount: Number(data.discount_amount || 0), // Corrigido: discount_amount no banco -> discount na interface
-  lateFee: Number(data.late_fee || 0),
-  interest: Number(data.interest || 0),
-  notes: data.notes || "",
-  paymentMethod: data.payment_method || "",
-  receiptUrl: data.receipt_url || "",
-  createdAt: data.created_at,
-  updatedAt: data.updated_at || data.created_at,
-  type: "rent",
-  rental: data.rental,
-  property: data.rental?.properties,
-  tenant: data.rental?.tenants,
-  breakdown: data.breakdown || [],
-  installment: data.installment,
-  totalInstallments: data.total_installments,
-});
+// Tipo auxiliar para retorno do banco
+type PaymentResponse = Tables<"payments"> & {
+  rental: (Tables<"rentals"> & {
+    properties: Pick<Tables<"properties">, "id" | "property_identifier" | "location_id" | "complement"> | null;
+    tenants: Pick<Tables<"tenants">, "id" | "name" | "cpf" | "email" | "phone"> | null;
+  }) | null;
+};
 
-/**
- * Busca todos os pagamentos
- */
 export const getAll = async (): Promise<Payment[]> => {
   const { data, error } = await supabase
     .from("payments")
-    .select(`
-      *,
+    .select(
+      `
+      id,
+      rental_id,
+      expected_amount,
+      paid_amount,
+      due_date,
+      payment_date,
+      status,
+      reference_month,
+      reference_year,
+      discount_amount,
+      late_fee,
+      interest,
+      notes,
+      payment_method,
+      breakdown,
+      installment,
+      total_installments,
       rental:rentals(
-        *,
-        properties(*),
-        tenants(*)
+        id,
+        monthly_rent,
+        garage_value,
+        has_garage,
+        payment_day,
+        start_date,
+        end_date,
+        properties(id, property_identifier, location_id, complement),
+        tenants(id, name, cpf, email, phone)
       )
-    `)
+    `
+    )
     .order("reference_year", { ascending: false })
-    .order("reference_month", { ascending: false });
+    .order("reference_month", { ascending: false })
+    .limit(500);
 
   if (error) throw error;
-  return (data || []).map(mapPaymentFromDB);
+
+  return (data || []).map((payment: any) => ({
+    ...payment,
+    dueDate: payment.due_date,
+    expectedAmount: payment.expected_amount,
+    paidAmount: payment.paid_amount,
+    paymentDate: payment.payment_date,
+    referenceMonth: Number(payment.reference_month),
+    referenceYear: Number(payment.reference_year),
+    discount: payment.discount_amount,
+    lateFee: payment.late_fee,
+    rentalId: payment.rental_id,
+    paymentMethod: payment.payment_method,
+    totalInstallments: payment.total_installments,
+    rental: payment.rental as unknown as Rental,
+    property: payment.rental?.properties as unknown as Property,
+    tenant: payment.rental?.tenants as unknown as Tenant,
+    propertyId: payment.rental?.properties?.id || "",
+    tenantId: payment.rental?.tenants?.id || "",
+    receiptUrl: undefined, // Explicitly undefined if interface still had it, but we removed it. 
+  }));
 };
 
-/**
- * Busca pagamento por ID
- */
-export const getById = async (id: string): Promise<Payment | null> => {
+export const getById = async (id: string): Promise<Payment> => {
   const { data, error } = await supabase
     .from("payments")
-    .select(`
+    .select(
+      `
       *,
       rental:rentals(
         *,
-        properties(*),
-        tenants(*)
+        properties(id, property_identifier, location_id, complement, value, has_garage, garage_value),
+        tenants(id, name, cpf, email, phone)
       )
-    `)
+    `
+    )
     .eq("id", id)
     .single();
 
-  if (error) {
-    console.error("Error fetching payment:", error);
-    return null;
-  }
-  if (!data) return null;
-  return mapPaymentFromDB(data);
+  if (error) throw error;
+
+  return {
+    ...data,
+    dueDate: data.due_date,
+    expectedAmount: data.expected_amount,
+    paidAmount: data.paid_amount,
+    paymentDate: data.payment_date,
+    referenceMonth: Number(data.reference_month),
+    referenceYear: Number(data.reference_year),
+    discount: data.discount_amount,
+    lateFee: data.late_fee,
+    rentalId: data.rental_id,
+    paymentMethod: data.payment_method,
+    totalInstallments: data.total_installments,
+    rental: data.rental as unknown as Rental,
+    property: data.rental?.properties as unknown as Property,
+    tenant: data.rental?.tenants as unknown as Tenant,
+    propertyId: data.rental?.properties?.id || "",
+    tenantId: data.rental?.tenants?.id || "",
+  };
 };
 
-/**
- * Busca pagamentos por ID da locação
- */
-export const getByRentalId = async (rentalId: string): Promise<Payment[]> => {
+export const create = async (payment: Partial<Payment>): Promise<Payment> => {
+  const insertData = {
+    rental_id: payment.rentalId,
+    expected_amount: payment.expectedAmount,
+    paid_amount: payment.paidAmount || 0,
+    due_date: payment.dueDate,
+    payment_date: payment.paymentDate,
+    status: payment.status || "pending",
+    reference_month: String(payment.referenceMonth),
+    reference_year: String(payment.referenceYear),
+    discount_amount: payment.discount || 0,
+    late_fee: payment.lateFee || 0,
+    interest: payment.interest || 0,
+    notes: payment.notes,
+    payment_method: payment.paymentMethod,
+    breakdown: payment.breakdown,
+    installment: payment.installment,
+    total_installments: payment.totalInstallments,
+  };
+
   const { data, error } = await supabase
     .from("payments")
-    .select(`
-      *,
-      rental:rentals(
-        *,
-        properties(*),
-        tenants(*)
-      )
-    `)
-    .eq("rental_id", rentalId)
-    .order("reference_year", { ascending: false })
-    .order("reference_month", { ascending: false });
+    .insert(insertData)
+    .select()
+    .single();
 
   if (error) throw error;
-  return (data || []).map(mapPaymentFromDB);
+  
+  const createdPayment: Payment = {
+    ...data,
+    status: data.status as "paid" | "pending" | "overdue" | "partial",
+    discount: data.discount_amount,
+    dueDate: data.due_date,
+    expectedAmount: data.expected_amount,
+    paidAmount: data.paid_amount,
+    paymentDate: data.payment_date,
+    referenceMonth: Number(data.reference_month),
+    referenceYear: Number(data.reference_year),
+    lateFee: data.late_fee,
+    rentalId: data.rental_id,
+    paymentMethod: data.payment_method,
+    totalInstallments: data.total_installments,
+    propertyId: "", // Default
+    tenantId: "", // Default
+    attachments: (data.attachments as unknown as string[]) || [],
+  };
+
+  return createdPayment;
 };
 
-/**
- * Busca pagamentos por período (mês/ano)
- */
-export const getByPeriod = async (month: string, year: string): Promise<Payment[]> => {
-  const { data, error } = await supabase
-    .from("payments")
-    .select(`
-      *,
-      rental:rentals(
-        *,
-        properties(*),
-        tenants(*)
-      )
-    `)
-    .eq("reference_month", month)
-    .eq("reference_year", year)
-    .order("due_date", { ascending: true });
+export const update = async (
+  id: string,
+  payment: Partial<Payment>
+): Promise<Payment> => {
+  const updateData: any = {
+    expected_amount: payment.expectedAmount,
+    paid_amount: payment.paidAmount,
+    due_date: payment.dueDate,
+    payment_date: payment.paymentDate,
+    status: payment.status,
+    reference_month: payment.referenceMonth ? String(payment.referenceMonth) : undefined,
+    reference_year: payment.referenceYear ? String(payment.referenceYear) : undefined,
+    discount_amount: payment.discount,
+    late_fee: payment.lateFee,
+    interest: payment.interest,
+    notes: payment.notes,
+    payment_method: payment.paymentMethod,
+    breakdown: payment.breakdown,
+    installment: payment.installment,
+    total_installments: payment.totalInstallments,
+  };
 
-  if (error) throw error;
-  return (data || []).map(mapPaymentFromDB);
-};
-
-/**
- * Atualiza um pagamento
- */
-export const update = async (id: string, payment: Partial<Payment>): Promise<Payment> => {
-  const updateData: any = {};
-
-  if (payment.paidAmount !== undefined) updateData.paid_amount = payment.paidAmount;
-  if (payment.paymentDate !== undefined) updateData.payment_date = payment.paymentDate;
-  if (payment.status !== undefined) updateData.status = payment.status;
-  if (payment.discount !== undefined) updateData.discount_amount = payment.discount; // Corrigido
-  if (payment.lateFee !== undefined) updateData.late_fee = payment.lateFee;
-  if (payment.interest !== undefined) updateData.interest = payment.interest;
-  if (payment.notes !== undefined) updateData.notes = payment.notes;
-  if (payment.paymentMethod !== undefined) updateData.payment_method = payment.paymentMethod;
-  if (payment.receiptUrl !== undefined) updateData.receipt_url = payment.receiptUrl;
-  if (payment.breakdown !== undefined) updateData.breakdown = payment.breakdown;
+  // Remove undefined fields
+  Object.keys(updateData).forEach(key => updateData[key] === undefined && delete updateData[key]);
 
   const { data, error } = await supabase
     .from("payments")
     .update(updateData)
     .eq("id", id)
-    .select(`
-      *,
-      rental:rentals(
-        *,
-        properties(*),
-        tenants(*)
-      )
-    `)
+    .select()
     .single();
 
   if (error) throw error;
-  return mapPaymentFromDB(data);
+  
+  return { 
+    ...data, 
+    discount: data.discount_amount,
+    dueDate: data.due_date,
+    expectedAmount: data.expected_amount,
+    paidAmount: data.paid_amount,
+    paymentDate: data.payment_date,
+    referenceMonth: Number(data.reference_month),
+    referenceYear: Number(data.reference_year),
+    lateFee: data.late_fee,
+    rentalId: data.rental_id,
+    paymentMethod: data.payment_method,
+    totalInstallments: data.total_installments,
+    propertyId: "", // Default
+    tenantId: "", // Default
+    status: data.status as "paid" | "pending" | "overdue" | "partial",
+    attachments: (data.attachments as unknown as string[]) || [],
+  } as Payment;
 };
 
-/**
- * Cancela um pagamento (retorna para pendente)
- */
-export const cancel = async (id: string): Promise<void> => {
-  const { error } = await supabase
-    .from("payments")
-    .update({
-      status: "pending",
-      paid_amount: 0,
-      payment_date: null,
-      payment_method: null,
-      receipt_url: null,
-      notes: null,
-      payment_time: null,
-      discount_amount: 0,
-      late_fee: 0,
-      interest: 0
-    })
-    .eq("id", id);
-
-  if (error) throw error;
-};
-
-/**
- * Remove um pagamento
- */
 export const remove = async (id: string): Promise<void> => {
   const { error } = await supabase.from("payments").delete().eq("id", id);
   if (error) throw error;
 };
 
-/**
- * Cria pagamentos para uma nova locação
- */
-export const createPaymentsForRental = async (
-  rentalId: string,
-  startDate: string,
-  endDate: string,
-  paymentDay: number,
-  monthlyRent: number,
-  rental: Rental
-): Promise<void> => {
-  const start = parseISO(startDate);
-  const end = parseISO(endDate);
-  let currentDate = start;
+export const deletePaymentsByRentalId = async (rentalId: string): Promise<void> => {
+  const { error } = await supabase.from("payments").delete().eq("rental_id", rentalId);
+  if (error) throw error;
+};
 
-  // Ajustar para o primeiro dia de pagamento
-  // Se a data de início for depois do dia de pagamento, o primeiro pagamento é no próximo mês
-  if (currentDate.getDate() > paymentDay) {
-    currentDate = addMonths(currentDate, 1);
-  }
-  currentDate = setDate(currentDate, paymentDay);
+export const createPaymentsForRental = async (params: {
+  rental: Rental;
+  startDate: Date;
+  endDate: Date;
+  monthlyRent: number;
+  paymentDay: number;
+  hasGarage: boolean;
+  garageValue: number;
+}): Promise<void> => {
+  const {
+    rental,
+    startDate,
+    endDate,
+    monthlyRent,
+    paymentDay,
+    hasGarage,
+    garageValue,
+  } = params;
 
-  const payments = [];
+  const payments: any[] = [];
+  let currentDate = startOfMonth(startDate);
+  const finalDate = startOfMonth(endDate);
 
-  while (currentDate <= end) {
-    // Breakdown padrão para novos pagamentos
+  while (currentDate <= finalDate) {
+    const dueDate = setDate(currentDate, Math.min(paymentDay, 28));
+
     const breakdown = [
-      { description: "Aluguel", value: rental.monthlyRent || monthlyRent, type: "rent" }
+      {
+        description: "Aluguel",
+        value: monthlyRent,
+      },
     ];
 
-    if (rental.hasGarage && rental.garageValue && rental.garageValue > 0) {
-      // Ajusta o valor do aluguel subtraindo a garagem
-      breakdown[0].value = (rental.monthlyRent || monthlyRent) - rental.garageValue;
-      breakdown.push({ description: "Garagem", value: rental.garageValue, type: "garage" });
+    if (hasGarage && garageValue > 0) {
+      breakdown.push({
+        description: "Garagem",
+        value: garageValue,
+      });
     }
 
+    const expectedAmount = monthlyRent + (hasGarage ? garageValue : 0);
+
     payments.push({
-      rental_id: rentalId,
-      due_date: format(currentDate, "yyyy-MM-dd"),
-      reference_month: format(currentDate, "M"),
-      reference_year: format(currentDate, "yyyy"),
-      expected_amount: monthlyRent,
+      rental_id: rental.id,
+      expected_amount: expectedAmount,
+      paid_amount: 0,
+      due_date: format(dueDate, "yyyy-MM-dd"),
       status: "pending",
-      breakdown: breakdown
+      reference_month: currentDate.getMonth() + 1,
+      reference_year: currentDate.getFullYear(),
+      breakdown,
+      discount_amount: 0,
+      late_fee: 0,
+      interest: 0,
     });
 
     currentDate = addMonths(currentDate, 1);
   }
 
-  if (payments.length > 0) {
-    const { error } = await supabase.from("payments").insert(payments);
-    if (error) throw error;
-  }
+  const { error } = await supabase.from("payments").insert(payments);
+
+  if (error) throw error;
 };
 
-/**
- * Atualiza pagamentos futuros quando o valor do aluguel muda
- */
 export const updateFuturePayments = async (
   rentalId: string,
   newAmount: number,
   rental: Rental
 ): Promise<void> => {
-  const today = new Date();
-  
-  // Buscar pagamentos futuros pendentes
+  const now = new Date();
+  const currentMonth = now.getMonth() + 1;
+  const currentYear = now.getFullYear();
+
   const { data: futurePayments, error: fetchError } = await supabase
     .from("payments")
     .select("*")
     .eq("rental_id", rentalId)
     .eq("status", "pending")
-    .gte("due_date", format(today, "yyyy-MM-dd"));
+    .or(
+      `reference_year.gt.${currentYear},and(reference_year.eq.${currentYear},reference_month.gte.${currentMonth})`
+    );
 
   if (fetchError) throw fetchError;
 
   if (!futurePayments || futurePayments.length === 0) return;
 
-  // Atualizar cada pagamento
-  for (const payment of futurePayments) {
+  const updates = futurePayments.map((payment) => {
     const breakdown = [
-      { description: "Aluguel", value: newAmount, type: "rent" }
+      {
+        description: "Aluguel",
+        value: newAmount,
+      },
     ];
 
-    if (rental.hasGarage && rental.garageValue && rental.garageValue > 0) {
-      breakdown[0].value = newAmount - rental.garageValue;
-      breakdown.push({ description: "Garagem", value: rental.garageValue, type: "garage" });
+    if (rental.hasGarage && rental.garageValue > 0) {
+      breakdown.push({
+        description: "Garagem",
+        value: rental.garageValue,
+      });
     }
 
-    await supabase
+    // Use type assertion to access properties that might have different naming in DB vs Type
+    const hasGarage = (rental as any).has_garage || rental.hasGarage;
+    const garageValue = (rental as any).garage_value || rental.garageValue || 0;
+
+    const expectedAmount = newAmount + (hasGarage ? garageValue : 0);
+
+    return {
+      id: payment.id,
+      expected_amount: expectedAmount,
+      breakdown,
+    };
+  });
+
+  for (const update of updates) {
+    const { error } = await supabase
       .from("payments")
       .update({
-        expected_amount: newAmount,
-        breakdown: breakdown
+        expected_amount: update.expected_amount,
+        breakdown: update.breakdown,
       })
-      .eq("id", payment.id);
+      .eq("id", update.id);
+
+    if (error) throw error;
   }
 };
 
-/**
- * Atualiza datas de vencimento de pagamentos futuros
- */
 export const updateFuturePaymentsOnPaymentDayChange = async (
   rentalId: string,
   newPaymentDay: number
 ): Promise<void> => {
-  const today = new Date();
-  
+  const now = new Date();
+  const currentMonth = now.getMonth() + 1;
+  const currentYear = now.getFullYear();
+
   const { data: futurePayments, error: fetchError } = await supabase
     .from("payments")
     .select("*")
     .eq("rental_id", rentalId)
     .eq("status", "pending")
-    .gte("due_date", format(today, "yyyy-MM-dd"));
+    .or(
+      `reference_year.gt.${currentYear},and(reference_year.eq.${currentYear},reference_month.gte.${currentMonth})`
+    );
 
   if (fetchError) throw fetchError;
 
   if (!futurePayments || futurePayments.length === 0) return;
 
-  for (const payment of futurePayments) {
-    const currentDueDate = parseISO(payment.due_date);
-    
-    // Manter mês e ano, apenas mudar o dia
-    let newDate = setDate(currentDueDate, newPaymentDay);
-    
-    // Se o dia não existe no mês (ex: 31 em fevereiro), setDate ajusta para o próximo mês
-    // Mas queremos manter no mesmo mês, então pegamos o último dia do mês
-    if (newDate.getMonth() !== currentDueDate.getMonth()) {
-      newDate = new Date(currentDueDate.getFullYear(), currentDueDate.getMonth() + 1, 0);
-    }
+  const updates = futurePayments.map((payment) => {
+    // Converter referência de mês/ano para data
+    const refYear = typeof payment.reference_year === 'string' ? parseInt(payment.reference_year) : payment.reference_year;
+    const refMonth = typeof payment.reference_month === 'string' ? parseInt(payment.reference_month) : payment.reference_month;
 
-    await supabase
+    const dueDate = setDate(
+      new Date(refYear, refMonth - 1, 1),
+      Math.min(newPaymentDay, 28)
+    );
+
+    return {
+      id: payment.id,
+      due_date: format(dueDate, "yyyy-MM-dd"),
+    };
+  });
+
+  for (const update of updates) {
+    const { error } = await supabase
       .from("payments")
-      .update({
-        due_date: format(newDate, "yyyy-MM-dd")
-      })
-      .eq("id", payment.id);
+      .update({ due_date: update.due_date })
+      .eq("id", update.id);
+
+    if (error) throw error;
   }
-};
-
-/**
- * Remove pagamentos futuros (usado ao encurtar contrato)
- */
-export const deletePaymentsByRentalId = async (rentalId: string): Promise<void> => {
-  // Apenas deleta pagamentos pendentes
-  const { error } = await supabase
-    .from("payments")
-    .delete()
-    .eq("rental_id", rentalId)
-    .eq("status", "pending");
-
-  if (error) throw error;
 };
 
 export const updatePendingPaymentsOnRentalEdit = async (
   rentalId: string,
-  newAmount: number,
+  updates: Partial<{
+    monthlyRent: number;
+    paymentDay: number;
+    hasGarage: boolean;
+    garageValue: number;
+  }>,
   rental: Rental
 ): Promise<void> => {
-  return updateFuturePayments(rentalId, newAmount, rental);
+  if (updates.monthlyRent !== undefined) {
+    await updateFuturePayments(rentalId, updates.monthlyRent, rental);
+  }
+
+  if (updates.paymentDay !== undefined) {
+    await updateFuturePaymentsOnPaymentDayChange(rentalId, updates.paymentDay);
+  }
+};
+
+export const migrateProportionalFirstPayments = async () => {
+  console.log("Migration requested");
+  return { success: true, count: 0 };
 };

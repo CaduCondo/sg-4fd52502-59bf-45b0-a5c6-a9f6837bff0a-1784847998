@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Eye, DollarSign } from "lucide-react";
 import { formatCurrency } from "@/lib/masks";
 import { useRouter } from "next/router";
+import { format } from "date-fns";
 
 interface RentalPaymentsTableProps {
   payments: Payment[];
@@ -68,8 +69,14 @@ export function RentalPaymentsTable({ payments, onManagePayment }: RentalPayment
             <TableBody>
               {payments.map((payment) => (
                 <TableRow key={payment.id}>
-                  <TableCell>{payment.installmentNumber}</TableCell>
-                  <TableCell>{payment.dueDate}</TableCell>
+                  <TableCell>
+                    {payment.installment && payment.totalInstallments
+                      ? `${payment.installment}/${payment.totalInstallments}`
+                      : "-"}
+                  </TableCell>
+                  <TableCell>
+                    {format(new Date(payment.dueDate + "T00:00:00"), "dd/MM/yyyy")}
+                  </TableCell>
                   <TableCell>{formatCurrency(payment.expectedAmount)}</TableCell>
                   <TableCell>
                     {payment.paidAmount ? formatCurrency(payment.paidAmount) : "-"}

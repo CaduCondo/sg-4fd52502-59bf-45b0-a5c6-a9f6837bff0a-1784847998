@@ -216,59 +216,29 @@ export interface Rental {
 export interface Payment {
   id: string;
   rentalId: string;
-  rental_id?: string;
   propertyId: string;
-  property_id?: string;
   tenantId: string;
-  tenant_id?: string;
-  locationId?: string;
-  location_id?: string;
-  
+  dueDate: string;
   expectedAmount: number;
-  expected_amount?: number;
   paidAmount: number;
-  paid_amount?: number;
-  
-  paymentDate: string | null;
-  payment_date?: string | null;
-  
-  referenceMonth: number;
-  reference_month?: number | string;
-  referenceYear: number;
-  reference_year?: number | string;
-  
+  paymentDate?: string;
   status: "paid" | "pending" | "overdue" | "partial";
-  discount: number;
-  lateFee: number;
-  late_fee?: number;
-  interest: number;
-  
-  notes: string;
-  paymentMethod: string;
-  payment_method?: string;
-  receiptUrl: string;
-  receipt_url?: string;
-  
-  paymentTime?: string | null;
-  payment_time?: string | null;
-  
-  // Added properties
-  type?: string; 
-  dueDate?: string;
+  paymentMethod?: string;
+  notes?: string;
+  referenceMonth: number;
+  referenceYear: number;
+  attachments?: string[];
+  lateFee?: number;
+  interest?: number;
+  discount?: number;
+  createdAt?: string;
+  updatedAt?: string;
+  breakdown?: string;
   installment?: number;
-  installmentNumber?: number; // Compatibility
   totalInstallments?: number;
-  paymentCode?: string; // Compatibility
-
-  createdAt: string;
-  created_at?: string;
-  updatedAt: string;
-  updated_at?: string;
-
   rental?: Rental;
   property?: Property;
   tenant?: Tenant;
-  breakdown?: any; // JSONB
 }
 
 export interface PaymentInstallment {

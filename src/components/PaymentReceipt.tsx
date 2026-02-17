@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import type { Payment, Rental, Property, Tenant } from "@/types";
 import html2pdf from "html2pdf.js";
 import { supabase } from "@/integrations/supabase/client";
+import { format } from "date-fns";
 
 interface PaymentReceiptProps {
   payment: Payment;
@@ -100,7 +101,8 @@ export function PaymentReceipt({
   let totalAmount = 0;
   
   // Detectar rescisão baseada no conteúdo do breakdown
-  let isTermination = payment.type === "termination"; // Fallback inicial
+  // Payment type does not exist, relying solely on breakdown content
+  let isTermination = false; 
   let isTerminationDetectedFromBreakdown = false;
 
   if (paymentBreakdown) {
@@ -118,7 +120,6 @@ export function PaymentReceipt({
   }
   
   console.log("🔍 DIAGNÓSTICO DE TIPO:");
-  console.log("  payment.type:", payment.type);
   console.log("  isTerminationDetectedFromBreakdown:", isTerminationDetectedFromBreakdown);
   console.log("  isTermination (FINAL):", isTermination);
   
@@ -607,6 +608,19 @@ export function PaymentReceipt({
             <p className="text-[10pt] text-gray-600 font-medium">
               Carlos Aparecido D'Uvo
             </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4 text-sm">
+          <div>
+            <span className="font-semibold">Vencimento:</span>{" "}
+            {format(new Date(payment.dueDate + "T00:00:00"), "dd/MM/yyyy")}
+          </div>
+          <div>
+            <span className="font-semibold">Pagamento:</span>{" "}
+            {payment.paymentDate 
+              ? format(new Date(payment.paymentDate + "T00:00:00"), "dd/MM/yyyy")
+              : "-"}
           </div>
         </div>
 

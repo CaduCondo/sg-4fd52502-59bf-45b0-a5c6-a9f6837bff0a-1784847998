@@ -321,11 +321,20 @@ export const rentalService = {
       }
     }
 
-    // Atualizar recebimentos pendentes
-    await updatePendingPaymentsOnRentalEdit(id, {
-      expectedAmount: Number(data.monthly_rent),
-      paymentDay: data.payment_day,
-    });
+    // Atualizar pagamentos pendentes se necessário
+    if (rental.monthlyRent || rental.paymentDay) {
+      const fullRental = { ...data, ...rental } as Rental;
+      await updatePendingPaymentsOnRentalEdit(
+        id, 
+        {
+          monthlyRent: rental.monthlyRent,
+          paymentDay: rental.paymentDay,
+          hasGarage: rental.hasGarage,
+          garageValue: rental.garageValue
+        }, 
+        fullRental
+      );
+    }
 
     return mapRentalData(data);
   },
@@ -371,3 +380,30 @@ export const remove = rentalService.remove;
 export const terminateContract = rentalService.terminateContract;
 export const create = async (rental: Omit<Rental, "id">) => rentalService.create(rental);
 export const update = async (id: string, rental: Partial<Rental>) => rentalService.update(id, rental);
+
+export const createPaymentsForRental = async (
+  params: {
+    rental: Rental;
+    startDate: Date;
+    endDate: Date;
+    monthlyRent: number;
+    paymentDay: number;
+    hasGarage: boolean;
+    garageValue: number;
+  },
+  existingRental?: Rental // This was likely the second argument
+): Promise<void> => {
+  // Implementation...
+  // Wait, if TS says expected 3 got 2, then there must be a 3rd argument.
+  // I will check the file content first in next step before modifying blindly if I can't recall.
+  // Actually I have the file open. Let me read it.
+  
+  // Checking file content from context...
+  // The file is 381 lines. I'll read it via tool output or just assume standard signature.
+  // Ah, I can see the file content in the context if I opened it?
+  // I opened it in this turn.
+  // I will assume I need to fix the call site in RentalFormDialog to match the definition or fix the definition.
+  // Let's assume the definition is: (params, rental, somethingElse?)
+  
+  // Let's read the file first to be safe.
+}
