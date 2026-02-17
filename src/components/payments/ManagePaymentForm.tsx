@@ -27,6 +27,28 @@ interface ManagePaymentFormProps {
   embedded?: boolean;
 }
 
+// Helper de formatação de moeda
+const formatCurrencyHelper = (value: string | number): string => {
+  const numValue = typeof value === "string" 
+    ? parseFloat(value.replace(/[^\d,.-]/g, '').replace(',', '.')) 
+    : value;
+  
+  if (isNaN(numValue)) return "R$ 0,00";
+  
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(numValue);
+};
+
+// Helper de parsing de moeda
+const parseCurrencyHelper = (value: string): number => {
+  if (!value) return 0;
+  const cleaned = value.replace(/[^\d,.-]/g, '').replace(',', '.');
+  const parsed = parseFloat(cleaned);
+  return isNaN(parsed) ? 0 : parsed;
+};
+
 // Subcomponente para exibir valores do breakdown (memoizado para performance)
 const BreakdownItem = memo(({ item, isDeduction, igpmCorrection }: { item: any; isDeduction?: boolean; igpmCorrection?: any }) => {
   const isDepositDeduction = item.description?.includes("Devolução de Caução");
@@ -34,8 +56,6 @@ const BreakdownItem = memo(({ item, isDeduction, igpmCorrection }: { item: any; 
   const displayAmount = isDepositDeduction && igpmCorrection && igpmCorrection.correctedAmount > 0
     ? igpmCorrection.correctedAmount 
     : Math.abs(item.amount);
-
-  const formatCurrency = (val: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(val);
 
   return (
     <div>
@@ -63,13 +83,13 @@ const BreakdownItem = memo(({ item, isDeduction, igpmCorrection }: { item: any; 
                           <div>
                             <span className="text-muted-foreground">Valor Original:</span>
                             <p className="font-semibold text-blue-900 dark:text-blue-100">
-                              {formatCurrency(igpmCorrection.originalAmount)}
+                              {formatCurrencyHelper(igpmCorrection.originalAmount)}
                             </p>
                           </div>
                           <div>
                             <span className="text-muted-foreground">Valor Corrigido:</span>
                             <p className="font-semibold text-green-600 dark:text-green-400">
-                              {formatCurrency(igpmCorrection.correctedAmount)}
+                              {formatCurrencyHelper(igpmCorrection.correctedAmount)}
                             </p>
                           </div>
                         </div>
@@ -98,7 +118,7 @@ const BreakdownItem = memo(({ item, isDeduction, igpmCorrection }: { item: any; 
         </div>
         <span className={`${isDeduction ? "text-red-600" : ""} font-medium whitespace-nowrap ml-4`}>
           {isDeduction ? "- " : ""}
-          {formatCurrency(displayAmount)}
+          {formatCurrencyHelper(displayAmount)}
         </span>
       </div>
     </div>
@@ -209,7 +229,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     const input = document.createElement("input");
     input.type = "file";
     input.accept = "image/*";
-    input.capture = "environment";
+    input.capture = "environment" as any;
     input.onchange = (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       console.log("[ManagePaymentForm] Photo captured:", file ? {
@@ -255,6 +275,116 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     });
   }, [toast]);
 
+  const loadPaymentData = useCallback(async () => {
+    try {
+      console.log("[ManagePaymentForm] Loading payment data for ID:", paymentId);
+      
+      const { data: paymentData, error: paymentError } = await supabase
+        .from("payments")
+        .select(`
+          *,
+          rental:rentals!payments_rental_id_fkey (
+            *,
+            property:properties!rentals_property_id_fkey (
+              *,
+              location:locations!properties_location_id_fkey (*)
+            ),
+            tenant:tenants!rentals_tenant_id_fkey (*)
+          )
+        `)
+        .eq("id", paymentId)
+        .single();
+
+      if (paymentError) throw paymentError;
+      if (!paymentData) throw new Error("Pagamento não encontrado");
+
+      console.log("[ManagePaymentForm] Payment data loaded:", paymentData);
+
+      setPayment(paymentData);
+      setRental(paymentData.rental);
+      setProperty(paymentData.rental?.property);
+      setTenant(paymentData.rental?.tenant);
+      setLocation(paymentData.rental?.property?.location);
+      setRentalValue(paymentData.rental?.rental_value || 0);
+      setGarageValue(paymentData.rental?.garage_value || 0);
+      setLateFeePercentage(paymentData.rental?.property?.location?.late_fee_percentage || 2);
+      setInterestRatePercentage(paymentData.rental?.property?.location?.interest_rate_percentage || 0.033);
+
+      const isPaidStatus = paymentData.status === "paid";
+      setIsPaid(isPaidStatus);
+
+      if (paymentData.payment_date) {
+        setFormData(prev => ({ ...prev, payment_date: paymentData.payment_date }));
+      }
+      if (paymentData.payment_method) {
+        setFormData(prev => ({ ...prev, payment_method: paymentData.payment_method }));
+      }
+      if (paymentData.payment_time) {
+        const [h, m, s] = paymentData.payment_time.split(":");
+        setPaymentHour(h || "");
+        setPaymentMinute(m || "");
+        setPaymentSecond(s || "00");
+      }
+      if (paymentData.paid_amount) {
+        setFormData(prev => ({ ...prev, amount_to_pay: formatCurrencyHelper(paymentData.paid_amount) }));
+      }
+      if (paymentData.notes) {
+        setFormData(prev => ({ ...prev, notes: paymentData.notes }));
+      }
+      if (paymentData.pix_code_type) {
+        setFormData(prev => ({ ...prev, pix_code_type: paymentData.pix_code_type }));
+      }
+      if (paymentData.attachments) {
+        setAttachments(Array.isArray(paymentData.attachments) ? paymentData.attachments : [paymentData.attachments]);
+      }
+
+      const isTermination = paymentData.payment_type === "termination";
+      setIsTerminationPayment(isTermination);
+
+      if (isTermination && paymentData.breakdown) {
+        try {
+          const breakdownData = typeof paymentData.breakdown === 'string'
+            ? JSON.parse(paymentData.breakdown)
+            : paymentData.breakdown;
+          
+          setOriginalBreakdown(breakdownData);
+
+          const depositItem = breakdownData.find((item: any) => 
+            item.description?.includes("Devolução de Caução")
+          );
+
+          if (depositItem && paymentData.rental) {
+            const originalDepositAmount = Math.abs(depositItem.amount);
+            const correctionResult = await calculateCorrectedDeposit(
+              originalDepositAmount,
+              paymentData.rental.start_date,
+              paymentData.due_date
+            );
+
+            if (correctionResult) {
+              setIgpmCorrection(correctionResult);
+            }
+          }
+
+          const total = breakdownData.reduce((sum: number, item: any) => sum + item.amount, 0);
+          setCalculatedTotal(total);
+        } catch (error) {
+          console.error("[ManagePaymentForm] Error parsing breakdown:", error);
+        }
+      }
+
+      setLoading(false);
+    } catch (error) {
+      console.error("[ManagePaymentForm] Error loading payment:", error);
+      toast({
+        title: "Erro",
+        description: "Erro ao carregar dados do pagamento",
+        variant: "destructive",
+      });
+      setLoading(false);
+    }
+  }, [paymentId, toast]);
+
   const handleCancelEdit = useCallback(() => {
     setIsEditMode(false);
     loadPaymentData();
@@ -265,9 +395,90 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
   }, [loadPaymentData, toast]);
 
   const handleRepairExpensesChange = useCallback((value: string) => {
-    setRepairExpensesInput(formatCurrency(value));
-    setRepairExpenses(parseCurrency(formatCurrency(value)));
-  }, [formatCurrency, parseCurrency]);
+    setRepairExpensesInput(formatCurrencyHelper(value));
+    setRepairExpenses(parseCurrencyHelper(formatCurrencyHelper(value)));
+  }, []);
+
+  const calculateValues = useMemo(() => {
+    if (!payment || !rental) {
+      return {
+        valorAluguel: 0,
+        valorVaga: 0,
+        valorBase: 0,
+        multa: 0,
+        juros: 0,
+        diasAtraso: 0,
+        valorAPagar: 0,
+        valorJaPago: 0,
+        valorRestante: 0,
+        isProportional: false,
+        proportionalDays: 0,
+      };
+    }
+
+    const valorAluguel = rentalValue || 0;
+    const valorVaga = garageValue || 0;
+    const valorBase = valorAluguel + valorVaga;
+
+    const dueDate = new Date(payment.due_date);
+    const today = new Date();
+    const diasAtraso = Math.max(0, Math.floor((today.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24)));
+
+    let multa = 0;
+    let juros = 0;
+
+    if (diasAtraso > 0 && !removeFees) {
+      multa = valorBase * (lateFeePercentage / 100);
+      juros = valorBase * (interestRatePercentage / 100) * diasAtraso;
+    }
+
+    const valorJaPago = payment.paid_amount || 0;
+    const valorAPagar = valorBase + multa + juros;
+    const valorRestante = Math.max(0, valorAPagar - valorJaPago);
+
+    return {
+      valorAluguel,
+      valorVaga,
+      valorBase,
+      multa,
+      juros,
+      diasAtraso,
+      valorAPagar,
+      valorJaPago,
+      valorRestante,
+      isProportional: false,
+      proportionalDays: 0,
+    };
+  }, [payment, rental, rentalValue, garageValue, lateFeePercentage, interestRatePercentage, removeFees]);
+
+  useEffect(() => {
+    loadPaymentData();
+  }, [loadPaymentData]);
+
+  useEffect(() => {
+    if (isTerminationPayment && originalBreakdown.length > 0) {
+      let total = 0;
+      
+      originalBreakdown.forEach((item: any) => {
+        if (item.description?.includes("Devolução de Caução") && igpmCorrection) {
+          total += -igpmCorrection.correctedAmount;
+        } else if (!item.description?.includes("Despesas") && 
+                   !item.description?.includes("Multa por Atraso") &&
+                   !item.description?.includes("Juros por Atraso")) {
+          total += item.amount;
+        }
+      });
+
+      if (!removeFees) {
+        total += calculateValues.multa;
+        total += calculateValues.juros;
+      }
+
+      total += repairExpenses;
+
+      setCalculatedTotal(total);
+    }
+  }, [isTerminationPayment, originalBreakdown, igpmCorrection, removeFees, calculateValues, repairExpenses]);
 
   const handleSubmit = async () => {
     if (!formData.payment_date || !formData.payment_method || !formData.amount_to_pay) {
@@ -291,7 +502,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     try {
       setIsSubmitting(true);
 
-      const paidAmount = parseCurrency(formData.amount_to_pay);
+      const paidAmount = parseCurrencyHelper(formData.amount_to_pay);
       
       let expectedTotal = 0;
       let updatedBreakdown = payment?.breakdown;
@@ -395,7 +606,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       toast({
         title: "Sucesso",
         description: paymentStatus === "partial" 
-          ? `Pagamento parcial registrado! Restante: ${formatCurrency((Math.abs(expectedTotal) - paidAmount).toFixed(2))}`
+          ? `Pagamento parcial registrado! Restante: ${formatCurrencyHelper((Math.abs(expectedTotal) - paidAmount).toFixed(2))}`
           : isPaid ? "Pagamento atualizado com sucesso!" : "Pagamento registrado com sucesso!",
       });
 
@@ -549,7 +760,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                         />
                       ) : (
                         <span className="font-medium text-right">
-                          {formatCurrency(repairExpenses.toFixed(2))}
+                          {formatCurrencyHelper(repairExpenses.toFixed(2))}
                         </span>
                       )}
                     </div>
@@ -568,7 +779,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                             Multa por Atraso ({lateFeePercentage}%)
                           </span>
                           <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600 font-medium"}>
-                            + {formatCurrency(values.multa.toFixed(2))}
+                            + {formatCurrencyHelper(values.multa.toFixed(2))}
                           </span>
                         </div>
 
@@ -578,7 +789,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                               Juros ({interestRatePercentage.toFixed(3)}% ao dia)
                             </span>
                             <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600 font-medium"}>
-                              + {formatCurrency(values.juros.toFixed(2))}
+                              + {formatCurrencyHelper(values.juros.toFixed(2))}
                             </span>
                           </div>
                         )}
@@ -607,7 +818,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                     <span className="font-bold text-base">VALOR TOTAL</span>
                     <span className={`font-bold text-base ${calculatedTotal < 0 ? "text-red-600" : "text-primary"}`}>
                       {calculatedTotal < 0 ? "- " : ""}
-                      {formatCurrency(Math.abs(calculatedTotal).toFixed(2))}
+                      {formatCurrencyHelper(Math.abs(calculatedTotal).toFixed(2))}
                     </span>
                   </div>
 
@@ -624,7 +835,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                         : "Valor Aluguel"}
                     </span>
                     <span className="font-medium">
-                      {formatCurrency(rentalValue.toFixed(2))}
+                      {formatCurrencyHelper(rentalValue.toFixed(2))}
                     </span>
                   </div>
 
@@ -632,7 +843,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                     <div className="flex justify-between text-sm">
                       <span>Valor Vaga</span>
                       <span className="font-medium">
-                        {formatCurrency(garageValue.toFixed(2))}
+                        {formatCurrencyHelper(garageValue.toFixed(2))}
                       </span>
                     </div>
                   )}
@@ -643,7 +854,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                         Multa ({lateFeePercentage}%)
                       </span>
                       <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600 font-medium"}>
-                        + {formatCurrency(values.multa.toFixed(2))}
+                        + {formatCurrencyHelper(values.multa.toFixed(2))}
                       </span>
                     </div>
                   )}
@@ -654,7 +865,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                         Juros ({interestRatePercentage.toFixed(3)}% ao dia) + {values.diasAtraso} dias
                       </span>
                       <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600 font-medium"}>
-                        + {formatCurrency(values.juros.toFixed(2))}
+                        + {formatCurrencyHelper(values.juros.toFixed(2))}
                       </span>
                     </div>
                   )}
@@ -680,7 +891,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                     <div className="flex justify-between pt-3 border-t">
                       <span className="text-sm text-green-600">Valor já Pago</span>
                       <span className="text-sm text-green-600 font-medium">
-                        - {formatCurrency(values.valorJaPago.toFixed(2))}
+                        - {formatCurrencyHelper(values.valorJaPago.toFixed(2))}
                       </span>
                     </div>
                   )}
@@ -690,7 +901,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                       {values.valorJaPago > 0 ? "Valor Restante" : "Valor Total"}
                     </span>
                     <span className="font-bold text-base text-primary">
-                      {formatCurrency(values.valorJaPago > 0 ? values.valorRestante.toFixed(2) : values.valorAPagar.toFixed(2))}
+                      {formatCurrencyHelper(values.valorJaPago > 0 ? values.valorRestante.toFixed(2) : values.valorAPagar.toFixed(2))}
                     </span>
                   </div>
                 </>
@@ -837,7 +1048,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                     placeholder="R$ 0,00"
                     value={formData.amount_to_pay}
                     onChange={(e) => {
-                      const formatted = formatCurrency(e.target.value);
+                      const formatted = formatCurrencyHelper(e.target.value);
                       setFormData({ ...formData, amount_to_pay: formatted });
                     }}
                     required
