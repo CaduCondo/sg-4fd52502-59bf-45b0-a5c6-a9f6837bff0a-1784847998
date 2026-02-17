@@ -122,7 +122,7 @@ export default function Financial() {
           breakdown,
           installment,
           total_installments,
-          rental:rentals(
+          rentals!inner(
             id,
             monthly_rent,
             garage_value,
@@ -130,8 +130,8 @@ export default function Financial() {
             payment_day,
             start_date,
             end_date,
-            properties(id, property_identifier, location_id, complement),
-            tenants(id, name, cpf, email, phone)
+            properties!inner(id, property_identifier, location_id, complement),
+            tenants!inner(id, name, cpf, email, phone)
           )
         `)
         .eq("reference_month", String(filterMonth))
@@ -142,36 +142,67 @@ export default function Financial() {
 
       console.log("🔍 DEBUG Financial - Dados brutos do banco:", {
         totalPayments: paymentsData?.length || 0,
+        firstPayment: paymentsData?.[0],
+        hasRentals: !!paymentsData?.[0]?.rentals,
+        hasProperty: !!paymentsData?.[0]?.rentals?.properties,
+        hasTenant: !!paymentsData?.[0]?.rentals?.tenants,
         filterMonth,
         filterYear
       });
 
-      const formattedPayments: Payment[] = (paymentsData || []).map((payment: any) => ({
-        id: payment.id,
-        rentalId: payment.rental_id,
-        expectedAmount: payment.expected_amount,
-        paidAmount: payment.paid_amount,
-        dueDate: payment.due_date,
-        paymentDate: payment.payment_date,
-        status: payment.status as "paid" | "pending" | "overdue" | "partial",
-        referenceMonth: Number(payment.reference_month),
-        referenceYear: Number(payment.reference_year),
-        discount: payment.discount_amount,
-        lateFee: payment.late_fee,
-        interest: payment.interest,
-        notes: payment.notes,
-        paymentMethod: payment.payment_method,
-        breakdown: payment.breakdown,
-        installment: payment.installment,
-        totalInstallments: payment.total_installments,
-        createdAt: payment.created_at,
-        updatedAt: payment.updated_at,
-        rental: payment.rental,
-        property: payment.rental?.properties,
-        tenant: payment.rental?.tenants,
-        propertyId: payment.rental?.properties?.id || "",
-        tenantId: payment.rental?.tenants?.id || "",
-      }));
+      const formattedPayments: Payment[] = (paymentsData || []).map((payment: any) => {
+        const rental = payment.rentals;
+        const property = rental?.properties;
+        const tenant = rental?.tenants;
+
+        return {
+          id: payment.id,
+          rentalId: payment.rental_id,
+          expectedAmount: payment.expected_amount,
+          paidAmount: payment.paid_amount,
+          dueDate: payment.due_date,
+          paymentDate: payment.payment_date,
+          status: payment.status as "paid" | "pending" | "overdue" | "partial",
+          referenceMonth: Number(payment.reference_month),
+          referenceYear: Number(payment.reference_year),
+          discount: payment.discount_amount,
+          lateFee: payment.late_fee,
+          interest: payment.interest,
+          notes: payment.notes,
+          paymentMethod: payment.payment_method,
+          breakdown: payment.breakdown,
+          installment: payment.installment,
+          totalInstallments: payment.total_installments,
+          createdAt: payment.created_at,
+          updatedAt: payment.updated_at,
+          rental: rental ? {
+            id: rental.id,
+            monthlyRent: rental.monthly_rent,
+            garageValue: rental.garage_value,
+            hasGarage: rental.has_garage,
+            paymentDay: rental.payment_day,
+            startDate: rental.start_date,
+            endDate: rental.end_date,
+            propertyId: property?.id || "",
+            tenantId: tenant?.id || ""
+          } : undefined,
+          property: property ? {
+            id: property.id,
+            propertyIdentifier: property.property_identifier,
+            locationId: property.location_id,
+            complement: property.complement
+          } : undefined,
+          tenant: tenant ? {
+            id: tenant.id,
+            name: tenant.name,
+            cpf: tenant.cpf,
+            email: tenant.email,
+            phone: tenant.phone
+          } : undefined,
+          propertyId: property?.id || "",
+          tenantId: tenant?.id || "",
+        };
+      });
 
       console.log("🔍 DEBUG Financial - Dados formatados:", {
         totalFormatted: formattedPayments.length,
