@@ -215,7 +215,8 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       setTenant(paymentData.rentals.tenants);
 
       let effectiveRentalValue = paymentData.rentals.monthly_rent || 0;
-      let effectiveGarageValue = paymentData.rentals.garage_value || 0;
+      let effectiveGarageValue = 
+        paymentData.rentals.garage_value || 0;
 
       if (paymentData.breakdown) {
         try {
