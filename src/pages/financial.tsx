@@ -139,6 +139,13 @@ export default function Financial() {
 
       if (paymentsError) throw paymentsError;
 
+      console.log("🔍 DEBUG Financial - Dados brutos do banco:", {
+        totalPayments: paymentsData?.length || 0,
+        firstPayment: paymentsData?.[0],
+        filterMonth,
+        filterYear
+      });
+
       const formattedPayments: Payment[] = (paymentsData || []).map((payment: any) => ({
         id: payment.id,
         rentalId: payment.rental_id,
@@ -166,6 +173,13 @@ export default function Financial() {
         tenantId: payment.rental?.tenants?.id || "",
         // Removed non-existent properties
       }));
+
+      console.log("🔍 DEBUG Financial - Dados formatados:", {
+        totalFormatted: formattedPayments.length,
+        firstFormatted: formattedPayments[0],
+        sampleReferenceMonth: formattedPayments[0]?.referenceMonth,
+        sampleReferenceYear: formattedPayments[0]?.referenceYear
+      });
 
       // Remove references to propertiesData, rentalsData, tenantsData which caused errors
       // If we need them, we should fetch them or derive them.
@@ -294,6 +308,15 @@ export default function Financial() {
       }
       
       return matchesDate;
+    });
+
+    console.log("🔍 DEBUG Financial - Filtragem:", {
+      totalPayments: payments.length,
+      filterMonth,
+      filterYear,
+      filteredCount: filtered.length,
+      samplePayment: payments[0],
+      sampleFiltered: filtered[0]
     });
 
     // Then apply sorting if specified
