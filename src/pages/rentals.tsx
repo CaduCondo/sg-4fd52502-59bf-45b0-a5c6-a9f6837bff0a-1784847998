@@ -361,10 +361,6 @@ export default function RentalsPage() {
     await loadAvailableData();
   }, [loadRentalsData, loadAvailableData]);
 
-  const handleViewDetails = useCallback((rental: Rental) => {
-    router.push(`/rentals/${rental.id}`);
-  }, [router]);
-
   return (
     <>
       <SEO title="Locações - Gerenciador de Locações" />
