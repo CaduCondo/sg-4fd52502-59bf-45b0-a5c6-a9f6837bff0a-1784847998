@@ -184,7 +184,7 @@ export default function Financial() {
       // Remove references to propertiesData, rentalsData, tenantsData which caused errors
       // If we need them, we should fetch them or derive them.
       // For now, let's just use empty arrays if they were used for state,
-      // or derived from payments.
+      // or derive from payments.
       
       const uniqueProperties = Array.from(new Map(formattedPayments.map(p => [p.propertyId, p.property])).values()).filter(Boolean);
       const uniqueRentals = Array.from(new Map(formattedPayments.map(p => [p.rentalId, p.rental])).values()).filter(Boolean);
