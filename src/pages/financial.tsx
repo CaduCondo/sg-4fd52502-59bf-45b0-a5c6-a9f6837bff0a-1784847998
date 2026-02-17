@@ -605,6 +605,19 @@ export default function Financial() {
       
       const fee = isExempt ? 0 : ((p.paidAmount || 0) * feeRate);
       
+      // DEBUG LOG APENAS PARA O PRIMEIRO PAGAMENTO PAGO PARA NÃO POLUIR O CONSOLE
+      if (sum === 0 && fee > 0) {
+        console.log("💰 DEBUG Admin Fee Sample:", {
+          paymentId: p.id,
+          paidAmount: p.paidAmount,
+          feePercentage,
+          feeRate,
+          isExempt,
+          locationId: property?.locationId,
+          calculatedFee: fee
+        });
+      }
+      
       return sum + fee;
     }, 0);
 
@@ -621,7 +634,10 @@ export default function Financial() {
        return sum + fee;
   }, 0);
 
-  console.log("💰 DEBUG Financial - Management Fee Total:", managementFee);
+  console.log("💰 DEBUG Financial - Management Fee Total:", {
+     total: managementFee,
+     percentage: config?.management_fee_percentage ?? 3
+  });
 
   const netRevenue = totalReceived - adminFee - managementFee - locationExpenses;
   
