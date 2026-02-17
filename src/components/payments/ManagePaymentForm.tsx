@@ -180,24 +180,81 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       name: file.name,
       size: file.size,
       type: file.type,
+      sizeInMB: (file.size / 1024 / 1024).toFixed(2) + " MB",
+    });
+
+    // Mobile check: Validate file size (limit to 15MB)
+    const maxSize = 15 * 1024 * 1024; // 15MB
+    if (file.size > maxSize) {
+      console.error("[ManagePaymentForm] File too large:", {
+        size: file.size,
+        maxSize: maxSize,
+        sizeInMB: (file.size / 1024 / 1024).toFixed(2) + " MB",
+      });
+      toast({
+        title: "Arquivo muito grande",
+        description: `O arquivo tem ${(file.size / 1024 / 1024).toFixed(1)}MB. O limite é 15MB. Tente tirar uma foto com menor resolução.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Show loading toast for mobile (uploads can be slow on 3G/4G)
+    const loadingToast = toast({
+      title: "Enviando arquivo...",
+      description: `${(file.size / 1024 / 1024).toFixed(1)}MB - Isso pode levar alguns segundos em redes móveis`,
+      duration: 30000, // 30 seconds
     });
 
     try {
+      // Compress image if it's too large (mobile photos are often 5-10MB)
+      let fileToUpload = file;
+      if (file.type.startsWith("image/") && file.size > 2 * 1024 * 1024) {
+        console.log("[ManagePaymentForm] Compressing large image...");
+        try {
+          fileToUpload = await compressImage(file);
+          console.log("[ManagePaymentForm] Image compressed:", {
+            originalSize: (file.size / 1024 / 1024).toFixed(2) + " MB",
+            compressedSize: (fileToUpload.size / 1024 / 1024).toFixed(2) + " MB",
+            reduction: (((file.size - fileToUpload.size) / file.size) * 100).toFixed(1) + "%",
+          });
+        } catch (compressError) {
+          console.warn("[ManagePaymentForm] Compression failed, uploading original:", compressError);
+          // Continue with original file if compression fails
+        }
+      }
+
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", fileToUpload);
 
       console.log("[ManagePaymentForm] Sending upload request to /api/upload...");
+      console.log("[ManagePaymentForm] File being uploaded:", {
+        name: fileToUpload.name,
+        size: fileToUpload.size,
+        type: fileToUpload.type,
+      });
+
+      // Increased timeout for mobile networks
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 seconds for mobile
 
       const response = await fetch("/api/upload", {
         method: "POST",
         body: formData,
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       console.log("[ManagePaymentForm] Upload response status:", response.status);
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error("[ManagePaymentForm] Upload failed:", errorText);
+        console.error("[ManagePaymentForm] Upload failed:", {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText,
+        });
         throw new Error(`Erro ao fazer upload: ${response.status} ${response.statusText}`);
       }
 
@@ -210,19 +267,98 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         return updated;
       });
 
+      // Dismiss loading toast
+      if (loadingToast.dismiss) {
+        loadingToast.dismiss();
+      }
+
       toast({
         title: "Sucesso",
         description: "Arquivo anexado com sucesso!",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("[ManagePaymentForm] Upload error:", error);
+      
+      // Dismiss loading toast
+      if (loadingToast.dismiss) {
+        loadingToast.dismiss();
+      }
+
+      let errorMessage = "Erro ao fazer upload do arquivo";
+      if (error.name === 'AbortError') {
+        errorMessage = "Upload cancelado: tempo limite excedido (60s). Verifique sua conexão com a internet.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
       toast({
-        title: "Erro",
-        description: error instanceof Error ? error.message : "Erro ao fazer upload do arquivo",
+        title: "Erro no upload",
+        description: errorMessage,
         variant: "destructive",
       });
     }
   }, [toast]);
+
+  // Helper function to compress images before upload
+  const compressImage = async (file: File): Promise<File> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          
+          if (!ctx) {
+            reject(new Error('Could not get canvas context'));
+            return;
+          }
+
+          // Calculate new dimensions (max 1920px width)
+          let width = img.width;
+          let height = img.height;
+          const maxWidth = 1920;
+          const maxHeight = 1920;
+
+          if (width > maxWidth || height > maxHeight) {
+            if (width > height) {
+              height = (height * maxWidth) / width;
+              width = maxWidth;
+            } else {
+              width = (width * maxHeight) / height;
+              height = maxHeight;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+
+          // Draw and compress
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          canvas.toBlob(
+            (blob) => {
+              if (blob) {
+                const compressedFile = new File([blob], file.name, {
+                  type: 'image/jpeg',
+                  lastModified: Date.now(),
+                });
+                resolve(compressedFile);
+              } else {
+                reject(new Error('Compression failed'));
+              }
+            },
+            'image/jpeg',
+            0.85 // 85% quality
+          );
+        };
+        img.onerror = () => reject(new Error('Image load failed'));
+      };
+      reader.onerror = () => reject(new Error('File read failed'));
+    });
+  };
 
   const handleTakePhoto = useCallback(() => {
     console.log("[ManagePaymentForm] Opening camera for photo capture...");
@@ -348,7 +484,11 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         setFormData(prev => ({ ...prev, pix_code_type: paymentData.pix_code_type }));
       }
       if (paymentData.attachments) {
-        setAttachments(Array.isArray(paymentData.attachments) ? paymentData.attachments : [paymentData.attachments]);
+        // Fix: Ensure attachments are treated as strings
+        const attachmentsList = Array.isArray(paymentData.attachments) 
+          ? paymentData.attachments 
+          : [paymentData.attachments];
+        setAttachments(attachmentsList.map((a: any) => String(a)));
       }
 
       // Fix: payment_type does not exist, use notes or logic to detect termination
