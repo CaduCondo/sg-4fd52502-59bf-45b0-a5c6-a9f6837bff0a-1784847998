@@ -126,6 +126,7 @@ export default function Settings() {
     city: "",
     state: "",
     zip_code: "",
+    is_active: true,
   });
   const [selectedLocationForExpenses, setSelectedLocationForExpenses] = useState<Location | null>(null);
   const [locationToDelete, setLocationToDelete] = useState<Location | null>(null);
@@ -330,6 +331,7 @@ export default function Settings() {
         city: location.city,
         state: location.state,
         zip_code: location.zip_code || "",
+        is_active: location.is_active !== false,
       });
     } else {
       console.log("[DIALOG] Opening for create");
@@ -343,6 +345,7 @@ export default function Settings() {
         city: "",
         state: "",
         zip_code: "",
+        is_active: true,
       });
     }
     setIsLocationDialogOpen(true);
@@ -404,36 +407,6 @@ export default function Settings() {
       console.error("Erro ao resetar senha:", error);
       toast({ title: "Erro ao resetar senha", variant: "destructive" });
     }
-  };
-
-  const handleEditLocation = (location: Location) => {
-    setEditingLocationId(location.id);
-    setLocationForm({
-      name: location.name,
-      street: location.street || "",
-      number: location.number || "",
-      complement: location.complement || "",
-      neighborhood: location.neighborhood || "",
-      city: location.city,
-      state: location.state,
-      zip_code: location.zip_code,
-      is_active: location.active, // Map active to is_active
-    });
-  };
-
-  const handleCancelLocationEdit = () => {
-    setEditingLocationId(null);
-    setLocationForm({
-      name: "",
-      street: "",
-      number: "",
-      complement: "",
-      neighborhood: "",
-      city: "",
-      state: "",
-      zip_code: "",
-      is_active: true,
-    });
   };
 
   return (
@@ -891,6 +864,7 @@ export default function Settings() {
               city: "",
               state: "",
               zip_code: "",
+              is_active: true,
             });
           }
         }}>
@@ -1017,6 +991,7 @@ export default function Settings() {
                       city: "",
                       state: "",
                       zip_code: "",
+                      is_active: true,
                     });
                   }}
                 >
