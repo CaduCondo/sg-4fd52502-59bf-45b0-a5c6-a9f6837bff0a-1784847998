@@ -154,422 +154,94 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
   const [lateFeePercentage, setLateFeePercentage] = useState(0);
   const [interestRatePercentage, setInterestRatePercentage] = useState(0);
 
-  // Helper de formatação memoizado
-  const formatCurrency = useCallback((value: string | number): string => {
-    const numericValue = typeof value === "string" ? value.replace(/\D/g, "") : String(value).replace(/\D/g, "");
-    const number = parseFloat(numericValue) / 100;
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    }).format(number);
-  }, []);
+  // CRITICAL: Define handleFileUpload FIRST before it's used by other callbacks
+  const handleFileUpload = useCallback(async (file: File) => {
+    console.log("[ManagePaymentForm] Starting file upload...", {
+      name: file.name,
+      size: file.size,
+      type: file.type,
+    });
 
-  const parseCurrency = useCallback((value: string): number => {
-    const numericValue = value.replace(/[^\d,]/g, "").replace(",", ".");
-    return parseFloat(numericValue) || 0;
-  }, []);
-
-  const loadConfig = useCallback(async () => {
-    try {
-      const { data, error } = await supabase
-        .from("configs")
-        .select("late_fee_percentage, interest_rate_percentage")
-        .limit(1)
-        .maybeSingle();
-
-      if (error) throw error;
-
-      if (data) {
-        setLateFeePercentage(data.late_fee_percentage || 0);
-        setInterestRatePercentage(data.interest_rate_percentage || 0);
-      }
-    } catch (error) {
-      console.error("Erro ao carregar configurações:", error);
-    }
-  }, []);
-
-  const loadPaymentData = useCallback(async () => {
-    try {
-      const { data: paymentData, error: paymentError } = await supabase
-        .from("payments")
-        .select(`
-          *,
-          rentals!inner (
-            *,
-            properties!inner (
-              *,
-              locations!inner (*)
-            ),
-            tenants!inner (*)
-          )
-        `)
-        .eq("id", paymentId)
-        .single();
-
-      if (paymentError) throw paymentError;
-
-      setPayment(paymentData);
-      setRental(paymentData.rentals);
-      setProperty(paymentData.rentals.properties);
-      setLocation(paymentData.rentals.properties.locations);
-      setTenant(paymentData.rentals.tenants);
-
-      // CORREÇÃO CRÍTICA: Usar o breakdown salvo se disponível
-      let effectiveRentalValue = 0;
-      let effectiveGarageValue = 0;
-
-      if (paymentData.breakdown) {
-        try {
-          const breakdownData = typeof paymentData.breakdown === 'string' 
-            ? JSON.parse(paymentData.breakdown) 
-            : (paymentData.breakdown || []);
-          
-          // Buscar valores do breakdown salvo
-          const aluguelItem = breakdownData.find((item: any) => 
-            item.description?.includes("Aluguel") && !item.description?.includes("Proporcional")
-          );
-          
-          const garagemItem = breakdownData.find((item: any) => 
-            item.description?.includes("Garagem") || item.description?.includes("Vaga")
-          );
-          
-          const proporcionalItem = breakdownData.find((item: any) => 
-            item.description?.includes("Aluguel Proporcional")
-          );
-
-          if (proporcionalItem) {
-            effectiveRentalValue = proporcionalItem.amount || proporcionalItem.value || 0;
-            effectiveGarageValue = 0;
-          } else {
-            effectiveRentalValue = aluguelItem?.amount || aluguelItem?.value || 0;
-            effectiveGarageValue = garagemItem?.amount || garagemItem?.value || 0;
-          }
-        } catch (error) {
-          console.error("Erro ao parsear breakdown:", error);
-          // Fallback para cálculo baseado em monthly_rent
-          effectiveRentalValue = paymentData.rentals.monthly_rent || 0;
-          effectiveGarageValue = paymentData.rentals.garage_value || 0;
-          
-          if (paymentData.rentals.has_garage && effectiveGarageValue > 0) {
-            effectiveRentalValue = effectiveRentalValue - effectiveGarageValue;
-          }
-        }
-      } else {
-        // Sem breakdown salvo - calcular a partir do monthly_rent
-        effectiveRentalValue = paymentData.rentals.monthly_rent || 0;
-        effectiveGarageValue = paymentData.rentals.garage_value || 0;
-        
-        if (paymentData.rentals.has_garage && effectiveGarageValue > 0) {
-          effectiveRentalValue = effectiveRentalValue - effectiveGarageValue;
-        }
-      }
-
-      setRentalValue(effectiveRentalValue);
-      setGarageValue(effectiveGarageValue);
-
-      const alreadyPaid = paymentData.status === "paid";
-      setIsPaid(alreadyPaid);
-      setIsEditMode(!alreadyPaid);
-
-      const isTermination = paymentData.notes?.includes("Rescisão de Contrato") || false;
-      setIsTerminationPayment(isTermination);
-      
-      if (paymentData.breakdown) {
-        try {
-          const breakdownData = typeof paymentData.breakdown === 'string' 
-            ? JSON.parse(paymentData.breakdown) 
-            : (paymentData.breakdown || []);
-          
-          setOriginalBreakdown(breakdownData || []);
-          
-          if (isTermination) {
-            const expensesItem = breakdownData.find((item: any) => 
-              item.description?.includes("Despesas")
-            );
-            
-            if (expensesItem) {
-              const expValue = Math.abs(expensesItem.amount || 0);
-              setRepairExpenses(expValue);
-              setRepairExpensesInput(formatCurrency(expValue.toFixed(2)));
-            }
-          }
-        } catch (error) {
-          console.error("Erro ao parsear breakdown:", error);
-          setOriginalBreakdown([]);
-        }
-      }
-
-      if (isTermination && paymentData.rentals) {
-        const depositText = paymentData.rentals.deposit;
-        let originalDeposit = 0;
-        
-        if (depositText && typeof depositText === 'string') {
-          const parsed = parseFloat(depositText.replace(/[^\d,]/g, '').replace(',', '.'));
-          if (!isNaN(parsed)) {
-            originalDeposit = parsed;
-          }
-        }
-        
-        const startDate = paymentData.rentals.start_date;
-        const endDate = paymentData.rentals.end_date;
-        
-        if (originalDeposit > 0 && startDate && endDate) {
-          const igpmCorrectionValue = calculateCorrectedDeposit(
-            originalDeposit,
-            startDate,
-            endDate
-          );
-          
-          setIgpmCorrection(igpmCorrectionValue);
-        }
-      }
-
-      if (paymentData.attachments && Array.isArray(paymentData.attachments)) {
-        const attachmentStrings = paymentData.attachments
-          .filter((att): att is string => typeof att === "string");
-        setAttachments(attachmentStrings);
-      }
-
-      setFormData({
-        payment_date: paymentData.payment_date || new Date().toISOString().split("T")[0],
-        payment_method: paymentData.payment_method || "pix",
-        payment_time: (paymentData as any).payment_time || "",
-        amount_to_pay: paymentData.paid_amount 
-          ? formatCurrency(paymentData.paid_amount.toFixed(2)) 
-          : "",
-        notes: paymentData.notes || "",
-        pix_code_type: (paymentData as any).pix_code_type || "CP",
-      });
-
-      if ((paymentData as any).payment_time) {
-        const [h, m, s] = (paymentData as any).payment_time.split(":");
-        setPaymentHour(h || "");
-        setPaymentMinute(m || "");
-        setPaymentSecond(s || "00");
-      }
-      
-    } catch (error) {
-      console.error("Erro ao carregar dados do pagamento:", error);
-      toast({
-        title: "Erro",
-        description: "Erro ao carregar dados do pagamento",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [paymentId, toast, formatCurrency]);
-
-  useEffect(() => {
-    loadPaymentData();
-    loadConfig();
-  }, [loadPaymentData, loadConfig]);
-
-  const calculateValues = useMemo(() => {
-    const valorAluguel = Math.round((rentalValue + garageValue) * 100) / 100;
-    
-    let isProportional = false;
-    let proportionalDays = 0;
-    
-    if (payment?.breakdown) {
-      try {
-        const breakdownData = typeof payment.breakdown === 'string' 
-          ? JSON.parse(payment.breakdown) 
-          : (payment.breakdown || []);
-        
-        const proportionalItem = breakdownData.find((item: any) => 
-          item.description?.includes("Aluguel Proporcional")
-        );
-        
-        if (proportionalItem) {
-          isProportional = true;
-          const match = proportionalItem.description.match(/\((\d+)\s+dias?\)/);
-          if (match) {
-            proportionalDays = parseInt(match[1]);
-          }
-        }
-      } catch (error) {
-        console.error("Erro ao verificar proporcional:", error);
-      }
-    }
-    
-    let multa = 0;
-    let juros = 0;
-    let diasAtraso = 0;
-
-    if (payment && formData.payment_date) {
-      const dueDate = new Date(payment.due_date + "T12:00:00");
-      const paymentDate = new Date(formData.payment_date + "T12:00:00");
-
-      if (paymentDate > dueDate) {
-        const diffTime = paymentDate.getTime() - dueDate.getTime();
-        diasAtraso = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-        let baseCalculo = 0;
-        
-        if (isTerminationPayment && originalBreakdown.length > 0) {
-          baseCalculo = originalBreakdown
-            .filter(item => 
-              !item.description?.includes("Multa por Atraso") &&
-              !item.description?.includes("Juros por Atraso")
-            )
-            .reduce((sum, item) => sum + item.amount, 0);
-          
-          baseCalculo = Math.abs(baseCalculo);
-        } else {
-          baseCalculo = Math.max(0, valorAluguel);
-        }
-
-        if (baseCalculo > 0 && !removeFees) {
-          multa = Math.round((baseCalculo * lateFeePercentage / 100) * 100) / 100;
-
-          const jurosDiario = interestRatePercentage;
-          juros = Math.round((baseCalculo * jurosDiario / 100 * diasAtraso) * 100) / 100;
-        }
-      }
-    }
-
-    const valorTotalSemIsencao = Math.round((valorAluguel + multa + juros) * 100) / 100;
-    const valorAPagar = removeFees ? valorAluguel : valorTotalSemIsencao;
-    
-    const valorJaPago = payment?.paid_amount || 0;
-    const valorRestante = Math.max(0, Math.round((valorAPagar - valorJaPago) * 100) / 100);
-
-    return {
-      valorAluguel: Math.round(valorAluguel * 100) / 100,
-      multa: Math.round(multa * 100) / 100,
-      juros: Math.round(juros * 100) / 100,
-      valorTotal: Math.round(valorTotalSemIsencao * 100) / 100,
-      valorAPagar: Math.round(valorAPagar * 100) / 100,
-      valorJaPago: Math.round(valorJaPago * 100) / 100,
-      valorRestante: Math.round(valorRestante * 100) / 100,
-      diasAtraso,
-      jurosDiario: interestRatePercentage,
-      isProportional,
-      proportionalDays,
-    };
-  }, [
-    payment,
-    formData.payment_date,
-    rentalValue,
-    garageValue,
-    isTerminationPayment,
-    originalBreakdown,
-    removeFees,
-    lateFeePercentage,
-    interestRatePercentage
-  ]);
-
-  useEffect(() => {
-    if (loading || !payment) return;
-    
-    const values = calculateValues;
-    
-    if (isTerminationPayment && originalBreakdown.length > 0) {
-      let workingBreakdown = [...originalBreakdown];
-      
-      if (igpmCorrection && igpmCorrection.correctedAmount > 0) {
-        workingBreakdown = workingBreakdown.map((item: any) => {
-          if (item.description?.includes("Devolução de Caução")) {
-            return {
-              ...item,
-              amount: -igpmCorrection.correctedAmount,
-            };
-          }
-          return item;
-        });
-      }
-      
-      const cleanBreakdown = workingBreakdown.filter((item: any) => 
-        !item.description?.includes("Despesas") && 
-        !item.description?.includes("Multa por Atraso") && 
-        !item.description?.includes("Juros por Atraso")
-      );
-      
-      const breakdownTotal = cleanBreakdown.reduce((sum, item) => sum + item.amount, 0);
-      const lateFees = removeFees ? 0 : (values.multa + values.juros);
-      const newTotal = breakdownTotal + repairExpenses + lateFees;
-      
-      setCalculatedTotal(newTotal);
-      
-      if (isEditMode) {
-        setFormData(prev => ({
-          ...prev,
-          amount_to_pay: formatCurrency(newTotal.toFixed(2))
-        }));
-      }
-    } else if (!isTerminationPayment && isEditMode) {
-      setFormData(prev => ({
-        ...prev,
-        amount_to_pay: formatCurrency(values.valorAPagar.toFixed(2))
-      }));
-    }
-  }, [
-    isTerminationPayment,
-    originalBreakdown,
-    repairExpenses,
-    removeFees,
-    calculateValues,
-    isEditMode,
-    loading,
-    payment,
-    igpmCorrection,
-    formatCurrency
-  ]);
-
-  const handleFileUpload = async (file: File) => {
     try {
       const formData = new FormData();
       formData.append("file", file);
+
+      console.log("[ManagePaymentForm] Sending upload request to /api/upload...");
 
       const response = await fetch("/api/upload", {
         method: "POST",
         body: formData,
       });
 
+      console.log("[ManagePaymentForm] Upload response status:", response.status);
+
       if (!response.ok) {
-        throw new Error("Erro ao fazer upload");
+        const errorText = await response.text();
+        console.error("[ManagePaymentForm] Upload failed:", errorText);
+        throw new Error(`Erro ao fazer upload: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
-      setAttachments(prev => [...prev, data.url]);
+      console.log("[ManagePaymentForm] Upload successful:", data);
+
+      setAttachments(prev => {
+        const updated = [...prev, data.url];
+        console.log("[ManagePaymentForm] Updated attachments:", updated);
+        return updated;
+      });
 
       toast({
         title: "Sucesso",
         description: "Arquivo anexado com sucesso!",
       });
     } catch (error) {
-      console.error("Erro ao fazer upload:", error);
+      console.error("[ManagePaymentForm] Upload error:", error);
       toast({
         title: "Erro",
-        description: "Erro ao fazer upload do arquivo",
+        description: error instanceof Error ? error.message : "Erro ao fazer upload do arquivo",
         variant: "destructive",
       });
     }
-  };
+  }, [toast]);
 
   const handleTakePhoto = useCallback(() => {
+    console.log("[ManagePaymentForm] Opening camera for photo capture...");
     const input = document.createElement("input");
     input.type = "file";
     input.accept = "image/*";
     input.capture = "environment";
     input.onchange = (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
-      if (file) handleFileUpload(file);
+      console.log("[ManagePaymentForm] Photo captured:", file ? {
+        name: file.name,
+        size: file.size,
+        type: file.type,
+      } : "No file selected");
+      if (file) {
+        handleFileUpload(file);
+      }
     };
     input.click();
-  }, [toast]);
+  }, [handleFileUpload]);
 
   const handleAttachFile = useCallback(() => {
+    console.log("[ManagePaymentForm] Opening file picker...");
     const input = document.createElement("input");
     input.type = "file";
     input.accept = "image/*,application/pdf";
     input.onchange = (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
-      if (file) handleFileUpload(file);
+      console.log("[ManagePaymentForm] File selected:", file ? {
+        name: file.name,
+        size: file.size,
+        type: file.type,
+      } : "No file selected");
+      if (file) {
+        handleFileUpload(file);
+      }
     };
     input.click();
-  }, []);
+  }, [handleFileUpload]);
 
   const handleRemoveAttachment = useCallback((index: number) => {
     setAttachments(prev => prev.filter((_, i) => i !== index));
