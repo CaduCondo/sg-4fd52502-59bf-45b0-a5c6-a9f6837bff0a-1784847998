@@ -28,13 +28,13 @@ export async function getAllLocations(): Promise<Location[]> {
   const { data, error } = await supabase
     .from("locations")
     .select("*")
+    .eq("is_active", true)
     .order("name");
 
   if (error) throw error;
   return (data || []).map(mapLocationFromDb);
 }
 
-// Alias for compatibility
 export const getAll = getAllLocations;
 
 export const getById = async (id: string): Promise<Location | null> => {
@@ -84,16 +84,16 @@ export async function updateLocation(id: string, updates: Partial<Location>): Pr
 }
 
 export async function deleteLocation(id: string): Promise<void> {
-  console.log(`Iniciando exclusão (soft delete) do local com ID: ${id}`);
+  console.log(`Iniciando exclusão permanente (hard delete) do local com ID: ${id}`);
   
   const { error } = await supabase
     .from(TABLE)
-    .update({ is_active: false })
+    .delete()
     .eq("id", id);
 
   if (error) {
-    console.error(`Erro ao desativar local com ID ${id}: ${error.message}`);
+    console.error(`Erro ao deletar local com ID ${id}:`, error.message);
     throw error;
   }
-  console.log(`Local com ID ${id} desativado com sucesso`);
+  console.log(`Local com ID ${id} deletado permanentemente com sucesso`);
 }
