@@ -191,14 +191,18 @@ export default function Settings() {
   };
 
   const fetchLocations = async () => {
-    setIsLoadingLocations(true);
+    console.log("[UI] fetchLocations called - loading locations from database...");
     try {
-      const data = await locationService.getAll();
+      const data = await locationService.getLocations();
+      console.log(`[UI] Loaded ${data.length} locations from database:`, data.map(l => ({ id: l.id, name: l.name })));
       setLocations(data);
     } catch (error) {
-      console.error("Erro ao carregar locais:", error);
-    } finally {
-      setIsLoadingLocations(false);
+      console.error("[UI ERROR] Failed to fetch locations:", error);
+      toast({ 
+        title: "Erro ao carregar locais",
+        description: "Não foi possível carregar a lista de locais.",
+        variant: "destructive" 
+      });
     }
   };
 
@@ -306,6 +310,7 @@ export default function Settings() {
         city: "",
         state: "",
         zip_code: "",
+        is_active: true,
       });
       await fetchLocations();
     } catch (error: any) {
@@ -354,33 +359,75 @@ export default function Settings() {
   const confirmDeleteLocation = async () => {
     if (!locationToDelete) return;
 
-    console.log("[DELETE] Attempting to delete location:", locationToDelete.id);
+    const locationId = locationToDelete.id;
+    const locationName = locationToDelete.name;
+    
+    console.log(`[UI DELETE] Starting deletion process for: ${locationName} (${locationId})`);
 
     try {
-      await locationService.deleteLocation(locationToDelete.id);
-      console.log("[DELETE] Location deleted successfully");
+      // Close alert dialog immediately
+      setLocationToDelete(null);
       
+      // Set loading state
+      setIsLoadingLocations(true);
+      
+      // Show loading toast
+      toast({
+        title: "Processando...",
+        description: "Excluindo local do sistema...",
+      });
+
+      // Delete from database
+      console.log(`[UI DELETE] Calling locationService.deleteLocation(${locationId})`);
+      await locationService.deleteLocation(locationId);
+      
+      console.log(`[UI DELETE] Delete successful, updating UI...`);
+
+      // Update local state immediately (optimistic update)
+      setLocations(prevLocations => {
+        const newLocations = prevLocations.filter(loc => loc.id !== locationId);
+        console.log(`[UI DELETE] Removed from state. Old count: ${prevLocations.length}, New count: ${newLocations.length}`);
+        return newLocations;
+      });
+      
+      // Show success message
       toast({ 
         title: "Sucesso!",
-        description: "Local excluído com sucesso." 
+        description: `Local "${locationName}" excluído com sucesso.`,
       });
       
-      setLocationToDelete(null);
+      // Fetch fresh data from database to ensure consistency
+      console.log(`[UI DELETE] Reloading locations list from database...`);
       await fetchLocations();
+      
+      console.log(`[UI DELETE] Process complete!`);
+      
     } catch (error: any) {
-      console.error("[DELETE ERROR] Failed to delete location:", error);
+      console.error(`[UI DELETE ERROR] Failed to delete location ${locationId}:`, error);
       
-      let errorMessage = "Não foi possível excluir o local.";
+      const errorMessage = error?.message || String(error);
       
-      if (error.message?.includes("foreign key")) {
-        errorMessage = "Este local não pode ser excluído pois possui propriedades, despesas ou permissões vinculadas.";
+      // Check for foreign key constraint errors
+      if (errorMessage.includes("foreign key") || 
+          errorMessage.includes("violates") ||
+          errorMessage.includes("constraint")) {
+        toast({
+          title: "Não é possível excluir",
+          description: "Este local não pode ser excluído pois possui propriedades, despesas ou permissões vinculadas.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Erro",
+          description: errorMessage || "Não foi possível excluir o local.",
+          variant: "destructive",
+        });
       }
       
-      toast({ 
-        title: "Erro",
-        description: errorMessage,
-        variant: "destructive" 
-      });
+      // Reload list to show current state
+      await fetchLocations();
+    } finally {
+      setIsLoadingLocations(false);
     }
   };
 
@@ -961,18 +1008,6 @@ export default function Settings() {
                     required
                   />
                 </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="locationState">Estado <span className="text-red-500">*</span></Label>
-                <Input
-                  id="locationState"
-                  value={locationForm.state}
-                  onChange={(e) => setLocationForm({ ...locationForm, state: e.target.value.toUpperCase() })}
-                  placeholder="SP"
-                  maxLength={2}
-                  required
-                />
               </div>
 
               <DialogFooter>
