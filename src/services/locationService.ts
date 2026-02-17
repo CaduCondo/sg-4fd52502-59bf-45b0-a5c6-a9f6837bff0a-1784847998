@@ -110,6 +110,7 @@ export async function createLocation(locationData: {
   zip_code: string;
 }): Promise<Location> {
   console.log("[locationService] Creating new location:", locationData.name);
+  console.log("[locationService] Full data:", JSON.stringify(locationData, null, 2));
 
   const dbLocation = {
     name: locationData.name.trim(),
@@ -123,6 +124,8 @@ export async function createLocation(locationData: {
     is_active: true,
   };
 
+  console.log("[locationService] Prepared DB location:", JSON.stringify(dbLocation, null, 2));
+
   const { data, error } = await supabase
     .from(TABLE)
     .insert(dbLocation)
@@ -131,6 +134,9 @@ export async function createLocation(locationData: {
 
   if (error) {
     console.error("[locationService] Error creating location:", error);
+    console.error("[locationService] Error code:", error.code);
+    console.error("[locationService] Error message:", error.message);
+    console.error("[locationService] Error details:", error.details);
     throw error;
   }
 
@@ -224,48 +230,47 @@ export async function updateLocation(
 export async function deleteLocation(id: string): Promise<void> {
   console.log(`[locationService] HARD DELETE - Permanently removing location: ${id}`);
   
-  // Step 1: Verify location exists before deletion
+  // Step 1: Verificar se existe
   const { data: existingLocation, error: checkError } = await supabase
     .from(TABLE)
     .select("id, name")
     .eq("id", id)
-    .single();
+    .maybeSingle();
 
-  if (checkError || !existingLocation) {
-    console.error(`[locationService] Location ${id} not found for deletion`);
-    throw new Error("Local não encontrado");
+  if (checkError) {
+    console.error(`[locationService] Error checking location:`, checkError);
+    throw new Error(checkError.message || "Erro ao verificar o local.");
+  }
+
+  if (!existingLocation) {
+    console.log(`[locationService] Location ${id} not found - may already be deleted`);
+    return;
   }
 
   console.log(`[locationService] Found location to delete: ${existingLocation.name}`);
 
-  // Step 2: Perform the delete
-  const { error: deleteError } = await supabase
-    .from(TABLE)
-    .delete()
-    .eq("id", id);
+  // Step 2: DELETE PERMANENTE usando função SQL
+  const { data: deleteResult, error: deleteError } = await supabase
+    .rpc('delete_location_permanently', { location_id: id });
 
   if (deleteError) {
-    console.error(`[locationService] Failed to delete location ${id}:`, deleteError.message);
+    console.error(`[locationService] DELETE ERROR:`, deleteError);
     
-    // Check if it's a foreign key constraint error
-    if (deleteError.message.includes("violates foreign key constraint")) {
-      throw new Error("Este local não pode ser excluído pois possui propriedades, despesas ou permissões vinculadas.");
+    // Tratamento específico para foreign keys
+    if (deleteError.code === "23503" || deleteError.message?.includes("foreign key")) {
+      throw new Error(
+        "Este local não pode ser excluído pois possui propriedades, despesas ou permissões vinculadas. " +
+        "Remova as dependências primeiro."
+      );
     }
     
-    throw deleteError;
+    throw new Error(deleteError.message || "Erro ao deletar o local.");
   }
 
-  // Step 3: Verify deletion was successful
-  const { data: verifyData, error: verifyError } = await supabase
-    .from(TABLE)
-    .select("id")
-    .eq("id", id)
-    .maybeSingle();
-
-  if (verifyData) {
-    console.error(`[locationService] DELETE FAILED - Location ${id} still exists in database!`);
+  if (!deleteResult) {
+    console.error(`[locationService] DELETE FAILED - Location ${id} was not deleted`);
     throw new Error("Falha ao deletar o local. Por favor, tente novamente.");
   }
   
-  console.log(`[locationService] Location ${id} permanently deleted from database`);
+  console.log(`[locationService] Location ${id} permanently deleted from database using RPC`);
 }

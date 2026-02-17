@@ -965,6 +965,10 @@ export type Database = {
         Args: { p_auth_user_id: string; p_system_user_id: string }
         Returns: undefined
       }
+      delete_location_permanently: {
+        Args: { location_id: string }
+        Returns: boolean
+      }
       get_available_properties: {
         Args: never
         Returns: {
