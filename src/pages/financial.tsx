@@ -203,7 +203,23 @@ export default function Financial() {
             id: property.id,
             propertyIdentifier: property.property_identifier,
             locationId: property.location_id,
-            complement: property.complement
+            complement: property.complement,
+            
+            // Campos obrigatórios para satisfazer o tipo Property
+            location: "Carregando...", // Será atualizado depois
+            description: "",
+            rooms: 0,
+            bathrooms: 0,
+            area: 0,
+            value: 0,
+            hasGarage: false,
+            hasFurniture: false,
+            acceptsPets: false,
+            status: "unavailable",
+            images: [],
+            createdAt: "",
+            address: "",
+            features: []
           } : undefined,
           tenant: tenant ? {
             id: tenant.id,
