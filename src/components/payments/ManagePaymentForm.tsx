@@ -214,9 +214,9 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       setLocation(paymentData.rentals.properties.locations);
       setTenant(paymentData.rentals.tenants);
 
-      let effectiveRentalValue = paymentData.rentals.monthly_rent || 0;
-      let effectiveGarageValue = 
-        paymentData.rentals.garage_value || 0;
+      // CORREÇÃO CRÍTICA: Usar o breakdown salvo se disponível
+      let effectiveRentalValue = 0;
+      let effectiveGarageValue = 0;
 
       if (paymentData.breakdown) {
         try {
@@ -224,16 +224,43 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
             ? JSON.parse(paymentData.breakdown) 
             : (paymentData.breakdown || []);
           
-          const proportionalItem = breakdownData.find((item: any) => 
-            item.description?.includes("Aluguel Proporcional")
+          // Buscar valores do breakdown salvo
+          const aluguelItem = breakdownData.find((item: any) => 
+            item.description?.includes("Aluguel") && !item.description?.includes("Proporcional")
           );
           
-          if (proportionalItem && proportionalItem.amount > 0) {
-            effectiveRentalValue = proportionalItem.amount;
+          const garagemItem = breakdownData.find((item: any) => 
+            item.description?.includes("Garagem") || item.description?.includes("Vaga")
+          );
+          
+          const proporcionalItem = breakdownData.find((item: any) => 
+            item.description?.includes("Aluguel Proporcional")
+          );
+
+          if (proporcionalItem) {
+            effectiveRentalValue = proporcionalItem.amount || proporcionalItem.value || 0;
             effectiveGarageValue = 0;
+          } else {
+            effectiveRentalValue = aluguelItem?.amount || aluguelItem?.value || 0;
+            effectiveGarageValue = garagemItem?.amount || garagemItem?.value || 0;
           }
         } catch (error) {
           console.error("Erro ao parsear breakdown:", error);
+          // Fallback para cálculo baseado em monthly_rent
+          effectiveRentalValue = paymentData.rentals.monthly_rent || 0;
+          effectiveGarageValue = paymentData.rentals.garage_value || 0;
+          
+          if (paymentData.rentals.has_garage && effectiveGarageValue > 0) {
+            effectiveRentalValue = effectiveRentalValue - effectiveGarageValue;
+          }
+        }
+      } else {
+        // Sem breakdown salvo - calcular a partir do monthly_rent
+        effectiveRentalValue = paymentData.rentals.monthly_rent || 0;
+        effectiveGarageValue = paymentData.rentals.garage_value || 0;
+        
+        if (paymentData.rentals.has_garage && effectiveGarageValue > 0) {
+          effectiveRentalValue = effectiveRentalValue - effectiveGarageValue;
         }
       }
 
@@ -436,7 +463,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
   useEffect(() => {
     if (loading || !payment) return;
     
-    // Como values está memoizado, isso só roda quando dependências reais mudam
     const values = calculateValues;
     
     if (isTerminationPayment && originalBreakdown.length > 0) {
@@ -532,7 +558,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       if (file) handleFileUpload(file);
     };
     input.click();
-  }, [toast]); // handleFileUpload não é memoizado mas é stable o suficiente, mas idealmente seria. Omitindo dependência complexa.
+  }, [toast]);
 
   const handleAttachFile = useCallback(() => {
     const input = document.createElement("input");

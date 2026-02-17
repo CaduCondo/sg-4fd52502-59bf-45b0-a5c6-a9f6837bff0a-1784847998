@@ -290,24 +290,14 @@ export function useDashboardData(
         setPayments(formattedPayments);
 
         // Buscar imóveis com join em locations
-        const { data: propertiesWithLocations, error: propertiesError } = await supabase
+        const { data: propertiesWithLocations, error: propsError } = await supabase
           .from("properties")
           .select(`
             *,
-            locations (
-              id,
-              name,
-              address,
-              street,
-              number,
-              neighborhood,
-              city,
-              state,
-              zip_code
-            )
+            locations(id, name, street, number, neighborhood, city, state, zip_code)
           `);
 
-        if (propertiesError) throw propertiesError;
+        if (propsError) throw propsError;
 
         const formattedProperties: Property[] = (propertiesWithLocations || []).map((prop: any) => ({
           id: prop.id,

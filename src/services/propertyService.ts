@@ -68,24 +68,8 @@ export const getAll = async (): Promise<Property[]> => {
     const { data, error } = await supabase
       .from("properties")
       .select(`
-        id,
-        location_id,
-        property_identifier,
-        complement,
-        description,
-        rooms,
-        bathrooms,
-        area,
-        has_garage,
-        value,
-        garage_value,
-        status,
-        images,
-        has_furniture,
-        accepts_pets,
-        created_at,
-        updated_at,
-        locations!properties_location_id_fkey(name)
+        *,
+        locations(id, name, street, number, neighborhood, city, state, zip_code)
       `)
       .order("created_at", { ascending: false });
 
