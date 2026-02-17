@@ -117,8 +117,6 @@ export default function Settings() {
   const [searchLocation, setSearchLocation] = useState("");
   const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false);
   const [editingLocation, setEditingLocation] = useState<Location | null>(null);
-  const [editingLocationId, setEditingLocationId] = useState<string | null>(null);
-  const [isEditingLocation, setIsEditingLocation] = useState(false);
   const [locationForm, setLocationForm] = useState({
     name: "",
     street: "",
@@ -128,7 +126,6 @@ export default function Settings() {
     city: "",
     state: "",
     zip_code: "",
-    is_active: true,
   });
   const [selectedLocationForExpenses, setSelectedLocationForExpenses] = useState<Location | null>(null);
   const [locationToDelete, setLocationToDelete] = useState<Location | null>(null);
@@ -259,29 +256,38 @@ export default function Settings() {
   const handleLocationSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log("[SUBMIT] Form data:", locationForm);
+    console.log("[SUBMIT] Editing location:", editingLocation);
+    
     try {
-      const locationData = {
-        name: locationForm.name,
-        street: locationForm.street,
-        number: locationForm.number,
-        complement: locationForm.complement,
-        neighborhood: locationForm.neighborhood,
-        city: locationForm.city,
-        state: locationForm.state,
-        zip_code: locationForm.zip_code,
-        active: locationForm.is_active,
-        address: `${locationForm.street}, ${locationForm.number} - ${locationForm.neighborhood}, ${locationForm.city} - ${locationForm.state}`,
-        manager_id: null,
-      };
-
       if (editingLocation) {
-        await locationService.updateLocation(editingLocation.id, locationData);
+        console.log("[UPDATE] Updating location:", editingLocation.id);
+        await locationService.updateLocation(editingLocation.id, {
+          name: locationForm.name,
+          street: locationForm.street,
+          number: locationForm.number,
+          complement: locationForm.complement || undefined,
+          neighborhood: locationForm.neighborhood,
+          city: locationForm.city,
+          state: locationForm.state,
+          zip_code: locationForm.zip_code,
+        });
         toast({
           title: "Sucesso",
           description: "Local atualizado com sucesso.",
         });
       } else {
-        await locationService.createLocation(locationData);
+        console.log("[CREATE] Creating new location");
+        await locationService.createLocation({
+          name: locationForm.name,
+          street: locationForm.street,
+          number: locationForm.number,
+          complement: locationForm.complement || undefined,
+          neighborhood: locationForm.neighborhood,
+          city: locationForm.city,
+          state: locationForm.state,
+          zip_code: locationForm.zip_code,
+        });
         toast({
           title: "Sucesso",
           description: "Local cadastrado com sucesso.",
@@ -290,7 +296,6 @@ export default function Settings() {
 
       setIsLocationDialogOpen(false);
       setEditingLocation(null);
-      setIsEditingLocation(false);
       setLocationForm({
         name: "",
         street: "",
@@ -300,15 +305,13 @@ export default function Settings() {
         city: "",
         state: "",
         zip_code: "",
-        is_active: true,
       });
-      setEditingLocationId(null);
-      fetchLocations();
-    } catch (error) {
-      console.error("Error saving location:", error);
+      await fetchLocations();
+    } catch (error: any) {
+      console.error("[ERROR] Failed to save location:", error);
       toast({
         title: "Erro",
-        description: "Não foi possível salvar o local.",
+        description: error.message || "Não foi possível salvar o local.",
         variant: "destructive",
       });
     }
@@ -316,8 +319,8 @@ export default function Settings() {
 
   const openLocationDialog = (location?: Location) => {
     if (location) {
+      console.log("[DIALOG] Opening for edit:", location);
       setEditingLocation(location);
-      setIsEditingLocation(false);
       setLocationForm({
         name: location.name,
         street: location.street || "",
@@ -327,11 +330,10 @@ export default function Settings() {
         city: location.city,
         state: location.state,
         zip_code: location.zip_code || "",
-        is_active: location.active, // Fix: Map active property
       });
     } else {
+      console.log("[DIALOG] Opening for create");
       setEditingLocation(null);
-      setIsEditingLocation(true);
       setLocationForm({
         name: "",
         street: "",
@@ -341,7 +343,6 @@ export default function Settings() {
         city: "",
         state: "",
         zip_code: "",
-        is_active: true,
       });
     }
     setIsLocationDialogOpen(true);
@@ -350,19 +351,31 @@ export default function Settings() {
   const confirmDeleteLocation = async () => {
     if (!locationToDelete) return;
 
+    console.log("[DELETE] Attempting to delete location:", locationToDelete.id);
+
     try {
       await locationService.deleteLocation(locationToDelete.id);
+      console.log("[DELETE] Location deleted successfully");
+      
       toast({ 
         title: "Sucesso!",
         description: "Local excluído com sucesso." 
       });
+      
       setLocationToDelete(null);
-      fetchLocations();
-    } catch (error) {
-      console.error("Erro ao excluir local:", error);
+      await fetchLocations();
+    } catch (error: any) {
+      console.error("[DELETE ERROR] Failed to delete location:", error);
+      
+      let errorMessage = "Não foi possível excluir o local.";
+      
+      if (error.message?.includes("foreign key")) {
+        errorMessage = "Este local não pode ser excluído pois possui propriedades, despesas ou permissões vinculadas.";
+      }
+      
       toast({ 
         title: "Erro",
-        description: "Não foi possível excluir o local.",
+        description: errorMessage,
         variant: "destructive" 
       });
     }
@@ -869,7 +882,6 @@ export default function Settings() {
           if (!open) {
             setIsLocationDialogOpen(false);
             setEditingLocation(null);
-            setIsEditingLocation(false);
             setLocationForm({
               name: "",
               street: "",
@@ -879,18 +891,13 @@ export default function Settings() {
               city: "",
               state: "",
               zip_code: "",
-              is_active: true,
             });
           }
         }}>
-          <DialogContent>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
-                {editingLocation && !isEditingLocation
-                  ? "Visualização do Local"
-                  : editingLocation && isEditingLocation
-                  ? "Edição do Local"
-                  : "Novo Local"}
+                {editingLocation ? "Editar Local" : "Novo Local"}
               </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleLocationSubmit} className="space-y-4">
@@ -902,7 +909,6 @@ export default function Settings() {
                   onChange={(e) => setLocationForm({ ...locationForm, name: e.target.value })}
                   placeholder="Ex: Casa 1, Apartamento A, Loja Centro"
                   required
-                  disabled={editingLocation && !isEditingLocation}
                 />
               </div>
 
@@ -922,7 +928,6 @@ export default function Settings() {
                   placeholder="00000-000"
                   maxLength={9}
                   required
-                  disabled={editingLocation && !isEditingLocation}
                 />
               </div>
 
@@ -935,7 +940,6 @@ export default function Settings() {
                     onChange={(e) => setLocationForm({ ...locationForm, street: e.target.value })}
                     placeholder="Rua, Avenida, etc."
                     required
-                    disabled={editingLocation && !isEditingLocation}
                   />
                 </div>
 
@@ -947,7 +951,6 @@ export default function Settings() {
                     onChange={(e) => setLocationForm({ ...locationForm, number: e.target.value })}
                     placeholder="123"
                     required
-                    disabled={editingLocation && !isEditingLocation}
                   />
                 </div>
               </div>
@@ -959,7 +962,6 @@ export default function Settings() {
                   value={locationForm.complement}
                   onChange={(e) => setLocationForm({ ...locationForm, complement: e.target.value })}
                   placeholder="Bloco, Andar, Sala, etc."
-                  disabled={editingLocation && !isEditingLocation}
                 />
               </div>
 
@@ -972,7 +974,6 @@ export default function Settings() {
                     onChange={(e) => setLocationForm({ ...locationForm, neighborhood: e.target.value })}
                     placeholder="Centro, Jardins, etc."
                     required
-                    disabled={editingLocation && !isEditingLocation}
                   />
                 </div>
 
@@ -984,69 +985,47 @@ export default function Settings() {
                     onChange={(e) => setLocationForm({ ...locationForm, city: e.target.value })}
                     placeholder="São Paulo"
                     required
-                    disabled={editingLocation && !isEditingLocation}
                   />
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-4">
-                {editingLocation && !isEditingLocation ? (
-                  <>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => {
-                        setIsLocationDialogOpen(false);
-                        setEditingLocation(null);
-                        setIsEditingLocation(false);
-                      }}
-                    >
-                      Fechar
-                    </Button>
-                    <Button
-                      type="button"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        setIsEditingLocation(true);
-                      }}
-                    >
-                      Editar
-                    </Button>
-                  </>
-                ) : (
-                  <>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => {
-                        if (editingLocation && isEditingLocation) {
-                          setIsEditingLocation(false);
-                        } else {
-                          setIsLocationDialogOpen(false);
-                          setEditingLocation(null);
-                          setIsEditingLocation(false);
-                          setLocationForm({
-                            name: "",
-                            street: "",
-                            number: "",
-                            complement: "",
-                            neighborhood: "",
-                            city: "",
-                            state: "",
-                            zip_code: "",
-                            is_active: true,
-                          });
-                        }
-                      }}
-                    >
-                      Cancelar
-                    </Button>
-                    <Button type="submit">
-                      {editingLocation ? "Atualizar" : "Cadastrar"} Local
-                    </Button>
-                  </>
-                )}
+              <div className="space-y-2">
+                <Label htmlFor="locationState">Estado <span className="text-red-500">*</span></Label>
+                <Input
+                  id="locationState"
+                  value={locationForm.state}
+                  onChange={(e) => setLocationForm({ ...locationForm, state: e.target.value.toUpperCase() })}
+                  placeholder="SP"
+                  maxLength={2}
+                  required
+                />
               </div>
+
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setIsLocationDialogOpen(false);
+                    setEditingLocation(null);
+                    setLocationForm({
+                      name: "",
+                      street: "",
+                      number: "",
+                      complement: "",
+                      neighborhood: "",
+                      city: "",
+                      state: "",
+                      zip_code: "",
+                    });
+                  }}
+                >
+                  Cancelar
+                </Button>
+                <Button type="submit">
+                  {editingLocation ? "Atualizar" : "Cadastrar"}
+                </Button>
+              </DialogFooter>
             </form>
           </DialogContent>
         </Dialog>
