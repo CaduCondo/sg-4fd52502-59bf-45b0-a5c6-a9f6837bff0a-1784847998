@@ -239,6 +239,9 @@ export default function Financial() {
       console.log("🔍 DEBUG Financial - Dados formatados:", {
         totalFormatted: formattedPayments.length,
         firstFormatted: formattedPayments[0],
+        firstProperty: formattedPayments[0]?.property,
+        firstTenant: formattedPayments[0]?.tenant,
+        firstRental: formattedPayments[0]?.rental,
         sampleReferenceMonth: formattedPayments[0]?.referenceMonth,
         sampleReferenceYear: formattedPayments[0]?.referenceYear
       });
@@ -338,7 +341,16 @@ export default function Financial() {
     const tenant = payment.tenant;
     const rental = payment.rental;
 
-    // Extract time from paymentDate if it includes timestamp
+    console.log("🔍 DEBUG getPaymentDetails:", {
+      paymentId: payment.id,
+      hasProperty: !!property,
+      propertyLocation: property?.location,
+      propertyLocationId: property?.locationId,
+      hasRental: !!rental,
+      hasTenant: !!tenant
+    });
+
+    // Extrair horário do paymentDate (se existir)
     let paymentTime = "";
     if (payment.paymentDate) {
       try {
@@ -366,14 +378,26 @@ export default function Financial() {
   };
 
   const calculatePaymentNumber = (payment: Payment, rental: Rental | undefined) => {
-    if (!rental || !rental.startDate || !rental.endDate) {
+    // Usa o rental do payment se não for passado
+    const rentalData = rental || payment.rental;
+    
+    console.log("🔍 DEBUG calculatePaymentNumber:", {
+      paymentId: payment.id,
+      hasRental: !!rentalData,
+      rentalStartDate: rentalData?.startDate,
+      rentalEndDate: rentalData?.endDate,
+      referenceMonth: payment.referenceMonth,
+      referenceYear: payment.referenceYear
+    });
+    
+    if (!rentalData || !rentalData.startDate || !rentalData.endDate) {
       console.warn("⚠️ Rental data missing for payment:", payment.id);
       return "N/A";
     }
     
     try {
-      const contractStartDate = new Date(rental.startDate + "T00:00:00");
-      const contractEndDate = new Date(rental.endDate + "T00:00:00");
+      const contractStartDate = new Date(rentalData.startDate + "T00:00:00");
+      const contractEndDate = new Date(rentalData.endDate + "T00:00:00");
       const totalMonths = differenceInMonths(contractEndDate, contractStartDate);
       
       const referenceDate = new Date(payment.referenceYear || 0, (payment.referenceMonth || 1) - 1, 1);
