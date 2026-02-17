@@ -109,14 +109,20 @@ export default function RentalsPage() {
   const loadRentalsData = useCallback(async () => {
     try {
       setLoading(true);
-      const rentalsData = await getAllRentals();
+      const [rentalsData, locationsData] = await Promise.all([
+        getAllRentals(),
+        getAllLocations(),
+      ]);
       setRentals(rentalsData);
+      setLocations(locationsData);
       
-      // DEBUG: Log rental data structure
+      // DEBUG: Log rental and location data
       console.log("🔍 DEBUG Rentals - Sample rental:", rentalsData[0]);
       console.log("🔍 DEBUG Rentals - Property data:", rentalsData[0]?.property);
       console.log("🔍 DEBUG Rentals - LocationId:", rentalsData[0]?.property?.locationId);
       console.log("🔍 DEBUG Rentals - Location name:", rentalsData[0]?.property?.location);
+      console.log("🔍 DEBUG Locations - Total:", locationsData.length);
+      console.log("🔍 DEBUG Locations - Sample:", locationsData[0]);
       
       await loadTerminationInfo(rentalsData.filter(r => r.isActive));
     } catch (error) {
@@ -159,17 +165,11 @@ export default function RentalsPage() {
     try {
       setLoadingAdditionalData(true);
       
-      const [locationsData, allPropertiesData, allTenantsData] = await Promise.all([
-        getAllLocations(),
+      const [allPropertiesData, allTenantsData] = await Promise.all([
         getAllProperties(),
         getAllTenants(),
       ]);
       
-      // DEBUG: Log locations data
-      console.log("🔍 DEBUG Locations - Total:", locationsData.length);
-      console.log("🔍 DEBUG Locations - Sample:", locationsData[0]);
-      
-      setLocations(locationsData);
       setAllProperties(allPropertiesData);
       setAllTenants(allTenantsData);
       setDataCache({ loaded: true, timestamp: now });
@@ -718,7 +718,9 @@ export default function RentalsPage() {
                             onClick={() => handleViewRental(rental)}
                           >
                             <TableCell className="font-medium text-blue-600">
-                              {rental.property?.location || "Local não encontrado"}
+                              {locations.find(loc => loc.id === rental.property?.locationId)?.name || 
+                               rental.property?.location || 
+                               "Local não encontrado"}
                             </TableCell>
                             <TableCell>{rental.property?.complement || "-"}</TableCell>
                             <TableCell className="whitespace-nowrap">{rental.tenant?.name || "-"}</TableCell>
