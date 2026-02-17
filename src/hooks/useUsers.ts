@@ -82,7 +82,7 @@ export function useUsers() {
         variant: "default",
       });
       await fetchUsers();
-      return newUser;
+      return true;
     } catch (error: any) {
       console.error("[useUsers] Error creating user:", error);
       

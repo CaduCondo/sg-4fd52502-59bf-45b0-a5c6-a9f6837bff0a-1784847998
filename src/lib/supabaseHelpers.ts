@@ -68,7 +68,7 @@ export async function createSingle<T extends Record<string, any>>(
   }
 
   console.log(`[supabaseHelpers] Created in ${table}:`, created);
-  return created as T;
+  return created as unknown as T;
 }
 
 /**
