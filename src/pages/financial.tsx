@@ -596,26 +596,19 @@ export default function Financial() {
   const adminFee = payments
     .filter((p) => p.status === "paid" || p.status === "partial")
     .reduce((sum, p) => {
-      const rental = rentals.find(r => r.id === p.rentalId);
-      const property = properties.find(prop => prop.id === rental?.propertyId);
+      // CORREÇÃO: Usar o objeto property que já está aninhado no pagamento
+      // (as listas 'rentals' e 'properties' do estado estão vazias neste contexto)
+      const property = p.property;
       
       // ISENÇÃO APENAS PARA TAXA DE ADMINISTRAÇÃO
+      // Verifica se a propriedade existe e se sua locationId está na lista de isenções
       const isExempt = property && exemptLocationIds.includes(property.locationId);
       
-      const feeRate = config ? (config.admin_fee_percentage || 0) / 100 : 0.05;
-      const fee = isExempt ? 0 : ((p.paidAmount || 0) * feeRate);
+      // Taxa configurada ou padrão de 10% (conforme observado em alguns casos) ou 5%
+      const feePercentage = config?.admin_fee_percentage ?? 10;
+      const feeRate = feePercentage / 100;
       
-      if (p.id === payments[0]?.id) {
-        console.log("💰 DEBUG Financial - Admin Fee Sample Calculation:", {
-          paymentId: p.id,
-          paidAmount: p.paidAmount,
-          propertyId: property?.id,
-          locationId: property?.locationId,
-          isExempt,
-          feeRate,
-          calculatedFee: fee
-        });
-      }
+      const fee = isExempt ? 0 : ((p.paidAmount || 0) * feeRate);
       
       return sum + fee;
     }, 0);
@@ -625,18 +618,11 @@ export default function Financial() {
   const managementFee = payments
     .filter((p) => p.status === "paid" || p.status === "partial")
     .reduce((sum, p) => {
-       // TAXA DE GERENCIAMENTO SEMPRE É COBRADA - SEM VERIFICAÇÃO DE ISENÇÃO
-       const mgmtRate = config ? (config.management_fee_percentage || 0) / 100 : 0;
-       const fee = (p.paidAmount || 0) * mgmtRate;
+       // TAXA DE GERENCIAMENTO SEMPRE É COBRADA
+       const mgmtPercentage = config?.management_fee_percentage ?? 0;
+       const mgmtRate = mgmtPercentage / 100;
        
-       if (p.id === payments[0]?.id) {
-         console.log("💰 DEBUG Financial - Management Fee Sample Calculation:", {
-           paymentId: p.id,
-           paidAmount: p.paidAmount,
-           mgmtRate,
-           calculatedFee: fee
-         });
-       }
+       const fee = (p.paidAmount || 0) * mgmtRate;
        
        return sum + fee;
   }, 0);
