@@ -142,18 +142,22 @@ export const create = async (payment: Partial<Payment>): Promise<Payment> => {
   if (error) throw error;
   
   const createdPayment: Payment = {
-    ...data,
-    status: data.status as "paid" | "pending" | "overdue" | "partial",
-    discount: data.discount_amount,
-    dueDate: data.due_date,
+    id: data.id,
+    rentalId: data.rental_id,
     expectedAmount: data.expected_amount,
     paidAmount: data.paid_amount,
+    dueDate: data.due_date,
     paymentDate: data.payment_date,
+    status: data.status as "paid" | "pending" | "overdue" | "partial",
     referenceMonth: Number(data.reference_month),
     referenceYear: Number(data.reference_year),
+    discount: data.discount_amount,
     lateFee: data.late_fee,
-    rentalId: data.rental_id,
+    interest: data.interest || 0,
+    notes: data.notes,
     paymentMethod: data.payment_method,
+    breakdown: data.breakdown,
+    installment: data.installment,
     totalInstallments: data.total_installments,
     propertyId: "", // Default
     tenantId: "", // Default
@@ -198,21 +202,25 @@ export const update = async (
   if (error) throw error;
   
   return { 
-    ...data, 
-    discount: data.discount_amount,
-    dueDate: data.due_date,
+    id: data.id,
+    rentalId: data.rental_id,
     expectedAmount: data.expected_amount,
     paidAmount: data.paid_amount,
+    dueDate: data.due_date,
     paymentDate: data.payment_date,
+    status: data.status as "paid" | "pending" | "overdue" | "partial",
     referenceMonth: Number(data.reference_month),
     referenceYear: Number(data.reference_year),
+    discount: data.discount_amount,
     lateFee: data.late_fee,
-    rentalId: data.rental_id,
+    interest: data.interest || 0,
+    notes: data.notes,
     paymentMethod: data.payment_method,
+    breakdown: data.breakdown,
+    installment: data.installment,
     totalInstallments: data.total_installments,
     propertyId: "", // Default
     tenantId: "", // Default
-    status: data.status as "paid" | "pending" | "overdue" | "partial",
     attachments: (data.attachments as unknown as string[]) || [],
   } as Payment;
 };
