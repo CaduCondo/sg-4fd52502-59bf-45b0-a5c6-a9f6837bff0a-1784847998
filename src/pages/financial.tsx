@@ -134,15 +134,14 @@ export default function Financial() {
             tenants(id, name, cpf, email, phone)
           )
         `)
-        .eq("reference_month", filterMonth)
-        .eq("reference_year", filterYear)
+        .eq("reference_month", String(filterMonth))
+        .eq("reference_year", String(filterYear))
         .order("due_date", { ascending: true });
 
       if (paymentsError) throw paymentsError;
 
       console.log("🔍 DEBUG Financial - Dados brutos do banco:", {
         totalPayments: paymentsData?.length || 0,
-        firstPayment: paymentsData?.[0],
         filterMonth,
         filterYear
       });
@@ -205,6 +204,19 @@ export default function Financial() {
         return payment;
       });
 
+      // FILTRO DE SEGURANÇA (CLIENT-SIDE)
+      // Garante que apenas os dados do período selecionado sejam exibidos
+      const finalFilteredPayments = paymentsWithLocations.filter(p => 
+        p.referenceMonth === filterMonth && 
+        p.referenceYear === filterYear
+      );
+
+      console.log("✅ DEBUG Financial - Dados finais filtrados:", {
+        antes: paymentsWithLocations.length,
+        depois: finalFilteredPayments.length,
+        periodo: `${filterMonth}/${filterYear}`
+      });
+
       // Removed erroneous totalExpenses calculation from paymentsData
       // If expenses need to be calculated, they should be fetched from location_expenses table
       setLocationExpenses(0);
@@ -239,8 +251,8 @@ export default function Financial() {
         }
       }
 
-      // Set ALL payments without filtering by period
-      setPayments(paymentsWithLocations);
+      // Set payments filtered by period
+      setPayments(finalFilteredPayments);
 
     } catch (error: any) {
       // Ignorar erros de abort
