@@ -271,9 +271,26 @@ export default function Financial() {
   };
 
   const getPaymentDetails = (payment: Payment) => {
-    const rental = payment.rental || rentals.find((r) => r.id === payment.rentalId);
-    const property = payment.property || properties.find((p) => p.id === rental?.propertyId);
-    const tenant = payment.tenant || tenants.find((t) => t.id === rental?.tenantId);
+    const property = payment.property;
+    const tenant = payment.tenant;
+    const rental = payment.rental;
+
+    // Extract time from paymentDate if it includes timestamp
+    let paymentTime = "";
+    if (payment.paymentDate) {
+      try {
+        // If paymentDate includes time (ISO format with T)
+        const dateStr = payment.paymentDate.toString();
+        if (dateStr.includes('T')) {
+          const timePart = dateStr.split('T')[1];
+          if (timePart) {
+            paymentTime = timePart.substring(0, 5); // Get HH:MM
+          }
+        }
+      } catch (error) {
+        console.warn("⚠️ Could not extract time from paymentDate:", payment.paymentDate);
+      }
+    }
 
     return {
       local: property?.location || "N/A",
@@ -281,21 +298,34 @@ export default function Financial() {
       tenantName: tenant?.name || "N/A",
       rental: rental,
       pixCode: rental?.pixCode || "",
-      paymentTime: "",
+      paymentTime: paymentTime,
     };
   };
 
   const calculatePaymentNumber = (payment: Payment, rental: Rental | undefined) => {
-    if (!rental) return "N/A";
+    if (!rental || !rental.startDate || !rental.endDate) {
+      console.warn("⚠️ Rental data missing for payment:", payment.id);
+      return "N/A";
+    }
     
-    const contractStartDate = new Date(rental.startDate + "T00:00:00");
-    const contractEndDate = new Date(rental.endDate + "T00:00:00");
-    const totalMonths = differenceInMonths(contractEndDate, contractStartDate);
-    
-    const referenceDate = new Date(payment.referenceYear || 0, (payment.referenceMonth || 1) - 1, 1);
-    const currentPaymentNumber = differenceInMonths(referenceDate, contractStartDate) + 1;
-    
-    return `${currentPaymentNumber}/${totalMonths}`;
+    try {
+      const contractStartDate = new Date(rental.startDate + "T00:00:00");
+      const contractEndDate = new Date(rental.endDate + "T00:00:00");
+      const totalMonths = differenceInMonths(contractEndDate, contractStartDate);
+      
+      const referenceDate = new Date(payment.referenceYear || 0, (payment.referenceMonth || 1) - 1, 1);
+      const currentPaymentNumber = differenceInMonths(referenceDate, contractStartDate) + 1;
+      
+      if (isNaN(currentPaymentNumber) || isNaN(totalMonths)) {
+        console.warn("⚠️ Invalid date calculation for payment:", payment.id, { rental });
+        return "N/A";
+      }
+      
+      return `${currentPaymentNumber}/${totalMonths}`;
+    } catch (error) {
+      console.error("❌ Error calculating payment number:", error);
+      return "N/A";
+    }
   };
 
   const handleSort = (field: SortField) => {
