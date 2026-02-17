@@ -102,6 +102,13 @@ export default function Financial() {
     try {
       setLoading(true);
       
+      console.log("🔍 DEBUG Financial - Loading data for period:", {
+        filterMonth,
+        filterYear,
+        userId: user?.id,
+        userRole: user?.role
+      });
+      
       const { data: paymentsData, error: paymentsError } = await supabase
         .from("payments")
         .select(`
@@ -302,7 +309,16 @@ export default function Financial() {
         } else {
           const exemptIds = exemptions?.map(e => e.location_id) || [];
           setExemptLocationIds(exemptIds);
+          console.log("✅ Locais isentos de taxa de administração:", exemptIds);
         }
+
+        // Buscar configurações globais
+        const configData = await getConfig();
+        setConfig(configData);
+        console.log("✅ Configurações carregadas:", {
+          adminFeePercentage: configData?.admin_fee_percentage,
+          managementFeePercentage: configData?.management_fee_percentage
+        });
 
         // Buscar permissões de local (para usuários financeiros)
         if (user.role === "financial") {
@@ -568,6 +584,15 @@ export default function Financial() {
     .filter((p) => p.status === "paid" || p.status === "partial")
     .reduce((sum, p) => sum + (p.paidAmount || 0), 0);
   
+  console.log("💰 DEBUG Financial - KPI Calculations Start:", {
+    totalPayments: payments.length,
+    totalExpected,
+    totalReceived,
+    configAdminFee: config?.admin_fee_percentage,
+    configManagementFee: config?.management_fee_percentage,
+    exemptLocationIds
+  });
+
   const adminFee = payments
     .filter((p) => p.status === "paid" || p.status === "partial")
     .reduce((sum, p) => {
@@ -575,20 +600,48 @@ export default function Financial() {
       const property = properties.find(prop => prop.id === rental?.propertyId);
       
       // ISENÇÃO APENAS PARA TAXA DE ADMINISTRAÇÃO
-      if (property && exemptLocationIds.includes(property.locationId)) return sum;
+      const isExempt = property && exemptLocationIds.includes(property.locationId);
       
       const feeRate = config ? (config.admin_fee_percentage || 0) / 100 : 0.05;
-      return sum + ((p.paidAmount || 0) * feeRate);
+      const fee = isExempt ? 0 : ((p.paidAmount || 0) * feeRate);
+      
+      if (p.id === payments[0]?.id) {
+        console.log("💰 DEBUG Financial - Admin Fee Sample Calculation:", {
+          paymentId: p.id,
+          paidAmount: p.paidAmount,
+          propertyId: property?.id,
+          locationId: property?.locationId,
+          isExempt,
+          feeRate,
+          calculatedFee: fee
+        });
+      }
+      
+      return sum + fee;
     }, 0);
+
+  console.log("💰 DEBUG Financial - Admin Fee Total:", adminFee);
     
   const managementFee = payments
     .filter((p) => p.status === "paid" || p.status === "partial")
     .reduce((sum, p) => {
        // TAXA DE GERENCIAMENTO SEMPRE É COBRADA - SEM VERIFICAÇÃO DE ISENÇÃO
        const mgmtRate = config ? (config.management_fee_percentage || 0) / 100 : 0;
-       return sum + ((p.paidAmount || 0) * mgmtRate);
+       const fee = (p.paidAmount || 0) * mgmtRate;
+       
+       if (p.id === payments[0]?.id) {
+         console.log("💰 DEBUG Financial - Management Fee Sample Calculation:", {
+           paymentId: p.id,
+           paidAmount: p.paidAmount,
+           mgmtRate,
+           calculatedFee: fee
+         });
+       }
+       
+       return sum + fee;
   }, 0);
 
+  console.log("💰 DEBUG Financial - Management Fee Total:", managementFee);
   const netRevenue = totalReceived - adminFee - managementFee - locationExpenses;
   
   const totalPaid = payments
@@ -805,8 +858,7 @@ export default function Financial() {
                             </div>
                           </div>
                         </CardContent>
-                      </Card>
-                    </ScrollReveal>
+                    </Card>
                   )}
 
                   <ScrollReveal delay={0.5}>
