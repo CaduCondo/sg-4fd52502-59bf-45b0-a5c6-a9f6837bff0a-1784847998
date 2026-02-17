@@ -181,11 +181,9 @@ export default function Financial() {
       // setRentals(uniqueRentals);
       // setTenants(uniqueTenants);
 
-      const totalExpenses = paymentsData
-        ? paymentsData.reduce((sum, e) => sum + (e.amount || 0), 0)
-        : 0;
-      
-      setLocationExpenses(totalExpenses);
+      // Removed erroneous totalExpenses calculation from paymentsData
+      // If expenses need to be calculated, they should be fetched from location_expenses table
+      setLocationExpenses(0);
 
       // Buscar permissões de locais do usuário logado
       let allowedLocations: string[] = [];
@@ -290,9 +288,9 @@ export default function Financial() {
       
       // Check location permissions for financial users
       if (user?.role === "financial" && allowedLocationIds.length > 0) {
-        const rental = payment.rental;
-        const property = rental?.properties;
-        return matchesDate && property && allowedLocationIds.includes(property.location_id);
+        // Use property directly from payment object as it's already mapped
+        const property = payment.property;
+        return matchesDate && property && allowedLocationIds.includes(property.locationId);
       }
       
       return matchesDate;
