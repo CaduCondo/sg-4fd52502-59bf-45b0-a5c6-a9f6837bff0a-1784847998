@@ -588,6 +588,7 @@ export default function Financial() {
     totalPayments: payments.length,
     totalExpected,
     totalReceived,
+    configLoaded: !!config,
     configAdminFee: config?.admin_fee_percentage,
     configManagementFee: config?.management_fee_percentage,
     exemptLocationIds
@@ -597,15 +598,14 @@ export default function Financial() {
     .filter((p) => p.status === "paid" || p.status === "partial")
     .reduce((sum, p) => {
       // CORREÇÃO: Usar o objeto property que já está aninhado no pagamento
-      // (as listas 'rentals' e 'properties' do estado estão vazias neste contexto)
       const property = p.property;
       
       // ISENÇÃO APENAS PARA TAXA DE ADMINISTRAÇÃO
       // Verifica se a propriedade existe e se sua locationId está na lista de isenções
       const isExempt = property && exemptLocationIds.includes(property.locationId);
       
-      // Taxa configurada ou padrão de 10% (conforme observado em alguns casos) ou 5%
-      const feePercentage = config?.admin_fee_percentage ?? 10;
+      // Taxa configurada ou padrão de 5% (conforme interface)
+      const feePercentage = config?.admin_fee_percentage ?? 5;
       const feeRate = feePercentage / 100;
       
       const fee = isExempt ? 0 : ((p.paidAmount || 0) * feeRate);
@@ -619,7 +619,8 @@ export default function Financial() {
     .filter((p) => p.status === "paid" || p.status === "partial")
     .reduce((sum, p) => {
        // TAXA DE GERENCIAMENTO SEMPRE É COBRADA
-       const mgmtPercentage = config?.management_fee_percentage ?? 0;
+       // Taxa configurada ou padrão de 3% (conforme interface)
+       const mgmtPercentage = config?.management_fee_percentage ?? 3;
        const mgmtRate = mgmtPercentage / 100;
        
        const fee = (p.paidAmount || 0) * mgmtRate;
