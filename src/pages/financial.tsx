@@ -294,35 +294,16 @@ export default function Financial() {
   };
 
   const getSortedPayments = () => {
-    // First filter by selected period
-    const filtered = payments.filter((payment) => {
-      const matchesDate = 
-        payment.referenceMonth === filterMonth &&
-        payment.referenceYear === filterYear;
-      
-      // Check location permissions for financial users
-      if (user?.role === "financial" && allowedLocationIds.length > 0) {
-        // Use property directly from payment object as it's already mapped
-        const property = payment.property;
-        return matchesDate && property && allowedLocationIds.includes(property.locationId);
-      }
-      
-      return matchesDate;
-    });
-
-    console.log("🔍 DEBUG Financial - Filtragem:", {
+    // Remove period filter - show ALL payments
+    console.log("🔍 DEBUG Financial - Todos os pagamentos:", {
       totalPayments: payments.length,
-      filterMonth,
-      filterYear,
-      filteredCount: filtered.length,
-      samplePayment: payments[0],
-      sampleFiltered: filtered[0]
+      samplePayment: payments[0]
     });
 
-    // Then apply sorting if specified
-    if (!sortField || !sortDirection) return filtered;
+    // Apply sorting if specified
+    if (!sortField || !sortDirection) return payments;
 
-    return [...filtered].sort((a, b) => {
+    return [...payments].sort((a, b) => {
       let aValue: any;
       let bValue: any;
 
