@@ -181,20 +181,6 @@ export default function Financial() {
         sampleReferenceYear: formattedPayments[0]?.referenceYear
       });
 
-      // Remove references to propertiesData, rentalsData, tenantsData which caused errors
-      // If we need them, we should fetch them or derive them.
-      // For now, let's just use empty arrays if they were used for state,
-      // or derive from payments.
-      
-      const uniqueProperties = Array.from(new Map(formattedPayments.map(p => [p.propertyId, p.property])).values()).filter(Boolean);
-      const uniqueRentals = Array.from(new Map(formattedPayments.map(p => [p.rentalId, p.rental])).values()).filter(Boolean);
-      const uniqueTenants = Array.from(new Map(formattedPayments.map(p => [p.tenantId, p.tenant])).values()).filter(Boolean);
-      
-      // Assuming there are state setters for these if they were used
-      // setProperties(uniqueProperties); // If these states exist
-      // setRentals(uniqueRentals);
-      // setTenants(uniqueTenants);
-
       // Removed erroneous totalExpenses calculation from paymentsData
       // If expenses need to be calculated, they should be fetched from location_expenses table
       setLocationExpenses(0);
