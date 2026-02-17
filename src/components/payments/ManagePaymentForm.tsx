@@ -171,8 +171,8 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
   const [location, setLocation] = useState<any>(null);
   const [rentalValue, setRentalValue] = useState(0);
   const [garageValue, setGarageValue] = useState(0);
-  const [lateFeePercentage, setLateFeePercentage] = useState(0);
-  const [interestRatePercentage, setInterestRatePercentage] = useState(0);
+  const [lateFeePercentage, setLateFeePercentage] = useState(2); // Default 2%
+  const [interestRatePercentage, setInterestRatePercentage] = useState(0.033); // Default 0.033% per day
 
   // CRITICAL: Define handleFileUpload FIRST before it's used by other callbacks
   const handleFileUpload = useCallback(async (file: File) => {
@@ -298,17 +298,30 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       if (paymentError) throw paymentError;
       if (!paymentData) throw new Error("Pagamento não encontrado");
 
+      // Load configs to get fee percentages
+      const { data: configData } = await supabase
+        .from("configs")
+        .select("late_fee_percentage, interest_rate_percentage")
+        .single();
+
       console.log("[ManagePaymentForm] Payment data loaded:", paymentData);
+      console.log("[ManagePaymentForm] Config data loaded:", configData);
 
       setPayment(paymentData);
       setRental(paymentData.rental);
       setProperty(paymentData.rental?.property);
       setTenant(paymentData.rental?.tenant);
       setLocation(paymentData.rental?.property?.location);
-      setRentalValue(paymentData.rental?.rental_value || 0);
+      
+      // Fix: use rent_value or monthly_rent
+      setRentalValue(paymentData.rental?.rent_value || paymentData.rental?.monthly_rent || 0);
       setGarageValue(paymentData.rental?.garage_value || 0);
-      setLateFeePercentage(paymentData.rental?.property?.location?.late_fee_percentage || 2);
-      setInterestRatePercentage(paymentData.rental?.property?.location?.interest_rate_percentage || 0.033);
+      
+      // Fix: use config values for fees
+      if (configData) {
+        setLateFeePercentage(Number(configData.late_fee_percentage) || 2);
+        setInterestRatePercentage(Number(configData.interest_rate_percentage) || 0.033);
+      }
 
       const isPaidStatus = paymentData.status === "paid";
       setIsPaid(isPaidStatus);
@@ -338,7 +351,8 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         setAttachments(Array.isArray(paymentData.attachments) ? paymentData.attachments : [paymentData.attachments]);
       }
 
-      const isTermination = paymentData.payment_type === "termination";
+      // Fix: payment_type does not exist, use notes or logic to detect termination
+      const isTermination = paymentData.notes?.toLowerCase().includes("rescisão") || false;
       setIsTerminationPayment(isTermination);
 
       if (isTermination && paymentData.breakdown) {
