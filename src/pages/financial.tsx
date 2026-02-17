@@ -134,8 +134,9 @@ export default function Financial() {
             tenants(id, name, cpf, email, phone)
           )
         `)
-        .order("reference_year", { ascending: false })
-        .order("reference_month", { ascending: false });
+        .eq("reference_month", filterMonth)
+        .eq("reference_year", filterYear)
+        .order("due_date", { ascending: true });
 
       if (paymentsError) throw paymentsError;
 
@@ -181,6 +182,29 @@ export default function Financial() {
         sampleReferenceYear: formattedPayments[0]?.referenceYear
       });
 
+      // Busca todas as locations para mapear os nomes
+      const { data: locationsData } = await supabase
+        .from("locations")
+        .select("id, name");
+      
+      const locationsMap = new Map(
+        (locationsData || []).map(loc => [loc.id, loc.name])
+      );
+
+      // Atualizar propriedades com nomes de locations
+      const paymentsWithLocations = formattedPayments.map(payment => {
+        if (payment.property && payment.property.locationId) {
+          return {
+            ...payment,
+            property: {
+              ...payment.property,
+              location: locationsMap.get(payment.property.locationId) || payment.property.location || "Local não encontrado"
+            }
+          };
+        }
+        return payment;
+      });
+
       // Removed erroneous totalExpenses calculation from paymentsData
       // If expenses need to be calculated, they should be fetched from location_expenses table
       setLocationExpenses(0);
@@ -216,7 +240,7 @@ export default function Financial() {
       }
 
       // Set ALL payments without filtering by period
-      setPayments(formattedPayments);
+      setPayments(paymentsWithLocations);
 
     } catch (error: any) {
       // Ignorar erros de abort
