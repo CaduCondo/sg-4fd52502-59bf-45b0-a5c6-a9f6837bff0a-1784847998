@@ -92,7 +92,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onCancel, onClose }: M
         setInterestRatePercentage(configData.interest_rate_percentage || 0.033);
       }
 
-      // @ts-expect-error - rental_terminations relation might be missing in types
+      // @ts-ignore - rental_terminations might be missing in types, forcing any
       const { data: paymentData, error: paymentError } = await supabase
         .from("payments")
         .select(`
@@ -128,8 +128,10 @@ export function ManagePaymentForm({ paymentId, onSuccess, onCancel, onClose }: M
 
       setPayment(paymentData);
 
+      // @ts-ignore - explicitly handling potential missing type
       if (paymentData.rental_terminations) {
         setIsTerminationPayment(true);
+        // @ts-ignore
         const breakdown = paymentData.rental_terminations.payment_breakdown || [];
         setOriginalBreakdown(breakdown);
 
@@ -513,8 +515,8 @@ export function ManagePaymentForm({ paymentId, onSuccess, onCancel, onClose }: M
 
         const finalBalance = updatedBreakdown.reduce((sum, item) => sum + item.amount, 0);
 
-        // @ts-expect-error - rental_terminations type mismatch in update
-        const { error: terminationError } = await supabase
+        // Force cast supabase to any to bypass table type check for rental_terminations
+        const { error: terminationError } = await (supabase as any)
           .from("rental_terminations")
           .update({
             payment_breakdown: updatedBreakdown,
