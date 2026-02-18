@@ -148,9 +148,10 @@ export function ManagePaymentForm({
       }
 
       if (terminationData) {
+        const termData = terminationData as any;
         setTermination({
-          ...terminationData,
-          payment_breakdown: (terminationData.payment_breakdown as any) || [],
+          ...termData,
+          payment_breakdown: (termData.payment_breakdown as any) || [],
         });
       }
     } catch (error: any) {
