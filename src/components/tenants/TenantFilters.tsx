@@ -39,26 +39,36 @@ export const TenantFilters = memo(function TenantFilters({
           />
         </div>
 
-        <Select value={statusFilter} onValueChange={onStatusFilterChange}>
-          <SelectTrigger className="w-full sm:w-[140px] h-9 text-sm">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="active">Ativos</SelectItem>
-            <SelectItem value="inactive">Inativos</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-muted-foreground">
+            Status:
+          </label>
+          <Select value={statusFilter} onValueChange={onStatusFilterChange}>
+            <SelectTrigger className="w-full sm:w-[140px] h-9 text-sm">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="active">Ativos</SelectItem>
+              <SelectItem value="inactive">Inativos</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
-        <Select value={sortBy} onValueChange={(value: "alphabetical" | "recent") => onSortChange(value)}>
-          <SelectTrigger className="w-full sm:w-[140px] h-9 text-sm">
-            <SelectValue placeholder="Ordenar" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="alphabetical">A-Z</SelectItem>
-            <SelectItem value="recent">Recentes</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-muted-foreground">
+            Ordenação:
+          </label>
+          <Select value={sortBy} onValueChange={(value: "alphabetical" | "recent") => onSortChange(value)}>
+            <SelectTrigger className="w-full sm:w-[140px] h-9 text-sm">
+              <SelectValue placeholder="Ordenar" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="alphabetical">A-Z</SelectItem>
+              <SelectItem value="recent">Recentes</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
     </div>
   );

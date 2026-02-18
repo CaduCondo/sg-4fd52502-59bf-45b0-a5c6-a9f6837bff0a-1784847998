@@ -14,6 +14,7 @@ import { ScrollReveal } from "@/components/animations/ScrollReveal";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { Card, CardContent } from "@/components/ui/card";
 
 const STATUS_CONFIG = {
   active: { label: "Ativo", variant: "default" as const },
@@ -300,15 +301,19 @@ export default function TenantsPage() {
           </div>
         </ScrollReveal>
 
-        <TenantFilters
-          searchTerm={searchTerm}
-          onSearchChange={setSearchTerm}
-          statusFilter={statusFilter}
-          onStatusFilterChange={(value) => setStatusFilter(value as "all" | "active" | "inactive")}
-          sortBy={sortBy}
-          onSortChange={(value) => setSortBy(value as "alphabetical" | "recent")}
-          totalCount={filteredTenants.length}
-        />
+        <Card>
+          <CardContent>
+            <TenantFilters
+              searchTerm={searchTerm}
+              onSearchChange={setSearchTerm}
+              statusFilter={statusFilter}
+              onStatusFilterChange={(value) => setStatusFilter(value as "all" | "active" | "inactive")}
+              sortBy={sortBy}
+              onSortChange={(value) => setSortBy(value as "alphabetical" | "recent")}
+              totalCount={filteredTenants.length}
+            />
+          </CardContent>
+        </Card>
 
         {filteredTenants.length === 0 ? (
           <div className="text-center py-12">
