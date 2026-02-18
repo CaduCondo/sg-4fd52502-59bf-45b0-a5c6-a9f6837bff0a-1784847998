@@ -543,57 +543,6 @@ export type Database = {
           },
         ]
       }
-      rental_terminations: {
-        Row: {
-          created_at: string | null
-          final_balance: number | null
-          id: string
-          notes: string | null
-          payment_breakdown: Json | null
-          payment_id: string | null
-          rental_id: string
-          termination_date: string
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          final_balance?: number | null
-          id?: string
-          notes?: string | null
-          payment_breakdown?: Json | null
-          payment_id?: string | null
-          rental_id: string
-          termination_date: string
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          final_balance?: number | null
-          id?: string
-          notes?: string | null
-          payment_breakdown?: Json | null
-          payment_id?: string | null
-          rental_id?: string
-          termination_date?: string
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "rental_terminations_payment_id_fkey"
-            columns: ["payment_id"]
-            isOneToOne: false
-            referencedRelation: "payments"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "rental_terminations_rental_id_fkey"
-            columns: ["rental_id"]
-            isOneToOne: false
-            referencedRelation: "rentals"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       rentals: {
         Row: {
           attachments: Json | null
@@ -1015,10 +964,6 @@ export type Database = {
       create_auth_mapping_for_migration: {
         Args: { p_auth_user_id: string; p_system_user_id: string }
         Returns: undefined
-      }
-      delete_location_permanently: {
-        Args: { location_id: string }
-        Returns: boolean
       }
       get_available_properties: {
         Args: never

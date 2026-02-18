@@ -241,15 +241,6 @@ export interface Payment {
   tenant?: Tenant;
 }
 
-export interface RentalTermination {
-  id: string;
-  termination_date: string;
-  payment_breakdown: any;
-  final_balance: number;
-  created_at?: string;
-  updated_at?: string;
-}
-
 export interface PaymentInstallment {
   installment: number;
   totalInstallments: number;

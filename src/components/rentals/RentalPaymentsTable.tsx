@@ -60,8 +60,8 @@ export function RentalPaymentsTable({ payments, onManagePayment }: RentalPayment
     }
   };
 
-  const handleManageSuccess = () => {
-    // Refresh logic handled by parent or just close dialog
+  const handleManageSuccess = (data: any) => {
+    setReceiptData(data);
     setViewMode(null);
     setSelectedPaymentId(null);
   };

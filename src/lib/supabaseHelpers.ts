@@ -28,47 +28,26 @@ export interface QueryOptions {
  *   email: "joao@email.com"
  * });
  */
-export async function createSingle<T extends Record<string, any>>(
+export async function createSingle<T>(
   table: string,
-  data: T
+  data: Partial<T>
 ): Promise<T> {
-  console.log(`[supabaseHelpers] Creating in ${table}:`, data);
-
   const { data: created, error } = await supabase
     .from(table as any)
-    .insert([data])
-    .select()
-    .single();
+    .insert(data)
+    .select("*")
+    .maybeSingle();
 
   if (error) {
-    console.error(`[supabaseHelpers] Error creating in ${table}:`, error);
-    
-    // Tratamento específico para violação de constraint única
-    if (error.code === "23505") {
-      // Extrair nome do campo da mensagem de erro
-      const match = error.message.match(/"([^"]+)"/);
-      const constraintName = match ? match[1] : "";
-      
-      if (constraintName.includes("email")) {
-        throw new Error("duplicate key value violates unique constraint \"system_users_email_key\"");
-      }
-      if (constraintName.includes("username")) {
-        throw new Error("duplicate key value violates unique constraint \"system_users_username_key\"");
-      }
-      if (constraintName.includes("cpf")) {
-        throw new Error("duplicate key value violates unique constraint \"system_users_cpf_key\"");
-      }
-    }
-    
+    console.error(`Erro ao criar registro em ${table}:`, error);
     throw new Error(`Erro ao criar registro: ${error.message}`);
   }
 
   if (!created) {
-    throw new Error(`Nenhum registro foi criado em ${table}`);
+    throw new Error(`Erro ao criar registro em ${table}: Nenhum dado retornado`);
   }
 
-  console.log(`[supabaseHelpers] Created in ${table}:`, created);
-  return created as unknown as T;
+  return created as T;
 }
 
 /**
@@ -110,13 +89,13 @@ export async function updateSingle<T>(
   if (selectError) {
     console.error(`Erro ao buscar registro atualizado em ${table}:`, selectError);
     // ✅ NÃO lança erro - UPDATE foi bem-sucedido, então retornar os updates
-    return { id, ...updates } as unknown as T;
+    return { id, ...updates } as T;
   }
 
   if (!data) {
     // ✅ Se não encontrou registro MAS update funcionou, retornar os updates
     console.warn(`Registro não encontrado após UPDATE em ${table} com id: ${id}, mas UPDATE foi bem-sucedido`);
-    return { id, ...updates } as unknown as T;
+    return { id, ...updates } as T;
   }
 
   return data as T;

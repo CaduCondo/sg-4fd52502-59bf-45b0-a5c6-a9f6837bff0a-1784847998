@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { SystemUser } from "@/types";
-import { updateUser, deleteUser } from "@/services/systemUserService";
-import { createSingle } from "@/lib/supabaseHelpers";
+import { createUser, updateUser, deleteUser } from "@/services/systemUserService";
 import { useToast } from "@/hooks/use-toast";
 
 export function useUsers() {
@@ -51,70 +50,23 @@ export function useUsers() {
   const handleCreateUser = async (userData: {
     name: string;
     email: string;
-    password: string;
-    role: string;
     phone?: string;
-    cpf?: string;
-    rg?: string;
-    username?: string;
-    photo?: string;
+    username: string;
+    role: "admin" | "broker" | "financial";
+    password: string;
   }) => {
     try {
-      setIsLoading(true);
-      console.log("[useUsers] Creating user with data:", userData);
-
-      const newUser = await createSingle("system_users", {
-        name: userData.name,
-        email: userData.email.toLowerCase().trim(),
-        password: userData.password,
-        role: userData.role,
-        phone: userData.phone || null,
-        cpf: userData.cpf || null,
-        rg: userData.rg || null,
-        username: userData.username || null,
-        photo: userData.photo || null,
+      await createUser({
+        ...userData,
         active: true,
       });
-
-      console.log("[useUsers] User created successfully:", newUser);
-      toast({
-        title: "Usuário criado com sucesso!",
-        variant: "default",
-      });
+      toast({ title: "Usuário criado com sucesso!" });
       await fetchUsers();
       return true;
-    } catch (error: any) {
-      console.error("[useUsers] Error creating user:", error);
-      
-      // Tratamento específico para e-mail duplicado
-      if (error.message?.includes("duplicate key") && error.message?.includes("email")) {
-        toast({
-          title: "Este e-mail já está cadastrado",
-          description: "Por favor, use outro e-mail.",
-          variant: "destructive",
-        });
-        throw new Error("Este e-mail já está cadastrado. Por favor, use outro e-mail.");
-      }
-      
-      // Tratamento específico para username duplicado
-      if (error.message?.includes("duplicate key") && error.message?.includes("username")) {
-        toast({
-          title: "Este nome de usuário já está cadastrado",
-          description: "Por favor, use outro.",
-          variant: "destructive",
-        });
-        throw new Error("Este nome de usuário já está cadastrado. Por favor, use outro.");
-      }
-      
-      // Erro genérico
-      toast({
-        title: "Erro ao criar usuário",
-        description: "Por favor, tente novamente.",
-        variant: "destructive",
-      });
-      throw error;
-    } finally {
-      setIsLoading(false);
+    } catch (error) {
+      console.error("Erro ao criar usuário:", error);
+      toast({ title: "Erro ao criar usuário", variant: "destructive" });
+      return false;
     }
   };
 
