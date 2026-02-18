@@ -129,19 +129,17 @@ const PersonalDataSection = memo(function PersonalDataSection({
           />
         </div>
 
-        {documentType === "cpf" && (
-          <div className="space-y-2">
-            <Label htmlFor="rg" className="text-sm font-medium">RG</Label>
-            <Input
-              id="rg"
-              value={formData.rg}
-              onChange={onRgChange}
-              placeholder="00.000.000-0"
-              disabled={!isEditing}
-              className="h-11 sm:h-10 text-sm mobile-input"
-            />
-          </div>
-        )}
+        <div className="space-y-2">
+          <Label htmlFor="rg" className="text-sm font-medium">RG</Label>
+          <Input
+            id="rg"
+            value={formData.rg}
+            onChange={onRgChange}
+            placeholder="00.000.000-0"
+            disabled={!isEditing}
+            className="h-11 sm:h-10 text-sm mobile-input"
+          />
+        </div>
 
         <div className="space-y-2">
           <Label htmlFor="phone" className="text-sm font-medium">Telefone *</Label>
