@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Grid3x3, List, Search } from "lucide-react";
+import { Grid3x3, List } from "lucide-react";
 import { usePayments } from "@/hooks/usePayments";
 import { Payment } from "@/types";
 import { PeriodSelector } from "@/components/dashboard/PeriodSelector";
@@ -37,6 +37,17 @@ export default function PaymentsPage() {
   const { user } = useAuth();
   const mountedRef = useRef(false);
   
+  // Hook único para gerenciar pagamentos
+  const { 
+    payments, 
+    loading, 
+    loadPayments, 
+    handleCancelPayment,
+    rentals,
+    properties,
+    tenants
+  } = usePayments();
+
   // Permissões baseadas na role do usuário
   const permissions = useMemo(() => ({
     isAdmin: user?.role === "admin",
@@ -58,16 +69,6 @@ export default function PaymentsPage() {
     month: new Date().getMonth() + 1,
     year: new Date().getFullYear(),
   });
-
-  const { 
-    payments, 
-    rentals, 
-    properties, 
-    tenants, 
-    loading, 
-    handleCancelPayment: cancelPayment,
-    loadPayments
-  } = usePayments();
 
   // Helpers memoizados
   const getPropertyForPayment = useCallback((payment: Payment) => {
@@ -96,21 +97,11 @@ export default function PaymentsPage() {
   }, []);
 
   // Carregar pagamentos quando os filtros mudarem
-  const loadPaymentsEffect = useCallback(() => {
-    if (!mountedRef.current) {
-      mountedRef.current = true;
-      loadPayments(filters.month.toString(), filters.year.toString());
-      return;
-    }
+  useEffect(() => {
     loadPayments(filters.month.toString(), filters.year.toString());
   }, [filters.month, filters.year, loadPayments]);
 
-  // Effect simplificado
-  useEffect(() => {
-    loadPaymentsEffect();
-  }, [loadPaymentsEffect]);
-
-  // Handlers otimizados
+  // Handlers
   const handleMonthChange = useCallback((value: string | number) => {
     setFilters(prev => ({ ...prev, month: Number(value) }));
   }, []);
@@ -119,27 +110,11 @@ export default function PaymentsPage() {
     setFilters(prev => ({ ...prev, year: Number(value) }));
   }, []);
 
-  const handlePaymentClick = useCallback((payment: Payment) => {
-    if (payment.status === "paid") {
-      setUiState(prev => ({
-        ...prev,
-        selectedPayment: payment,
-        showReceiptDialog: true,
-      }));
-    } else {
-      setUiState(prev => ({
-        ...prev,
-        selectedPaymentId: payment.id,
-        showReceiptDialog: true,
-      }));
-    }
-  }, []);
-
   const confirmCancelPayment = useCallback(async () => {
     if (!uiState.paymentToCancel) return;
 
     try {
-      await cancelPayment(uiState.paymentToCancel);
+      await handleCancelPayment(uiState.paymentToCancel);
       
       setUiState(prev => ({ ...prev, paymentToCancel: null }));
       
@@ -152,9 +127,9 @@ export default function PaymentsPage() {
     } catch (error) {
       setUiState(prev => ({ ...prev, paymentToCancel: null }));
     }
-  }, [uiState.paymentToCancel, cancelPayment, loadPayments, filters.month, filters.year, toast]);
+  }, [uiState.paymentToCancel, handleCancelPayment, loadPayments, filters.month, filters.year, toast]);
 
-  const handleCancelPayment = useCallback((paymentId: string, e?: React.MouseEvent) => {
+  const onCancelPaymentClick = useCallback((paymentId: string, e?: React.MouseEvent) => {
     if (e) {
       e.stopPropagation();
       e.preventDefault();
@@ -196,22 +171,17 @@ export default function PaymentsPage() {
           selectedPayment: updatedPayment,
           showReceiptDialog: true,
         }));
-        
-        toast({
-          title: "Sucesso!",
-          description: "Recebimento registrado com sucesso.",
-        });
-      } else {
-        toast({
-          title: "Sucesso!",
-          description: "Recebimento registrado com sucesso.",
-        });
       }
+      
+      toast({
+        title: "Sucesso!",
+        description: "Recebimento registrado com sucesso.",
+      });
     }, 500);
   }, [uiState.selectedPaymentId, loadPayments, filters.month, filters.year, payments, toast]);
 
-  // Pagamentos filtrados por busca e separados por status
-  const { pendingPayments, paidPayments } = useMemo(() => {
+  // Filtragem dos pagamentos
+  const { pendingPayments, paidPayments, overduePayments } = useMemo(() => {
     const filterBySearch = (p: Payment) => {
       if (!uiState.searchQuery) return true;
       
@@ -227,16 +197,13 @@ export default function PaymentsPage() {
       return propertyAddress.includes(query) || tenantName.includes(query);
     };
 
-    const pending = payments.filter((p) => {
-      const isStatusMatch = p.status === "pending" || p.status === "partial" || p.status === "overdue";
-      return isStatusMatch && filterBySearch(p);
-    });
+    const filtered = payments.filter(filterBySearch);
 
-    const paid = payments.filter((p) => {
-      return p.status === "paid" && filterBySearch(p);
-    });
-
-    return { pendingPayments: pending, paidPayments: paid };
+    return {
+      pendingPayments: filtered.filter(p => p.status === "pending" || p.status === "partial"),
+      paidPayments: filtered.filter(p => p.status === "paid"),
+      overduePayments: filtered.filter(p => p.status === "overdue")
+    };
   }, [payments, uiState.searchQuery, rentals, properties, tenants]);
 
   return (
@@ -300,22 +267,29 @@ export default function PaymentsPage() {
           </div>
         ) : (
           <Tabs defaultValue="pending" className="space-y-6">
-            <TabsList className="grid w-full max-w-md grid-cols-2 mb-6 h-auto p-1">
-              <TabsTrigger value="pending" className="gap-2 text-base py-2">
-                Recebimentos Pendentes
-                <Badge variant="destructive" className="text-xs">
+            {/* Abas responsivas: 1 coluna no mobile, 3 no desktop */}
+            <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 h-auto gap-2 p-1">
+              <TabsTrigger value="pending" className="flex items-center justify-between gap-2 h-11 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">
+                <span>Pendentes</span>
+                <Badge variant="secondary" className="text-xs">
                   {pendingPayments.length}
                 </Badge>
               </TabsTrigger>
-              <TabsTrigger value="paid" className="gap-2 text-base py-2">
-                Recebimentos Pagos
-                <Badge variant="default" className="bg-green-500 text-xs">
+              <TabsTrigger value="paid" className="flex items-center justify-between gap-2 h-11 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">
+                <span>Pagos</span>
+                <Badge variant="default" className="bg-green-600 text-xs hover:bg-green-700">
                   {paidPayments.length}
+                </Badge>
+              </TabsTrigger>
+              <TabsTrigger value="overdue" className="flex items-center justify-between gap-2 h-11 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">
+                <span>Atrasados</span>
+                <Badge variant="destructive" className="text-xs">
+                  {overduePayments.length}
                 </Badge>
               </TabsTrigger>
             </TabsList>
 
-            {/* Aba: Recebimentos Pendentes */}
+            {/* Conteúdo: Pendentes */}
             <TabsContent value="pending" className="space-y-6">
               {pendingPayments.length > 0 ? (
                 <div
@@ -338,7 +312,7 @@ export default function PaymentsPage() {
                       onCardClick={(id) => setUiState(prev => ({ ...prev, selectedPaymentId: id }))}
                       onClick={() => setUiState(prev => ({ ...prev, selectedPaymentId: payment.id }))}
                       getMonthName={getMonthName}
-                      onCancelPayment={permissions.canDelete ? handleCancelPayment : undefined}
+                      onCancelPayment={permissions.canDelete ? onCancelPaymentClick : undefined}
                       onViewReceipt={(id, e) => {
                         e?.stopPropagation();
                         handleViewReceipt(payment);
@@ -347,13 +321,13 @@ export default function PaymentsPage() {
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-12">
+                <div className="text-center py-12 border rounded-lg bg-muted/10">
                   <p className="text-muted-foreground">Nenhum recebimento pendente encontrado</p>
                 </div>
               )}
             </TabsContent>
 
-            {/* Aba: Recebimentos Pagos */}
+            {/* Conteúdo: Pagos */}
             <TabsContent value="paid" className="space-y-6">
               {paidPayments.length > 0 ? (
                 <div
@@ -376,7 +350,7 @@ export default function PaymentsPage() {
                       onCardClick={(id) => setUiState(prev => ({ ...prev, selectedPaymentId: id }))}
                       onClick={() => setUiState(prev => ({ ...prev, selectedPaymentId: payment.id }))}
                       getMonthName={getMonthName}
-                      onCancelPayment={permissions.canDelete ? handleCancelPayment : undefined}
+                      onCancelPayment={permissions.canDelete ? onCancelPaymentClick : undefined}
                       onViewReceipt={(id, e) => {
                         e?.stopPropagation();
                         handleViewReceipt(payment);
@@ -385,8 +359,46 @@ export default function PaymentsPage() {
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-12">
+                <div className="text-center py-12 border rounded-lg bg-muted/10">
                   <p className="text-muted-foreground">Nenhum recebimento pago encontrado</p>
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Conteúdo: Atrasados */}
+            <TabsContent value="overdue" className="space-y-6">
+              {overduePayments.length > 0 ? (
+                <div
+                  className={
+                    uiState.viewMode === "grid"
+                      ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                      : "space-y-4"
+                  }
+                >
+                  {overduePayments.map((payment) => (
+                    <PaymentCard
+                      key={payment.id}
+                      payment={payment}
+                      property={getPropertyForPayment(payment)}
+                      tenant={getTenantForPayment(payment)}
+                      isPaid={payment.status === "paid"}
+                      viewMode={uiState.viewMode}
+                      installment={getPaymentInstallment(payment)}
+                      expectedAmount={getExpectedAmount(payment)}
+                      onCardClick={(id) => setUiState(prev => ({ ...prev, selectedPaymentId: id }))}
+                      onClick={() => setUiState(prev => ({ ...prev, selectedPaymentId: payment.id }))}
+                      getMonthName={getMonthName}
+                      onCancelPayment={permissions.canDelete ? onCancelPaymentClick : undefined}
+                      onViewReceipt={(id, e) => {
+                        e?.stopPropagation();
+                        handleViewReceipt(payment);
+                      }}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 border rounded-lg bg-muted/10">
+                  <p className="text-muted-foreground">Nenhum recebimento atrasado encontrado</p>
                 </div>
               )}
             </TabsContent>

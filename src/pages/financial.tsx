@@ -664,10 +664,10 @@ export default function Financial() {
         </ScrollReveal>
 
         <Tabs defaultValue="rentals" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 max-w-md">
-            <TabsTrigger value="rentals">Detalhamento de Locações</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-1 sm:grid-cols-2 h-auto gap-2 p-1">
+            <TabsTrigger value="rentals" className="h-11">Detalhamento de Locações</TabsTrigger>
             {isAdmin && (
-              <TabsTrigger value="deposits">Detalhamento de Cauções</TabsTrigger>
+              <TabsTrigger value="deposits" className="h-11">Detalhamento de Cauções</TabsTrigger>
             )}
           </TabsList>
 
