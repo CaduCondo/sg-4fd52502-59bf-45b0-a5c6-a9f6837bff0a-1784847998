@@ -42,6 +42,14 @@ const nextConfig = {
       },
     ],
   },
+  // 🔥 ADICIONE ESTAS LINHAS AQUI:
+  api: {
+    bodyParser: {
+      sizeLimit: '15mb',
+    },
+    responseLimit: '15mb',
+  },
+  // FIM DA ADIÇÃO
   allowedDevOrigins: ["*.daytona.work", "*.softgen.dev"],
 };
 
