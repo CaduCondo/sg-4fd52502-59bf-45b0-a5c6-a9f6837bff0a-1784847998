@@ -23,8 +23,8 @@ interface ManagePaymentFormProps {
   paymentId: string;
   onSuccess?: () => void;
   onCancel?: () => void;
-  onClose?: () => void; // Added for compatibility with dialogs
-  embedded?: boolean;   // Added for compatibility
+  onClose?: () => void;
+  embedded?: boolean;
 }
 
 interface FormData {
@@ -61,21 +61,17 @@ export function ManagePaymentForm({ paymentId, onSuccess, onCancel, onClose }: M
   const [selectedAttachment, setSelectedAttachment] = useState<string | null>(null);
 
   const [originalBreakdown, setOriginalBreakdown] = useState<PaymentBreakdownItem[]>([]);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [paymentBreakdown, setPaymentBreakdown] = useState<PaymentBreakdownItem[]>([]);
   const [isTerminationPayment, setIsTerminationPayment] = useState(false);
   const [repairExpensesInput, setRepairExpensesInput] = useState("0,00");
   const [otherDiscountsInput, setOtherDiscountsInput] = useState("0,00");
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [subtotalFees, setSubtotalFees] = useState(0);
   const [discountInput, setDiscountInput] = useState("0,00");
   const [totalAmountInput, setTotalAmountInput] = useState("0,00");
 
-  const [lateFeePercentage, setLateFeePercentage] = useState(2); // Default value
-  const [interestRatePercentage, setInterestRatePercentage] = useState(0.033); // Default value
+  const [lateFeePercentage, setLateFeePercentage] = useState(2);
+  const [interestRatePercentage, setInterestRatePercentage] = useState(0.033);
 
-  // Config state
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [config, setConfig] = useState({
     isFineExempt: false,
     isInterestExempt: false,
@@ -115,6 +111,12 @@ export function ManagePaymentForm({ paymentId, onSuccess, onCancel, onClose }: M
               email,
               phone
             )
+          ),
+          rental_terminations (
+            id,
+            termination_date,
+            payment_breakdown,
+            final_balance
           )
         `)
         .eq("id", paymentId)
@@ -123,81 +125,55 @@ export function ManagePaymentForm({ paymentId, onSuccess, onCancel, onClose }: M
       if (paymentError) throw paymentError;
       if (!paymentData) throw new Error("Pagamento não encontrado");
 
-      // Initial payment set
-      let currentPaymentData: any = { ...paymentData };
-      setPayment(currentPaymentData);
+      setPayment(paymentData);
 
-      // Fetch rental_terminations separately if this payment is linked to a rental
-      if (paymentData.rental_id) {
-        // Use 'as any' to bypass potential type mismatch if table is missing in types
-        const { data: terminationData } = await (supabase as any)
-          .from("rental_terminations")
-          .select("id, termination_date, payment_breakdown, final_balance")
-          .eq("rental_id", paymentData.rental_id)
-          .maybeSingle();
+      if (paymentData.rental_terminations) {
+        setIsTerminationPayment(true);
+        const breakdown = paymentData.rental_terminations.payment_breakdown || [];
+        setOriginalBreakdown(breakdown);
+        setPaymentBreakdown(breakdown);
 
-        if (terminationData) {
-          // Attach termination data to payment object for easier access
-          currentPaymentData = {
-            ...currentPaymentData,
-            rental_terminations: terminationData
-          };
-          
-          setPayment(currentPaymentData);
+        const subtotal = breakdown.reduce((sum: number, item: any) => sum + item.amount, 0);
+        setSubtotalFees(Math.abs(subtotal));
 
-          setIsTerminationPayment(true);
-          const breakdown = terminationData.payment_breakdown || [];
-          setOriginalBreakdown(breakdown);
-          setPaymentBreakdown(breakdown);
+        const discount = breakdown.find((item: any) => item.type === "discount");
+        const otherDiscounts = breakdown
+          .filter((item: any) => item.type === "other_discount")
+          .reduce((sum: number, item: any) => sum + item.amount, 0);
 
-          const subtotal = breakdown.reduce((sum: number, item: any) => sum + item.amount, 0);
-          setSubtotalFees(Math.abs(subtotal));
-
-          const discount = breakdown.find((item: any) => item.type === "discount");
-          const otherDiscounts = breakdown
-            .filter((item: any) => item.type === "other_discount")
-            .reduce((sum: number, item: any) => sum + item.amount, 0);
-
-          setDiscountInput(formatCurrency(Math.abs(discount?.amount || 0).toString()));
-          setOtherDiscountsInput(formatCurrency(Math.abs(otherDiscounts).toString()));
-        }
+        setDiscountInput(formatCurrency(Math.abs(discount?.amount || 0).toString()));
+        setOtherDiscountsInput(formatCurrency(Math.abs(otherDiscounts).toString()));
       }
 
-      // Auto-fill total_amount if empty
-      if (!currentPaymentData.total_amount || currentPaymentData.total_amount === 0) {
+      if (!paymentData.total_amount || paymentData.total_amount === 0) {
         let calculatedTotal = 0;
 
-        if (currentPaymentData.rental_terminations) {
-          // Termination payment - use breakdown total
-          const breakdown = currentPaymentData.rental_terminations.payment_breakdown || [];
+        if (paymentData.rental_terminations) {
+          const breakdown = paymentData.rental_terminations.payment_breakdown || [];
           calculatedTotal = breakdown.reduce((sum: number, item: any) => sum + item.amount, 0);
-        } else if (currentPaymentData.rentals) {
-          // Regular rental payment
-          const rental = currentPaymentData.rentals;
+        } else if (paymentData.rentals) {
+          const rental = paymentData.rentals;
           calculatedTotal = 
             (rental.rent_amount || 0) + 
             (rental.parking_amount || 0) + 
-            (currentPaymentData.fine || 0) + 
-            (currentPaymentData.interest || 0);
-        } else if (currentPaymentData.amount_due) {
-          // Partial payment - use remaining amount
-          calculatedTotal = currentPaymentData.amount_due;
+            (paymentData.fine || 0) + 
+            (paymentData.interest || 0);
+        } else if (paymentData.amount_due) {
+          calculatedTotal = paymentData.amount_due;
         }
 
         if (calculatedTotal > 0) {
           setTotalAmountInput(formatCurrency(calculatedTotal.toString()));
         }
       } else {
-        setTotalAmountInput(formatCurrency(currentPaymentData.total_amount.toString()));
+        setTotalAmountInput(formatCurrency(paymentData.total_amount.toString()));
       }
 
-      // Load existing config values
-      if (currentPaymentData.rental_id) {
-        // Use cast 'as any' to bypass strict table checking for this specific table
+      if (paymentData.rental_id) {
         const { data: configData } = await (supabase as any)
           .from("admin_fee_exemptions")
           .select("*")
-          .eq("rental_id", currentPaymentData.rental_id)
+          .eq("rental_id", paymentData.rental_id)
           .maybeSingle();
 
         if (configData) {
@@ -225,7 +201,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onCancel, onClose }: M
     loadPaymentData();
   }, [loadPaymentData]);
 
-  // Calculated values
   const calculateValues = useMemo(() => {
     if (!payment?.rentals) {
       return {
@@ -296,16 +271,13 @@ export function ManagePaymentForm({ paymentId, onSuccess, onCancel, onClose }: M
   useEffect(() => {
     if (!payment || loading) return;
 
-    // Only auto-fill if payment is not yet paid and field is empty
     if (payment.status !== "paid" && !formData.amount_to_pay) {
       if (isTerminationPayment && calculatedTotal !== 0) {
-        // For termination payments, use calculated total
         setFormData(prev => ({ 
           ...prev, 
           amount_to_pay: formatCurrencyHelper(Math.abs(calculatedTotal).toFixed(2))
         }));
       } else if (calculateValues.valorAPagar > 0) {
-        // For regular payments, use calculated total (rent + fees)
         const amountToFill = calculateValues.valorJaPago > 0 
           ? calculateValues.valorRestante 
           : calculateValues.valorAPagar;
@@ -396,7 +368,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onCancel, onClose }: M
     try {
       let fileToUpload = file;
 
-      // Image compression logic
       if (file.type.startsWith("image/") && file.size > 1024 * 1024) {
         console.log("[ManagePaymentForm] Compressing large image...");
         
@@ -545,7 +516,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onCancel, onClose }: M
         updated_at: new Date().toISOString()
       };
 
-      if (isTerminationPayment) {
+      if (isTerminationPayment && payment?.rental_terminations?.id) {
         const repairExpenses = parseCurrency(repairExpensesInput);
         const otherDiscounts = parseCurrency(otherDiscountsInput);
 
@@ -561,15 +532,14 @@ export function ManagePaymentForm({ paymentId, onSuccess, onCancel, onClose }: M
 
         const finalBalance = updatedBreakdown.reduce((sum, item) => sum + item.amount, 0);
 
-        // Force cast supabase to any to bypass table type check for rental_terminations
-        const { error: terminationError } = await (supabase as any)
+        const { error: terminationError } = await supabase
           .from("rental_terminations")
           .update({
             payment_breakdown: updatedBreakdown,
             final_balance: finalBalance,
             updated_at: new Date().toISOString()
           })
-          .eq("id", payment?.rental_terminations?.id);
+          .eq("id", payment.rental_terminations.id);
 
         if (terminationError) throw terminationError;
       }
