@@ -12,16 +12,12 @@ import {
   Calendar, 
   Camera, 
   Paperclip, 
-  X, 
   Trash2,
   Eye,
   Download,
   FileText
 } from "lucide-react";
-import type { Payment, RentalTermination } from "@/types";
-import { PaymentReceipt } from "@/components/PaymentReceipt";
-import { RentalContract } from "@/components/RentalContract";
-import { AttachmentViewer } from "@/components/AttachmentViewer";
+import { Lightbox } from "@/components/Lightbox";
 
 interface ManagePaymentFormProps {
   paymentId: string;
@@ -42,11 +38,10 @@ interface PaymentBreakdownItem {
   type?: "debit" | "credit";
 }
 
-export default function ManagePaymentForm({ paymentId, onSuccess, onCancel }: ManagePaymentFormProps) {
+export function ManagePaymentForm({ paymentId, onSuccess, onCancel }: ManagePaymentFormProps) {
   const router = useRouter();
   const { toast } = useToast();
   
-  // Using any here to handle the mismatch between DB snake_case and Type camelCase without blocking build
   const [payment, setPayment] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -78,7 +73,7 @@ export default function ManagePaymentForm({ paymentId, onSuccess, onCancel }: Ma
     return numValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }, []);
 
-  // Defined BEFORE useEffect to avoid ReferenceError
+  // 1. Define loadPaymentData FIRST (before useEffect)
   const loadPaymentData = useCallback(async () => {
     if (!paymentId) return;
 
@@ -95,6 +90,7 @@ export default function ManagePaymentForm({ paymentId, onSuccess, onCancel }: Ma
         setInterestRatePercentage(configData.interest_rate_percentage || 0.033);
       }
 
+      // @ts-ignore - rental_terminations relation might be missing in types
       const { data: paymentData, error: paymentError } = await supabase
         .from("payments")
         .select(`
@@ -151,6 +147,7 @@ export default function ManagePaymentForm({ paymentId, onSuccess, onCancel }: Ma
         setAttachments(paymentData.attachments);
       }
 
+      // Initial form fill from existing payment data
       if (paymentData.paid_amount) {
         setFormData(prev => ({
           ...prev,
@@ -172,10 +169,12 @@ export default function ManagePaymentForm({ paymentId, onSuccess, onCancel }: Ma
     }
   }, [paymentId, toast, formatCurrencyHelper]);
 
+  // 2. useEffect calling loadPaymentData
   useEffect(() => {
     loadPaymentData();
   }, [loadPaymentData]);
 
+  // Calculated values
   const calculateValues = useMemo(() => {
     if (!payment?.rentals) {
       return {
@@ -243,17 +242,20 @@ export default function ManagePaymentForm({ paymentId, onSuccess, onCancel }: Ma
     return updatedBreakdown.reduce((sum, item) => sum + item.amount, 0);
   }, [isTerminationPayment, originalBreakdown, repairExpensesInput, otherDiscountsInput]);
 
-  // Auto-fill logic
+  // 3. Auto-fill amount_to_pay useEffect
   useEffect(() => {
     if (!payment || loading) return;
 
+    // Only auto-fill if payment is not yet paid and field is empty
     if (payment.status !== "paid" && !formData.amount_to_pay) {
       if (isTerminationPayment && calculatedTotal !== 0) {
+        // For termination payments, use calculated total
         setFormData(prev => ({ 
           ...prev, 
           amount_to_pay: formatCurrencyHelper(Math.abs(calculatedTotal).toFixed(2))
         }));
       } else if (calculateValues.valorAPagar > 0) {
+        // For regular payments, use calculated total (rent + fees)
         const amountToFill = calculateValues.valorJaPago > 0 
           ? calculateValues.valorRestante 
           : calculateValues.valorAPagar;
@@ -342,6 +344,7 @@ export default function ManagePaymentForm({ paymentId, onSuccess, onCancel }: Ma
     try {
       let fileToUpload = file;
 
+      // Image compression logic
       if (file.type.startsWith("image/") && file.size > 1024 * 1024) {
         console.log("[ManagePaymentForm] Compressing large image...");
         
@@ -871,8 +874,13 @@ export default function ManagePaymentForm({ paymentId, onSuccess, onCancel }: Ma
       </form>
 
       {selectedAttachment && (
-        <AttachmentViewer
-          url={selectedAttachment}
+        <Lightbox
+          files={[{ 
+            name: `Anexo`, 
+            url: selectedAttachment, 
+            type: selectedAttachment.toLowerCase().endsWith(".pdf") ? "application/pdf" : "image/jpeg" 
+          }]}
+          initialIndex={0}
           onClose={() => setSelectedAttachment(null)}
         />
       )}
