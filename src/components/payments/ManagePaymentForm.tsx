@@ -15,7 +15,13 @@ import type { Payment, Rental, Property, Tenant } from "@/types";
 import { calculateCorrectedDeposit } from "@/services/igpmService";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Lightbox } from "@/components/Lightbox";
-import { FileText, Upload, X, Camera, Image as ImageIcon, Loader2 } from "lucide-react";
+
+interface Attachment {
+  url: string;
+  name: string;
+  description?: string;
+  uploadProgress?: number;
+}
 
 interface PaymentFormData {
   id?: string;
@@ -34,6 +40,7 @@ interface PaymentFormData {
   rental_terminations?: any;
   breakdown?: any;
   due_date?: string;
+  status?: string;
 }
 
 interface ManagePaymentFormProps {
@@ -133,7 +140,12 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [attachments, setAttachments] = useState<string[]>([]);
+  
+  // Attachments state
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{ [key: number]: number }>({});
+  
   const [removeFees, setRemoveFees] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [isPaid, setIsPaid] = useState(false);
@@ -347,9 +359,22 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       }
 
       if (paymentData.attachments && Array.isArray(paymentData.attachments)) {
-        const attachmentStrings = paymentData.attachments
-          .filter((att): att is string => typeof att === "string");
-        setAttachments(attachmentStrings);
+        const attachmentData = paymentData.attachments.map((att: any) => {
+          if (typeof att === 'string') {
+            return {
+              url: att,
+              name: att.split('/').pop() || 'Arquivo',
+              description: ''
+            };
+          }
+          return att;
+        });
+        setAttachments(attachmentData);
+      } else {
+        // Initialize with one empty attachment slot if none exist
+        if (!isPaid) {
+          setAttachments([{ url: '', name: '', description: '' }]);
+        }
       }
 
       setFormData({
@@ -380,7 +405,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     } finally {
       setLoading(false);
     }
-  }, [paymentId, toast, formatCurrency]);
+  }, [paymentId, toast, formatCurrency, isPaid]);
 
   useEffect(() => {
     loadPaymentData();
@@ -483,17 +508,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     waiveFees
   ]);
 
-  const totalValue = useMemo(() => {
-    if (!payment) return 0;
-    
-    const paid = parseFloat(payment.paid_amount?.toString() || "0");
-    const lateFee = waiveFees ? 0 : parseFloat(payment.late_fee?.toString() || "0");
-    const interest = waiveFees ? 0 : parseFloat(payment.interest?.toString() || "0");
-    const discount = parseFloat(payment.discount_amount?.toString() || "0");
-    
-    return paid + lateFee + interest - discount;
-  }, [payment, waiveFees]);
-
   useEffect(() => {
     if (loading || !payment) return;
     
@@ -549,40 +563,16 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     payment,
     igpmCorrection,
     formatCurrency,
-    totalValue,
     waiveFees
   ]);
 
-  const handleFileUpload = async (file: File) => {
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
+  const addAttachment = useCallback(() => {
+    setAttachments(prev => [...prev, { url: '', name: '', description: '' }]);
+  }, []);
 
-      const response = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error("Erro ao fazer upload");
-      }
-
-      const data = await response.json();
-      setAttachments(prev => [...prev, data.url]);
-
-      toast({
-        title: "Sucesso",
-        description: "Arquivo anexado com sucesso!",
-      });
-    } catch (error) {
-      console.error("Erro ao fazer upload:", error);
-      toast({
-        title: "Erro",
-        description: "Erro ao fazer upload do arquivo",
-        variant: "destructive",
-      });
-    }
-  };
+  const removeAttachment = useCallback((index: number) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
+  }, []);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
     const file = e.target.files?.[0];
@@ -627,7 +617,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       xhr.upload.addEventListener("progress", (event) => {
         if (event.lengthComputable) {
           const percentComplete = Math.round((event.loaded / event.total) * 100);
-          setUploadProgress({ ...uploadProgress, [index]: percentComplete });
+          setUploadProgress(prev => ({ ...prev, [index]: percentComplete }));
         }
       });
 
@@ -659,14 +649,16 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
 
       const url = await uploadPromise;
 
-      const newAttachments = [...attachments];
-      newAttachments[index] = {
-        ...newAttachments[index],
-        url,
-        name: file.name,
-        uploadProgress: 100,
-      };
-      setAttachments(newAttachments);
+      setAttachments(prev => {
+        const newAttachments = [...prev];
+        newAttachments[index] = {
+          ...newAttachments[index],
+          url,
+          name: file.name,
+          uploadProgress: 100,
+        };
+        return newAttachments;
+      });
 
       toast({
         title: "Arquivo enviado",
@@ -680,46 +672,25 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         variant: "destructive",
       });
 
-      const newAttachments = [...attachments];
-      newAttachments[index] = {
-        ...newAttachments[index],
-        url: "",
-        name: "",
-        uploadProgress: 0,
-      };
-      setAttachments(newAttachments);
+      setAttachments(prev => {
+        const newAttachments = [...prev];
+        newAttachments[index] = {
+          ...newAttachments[index],
+          url: "",
+          name: "",
+          uploadProgress: 0,
+        };
+        return newAttachments;
+      });
     } finally {
       setUploadingFile(false);
-      setUploadProgress({ ...uploadProgress, [index]: 0 });
+      setUploadProgress(prev => {
+        const newProgress = { ...prev };
+        delete newProgress[index];
+        return newProgress;
+      });
     }
   };
-
-  const handleTakePhoto = useCallback(() => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = "image/*";
-    input.capture = "environment";
-    input.onchange = (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (file) handleFileUpload(file);
-    };
-    input.click();
-  }, [toast]);
-
-  const handleAttachFile = useCallback(() => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = "image/*,application/pdf";
-    input.onchange = (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (file) handleFileUpload(file);
-    };
-    input.click();
-  }, []);
-
-  const handleRemoveAttachment = useCallback((index: number) => {
-    setAttachments(prev => prev.filter((_, i) => i !== index));
-  }, []);
 
   const handleEnableEdit = useCallback(() => {
     setIsEditMode(true);
@@ -842,6 +813,26 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         paymentStatus = finalPaidAmount >= expectedTotal ? "paid" : "partial";
       }
 
+      // Filter attachments to remove empty ones
+      const validAttachments = attachments
+        .filter(a => a.url)
+        .map(a => a.url); // Store only URLs in DB for backward compatibility
+        
+      // Or if you want to store objects in DB, you need to update DB schema/types
+      // For now let's assume we store strings (URLs) but we should probably migrate to storing objects
+      // If the column is JSONB we can store objects. If it's text[], we store strings.
+      // Based on previous code: attachments: attachments.length > 0 ? attachments : null
+      // And seeing it was string[], let's keep it simple and store strings or objects depending on what backend expects.
+      // The original code was: attachments: attachments.length > 0 ? attachments : null, where attachments was string[]
+      // So let's map back to strings or objects. If the column is jsonb, objects are better.
+      // Let's store objects to keep metadata like description.
+      
+      const attachmentsToSave = attachments.filter(a => a.url).map(a => ({
+        url: a.url,
+        name: a.name,
+        description: a.description
+      }));
+
       const paymentDataUpdate = {
         payment_date: formData.payment_date,
         payment_method: formData.payment_method,
@@ -851,7 +842,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         paid_amount: finalPaidAmount,
         notes: formData.notes,
         status: paymentStatus,
-        attachments: attachments.length > 0 ? attachments : null,
+        attachments: attachmentsToSave.length > 0 ? attachmentsToSave : null,
         late_fee: isTerminationPayment ? (removeFees ? 0 : values.multa) : (removeFees ? 0 : values.multa),
         interest: isTerminationPayment ? (removeFees ? 0 : values.juros) : (removeFees ? 0 : values.juros),
         updated_at: new Date().toISOString(),
@@ -1347,17 +1338,28 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                       </div>
 
                       <div className="space-y-2">
-                        <Input
-                          id={`attachment-${index}`}
-                          type="file"
-                          accept="image/jpeg,image/jpg,image/png,image/webp,application/pdf"
-                          capture="environment"
-                          onChange={(e) => handleFileChange(e, index)}
-                          disabled={uploadingFile}
-                          className="cursor-pointer file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
-                        />
+                        <div className="flex gap-2">
+                          <Input
+                            id={`attachment-${index}`}
+                            type="file"
+                            accept="image/jpeg,image/jpg,image/png,image/webp,application/pdf"
+                            onChange={(e) => handleFileChange(e, index)}
+                            disabled={uploadingFile}
+                            className="cursor-pointer file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 hidden"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="w-full"
+                            onClick={() => document.getElementById(`attachment-${index}`)?.click()}
+                            disabled={uploadingFile}
+                          >
+                            <Upload className="mr-2 h-4 w-4" />
+                            {attachment.url ? "Trocar Arquivo" : "Selecionar Arquivo"}
+                          </Button>
+                        </div>
 
-                        {uploadProgress[index] > 0 && uploadProgress[index] < 100 && (
+                        {uploadProgress[index] !== undefined && uploadProgress[index] > 0 && uploadProgress[index] < 100 && (
                           <div className="space-y-1">
                             <div className="flex items-center gap-2 text-sm text-muted-foreground">
                               <Loader2 className="h-4 w-4 animate-spin" />
@@ -1388,6 +1390,14 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                               <p className="text-xs text-muted-foreground">
                                 Arquivo enviado com sucesso
                               </p>
+                              <a 
+                                href={attachment.url} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-xs text-primary hover:underline"
+                              >
+                                Visualizar
+                              </a>
                             </div>
                           </div>
                         )}
@@ -1395,11 +1405,13 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
 
                       <Input
                         placeholder="Descrição do comprovante (opcional)"
-                        value={attachment.description}
+                        value={attachment.description || ''}
                         onChange={(e) => {
-                          const newAttachments = [...attachments];
-                          newAttachments[index].description = e.target.value;
-                          setAttachments(newAttachments);
+                          setAttachments(prev => {
+                            const newAttachments = [...prev];
+                            newAttachments[index] = { ...newAttachments[index], description: e.target.value };
+                            return newAttachments;
+                          });
                         }}
                       />
                     </div>
