@@ -35,7 +35,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, onCancel, emb
   const [payment, setPayment] = useState<any>(null);
   const [paymentBreakdown, setPaymentBreakdown] = useState<PaymentBreakdownItem[]>([]);
   const [subtotalFees, setSubtotalFees] = useState({ lateFee: 0, interest: 0, discount: 0 });
-
   const [formData, setFormData] = useState({
     paidAmount: "",
     paymentDate: "",
@@ -48,7 +47,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, onCancel, emb
     interest: "0",
     discount: "0",
   });
-
   const [attachments, setAttachments] = useState<string[]>([]);
   const [selectedAttachment, setSelectedAttachment] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -59,7 +57,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, onCancel, emb
     try {
       setLoading(true);
 
-      // Query com campos corretos do schema
+      // Query com TODOS os campos corretos do schema (rent_value, garage_value, property_identifier, locations)
       const { data: paymentData, error: paymentError } = await supabase
         .from("payments")
         .select(`
@@ -103,7 +101,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, onCancel, emb
       if (paymentError) throw paymentError;
 
       const data = paymentData as any;
-
       setPayment(data);
 
       // Processar attachments
@@ -356,7 +353,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, onCancel, emb
     const extension = url.split('.').pop()?.toLowerCase();
     if (extension === 'pdf') return 'application/pdf';
     if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(extension || '')) return 'image/' + extension;
-    return 'image/jpeg';
+    return 'image/jpeg'; // Fallback
   };
 
   if (loading) {
