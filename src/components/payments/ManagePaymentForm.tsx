@@ -92,7 +92,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onCancel, onClose }: M
         setInterestRatePercentage(configData.interest_rate_percentage || 0.033);
       }
 
-      // @ts-ignore - rental_terminations might be missing in types, forcing any
+      // @ts-expect-error - rental_terminations might be missing in types, forcing any
       const { data: paymentData, error: paymentError } = await supabase
         .from("payments")
         .select(`
@@ -128,10 +128,10 @@ export function ManagePaymentForm({ paymentId, onSuccess, onCancel, onClose }: M
 
       setPayment(paymentData);
 
-      // @ts-ignore - explicitly handling potential missing type
+      // @ts-expect-error - explicitly handling potential missing type
       if (paymentData.rental_terminations) {
         setIsTerminationPayment(true);
-        // @ts-ignore
+        // @ts-expect-error
         const breakdown = paymentData.rental_terminations.payment_breakdown || [];
         setOriginalBreakdown(breakdown);
 
