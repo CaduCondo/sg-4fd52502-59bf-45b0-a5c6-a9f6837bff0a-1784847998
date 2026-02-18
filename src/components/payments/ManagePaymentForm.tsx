@@ -18,6 +18,7 @@ import {
   FileText
 } from "lucide-react";
 import { Lightbox } from "@/components/Lightbox";
+import { Json } from "@/integrations/supabase/types";
 
 interface ManagePaymentFormProps {
   paymentId: string;
@@ -91,7 +92,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onCancel, onClose }: M
     try {
       setLoading(true);
       
-      const { data: paymentData, error: paymentError } = await supabase
+      const { data, error: paymentError } = await supabase
         .from("payments")
         .select(`
           *,
@@ -123,13 +124,20 @@ export function ManagePaymentForm({ paymentId, onSuccess, onCancel, onClose }: M
         .single();
 
       if (paymentError) throw paymentError;
-      if (!paymentData) throw new Error("Pagamento não encontrado");
+      if (!data) throw new Error("Pagamento não encontrado");
 
+      // Cast to any to bypass strict type inference issues with joined tables
+      const paymentData = data as any;
       setPayment(paymentData);
 
-      if (paymentData.rental_terminations) {
+      // Handle rental_terminations (can be array or object depending on relation type, normally array for HasMany)
+      const terminationData = Array.isArray(paymentData.rental_terminations) 
+        ? paymentData.rental_terminations[0] 
+        : paymentData.rental_terminations;
+
+      if (terminationData) {
         setIsTerminationPayment(true);
-        const breakdown = paymentData.rental_terminations.payment_breakdown || [];
+        const breakdown = terminationData.payment_breakdown || [];
         setOriginalBreakdown(breakdown);
         setPaymentBreakdown(breakdown);
 
@@ -148,14 +156,16 @@ export function ManagePaymentForm({ paymentId, onSuccess, onCancel, onClose }: M
       if (!paymentData.total_amount || paymentData.total_amount === 0) {
         let calculatedTotal = 0;
 
-        if (paymentData.rental_terminations) {
-          const breakdown = paymentData.rental_terminations.payment_breakdown || [];
+        if (terminationData) {
+          const breakdown = terminationData.payment_breakdown || [];
           calculatedTotal = breakdown.reduce((sum: number, item: any) => sum + item.amount, 0);
         } else if (paymentData.rentals) {
-          const rental = paymentData.rentals;
+          // rentals is usually an object (BelongsTo), but safe check
+          const rental = Array.isArray(paymentData.rentals) ? paymentData.rentals[0] : paymentData.rentals;
+          
           calculatedTotal = 
-            (rental.rent_amount || 0) + 
-            (rental.parking_amount || 0) + 
+            (rental?.rent_amount || 0) + 
+            (rental?.parking_amount || 0) + 
             (paymentData.fine || 0) + 
             (paymentData.interest || 0);
         } else if (paymentData.amount_due) {
@@ -516,7 +526,12 @@ export function ManagePaymentForm({ paymentId, onSuccess, onCancel, onClose }: M
         updated_at: new Date().toISOString()
       };
 
-      if (isTerminationPayment && payment?.rental_terminations?.id) {
+      // Handle termination update
+      const terminationData = Array.isArray(payment.rental_terminations) 
+        ? payment.rental_terminations[0] 
+        : payment.rental_terminations;
+
+      if (isTerminationPayment && terminationData?.id) {
         const repairExpenses = parseCurrency(repairExpensesInput);
         const otherDiscounts = parseCurrency(otherDiscountsInput);
 
@@ -535,11 +550,11 @@ export function ManagePaymentForm({ paymentId, onSuccess, onCancel, onClose }: M
         const { error: terminationError } = await supabase
           .from("rental_terminations")
           .update({
-            payment_breakdown: updatedBreakdown,
+            payment_breakdown: updatedBreakdown as unknown as Json,
             final_balance: finalBalance,
             updated_at: new Date().toISOString()
           })
-          .eq("id", payment.rental_terminations.id);
+          .eq("id", terminationData.id);
 
         if (terminationError) throw terminationError;
       }
