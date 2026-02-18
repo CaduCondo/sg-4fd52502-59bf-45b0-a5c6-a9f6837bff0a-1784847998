@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, parseCurrency } from "@/lib/masks";
-import { Calendar, Upload, FileText, Trash2, AlertCircle, Eye } from "lucide-react";
+import { Upload, Trash2, AlertCircle, Eye } from "lucide-react";
 import { Lightbox } from "@/components/Lightbox";
 import type { Json } from "@/integrations/supabase/database.types";
 
@@ -20,7 +20,15 @@ interface PaymentBreakdownItem {
   type: "credit" | "debit";
 }
 
-export function ManagePaymentForm({ paymentId }: { paymentId: string }) {
+interface ManagePaymentFormProps {
+  paymentId: string;
+  onSuccess?: () => void;
+  onClose?: () => void;
+  onCancel?: () => void;
+  embedded?: boolean;
+}
+
+export function ManagePaymentForm({ paymentId, onSuccess, onClose, onCancel, embedded = false }: ManagePaymentFormProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
@@ -51,7 +59,7 @@ export function ManagePaymentForm({ paymentId }: { paymentId: string }) {
     try {
       setLoading(true);
 
-      // Query com TODOS os campos corretos do schema
+      // Query com TODOS os campos corretos do schema (rent_value, garage_value, property_identifier, locations)
       const { data: paymentData, error: paymentError } = await supabase
         .from("payments")
         .select(`
@@ -316,7 +324,11 @@ export function ManagePaymentForm({ paymentId }: { paymentId: string }) {
         description: "Informações salvas com sucesso",
       });
 
-      router.push("/payments");
+      if (onSuccess) {
+        onSuccess();
+      } else {
+        router.push("/payments");
+      }
     } catch (error: any) {
       console.error("Error updating payment:", error);
       toast({
@@ -327,6 +339,24 @@ export function ManagePaymentForm({ paymentId }: { paymentId: string }) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCancel = () => {
+    if (onCancel) {
+      onCancel();
+    } else if (onClose) {
+      onClose();
+    } else {
+      router.push("/payments");
+    }
+  };
+
+  // Helper para identificar tipo de arquivo
+  const getFileType = (url: string) => {
+    const extension = url.split('.').pop()?.toLowerCase();
+    if (extension === 'pdf') return 'application/pdf';
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(extension || '')) return 'image/' + extension;
+    return 'image/jpeg'; // Fallback
   };
 
   if (loading) {
@@ -599,7 +629,7 @@ export function ManagePaymentForm({ paymentId }: { paymentId: string }) {
               <Button type="submit" disabled={loading}>
                 {loading ? "Salvando..." : "Salvar"}
               </Button>
-              <Button type="button" variant="outline" onClick={() => router.push("/payments")}>
+              <Button type="button" variant="outline" onClick={handleCancel}>
                 Cancelar
               </Button>
             </div>
@@ -609,7 +639,11 @@ export function ManagePaymentForm({ paymentId }: { paymentId: string }) {
 
       {selectedAttachment && (
         <Lightbox
-          images={[{ src: selectedAttachment }]}
+          files={[{ 
+            name: "Anexo", 
+            url: selectedAttachment, 
+            type: getFileType(selectedAttachment)
+          }]}
           initialIndex={0}
           onClose={() => setSelectedAttachment(null)}
         />
