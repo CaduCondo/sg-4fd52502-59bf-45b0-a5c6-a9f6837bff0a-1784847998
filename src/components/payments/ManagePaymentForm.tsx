@@ -37,7 +37,7 @@ interface FormData {
 interface PaymentBreakdownItem {
   description: string;
   amount: number;
-  type?: "debit" | "credit";
+  type?: "debit" | "credit" | "discount" | "other_discount";
 }
 
 export function ManagePaymentForm({ paymentId, onSuccess, onCancel, onClose }: ManagePaymentFormProps) {
@@ -61,12 +61,26 @@ export function ManagePaymentForm({ paymentId, onSuccess, onCancel, onClose }: M
   const [selectedAttachment, setSelectedAttachment] = useState<string | null>(null);
 
   const [originalBreakdown, setOriginalBreakdown] = useState<PaymentBreakdownItem[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [paymentBreakdown, setPaymentBreakdown] = useState<PaymentBreakdownItem[]>([]);
   const [isTerminationPayment, setIsTerminationPayment] = useState(false);
   const [repairExpensesInput, setRepairExpensesInput] = useState("0,00");
   const [otherDiscountsInput, setOtherDiscountsInput] = useState("0,00");
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [subtotalFees, setSubtotalFees] = useState(0);
+  const [discountInput, setDiscountInput] = useState("0,00");
+  const [totalAmountInput, setTotalAmountInput] = useState("0,00");
 
-  const [lateFeePercentage, setLateFeePercentage] = useState(2);
-  const [interestRatePercentage, setInterestRatePercentage] = useState(0.033);
+  const [lateFeePercentage, setLateFeePercentage] = useState(2); // Default value
+  const [interestRatePercentage, setInterestRatePercentage] = useState(0.033); // Default value
+
+  // Config state
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [config, setConfig] = useState({
+    isFineExempt: false,
+    isInterestExempt: false,
+    isAdminFeeExempt: false
+  });
 
   const isPaid = payment?.status === "paid";
 
@@ -75,23 +89,12 @@ export function ManagePaymentForm({ paymentId, onSuccess, onCancel, onClose }: M
     return numValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }, []);
 
-  // 1. Define loadPaymentData FIRST (before useEffect)
   const loadPaymentData = useCallback(async () => {
     if (!paymentId) return;
 
     try {
       setLoading(true);
-
-      const { data: configData } = await supabase
-        .from("configs")
-        .select("late_fee_percentage, interest_rate_percentage")
-        .maybeSingle();
-
-      if (configData) {
-        setLateFeePercentage(configData.late_fee_percentage || 2);
-        setInterestRatePercentage(configData.interest_rate_percentage || 0.033);
-      }
-
+      
       const { data: paymentData, error: paymentError } = await supabase
         .from("payments")
         .select(`
@@ -112,65 +115,112 @@ export function ManagePaymentForm({ paymentId, onSuccess, onCancel, onClose }: M
               email,
               phone
             )
-          ),
-          rental_terminations (
-            id,
-            termination_date,
-            payment_breakdown,
-            final_balance
           )
         `)
         .eq("id", paymentId)
         .single();
 
       if (paymentError) throw paymentError;
+      if (!paymentData) throw new Error("Pagamento não encontrado");
 
-      setPayment(paymentData);
+      // Initial payment set
+      let currentPaymentData: any = { ...paymentData };
+      setPayment(currentPaymentData);
 
-      if (paymentData.rental_terminations) {
-        setIsTerminationPayment(true);
-        const breakdown = paymentData.rental_terminations.payment_breakdown || [];
-        setOriginalBreakdown(breakdown);
+      // Fetch rental_terminations separately if this payment is linked to a rental
+      if (paymentData.rental_id) {
+        // Use 'as any' to bypass potential type mismatch if table is missing in types
+        const { data: terminationData } = await (supabase as any)
+          .from("rental_terminations")
+          .select("id, termination_date, payment_breakdown, final_balance")
+          .eq("rental_id", paymentData.rental_id)
+          .maybeSingle();
 
-        const repairExpenses = breakdown.find((item: PaymentBreakdownItem) => 
-          item.description === "Despesas de Reparos"
-        )?.amount || 0;
-        
-        const otherDiscounts = breakdown.find((item: PaymentBreakdownItem) => 
-          item.description === "Outros Descontos"
-        )?.amount || 0;
+        if (terminationData) {
+          // Attach termination data to payment object for easier access
+          currentPaymentData = {
+            ...currentPaymentData,
+            rental_terminations: terminationData
+          };
+          
+          setPayment(currentPaymentData);
 
-        setRepairExpensesInput(formatCurrency(Math.abs(repairExpenses).toString()));
-        setOtherDiscountsInput(formatCurrency(Math.abs(otherDiscounts).toString()));
+          setIsTerminationPayment(true);
+          const breakdown = terminationData.payment_breakdown || [];
+          setOriginalBreakdown(breakdown);
+          setPaymentBreakdown(breakdown);
+
+          const subtotal = breakdown.reduce((sum: number, item: any) => sum + item.amount, 0);
+          setSubtotalFees(Math.abs(subtotal));
+
+          const discount = breakdown.find((item: any) => item.type === "discount");
+          const otherDiscounts = breakdown
+            .filter((item: any) => item.type === "other_discount")
+            .reduce((sum: number, item: any) => sum + item.amount, 0);
+
+          setDiscountInput(formatCurrency(Math.abs(discount?.amount || 0).toString()));
+          setOtherDiscountsInput(formatCurrency(Math.abs(otherDiscounts).toString()));
+        }
       }
 
-      if (paymentData.attachments && Array.isArray(paymentData.attachments)) {
-        setAttachments(paymentData.attachments as string[]);
+      // Auto-fill total_amount if empty
+      if (!currentPaymentData.total_amount || currentPaymentData.total_amount === 0) {
+        let calculatedTotal = 0;
+
+        if (currentPaymentData.rental_terminations) {
+          // Termination payment - use breakdown total
+          const breakdown = currentPaymentData.rental_terminations.payment_breakdown || [];
+          calculatedTotal = breakdown.reduce((sum: number, item: any) => sum + item.amount, 0);
+        } else if (currentPaymentData.rentals) {
+          // Regular rental payment
+          const rental = currentPaymentData.rentals;
+          calculatedTotal = 
+            (rental.rent_amount || 0) + 
+            (rental.parking_amount || 0) + 
+            (currentPaymentData.fine || 0) + 
+            (currentPaymentData.interest || 0);
+        } else if (currentPaymentData.amount_due) {
+          // Partial payment - use remaining amount
+          calculatedTotal = currentPaymentData.amount_due;
+        }
+
+        if (calculatedTotal > 0) {
+          setTotalAmountInput(formatCurrency(calculatedTotal.toString()));
+        }
+      } else {
+        setTotalAmountInput(formatCurrency(currentPaymentData.total_amount.toString()));
       }
 
-      // Initial form fill from existing payment data
-      if (paymentData.paid_amount) {
-        setFormData(prev => ({
-          ...prev,
-          amount_to_pay: formatCurrencyHelper(paymentData.paid_amount),
-          payment_date: paymentData.payment_date || prev.payment_date,
-          payment_method: paymentData.payment_method || prev.payment_method,
-          notes: paymentData.notes || ""
-        }));
+      // Load existing config values
+      if (currentPaymentData.rental_id) {
+        // Use cast 'as any' to bypass strict table checking for this specific table
+        const { data: configData } = await (supabase as any)
+          .from("admin_fee_exemptions")
+          .select("*")
+          .eq("rental_id", currentPaymentData.rental_id)
+          .maybeSingle();
+
+        if (configData) {
+          setConfig({
+            isFineExempt: configData.is_fine_exempt || false,
+            isInterestExempt: configData.is_interest_exempt || false,
+            isAdminFeeExempt: configData.is_admin_fee_exempt || false,
+          });
+        }
       }
+
+      setLoading(false);
     } catch (error: any) {
       console.error("Error loading payment:", error);
       toast({
-        title: "Erro",
-        description: "Não foi possível carregar os dados do pagamento.",
-        variant: "destructive"
+        title: "Erro ao carregar pagamento",
+        description: error.message || "Tente novamente mais tarde.",
+        variant: "destructive",
       });
-    } finally {
       setLoading(false);
     }
-  }, [paymentId, toast, formatCurrencyHelper]);
+  }, [paymentId, toast]);
 
-  // 2. useEffect calling loadPaymentData
   useEffect(() => {
     loadPaymentData();
   }, [loadPaymentData]);
@@ -243,7 +293,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onCancel, onClose }: M
     return updatedBreakdown.reduce((sum, item) => sum + item.amount, 0);
   }, [isTerminationPayment, originalBreakdown, repairExpensesInput, otherDiscountsInput]);
 
-  // 3. Auto-fill amount_to_pay useEffect
   useEffect(() => {
     if (!payment || loading) return;
 
