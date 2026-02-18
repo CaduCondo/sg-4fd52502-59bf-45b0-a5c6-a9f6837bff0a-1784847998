@@ -45,6 +45,55 @@ export default function TenantsPage() {
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
   const [sortBy, setSortBy] = useState<"alphabetical" | "recent">("alphabetical");
 
+  const formatDocument = useCallback((tenant: Tenant) => {
+    if (tenant.documentType === "cpf" && tenant.cpf) {
+      return tenant.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+    }
+    if (tenant.documentType === "cnpj" && tenant.document) {
+      return tenant.document.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
+    }
+    return tenant.document || tenant.cpf || "-";
+  }, []);
+
+  const formatPhone = useCallback((phone?: string) => {
+    if (!phone) return "-";
+    return phone.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
+  }, []);
+
+  const filteredTenants = useMemo(() => {
+    let filtered = tenants;
+
+    if (searchTerm) {
+      const search = searchTerm.toLowerCase();
+      filtered = filtered.filter((tenant) => {
+        const name = tenant.name.toLowerCase();
+        const doc = formatDocument(tenant).toLowerCase();
+        const phone = formatPhone(tenant.phone).toLowerCase();
+        const email = (tenant.email || "").toLowerCase();
+        
+        return name.includes(search) || 
+               doc.includes(search) || 
+               phone.includes(search) || 
+               email.includes(search);
+      });
+    }
+
+    if (statusFilter !== "all") {
+      filtered = filtered.filter((t) => t.status === statusFilter);
+    }
+
+    if (sortBy === "alphabetical") {
+      filtered.sort((a, b) => a.name.localeCompare(b.name));
+    } else {
+      filtered.sort((a, b) => 
+        new Date(b.createdAt || 0).getTime() - 
+        new Date(a.createdAt || 0).getTime()
+      );
+    }
+
+    return filtered;
+  }, [tenants, searchTerm, statusFilter, sortBy, formatDocument, formatPhone]);
+
   useEffect(() => {
     const viewId = router.query.view as string;
     if (viewId && tenants.length > 0) {
@@ -147,21 +196,6 @@ export default function TenantsPage() {
     return <Badge variant={config.variant}>{config.label}</Badge>;
   }, []);
 
-  const formatDocument = useCallback((tenant: Tenant) => {
-    if (tenant.documentType === "cpf" && tenant.cpf) {
-      return tenant.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
-    }
-    if (tenant.documentType === "cnpj" && tenant.document) {
-      return tenant.document.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
-    }
-    return tenant.document || tenant.cpf || "-";
-  }, []);
-
-  const formatPhone = useCallback((phone?: string) => {
-    if (!phone) return "-";
-    return phone.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
-  }, []);
-
   const getRowClassName = useCallback((tenant: Tenant) => {
     const baseClasses = "cursor-pointer hover:bg-muted/50 transition-colors";
     if (tenant.status === "active" || tenant.status === "rented") {
@@ -171,7 +205,7 @@ export default function TenantsPage() {
   }, []);
 
   const tableRows = useMemo(() => (
-    tenants.map((tenant) => (
+    filteredTenants.map((tenant) => (
       <TableRow
         key={tenant.id}
         className={getRowClassName(tenant)}
@@ -212,7 +246,7 @@ export default function TenantsPage() {
         </TableCell>
       </TableRow>
     ))
-  ), [tenants, getRowClassName, formatDocument, formatPhone, getStatusBadge, handleViewTenant, handleEditTenant, handleDelete]);
+  ), [filteredTenants, getRowClassName, formatDocument, formatPhone, getStatusBadge, handleViewTenant, handleEditTenant, handleDelete]);
 
   if (isLoading) {
     return (
@@ -273,22 +307,26 @@ export default function TenantsPage() {
           onStatusFilterChange={(value) => setStatusFilter(value as "all" | "active" | "inactive")}
           sortBy={sortBy}
           onSortChange={(value) => setSortBy(value as "alphabetical" | "recent")}
-          totalCount={tenants.length}
+          totalCount={filteredTenants.length}
         />
 
-        {tenants.length === 0 ? (
+        {filteredTenants.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-muted-foreground">
-              Nenhum inquilino encontrado.
+              {searchTerm || statusFilter !== "all" 
+                ? "Nenhum inquilino encontrado com os filtros aplicados." 
+                : "Nenhum inquilino encontrado."}
             </p>
-            <Button onClick={handleCreateNew} className="mt-4">
-              <Plus className="h-4 w-4 mr-2" />
-              Criar Primeiro Inquilino
-            </Button>
+            {!searchTerm && statusFilter === "all" && (
+              <Button onClick={handleCreateNew} className="mt-4">
+                <Plus className="h-4 w-4 mr-2" />
+                Criar Primeiro Inquilino
+              </Button>
+            )}
           </div>
         ) : viewMode === "grid" ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {tenants.map((tenant) => (
+            {filteredTenants.map((tenant) => (
               <TenantCard
                 key={tenant.id}
                 tenant={tenant}
