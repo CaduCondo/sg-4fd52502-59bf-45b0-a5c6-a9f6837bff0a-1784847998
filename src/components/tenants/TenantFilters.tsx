@@ -23,20 +23,21 @@ export const TenantFilters = memo(function TenantFilters({
   totalCount,
 }: TenantFiltersProps) {
   return (
-    <div className="space-y-4">
-      <div className="text-sm text-muted-foreground font-medium">
-        {totalCount} {totalCount === 1 ? "inquilino encontrado" : "inquilinos encontrados"}
-      </div>
-      
+    <div className="space-y-3">
       <div className="flex flex-col lg:flex-row gap-3 items-end">
-        <div className="relative flex-1 lg:max-w-lg">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar inquilinos..."
-            value={searchTerm}
-            onChange={(e) => onSearchChange(e.target.value)}
-            className="pl-9 h-10 text-sm"
-          />
+        <div className="flex-1 lg:max-w-lg space-y-1">
+          <div className="text-sm text-muted-foreground font-medium">
+            {totalCount} {totalCount === 1 ? "inquilino encontrado" : "inquilinos encontrados"}
+          </div>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar inquilinos..."
+              value={searchTerm}
+              onChange={(e) => onSearchChange(e.target.value)}
+              className="pl-9 h-10 text-sm"
+            />
+          </div>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3 lg:ml-auto">
