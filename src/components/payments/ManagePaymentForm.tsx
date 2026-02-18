@@ -438,7 +438,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       const { data: configData } = await supabase
         .from("configs")
         .select("late_fee_percentage, interest_rate_percentage")
-        .single();
+        .maybeSingle();
 
       console.log("[ManagePaymentForm] Payment data loaded:", paymentData);
       console.log("[ManagePaymentForm] Config data loaded:", configData);
