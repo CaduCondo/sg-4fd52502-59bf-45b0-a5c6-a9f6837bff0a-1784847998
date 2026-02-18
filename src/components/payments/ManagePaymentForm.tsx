@@ -442,7 +442,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           baseCalculo = Math.max(0, valorAluguel);
         }
 
-        if (baseCalculo > 0 && !removeFees) {
+        if (baseCalculo > 0) {
           multa = Math.round((baseCalculo * lateFeePercentage / 100) * 100) / 100;
 
           const jurosDiario = interestRatePercentage;
