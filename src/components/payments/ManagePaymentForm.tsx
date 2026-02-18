@@ -171,8 +171,8 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
   const [location, setLocation] = useState<any>(null);
   const [rentalValue, setRentalValue] = useState(0);
   const [garageValue, setGarageValue] = useState(0);
-  const [lateFeePercentage, setLateFeePercentage] = useState(2); // Default 2%
-  const [interestRatePercentage, setInterestRatePercentage] = useState(0.033); // Default 0.033% per day
+  const [lateFeePercentage, setLateFeePercentage] = useState(2);
+  const [interestRatePercentage, setInterestRatePercentage] = useState(0.033);
 
   // CRITICAL: Define handleFileUpload FIRST before it's used by other callbacks
   const handleFileUpload = useCallback(async (file: File) => {
@@ -183,8 +183,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       sizeInMB: (file.size / 1024 / 1024).toFixed(2) + " MB",
     });
 
-    // Mobile check: Validate file size (limit to 15MB)
-    const maxSize = 15 * 1024 * 1024; // 15MB
+    const maxSize = 15 * 1024 * 1024;
     if (file.size > maxSize) {
       console.error("[ManagePaymentForm] File too large:", {
         size: file.size,
@@ -199,15 +198,13 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       return;
     }
 
-    // Show loading toast for mobile (uploads can be slow on 3G/4G)
     const loadingToast = toast({
       title: "Enviando arquivo...",
       description: `${(file.size / 1024 / 1024).toFixed(1)}MB - Isso pode levar alguns segundos em redes móveis`,
-      duration: 30000, // 30 seconds
+      duration: 30000,
     });
 
     try {
-      // Compress image if it's too large (mobile photos are often 5-10MB)
       let fileToUpload = file;
       if (file.type.startsWith("image/") && file.size > 2 * 1024 * 1024) {
         console.log("[ManagePaymentForm] Compressing large image...");
@@ -220,7 +217,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           });
         } catch (compressError) {
           console.warn("[ManagePaymentForm] Compression failed, uploading original:", compressError);
-          // Continue with original file if compression fails
         }
       }
 
@@ -228,15 +224,9 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       formData.append("file", fileToUpload);
 
       console.log("[ManagePaymentForm] Sending upload request to /api/upload...");
-      console.log("[ManagePaymentForm] File being uploaded:", {
-        name: fileToUpload.name,
-        size: fileToUpload.size,
-        type: fileToUpload.type,
-      });
 
-      // Increased timeout for mobile networks
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 seconds for mobile
+      const timeoutId = setTimeout(() => controller.abort(), 60000);
 
       const response = await fetch("/api/upload", {
         method: "POST",
@@ -267,7 +257,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         return updated;
       });
 
-      // Dismiss loading toast
       if (loadingToast.dismiss) {
         loadingToast.dismiss();
       }
@@ -279,7 +268,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     } catch (error: any) {
       console.error("[ManagePaymentForm] Upload error:", error);
       
-      // Dismiss loading toast
       if (loadingToast.dismiss) {
         loadingToast.dismiss();
       }
@@ -299,7 +287,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     }
   }, [toast]);
 
-  // Helper function to compress images before upload
   const compressImage = async (file: File): Promise<File> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -316,7 +303,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
             return;
           }
 
-          // Calculate new dimensions (max 1920px width)
           let width = img.width;
           let height = img.height;
           const maxWidth = 1920;
@@ -335,7 +321,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           canvas.width = width;
           canvas.height = height;
 
-          // Draw and compress
           ctx.drawImage(img, 0, 0, width, height);
           
           canvas.toBlob(
@@ -351,7 +336,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
               }
             },
             'image/jpeg',
-            0.85 // 85% quality
+            0.85
           );
         };
         img.onerror = () => reject(new Error('Image load failed'));
@@ -434,7 +419,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       if (paymentError) throw paymentError;
       if (!paymentData) throw new Error("Pagamento não encontrado");
 
-      // Load configs to get fee percentages
       const { data: configData } = await supabase
         .from("configs")
         .select("late_fee_percentage, interest_rate_percentage")
@@ -449,11 +433,9 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       setTenant(paymentData.rental?.tenant);
       setLocation(paymentData.rental?.property?.location);
       
-      // Fix: use rent_value or monthly_rent
       setRentalValue(paymentData.rental?.rent_value || paymentData.rental?.monthly_rent || 0);
       setGarageValue(paymentData.rental?.garage_value || 0);
       
-      // Fix: use config values for fees
       if (configData) {
         setLateFeePercentage(Number(configData.late_fee_percentage) || 2);
         setInterestRatePercentage(Number(configData.interest_rate_percentage) || 0.033);
@@ -484,14 +466,12 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         setFormData(prev => ({ ...prev, pix_code_type: paymentData.pix_code_type }));
       }
       if (paymentData.attachments) {
-        // Fix: Ensure attachments are treated as strings
         const attachmentsList = Array.isArray(paymentData.attachments) 
           ? paymentData.attachments 
           : [paymentData.attachments];
         setAttachments(attachmentsList.map((a: any) => String(a)));
       }
 
-      // Fix: payment_type does not exist, use notes or logic to detect termination
       const isTermination = paymentData.notes?.toLowerCase().includes("rescisão") || false;
       setIsTerminationPayment(isTermination);
 
@@ -633,6 +613,32 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       setCalculatedTotal(total);
     }
   }, [isTerminationPayment, originalBreakdown, igpmCorrection, removeFees, calculateValues, repairExpenses]);
+
+  // CRITICAL: Auto-fill amount_to_pay when payment data loads
+  useEffect(() => {
+    if (!payment || loading) return;
+
+    // Only auto-fill if payment is not yet paid and field is empty
+    if (payment.status !== "paid" && !formData.amount_to_pay) {
+      if (isTerminationPayment && calculatedTotal !== 0) {
+        // For termination payments, use calculated total
+        setFormData(prev => ({ 
+          ...prev, 
+          amount_to_pay: formatCurrencyHelper(Math.abs(calculatedTotal).toFixed(2))
+        }));
+      } else if (calculateValues.valorAPagar > 0) {
+        // For regular payments, use calculated total (rent + fees)
+        const amountToFill = calculateValues.valorJaPago > 0 
+          ? calculateValues.valorRestante 
+          : calculateValues.valorAPagar;
+        
+        setFormData(prev => ({ 
+          ...prev, 
+          amount_to_pay: formatCurrencyHelper(amountToFill.toFixed(2))
+        }));
+      }
+    }
+  }, [payment, loading, isTerminationPayment, calculatedTotal, calculateValues, formData.amount_to_pay]);
 
   const handleSubmit = async () => {
     if (!formData.payment_date || !formData.payment_method || !formData.amount_to_pay) {
@@ -903,7 +909,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                     <div className="grid grid-cols-2 gap-4 items-center text-sm">
                       <span>Despesas Adicionais *</span>
                       
-                      {isEditMode ? (
+                      {isEditMode || !isPaid ? (
                         <Input
                           type="text"
                           placeholder="R$ 0,00"
@@ -948,7 +954,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                           </div>
                         )}
 
-                        {isEditMode && (
+                        {(isEditMode || !isPaid) && (
                           <div className="flex items-center space-x-2 pt-2 border-t border-red-200 dark:border-red-800">
                             <Checkbox
                               id="remove-fees-termination"
@@ -1024,7 +1030,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                     </div>
                   )}
 
-                  {(values.multa > 0 || values.juros > 0) && isEditMode && (
+                  {(values.multa > 0 || values.juros > 0) && (isEditMode || !isPaid) && (
                     <div className="flex items-center space-x-2 py-2 border-t">
                       <Checkbox
                         id="remove-fees"
