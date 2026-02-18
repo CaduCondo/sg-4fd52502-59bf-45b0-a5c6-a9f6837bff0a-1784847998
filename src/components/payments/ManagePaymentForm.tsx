@@ -59,7 +59,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, onCancel, emb
     try {
       setLoading(true);
 
-      // Query com TODOS os campos corretos do schema (rent_value, garage_value, property_identifier, locations)
+      // Query com campos corretos do schema
       const { data: paymentData, error: paymentError } = await supabase
         .from("payments")
         .select(`
@@ -356,7 +356,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, onCancel, emb
     const extension = url.split('.').pop()?.toLowerCase();
     if (extension === 'pdf') return 'application/pdf';
     if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(extension || '')) return 'image/' + extension;
-    return 'image/jpeg'; // Fallback
+    return 'image/jpeg';
   };
 
   if (loading) {
