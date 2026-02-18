@@ -446,7 +446,7 @@ export default function PaymentsPage() {
             <ManagePaymentForm
               paymentId={uiState.selectedPaymentId}
               onSuccess={handleManagePaymentSuccess}
-              onClose={() => setUiState(prev => ({ ...prev, selectedPaymentId: null }))}
+              onCancel={() => setUiState(prev => ({ ...prev, selectedPaymentId: null }))}
               embedded
             />
           )}

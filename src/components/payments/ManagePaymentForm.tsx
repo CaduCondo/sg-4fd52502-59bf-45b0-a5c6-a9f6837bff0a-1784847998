@@ -23,6 +23,8 @@ interface ManagePaymentFormProps {
   paymentId: string;
   onSuccess?: () => void;
   onCancel?: () => void;
+  onClose?: () => void; // Added for compatibility with dialogs
+  embedded?: boolean;   // Added for compatibility
 }
 
 interface FormData {
@@ -38,7 +40,7 @@ interface PaymentBreakdownItem {
   type?: "debit" | "credit";
 }
 
-export function ManagePaymentForm({ paymentId, onSuccess, onCancel }: ManagePaymentFormProps) {
+export function ManagePaymentForm({ paymentId, onSuccess, onCancel, onClose }: ManagePaymentFormProps) {
   const router = useRouter();
   const { toast } = useToast();
   
@@ -90,7 +92,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onCancel }: ManagePaym
         setInterestRatePercentage(configData.interest_rate_percentage || 0.033);
       }
 
-      // @ts-ignore - rental_terminations relation might be missing in types
+      // @ts-expect-error - rental_terminations relation might be missing in types
       const { data: paymentData, error: paymentError } = await supabase
         .from("payments")
         .select(`
@@ -144,7 +146,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onCancel }: ManagePaym
       }
 
       if (paymentData.attachments && Array.isArray(paymentData.attachments)) {
-        setAttachments(paymentData.attachments);
+        setAttachments(paymentData.attachments as string[]);
       }
 
       // Initial form fill from existing payment data
@@ -271,6 +273,8 @@ export function ManagePaymentForm({ paymentId, onSuccess, onCancel }: ManagePaym
   const handleCancel = useCallback(() => {
     if (onCancel) {
       onCancel();
+    } else if (onClose) {
+      onClose();
     } else {
       router.push("/payments");
     }
@@ -279,7 +283,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onCancel }: ManagePaym
       title: "Cancelado",
       description: "Alterações descartadas.",
     });
-  }, [onCancel, router, toast]);
+  }, [onCancel, router, toast, onClose]);
 
   const handleRepairExpensesChange = useCallback((value: string) => {
     setRepairExpensesInput(formatCurrency(value));
@@ -509,6 +513,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onCancel }: ManagePaym
 
         const finalBalance = updatedBreakdown.reduce((sum, item) => sum + item.amount, 0);
 
+        // @ts-expect-error - rental_terminations type mismatch in update
         const { error: terminationError } = await supabase
           .from("rental_terminations")
           .update({
