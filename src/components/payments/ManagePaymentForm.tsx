@@ -91,39 +91,43 @@ export function ManagePaymentForm({ paymentId, onSuccess, onCancel, onClose }: M
 
     try {
       setLoading(true);
-      
-      const { data, error: paymentError } = await supabase
+
+      const { data, error } = await supabase
         .from("payments")
         .select(`
           *,
-          rentals (
-            id,
-            rent_amount,
-            parking_amount,
+          rentals(
+            id, 
+            rent_amount, 
+            parking_amount, 
             due_date,
-            properties (
-              id,
-              name,
-              address
+            properties(
+              id, 
+              property_identifier,
+              location_id,
+              locations(
+                id,
+                name,
+                street,
+                number,
+                neighborhood,
+                city,
+                state
+              )
             ),
-            tenants (
-              id,
-              name,
-              email,
-              phone
-            )
+            tenants(id, name, email, phone)
           ),
-          rental_terminations (
-            id,
-            termination_date,
-            payment_breakdown,
+          rental_terminations(
+            id, 
+            termination_date, 
+            payment_breakdown, 
             final_balance
           )
         `)
         .eq("id", paymentId)
         .single();
 
-      if (paymentError) throw paymentError;
+      if (error) throw error;
       if (!data) throw new Error("Pagamento não encontrado");
 
       // Cast to any to bypass strict type inference issues with joined tables
@@ -137,17 +141,21 @@ export function ManagePaymentForm({ paymentId, onSuccess, onCancel, onClose }: M
 
       if (terminationData) {
         setIsTerminationPayment(true);
-        const breakdown = terminationData.payment_breakdown || [];
+        // Ensure breakdown is treated as an array of PaymentBreakdownItem
+        const breakdown = (Array.isArray(terminationData.payment_breakdown) 
+          ? terminationData.payment_breakdown 
+          : []) as unknown as PaymentBreakdownItem[];
+          
         setOriginalBreakdown(breakdown);
         setPaymentBreakdown(breakdown);
 
-        const subtotal = breakdown.reduce((sum: number, item: any) => sum + item.amount, 0);
+        const subtotal = breakdown.reduce((sum: number, item: PaymentBreakdownItem) => sum + (item.amount || 0), 0);
         setSubtotalFees(Math.abs(subtotal));
 
-        const discount = breakdown.find((item: any) => item.type === "discount");
+        const discount = breakdown.find((item: PaymentBreakdownItem) => item.type === "discount");
         const otherDiscounts = breakdown
-          .filter((item: any) => item.type === "other_discount")
-          .reduce((sum: number, item: any) => sum + item.amount, 0);
+          .filter((item: PaymentBreakdownItem) => item.type === "other_discount")
+          .reduce((sum: number, item: PaymentBreakdownItem) => sum + (item.amount || 0), 0);
 
         setDiscountInput(formatCurrency(Math.abs(discount?.amount || 0).toString()));
         setOtherDiscountsInput(formatCurrency(Math.abs(otherDiscounts).toString()));
@@ -157,8 +165,10 @@ export function ManagePaymentForm({ paymentId, onSuccess, onCancel, onClose }: M
         let calculatedTotal = 0;
 
         if (terminationData) {
-          const breakdown = terminationData.payment_breakdown || [];
-          calculatedTotal = breakdown.reduce((sum: number, item: any) => sum + item.amount, 0);
+          const breakdown = (Array.isArray(terminationData.payment_breakdown) 
+            ? terminationData.payment_breakdown 
+            : []) as unknown as PaymentBreakdownItem[];
+          calculatedTotal = breakdown.reduce((sum: number, item: PaymentBreakdownItem) => sum + (item.amount || 0), 0);
         } else if (paymentData.rentals) {
           // rentals is usually an object (BelongsTo), but safe check
           const rental = Array.isArray(paymentData.rentals) ? paymentData.rentals[0] : paymentData.rentals;
@@ -178,6 +188,22 @@ export function ManagePaymentForm({ paymentId, onSuccess, onCancel, onClose }: M
       } else {
         setTotalAmountInput(formatCurrency(paymentData.total_amount.toString()));
       }
+
+      // Load existing attachments if any
+      if (paymentData.attachments && Array.isArray(paymentData.attachments)) {
+        // Filter out any non-string attachments just in case
+        const validAttachments = paymentData.attachments.filter((a: any) => typeof a === 'string');
+        setAttachments(validAttachments);
+      }
+      
+      // Update form data with existing payment info
+      setFormData(prev => ({
+        ...prev,
+        payment_date: paymentData.payment_date || new Date().toISOString().split("T")[0],
+        amount_to_pay: paymentData.paid_amount ? formatCurrency(paymentData.paid_amount.toString()) : prev.amount_to_pay,
+        payment_method: paymentData.payment_method || "pix",
+        notes: paymentData.notes || ""
+      }));
 
       if (paymentData.rental_id) {
         const { data: configData } = await (supabase as any)
@@ -615,7 +641,10 @@ export function ManagePaymentForm({ paymentId, onSuccess, onCancel, onClose }: M
             {isPaid ? "Detalhes do Pagamento" : "Registrar Recebimento"}
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            {payment.rentals?.properties?.name} - {payment.rentals?.tenants?.name}
+            {payment.rentals?.properties?.locations?.name ? 
+              `${payment.rentals.properties.locations.name} - ${payment.rentals.properties.property_identifier}` : 
+              payment.rentals?.properties?.property_identifier
+            } - {payment.rentals?.tenants?.name}
           </p>
         </div>
         {isPaid && !isEditMode && (
