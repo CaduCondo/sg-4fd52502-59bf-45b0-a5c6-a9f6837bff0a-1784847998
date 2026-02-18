@@ -609,7 +609,7 @@ export function ManagePaymentForm({ paymentId }: { paymentId: string }) {
 
       {selectedAttachment && (
         <Lightbox
-          images={[selectedAttachment]}
+          images={[{ src: selectedAttachment }]}
           initialIndex={0}
           onClose={() => setSelectedAttachment(null)}
         />
