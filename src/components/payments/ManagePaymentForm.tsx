@@ -27,28 +27,6 @@ interface ManagePaymentFormProps {
   embedded?: boolean;
 }
 
-// Helper de formatação de moeda
-const formatCurrencyHelper = (value: string | number): string => {
-  const numValue = typeof value === "string" 
-    ? parseFloat(value.replace(/[^\d,.-]/g, '').replace(',', '.')) 
-    : value;
-  
-  if (isNaN(numValue)) return "R$ 0,00";
-  
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  }).format(numValue);
-};
-
-// Helper de parsing de moeda
-const parseCurrencyHelper = (value: string): number => {
-  if (!value) return 0;
-  const cleaned = value.replace(/[^\d,.-]/g, '').replace(',', '.');
-  const parsed = parseFloat(cleaned);
-  return isNaN(parsed) ? 0 : parsed;
-};
-
 // Subcomponente para exibir valores do breakdown (memoizado para performance)
 const BreakdownItem = memo(({ item, isDeduction, igpmCorrection }: { item: any; isDeduction?: boolean; igpmCorrection?: any }) => {
   const isDepositDeduction = item.description?.includes("Devolução de Caução");
@@ -56,6 +34,8 @@ const BreakdownItem = memo(({ item, isDeduction, igpmCorrection }: { item: any; 
   const displayAmount = isDepositDeduction && igpmCorrection && igpmCorrection.correctedAmount > 0
     ? igpmCorrection.correctedAmount 
     : Math.abs(item.amount);
+
+  const formatCurrency = (val: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(val);
 
   return (
     <div>
@@ -83,13 +63,13 @@ const BreakdownItem = memo(({ item, isDeduction, igpmCorrection }: { item: any; 
                           <div>
                             <span className="text-muted-foreground">Valor Original:</span>
                             <p className="font-semibold text-blue-900 dark:text-blue-100">
-                              {formatCurrencyHelper(igpmCorrection.originalAmount)}
+                              {formatCurrency(igpmCorrection.originalAmount)}
                             </p>
                           </div>
                           <div>
                             <span className="text-muted-foreground">Valor Corrigido:</span>
                             <p className="font-semibold text-green-600 dark:text-green-400">
-                              {formatCurrencyHelper(igpmCorrection.correctedAmount)}
+                              {formatCurrency(igpmCorrection.correctedAmount)}
                             </p>
                           </div>
                         </div>
@@ -118,7 +98,7 @@ const BreakdownItem = memo(({ item, isDeduction, igpmCorrection }: { item: any; 
         </div>
         <span className={`${isDeduction ? "text-red-600" : ""} font-medium whitespace-nowrap ml-4`}>
           {isDeduction ? "- " : ""}
-          {formatCurrencyHelper(displayAmount)}
+          {formatCurrency(displayAmount)}
         </span>
       </div>
     </div>
@@ -171,8 +151,8 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
   const [location, setLocation] = useState<any>(null);
   const [rentalValue, setRentalValue] = useState(0);
   const [garageValue, setGarageValue] = useState(0);
-  const [lateFeePercentage, setLateFeePercentage] = useState(2);
-  const [interestRatePercentage, setInterestRatePercentage] = useState(0.033);
+  const [lateFeePercentage, setLateFeePercentage] = useState(0);
+  const [interestRatePercentage, setInterestRatePercentage] = useState(0);
 
   // CRITICAL: Define handleFileUpload FIRST before it's used by other callbacks
   const handleFileUpload = useCallback(async (file: File) => {
@@ -180,71 +160,24 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       name: file.name,
       size: file.size,
       type: file.type,
-      sizeInMB: (file.size / 1024 / 1024).toFixed(2) + " MB",
-    });
-
-    const maxSize = 15 * 1024 * 1024;
-    if (file.size > maxSize) {
-      console.error("[ManagePaymentForm] File too large:", {
-        size: file.size,
-        maxSize: maxSize,
-        sizeInMB: (file.size / 1024 / 1024).toFixed(2) + " MB",
-      });
-      toast({
-        title: "Arquivo muito grande",
-        description: `O arquivo tem ${(file.size / 1024 / 1024).toFixed(1)}MB. O limite é 15MB. Tente tirar uma foto com menor resolução.`,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const loadingToast = toast({
-      title: "Enviando arquivo...",
-      description: `${(file.size / 1024 / 1024).toFixed(1)}MB - Isso pode levar alguns segundos em redes móveis`,
-      duration: 30000,
     });
 
     try {
-      let fileToUpload = file;
-      if (file.type.startsWith("image/") && file.size > 2 * 1024 * 1024) {
-        console.log("[ManagePaymentForm] Compressing large image...");
-        try {
-          fileToUpload = await compressImage(file);
-          console.log("[ManagePaymentForm] Image compressed:", {
-            originalSize: (file.size / 1024 / 1024).toFixed(2) + " MB",
-            compressedSize: (fileToUpload.size / 1024 / 1024).toFixed(2) + " MB",
-            reduction: (((file.size - fileToUpload.size) / file.size) * 100).toFixed(1) + "%",
-          });
-        } catch (compressError) {
-          console.warn("[ManagePaymentForm] Compression failed, uploading original:", compressError);
-        }
-      }
-
       const formData = new FormData();
-      formData.append("file", fileToUpload);
+      formData.append("file", file);
 
       console.log("[ManagePaymentForm] Sending upload request to /api/upload...");
-
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 60000);
 
       const response = await fetch("/api/upload", {
         method: "POST",
         body: formData,
-        signal: controller.signal,
       });
-
-      clearTimeout(timeoutId);
 
       console.log("[ManagePaymentForm] Upload response status:", response.status);
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error("[ManagePaymentForm] Upload failed:", {
-          status: response.status,
-          statusText: response.statusText,
-          error: errorText,
-        });
+        console.error("[ManagePaymentForm] Upload failed:", errorText);
         throw new Error(`Erro ao fazer upload: ${response.status} ${response.statusText}`);
       }
 
@@ -257,100 +190,26 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         return updated;
       });
 
-      if (loadingToast.dismiss) {
-        loadingToast.dismiss();
-      }
-
       toast({
         title: "Sucesso",
         description: "Arquivo anexado com sucesso!",
       });
-    } catch (error: any) {
+    } catch (error) {
       console.error("[ManagePaymentForm] Upload error:", error);
-      
-      if (loadingToast.dismiss) {
-        loadingToast.dismiss();
-      }
-
-      let errorMessage = "Erro ao fazer upload do arquivo";
-      if (error.name === 'AbortError') {
-        errorMessage = "Upload cancelado: tempo limite excedido (60s). Verifique sua conexão com a internet.";
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-
       toast({
-        title: "Erro no upload",
-        description: errorMessage,
+        title: "Erro",
+        description: error instanceof Error ? error.message : "Erro ao fazer upload do arquivo",
         variant: "destructive",
       });
     }
   }, [toast]);
-
-  const compressImage = async (file: File): Promise<File> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = (event) => {
-        const img = new Image();
-        img.src = event.target?.result as string;
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          const ctx = canvas.getContext('2d');
-          
-          if (!ctx) {
-            reject(new Error('Could not get canvas context'));
-            return;
-          }
-
-          let width = img.width;
-          let height = img.height;
-          const maxWidth = 1920;
-          const maxHeight = 1920;
-
-          if (width > maxWidth || height > maxHeight) {
-            if (width > height) {
-              height = (height * maxWidth) / width;
-              width = maxWidth;
-            } else {
-              width = (width * maxHeight) / height;
-              height = maxHeight;
-            }
-          }
-
-          canvas.width = width;
-          canvas.height = height;
-
-          ctx.drawImage(img, 0, 0, width, height);
-          
-          canvas.toBlob(
-            (blob) => {
-              if (blob) {
-                const compressedFile = new File([blob], file.name, {
-                  type: 'image/jpeg',
-                  lastModified: Date.now(),
-                });
-                resolve(compressedFile);
-              } else {
-                reject(new Error('Compression failed'));
-              }
-            },
-            'image/jpeg',
-            0.85
-          );
-        };
-        img.onerror = () => reject(new Error('Image load failed'));
-      };
-      reader.onerror = () => reject(new Error('File read failed'));
-    });
-  };
 
   const handleTakePhoto = useCallback(() => {
     console.log("[ManagePaymentForm] Opening camera for photo capture...");
     const input = document.createElement("input");
     input.type = "file";
     input.accept = "image/*";
-    input.capture = "environment" as any;
+    input.capture = "environment";
     input.onchange = (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       console.log("[ManagePaymentForm] Photo captured:", file ? {
@@ -396,129 +255,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     });
   }, [toast]);
 
-  const loadPaymentData = useCallback(async () => {
-    try {
-      console.log("[ManagePaymentForm] Loading payment data for ID:", paymentId);
-      
-      const { data: paymentData, error: paymentError } = await supabase
-        .from("payments")
-        .select(`
-          *,
-          rental:rentals!payments_rental_id_fkey (
-            *,
-            property:properties!rentals_property_id_fkey (
-              *,
-              location:locations!properties_location_id_fkey (*)
-            ),
-            tenant:tenants!rentals_tenant_id_fkey (*)
-          )
-        `)
-        .eq("id", paymentId)
-        .single();
-
-      if (paymentError) throw paymentError;
-      if (!paymentData) throw new Error("Pagamento não encontrado");
-
-      const { data: configData } = await supabase
-        .from("configs")
-        .select("late_fee_percentage, interest_rate_percentage")
-        .maybeSingle();
-
-      console.log("[ManagePaymentForm] Payment data loaded:", paymentData);
-      console.log("[ManagePaymentForm] Config data loaded:", configData);
-
-      setPayment(paymentData);
-      setRental(paymentData.rental);
-      setProperty(paymentData.rental?.property);
-      setTenant(paymentData.rental?.tenant);
-      setLocation(paymentData.rental?.property?.location);
-      
-      setRentalValue(paymentData.rental?.rent_value || paymentData.rental?.monthly_rent || 0);
-      setGarageValue(paymentData.rental?.garage_value || 0);
-      
-      if (configData) {
-        setLateFeePercentage(Number(configData.late_fee_percentage) || 2);
-        setInterestRatePercentage(Number(configData.interest_rate_percentage) || 0.033);
-      }
-
-      const isPaidStatus = paymentData.status === "paid";
-      setIsPaid(isPaidStatus);
-
-      if (paymentData.payment_date) {
-        setFormData(prev => ({ ...prev, payment_date: paymentData.payment_date }));
-      }
-      if (paymentData.payment_method) {
-        setFormData(prev => ({ ...prev, payment_method: paymentData.payment_method }));
-      }
-      if (paymentData.payment_time) {
-        const [h, m, s] = paymentData.payment_time.split(":");
-        setPaymentHour(h || "");
-        setPaymentMinute(m || "");
-        setPaymentSecond(s || "00");
-      }
-      if (paymentData.paid_amount) {
-        setFormData(prev => ({ ...prev, amount_to_pay: formatCurrencyHelper(paymentData.paid_amount) }));
-      }
-      if (paymentData.notes) {
-        setFormData(prev => ({ ...prev, notes: paymentData.notes }));
-      }
-      if (paymentData.pix_code_type) {
-        setFormData(prev => ({ ...prev, pix_code_type: paymentData.pix_code_type }));
-      }
-      if (paymentData.attachments) {
-        const attachmentsList = Array.isArray(paymentData.attachments) 
-          ? paymentData.attachments 
-          : [paymentData.attachments];
-        setAttachments(attachmentsList.map((a: any) => String(a)));
-      }
-
-      const isTermination = paymentData.notes?.toLowerCase().includes("rescisão") || false;
-      setIsTerminationPayment(isTermination);
-
-      if (isTermination && paymentData.breakdown) {
-        try {
-          const breakdownData = typeof paymentData.breakdown === 'string'
-            ? JSON.parse(paymentData.breakdown)
-            : paymentData.breakdown;
-          
-          setOriginalBreakdown(breakdownData);
-
-          const depositItem = breakdownData.find((item: any) => 
-            item.description?.includes("Devolução de Caução")
-          );
-
-          if (depositItem && paymentData.rental) {
-            const originalDepositAmount = Math.abs(depositItem.amount);
-            const correctionResult = await calculateCorrectedDeposit(
-              originalDepositAmount,
-              paymentData.rental.start_date,
-              paymentData.due_date
-            );
-
-            if (correctionResult) {
-              setIgpmCorrection(correctionResult);
-            }
-          }
-
-          const total = breakdownData.reduce((sum: number, item: any) => sum + item.amount, 0);
-          setCalculatedTotal(total);
-        } catch (error) {
-          console.error("[ManagePaymentForm] Error parsing breakdown:", error);
-        }
-      }
-
-      setLoading(false);
-    } catch (error) {
-      console.error("[ManagePaymentForm] Error loading payment:", error);
-      toast({
-        title: "Erro",
-        description: "Erro ao carregar dados do pagamento",
-        variant: "destructive",
-      });
-      setLoading(false);
-    }
-  }, [paymentId, toast]);
-
   const handleCancelEdit = useCallback(() => {
     setIsEditMode(false);
     loadPaymentData();
@@ -529,116 +265,9 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
   }, [loadPaymentData, toast]);
 
   const handleRepairExpensesChange = useCallback((value: string) => {
-    setRepairExpensesInput(formatCurrencyHelper(value));
-    setRepairExpenses(parseCurrencyHelper(formatCurrencyHelper(value)));
-  }, []);
-
-  const calculateValues = useMemo(() => {
-    if (!payment || !rental) {
-      return {
-        valorAluguel: 0,
-        valorVaga: 0,
-        valorBase: 0,
-        multa: 0,
-        juros: 0,
-        diasAtraso: 0,
-        valorAPagar: 0,
-        valorJaPago: 0,
-        valorRestante: 0,
-        isProportional: false,
-        proportionalDays: 0,
-      };
-    }
-
-    const valorAluguel = rentalValue || 0;
-    const valorVaga = garageValue || 0;
-    const valorBase = valorAluguel + valorVaga;
-
-    const dueDate = new Date(payment.due_date);
-    const today = new Date();
-    const diasAtraso = Math.max(0, Math.floor((today.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24)));
-
-    let multa = 0;
-    let juros = 0;
-
-    if (diasAtraso > 0 && !removeFees) {
-      multa = valorBase * (lateFeePercentage / 100);
-      juros = valorBase * (interestRatePercentage / 100) * diasAtraso;
-    }
-
-    const valorJaPago = payment.paid_amount || 0;
-    const valorAPagar = valorBase + multa + juros;
-    const valorRestante = Math.max(0, valorAPagar - valorJaPago);
-
-    return {
-      valorAluguel,
-      valorVaga,
-      valorBase,
-      multa,
-      juros,
-      diasAtraso,
-      valorAPagar,
-      valorJaPago,
-      valorRestante,
-      isProportional: false,
-      proportionalDays: 0,
-    };
-  }, [payment, rental, rentalValue, garageValue, lateFeePercentage, interestRatePercentage, removeFees]);
-
-  useEffect(() => {
-    loadPaymentData();
-  }, [loadPaymentData]);
-
-  useEffect(() => {
-    if (isTerminationPayment && originalBreakdown.length > 0) {
-      let total = 0;
-      
-      originalBreakdown.forEach((item: any) => {
-        if (item.description?.includes("Devolução de Caução") && igpmCorrection) {
-          total += -igpmCorrection.correctedAmount;
-        } else if (!item.description?.includes("Despesas") && 
-                   !item.description?.includes("Multa por Atraso") &&
-                   !item.description?.includes("Juros por Atraso")) {
-          total += item.amount;
-        }
-      });
-
-      if (!removeFees) {
-        total += calculateValues.multa;
-        total += calculateValues.juros;
-      }
-
-      total += repairExpenses;
-
-      setCalculatedTotal(total);
-    }
-  }, [isTerminationPayment, originalBreakdown, igpmCorrection, removeFees, calculateValues, repairExpenses]);
-
-  // CRITICAL: Auto-fill amount_to_pay when payment data loads
-  useEffect(() => {
-    if (!payment || loading) return;
-
-    // Only auto-fill if payment is not yet paid and field is empty
-    if (payment.status !== "paid" && !formData.amount_to_pay) {
-      if (isTerminationPayment && calculatedTotal !== 0) {
-        // For termination payments, use calculated total
-        setFormData(prev => ({ 
-          ...prev, 
-          amount_to_pay: formatCurrencyHelper(Math.abs(calculatedTotal).toFixed(2))
-        }));
-      } else if (calculateValues.valorAPagar > 0) {
-        // For regular payments, use calculated total (rent + fees)
-        const amountToFill = calculateValues.valorJaPago > 0 
-          ? calculateValues.valorRestante 
-          : calculateValues.valorAPagar;
-        
-        setFormData(prev => ({ 
-          ...prev, 
-          amount_to_pay: formatCurrencyHelper(amountToFill.toFixed(2))
-        }));
-      }
-    }
-  }, [payment, loading, isTerminationPayment, calculatedTotal, calculateValues, formData.amount_to_pay]);
+    setRepairExpensesInput(formatCurrency(value));
+    setRepairExpenses(parseCurrency(formatCurrency(value)));
+  }, [formatCurrency, parseCurrency]);
 
   const handleSubmit = async () => {
     if (!formData.payment_date || !formData.payment_method || !formData.amount_to_pay) {
@@ -662,7 +291,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     try {
       setIsSubmitting(true);
 
-      const paidAmount = parseCurrencyHelper(formData.amount_to_pay);
+      const paidAmount = parseCurrency(formData.amount_to_pay);
       
       let expectedTotal = 0;
       let updatedBreakdown = payment?.breakdown;
@@ -766,7 +395,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       toast({
         title: "Sucesso",
         description: paymentStatus === "partial" 
-          ? `Pagamento parcial registrado! Restante: ${formatCurrencyHelper((Math.abs(expectedTotal) - paidAmount).toFixed(2))}`
+          ? `Pagamento parcial registrado! Restante: ${formatCurrency((Math.abs(expectedTotal) - paidAmount).toFixed(2))}`
           : isPaid ? "Pagamento atualizado com sucesso!" : "Pagamento registrado com sucesso!",
       });
 
@@ -909,7 +538,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                     <div className="grid grid-cols-2 gap-4 items-center text-sm">
                       <span>Despesas Adicionais *</span>
                       
-                      {isEditMode || !isPaid ? (
+                      {isEditMode ? (
                         <Input
                           type="text"
                           placeholder="R$ 0,00"
@@ -920,7 +549,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                         />
                       ) : (
                         <span className="font-medium text-right">
-                          {formatCurrencyHelper(repairExpenses.toFixed(2))}
+                          {formatCurrency(repairExpenses.toFixed(2))}
                         </span>
                       )}
                     </div>
@@ -939,7 +568,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                             Multa por Atraso ({lateFeePercentage}%)
                           </span>
                           <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600 font-medium"}>
-                            + {formatCurrencyHelper(values.multa.toFixed(2))}
+                            + {formatCurrency(values.multa.toFixed(2))}
                           </span>
                         </div>
 
@@ -949,12 +578,12 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                               Juros ({interestRatePercentage.toFixed(3)}% ao dia)
                             </span>
                             <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600 font-medium"}>
-                              + {formatCurrencyHelper(values.juros.toFixed(2))}
+                              + {formatCurrency(values.juros.toFixed(2))}
                             </span>
                           </div>
                         )}
 
-                        {(isEditMode || !isPaid) && (
+                        {isEditMode && (
                           <div className="flex items-center space-x-2 pt-2 border-t border-red-200 dark:border-red-800">
                             <Checkbox
                               id="remove-fees-termination"
@@ -978,7 +607,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                     <span className="font-bold text-base">VALOR TOTAL</span>
                     <span className={`font-bold text-base ${calculatedTotal < 0 ? "text-red-600" : "text-primary"}`}>
                       {calculatedTotal < 0 ? "- " : ""}
-                      {formatCurrencyHelper(Math.abs(calculatedTotal).toFixed(2))}
+                      {formatCurrency(Math.abs(calculatedTotal).toFixed(2))}
                     </span>
                   </div>
 
@@ -995,7 +624,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                         : "Valor Aluguel"}
                     </span>
                     <span className="font-medium">
-                      {formatCurrencyHelper(rentalValue.toFixed(2))}
+                      {formatCurrency(rentalValue.toFixed(2))}
                     </span>
                   </div>
 
@@ -1003,7 +632,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                     <div className="flex justify-between text-sm">
                       <span>Valor Vaga</span>
                       <span className="font-medium">
-                        {formatCurrencyHelper(garageValue.toFixed(2))}
+                        {formatCurrency(garageValue.toFixed(2))}
                       </span>
                     </div>
                   )}
@@ -1014,7 +643,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                         Multa ({lateFeePercentage}%)
                       </span>
                       <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600 font-medium"}>
-                        + {formatCurrencyHelper(values.multa.toFixed(2))}
+                        + {formatCurrency(values.multa.toFixed(2))}
                       </span>
                     </div>
                   )}
@@ -1025,12 +654,12 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                         Juros ({interestRatePercentage.toFixed(3)}% ao dia) + {values.diasAtraso} dias
                       </span>
                       <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600 font-medium"}>
-                        + {formatCurrencyHelper(values.juros.toFixed(2))}
+                        + {formatCurrency(values.juros.toFixed(2))}
                       </span>
                     </div>
                   )}
 
-                  {(values.multa > 0 || values.juros > 0) && (isEditMode || !isPaid) && (
+                  {(values.multa > 0 || values.juros > 0) && isEditMode && (
                     <div className="flex items-center space-x-2 py-2 border-t">
                       <Checkbox
                         id="remove-fees"
@@ -1051,7 +680,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                     <div className="flex justify-between pt-3 border-t">
                       <span className="text-sm text-green-600">Valor já Pago</span>
                       <span className="text-sm text-green-600 font-medium">
-                        - {formatCurrencyHelper(values.valorJaPago.toFixed(2))}
+                        - {formatCurrency(values.valorJaPago.toFixed(2))}
                       </span>
                     </div>
                   )}
@@ -1061,7 +690,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                       {values.valorJaPago > 0 ? "Valor Restante" : "Valor Total"}
                     </span>
                     <span className="font-bold text-base text-primary">
-                      {formatCurrencyHelper(values.valorJaPago > 0 ? values.valorRestante.toFixed(2) : values.valorAPagar.toFixed(2))}
+                      {formatCurrency(values.valorJaPago > 0 ? values.valorRestante.toFixed(2) : values.valorAPagar.toFixed(2))}
                     </span>
                   </div>
                 </>
@@ -1208,7 +837,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                     placeholder="R$ 0,00"
                     value={formData.amount_to_pay}
                     onChange={(e) => {
-                      const formatted = formatCurrencyHelper(e.target.value);
+                      const formatted = formatCurrency(e.target.value);
                       setFormData({ ...formData, amount_to_pay: formatted });
                     }}
                     required
