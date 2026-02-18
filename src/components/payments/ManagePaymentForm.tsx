@@ -18,7 +18,7 @@ import {
   FileText
 } from "lucide-react";
 import { Lightbox } from "@/components/Lightbox";
-import { Json } from "@/integrations/supabase/types";
+import type { Json } from "@/integrations/supabase/database.types";
 
 interface ManagePaymentFormProps {
   paymentId: string;
