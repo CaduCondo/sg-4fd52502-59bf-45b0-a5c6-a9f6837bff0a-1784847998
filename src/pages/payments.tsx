@@ -211,7 +211,7 @@ export default function PaymentsPage() {
   }, [uiState.selectedPaymentId, loadPayments, filters.month, filters.year, payments, toast]);
 
   // Pagamentos filtrados por busca e separados por status
-  const { pendingPayments, paidPayments } = useMemo(() => {
+  const { pendingPayments, paidPayments, overduePayments } = useMemo(() => {
     const filterBySearch = (p: Payment) => {
       if (!uiState.searchQuery) return true;
       
@@ -228,7 +228,8 @@ export default function PaymentsPage() {
     };
 
     const pending = payments.filter((p) => {
-      const isStatusMatch = p.status === "pending" || p.status === "partial" || p.status === "overdue";
+      // Pending agora exclui overdue para não duplicar, ou mantemos status 'pending' e 'partial'
+      const isStatusMatch = (p.status === "pending" || p.status === "partial");
       return isStatusMatch && filterBySearch(p);
     });
 
@@ -236,7 +237,11 @@ export default function PaymentsPage() {
       return p.status === "paid" && filterBySearch(p);
     });
 
-    return { pendingPayments: pending, paidPayments: paid };
+    const overdue = payments.filter((p) => {
+      return p.status === "overdue" && filterBySearch(p);
+    });
+
+    return { pendingPayments: pending, paidPayments: paid, overduePayments: overdue };
   }, [payments, uiState.searchQuery, rentals, properties, tenants]);
 
   return (
@@ -300,17 +305,23 @@ export default function PaymentsPage() {
           </div>
         ) : (
           <Tabs defaultValue="pending" className="space-y-6">
-            <TabsList className="grid w-full max-w-md grid-cols-2 mb-6 h-auto p-1">
-              <TabsTrigger value="pending" className="gap-2 text-base py-2">
-                Recebimentos Pendentes
-                <Badge variant="destructive" className="text-xs">
+            <TabsList className="flex flex-col sm:flex-row sm:inline-flex h-auto sm:h-11 items-stretch sm:items-center justify-start w-full sm:w-auto gap-2 sm:gap-0 p-1">
+              <TabsTrigger value="pending" className="justify-between w-full sm:w-auto">
+                Pendentes
+                <Badge variant="secondary" className="ml-1.5">
                   {pendingPayments.length}
                 </Badge>
               </TabsTrigger>
-              <TabsTrigger value="paid" className="gap-2 text-base py-2">
-                Recebimentos Pagos
-                <Badge variant="default" className="bg-green-500 text-xs">
+              <TabsTrigger value="paid" className="justify-between w-full sm:w-auto">
+                Pagos
+                <Badge variant="secondary" className="ml-1.5">
                   {paidPayments.length}
+                </Badge>
+              </TabsTrigger>
+              <TabsTrigger value="overdue" className="justify-between w-full sm:w-auto">
+                Atrasados
+                <Badge variant="destructive" className="ml-1.5">
+                  {overduePayments.length}
                 </Badge>
               </TabsTrigger>
             </TabsList>
@@ -387,6 +398,44 @@ export default function PaymentsPage() {
               ) : (
                 <div className="text-center py-12">
                   <p className="text-muted-foreground">Nenhum recebimento pago encontrado</p>
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Aba: Recebimentos Atrasados */}
+            <TabsContent value="overdue" className="space-y-6">
+              {overduePayments.length > 0 ? (
+                <div
+                  className={
+                    uiState.viewMode === "grid"
+                      ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                      : "space-y-4"
+                  }
+                >
+                  {overduePayments.map((payment) => (
+                    <PaymentCard
+                      key={payment.id}
+                      payment={payment}
+                      property={getPropertyForPayment(payment)}
+                      tenant={getTenantForPayment(payment)}
+                      isPaid={payment.status === "paid"}
+                      viewMode={uiState.viewMode}
+                      installment={getPaymentInstallment(payment)}
+                      expectedAmount={getExpectedAmount(payment)}
+                      onCardClick={(id) => setUiState(prev => ({ ...prev, selectedPaymentId: id }))}
+                      onClick={() => setUiState(prev => ({ ...prev, selectedPaymentId: payment.id }))}
+                      getMonthName={getMonthName}
+                      onCancelPayment={permissions.canDelete ? handleCancelPayment : undefined}
+                      onViewReceipt={(id, e) => {
+                        e?.stopPropagation();
+                        handleViewReceipt(payment);
+                      }}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <p className="text-muted-foreground">Nenhum recebimento atrasado encontrado</p>
                 </div>
               )}
             </TabsContent>
