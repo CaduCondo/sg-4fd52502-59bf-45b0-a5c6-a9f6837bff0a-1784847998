@@ -14,6 +14,27 @@ import { Camera, Paperclip, Home, User, DollarSign, CreditCard, Edit, X } from "
 import type { Payment, Rental, Property, Tenant } from "@/types";
 import { calculateCorrectedDeposit } from "@/services/igpmService";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Lightbox } from "@/components/Lightbox";
+import { Loader2, Upload, FileText, Trash2 } from "lucide-react";
+
+interface PaymentFormData {
+  id?: string;
+  paid_amount?: number;
+  payment_date?: string;
+  payment_time?: string;
+  payment_method?: string;
+  payment_location?: string;
+  payment_code?: string;
+  notes?: string;
+  late_fee?: number;
+  interest?: number;
+  discount_amount?: number;
+  attachments?: any;
+  rentals?: any;
+  rental_terminations?: any;
+  breakdown?: any;
+  due_date?: string;
+}
 
 interface ManagePaymentFormProps {
   paymentId: string;
@@ -110,7 +131,7 @@ BreakdownItem.displayName = "BreakdownItem";
 export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = false }: ManagePaymentFormProps) {
   const router = useRouter();
   const { toast } = useToast();
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [attachments, setAttachments] = useState<string[]>([]);
   const [removeFees, setRemoveFees] = useState(false);
@@ -144,7 +165,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
   const [paymentMinute, setPaymentMinute] = useState<string>("");
   const [paymentSecond, setPaymentSecond] = useState<string>("");
 
-  const [payment, setPayment] = useState<any>(null);
+  const [payment, setPayment] = useState<PaymentFormData | null>(null);
   const [rental, setRental] = useState<any>(null);
   const [property, setProperty] = useState<any>(null);
   const [tenant, setTenant] = useState<any>(null);
@@ -153,6 +174,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
   const [garageValue, setGarageValue] = useState(0);
   const [lateFeePercentage, setLateFeePercentage] = useState(0);
   const [interestRatePercentage, setInterestRatePercentage] = useState(0);
+  const [waiveFees, setWaiveFees] = useState(false);
 
   // Helper de formatação memoizado
   const formatCurrency = useCallback((value: string | number): string => {
@@ -457,8 +479,20 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     originalBreakdown,
     removeFees,
     lateFeePercentage,
-    interestRatePercentage
+    interestRatePercentage,
+    waiveFees
   ]);
+
+  const totalValue = useMemo(() => {
+    if (!payment) return 0;
+    
+    const paid = parseFloat(payment.paid_amount?.toString() || "0");
+    const lateFee = waiveFees ? 0 : parseFloat(payment.late_fee?.toString() || "0");
+    const interest = waiveFees ? 0 : parseFloat(payment.interest?.toString() || "0");
+    const discount = parseFloat(payment.discount_amount?.toString() || "0");
+    
+    return paid + lateFee + interest - discount;
+  }, [payment, waiveFees]);
 
   useEffect(() => {
     if (loading || !payment) return;
@@ -514,7 +548,9 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     loading,
     payment,
     igpmCorrection,
-    formatCurrency
+    formatCurrency,
+    totalValue,
+    waiveFees
   ]);
 
   const handleFileUpload = async (file: File) => {
