@@ -1311,142 +1311,164 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <Label>Comprovantes de Pagamento</Label>
-                <p className="text-sm text-muted-foreground">
-                  Anexe fotos ou PDFs dos comprovantes (máx. 10MB por arquivo)
-                </p>
-                
-                {attachments.map((attachment, index) => (
-                  <Card key={index} className="p-4">
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor={`attachment-${index}`}>
-                          Comprovante {index + 1}
-                        </Label>
-                        {attachments.length > 1 && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeAttachment(index)}
-                            className="h-8 w-8 p-0"
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="flex gap-2">
-                          <Input
-                            id={`attachment-${index}`}
-                            type="file"
-                            accept="image/jpeg,image/jpg,image/png,image/webp,application/pdf"
-                            onChange={(e) => handleFileChange(e, index)}
-                            disabled={uploadingFile}
-                            className="cursor-pointer file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 hidden"
-                          />
-                          <Button
-                            type="button"
-                            variant="outline"
-                            className="w-full"
-                            onClick={() => document.getElementById(`attachment-${index}`)?.click()}
-                            disabled={uploadingFile}
-                          >
-                            <Upload className="mr-2 h-4 w-4" />
-                            {attachment.url ? "Trocar Arquivo" : "Selecionar Arquivo"}
-                          </Button>
-                        </div>
-
-                        {uploadProgress[index] !== undefined && uploadProgress[index] > 0 && uploadProgress[index] < 100 && (
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                              <span>Enviando... {uploadProgress[index]}%</span>
-                            </div>
-                            <div className="w-full bg-secondary rounded-full h-2">
-                              <div
-                                className="bg-primary h-2 rounded-full transition-all"
-                                style={{ width: `${uploadProgress[index]}%` }}
-                              />
-                            </div>
-                          </div>
-                        )}
-
-                        {attachment.url && (
-                          <div className="flex items-center gap-2 p-3 bg-secondary rounded-md">
-                            <div className="flex-shrink-0">
-                              {attachment.url.toLowerCase().endsWith(".pdf") ? (
-                                <FileText className="h-5 w-5 text-primary" />
-                              ) : (
-                                <ImageIcon className="h-5 w-5 text-primary" />
-                              )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate">
-                                {attachment.name || "Arquivo anexado"}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                Arquivo enviado com sucesso
-                              </p>
-                              <a 
-                                href={attachment.url} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="text-xs text-primary hover:underline"
-                              >
-                                Visualizar
-                              </a>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      <Input
-                        placeholder="Descrição do comprovante (opcional)"
-                        value={attachment.description || ''}
-                        onChange={(e) => {
-                          setAttachments(prev => {
-                            const newAttachments = [...prev];
-                            newAttachments[index] = { ...newAttachments[index], description: e.target.value };
-                            return newAttachments;
-                          });
-                        }}
-                      />
-                    </div>
-                  </Card>
-                ))}
-
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={addAttachment}
-                  className="w-full"
-                  disabled={uploadingFile}
-                >
-                  <Upload className="mr-2 h-4 w-4" />
-                  Adicionar Outro Comprovante
-                </Button>
+              {/* Observações integradas no card de pagamento */}
+              <div>
+                <Label htmlFor="notes">Observações</Label>
+                <Textarea
+                  id="notes"
+                  placeholder="Observações sobre o pagamento..."
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  rows={2}
+                  disabled={isReadOnly}
+                  className="resize-none"
+                />
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
+      {/* Seção de Anexos - Layout Simplificado */}
       <Card>
         <CardHeader>
-          <CardTitle>Observações</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Paperclip className="h-5 w-5" />
+            Anexos
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <Textarea
-            placeholder="Observações sobre o pagamento..."
-            value={formData.notes}
-            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-            rows={3}
-            disabled={isReadOnly}
-          />
+          <div className="space-y-4">
+            {/* Botões de Upload */}
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex-1">
+                <input
+                  id="file-input"
+                  type="file"
+                  accept="image/jpeg,image/jpg,image/png,image/webp,application/pdf"
+                  onChange={(e) => {
+                    const index = attachments.findIndex(a => !a.url);
+                    if (index === -1) {
+                      addAttachment();
+                      setTimeout(() => handleFileChange(e, attachments.length), 0);
+                    } else {
+                      handleFileChange(e, index);
+                    }
+                  }}
+                  disabled={uploadingFile || isReadOnly}
+                  className="hidden"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full h-12"
+                  onClick={() => document.getElementById('file-input')?.click()}
+                  disabled={uploadingFile || isReadOnly}
+                >
+                  <Upload className="mr-2 h-5 w-5" />
+                  Escolher Arquivo
+                </Button>
+              </div>
+
+              <div className="flex-1 sm:hidden">
+                <input
+                  id="camera-input"
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={(e) => {
+                    const index = attachments.findIndex(a => !a.url);
+                    if (index === -1) {
+                      addAttachment();
+                      setTimeout(() => handleFileChange(e, attachments.length), 0);
+                    } else {
+                      handleFileChange(e, index);
+                    }
+                  }}
+                  disabled={uploadingFile || isReadOnly}
+                  className="hidden"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full h-12"
+                  onClick={() => document.getElementById('camera-input')?.click()}
+                  disabled={uploadingFile || isReadOnly}
+                >
+                  <Camera className="mr-2 h-5 w-5" />
+                  Tirar Foto
+                </Button>
+              </div>
+            </div>
+
+            {/* Lista de Anexos */}
+            {attachments.filter(a => a.url).length > 0 && (
+              <div className="space-y-2 pt-2 border-t">
+                <p className="text-sm font-medium text-muted-foreground">
+                  Arquivos Anexados ({attachments.filter(a => a.url).length})
+                </p>
+                {attachments.map((attachment, index) => {
+                  if (!attachment.url) return null;
+                  
+                  return (
+                    <div key={index} className="flex items-center gap-3 p-3 bg-secondary rounded-lg">
+                      <div className="flex-shrink-0">
+                        {attachment.url.toLowerCase().endsWith(".pdf") ? (
+                          <FileText className="h-8 w-8 text-primary" />
+                        ) : (
+                          <ImageIcon className="h-8 w-8 text-primary" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {attachment.name || "Arquivo"}
+                        </p>
+                        <a 
+                          href={attachment.url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-xs text-primary hover:underline"
+                        >
+                          Visualizar →
+                        </a>
+                      </div>
+                      {!isReadOnly && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeAttachment(index)}
+                          className="h-8 w-8 p-0 flex-shrink-0"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Progress durante upload */}
+            {Object.keys(uploadProgress).length > 0 && (
+              <div className="space-y-2">
+                {Object.entries(uploadProgress).map(([key, progress]) => (
+                  <div key={key} className="space-y-1">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Enviando... {progress}%</span>
+                    </div>
+                    <div className="w-full bg-secondary rounded-full h-2">
+                      <div
+                        className="bg-primary h-2 rounded-full transition-all"
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
 
