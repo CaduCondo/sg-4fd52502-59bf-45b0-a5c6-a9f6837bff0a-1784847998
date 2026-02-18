@@ -138,6 +138,7 @@ export default function Financial() {
             payment_day,
             start_date,
             end_date,
+            pix_code,
             properties!inner(id, property_identifier, location_id, complement),
             tenants!inner(id, name, cpf, email, phone)
           )
@@ -151,6 +152,7 @@ export default function Financial() {
       console.log("🔍 DEBUG Financial - Dados brutos do banco:", {
         totalPayments: paymentsData?.length || 0,
         firstPayment: paymentsData?.[0],
+        firstPaidAmount: paymentsData?.[0]?.paid_amount,
         hasRentals: !!paymentsData?.[0]?.rentals,
         hasProperty: !!paymentsData?.[0]?.rentals?.properties,
         hasTenant: !!paymentsData?.[0]?.rentals?.tenants,
@@ -167,7 +169,7 @@ export default function Financial() {
           id: payment.id,
           rentalId: payment.rental_id,
           expectedAmount: payment.expected_amount,
-          paidAmount: payment.paid_amount,
+          paidAmount: payment.paid_amount || 0,
           dueDate: payment.due_date,
           paymentDate: payment.payment_date,
           paymentTime: payment.payment_time,
