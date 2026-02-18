@@ -10,12 +10,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { AttachmentViewer } from "@/components/AttachmentViewer";
-import { Camera, Paperclip, Home, User, DollarSign, CreditCard, Edit, X } from "lucide-react";
+import { Camera, Paperclip, Home, User, DollarSign, CreditCard, Edit, X, Upload, FileText, Loader2, ImageIcon } from "lucide-react";
 import type { Payment, Rental, Property, Tenant } from "@/types";
 import { calculateCorrectedDeposit } from "@/services/igpmService";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Lightbox } from "@/components/Lightbox";
-import { Loader2, Upload, FileText, Trash2 } from "lucide-react";
+import { FileText, Upload, X, Camera, Image as ImageIcon, Loader2 } from "lucide-react";
 
 interface PaymentFormData {
   id?: string;
@@ -584,6 +584,116 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     }
   };
 
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const maxSize = 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+      toast({
+        title: "Arquivo muito grande",
+        description: "O tamanho máximo permitido é 10MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const allowedTypes = [
+      "image/jpeg",
+      "image/jpg", 
+      "image/png",
+      "image/webp",
+      "application/pdf"
+    ];
+    
+    if (!allowedTypes.includes(file.type)) {
+      toast({
+        title: "Tipo de arquivo não suportado",
+        description: "Apenas imagens (JPG, PNG, WEBP) e PDF são permitidos",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUploadingFile(true);
+    setUploadProgress({ ...uploadProgress, [index]: 0 });
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const xhr = new XMLHttpRequest();
+
+      xhr.upload.addEventListener("progress", (event) => {
+        if (event.lengthComputable) {
+          const percentComplete = Math.round((event.loaded / event.total) * 100);
+          setUploadProgress({ ...uploadProgress, [index]: percentComplete });
+        }
+      });
+
+      const uploadPromise = new Promise<string>((resolve, reject) => {
+        xhr.addEventListener("load", () => {
+          if (xhr.status === 200) {
+            try {
+              const response = JSON.parse(xhr.responseText);
+              resolve(response.url);
+            } catch (error) {
+              reject(new Error("Erro ao processar resposta do servidor"));
+            }
+          } else {
+            reject(new Error(`Erro no upload: ${xhr.status}`));
+          }
+        });
+
+        xhr.addEventListener("error", () => {
+          reject(new Error("Erro de rede ao enviar arquivo"));
+        });
+
+        xhr.addEventListener("abort", () => {
+          reject(new Error("Upload cancelado"));
+        });
+
+        xhr.open("POST", "/api/upload");
+        xhr.send(formData);
+      });
+
+      const url = await uploadPromise;
+
+      const newAttachments = [...attachments];
+      newAttachments[index] = {
+        ...newAttachments[index],
+        url,
+        name: file.name,
+        uploadProgress: 100,
+      };
+      setAttachments(newAttachments);
+
+      toast({
+        title: "Arquivo enviado",
+        description: "Comprovante anexado com sucesso",
+      });
+    } catch (error) {
+      console.error("Erro no upload:", error);
+      toast({
+        title: "Erro ao enviar arquivo",
+        description: error instanceof Error ? error.message : "Tente novamente ou use outro arquivo",
+        variant: "destructive",
+      });
+
+      const newAttachments = [...attachments];
+      newAttachments[index] = {
+        ...newAttachments[index],
+        url: "",
+        name: "",
+        uploadProgress: 0,
+      };
+      setAttachments(newAttachments);
+    } finally {
+      setUploadingFile(false);
+      setUploadProgress({ ...uploadProgress, [index]: 0 });
+    }
+  };
+
   const handleTakePhoto = useCallback(() => {
     const input = document.createElement("input");
     input.type = "file";
@@ -810,7 +920,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
   const isReadOnly = isPaid && !isEditMode;
 
   return (
-    <div className="pb-8">
+    <div className="space-y-6">
       <div className="text-center mb-6">
         <h1 className="text-2xl font-bold">
           Registrar Recebimento{isTerminationPayment ? " - Rescisão de Contrato" : ""}
@@ -1209,6 +1319,105 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                   />
                 </div>
               </div>
+
+              <div className="space-y-4">
+                <Label>Comprovantes de Pagamento</Label>
+                <p className="text-sm text-muted-foreground">
+                  Anexe fotos ou PDFs dos comprovantes (máx. 10MB por arquivo)
+                </p>
+                
+                {attachments.map((attachment, index) => (
+                  <Card key={index} className="p-4">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor={`attachment-${index}`}>
+                          Comprovante {index + 1}
+                        </Label>
+                        {attachments.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeAttachment(index)}
+                            className="h-8 w-8 p-0"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <Input
+                          id={`attachment-${index}`}
+                          type="file"
+                          accept="image/jpeg,image/jpg,image/png,image/webp,application/pdf"
+                          capture="environment"
+                          onChange={(e) => handleFileChange(e, index)}
+                          disabled={uploadingFile}
+                          className="cursor-pointer file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
+                        />
+
+                        {uploadProgress[index] > 0 && uploadProgress[index] < 100 && (
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              <span>Enviando... {uploadProgress[index]}%</span>
+                            </div>
+                            <div className="w-full bg-secondary rounded-full h-2">
+                              <div
+                                className="bg-primary h-2 rounded-full transition-all"
+                                style={{ width: `${uploadProgress[index]}%` }}
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {attachment.url && (
+                          <div className="flex items-center gap-2 p-3 bg-secondary rounded-md">
+                            <div className="flex-shrink-0">
+                              {attachment.url.toLowerCase().endsWith(".pdf") ? (
+                                <FileText className="h-5 w-5 text-primary" />
+                              ) : (
+                                <ImageIcon className="h-5 w-5 text-primary" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">
+                                {attachment.name || "Arquivo anexado"}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                Arquivo enviado com sucesso
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <Input
+                        placeholder="Descrição do comprovante (opcional)"
+                        value={attachment.description}
+                        onChange={(e) => {
+                          const newAttachments = [...attachments];
+                          newAttachments[index].description = e.target.value;
+                          setAttachments(newAttachments);
+                        }}
+                      />
+                    </div>
+                  </Card>
+                ))}
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addAttachment}
+                  className="w-full"
+                  disabled={uploadingFile}
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  Adicionar Outro Comprovante
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -1226,33 +1435,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
             rows={3}
             disabled={isReadOnly}
           />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Anexos</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {isEditMode && (
-            <div className="flex gap-2">
-              <Button type="button" variant="outline" size="sm" onClick={handleTakePhoto}>
-                <Camera className="h-4 w-4 mr-2" />
-                Tirar Foto
-              </Button>
-              <Button type="button" variant="outline" size="sm" onClick={handleAttachFile}>
-                <Paperclip className="h-4 w-4 mr-2" />
-                Anexar Arquivo
-              </Button>
-            </div>
-          )}
-
-          {attachments.length > 0 && (
-            <AttachmentViewer 
-              attachments={attachments} 
-              onRemove={isEditMode ? handleRemoveAttachment : undefined} 
-            />
-          )}
         </CardContent>
       </Card>
 
