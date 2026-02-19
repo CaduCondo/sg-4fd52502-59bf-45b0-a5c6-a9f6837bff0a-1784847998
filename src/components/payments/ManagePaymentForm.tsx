@@ -9,12 +9,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { AttachmentViewer } from "@/components/AttachmentViewer";
 import { Camera, Paperclip, Home, User, DollarSign, CreditCard, Edit, X, Upload, FileText, Loader2, ImageIcon } from "lucide-react";
 import type { Payment, Rental, Property, Tenant } from "@/types";
 import { calculateCorrectedDeposit } from "@/services/igpmService";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Lightbox } from "@/components/Lightbox";
 
 interface Attachment {
   url: string;
@@ -55,7 +53,6 @@ interface ManagePaymentFormProps {
   embedded?: boolean;
 }
 
-// Subcomponente para exibir valores do breakdown (memoizado para performance)
 const BreakdownItem = memo(({ item, isDeduction, igpmCorrection }: { item: any; isDeduction?: boolean; igpmCorrection?: any }) => {
   const isDepositDeduction = item.description?.includes("Devolução de Caução");
   
@@ -141,7 +138,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
   const [loading, setLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Attachments state
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [uploadingFile, setUploadingFile] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<{ [key: number]: number }>({});
@@ -188,7 +184,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
   const [interestRatePercentage, setInterestRatePercentage] = useState(0);
   const [waiveFees, setWaiveFees] = useState(false);
 
-  // Helper de formatação memoizado
   const formatCurrency = useCallback((value: string | number): string => {
     const numericValue = typeof value === "string" ? value.replace(/\D/g, "") : String(value).replace(/\D/g, "");
     const number = parseFloat(numericValue) / 100;
@@ -248,7 +243,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       setLocation(paymentData.rentals.properties.locations);
       setTenant(paymentData.rentals.tenants);
 
-      // CORREÇÃO CRÍTICA: Usar o breakdown salvo se disponível
       let effectiveRentalValue = 0;
       let effectiveGarageValue = 0;
 
@@ -258,7 +252,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
             ? JSON.parse(paymentData.breakdown) 
             : (paymentData.breakdown || []);
           
-          // Buscar valores do breakdown salvo
           const aluguelItem = breakdownData.find((item: any) => 
             item.description?.includes("Aluguel") && !item.description?.includes("Proporcional")
           );
@@ -280,7 +273,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           }
         } catch (error) {
           console.error("Erro ao parsear breakdown:", error);
-          // Fallback para cálculo baseado em monthly_rent
           effectiveRentalValue = paymentData.rentals.monthly_rent || 0;
           effectiveGarageValue = paymentData.rentals.garage_value || 0;
           
@@ -289,7 +281,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           }
         }
       } else {
-        // Sem breakdown salvo - calcular a partir do monthly_rent
         effectiveRentalValue = paymentData.rentals.monthly_rent || 0;
         effectiveGarageValue = paymentData.rentals.garage_value || 0;
         
@@ -370,11 +361,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           return att;
         });
         setAttachments(attachmentData);
-      } else {
-        // Initialize with one empty attachment slot if none exist
-        if (!isPaid) {
-          setAttachments([{ url: '', name: '', description: '' }]);
-        }
       }
 
       setFormData({
@@ -574,6 +560,35 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     setAttachments(prev => prev.filter((_, i) => i !== index));
   }, []);
 
+  const uploadToSupabase = async (file: File): Promise<string> => {
+    console.log("📤 Uploading to Supabase Storage:", file.name);
+    
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+    const filePath = `payment-attachments/${fileName}`;
+
+    const { data, error } = await supabase.storage
+      .from('uploads')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false
+      });
+
+    if (error) {
+      console.error("❌ Supabase upload error:", error);
+      throw error;
+    }
+
+    console.log("✅ File uploaded to Supabase:", data.path);
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('uploads')
+      .getPublicUrl(filePath);
+
+    console.log("🔗 Public URL:", publicUrl);
+    return publicUrl;
+  };
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
     const file = e.target.files?.[0];
     if (!file) {
@@ -585,15 +600,14 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       name: file.name,
       type: file.type,
       size: file.size,
-      lastModified: file.lastModified
     });
 
-    const maxSize = 10 * 1024 * 1024;
+    const maxSize = 15 * 1024 * 1024;
     if (file.size > maxSize) {
       console.error("❌ File too large:", file.size, "bytes");
       toast({
         title: "Arquivo muito grande",
-        description: `O arquivo tem ${(file.size / 1024 / 1024).toFixed(2)}MB. O tamanho máximo permitido é 10MB`,
+        description: `O arquivo tem ${(file.size / 1024 / 1024).toFixed(2)}MB. O tamanho máximo é 15MB`,
         variant: "destructive",
       });
       return;
@@ -622,82 +636,15 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     setUploadProgress({ ...uploadProgress, [index]: 0 });
 
     try {
-      console.log("📤 Starting upload...");
-      const formData = new FormData();
-      formData.append("file", file);
-
-      console.log("📦 FormData created, initiating XHR...");
-
-      const xhr = new XMLHttpRequest();
-
-      xhr.upload.addEventListener("progress", (event) => {
-        if (event.lengthComputable) {
-          const percentComplete = Math.round((event.loaded / event.total) * 100);
-          console.log(`📊 Upload progress: ${percentComplete}% (${event.loaded}/${event.total} bytes)`);
-          setUploadProgress(prev => ({ ...prev, [index]: percentComplete }));
-        }
-      });
-
-      const uploadPromise = new Promise<string>((resolve, reject) => {
-        xhr.addEventListener("load", () => {
-          console.log("📬 Upload response received");
-          console.log("Status:", xhr.status);
-          console.log("Response:", xhr.responseText);
-          
-          if (xhr.status === 200) {
-            try {
-              const response = JSON.parse(xhr.responseText);
-              console.log("✅ Upload successful:", response);
-              resolve(response.url);
-            } catch (error) {
-              console.error("❌ Error parsing response:", error);
-              reject(new Error("Erro ao processar resposta do servidor"));
-            }
-          } else {
-            console.error("❌ Upload failed with status:", xhr.status);
-            let errorMessage = `Erro no upload: ${xhr.status}`;
-            
-            try {
-              const errorResponse = JSON.parse(xhr.responseText);
-              console.error("Error details:", errorResponse);
-              if (errorResponse.error) {
-                errorMessage = errorResponse.error;
-                if (errorResponse.details) {
-                  console.error("Additional details:", errorResponse.details);
-                  errorMessage += ` - ${errorResponse.details}`;
-                }
-              }
-            } catch (e) {
-              console.error("Could not parse error response");
-            }
-            
-            reject(new Error(errorMessage));
-          }
-        });
-
-        xhr.addEventListener("error", (e) => {
-          console.error("❌ Network error during upload:", e);
-          reject(new Error("Erro de rede ao enviar arquivo"));
-        });
-
-        xhr.addEventListener("abort", () => {
-          console.warn("⚠️ Upload aborted");
-          reject(new Error("Upload cancelado"));
-        });
-
-        xhr.addEventListener("timeout", () => {
-          console.error("❌ Upload timeout");
-          reject(new Error("Tempo esgotado. Tente novamente"));
-        });
-
-        xhr.timeout = 60000; // 60 seconds timeout
-        console.log("🚀 Sending request to /api/upload");
-        xhr.open("POST", "/api/upload");
-        xhr.send(formData);
-      });
-
-      const url = await uploadPromise;
-      console.log("✅ File uploaded successfully, URL:", url);
+      console.log("📤 Starting Supabase upload...");
+      
+      setUploadProgress(prev => ({ ...prev, [index]: 30 }));
+      
+      const url = await uploadToSupabase(file);
+      
+      setUploadProgress(prev => ({ ...prev, [index]: 100 }));
+      
+      console.log("✅ Upload successful, URL:", url);
 
       setAttachments(prev => {
         const newAttachments = [...prev];
@@ -716,12 +663,11 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         description: "Comprovante anexado com sucesso",
       });
     } catch (error) {
-      console.error("❌ Upload error (catch block):", error);
+      console.error("❌ Upload error:", error);
       
-      let errorMessage = "Tente novamente ou use outro arquivo";
+      let errorMessage = "Erro ao enviar arquivo. Tente novamente";
       if (error instanceof Error) {
         errorMessage = error.message;
-        console.error("Error details:", error.stack);
       }
       
       toast({
@@ -872,20 +818,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         paymentStatus = finalPaidAmount >= expectedTotal ? "paid" : "partial";
       }
 
-      // Filter attachments to remove empty ones
-      const validAttachments = attachments
-        .filter(a => a.url)
-        .map(a => a.url); // Store only URLs in DB for backward compatibility
-        
-      // Or if you want to store objects in DB, you need to update DB schema/types
-      // For now let's assume we store strings (URLs) but we should probably migrate to storing objects
-      // If the column is JSONB we can store objects. If it's text[], we store strings.
-      // Based on previous code: attachments: attachments.length > 0 ? attachments : null
-      // And seeing it was string[], let's keep it simple and store strings or objects depending on what backend expects.
-      // The original code was: attachments: attachments.length > 0 ? attachments : null, where attachments was string[]
-      // So let's map back to strings or objects. If the column is jsonb, objects are better.
-      // Let's store objects to keep metadata like description.
-      
       const attachmentsToSave = attachments.filter(a => a.url).map(a => ({
         url: a.url,
         name: a.name,
@@ -1370,7 +1302,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                 </div>
               </div>
 
-              {/* Observações integradas no card de pagamento */}
               <div>
                 <Label htmlFor="notes">Observações</Label>
                 <Textarea
@@ -1388,7 +1319,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         </Card>
       </div>
 
-      {/* Seção de Anexos - Layout Simplificado */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -1398,7 +1328,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {/* Botões de Upload */}
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="flex-1">
                 <input
@@ -1406,7 +1335,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                   type="file"
                   accept="image/jpeg,image/jpg,image/png,image/webp,application/pdf"
                   onChange={(e) => {
-                    console.log("📎 File input changed", e.target.files?.[0]);
                     const index = attachments.findIndex(a => !a.url);
                     if (index === -1) {
                       addAttachment();
@@ -1424,7 +1352,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                   className="w-full h-12"
                   onClick={(e) => {
                     e.preventDefault();
-                    console.log("📂 Escolher Arquivo clicked");
                     document.getElementById('file-input')?.click();
                   }}
                   disabled={uploadingFile || isReadOnly}
@@ -1441,7 +1368,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                   accept="image/*"
                   capture="environment"
                   onChange={(e) => {
-                    console.log("📷 Camera input changed", e.target.files?.[0]);
                     const index = attachments.findIndex(a => !a.url);
                     if (index === -1) {
                       addAttachment();
@@ -1459,7 +1385,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                   className="w-full h-12"
                   onClick={(e) => {
                     e.preventDefault();
-                    console.log("📷 Tirar Foto clicked");
                     document.getElementById('camera-input')?.click();
                   }}
                   disabled={uploadingFile || isReadOnly}
@@ -1470,7 +1395,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
               </div>
             </div>
 
-            {/* Lista de Anexos */}
             {attachments.filter(a => a.url).length > 0 && (
               <div className="space-y-2 pt-2 border-t">
                 <p className="text-sm font-medium text-muted-foreground">
@@ -1518,7 +1442,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
               </div>
             )}
 
-            {/* Progress durante upload */}
             {Object.keys(uploadProgress).length > 0 && (
               <div className="space-y-2">
                 {Object.entries(uploadProgress).map(([key, progress]) => (
