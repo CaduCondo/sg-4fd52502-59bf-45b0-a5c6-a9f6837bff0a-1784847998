@@ -64,7 +64,17 @@ export async function updateUser(id: string, user: Partial<SystemUser>): Promise
 }
 
 export async function deleteUser(id: string): Promise<void> {
-  return deleteSingle(TABLE, id);
+  // Usar Edge Function para deletar usuário completamente (System + Auth)
+  const { error } = await supabase.functions.invoke('delete-user', {
+    body: { user_id: id }
+  });
+
+  if (error) {
+    console.error("Erro ao deletar usuário via Edge Function:", error);
+    // Fallback: tentar deletar apenas do system_users se a edge function falhar
+    // (Isso manterá o usuário no Auth, mas removerá o acesso ao sistema)
+    return deleteSingle(TABLE, id);
+  }
 }
 
 export async function unlockUser(userId: string, active: boolean): Promise<void> {
