@@ -38,14 +38,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
-
-// Importações diretas dos serviços
-import { getAll as getAllPayments } from "@/services/paymentService";
-import { getAll as getAllProperties } from "@/services/propertyService";
-import { getAll as getAllTenants } from "@/services/tenantService";
-import { getAll as getAllRentals } from "@/services/rentalService";
-import { getConfig } from "@/services/configService";
 import { Payment, Property, Rental, Tenant } from "@/types";
+import { getConfig } from "@/services/configService";
 
 type SortField = "paymentNumber" | "local" | "complement" | "status" | "dueDate" | "paymentDate" | "expectedAmount" | "paidAmount";
 type SortDirection = "asc" | "desc" | null;
@@ -56,18 +50,13 @@ export default function Financial() {
   const isAdmin = user?.role === "admin" || user?.role === "broker";
   const isFinancial = user?.role === "financial";
   
-  // Data fetching state
   const [payments, setPayments] = useState<Payment[]>([]);
-  const [properties, setProperties] = useState<Property[]>([]);
-  const [rentals, setRentals] = useState<Rental[]>([]);
-  const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
   const [allowedLocationIds, setAllowedLocationIds] = useState<string[]>([]);
   const [exemptLocationIds, setExemptLocationIds] = useState<string[]>([]);
   const [config, setConfig] = useState<any>(null);
   const [mounted, setMounted] = useState(false);
 
-  // Date State
   const now = new Date();
   const [selectedMonth, setSelectedMonth] = useState<number>(now.getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState<number>(now.getFullYear());
@@ -75,13 +64,8 @@ export default function Financial() {
   const [filterYear, setFilterYear] = useState<number>(now.getFullYear());
   const [locationExpenses, setLocationExpenses] = useState<number>(0);
 
-  // Sorting state
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
-
-  // Ref para controlar execuções simultâneas
-  const loadingRef = useRef(false);
-  const abortControllerRef = useRef<AbortController | null>(null);
   
   const [editingPixCode, setEditingPixCode] = useState<{
     id: string;
@@ -102,7 +86,7 @@ export default function Financial() {
     try {
       setLoading(true);
       
-      console.log("🔍 [FINANCIAL] Loading data for period:", {
+      console.log("🔍 [FINANCIAL] Iniciando carregamento de dados:", {
         filterMonth,
         filterYear,
         userId: user?.id,
@@ -110,7 +94,19 @@ export default function Financial() {
         isFinancial
       });
 
-      // CRITICAL: Buscar permissões de locais para usuários financeiros
+      // 1. Buscar configurações globais
+      const configData = await getConfig();
+      setConfig(configData);
+
+      // 2. Buscar locais isentos de taxa
+      const { data: exemptData } = await supabase
+        .from("admin_fee_exempt_locations")
+        .select("location_id");
+      
+      const exemptIds = exemptData?.map(e => e.location_id) || [];
+      setExemptLocationIds(exemptIds);
+
+      // 3. Buscar permissões de locais para usuários financeiros
       let allowedLocations: string[] = [];
       
       if (isFinancial && user?.id) {
@@ -129,47 +125,177 @@ export default function Financial() {
         allowedLocations = permissions?.map(p => p.location_id) || [];
         setAllowedLocationIds(allowedLocations);
         
-        console.log(`✅ [FINANCIAL] Usuário tem acesso a ${allowedLocations.length} local(is):`, allowedLocations);
+        console.log("✅ [FINANCIAL] Locais permitidos:", {
+          count: allowedLocations.length,
+          locationIds: allowedLocations
+        });
 
-        // Se não tem locais permitidos, não buscar nada
         if (allowedLocations.length === 0) {
           console.log("⚠️ [FINANCIAL] Usuário financeiro sem locais permitidos - sem dados");
           setPayments([]);
+          setLocationExpenses(0);
           setLoading(false);
           return;
         }
       }
 
-      // Permissões já foram carregadas e configuradas no início da função
+      // 4. Buscar propriedades (com filtro de locais para financeiro)
+      let propertiesQuery = supabase
+        .from("properties")
+        .select("id, location_id");
 
-      // Removed erroneous totalExpenses calculation from paymentsData
-      // If expenses need to be calculated, they should be fetched from location_expenses table
-      setLocationExpenses(0);
+      if (isFinancial && allowedLocations.length > 0) {
+        console.log("🔒 [FINANCIAL] Aplicando filtro de locais nas propriedades");
+        propertiesQuery = propertiesQuery.in("location_id", allowedLocations);
+      }
 
-      // Buscar despesas de locais do período
+      const { data: propertiesData, error: propsError } = await propertiesQuery;
+
+      if (propsError) throw propsError;
+
+      const propertyIds = (propertiesData || []).map(p => p.id);
+
+      console.log("✅ [FINANCIAL] Propriedades encontradas:", {
+        total: propertyIds.length,
+        filtered: isFinancial
+      });
+
+      if (isFinancial && propertyIds.length === 0) {
+        console.log("⚠️ [FINANCIAL] Nenhuma propriedade nos locais permitidos - sem dados");
+        setPayments([]);
+        setLocationExpenses(0);
+        setLoading(false);
+        return;
+      }
+
+      // 5. Buscar aluguéis ativos (filtrados por propriedades)
+      let rentalsQuery = supabase
+        .from("rentals")
+        .select("id, property_id")
+        .eq("is_active", true);
+
+      if (isFinancial && propertyIds.length > 0) {
+        console.log("🔒 [FINANCIAL] Aplicando filtro de propriedades nos aluguéis");
+        rentalsQuery = rentalsQuery.in("property_id", propertyIds);
+      }
+
+      const { data: rentalsData, error: rentalsError } = await rentalsQuery;
+
+      if (rentalsError) throw rentalsError;
+
+      const activeRentalIds = (rentalsData || []).map(r => r.id);
+
+      console.log("✅ [FINANCIAL] Aluguéis ativos encontrados:", activeRentalIds.length);
+
+      if (isFinancial && activeRentalIds.length === 0) {
+        console.log("⚠️ [FINANCIAL] Nenhum aluguel ativo nos locais permitidos - sem dados");
+        setPayments([]);
+        setLocationExpenses(0);
+        setLoading(false);
+        return;
+      }
+
+      // 6. Buscar pagamentos do período (filtrados por aluguéis)
+      let paymentsQuery = supabase
+        .from("payments")
+        .select(`
+          *,
+          rentals(
+            id,
+            property_id,
+            tenant_id,
+            start_date,
+            end_date,
+            monthly_rent,
+            value,
+            is_active,
+            status,
+            payment_code
+          ),
+          properties(
+            id,
+            location_id,
+            property_identifier,
+            complement,
+            locations(name)
+          ),
+          tenants(
+            id,
+            name
+          )
+        `)
+        .eq("reference_month", filterMonth.toString())
+        .eq("reference_year", filterYear.toString());
+
+      if (isFinancial && activeRentalIds.length > 0) {
+        console.log("🔒 [FINANCIAL] Aplicando filtro de aluguéis nos pagamentos");
+        paymentsQuery = paymentsQuery.in("rental_id", activeRentalIds);
+      }
+
+      const { data: paymentsData, error: paymentsError } = await paymentsQuery;
+
+      if (paymentsError) throw paymentsError;
+
+      console.log("✅ [FINANCIAL] Pagamentos carregados:", {
+        total: paymentsData?.length || 0,
+        month: filterMonth,
+        year: filterYear
+      });
+
+      // 7. Buscar despesas de locais do período
       let expensesQuery = supabase
         .from("location_expenses")
         .select("amount")
         .eq("reference_month", filterMonth)
         .eq("reference_year", filterYear);
 
-      // CRITICAL: Filtrar despesas apenas dos locais permitidos
       if (isFinancial && allowedLocations.length > 0) {
-        console.log("🔒 [FINANCIAL] Filtrando despesas por locais permitidos");
+        console.log("🔒 [FINANCIAL] Aplicando filtro de locais nas despesas");
         expensesQuery = expensesQuery.in("location_id", allowedLocations);
       }
 
       const { data: expensesData } = await expensesQuery;
       const totalExpenses = expensesData?.reduce((sum, e) => sum + (e.amount || 0), 0) || 0;
       setLocationExpenses(totalExpenses);
-      console.log(`✅ [FINANCIAL] Total de despesas: R$ ${totalExpenses.toFixed(2)}`);
+
+      console.log("✅ [FINANCIAL] Despesas carregadas:", {
+        total: totalExpenses,
+        count: expensesData?.length || 0
+      });
+
+      // 8. Formatar e setar pagamentos
+      const formattedPayments: Payment[] = (paymentsData || []).map((payment: any) => ({
+        id: payment.id,
+        rentalId: payment.rental_id,
+        propertyId: payment.property_id || "",
+        tenantId: payment.tenant_id || "",
+        dueDate: payment.due_date || payment.payment_date,
+        expectedAmount: Number(payment.expected_amount),
+        paidAmount: Number(payment.paid_amount),
+        paymentDate: payment.payment_date,
+        status: payment.status,
+        referenceMonth: parseInt(payment.reference_month),
+        referenceYear: parseInt(payment.reference_year),
+        discount: Number(payment.discount || 0),
+        lateFee: Number(payment.late_fee || 0),
+        interest: Number(payment.interest || 0),
+        notes: payment.notes || "",
+        paymentMethod: payment.payment_method || "",
+        receiptUrl: payment.receipt_url || "",
+        type: "rent",
+        rental: payment.rentals,
+        property: payment.properties,
+        tenant: payment.tenants,
+        paymentTime: payment.payment_time || "",
+        paymentCode: payment.payment_code || "",
+      }));
+
+      setPayments(formattedPayments);
+
+      console.log("✅ [FINANCIAL] Dados carregados com sucesso!");
+
     } catch (error: any) {
-      // Ignorar erros de abort
-      if (error?.name === 'AbortError') {
-        return;
-      }
-      
-      console.error("❌ Error loading financial data:", error);
+      console.error("❌ [FINANCIAL] Erro ao carregar dados:", error);
       toast({
         title: "Erro",
         description: "Não foi possível carregar os dados financeiros.",
@@ -185,41 +311,20 @@ export default function Financial() {
     const tenant = payment.tenant;
     const rental = payment.rental;
 
-    console.log("🔍 DEBUG getPaymentDetails:", {
-      paymentId: payment.id,
-      hasProperty: !!property,
-      propertyLocation: property?.location,
-      propertyLocationId: property?.locationId,
-      hasRental: !!rental,
-      hasTenant: !!tenant,
-      paymentTime: payment.paymentTime
-    });
-
     return {
-      local: property?.location || "N/A",
+      local: property?.location || property?.locations?.name || "N/A",
       complemento: property?.complement || "N/A",
       tenantName: tenant?.name || "N/A",
       rental: rental,
-      pixCode: rental?.pixCode || "",
+      pixCode: rental?.payment_code || payment.paymentCode || "",
       paymentTime: payment.paymentTime || "",
     };
   };
 
   const calculatePaymentNumber = (payment: Payment, rental: Rental | undefined) => {
-    // Usa o rental do payment se não for passado
     const rentalData = rental || payment.rental;
     
-    console.log("🔍 DEBUG calculatePaymentNumber:", {
-      paymentId: payment.id,
-      hasRental: !!rentalData,
-      rentalStartDate: rentalData?.startDate,
-      rentalEndDate: rentalData?.endDate,
-      referenceMonth: payment.referenceMonth,
-      referenceYear: payment.referenceYear
-    });
-    
     if (!rentalData || !rentalData.startDate || !rentalData.endDate) {
-      console.warn("⚠️ Rental data missing for payment:", payment.id);
       return "N/A";
     }
     
@@ -232,13 +337,12 @@ export default function Financial() {
       const currentPaymentNumber = differenceInMonths(referenceDate, contractStartDate) + 1;
       
       if (isNaN(currentPaymentNumber) || isNaN(totalMonths)) {
-        console.warn("⚠️ Invalid date calculation for payment:", payment.id, { rental });
         return "N/A";
       }
       
       return `${currentPaymentNumber}/${totalMonths}`;
     } catch (error) {
-      console.error("❌ Error calculating payment number:", error);
+      console.error("❌ Erro ao calcular número de parcela:", error);
       return "N/A";
     }
   };
@@ -260,13 +364,6 @@ export default function Financial() {
   };
 
   const getSortedPayments = () => {
-    // Remove period filter - show ALL payments
-    console.log("🔍 DEBUG Financial - Todos os pagamentos:", {
-      totalPayments: payments.length,
-      samplePayment: payments[0]
-    });
-
-    // Apply sorting if specified
     if (!sortField || !sortDirection) return payments;
 
     return [...payments].sort((a, b) => {
@@ -275,10 +372,8 @@ export default function Financial() {
 
       switch (sortField) {
         case "paymentNumber":
-          const rentalA = rentals.find(r => r.id === a.rentalId);
-          const rentalB = rentals.find(r => r.id === b.rentalId);
-          aValue = calculatePaymentNumber(a, rentalA);
-          bValue = calculatePaymentNumber(b, rentalB);
+          aValue = calculatePaymentNumber(a, a.rental);
+          bValue = calculatePaymentNumber(b, b.rental);
           break;
         case "local":
           aValue = getPaymentDetails(a).local;
@@ -409,16 +504,6 @@ export default function Financial() {
   const totalReceived = payments
     .filter((p) => p.status === "paid" || p.status === "partial")
     .reduce((sum, p) => sum + (p.paidAmount || 0), 0);
-  
-  console.log("💰 DEBUG Financial - KPI Calculations Start:", {
-    totalPayments: payments.length,
-    totalExpected,
-    totalReceived,
-    configLoaded: !!config,
-    configAdminFee: config?.admin_fee_percentage,
-    configManagementFee: config?.management_fee_percentage,
-    exemptLocationIds
-  });
 
   const adminFee = payments
     .filter((p) => p.status === "paid" || p.status === "partial")
@@ -431,23 +516,8 @@ export default function Financial() {
       
       const fee = isExempt ? 0 : ((p.paidAmount || 0) * feeRate);
       
-      // DEBUG LOG APENAS PARA O PRIMEIRO PAGAMENTO PAGO PARA NÃO POLUIR O CONSOLE
-      if (sum === 0 && fee > 0) {
-        console.log("💰 DEBUG Admin Fee Sample:", {
-          paymentId: p.id,
-          paidAmount: p.paidAmount,
-          feePercentage,
-          feeRate,
-          isExempt,
-          locationId: property?.locationId,
-          calculatedFee: fee
-        });
-      }
-      
       return sum + fee;
     }, 0);
-
-  console.log("💰 DEBUG Financial - Admin Fee Total:", adminFee);
     
   const managementFee = payments
     .filter((p) => p.status === "paid" || p.status === "partial")
@@ -459,11 +529,6 @@ export default function Financial() {
        
        return sum + fee;
   }, 0);
-
-  console.log("💰 DEBUG Financial - Management Fee Total:", {
-     total: managementFee,
-     percentage: config?.management_fee_percentage ?? 3
-  });
 
   const netRevenue = totalReceived - adminFee - managementFee - locationExpenses;
   
@@ -781,7 +846,9 @@ export default function Financial() {
                     </div>
                   ) : filteredPayments.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
-                      Nenhum pagamento encontrado para o período selecionado
+                      {isFinancial 
+                        ? "Nenhum pagamento encontrado nos locais permitidos para o período selecionado"
+                        : "Nenhum pagamento encontrado para o período selecionado"}
                     </div>
                   ) : (
                     <div className="overflow-x-auto">
