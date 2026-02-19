@@ -140,6 +140,19 @@ export default function Financial() {
         }
       }
 
+      // Buscar permissões de local (para usuários financeiros)
+      if (user.role === "financial") {
+        const { data: permissions } = await supabase
+          .from("user_location_permissions")
+          .select("location_id")
+          .eq("user_id", user.id);
+        
+        allowedLocations = permissions?.map(p => p.location_id) || [];
+        setAllowedLocationIds(allowedLocations);
+      } else {
+        setAllowedLocationIds([]);
+      }
+
       // CRITICAL: Construir query de pagamentos com filtro de locais para financeiro
       let paymentsQuery = supabase
         .from("payments")

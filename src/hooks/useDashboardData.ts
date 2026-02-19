@@ -289,7 +289,8 @@ export function useDashboardData(
         ]);
 
         console.log("📊 [DASHBOARD] Dados carregados:", {
-          userRole: user?.role,
+          userRole,
+          userId,
           isFinancialUser,
           allowedLocations,
           propertiesCount: propertiesData.length,
