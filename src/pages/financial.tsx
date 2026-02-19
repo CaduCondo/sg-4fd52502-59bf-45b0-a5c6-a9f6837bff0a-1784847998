@@ -102,14 +102,46 @@ export default function Financial() {
     try {
       setLoading(true);
       
-      console.log("🔍 DEBUG Financial - Loading data for period:", {
+      console.log("🔍 [FINANCIAL] Loading data for period:", {
         filterMonth,
         filterYear,
         userId: user?.id,
-        userRole: user?.role
+        userRole: user?.role,
+        isFinancial
       });
+
+      // CRITICAL: Buscar permissões de locais para usuários financeiros
+      let allowedLocations: string[] = [];
       
-      const { data: paymentsData, error: paymentsError } = await supabase
+      if (isFinancial && user?.id) {
+        console.log("🔐 [FINANCIAL] Buscando permissões de locais para usuário financeiro...");
+        
+        const { data: permissions, error: permError } = await supabase
+          .from("user_location_permissions")
+          .select("location_id")
+          .eq("user_id", user.id);
+        
+        if (permError) {
+          console.error("❌ [FINANCIAL] Erro ao buscar permissões:", permError);
+          throw permError;
+        }
+
+        allowedLocations = permissions?.map(p => p.location_id) || [];
+        setAllowedLocationIds(allowedLocations);
+        
+        console.log(`✅ [FINANCIAL] Usuário tem acesso a ${allowedLocations.length} local(is):`, allowedLocations);
+
+        // Se não tem locais permitidos, não buscar nada
+        if (allowedLocations.length === 0) {
+          console.log("⚠️ [FINANCIAL] Usuário financeiro sem locais permitidos - sem dados");
+          setPayments([]);
+          setLoading(false);
+          return;
+        }
+      }
+
+      // CRITICAL: Construir query de pagamentos com filtro de locais para financeiro
+      let paymentsQuery = supabase
         .from("payments")
         .select(`
           id,
@@ -144,9 +176,17 @@ export default function Financial() {
           )
         `)
         .eq("reference_month", String(filterMonth))
-        .eq("reference_year", String(filterYear))
-        .order("due_date", { ascending: true });
+        .eq("reference_year", String(filterYear));
 
+      // CRITICAL: Aplicar filtro de locais para usuários financeiros
+      if (isFinancial && allowedLocations.length > 0) {
+        console.log("🔒 [FINANCIAL] Filtrando pagamentos por locais permitidos:", allowedLocations);
+        paymentsQuery = paymentsQuery.in("rentals.properties.location_id", allowedLocations);
+      }
+
+      paymentsQuery = paymentsQuery.order("due_date", { ascending: true });
+
+      const { data: paymentsData, error: paymentsError } = await paymentsQuery;
       if (paymentsError) throw paymentsError;
 
       console.log("🔍 DEBUG Financial - Dados brutos do banco:", {
@@ -302,38 +342,51 @@ export default function Financial() {
       
       if (user) {
         // Buscar isenções de taxa de administração (GLOBAL - por local, não por usuário)
-        const { data: exemptions, error: exemptError } = await supabase
+        let exemptionsQuery = supabase
           .from("admin_fee_exempt_locations")
           .select("location_id");
+
+        // CRITICAL: Filtrar isenções apenas dos locais permitidos
+        if (isFinancial && allowedLocations.length > 0) {
+          console.log("🔒 [FINANCIAL] Filtrando isenções por locais permitidos");
+          exemptionsQuery = exemptionsQuery.in("location_id", allowedLocations);
+        }
+
+        const { data: exemptions, error: exemptError } = await exemptionsQuery;
         
         if (exemptError) {
-          console.error("❌ Erro ao buscar locais isentos:", exemptError);
+          console.error("❌ [FINANCIAL] Erro ao buscar locais isentos:", exemptError);
         } else {
           const exemptIds = exemptions?.map(e => e.location_id) || [];
           setExemptLocationIds(exemptIds);
-          console.log("✅ Locais isentos de taxa de administração:", exemptIds);
+          console.log("✅ [FINANCIAL] Locais isentos de taxa de administração:", exemptIds);
         }
 
         // Buscar configurações globais
         const configData = await getConfig();
         setConfig(configData);
-        console.log("✅ Configurações carregadas:", {
+        console.log("✅ [FINANCIAL] Configurações carregadas:", {
           adminFeePercentage: configData?.admin_fee_percentage,
           managementFeePercentage: configData?.management_fee_percentage
         });
 
-        // Buscar permissões de local (para usuários financeiros)
-        if (user.role === "financial") {
-          const { data: permissions } = await supabase
-            .from("user_location_permissions")
-            .select("location_id")
-            .eq("user_id", user.id);
-          
-          allowedLocations = permissions?.map(p => p.location_id) || [];
-          setAllowedLocationIds(allowedLocations);
-        } else {
-          setAllowedLocationIds([]);
+        // Buscar despesas de locais do período
+        let expensesQuery = supabase
+          .from("location_expenses")
+          .select("amount")
+          .eq("reference_month", filterMonth)
+          .eq("reference_year", filterYear);
+
+        // CRITICAL: Filtrar despesas apenas dos locais permitidos
+        if (isFinancial && allowedLocations.length > 0) {
+          console.log("🔒 [FINANCIAL] Filtrando despesas por locais permitidos");
+          expensesQuery = expensesQuery.in("location_id", allowedLocations);
         }
+
+        const { data: expensesData } = await expensesQuery;
+        const totalExpenses = expensesData?.reduce((sum, e) => sum + (e.amount || 0), 0) || 0;
+        setLocationExpenses(totalExpenses);
+        console.log(`✅ [FINANCIAL] Total de despesas: R$ ${totalExpenses.toFixed(2)}`);
       }
 
       // Set payments filtered by period

@@ -108,13 +108,22 @@ export function useDashboardData(
   const fetchUserPermissions = useCallback(async (uid: string) => {
     if (!isFinancialUser) return null;
 
+    console.log("🔐 [DASHBOARD] Buscando permissões de locais para usuário financeiro:", uid);
+    
     const { data, error } = await supabase
       .from("user_location_permissions")
       .select("location_id")
       .eq("user_id", uid);
 
-    if (error) throw error;
-    return data?.map(p => p.location_id) || [];
+    if (error) {
+      console.error("❌ [DASHBOARD] Erro ao buscar permissões:", error);
+      throw error;
+    }
+
+    const locationIds = data?.map(p => p.location_id) || [];
+    console.log(`✅ [DASHBOARD] Usuário tem acesso a ${locationIds.length} local(is):`, locationIds);
+    
+    return locationIds;
   }, [isFinancialUser]);
 
   const fetchProperties = useCallback(async (allowedLocations: string[] | null) => {
@@ -122,43 +131,93 @@ export function useDashboardData(
       .from("properties")
       .select("id, status, location_id");
 
-    if (isFinancialUser && allowedLocations && allowedLocations.length > 0) {
+    // CRITICAL: Aplicar filtro de locais para usuários financeiros
+    if (isFinancialUser) {
+      if (!allowedLocations || allowedLocations.length === 0) {
+        console.log("⚠️ [DASHBOARD] Usuário financeiro sem locais permitidos - retornando vazio");
+        return [];
+      }
+      console.log("🔒 [DASHBOARD] Filtrando propriedades por locais permitidos:", allowedLocations);
       query = query.in("location_id", allowedLocations);
     }
 
     const { data, error } = await query;
     if (error) throw error;
+    
+    console.log(`✅ [DASHBOARD] ${data?.length || 0} propriedade(s) encontrada(s)`);
     return data || [];
   }, [isFinancialUser]);
 
-  const fetchTenantsCount = useCallback(async () => {
+  const fetchTenantsCount = useCallback(async (allowedLocations: string[] | null) => {
+    // CRITICAL: Contar apenas inquilinos de propriedades nos locais permitidos
+    if (isFinancialUser) {
+      if (!allowedLocations || allowedLocations.length === 0) {
+        console.log("⚠️ [DASHBOARD] Sem locais permitidos - 0 inquilinos");
+        return 0;
+      }
+
+      // Buscar inquilinos via rentals ativos em propriedades dos locais permitidos
+      const { data: rentalsData, error: rentalsError } = await supabase
+        .from("rentals")
+        .select(`
+          tenant_id,
+          properties!inner(location_id)
+        `)
+        .eq("is_active", true)
+        .in("properties.location_id", allowedLocations);
+
+      if (rentalsError) {
+        console.error("❌ [DASHBOARD] Erro ao contar inquilinos:", rentalsError);
+        throw rentalsError;
+      }
+
+      // Contar inquilinos únicos
+      const uniqueTenantIds = new Set(rentalsData?.map(r => r.tenant_id) || []);
+      const count = uniqueTenantIds.size;
+      
+      console.log(`✅ [DASHBOARD] ${count} inquilino(s) nos locais permitidos`);
+      return count;
+    }
+
+    // Para admin/broker - contar todos os inquilinos ativos
     const { count, error } = await supabase
       .from("tenants")
       .select("id", { count: "exact", head: true })
       .neq("status", "inactive");
 
     if (error) throw error;
+    console.log(`✅ [DASHBOARD] ${count || 0} inquilino(s) total`);
     return count || 0;
-  }, []);
+  }, [isFinancialUser]);
 
   const fetchRentals = useCallback(async (propertyIds: string[]) => {
-    if (isFinancialUser && propertyIds.length === 0) return [];
+    if (isFinancialUser && propertyIds.length === 0) {
+      console.log("⚠️ [DASHBOARD] Sem propriedades para buscar aluguéis");
+      return [];
+    }
 
     let query = supabase
       .from("rentals")
       .select("id, property_id, tenant_id, start_date, end_date, monthly_rent, value, is_active, status");
 
+    // CRITICAL: Filtrar aluguéis por propriedades dos locais permitidos
     if (isFinancialUser && propertyIds.length > 0) {
+      console.log("🔒 [DASHBOARD] Filtrando aluguéis por propriedades permitidas:", propertyIds.length);
       query = query.in("property_id", propertyIds);
     }
 
     const { data, error } = await query;
     if (error) throw error;
+    
+    console.log(`✅ [DASHBOARD] ${data?.length || 0} aluguel(is) encontrado(s)`);
     return data || [];
   }, [isFinancialUser]);
 
   const fetchPayments = useCallback(async (rentalIds: string[], m: number, y: number) => {
-    if (isFinancialUser && rentalIds.length === 0) return [];
+    if (isFinancialUser && rentalIds.length === 0) {
+      console.log("⚠️ [DASHBOARD] Sem aluguéis para buscar pagamentos");
+      return [];
+    }
 
     let query = supabase
       .from("payments")
@@ -166,12 +225,16 @@ export function useDashboardData(
       .eq("reference_month", m.toString())
       .eq("reference_year", y.toString());
 
+    // CRITICAL: Filtrar pagamentos por aluguéis dos locais permitidos
     if (isFinancialUser && rentalIds.length > 0) {
+      console.log("🔒 [DASHBOARD] Filtrando pagamentos por aluguéis permitidos:", rentalIds.length);
       query = query.in("rental_id", rentalIds);
     }
 
     const { data, error } = await query;
     if (error) throw error;
+    
+    console.log(`✅ [DASHBOARD] ${data?.length || 0} pagamento(s) encontrado(s)`);
     return data || [];
   }, [isFinancialUser]);
 
@@ -182,13 +245,22 @@ export function useDashboardData(
       .eq("reference_month", m)
       .eq("reference_year", y);
 
-    if (isFinancialUser && allowedLocations && allowedLocations.length > 0) {
+    // CRITICAL: Filtrar despesas apenas dos locais permitidos
+    if (isFinancialUser) {
+      if (!allowedLocations || allowedLocations.length === 0) {
+        console.log("⚠️ [DASHBOARD] Sem locais para buscar despesas");
+        return 0;
+      }
+      console.log("🔒 [DASHBOARD] Filtrando despesas por locais permitidos:", allowedLocations);
       query = query.in("location_id", allowedLocations);
     }
 
     const { data, error } = await query;
     if (error) throw error;
-    return data?.reduce((sum, e) => sum + (e.amount || 0), 0) || 0;
+    
+    const total = data?.reduce((sum, e) => sum + (e.amount || 0), 0) || 0;
+    console.log(`✅ [DASHBOARD] Total de despesas: R$ ${total.toFixed(2)}`);
+    return total;
   }, [isFinancialUser]);
 
   useEffect(() => {
@@ -213,8 +285,16 @@ export function useDashboardData(
 
         const [propertiesData, tenantsCountData] = await Promise.all([
           fetchProperties(allowedLocations),
-          fetchTenantsCount()
+          fetchTenantsCount(allowedLocations)
         ]);
+
+        console.log("📊 [DASHBOARD] Dados carregados:", {
+          userRole: user?.role,
+          isFinancialUser,
+          allowedLocations,
+          propertiesCount: propertiesData.length,
+          tenantsCount: tenantsCountData
+        });
 
         if (!isMounted) return;
 
