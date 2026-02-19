@@ -576,13 +576,24 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file) {
+      console.log("⚠️ No file selected");
+      return;
+    }
+
+    console.log("📎 File selected:", {
+      name: file.name,
+      type: file.type,
+      size: file.size,
+      lastModified: file.lastModified
+    });
 
     const maxSize = 10 * 1024 * 1024;
     if (file.size > maxSize) {
+      console.error("❌ File too large:", file.size, "bytes");
       toast({
         title: "Arquivo muito grande",
-        description: "O tamanho máximo permitido é 10MB",
+        description: `O arquivo tem ${(file.size / 1024 / 1024).toFixed(2)}MB. O tamanho máximo permitido é 10MB`,
         variant: "destructive",
       });
       return;
@@ -597,6 +608,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     ];
     
     if (!allowedTypes.includes(file.type)) {
+      console.error("❌ Invalid file type:", file.type);
       toast({
         title: "Tipo de arquivo não suportado",
         description: "Apenas imagens (JPG, PNG, WEBP) e PDF são permitidos",
@@ -605,49 +617,87 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       return;
     }
 
+    console.log("✅ File validation passed");
     setUploadingFile(true);
     setUploadProgress({ ...uploadProgress, [index]: 0 });
 
     try {
+      console.log("📤 Starting upload...");
       const formData = new FormData();
       formData.append("file", file);
+
+      console.log("📦 FormData created, initiating XHR...");
 
       const xhr = new XMLHttpRequest();
 
       xhr.upload.addEventListener("progress", (event) => {
         if (event.lengthComputable) {
           const percentComplete = Math.round((event.loaded / event.total) * 100);
+          console.log(`📊 Upload progress: ${percentComplete}% (${event.loaded}/${event.total} bytes)`);
           setUploadProgress(prev => ({ ...prev, [index]: percentComplete }));
         }
       });
 
       const uploadPromise = new Promise<string>((resolve, reject) => {
         xhr.addEventListener("load", () => {
+          console.log("📬 Upload response received");
+          console.log("Status:", xhr.status);
+          console.log("Response:", xhr.responseText);
+          
           if (xhr.status === 200) {
             try {
               const response = JSON.parse(xhr.responseText);
+              console.log("✅ Upload successful:", response);
               resolve(response.url);
             } catch (error) {
+              console.error("❌ Error parsing response:", error);
               reject(new Error("Erro ao processar resposta do servidor"));
             }
           } else {
-            reject(new Error(`Erro no upload: ${xhr.status}`));
+            console.error("❌ Upload failed with status:", xhr.status);
+            let errorMessage = `Erro no upload: ${xhr.status}`;
+            
+            try {
+              const errorResponse = JSON.parse(xhr.responseText);
+              console.error("Error details:", errorResponse);
+              if (errorResponse.error) {
+                errorMessage = errorResponse.error;
+                if (errorResponse.details) {
+                  console.error("Additional details:", errorResponse.details);
+                  errorMessage += ` - ${errorResponse.details}`;
+                }
+              }
+            } catch (e) {
+              console.error("Could not parse error response");
+            }
+            
+            reject(new Error(errorMessage));
           }
         });
 
-        xhr.addEventListener("error", () => {
+        xhr.addEventListener("error", (e) => {
+          console.error("❌ Network error during upload:", e);
           reject(new Error("Erro de rede ao enviar arquivo"));
         });
 
         xhr.addEventListener("abort", () => {
+          console.warn("⚠️ Upload aborted");
           reject(new Error("Upload cancelado"));
         });
 
+        xhr.addEventListener("timeout", () => {
+          console.error("❌ Upload timeout");
+          reject(new Error("Tempo esgotado. Tente novamente"));
+        });
+
+        xhr.timeout = 60000; // 60 seconds timeout
+        console.log("🚀 Sending request to /api/upload");
         xhr.open("POST", "/api/upload");
         xhr.send(formData);
       });
 
       const url = await uploadPromise;
+      console.log("✅ File uploaded successfully, URL:", url);
 
       setAttachments(prev => {
         const newAttachments = [...prev];
@@ -657,6 +707,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           name: file.name,
           uploadProgress: 100,
         };
+        console.log("📋 Attachments updated:", newAttachments);
         return newAttachments;
       });
 
@@ -665,10 +716,17 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         description: "Comprovante anexado com sucesso",
       });
     } catch (error) {
-      console.error("Erro no upload:", error);
+      console.error("❌ Upload error (catch block):", error);
+      
+      let errorMessage = "Tente novamente ou use outro arquivo";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        console.error("Error details:", error.stack);
+      }
+      
       toast({
         title: "Erro ao enviar arquivo",
-        description: error instanceof Error ? error.message : "Tente novamente ou use outro arquivo",
+        description: errorMessage,
         variant: "destructive",
       });
 
@@ -683,6 +741,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         return newAttachments;
       });
     } finally {
+      console.log("🏁 Upload process finished");
       setUploadingFile(false);
       setUploadProgress(prev => {
         const newProgress = { ...prev };
