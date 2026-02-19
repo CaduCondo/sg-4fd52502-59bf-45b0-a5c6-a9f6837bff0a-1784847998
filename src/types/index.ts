@@ -84,43 +84,39 @@ export interface Location {
 export interface Property {
   id: string;
   locationId: string;
-  location_id?: string; // Compatibility
-  location: string;
+  location?: string;
+  locationDetails?: {
+    name: string;
+    street?: string;
+    number?: string;
+    neighborhood?: string;
+    city?: string;
+    state?: string;
+    zip_code?: string;
+  };
   propertyIdentifier: string;
-  property_identifier?: string; // Compatibility
-  complement: string;
-  description: string;
+  complement?: string;
+  description?: string;
   rooms: number;
   bathrooms: number;
   area: number;
-  value: number;
-  garageValue?: number;
-  garage_value?: number; // Compatibility
   hasGarage: boolean;
-  has_garage?: boolean; // Compatibility
   hasFurniture: boolean;
-  has_furniture?: boolean; // Compatibility
   acceptsPets: boolean;
-  accepts_pets?: boolean; // Compatibility
   status: "available" | "occupied" | "unavailable";
   images: string[];
   createdAt: string;
-  created_at?: string; // Compatibility
-  updatedAt?: string;
-  updated_at?: string; // Compatibility
-  address: string;
-  features: string[];
-  locationDetails?: any;
-  // Dashboard specific props
-  type?: string; 
+  address?: string;
+  features?: string[];
   monthlyRent?: number;
-  
-  // Address details
+  value?: number;
   number?: string;
   neighborhood?: string;
   city?: string;
   state?: string;
   zipCode?: string;
+  garageValue?: number;
+  type?: string;
 }
 
 export interface Tenant {
@@ -149,68 +145,40 @@ export interface Tenant {
 export interface Rental {
   id: string;
   propertyId: string;
-  property_id?: string; // Compatibility
   tenantId: string;
-  tenant_id?: string; // Compatibility
   startDate: string;
-  start_date?: string; // Compatibility
-  endDate: string | null;
-  end_date?: string | null; // Compatibility
+  endDate: string;
   value: number;
   monthlyRent: number;
-  monthly_rent?: number; // Compatibility
-  paymentDay: number;
-  payment_day?: number; // Compatibility
-  depositAmount: number;
-  deposit_amount?: number; // Compatibility
-  security_deposit?: number; // Compatibility
-  status: "active" | "ended" | "terminated";
   isActive: boolean;
-  is_active?: boolean; // Compatibility
-  attachments: string[];
-  contractAttachments: string[];
-  contract_attachments?: string[]; // Compatibility
-  autoRenew: boolean;
-  auto_renew?: boolean; // Compatibility
-  hasGarage: boolean;
-  has_garage?: boolean; // Compatibility
-  garageValue?: number;
-  garage_value?: number; // Compatibility
-  hasPartnerBroker: boolean;
-  has_partner_broker?: boolean; // Compatibility
-  pixCode?: string;
+  paymentDay: number;
+  status: "active" | "completed" | "terminated";
+  depositAmount?: number;
+  hasGarage?: boolean;
+  hasPartnerBroker?: boolean;
+  attachments?: string[];
+  contractAttachments?: string[];
+  autoRenew?: boolean;
+  payment_code?: string;
   
-  // Deposit Installments
-  depositInstallments?: number;
-  depositInstallment1?: number;
-  depositPaymentDate?: string;
-  depositPixCode?: string;
-  depositInstallment2?: number;
-  depositInstallment2PaymentDate?: string;
-  depositInstallment2PixCode?: string;
-  depositInstallment3?: number;
-  depositInstallment3PaymentDate?: string;
-  depositInstallment3PixCode?: string;
-  
-  // Compatibility snake_case
-  deposit_installments?: number;
-  deposit_installment_1?: number;
-  deposit_payment_date?: string;
-  deposit_pix_code?: string;
-  deposit_installment_2?: number;
-  deposit_installment_2_payment_date?: string;
-  deposit_installment_2_pix_code?: string;
-  deposit_installment_3?: number;
-  deposit_installment_3_payment_date?: string;
-  deposit_installment_3_pix_code?: string;
-  
-  installments?: number; // Added property
-  totalInstallments?: number; // Added property
-
-  // Relations
+  // Expanded fields for UI and calculations
   property?: Property;
   tenant?: Tenant;
-  locationId?: string; // For compatibility
+  garageValue?: number;
+  depositInstallments?: number;
+  depositInstallment1?: number;
+  depositInstallment2?: number;
+  depositInstallment3?: number;
+  depositPaymentDate?: string;
+  depositInstallment2PaymentDate?: string;
+  depositInstallment3PaymentDate?: string;
+  depositPixCode?: string;
+  depositInstallment2PixCode?: string;
+  depositInstallment3PixCode?: string;
+  security_deposit?: number;
+  pixCode?: string;
+  installments?: number;
+  totalInstallments?: number;
 }
 
 export interface Payment {
@@ -220,25 +188,27 @@ export interface Payment {
   tenantId: string;
   dueDate: string;
   expectedAmount: number;
-  paidAmount: number;
+  paidAmount?: number;
   paymentDate?: string;
-  paymentTime?: string;
   status: "paid" | "pending" | "overdue" | "partial";
-  paymentMethod: string;
   referenceMonth?: number;
   referenceYear?: number;
   discount?: number;
   lateFee?: number;
   interest?: number;
   notes?: string;
-  attachments?: string[];
-  receiptUrl?: string; 
-  breakdown?: any;
-  installment?: number;
-  totalInstallments?: number;
+  paymentMethod?: string;
+  receiptUrl?: string;
+  type?: "rent" | "deposit";
   rental?: Rental;
   property?: Property;
   tenant?: Tenant;
+  paymentTime?: string;
+  breakdown?: any;
+  installment?: number;
+  totalInstallments?: number;
+  paymentCode?: string;
+  attachments?: string[];
 }
 
 export interface PaymentInstallment {

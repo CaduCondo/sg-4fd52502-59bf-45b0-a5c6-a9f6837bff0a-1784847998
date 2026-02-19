@@ -48,7 +48,7 @@ export default function Financial() {
   const { user } = useAuth();
   const { toast } = useToast();
   const isAdmin = user?.role === "admin" || user?.role === "broker";
-  const isFinancial = user?.role === "financial";
+  const isFinancial = user?.role?.toLowerCase() === "financial";
   
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -311,8 +311,11 @@ export default function Financial() {
     const tenant = payment.tenant;
     const rental = payment.rental;
 
+    // Acessar locationDetails se disponível, ou fallback para location (string)
+    const localName = property?.locationDetails?.name || property?.location || "N/A";
+
     return {
-      local: property?.location || property?.locations?.name || "N/A",
+      local: localName,
       complemento: property?.complement || "N/A",
       tenantName: tenant?.name || "N/A",
       rental: rental,

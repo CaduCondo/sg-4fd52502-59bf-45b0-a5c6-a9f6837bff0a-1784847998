@@ -94,7 +94,10 @@ export function useDashboardData(
   const [locationExpenses, setLocationExpenses] = useState(0);
   const [exemptLocationIds, setExemptLocationIds] = useState<string[]>([]);
 
-  const isFinancialUser = useMemo(() => userRole === "financial", [userRole]);
+  // Garantir verificação case-insensitive e segura
+  const isFinancialUser = useMemo(() => {
+    return userRole?.toLowerCase() === "financial";
+  }, [userRole]);
 
   useEffect(() => {
     let isMounted = true;
