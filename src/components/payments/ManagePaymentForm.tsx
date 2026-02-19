@@ -1347,6 +1347,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                   type="file"
                   accept="image/jpeg,image/jpg,image/png,image/webp,application/pdf"
                   onChange={(e) => {
+                    console.log("📎 File input changed", e.target.files?.[0]);
                     const index = attachments.findIndex(a => !a.url);
                     if (index === -1) {
                       addAttachment();
@@ -1362,7 +1363,11 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                   type="button"
                   variant="outline"
                   className="w-full h-12"
-                  onClick={() => document.getElementById('file-input')?.click()}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    console.log("📂 Escolher Arquivo clicked");
+                    document.getElementById('file-input')?.click();
+                  }}
                   disabled={uploadingFile || isReadOnly}
                 >
                   <Upload className="mr-2 h-5 w-5" />
@@ -1377,6 +1382,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                   accept="image/*"
                   capture="environment"
                   onChange={(e) => {
+                    console.log("📷 Camera input changed", e.target.files?.[0]);
                     const index = attachments.findIndex(a => !a.url);
                     if (index === -1) {
                       addAttachment();
@@ -1392,7 +1398,11 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                   type="button"
                   variant="outline"
                   className="w-full h-12"
-                  onClick={() => document.getElementById('camera-input')?.click()}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    console.log("📷 Tirar Foto clicked");
+                    document.getElementById('camera-input')?.click();
+                  }}
                   disabled={uploadingFile || isReadOnly}
                 >
                   <Camera className="mr-2 h-5 w-5" />

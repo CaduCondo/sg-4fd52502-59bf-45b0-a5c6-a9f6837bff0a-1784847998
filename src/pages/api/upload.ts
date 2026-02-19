@@ -6,7 +6,6 @@ import path from "path";
 export const config = {
   api: {
     bodyParser: false,
-    responseLimit: "10mb",
   },
 };
 
@@ -18,87 +17,74 @@ export default async function handler(
     return res.status(405).json({ error: "Method not allowed" });
   }
 
+  const uploadDir = path.join(process.cwd(), "public", "uploads");
+
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  }
+
+  const form = formidable({
+    uploadDir,
+    keepExtensions: true,
+    maxFileSize: 10 * 1024 * 1024, // 10MB
+    filename: (name, ext, part) => {
+      const uniqueName = `file_${Date.now()}${ext}`;
+      console.log("📦 Uploading file:", uniqueName, "Type:", part.mimetype);
+      return uniqueName;
+    },
+  });
+
   try {
-    const uploadDir = path.join(process.cwd(), "public", "uploads");
+    const [fields, files] = await form.parse(req);
+    console.log("✅ File parsed successfully");
+
+    const file = files.file?.[0];
     
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
+    if (!file) {
+      console.error("❌ No file found in request");
+      return res.status(400).json({ error: "Nenhum arquivo enviado" });
     }
 
-    const form = formidable({
-      uploadDir,
-      keepExtensions: true,
-      maxFileSize: 10 * 1024 * 1024,
-      filename: (name, ext, part) => {
-        const uniqueName = `file_${Date.now()}${ext}`;
-        return uniqueName;
-      },
-      filter: (part) => {
-        const allowedMimeTypes = [
-          "image/jpeg",
-          "image/jpg",
-          "image/png", 
-          "image/webp",
-          "application/pdf"
-        ];
-        
-        return part.mimetype !== null && allowedMimeTypes.includes(part.mimetype);
-      },
-    });
+    // Validate file type
+    const allowedTypes = [
+      "image/jpeg",
+      "image/jpg",
+      "image/png", 
+      "image/webp",
+      "application/pdf"
+    ];
 
-    const [fields, files] = await new Promise<[formidable.Fields, formidable.Files]>(
-      (resolve, reject) => {
-        form.parse(req, (err, fields, files) => {
-          if (err) {
-            console.error("Formidable parse error:", err);
-            reject(err);
-            return;
-          }
-          resolve([fields, files]);
-        });
-      }
-    );
-
-    const fileArray = files.file;
-    if (!fileArray || fileArray.length === 0) {
+    if (!allowedTypes.includes(file.mimetype || "")) {
+      console.error("❌ Invalid file type:", file.mimetype);
+      fs.unlinkSync(file.filepath);
       return res.status(400).json({ 
-        error: "Nenhum arquivo foi enviado" 
+        error: "Tipo de arquivo não suportado. Use JPG, PNG, WEBP ou PDF" 
       });
     }
 
-    const file = Array.isArray(fileArray) ? fileArray[0] : fileArray;
-    
-    if (!file.newFilename) {
+    // Validate file size
+    if (file.size > 10 * 1024 * 1024) {
+      console.error("❌ File too large:", file.size);
+      fs.unlinkSync(file.filepath);
       return res.status(400).json({ 
-        error: "Erro ao processar o arquivo" 
+        error: "Arquivo muito grande. Máximo 10MB" 
       });
     }
 
-    const fileUrl = `/uploads/${file.newFilename}`;
-
-    return res.status(200).json({ 
-      url: fileUrl,
-      filename: file.newFilename,
-      originalName: file.originalFilename || "arquivo",
-      size: file.size,
-      mimetype: file.mimetype
-    });
+    const filename = path.basename(file.filepath);
+    const url = `/uploads/${filename}`;
+    
+    console.log("✅ Upload successful:", url);
+    return res.status(200).json({ url });
 
   } catch (error) {
-    console.error("Upload error:", error);
+    console.error("❌ Upload error:", error);
     
     if (error instanceof Error) {
-      if (error.message.includes("maxFileSize")) {
-        return res.status(400).json({ 
-          error: "Arquivo muito grande. Tamanho máximo: 10MB" 
-        });
-      }
-      
-      if (error.message.includes("Invalid content type")) {
-        return res.status(400).json({ 
-          error: "Tipo de arquivo não permitido. Use imagens (JPG, PNG, WEBP) ou PDF" 
-        });
-      }
+      return res.status(500).json({ 
+        error: "Erro ao processar upload",
+        details: error.message 
+      });
     }
     
     return res.status(500).json({ 
