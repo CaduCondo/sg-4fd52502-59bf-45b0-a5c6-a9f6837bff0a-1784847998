@@ -140,271 +140,29 @@ export default function Financial() {
         }
       }
 
-      // Buscar permissões de local (para usuários financeiros)
-      if (user.role === "financial") {
-        const { data: permissions } = await supabase
-          .from("user_location_permissions")
-          .select("location_id")
-          .eq("user_id", user.id);
-        
-        allowedLocations = permissions?.map(p => p.location_id) || [];
-        setAllowedLocationIds(allowedLocations);
-      } else {
-        setAllowedLocationIds([]);
-      }
-
-      // CRITICAL: Construir query de pagamentos com filtro de locais para financeiro
-      let paymentsQuery = supabase
-        .from("payments")
-        .select(`
-          id,
-          rental_id,
-          expected_amount,
-          paid_amount,
-          due_date,
-          payment_date,
-          payment_time,
-          status,
-          reference_month,
-          reference_year,
-          discount_amount,
-          late_fee,
-          interest,
-          notes,
-          payment_method,
-          breakdown,
-          installment,
-          total_installments,
-          rentals!inner(
-            id,
-            monthly_rent,
-            garage_value,
-            has_garage,
-            payment_day,
-            start_date,
-            end_date,
-            pix_code,
-            properties!inner(id, property_identifier, location_id, complement),
-            tenants!inner(id, name, cpf, email, phone)
-          )
-        `)
-        .eq("reference_month", String(filterMonth))
-        .eq("reference_year", String(filterYear));
-
-      // CRITICAL: Aplicar filtro de locais para usuários financeiros
-      if (isFinancial && allowedLocations.length > 0) {
-        console.log("🔒 [FINANCIAL] Filtrando pagamentos por locais permitidos:", allowedLocations);
-        paymentsQuery = paymentsQuery.in("rentals.properties.location_id", allowedLocations);
-      }
-
-      paymentsQuery = paymentsQuery.order("due_date", { ascending: true });
-
-      const { data: paymentsData, error: paymentsError } = await paymentsQuery;
-      if (paymentsError) throw paymentsError;
-
-      console.log("🔍 DEBUG Financial - Dados brutos do banco:", {
-        totalPayments: paymentsData?.length || 0,
-        firstPayment: paymentsData?.[0],
-        firstPaidAmount: paymentsData?.[0]?.paid_amount,
-        hasRentals: !!paymentsData?.[0]?.rentals,
-        hasProperty: !!paymentsData?.[0]?.rentals?.properties,
-        hasTenant: !!paymentsData?.[0]?.rentals?.tenants,
-        filterMonth,
-        filterYear
-      });
-
-      const formattedPayments: Payment[] = (paymentsData || []).map((payment: any) => {
-        const rental = payment.rentals;
-        const property = rental?.properties;
-        const tenant = rental?.tenants;
-
-        return {
-          id: payment.id,
-          rentalId: payment.rental_id,
-          expectedAmount: payment.expected_amount,
-          paidAmount: payment.paid_amount || 0,
-          dueDate: payment.due_date,
-          paymentDate: payment.payment_date,
-          paymentTime: payment.payment_time,
-          status: payment.status as "paid" | "pending" | "overdue" | "partial",
-          referenceMonth: Number(payment.reference_month),
-          referenceYear: Number(payment.reference_year),
-          discount: payment.discount_amount,
-          lateFee: payment.late_fee,
-          interest: payment.interest,
-          notes: payment.notes,
-          paymentMethod: payment.payment_method,
-          breakdown: payment.breakdown,
-          installment: payment.installment,
-          totalInstallments: payment.total_installments,
-          createdAt: payment.created_at,
-          updatedAt: payment.updated_at,
-          rental: rental ? {
-            id: rental.id,
-            monthlyRent: rental.monthly_rent,
-            garageValue: rental.garage_value,
-            hasGarage: rental.has_garage,
-            paymentDay: rental.payment_day,
-            startDate: rental.start_date,
-            endDate: rental.end_date,
-            propertyId: property?.id || "",
-            tenantId: tenant?.id || "",
-            
-            // Campos obrigatórios para satisfazer o tipo Rental
-            value: rental.monthly_rent || 0,
-            depositAmount: 0,
-            status: "active",
-            isActive: true,
-            attachments: [],
-            contractAttachments: [],
-            autoRenew: false,
-            hasPartnerBroker: false,
-            installments: 1,
-            totalInstallments: 1,
-            pixCode: rental.pix_code // Importante para exibir o código PIX
-          } : undefined,
-          property: property ? {
-            id: property.id,
-            propertyIdentifier: property.property_identifier,
-            locationId: property.location_id,
-            complement: property.complement,
-            
-            // Campos obrigatórios para satisfazer o tipo Property
-            location: "Carregando...", // Será atualizado depois
-            description: "",
-            rooms: 0,
-            bathrooms: 0,
-            area: 0,
-            value: 0,
-            hasGarage: false,
-            hasFurniture: false,
-            acceptsPets: false,
-            status: "unavailable",
-            images: [],
-            createdAt: "",
-            address: "",
-            features: []
-          } : undefined,
-          tenant: tenant ? {
-            id: tenant.id,
-            name: tenant.name,
-            cpf: tenant.cpf,
-            email: tenant.email,
-            phone: tenant.phone,
-            // Campos obrigatórios para satisfazer o tipo Tenant
-            document: tenant.cpf || "",
-            status: "active"
-          } : undefined,
-          propertyId: property?.id || "",
-          tenantId: tenant?.id || "",
-        };
-      });
-
-      console.log("🔍 DEBUG Financial - Dados formatados:", {
-        totalFormatted: formattedPayments.length,
-        firstFormatted: formattedPayments[0],
-        firstProperty: formattedPayments[0]?.property,
-        firstTenant: formattedPayments[0]?.tenant,
-        firstRental: formattedPayments[0]?.rental,
-        sampleReferenceMonth: formattedPayments[0]?.referenceMonth,
-        sampleReferenceYear: formattedPayments[0]?.referenceYear
-      });
-
-      // Busca todas as locations para mapear os nomes
-      const { data: locationsData } = await supabase
-        .from("locations")
-        .select("id, name");
-      
-      const locationsMap = new Map(
-        (locationsData || []).map(loc => [loc.id, loc.name])
-      );
-
-      // Atualizar propriedades com nomes de locations
-      const paymentsWithLocations = formattedPayments.map(payment => {
-        if (payment.property && payment.property.locationId) {
-          return {
-            ...payment,
-            property: {
-              ...payment.property,
-              location: locationsMap.get(payment.property.locationId) || payment.property.location || "Local não encontrado"
-            }
-          };
-        }
-        return payment;
-      });
-
-      // FILTRO DE SEGURANÇA (CLIENT-SIDE)
-      // Garante que apenas os dados do período selecionado sejam exibidos
-      const finalFilteredPayments = paymentsWithLocations.filter(p => 
-        p.referenceMonth === filterMonth && 
-        p.referenceYear === filterYear
-      );
-
-      console.log("✅ DEBUG Financial - Dados finais filtrados:", {
-        antes: paymentsWithLocations.length,
-        depois: finalFilteredPayments.length,
-        periodo: `${filterMonth}/${filterYear}`
-      });
+      // Permissões já foram carregadas e configuradas no início da função
 
       // Removed erroneous totalExpenses calculation from paymentsData
       // If expenses need to be calculated, they should be fetched from location_expenses table
       setLocationExpenses(0);
 
-      // Buscar permissões de locais do usuário logado
-      let allowedLocations: string[] = [];
-      
-      if (user) {
-        // Buscar isenções de taxa de administração (GLOBAL - por local, não por usuário)
-        let exemptionsQuery = supabase
-          .from("admin_fee_exempt_locations")
-          .select("location_id");
+      // Buscar despesas de locais do período
+      let expensesQuery = supabase
+        .from("location_expenses")
+        .select("amount")
+        .eq("reference_month", filterMonth)
+        .eq("reference_year", filterYear);
 
-        // CRITICAL: Filtrar isenções apenas dos locais permitidos
-        if (isFinancial && allowedLocations.length > 0) {
-          console.log("🔒 [FINANCIAL] Filtrando isenções por locais permitidos");
-          exemptionsQuery = exemptionsQuery.in("location_id", allowedLocations);
-        }
-
-        const { data: exemptions, error: exemptError } = await exemptionsQuery;
-        
-        if (exemptError) {
-          console.error("❌ [FINANCIAL] Erro ao buscar locais isentos:", exemptError);
-        } else {
-          const exemptIds = exemptions?.map(e => e.location_id) || [];
-          setExemptLocationIds(exemptIds);
-          console.log("✅ [FINANCIAL] Locais isentos de taxa de administração:", exemptIds);
-        }
-
-        // Buscar configurações globais
-        const configData = await getConfig();
-        setConfig(configData);
-        console.log("✅ [FINANCIAL] Configurações carregadas:", {
-          adminFeePercentage: configData?.admin_fee_percentage,
-          managementFeePercentage: configData?.management_fee_percentage
-        });
-
-        // Buscar despesas de locais do período
-        let expensesQuery = supabase
-          .from("location_expenses")
-          .select("amount")
-          .eq("reference_month", filterMonth)
-          .eq("reference_year", filterYear);
-
-        // CRITICAL: Filtrar despesas apenas dos locais permitidos
-        if (isFinancial && allowedLocations.length > 0) {
-          console.log("🔒 [FINANCIAL] Filtrando despesas por locais permitidos");
-          expensesQuery = expensesQuery.in("location_id", allowedLocations);
-        }
-
-        const { data: expensesData } = await expensesQuery;
-        const totalExpenses = expensesData?.reduce((sum, e) => sum + (e.amount || 0), 0) || 0;
-        setLocationExpenses(totalExpenses);
-        console.log(`✅ [FINANCIAL] Total de despesas: R$ ${totalExpenses.toFixed(2)}`);
+      // CRITICAL: Filtrar despesas apenas dos locais permitidos
+      if (isFinancial && allowedLocations.length > 0) {
+        console.log("🔒 [FINANCIAL] Filtrando despesas por locais permitidos");
+        expensesQuery = expensesQuery.in("location_id", allowedLocations);
       }
 
-      // Set payments filtered by period
-      setPayments(finalFilteredPayments);
-
+      const { data: expensesData } = await expensesQuery;
+      const totalExpenses = expensesData?.reduce((sum, e) => sum + (e.amount || 0), 0) || 0;
+      setLocationExpenses(totalExpenses);
+      console.log(`✅ [FINANCIAL] Total de despesas: R$ ${totalExpenses.toFixed(2)}`);
     } catch (error: any) {
       // Ignorar erros de abort
       if (error?.name === 'AbortError') {
