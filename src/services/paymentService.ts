@@ -295,6 +295,7 @@ export const createPaymentsForRental = async (params: {
     let expectedAmount = fullMonthlyAmount;
     let rentAmount = monthlyRent;
     let garageAmount = hasGarage ? garageValue : 0;
+    let isProporcional = false;
 
     const breakdown = [
       {
@@ -314,6 +315,7 @@ export const createPaymentsForRental = async (params: {
       const daysToCharge = differenceInDays(dueDate, startDate) + 1;
       
       if (daysToCharge < 30) {
+        isProporcional = true;
         const proportionalFactor = daysToCharge / 30;
         rentAmount = parseFloat((monthlyRent * proportionalFactor).toFixed(2));
         garageAmount = hasGarage ? parseFloat((garageValue * proportionalFactor).toFixed(2)) : 0;
@@ -336,6 +338,7 @@ export const createPaymentsForRental = async (params: {
       const daysToCharge = differenceInDays(endDate, monthStart) + 1;
       
       if (daysToCharge < 30) {
+        isProporcional = true;
         const proportionalFactor = daysToCharge / 30;
         rentAmount = parseFloat((monthlyRent * proportionalFactor).toFixed(2));
         garageAmount = hasGarage ? parseFloat((garageValue * proportionalFactor).toFixed(2)) : 0;
