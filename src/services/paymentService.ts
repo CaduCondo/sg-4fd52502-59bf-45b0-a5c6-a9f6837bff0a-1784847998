@@ -247,7 +247,6 @@ export const createPaymentsForRental = async (params: {
   paymentDay: number;
   hasGarage: boolean;
   garageValue: number;
-  firstPaymentMonth?: "current" | "next";
 }): Promise<void> => {
   const {
     rental,
@@ -257,22 +256,20 @@ export const createPaymentsForRental = async (params: {
     paymentDay,
     hasGarage,
     garageValue,
-    firstPaymentMonth = "current",
   } = params;
 
   const payments: any[] = [];
   const fullMonthlyAmount = monthlyRent + (hasGarage ? garageValue : 0);
   
-  const now = new Date();
+  const startDay = startDate.getDate();
   let firstPaymentDate: Date;
   
-  if (firstPaymentMonth === "next") {
-    firstPaymentDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  if (paymentDay > startDay) {
+    firstPaymentDate = startOfMonth(startDate);
   } else {
-    firstPaymentDate = new Date(now.getFullYear(), now.getMonth(), 1);
+    firstPaymentDate = addMonths(startOfMonth(startDate), 1);
   }
 
-  const contractStartMonth = startOfMonth(startDate);
   const contractEndMonth = startOfMonth(endDate);
   
   let currentPaymentMonth = firstPaymentDate;
@@ -312,9 +309,9 @@ export const createPaymentsForRental = async (params: {
     }
 
     if (isFirstPayment) {
-      const daysToCharge = differenceInDays(endOfMonth(startDate), startDate) + 1;
+      const daysToCharge = differenceInDays(dueDate, startDate);
       
-      if (daysToCharge < 30) {
+      if (daysToCharge < 30 && daysToCharge > 0) {
         isProporcional = true;
         rentAmount = parseFloat(((monthlyRent * daysToCharge) / 30).toFixed(2));
         garageAmount = hasGarage ? parseFloat(((garageValue * daysToCharge) / 30).toFixed(2)) : 0;

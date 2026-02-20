@@ -73,8 +73,6 @@ export const RentalFormDialog = memo(function RentalFormDialog({
     setEndDate,
     paymentDay,
     setPaymentDay,
-    firstPaymentMonth,
-    setFirstPaymentMonth,
     hasGarage,
     setHasGarage,
     garageValue,
@@ -288,7 +286,6 @@ export const RentalFormDialog = memo(function RentalFormDialog({
           paymentDay: Number(mergedRental.paymentDay),
           hasGarage: mergedRental.hasGarage,
           garageValue: mergedRental.garageValue || 0,
-          firstPaymentMonth: firstPaymentMonth as "current" | "next",
         });
         
         setCreatedRentalData({
@@ -323,7 +320,6 @@ export const RentalFormDialog = memo(function RentalFormDialog({
           paymentDay: Number(mappedRental.paymentDay),
           hasGarage: mappedRental.hasGarage,
           garageValue: mappedRental.garageValue || 0,
-          firstPaymentMonth: firstPaymentMonth as "current" | "next",
         });
 
         const selectedLocation = locations.find((loc) => loc.id === selectedProperty.locationId);
@@ -520,27 +516,6 @@ export const RentalFormDialog = memo(function RentalFormDialog({
                       Dia {day.toString().padStart(2, "0")}
                     </SelectItem>
                   ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="firstPaymentMonth">Mês Primeiro Recebimento *</Label>
-              <Select 
-                value={firstPaymentMonth} 
-                onValueChange={setFirstPaymentMonth} 
-                disabled={isFieldDisabled || !!rental}
-              >
-                <SelectTrigger id="firstPaymentMonth">
-                  <SelectValue placeholder="Selecione o mês" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="current">
-                    {new Date().toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}
-                  </SelectItem>
-                  <SelectItem value="next">
-                    {new Date(new Date().setMonth(new Date().getMonth() + 1)).toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}
-                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>

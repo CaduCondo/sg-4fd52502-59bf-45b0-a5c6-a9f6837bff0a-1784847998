@@ -36,7 +36,6 @@ export function useRentalForm({
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [paymentDay, setPaymentDay] = useState("");
-  const [firstPaymentMonth, setFirstPaymentMonth] = useState("current");
   const [hasGarage, setHasGarage] = useState(false);
   const [garageValue, setGarageValue] = useState("");
   const [hasPartnerBroker, setHasPartnerBroker] = useState(false);
@@ -113,7 +112,6 @@ export function useRentalForm({
     setStartDate("");
     setEndDate("");
     setPaymentDay("");
-    setFirstPaymentMonth("current");
     setHasGarage(false);
     setGarageValue("");
     setHasPartnerBroker(false);
@@ -143,11 +141,8 @@ export function useRentalForm({
     setStartDate(rentalData.startDate || "");
     setEndDate(rentalData.endDate || "");
     setPaymentDay(rentalData.paymentDay?.toString() || "");
-    setFirstPaymentMonth("current");
     setHasGarage(rentalData.hasGarage || false);
-    setGarageValue(
-      rentalData.garageValue ? formatCurrency(rentalData.garageValue) : ""
-    );
+    setGarageValue(rentalData.garageValue?.toString() || "");
     setHasPartnerBroker(rentalData.hasPartnerBroker || false);
     setDepositAmount(
       rentalData.depositAmount ? formatCurrency(rentalData.depositAmount) : ""
@@ -302,8 +297,6 @@ export function useRentalForm({
     setEndDate,
     paymentDay,
     setPaymentDay,
-    firstPaymentMonth,
-    setFirstPaymentMonth,
     hasGarage,
     setHasGarage,
     garageValue,
