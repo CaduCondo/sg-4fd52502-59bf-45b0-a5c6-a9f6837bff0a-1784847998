@@ -73,6 +73,8 @@ export const RentalFormDialog = memo(function RentalFormDialog({
     setEndDate,
     paymentDay,
     setPaymentDay,
+    firstPaymentMonth,
+    setFirstPaymentMonth,
     hasGarage,
     setHasGarage,
     garageValue,
