@@ -1073,81 +1073,32 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                 </>
               ) : (
                 <>
-                  <div className="flex justify-between text-sm">
-                    <span>
-                      {values.isProportional 
-                        ? `Aluguel Proporcional (${values.proportionalDays} dias)` 
-                        : "Valor Aluguel"}
-                    </span>
-                    <span className="font-medium">
-                      {formatCurrency(rentalValue.toFixed(2))}
-                    </span>
-                  </div>
-
-                  {garageValue > 0 && !values.isProportional && (
-                    <div className="flex justify-between text-sm">
-                      <span>Valor Vaga</span>
-                      <span className="font-medium">
-                        {formatCurrency(garageValue.toFixed(2))}
+                  <div className="bg-muted/30 p-4 rounded-lg space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium">
+                        Valor Aluguel
+                        {payment?.breakdown?.[0]?.description?.toLowerCase().includes("proporcional") && (
+                          <span className="text-blue-600 ml-2">(proporcional)</span>
+                        )}
+                      </span>
+                      <span className="text-lg font-semibold">
+                        {formatCurrency(payment?.breakdown?.[0]?.value || 0)}
                       </span>
                     </div>
-                  )}
 
-                  {values.multa > 0 && (
-                    <div className="flex justify-between text-sm">
-                      <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600"}>
-                        Multa ({lateFeePercentage}%)
-                      </span>
-                      <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600 font-medium"}>
-                        + {formatCurrency(values.multa.toFixed(2))}
-                      </span>
-                    </div>
-                  )}
-
-                  {values.juros > 0 && (
-                    <div className="flex justify-between text-sm">
-                      <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600"}>
-                        Juros ({interestRatePercentage.toFixed(3)}% ao dia) + {values.diasAtraso} dias
-                      </span>
-                      <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600 font-medium"}>
-                        + {formatCurrency(values.juros.toFixed(2))}
-                      </span>
-                    </div>
-                  )}
-
-                  {(values.multa > 0 || values.juros > 0) && isEditMode && (
-                    <div className="flex items-center space-x-2 py-2 border-t">
-                      <Checkbox
-                        id="remove-fees"
-                        checked={removeFees}
-                        onCheckedChange={(checked) => setRemoveFees(checked as boolean)}
-                        disabled={isReadOnly}
-                      />
-                      <label
-                        htmlFor="remove-fees"
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                      >
-                        Retirar multa/juros
-                      </label>
-                    </div>
-                  )}
-
-                  {values.valorJaPago > 0 && (
-                    <div className="flex justify-between pt-3 border-t">
-                      <span className="text-sm text-green-600">Valor já Pago</span>
-                      <span className="text-sm text-green-600 font-medium">
-                        - {formatCurrency(values.valorJaPago.toFixed(2))}
-                      </span>
-                    </div>
-                  )}
-
-                  <div className="flex justify-between pt-3 border-t-2 border-primary">
-                    <span className="font-bold text-base">
-                      {values.valorJaPago > 0 ? "Valor Restante" : "Valor Total"}
-                    </span>
-                    <span className="font-bold text-base text-primary">
-                      {formatCurrency(values.valorJaPago > 0 ? values.valorRestante.toFixed(2) : values.valorAPagar.toFixed(2))}
-                    </span>
+                    {payment?.breakdown && payment.breakdown.length > 1 && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium">
+                          Valor Vaga
+                          {payment.breakdown[1]?.description?.toLowerCase().includes("proporcional") && (
+                            <span className="text-blue-600 ml-2">(proporcional)</span>
+                          )}
+                        </span>
+                        <span className="text-lg font-semibold">
+                          {formatCurrency(payment.breakdown[1]?.value || 0)}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </>
               )}
