@@ -3,7 +3,6 @@ import { addMonths, format, setDate, startOfMonth, parseISO } from "date-fns";
 import type { Payment, Rental, Property, Tenant } from "@/types";
 import type { Tables } from "@/integrations/supabase/types";
 
-// Tipo auxiliar para retorno do banco
 type PaymentResponse = Tables<"payments"> & {
   rental: (Tables<"rentals"> & {
     properties: Pick<Tables<"properties">, "id" | "property_identifier" | "location_id" | "complement"> | null;
@@ -70,7 +69,7 @@ export const getAll = async (): Promise<Payment[]> => {
     tenant: payment.rental?.tenants as unknown as Tenant,
     propertyId: payment.rental?.properties?.id || "",
     tenantId: payment.rental?.tenants?.id || "",
-    receiptUrl: undefined, // Explicitly undefined if interface still had it, but we removed it. 
+    receiptUrl: undefined,
   }));
 };
 
@@ -165,8 +164,8 @@ export const create = async (payment: Partial<Payment>): Promise<Payment> => {
     breakdown: data.breakdown,
     installment: data.installment,
     totalInstallments: data.total_installments,
-    propertyId: "", // Default
-    tenantId: "", // Default
+    propertyId: "",
+    tenantId: "",
     attachments: (data.attachments as unknown as string[]) || [],
   };
 
@@ -195,7 +194,6 @@ export const update = async (
     total_installments: payment.totalInstallments,
   };
 
-  // Remove undefined fields
   Object.keys(updateData).forEach(key => updateData[key] === undefined && delete updateData[key]);
 
   const { data, error } = await supabase
@@ -225,8 +223,8 @@ export const update = async (
     breakdown: data.breakdown,
     installment: data.installment,
     totalInstallments: data.total_installments,
-    propertyId: "", // Default
-    tenantId: "", // Default
+    propertyId: "",
+    tenantId: "",
     attachments: (data.attachments as unknown as string[]) || [],
   } as Payment;
 };
@@ -249,6 +247,7 @@ export const createPaymentsForRental = async (params: {
   paymentDay: number;
   hasGarage: boolean;
   garageValue: number;
+  firstPaymentMonth?: "current" | "next";
 }): Promise<void> => {
   const {
     rental,
@@ -258,15 +257,32 @@ export const createPaymentsForRental = async (params: {
     paymentDay,
     hasGarage,
     garageValue,
+    firstPaymentMonth = "current",
   } = params;
 
   const payments: any[] = [];
-  let currentDate = startOfMonth(startDate);
+  
+  const now = new Date();
+  let firstPaymentDate = new Date(startDate);
+  
+  if (firstPaymentMonth === "next") {
+    firstPaymentDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  } else {
+    firstPaymentDate = startOfMonth(startDate);
+  }
+
+  let currentDate = firstPaymentDate;
   const finalDate = startOfMonth(endDate);
+
+  const fullMonthlyAmount = monthlyRent + (hasGarage ? garageValue : 0);
+
+  let isFirstPayment = true;
 
   while (currentDate <= finalDate) {
     const dueDate = setDate(currentDate, Math.min(paymentDay, 28));
-
+    let expectedAmount = fullMonthlyAmount;
+    let isProporcional = false;
+    
     const breakdown = [
       {
         description: "Aluguel",
@@ -281,7 +297,52 @@ export const createPaymentsForRental = async (params: {
       });
     }
 
-    const expectedAmount = monthlyRent + (hasGarage ? garageValue : 0);
+    if (isFirstPayment) {
+      const startDay = startDate.getDate();
+      const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
+      
+      if (startDay !== 1) {
+        const daysToCharge = daysInMonth - startDay + 1;
+        const proportionalFactor = daysToCharge / 30;
+        expectedAmount = parseFloat((fullMonthlyAmount * proportionalFactor).toFixed(2));
+        isProporcional = true;
+
+        breakdown[0] = {
+          description: "Aluguel (PROPORCIONAL)",
+          value: parseFloat((monthlyRent * proportionalFactor).toFixed(2)),
+        };
+
+        if (hasGarage && garageValue > 0) {
+          breakdown[1] = {
+            description: "Garagem (PROPORCIONAL)",
+            value: parseFloat((garageValue * proportionalFactor).toFixed(2)),
+          };
+        }
+      }
+      isFirstPayment = false;
+    }
+    else if (currentDate.getTime() === finalDate.getTime()) {
+      const endDay = endDate.getDate();
+      const daysInMonth = new Date(endDate.getFullYear(), endDate.getMonth() + 1, 0).getDate();
+      
+      if (endDay !== daysInMonth) {
+        const proportionalFactor = endDay / 30;
+        expectedAmount = parseFloat((fullMonthlyAmount * proportionalFactor).toFixed(2));
+        isProporcional = true;
+
+        breakdown[0] = {
+          description: "Aluguel (PROPORCIONAL)",
+          value: parseFloat((monthlyRent * proportionalFactor).toFixed(2)),
+        };
+
+        if (hasGarage && garageValue > 0) {
+          breakdown[1] = {
+            description: "Garagem (PROPORCIONAL)",
+            value: parseFloat((garageValue * proportionalFactor).toFixed(2)),
+          };
+        }
+      }
+    }
 
     payments.push({
       rental_id: rental.id,
@@ -295,6 +356,7 @@ export const createPaymentsForRental = async (params: {
       discount_amount: 0,
       late_fee: 0,
       interest: 0,
+      notes: isProporcional ? "Pagamento proporcional" : null,
     });
 
     currentDate = addMonths(currentDate, 1);
@@ -342,7 +404,6 @@ export const updateFuturePayments = async (
       });
     }
 
-    // Use type assertion to access properties that might have different naming in DB vs Type
     const hasGarage = (rental as any).has_garage || rental.hasGarage;
     const garageValue = (rental as any).garage_value || rental.garageValue || 0;
 
@@ -390,7 +451,6 @@ export const updateFuturePaymentsOnPaymentDayChange = async (
   if (!futurePayments || futurePayments.length === 0) return;
 
   const updates = futurePayments.map((payment) => {
-    // Converter referência de mês/ano para data
     const refYear = typeof payment.reference_year === 'string' ? parseInt(payment.reference_year) : payment.reference_year;
     const refMonth = typeof payment.reference_month === 'string' ? parseInt(payment.reference_month) : payment.reference_month;
 
