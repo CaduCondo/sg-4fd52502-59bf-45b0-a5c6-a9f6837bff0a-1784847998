@@ -320,16 +320,38 @@ export function usePayments() {
           breakdown,
           installment,
           total_installments,
-          rental:rentals(
+          attachments,
+          rentals!inner(
             id,
             monthly_rent,
             garage_value,
-            has_garage,
             payment_day,
             start_date,
             end_date,
-            properties(id, property_identifier, location_id, complement),
-            tenants(id, name, cpf, email, phone)
+            property_id,
+            tenant_id,
+            properties(
+              id,
+              location_id,
+              complement,
+              property_identifier,
+              locations(
+                id,
+                name,
+                street,
+                number,
+                neighborhood,
+                city,
+                state
+              )
+            ),
+            tenants(
+              id,
+              name,
+              cpf,
+              email,
+              phone
+            )
           )
         `)
         .order("reference_year", { ascending: false })
@@ -338,35 +360,42 @@ export function usePayments() {
 
       if (error) throw error;
 
-      const formattedPayments: Payment[] = (data || []).map((payment: any) => ({
-        id: payment.id,
-        rentalId: payment.rental_id,
-        expectedAmount: payment.expected_amount,
-        paidAmount: payment.paid_amount,
-        dueDate: payment.due_date,
-        paymentDate: payment.payment_date,
-        status: payment.status,
-        referenceMonth: Number(payment.reference_month),
-        referenceYear: Number(payment.reference_year),
-        discount: payment.discount_amount,
-        lateFee: payment.late_fee,
-        interest: payment.interest,
-        notes: payment.notes,
-        paymentMethod: payment.payment_method,
-        breakdown: payment.breakdown,
-        installment: payment.installment,
-        totalInstallments: payment.total_installments,
-        createdAt: payment.created_at,
-        updatedAt: payment.updated_at,
-        rental: payment.rental,
-        property: payment.rental?.properties,
-        tenant: payment.rental?.tenants,
-        propertyId: payment.rental?.properties?.id || "",
-        tenantId: payment.rental?.tenants?.id || "",
-      }));
+      const formattedPayments: Payment[] = (data || []).map((payment: any) => {
+        const rental = payment.rentals;
+        const property = rental?.properties;
+        const location = property?.locations;
+        const tenant = rental?.tenants;
+
+        return {
+          id: payment.id,
+          rentalId: payment.rental_id,
+          expectedAmount: payment.expected_amount,
+          paidAmount: payment.paid_amount,
+          dueDate: payment.due_date,
+          paymentDate: payment.payment_date,
+          status: payment.status,
+          referenceMonth: Number(payment.reference_month),
+          referenceYear: Number(payment.reference_year),
+          discount: payment.discount_amount || 0,
+          lateFee: payment.late_fee || 0,
+          interest: payment.interest || 0,
+          notes: payment.notes || "",
+          paymentMethod: payment.payment_method || "",
+          breakdown: payment.breakdown,
+          installment: payment.installment,
+          totalInstallments: payment.total_installments,
+          attachments: payment.attachments || [],
+          createdAt: payment.created_at,
+          updatedAt: payment.updated_at,
+          propertyId: property?.id || "",
+          tenantId: tenant?.id || "",
+          receiptUrl: "",
+        };
+      });
 
       setPayments(formattedPayments);
     } catch (error) {
+      console.error("Erro ao carregar pagamentos:", error);
       toast({
         title: "Erro",
         description: "Erro ao carregar pagamentos. Tente novamente.",
