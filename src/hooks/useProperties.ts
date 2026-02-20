@@ -86,7 +86,7 @@ export function useProperties(): UsePropertiesReturn {
       
       const matchesStatus = statusFilter === "all" || property.status === statusFilter;
       
-      const propertyLocationId = property.location_id || property.locationId;
+      const propertyLocationId = property.locationId;
       const matchesLocation = selectedLocations.length === 0 || 
         (propertyLocationId && selectedLocations.includes(propertyLocationId));
 

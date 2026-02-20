@@ -64,16 +64,34 @@ export async function updateUser(id: string, user: Partial<SystemUser>): Promise
 }
 
 export async function deleteUser(id: string): Promise<void> {
-  // Usar Edge Function para deletar usuário completamente (System + Auth)
-  const { error } = await supabase.functions.invoke('delete-user', {
-    body: { user_id: id }
-  });
+  console.log(`🗑️ [SYSTEM-USER-SERVICE] Tentando deletar usuário: ${id}`);
+  
+  try {
+    // Usar Edge Function para deletar usuário completamente (System + Auth)
+    const { data, error } = await supabase.functions.invoke('delete-user', {
+      body: { user_id: id }
+    });
 
-  if (error) {
-    console.error("Erro ao deletar usuário via Edge Function:", error);
+    console.log(`📝 [SYSTEM-USER-SERVICE] Resposta da Edge Function:`, { data, error });
+
+    if (error) {
+      console.error("❌ [SYSTEM-USER-SERVICE] Erro ao deletar usuário via Edge Function:", error);
+      throw new Error(`Falha ao deletar usuário: ${error.message}`);
+    }
+
+    console.log("✅ [SYSTEM-USER-SERVICE] Usuário deletado com sucesso via Edge Function");
+  } catch (error) {
+    console.error("❌ [SYSTEM-USER-SERVICE] Erro ao invocar Edge Function:", error);
+    
     // Fallback: tentar deletar apenas do system_users se a edge function falhar
-    // (Isso manterá o usuário no Auth, mas removerá o acesso ao sistema)
-    return deleteSingle(TABLE, id);
+    console.log("⚠️ [SYSTEM-USER-SERVICE] Tentando fallback: deletar apenas de system_users");
+    try {
+      await deleteSingle(TABLE, id);
+      console.log("✅ [SYSTEM-USER-SERVICE] Usuário deletado via fallback (apenas system_users)");
+    } catch (fallbackError) {
+      console.error("❌ [SYSTEM-USER-SERVICE] Fallback também falhou:", fallbackError);
+      throw fallbackError;
+    }
   }
 }
 

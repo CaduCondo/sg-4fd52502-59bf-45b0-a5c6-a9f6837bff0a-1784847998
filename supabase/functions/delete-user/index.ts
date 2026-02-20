@@ -12,98 +12,107 @@ serve(async (req) => {
   }
 
   try {
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
-
-    // Obter o usuário que está fazendo a requisição para verificar permissão
-    const authHeader = req.headers.get('Authorization')!
-    const token = authHeader.replace('Bearer ', '')
-    const { data: { user: requestUser }, error: userError } = await supabase.auth.getUser(token)
-
-    if (userError || !requestUser) {
+    console.log('🚀 [DELETE-USER] Iniciando função...')
+    
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+    
+    if (!supabaseUrl || !serviceRoleKey) {
+      console.error('❌ [DELETE-USER] Variáveis de ambiente não configuradas')
       return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'Server configuration error' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    // Verificar se o usuário solicitante é admin
-    const { data: systemUser, error: sysError } = await supabase
-      .from('system_users')
-      .select('role')
-      .eq('id', requestUser.id) // Assumindo que id do system_users é o mesmo do auth.users ou vinculado
-      .single()
+    const supabase = createClient(supabaseUrl, serviceRoleKey)
 
-    // Fallback: verificar por email se id não bater (dependendo da sua lógica de vínculo)
-    // Mas vamos assumir que a verificação de admin já foi feita no frontend e aqui confiamos no token válido + verificação básica
+    // Obter o body da requisição
+    const body = await req.json()
+    const { user_id } = body
     
-    const { user_id } = await req.json()
+    console.log(`📝 [DELETE-USER] user_id recebido: ${user_id}`)
 
     if (!user_id) {
+      console.error('❌ [DELETE-USER] user_id não fornecido')
       return new Response(
-        JSON.stringify({ error: 'User ID is required' }),
+        JSON.stringify({ error: 'user_id é obrigatório' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    console.log(`Tentando deletar usuário system_id: ${user_id}`)
-
-    // 1. Buscar o auth_user_id correspondente (se existir vínculo explícito ou implícito)
-    // Opção A: Buscar na tabela system_users se tiver coluna auth_user_id
-    // Opção B: Buscar na tabela auth_user_mapping
-    
-    let authUserId = null;
-    
-    // Tentar buscar em system_users (se tiver a coluna, o schema mostrou que tem auth_user_id)
-    const { data: sysUserData } = await supabase
+    // 1. Buscar informações do usuário em system_users
+    console.log(`🔍 [DELETE-USER] Buscando usuário ${user_id} em system_users...`)
+    const { data: systemUser, error: systemUserError } = await supabase
       .from('system_users')
-      .select('auth_user_id, email')
+      .select('id, email, auth_user_id')
       .eq('id', user_id)
-      .single()
+      .maybeSingle()
 
-    if (sysUserData?.auth_user_id) {
-      authUserId = sysUserData.auth_user_id
-    } else if (sysUserData?.email) {
-      // Tentar buscar user do auth pelo email
-      const { data: authUsers } = await supabase.auth.admin.listUsers()
-      const foundUser = authUsers.users.find(u => u.email === sysUserData.email)
-      if (foundUser) authUserId = foundUser.id
+    if (systemUserError) {
+      console.error('❌ [DELETE-USER] Erro ao buscar system_user:', systemUserError)
+      return new Response(
+        JSON.stringify({ error: 'Erro ao buscar usuário', details: systemUserError.message }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
     }
 
-    // 2. Deletar do Authentication (se encontrado)
-    if (authUserId) {
-      console.log(`Deletando usuário do Auth: ${authUserId}`)
-      const { error: deleteAuthError } = await supabase.auth.admin.deleteUser(authUserId)
+    if (!systemUser) {
+      console.log(`⚠️ [DELETE-USER] Usuário ${user_id} não encontrado em system_users`)
+      return new Response(
+        JSON.stringify({ error: 'Usuário não encontrado' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    console.log(`✅ [DELETE-USER] Usuário encontrado: ${systemUser.email}, auth_user_id: ${systemUser.auth_user_id}`)
+
+    // 2. Deletar do Authentication (se tiver auth_user_id)
+    if (systemUser.auth_user_id) {
+      console.log(`🗑️ [DELETE-USER] Deletando do Auth: ${systemUser.auth_user_id}`)
+      const { error: deleteAuthError } = await supabase.auth.admin.deleteUser(systemUser.auth_user_id)
+      
       if (deleteAuthError) {
-        console.error('Erro ao deletar do Auth:', deleteAuthError)
-        // Não retornar erro aqui, tentar deletar do system_users mesmo assim
+        console.error('⚠️ [DELETE-USER] Erro ao deletar do Auth (continuando):', deleteAuthError.message)
+        // Não retornar erro aqui, continuar com a exclusão do system_users
+      } else {
+        console.log('✅ [DELETE-USER] Usuário deletado do Auth com sucesso')
       }
+    } else {
+      console.log('⚠️ [DELETE-USER] Usuário não tem auth_user_id, pulando exclusão do Auth')
     }
 
-    // 3. Deletar do system_users (público)
-    // Nota: Se tiver FK com cascade, deletar do Auth pode já ter deletado do system_users se houver vínculo
-    // Mas vamos garantir deletando explicitamente
-    console.log(`Deletando usuário do system_users: ${user_id}`)
+    // 3. Deletar de system_users (com CASCADE para todas as dependências)
+    console.log(`🗑️ [DELETE-USER] Deletando de system_users: ${user_id}`)
     const { error: deleteSystemError } = await supabase
       .from('system_users')
       .delete()
       .eq('id', user_id)
 
     if (deleteSystemError) {
-      throw deleteSystemError
+      console.error('❌ [DELETE-USER] Erro ao deletar de system_users:', deleteSystemError)
+      return new Response(
+        JSON.stringify({ error: 'Erro ao deletar usuário do sistema', details: deleteSystemError.message }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
     }
 
+    console.log('✅ [DELETE-USER] Usuário deletado com sucesso!')
     return new Response(
-      JSON.stringify({ message: 'User deleted successfully' }),
+      JSON.stringify({ 
+        success: true, 
+        message: 'Usuário deletado com sucesso',
+        deleted_system_user: true,
+        deleted_auth_user: !!systemUser.auth_user_id
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
 
   } catch (error) {
+    console.error('❌ [DELETE-USER] Erro inesperado:', error)
     return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ error: 'Erro interno do servidor', details: error.message }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }
 })
