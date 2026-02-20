@@ -334,24 +334,24 @@ export default function RentalsPage() {
   // Handler para visualizar locação
   const handleViewRental = useCallback(async (rental: Rental) => {
     try {
-      await loadAdditionalData();
       setSelectedRental(rental);
       setIsViewMode(true);
       setIsRentalDialogOpen(true);
+      await loadAdditionalData();
     } catch (error) {
-      // Erro já foi tratado no loadAdditionalData
+      console.error("⚠️ Erro ao carregar dados adicionais, mas o diálogo será aberto:", error);
     }
   }, [loadAdditionalData]);
 
   // Handler para criar nova locação
   const handleCreateNew = useCallback(async () => {
     try {
-      await loadAdditionalData();
       setSelectedRental(null);
       setIsViewMode(false);
       setIsRentalDialogOpen(true);
+      await loadAdditionalData();
     } catch (error) {
-      // Erro já foi tratado no loadAdditionalData
+      console.error("⚠️ Erro ao carregar dados adicionais, mas o diálogo será aberto:", error);
     }
   }, [loadAdditionalData]);
 

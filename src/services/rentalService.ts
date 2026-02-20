@@ -39,11 +39,10 @@ const mapRentalData = (data: any): Rental => {
     depositInstallment3PaymentDate: data.deposit_installment_3_payment_date,
     depositInstallment3PixCode: data.deposit_installment_3_pix_code,
 
-    // Incluir dados relacionados
     property: data.properties ? {
       id: data.properties.id,
       locationId: data.properties.location_id,
-      location: data.properties.location_name || "", // Fix property name
+      location: data.properties.locations?.name || "",
       propertyIdentifier: data.properties.property_identifier,
       complement: data.properties.complement,
       description: data.properties.description,
@@ -66,9 +65,9 @@ const mapRentalData = (data: any): Rental => {
       id: data.tenants.id,
       name: data.tenants.name,
       phone: data.tenants.phone,
-      email: "",
-      document: data.tenants.cpf || data.tenants.cnpj || "", // Add document
-      cpf: "",
+      email: data.tenants.email || "",
+      document: data.tenants.cpf || data.tenants.cnpj || "",
+      cpf: data.tenants.cpf || "",
       status: "active",
     } : undefined,
   };
@@ -130,19 +129,6 @@ export const rentalService = {
       .from("rentals")
       .select(`
         *,
-        has_garage,
-        garage_value,
-        has_partner_broker,
-        deposit_installments,
-        deposit_installment_1,
-        deposit_payment_date,
-        deposit_pix_code,
-        deposit_installment_2,
-        deposit_installment_2_payment_date,
-        deposit_installment_2_pix_code,
-        deposit_installment_3,
-        deposit_installment_3_payment_date,
-        deposit_installment_3_pix_code,
         tenants!rentals_tenant_id_fkey (
           id,
           name,

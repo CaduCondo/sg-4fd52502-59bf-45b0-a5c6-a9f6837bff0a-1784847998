@@ -482,7 +482,7 @@ export const RentalFormDialog = memo(function RentalFormDialog({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="startDate">Data Início Contrato *</Label>
               <Input
@@ -505,7 +505,9 @@ export const RentalFormDialog = memo(function RentalFormDialog({
                 disabled={isFieldDisabled}
               />
             </div>
+          </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="paymentDay">Dia Pagamento *</Label>
               <Select value={paymentDay} onValueChange={setPaymentDay} disabled={isFieldDisabled}>
@@ -521,9 +523,7 @@ export const RentalFormDialog = memo(function RentalFormDialog({
                 </SelectContent>
               </Select>
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="firstPaymentMonth">Mês Primeiro Recebimento *</Label>
               <Select 
