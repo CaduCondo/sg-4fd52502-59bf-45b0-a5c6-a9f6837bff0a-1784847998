@@ -67,26 +67,31 @@ export async function deleteUser(id: string): Promise<void> {
   console.log(`🗑️ [SYSTEM-USER-SERVICE] Tentando deletar usuário: ${id}`);
   
   try {
-    // Tentar usar Edge Function para deletar usuário completamente (System + Auth)
-    const { data, error } = await supabase.functions.invoke('delete-user', {
-      body: { user_id: id }
+    // Usar API Route do Next.js para deletar usuário completamente (System + Auth)
+    const response = await fetch('/api/delete-user', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ userId: id })
     });
 
-    console.log(`📝 [SYSTEM-USER-SERVICE] Resposta da Edge Function:`, { data, error });
+    console.log(`📝 [SYSTEM-USER-SERVICE] Status da resposta: ${response.status}`);
 
-    if (error) {
-      console.error("❌ [SYSTEM-USER-SERVICE] Erro ao deletar usuário via Edge Function:", error);
-      console.error("❌ [SYSTEM-USER-SERVICE] Detalhes do erro:", JSON.stringify(error, null, 2));
-      throw new Error(`Falha ao deletar usuário: ${error.message}`);
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error("❌ [SYSTEM-USER-SERVICE] Erro ao deletar usuário via API:", errorData);
+      throw new Error(errorData.error || `Falha ao deletar usuário: ${response.status}`);
     }
 
-    console.log("✅ [SYSTEM-USER-SERVICE] Usuário deletado com sucesso via Edge Function");
+    const data = await response.json();
+    console.log(`📝 [SYSTEM-USER-SERVICE] Resposta da API:`, data);
+    console.log("✅ [SYSTEM-USER-SERVICE] Usuário deletado com sucesso via API Route");
   } catch (error: any) {
-    console.error("❌ [SYSTEM-USER-SERVICE] Erro ao invocar Edge Function:", error);
-    console.error("❌ [SYSTEM-USER-SERVICE] Stack trace:", error.stack);
+    console.error("❌ [SYSTEM-USER-SERVICE] Erro ao invocar API Route:", error);
     console.error("❌ [SYSTEM-USER-SERVICE] Erro completo:", JSON.stringify(error, null, 2));
     
-    // Fallback: tentar deletar apenas do system_users se a edge function falhar
+    // Fallback: tentar deletar apenas do system_users se a API falhar
     console.log("⚠️ [SYSTEM-USER-SERVICE] Tentando fallback: deletar apenas de system_users");
     try {
       // Primeiro, buscar o auth_user_id do usuário
