@@ -1099,6 +1099,18 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                         </span>
                       </div>
                     )}
+
+                    {payment?.breakdown?.[0]?.description?.toLowerCase().includes("proporcional") && (
+                      <div className="flex justify-between items-center pt-2 border-t border-border">
+                        <span className="text-base font-bold">Valor Total</span>
+                        <span className="text-xl font-bold text-primary">
+                          {formatCurrency(
+                            (payment?.breakdown?.[0]?.value || 0) + 
+                            (payment?.breakdown?.[1]?.value || 0)
+                          )}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </>
               )}

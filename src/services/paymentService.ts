@@ -312,14 +312,14 @@ export const createPaymentsForRental = async (params: {
     }
 
     if (isFirstPayment) {
-      const daysToCharge = differenceInDays(dueDate, startDate) + 1;
+      const daysToCharge = differenceInDays(endOfMonth(startDate), startDate) + 1;
       
       if (daysToCharge < 30) {
         isProporcional = true;
-        const proportionalFactor = daysToCharge / 30;
-        rentAmount = parseFloat((monthlyRent * proportionalFactor).toFixed(2));
-        garageAmount = hasGarage ? parseFloat((garageValue * proportionalFactor).toFixed(2)) : 0;
-        expectedAmount = rentAmount + garageAmount;
+        const totalValue = monthlyRent + (hasGarage ? garageValue : 0);
+        expectedAmount = parseFloat(((totalValue * daysToCharge) / 30).toFixed(2));
+        rentAmount = parseFloat(((monthlyRent * daysToCharge) / 30).toFixed(2));
+        garageAmount = hasGarage ? parseFloat(((garageValue * daysToCharge) / 30).toFixed(2)) : 0;
 
         breakdown[0] = {
           description: "Aluguel (proporcional)",
@@ -339,10 +339,10 @@ export const createPaymentsForRental = async (params: {
       
       if (daysToCharge < 30) {
         isProporcional = true;
-        const proportionalFactor = daysToCharge / 30;
-        rentAmount = parseFloat((monthlyRent * proportionalFactor).toFixed(2));
-        garageAmount = hasGarage ? parseFloat((garageValue * proportionalFactor).toFixed(2)) : 0;
-        expectedAmount = rentAmount + garageAmount;
+        const totalValue = monthlyRent + (hasGarage ? garageValue : 0);
+        expectedAmount = parseFloat(((totalValue * daysToCharge) / 30).toFixed(2));
+        rentAmount = parseFloat(((monthlyRent * daysToCharge) / 30).toFixed(2));
+        garageAmount = hasGarage ? parseFloat(((garageValue * daysToCharge) / 30).toFixed(2)) : 0;
 
         breakdown[0] = {
           description: "Aluguel (proporcional)",
