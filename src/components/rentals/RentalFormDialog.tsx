@@ -165,8 +165,8 @@ export const RentalFormDialog = memo(function RentalFormDialog({
       return;
     }
 
-    const selectedProperty = properties.find((p) => p.id === selectedPropertyId);
-    const selectedTenant = tenants.find((t) => t.id === selectedTenantId);
+    const selectedProperty = propertiesToDisplay.find((p) => p.id === selectedPropertyId);
+    const selectedTenant = tenantsToDisplay.find((t) => t.id === selectedTenantId);
 
     if (!selectedProperty || !selectedTenant) {
       toast({
