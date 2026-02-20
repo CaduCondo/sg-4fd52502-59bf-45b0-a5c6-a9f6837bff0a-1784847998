@@ -67,7 +67,7 @@ export async function deleteUser(id: string): Promise<void> {
   console.log(`🗑️ [SYSTEM-USER-SERVICE] Tentando deletar usuário: ${id}`);
   
   try {
-    // Usar Edge Function para deletar usuário completamente (System + Auth)
+    // Tentar usar Edge Function para deletar usuário completamente (System + Auth)
     const { data, error } = await supabase.functions.invoke('delete-user', {
       body: { user_id: id }
     });
@@ -76,18 +76,43 @@ export async function deleteUser(id: string): Promise<void> {
 
     if (error) {
       console.error("❌ [SYSTEM-USER-SERVICE] Erro ao deletar usuário via Edge Function:", error);
+      console.error("❌ [SYSTEM-USER-SERVICE] Detalhes do erro:", JSON.stringify(error, null, 2));
       throw new Error(`Falha ao deletar usuário: ${error.message}`);
     }
 
     console.log("✅ [SYSTEM-USER-SERVICE] Usuário deletado com sucesso via Edge Function");
-  } catch (error) {
+  } catch (error: any) {
     console.error("❌ [SYSTEM-USER-SERVICE] Erro ao invocar Edge Function:", error);
+    console.error("❌ [SYSTEM-USER-SERVICE] Stack trace:", error.stack);
+    console.error("❌ [SYSTEM-USER-SERVICE] Erro completo:", JSON.stringify(error, null, 2));
     
     // Fallback: tentar deletar apenas do system_users se a edge function falhar
     console.log("⚠️ [SYSTEM-USER-SERVICE] Tentando fallback: deletar apenas de system_users");
     try {
+      // Primeiro, buscar o auth_user_id do usuário
+      const { data: userData, error: userError } = await supabase
+        .from('system_users')
+        .select('auth_user_id, email')
+        .eq('id', id)
+        .maybeSingle();
+
+      if (userError) {
+        console.error("❌ [SYSTEM-USER-SERVICE] Erro ao buscar dados do usuário:", userError);
+        throw userError;
+      }
+
+      console.log("📝 [SYSTEM-USER-SERVICE] Dados do usuário encontrados:", userData);
+
+      // Deletar de system_users (as dependências serão deletadas em cascata)
       await deleteSingle(TABLE, id);
       console.log("✅ [SYSTEM-USER-SERVICE] Usuário deletado via fallback (apenas system_users)");
+      
+      // Avisar que o usuário ainda pode existir no Auth
+      if (userData?.auth_user_id) {
+        console.warn("⚠️ [SYSTEM-USER-SERVICE] ATENÇÃO: Usuário ainda pode fazer login no Auth!");
+        console.warn("⚠️ [SYSTEM-USER-SERVICE] auth_user_id:", userData.auth_user_id);
+        console.warn("⚠️ [SYSTEM-USER-SERVICE] Para remover completamente, delete manualmente no Supabase Dashboard");
+      }
     } catch (fallbackError) {
       console.error("❌ [SYSTEM-USER-SERVICE] Fallback também falhou:", fallbackError);
       throw fallbackError;
