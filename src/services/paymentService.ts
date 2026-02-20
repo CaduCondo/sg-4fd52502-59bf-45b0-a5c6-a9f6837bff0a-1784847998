@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { addMonths, format, setDate, startOfMonth, endOfMonth, differenceInDays, parseISO } from "date-fns";
+import { addMonths, format, setDate, startOfMonth, endOfMonth, differenceInDays, parseISO, isSameMonth } from "date-fns";
 import type { Payment, Rental, Property, Tenant } from "@/types";
 import type { Tables } from "@/integrations/supabase/types";
 
@@ -272,14 +272,26 @@ export const createPaymentsForRental = async (params: {
     firstPaymentDate = new Date(now.getFullYear(), now.getMonth(), 1);
   }
 
-  let currentPaymentDate = firstPaymentDate;
+  const contractStartMonth = startOfMonth(startDate);
   const contractEndMonth = startOfMonth(endDate);
+  
+  let currentPaymentMonth = firstPaymentDate;
+  let installmentNumber = 1;
+  const allPaymentMonths: Date[] = [];
 
-  while (currentPaymentDate <= contractEndMonth) {
-    const isFirstPayment = currentPaymentDate.getTime() === firstPaymentDate.getTime();
-    const isLastPayment = currentPaymentDate.getTime() === contractEndMonth.getTime();
+  while (currentPaymentMonth <= contractEndMonth) {
+    allPaymentMonths.push(new Date(currentPaymentMonth));
+    currentPaymentMonth = addMonths(currentPaymentMonth, 1);
+  }
+
+  const totalInstallments = allPaymentMonths.length;
+
+  for (let i = 0; i < allPaymentMonths.length; i++) {
+    const paymentMonth = allPaymentMonths[i];
+    const isFirstPayment = i === 0;
+    const isLastPayment = i === allPaymentMonths.length - 1;
     
-    const dueDate = setDate(currentPaymentDate, Math.min(paymentDay, 28));
+    const dueDate = setDate(paymentMonth, Math.min(paymentDay, 28));
     let expectedAmount = fullMonthlyAmount;
     let isProporcional = false;
 
@@ -298,14 +310,10 @@ export const createPaymentsForRental = async (params: {
     }
 
     if (isFirstPayment) {
-      const monthStart = startOfMonth(currentPaymentDate);
-      const monthEnd = endOfMonth(currentPaymentDate);
-      const contractStartInMonth = startDate >= monthStart && startDate <= monthEnd ? startDate : monthStart;
+      const monthEnd = endOfMonth(paymentMonth);
+      const daysToCharge = differenceInDays(monthEnd, startDate) + 1;
       
-      const daysInMonth = differenceInDays(monthEnd, monthStart) + 1;
-      const daysToCharge = differenceInDays(monthEnd, contractStartInMonth) + 1;
-      
-      if (daysToCharge < daysInMonth) {
+      if (daysToCharge < 30) {
         const proportionalFactor = daysToCharge / 30;
         expectedAmount = parseFloat((fullMonthlyAmount * proportionalFactor).toFixed(2));
         isProporcional = true;
@@ -323,14 +331,10 @@ export const createPaymentsForRental = async (params: {
         }
       }
     } else if (isLastPayment) {
-      const monthStart = startOfMonth(currentPaymentDate);
-      const monthEnd = endOfMonth(currentPaymentDate);
-      const contractEndInMonth = endDate >= monthStart && endDate <= monthEnd ? endDate : monthEnd;
+      const monthStart = startOfMonth(paymentMonth);
+      const daysToCharge = differenceInDays(endDate, monthStart) + 1;
       
-      const daysInMonth = differenceInDays(monthEnd, monthStart) + 1;
-      const daysToCharge = differenceInDays(contractEndInMonth, monthStart) + 1;
-      
-      if (daysToCharge < daysInMonth) {
+      if (daysToCharge < 30) {
         const proportionalFactor = daysToCharge / 30;
         expectedAmount = parseFloat((fullMonthlyAmount * proportionalFactor).toFixed(2));
         isProporcional = true;
@@ -355,16 +359,18 @@ export const createPaymentsForRental = async (params: {
       paid_amount: 0,
       due_date: format(dueDate, "yyyy-MM-dd"),
       status: "pending",
-      reference_month: currentPaymentDate.getMonth() + 1,
-      reference_year: currentPaymentDate.getFullYear(),
+      reference_month: paymentMonth.getMonth() + 1,
+      reference_year: paymentMonth.getFullYear(),
       breakdown,
       discount_amount: 0,
       late_fee: 0,
       interest: 0,
       notes: isProporcional ? "Pagamento proporcional" : null,
+      installment: installmentNumber,
+      total_installments: totalInstallments,
     });
 
-    currentPaymentDate = addMonths(currentPaymentDate, 1);
+    installmentNumber++;
   }
 
   const { error } = await supabase.from("payments").insert(payments);
