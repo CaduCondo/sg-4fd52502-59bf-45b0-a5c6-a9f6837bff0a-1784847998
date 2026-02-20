@@ -316,10 +316,9 @@ export const createPaymentsForRental = async (params: {
       
       if (daysToCharge < 30) {
         isProporcional = true;
-        const totalValue = monthlyRent + (hasGarage ? garageValue : 0);
-        expectedAmount = parseFloat(((totalValue * daysToCharge) / 30).toFixed(2));
         rentAmount = parseFloat(((monthlyRent * daysToCharge) / 30).toFixed(2));
         garageAmount = hasGarage ? parseFloat(((garageValue * daysToCharge) / 30).toFixed(2)) : 0;
+        expectedAmount = rentAmount + garageAmount;
 
         breakdown[0] = {
           description: "Aluguel (proporcional)",
@@ -339,10 +338,9 @@ export const createPaymentsForRental = async (params: {
       
       if (daysToCharge < 30) {
         isProporcional = true;
-        const totalValue = monthlyRent + (hasGarage ? garageValue : 0);
-        expectedAmount = parseFloat(((totalValue * daysToCharge) / 30).toFixed(2));
         rentAmount = parseFloat(((monthlyRent * daysToCharge) / 30).toFixed(2));
         garageAmount = hasGarage ? parseFloat(((garageValue * daysToCharge) / 30).toFixed(2)) : 0;
+        expectedAmount = rentAmount + garageAmount;
 
         breakdown[0] = {
           description: "Aluguel (proporcional)",
