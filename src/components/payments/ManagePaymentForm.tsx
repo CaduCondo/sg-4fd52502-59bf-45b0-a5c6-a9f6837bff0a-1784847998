@@ -820,7 +820,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         </h1>
       </div>
 
-      <PaymentInfoCards location={location} property={property} tenant={tenant} />
+      <PaymentInfoCards rental={rental} property={property} tenant={tenant} />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <PaymentBreakdownCard
