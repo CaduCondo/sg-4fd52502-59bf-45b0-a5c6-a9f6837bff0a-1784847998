@@ -200,40 +200,65 @@ export function useDashboardData(
 
         if (!isMounted) return;
 
+        // Log dos resultados brutos para debug
+        console.log("📦 Raw Results:", {
+          exemptLocations: exemptLocationsResult.data?.length,
+          properties: propertiesResult.data?.length,
+          propertiesError: propertiesResult.error,
+          tenants: tenantsCountResult.count,
+          rentals: rentalsResult.data?.length,
+          payments: paymentsResult.data?.length,
+          expenses: expensesResult.data?.length,
+        });
+
+        // Verificar erros críticos
+        if (propertiesResult.error) {
+          console.error("❌ Error loading properties:", propertiesResult.error);
+        }
+        if (rentalsResult.error) {
+          console.error("❌ Error loading rentals:", rentalsResult.error);
+        }
+        if (paymentsResult.error) {
+          console.error("❌ Error loading payments:", paymentsResult.error);
+        }
+
         // Processar resultados
         const exemptIds = exemptLocationsResult.data?.map(e => e.location_id) || [];
         setExemptLocationIds(exemptIds);
 
         // Formatar propriedades
-        const formattedProperties: Property[] = (propertiesResult.data || []).map((prop: any) => ({
-          id: prop.id,
-          locationId: prop.location_id,
-          location: prop.locations?.name || "Local não encontrado",
-          propertyIdentifier: prop.property_identifier || "",
-          complement: prop.complement || "",
-          description: prop.description || "",
-          rooms: prop.rooms || 0,
-          bathrooms: prop.bathrooms || 0,
-          area: prop.area || 0,
-          value: Number(prop.value || 0),
-          monthlyRent: Number(prop.monthly_rent || prop.value || 0),
-          hasGarage: prop.has_garage || false,
-          hasFurniture: prop.has_furniture || false,
-          acceptsPets: prop.accepts_pets || false,
-          status: prop.status as "available" | "occupied" | "unavailable",
-          images: prop.images || [],
-          createdAt: prop.created_at,
-          address: prop.locations 
-            ? `${prop.locations.street || ''}, ${prop.locations.number || ''} - ${prop.locations.neighborhood || ''}, ${prop.locations.city || ''}/${prop.locations.state || ''}` 
-            : "",
-          features: prop.features || [],
-          locationDetails: prop.locations,
-          number: prop.number || prop.locations?.number || "",
-          neighborhood: prop.neighborhood || prop.locations?.neighborhood || "",
-          city: prop.city || prop.locations?.city || "",
-          state: prop.state || prop.locations?.state || "",
-          zipCode: prop.zip_code || prop.locations?.zip_code || "",
-        }));
+        const formattedProperties: Property[] = (propertiesResult.data || []).map((prop: any) => {
+          const loc = prop.locations;
+          return {
+            id: prop.id,
+            locationId: prop.location_id,
+            location: loc?.name || "Local não encontrado",
+            propertyIdentifier: prop.property_identifier || "",
+            complement: prop.complement || "",
+            description: prop.description || "",
+            rooms: prop.rooms || 0,
+            bathrooms: prop.bathrooms || 0,
+            area: prop.area || 0,
+            value: Number(prop.value || 0),
+            monthlyRent: Number(prop.monthly_rent || prop.value || 0),
+            hasGarage: prop.has_garage || false,
+            hasFurniture: prop.has_furniture || false,
+            acceptsPets: prop.accepts_pets || false,
+            status: prop.status as "available" | "occupied" | "unavailable",
+            images: prop.images || [],
+            createdAt: prop.created_at,
+            address: loc 
+              ? `${loc.street || ''}, ${loc.number || ''} - ${loc.neighborhood || ''}, ${loc.city || ''}/${loc.state || ''}` 
+              : "",
+            features: prop.features || [],
+            locationDetails: loc,
+            number: loc?.number || "",
+            neighborhood: loc?.neighborhood || "",
+            city: loc?.city || "",
+            state: loc?.state || "",
+            zipCode: loc?.zip_code || "",
+          };
+        });
 
         console.log("📊 Dashboard Data Debug:", {
           propertiesCount: formattedProperties.length,
