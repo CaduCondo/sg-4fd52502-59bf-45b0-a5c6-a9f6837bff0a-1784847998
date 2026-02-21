@@ -155,6 +155,8 @@ export function useDashboardData(
               .select(`
                 id,
                 rental_id,
+                property_id,
+                tenant_id,
                 due_date,
                 expected_amount,
                 paid_amount,
@@ -169,8 +171,6 @@ export function useDashboardData(
                 payment_method,
                 breakdown,
                 rentals!inner(
-                  property_id,
-                  tenant_id,
                   properties!inner(location_id)
                 )
               `)
@@ -265,8 +265,8 @@ export function useDashboardData(
         const formattedPayments: Payment[] = (paymentsResult.data || []).map((payment: any) => ({
           id: payment.id,
           rentalId: payment.rental_id,
-          propertyId: payment.rentals?.property_id || "",
-          tenantId: payment.rentals?.tenant_id || "",
+          propertyId: payment.property_id || "",
+          tenantId: payment.tenant_id || "",
           dueDate: payment.due_date || payment.payment_date,
           expectedAmount: Number(payment.expected_amount),
           paidAmount: Number(payment.paid_amount),
