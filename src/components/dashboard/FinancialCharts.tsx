@@ -78,16 +78,23 @@ export function FinancialCharts({ selectedMonth, selectedYear, userId, userRole 
         const [propertiesResult, paymentsResult] = await Promise.all([
           // Contagens de propriedades por status
           (async () => {
-            let baseQuery = supabase.from("properties");
-            
-            if (isFinancialUser && allowedLocations && allowedLocations.length > 0) {
-              baseQuery = baseQuery.in("location_id", allowedLocations);
-            }
+            const buildQuery = (status: string) => {
+              let query = supabase
+                .from("properties")
+                .select("id", { count: "exact", head: true })
+                .eq("status", status);
+
+              if (isFinancialUser && allowedLocations && allowedLocations.length > 0) {
+                query = query.in("location_id", allowedLocations);
+              }
+
+              return query;
+            };
 
             const [available, occupied, unavailable] = await Promise.all([
-              baseQuery.select("id", { count: "exact", head: true }).eq("status", "available"),
-              baseQuery.select("id", { count: "exact", head: true }).eq("status", "occupied"),
-              baseQuery.select("id", { count: "exact", head: true }).eq("status", "unavailable")
+              buildQuery("available"),
+              buildQuery("occupied"),
+              buildQuery("unavailable")
             ]);
 
             return {
