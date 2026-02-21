@@ -74,6 +74,7 @@ export default function RentalsPage() {
   const [rentalTerminations, setRentalTerminations] = useState<Record<string, boolean>>({});
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "terminated">("active");
+  const [isFixingRentals, setIsFixingRentals] = useState(false);
 
   // Helper para formatar data
   const formatDate = useCallback((dateString: string) => {
@@ -361,6 +362,43 @@ export default function RentalsPage() {
     await loadAvailableData();
   }, [loadRentalsData, loadAvailableData]);
 
+  // Handler para corrigir todos os recebimentos
+  const handleFixAllRentals = useCallback(async () => {
+    if (!confirm('⚠️ ATENÇÃO: Isso irá reprocessar TODOS os recebimentos pendentes de TODAS as locações ativas.\n\n✅ Recebimentos já pagos serão preservados\n❌ Recebimentos pendentes serão deletados e recriados\n\nTempo estimado: 1-3 minutos\n\nDeseja continuar?')) {
+      return;
+    }
+
+    try {
+      setIsFixingRentals(true);
+      toast({
+        title: '🔄 Processando...',
+        description: 'Corrigindo todos os recebimentos. Por favor, aguarde.',
+      });
+
+      const { data, error } = await supabase.functions.invoke('fix-all-rentals-payments');
+
+      if (error) throw error;
+
+      toast({
+        title: '✅ Correção Concluída!',
+        description: `📊 ${data.rentalsProcessed} locações processadas\n❌ ${data.paymentsDeleted} recebimentos deletados\n✅ ${data.paymentsCreated} recebimentos criados`,
+        className: 'bg-green-500 text-white border-none',
+        duration: 8000,
+      });
+
+      await loadRentalsData();
+    } catch (error: any) {
+      console.error('❌ Erro ao corrigir locações:', error);
+      toast({
+        title: '❌ Erro',
+        description: error.message || 'Não foi possível processar a correção.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsFixingRentals(false);
+    }
+  }, [toast, loadRentalsData]);
+
   return (
     <>
       <SEO title="Locações - Gerenciador de Locações" />
@@ -398,6 +436,46 @@ export default function RentalsPage() {
               </Button>
             </div>
           </div>
+
+          {/* Botão de Correção em Massa */}
+          {activeRentals.length > 0 && (
+            <Card className="mb-6 border-orange-200 bg-orange-50 dark:bg-orange-950">
+              <CardContent className="pt-6">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <AlertTriangle className="h-5 w-5 text-orange-600" />
+                      <h3 className="font-semibold text-orange-900 dark:text-orange-100">
+                        Correção de Recebimentos
+                      </h3>
+                    </div>
+                    <p className="text-sm text-orange-800 dark:text-orange-200">
+                      Ajuste todos os recebimentos pendentes para seguir a nova regra de cálculo proporcional.
+                      <br />
+                      <span className="font-medium">Recebimentos pagos serão preservados.</span>
+                    </p>
+                  </div>
+                  <Button
+                    onClick={handleFixAllRentals}
+                    disabled={isFixingRentals}
+                    className="bg-orange-600 hover:bg-orange-700 text-white flex-shrink-0"
+                  >
+                    {isFixingRentals ? (
+                      <>
+                        <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                        Processando...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        Corrigir Todos
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Vacant Properties Card */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
