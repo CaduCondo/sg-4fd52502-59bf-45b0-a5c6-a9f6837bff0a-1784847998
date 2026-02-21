@@ -74,7 +74,6 @@ export default function RentalsPage() {
   const [rentalTerminations, setRentalTerminations] = useState<Record<string, boolean>>({});
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "terminated">("active");
-  const [isFixingRentals, setIsFixingRentals] = useState(false);
 
   // Helper para formatar data
   const formatDate = useCallback((dateString: string) => {
@@ -362,51 +361,6 @@ export default function RentalsPage() {
     await loadAvailableData();
   }, [loadRentalsData, loadAvailableData]);
 
-  const handleFixAllRentals = useCallback(async () => {
-    if (!confirm('⚠️ ATENÇÃO: Isso irá reprocessar TODOS os recebimentos pendentes de TODAS as locações ativas.\n\nRecebimentos já PAGOS serão preservados.\nRecebimentos PENDENTES serão deletados e recriados corretamente.\n\nDeseja continuar?')) {
-      return;
-    }
-
-    try {
-      setIsFixingRentals(true);
-      
-      toast({
-        title: "Processando...",
-        description: "Corrigindo todos os recebimentos. Isso pode levar alguns minutos.",
-      });
-
-      const { data, error } = await supabase.functions.invoke('fix-all-rentals-payments');
-
-      if (error) throw error;
-
-      if (data?.success) {
-        toast({
-          title: "✅ Correção concluída!",
-          description: `
-            📊 Locações processadas: ${data.rentalsProcessed}
-            ❌ Recebimentos deletados: ${data.paymentsDeleted}
-            ✅ Recebimentos criados: ${data.paymentsCreated}
-          `,
-          className: "bg-green-500 text-white border-none",
-          duration: 10000,
-        });
-        
-        await loadRentalsData();
-      } else {
-        throw new Error(data?.error || 'Erro desconhecido');
-      }
-    } catch (error) {
-      console.error("Erro ao corrigir locações:", error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível corrigir os recebimentos. Verifique o console para detalhes.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsFixingRentals(false);
-    }
-  }, [toast, loadRentalsData]);
-
   return (
     <>
       <SEO title="Locações - Gerenciador de Locações" />
@@ -444,42 +398,6 @@ export default function RentalsPage() {
               </Button>
             </div>
           </div>
-
-          {/* Botão Temporário de Correção */}
-          <Card className="mb-6 border-orange-500 bg-orange-50 dark:bg-orange-950">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <AlertTriangle className="h-5 w-5 text-orange-600" />
-                  <div>
-                    <h3 className="font-semibold text-orange-900 dark:text-orange-100">
-                      Correção de Recebimentos
-                    </h3>
-                    <p className="text-sm text-orange-700 dark:text-orange-300">
-                      Reprocessa todos os recebimentos para seguir a regra correta (proporcionais + intermediários)
-                    </p>
-                  </div>
-                </div>
-                <Button
-                  onClick={handleFixAllRentals}
-                  disabled={isFixingRentals}
-                  className="bg-orange-600 hover:bg-orange-700"
-                >
-                  {isFixingRentals ? (
-                    <>
-                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                      Processando...
-                    </>
-                  ) : (
-                    <>
-                      <RefreshCw className="mr-2 h-4 w-4" />
-                      Corrigir Todos
-                    </>
-                  )}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
 
           {/* Vacant Properties Card */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
