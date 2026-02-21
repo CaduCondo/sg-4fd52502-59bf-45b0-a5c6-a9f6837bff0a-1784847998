@@ -441,6 +441,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     isTerminationPayment,
     originalBreakdown,
     repairExpenses,
+    discountAmount,
     removeFees,
     calculateValues,
     isEditMode,

@@ -247,7 +247,7 @@ export function PaymentBreakdownCard({
                       disabled={isReadOnly}
                     />
                   ) : (
-                    <span className="font-medium text-right text-green-600">
+                    <span className="font-medium text-right text-red-600">
                       {discountAmount > 0 ? "- " : ""}
                       {formatCurrency(discountAmount)}
                     </span>
