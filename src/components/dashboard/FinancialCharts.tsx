@@ -166,7 +166,7 @@ export const FinancialCharts = memo(function FinancialCharts({
         </CardContent>
       </Card>
 
-      <Card className="col-span-1 lg:grid-cols-2">
+      <Card className="col-span-1 lg:col-span-2">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <BarChart3 className="h-5 w-5 text-green-600" />
