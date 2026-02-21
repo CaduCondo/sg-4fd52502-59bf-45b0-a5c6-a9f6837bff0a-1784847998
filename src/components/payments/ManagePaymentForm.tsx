@@ -1186,6 +1186,54 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                       </div>
                     )}
                   </div>
+
+                  {values.multa > 0 && (
+                    <>
+                      <div className="border-t border-dashed my-2"></div>
+                      <div className="bg-red-50 dark:bg-red-950 rounded-lg p-3 space-y-2">
+                        <p className="text-xs font-semibold text-red-800 dark:text-red-200 mb-2">
+                          🚨 ATRASO NO PAGAMENTO ({values.diasAtraso} {values.diasAtraso === 1 ? 'dia' : 'dias'})
+                        </p>
+                        
+                        <div className="flex justify-between text-sm">
+                          <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600"}>
+                            Multa por Atraso ({lateFeePercentage}%)
+                          </span>
+                          <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600 font-medium"}>
+                            + {formatCurrency(values.multa.toFixed(2))}
+                          </span>
+                        </div>
+
+                        {values.juros > 0 && (
+                          <div className="flex justify-between text-sm">
+                            <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600"}>
+                              Juros ({interestRatePercentage.toFixed(3)}% ao dia)
+                            </span>
+                            <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600 font-medium"}>
+                              + {formatCurrency(values.juros.toFixed(2))}
+                            </span>
+                          </div>
+                        )}
+
+                        {isEditMode && (
+                          <div className="flex items-center space-x-2 pt-2 border-t border-red-200 dark:border-red-800">
+                            <Checkbox
+                              id="remove-fees"
+                              checked={removeFees}
+                              onCheckedChange={(checked) => setRemoveFees(checked as boolean)}
+                              disabled={isReadOnly}
+                            />
+                            <label
+                              htmlFor="remove-fees"
+                              className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                            >
+                              Retirar multa/juros por atraso
+                            </label>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
                 </>
               )}
             </div>
