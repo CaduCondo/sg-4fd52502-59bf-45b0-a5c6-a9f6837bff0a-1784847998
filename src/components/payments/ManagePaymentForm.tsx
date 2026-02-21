@@ -464,12 +464,23 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           baseCalculo = Math.max(0, valorAluguel);
         }
 
+        console.log("🔍 Calculando multa/juros:", {
+          dueDate: payment.due_date,
+          paymentDate: formData.payment_date,
+          diasAtraso,
+          baseCalculo,
+          lateFeePercentage,
+          interestRatePercentage
+        });
+
         if (baseCalculo > 0) {
           multa = Math.round((baseCalculo * lateFeePercentage / 100) * 100) / 100;
 
           const jurosDiario = interestRatePercentage;
           juros = Math.round((baseCalculo * jurosDiario / 100 * diasAtraso) * 100) / 100;
         }
+
+        console.log("💰 Resultado:", { multa, juros });
       }
     }
 
