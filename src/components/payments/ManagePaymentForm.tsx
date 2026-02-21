@@ -544,21 +544,9 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           items: [
             { description: "Valor Aluguel", amount: rentalValue },
             ...(hasGarage ? [{ description: "Valor Vaga", amount: garageValue }] : [])
-          ],
-          total: total,
-          hasMultipleItems: hasGarage
-        };
-      }
-
-      const hasMultipleItems = breakdownData.length > 1;
-      const total = breakdownData.reduce((sum: number, item: any) => {
-        return sum + (item.value || item.amount || 0);
-      }, 0);
-
-      return {
-        items: breakdownData,
+        ],
         total: total,
-        hasMultipleItems: hasMultipleItems
+        hasMultipleItems: hasGarage
       };
     } catch (error) {
       console.error("Erro ao processar breakdown:", error);
@@ -615,7 +603,10 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         }));
       }
     } else if (!isTerminationPayment && isEditMode) {
-      const totalValue = displayBreakdown.total;
+      const subtotal = displayBreakdown.total;
+      const lateFees = removeFees ? 0 : (values.multa + values.juros);
+      const totalValue = subtotal + lateFees;
+      
       setFormData(prev => ({
         ...prev,
         amount_to_pay: formatCurrency(totalValue.toFixed(2))
@@ -1095,7 +1086,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                     </div>
                   </div>
 
-                  {values.multa > 0 && (
+                  {values.diasAtraso > 0 && (
                     <>
                       <div className="border-t border-dashed my-2"></div>
                       <div className="bg-red-50 dark:bg-red-950 rounded-lg p-3 space-y-2">
@@ -1187,7 +1178,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                     )}
                   </div>
 
-                  {values.multa > 0 && (
+                  {values.diasAtraso > 0 && (
                     <>
                       <div className="border-t border-dashed my-2"></div>
                       <div className="bg-red-50 dark:bg-red-950 rounded-lg p-3 space-y-2">
