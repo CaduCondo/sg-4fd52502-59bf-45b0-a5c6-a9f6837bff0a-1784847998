@@ -23,9 +23,27 @@ export function usePaymentBreakdown({ payment, rentalValue, garageValue }: UsePa
     }
 
     try {
-      const breakdownData = typeof payment.breakdown === 'string' 
+      let breakdownData = typeof payment.breakdown === 'string' 
         ? JSON.parse(payment.breakdown) 
-        : (payment.breakdown || []);
+        : (payment.breakdown || {});
+      
+      // Se for um objeto (novo formato), converter para array
+      if (!Array.isArray(breakdownData) && typeof breakdownData === 'object') {
+        const itemsArray: any[] = [];
+        
+        Object.entries(breakdownData).forEach(([key, value]: [string, any]) => {
+          if (value && typeof value === 'object') {
+            itemsArray.push({
+              description: value.label ? `${key} (${value.label})` : key,
+              amount: value.value || value.amount || 0,
+              value: value.value || value.amount || 0,
+              type: value.type || "addition"
+            });
+          }
+        });
+        
+        breakdownData = itemsArray;
+      }
       
       if (!Array.isArray(breakdownData) || breakdownData.length === 0) {
         const hasGarage = garageValue > 0;

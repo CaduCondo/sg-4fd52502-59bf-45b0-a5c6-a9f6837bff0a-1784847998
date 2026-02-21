@@ -16,6 +16,13 @@ import { PaymentBreakdownCard } from "./PaymentBreakdownCard";
 import { usePaymentCalculations } from "@/hooks/usePaymentCalculations";
 import { usePaymentBreakdown } from "@/hooks/usePaymentBreakdown";
 
+interface BreakdownItem {
+  description?: string;
+  amount?: number;
+  value?: number;
+  type?: string;
+}
+
 interface Attachment {
   url: string;
   name: string;
@@ -179,23 +186,36 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
             breakdownData = JSON.parse(breakdownData);
           }
           
-          if (!Array.isArray(breakdownData)) {
-            breakdownData = [];
+          // Se for um objeto (novo formato), converter para array para processamento
+          let itemsArray: BreakdownItem[] = [];
+          
+          if (!Array.isArray(breakdownData) && typeof breakdownData === 'object') {
+            Object.entries(breakdownData).forEach(([key, value]: [string, any]) => {
+              if (value && typeof value === 'object') {
+                itemsArray.push({
+                  description: value.label ? `${key} (${value.label})` : key,
+                  amount: value.value || value.amount || 0,
+                  value: value.value || value.amount || 0,
+                  type: value.type || "addition"
+                });
+              }
+            });
+          } else if (Array.isArray(breakdownData)) {
+            itemsArray = breakdownData;
           }
           
-          console.log("📊 Breakdown parsed:", breakdownData);
+          console.log("📊 Breakdown parsed:", itemsArray);
           
-          const aluguelItem = breakdownData.find((item: any) => 
+          const aluguelItem = itemsArray.find((item) => 
             item.description?.includes("Aluguel") && !item.description?.includes("Proporcional")
           );
           
-          const garagemItem = breakdownData.find((item: any) => 
+          const garagemItem = itemsArray.find((item) => 
             item.description?.includes("Garagem") || item.description?.includes("Vaga")
           );
           
-          const proporcionalItem = breakdownData.find((item: any) => 
-            item.description?.includes("Aluguel Proporcional") || 
-            item.description?.toLowerCase().includes("aluguel") && item.description?.toLowerCase().includes("proporcional")
+          const proporcionalItem = itemsArray.find((item) => 
+            item.description?.includes("Aluguel") && item.description?.includes("PROPORCIONAL")
           );
 
           if (proporcionalItem) {
@@ -249,7 +269,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           setOriginalBreakdown(breakdownData || []);
           
           if (isTermination && Array.isArray(breakdownData)) {
-            const expensesItem = breakdownData.find((item: any) => 
+            const expensesItem = (breakdownData as BreakdownItem[]).find((item) => 
               item.description?.includes("Despesas")
             );
             
