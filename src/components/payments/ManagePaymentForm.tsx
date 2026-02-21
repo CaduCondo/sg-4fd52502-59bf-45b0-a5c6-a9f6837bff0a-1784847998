@@ -1087,6 +1087,28 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                   <div className="bg-muted/30 p-4 rounded-lg space-y-2">
                     {(() => {
                       try {
+                        if (!payment || !payment.breakdown) {
+                          return (
+                            <>
+                              <div className="flex justify-between items-center">
+                                <span className="text-sm font-medium">Valor Aluguel</span>
+                                <span className="text-lg font-semibold">
+                                  {formatCurrency((rentalValue * 100).toString())}
+                                </span>
+                              </div>
+
+                              {garageValue > 0 && (
+                                <div className="flex justify-between items-center">
+                                  <span className="text-sm font-medium">Valor Vaga</span>
+                                  <span className="text-lg font-semibold">
+                                    {formatCurrency((garageValue * 100).toString())}
+                                  </span>
+                                </div>
+                              )}
+                            </>
+                          );
+                        }
+
                         const breakdownData = typeof payment.breakdown === 'string' 
                           ? JSON.parse(payment.breakdown) 
                           : (payment.breakdown || []);
@@ -1095,13 +1117,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                           return (
                             <>
                               <div className="flex justify-between items-center">
-                                <span className="text-sm font-medium">
-                                  Valor Aluguel
-                                  {payment?.breakdown && typeof payment.breakdown === 'object' && 
-                                   payment.breakdown[0]?.description?.toLowerCase().includes("proporcional") && (
-                                    <span className="text-blue-600 ml-2">(proporcional)</span>
-                                  )}
-                                </span>
+                                <span className="text-sm font-medium">Valor Aluguel</span>
                                 <span className="text-lg font-semibold">
                                   {formatCurrency((rentalValue * 100).toString())}
                                 </span>
@@ -1109,14 +1125,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
 
                               {garageValue > 0 && (
                                 <div className="flex justify-between items-center">
-                                  <span className="text-sm font-medium">
-                                    Valor Vaga
-                                    {payment?.breakdown && typeof payment.breakdown === 'object' && 
-                                     payment.breakdown.length > 1 && 
-                                     payment.breakdown[1]?.description?.toLowerCase().includes("proporcional") && (
-                                      <span className="text-blue-600 ml-2">(proporcional)</span>
-                                    )}
-                                  </span>
+                                  <span className="text-sm font-medium">Valor Vaga</span>
                                   <span className="text-lg font-semibold">
                                     {formatCurrency((garageValue * 100).toString())}
                                   </span>
