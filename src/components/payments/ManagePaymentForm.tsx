@@ -413,7 +413,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     let rentalBaseValue = rentalValue;
     let garageBaseValue = garageValue;
     
-    // Tenta usar o valor do breakdown se disponível
     if (payment?.breakdown) {
       try {
         const breakdownData = typeof payment.breakdown === 'string' 
@@ -426,7 +425,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
            }, 0);
            if (totalBreakdown > 0) {
              rentalBaseValue = totalBreakdown;
-             garageBaseValue = 0; // Já incluído no total
+             garageBaseValue = 0;
            }
         }
       } catch (e) {
@@ -466,10 +465,9 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     let diasAtraso = 0;
 
     if (payment && formData.payment_date) {
-      const dueDateStr = payment.due_date; // YYYY-MM-DD
-      const paymentDateStr = formData.payment_date; // YYYY-MM-DD
+      const dueDateStr = payment.due_date;
+      const paymentDateStr = formData.payment_date;
       
-      // Criar datas ignorando fuso horário (apenas data)
       const dueDate = new Date(dueDateStr + "T12:00:00");
       const paymentDate = new Date(paymentDateStr + "T12:00:00");
 
@@ -490,13 +488,11 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           
           baseCalculo = Math.abs(baseCalculo);
         } else {
-          // Para não rescisão, usa o total do aluguel (que já pode vir do breakdown)
           baseCalculo = Math.max(0, valorAluguel);
         }
 
         if (baseCalculo > 0) {
           multa = Math.round((baseCalculo * lateFeePercentage / 100) * 100) / 100;
-
           const jurosDiario = interestRatePercentage;
           juros = Math.round((baseCalculo * jurosDiario / 100 * diasAtraso) * 100) / 100;
         }
@@ -563,9 +559,21 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           items: [
             { description: "Valor Aluguel", amount: rentalValue },
             ...(hasGarage ? [{ description: "Valor Vaga", amount: garageValue }] : [])
-        ],
+          ],
+          total: total,
+          hasMultipleItems: hasGarage
+        };
+      }
+
+      const hasMultipleItems = breakdownData.length > 1;
+      const total = breakdownData.reduce((sum: number, item: any) => {
+        return sum + (item.value || item.amount || 0);
+      }, 0);
+
+      return {
+        items: breakdownData,
         total: total,
-        hasMultipleItems: hasGarage
+        hasMultipleItems: hasMultipleItems
       };
     } catch (error) {
       console.error("Erro ao processar breakdown:", error);
