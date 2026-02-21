@@ -99,7 +99,7 @@ export function useDashboardData(
                 images,
                 created_at,
                 features,
-                locations!inner(
+                locations(
                   id,
                   name,
                   street,
