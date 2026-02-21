@@ -1085,44 +1085,95 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
               ) : (
                 <>
                   <div className="bg-muted/30 p-4 rounded-lg space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium">
-                        Valor Aluguel
-                        {payment?.breakdown && typeof payment.breakdown === 'object' && 
-                         payment.breakdown[0]?.description?.toLowerCase().includes("proporcional") && (
-                          <span className="text-blue-600 ml-2">(proporcional)</span>
-                        )}
-                      </span>
-                      <span className="text-lg font-semibold">
-                        {formatCurrency((rentalValue * 100).toString())}
-                      </span>
-                    </div>
+                    {(() => {
+                      try {
+                        const breakdownData = typeof payment.breakdown === 'string' 
+                          ? JSON.parse(payment.breakdown) 
+                          : (payment.breakdown || []);
+                        
+                        if (!Array.isArray(breakdownData) || breakdownData.length === 0) {
+                          return (
+                            <>
+                              <div className="flex justify-between items-center">
+                                <span className="text-sm font-medium">
+                                  Valor Aluguel
+                                  {payment?.breakdown && typeof payment.breakdown === 'object' && 
+                                   payment.breakdown[0]?.description?.toLowerCase().includes("proporcional") && (
+                                    <span className="text-blue-600 ml-2">(proporcional)</span>
+                                  )}
+                                </span>
+                                <span className="text-lg font-semibold">
+                                  {formatCurrency((rentalValue * 100).toString())}
+                                </span>
+                              </div>
 
-                    {garageValue > 0 && (
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium">
-                          Valor Vaga
-                          {payment?.breakdown && typeof payment.breakdown === 'object' && 
-                           payment.breakdown.length > 1 && 
-                           payment.breakdown[1]?.description?.toLowerCase().includes("proporcional") && (
-                            <span className="text-blue-600 ml-2">(proporcional)</span>
-                          )}
-                        </span>
-                        <span className="text-lg font-semibold">
-                          {formatCurrency((garageValue * 100).toString())}
-                        </span>
-                      </div>
-                    )}
+                              {garageValue > 0 && (
+                                <div className="flex justify-between items-center">
+                                  <span className="text-sm font-medium">
+                                    Valor Vaga
+                                    {payment?.breakdown && typeof payment.breakdown === 'object' && 
+                                     payment.breakdown.length > 1 && 
+                                     payment.breakdown[1]?.description?.toLowerCase().includes("proporcional") && (
+                                      <span className="text-blue-600 ml-2">(proporcional)</span>
+                                    )}
+                                  </span>
+                                  <span className="text-lg font-semibold">
+                                    {formatCurrency((garageValue * 100).toString())}
+                                  </span>
+                                </div>
+                              )}
+                            </>
+                          );
+                        }
 
-                    {payment?.breakdown && typeof payment.breakdown === 'object' && 
-                     payment.breakdown[0]?.description?.toLowerCase().includes("proporcional") && (
-                      <div className="flex justify-between items-center pt-2 border-t border-border">
-                        <span className="text-base font-bold">Valor Total</span>
-                        <span className="text-xl font-bold text-primary">
-                          {formatCurrency(((rentalValue + garageValue) * 100).toString())}
-                        </span>
-                      </div>
-                    )}
+                        const hasMultipleItems = breakdownData.length > 1;
+                        const total = breakdownData.reduce((sum: number, item: any) => {
+                          return sum + (item.value || item.amount || 0);
+                        }, 0);
+
+                        return (
+                          <>
+                            {breakdownData.map((item: any, index: number) => {
+                              const itemValue = item.value || item.amount || 0;
+                              const isProportional = item.description?.toLowerCase().includes("proporcional");
+                              
+                              return (
+                                <div key={index} className="flex justify-between items-center">
+                                  <span className="text-sm font-medium">
+                                    {item.description?.replace(/\s*\(proporcional\)/i, '')}
+                                    {isProportional && (
+                                      <span className="text-blue-600 ml-2">(proporcional)</span>
+                                    )}
+                                  </span>
+                                  <span className="text-lg font-semibold">
+                                    {formatCurrency((itemValue * 100).toString())}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                            
+                            {hasMultipleItems && (
+                              <div className="flex justify-between items-center pt-2 border-t-2 border-primary mt-2">
+                                <span className="text-base font-bold">Valor Total</span>
+                                <span className="text-xl font-bold text-primary">
+                                  {formatCurrency((total * 100).toString())}
+                                </span>
+                              </div>
+                            )}
+                          </>
+                        );
+                      } catch (error) {
+                        console.error("Erro ao processar breakdown:", error);
+                        return (
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm font-medium">Valor Aluguel</span>
+                            <span className="text-lg font-semibold">
+                              {formatCurrency((rentalValue * 100).toString())}
+                            </span>
+                          </div>
+                        );
+                      }
+                    })()}
                   </div>
                 </>
               )}
