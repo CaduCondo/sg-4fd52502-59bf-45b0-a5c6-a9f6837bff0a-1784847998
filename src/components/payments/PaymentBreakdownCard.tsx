@@ -107,6 +107,8 @@ interface PaymentBreakdownCardProps {
   onRepairExpensesChange: (value: string) => void;
   onRemoveFeesChange: (checked: boolean) => void;
   discountAmount?: number;
+  discountAmountInput?: string;
+  onDiscountAmountChange?: (value: string) => void;
 }
 
 export function PaymentBreakdownCard({
@@ -126,6 +128,9 @@ export function PaymentBreakdownCard({
   formatCurrency,
   onRepairExpensesChange,
   onRemoveFeesChange,
+  discountAmount = 0,
+  discountAmountInput = "",
+  onDiscountAmountChange = () => {},
 }: PaymentBreakdownCardProps) {
   return (
     <Card className={isTerminationPayment ? "border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950" : ""}>

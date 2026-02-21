@@ -77,6 +77,8 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
   const [isPaid, setIsPaid] = useState(false);
   const [repairExpenses, setRepairExpenses] = useState<number>(0);
   const [repairExpensesInput, setRepairExpensesInput] = useState<string>("R$ 0,00");
+  const [discountAmount, setDiscountAmount] = useState<number>(0);
+  const [discountAmountInput, setDiscountAmountInput] = useState<string>("R$ 0,00");
   const [isTerminationPayment, setIsTerminationPayment] = useState(false);
   const [originalBreakdown, setOriginalBreakdown] = useState<any[]>([]);
   const [calculatedTotal, setCalculatedTotal] = useState<number>(0);
@@ -278,6 +280,16 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
               setRepairExpenses(expValue);
               setRepairExpensesInput(formatCurrency(expValue.toFixed(2)));
             }
+
+            const discountItem = (breakdownData as BreakdownItem[]).find((item) => 
+              item.description?.includes("Desconto") || item.type === "deduction" && !item.description?.includes("Caução")
+            );
+
+            if (discountItem) {
+              const discValue = Math.abs(discountItem.amount || 0);
+              setDiscountAmount(discValue);
+              setDiscountAmountInput(formatCurrency(discValue.toFixed(2)));
+            }
           }
         } catch (error) {
           console.error("Erro ao parsear breakdown:", error);
@@ -405,7 +417,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       
       const breakdownTotal = cleanBreakdown.reduce((sum, item) => sum + item.amount, 0);
       const lateFees = removeFees ? 0 : (values.multa + values.juros);
-      const newTotal = breakdownTotal + repairExpenses + lateFees;
+      const newTotal = breakdownTotal + repairExpenses + lateFees - discountAmount;
       
       setCalculatedTotal(newTotal);
       
@@ -580,6 +592,11 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     setRepairExpenses(parseCurrency(formatCurrency(value)));
   }, [formatCurrency, parseCurrency]);
 
+  const handleDiscountAmountChange = useCallback((value: string) => {
+    setDiscountAmountInput(formatCurrency(value));
+    setDiscountAmount(parseCurrency(formatCurrency(value)));
+  }, [formatCurrency, parseCurrency]);
+
   const handleSubmit = async () => {
     if (!formData.payment_date || !formData.payment_method || !formData.amount_to_pay) {
       toast({
@@ -657,6 +674,14 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
               description: "Despesas Adicionais*",
               amount: repairExpenses,
               type: "addition"
+            });
+          }
+
+          if (discountAmount > 0) {
+            breakdownData.push({
+              description: "Desconto",
+              amount: -discountAmount,
+              type: "deduction"
             });
           }
           
@@ -795,6 +820,9 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           formatCurrency={(val) => formatCurrency(val.toFixed(2))}
           onRepairExpensesChange={handleRepairExpensesChange}
           onRemoveFeesChange={setRemoveFees}
+          discountAmount={discountAmount}
+          discountAmountInput={discountAmountInput}
+          onDiscountAmountChange={handleDiscountAmountChange}
         />
 
         <Card>
