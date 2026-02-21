@@ -162,7 +162,26 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
               *,
               locations!inner (*)
             ),
-            tenants!inner (*)
+            tenants!inner (
+              id,
+              name,
+              email,
+              phone,
+              cpf,
+              document_type,
+              document,
+              rg,
+              street,
+              number,
+              complement,
+              neighborhood,
+              city,
+              state,
+              zip_code,
+              status,
+              created_at,
+              updated_at
+            )
           )
         `)
         .eq("id", paymentId)
