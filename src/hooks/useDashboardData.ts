@@ -97,17 +97,7 @@ export function useDashboardData(
                 status,
                 images,
                 created_at,
-                features,
-                locations(
-                  id,
-                  name,
-                  street,
-                  number,
-                  neighborhood,
-                  city,
-                  state,
-                  zip_code
-                )
+                locations(id, name, street, number, neighborhood, city, state, zip_code)
               `);
 
             if (isFinancialUser && allowedLocations && allowedLocations.length > 0) {
@@ -249,7 +239,7 @@ export function useDashboardData(
             address: loc 
               ? `${loc.street || ''}, ${loc.number || ''} - ${loc.neighborhood || ''}, ${loc.city || ''}/${loc.state || ''}` 
               : "",
-            features: prop.features || [],
+            features: [],
             locationDetails: loc,
             number: loc?.number || "",
             neighborhood: loc?.neighborhood || "",
