@@ -13000,4 +13000,4 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       setGarageValue(effectiveGarageValue);
 
       const alreadyPaid = paymentData.status === "paid";
-        setIsPaid(alreadyPaid);
+      setIsPaid(alreadyPaid)
