@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, memo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/router";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,12 +7,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Camera, Paperclip, Home, User, DollarSign, CreditCard, Edit, X, Upload, FileText, Loader2, ImageIcon } from "lucide-react";
+import { Camera, Paperclip, CreditCard, Edit, X, Upload, FileText, Loader2, ImageIcon } from "lucide-react";
 import type { Payment, Rental, Property, Tenant } from "@/types";
 import { calculateCorrectedDeposit } from "@/services/igpmService";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { PaymentInfoCards } from "./PaymentInfoCards";
+import { PaymentBreakdownCard } from "./PaymentBreakdownCard";
+import { usePaymentCalculations } from "@/hooks/usePaymentCalculations";
+import { usePaymentBreakdown } from "@/hooks/usePaymentBreakdown";
 
 interface Attachment {
   url: string;
@@ -52,85 +54,6 @@ interface ManagePaymentFormProps {
   onClose?: () => void;
   embedded?: boolean;
 }
-
-const BreakdownItem = memo(({ item, isDeduction, igpmCorrection }: { item: any; isDeduction?: boolean; igpmCorrection?: any }) => {
-  const isDepositDeduction = item.description?.includes("Devolução de Caução");
-  
-  const displayAmount = isDepositDeduction && igpmCorrection && igpmCorrection.correctedAmount > 0
-    ? igpmCorrection.correctedAmount 
-    : Math.abs(item.amount);
-
-  const formatCurrency = (val: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(val);
-
-  return (
-    <div>
-      <div className="flex justify-between items-start text-sm">
-        <div className="flex-1">
-          <span className={isDepositDeduction ? "block" : ""}>
-            {isDepositDeduction ? "Devolução de Caução" : item.description}
-          </span>
-          {isDepositDeduction && igpmCorrection && (
-            <span className="block text-xs text-muted-foreground mt-1">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="cursor-help underline decoration-dotted hover:text-primary transition-colors">
-                      (corrigido pela Taxa da Poupança)
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-[450px] p-0 bg-white dark:bg-gray-900 border-2 shadow-xl z-50">
-                    <div className="space-y-3 p-4">
-                      <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 space-y-1.5">
-                        <p className="font-semibold text-sm text-blue-900 dark:text-blue-100">
-                          💰 Resumo da Correção
-                        </p>
-                        <div className="grid grid-cols-2 gap-2 text-xs">
-                          <div>
-                            <span className="text-muted-foreground">Valor Original:</span>
-                            <p className="font-semibold text-blue-900 dark:text-blue-100">
-                              {formatCurrency(igpmCorrection.originalAmount)}
-                            </p>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Valor Corrigido:</span>
-                            <p className="font-semibold text-green-600 dark:text-green-400">
-                              {formatCurrency(igpmCorrection.correctedAmount)}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="pt-1.5 border-t border-blue-200 dark:border-blue-800">
-                          <span className="text-muted-foreground text-xs">Correção Total:</span>
-                          <p className="font-bold text-base text-blue-900 dark:text-blue-100">
-                            {(igpmCorrection.poupancaPercentage ?? igpmCorrection.igpmPercentage ?? 0).toFixed(2)}% ({igpmCorrection.months} {igpmCorrection.months === 1 ? 'mês' : 'meses'})
-                          </p>
-                        </div>
-                      </div>
-                      
-                      <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
-                        <p className="font-semibold text-xs text-gray-700 dark:text-gray-300 mb-2">
-                          📅 Taxas Mensais Aplicadas
-                        </p>
-                        <div className="text-[11px] font-mono leading-relaxed max-h-[250px] overflow-y-auto text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
-                          {igpmCorrection.poupancaDetails || igpmCorrection.igpmDetails || "Detalhes de correção não disponíveis."}
-                        </div>
-                      </div>
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </span>
-          )}
-        </div>
-        <span className={`${isDeduction ? "text-red-600" : ""} font-medium whitespace-nowrap ml-4`}>
-          {isDeduction ? "- " : ""}
-          {formatCurrency(displayAmount)}
-        </span>
-      </div>
-    </div>
-  );
-});
-
-BreakdownItem.displayName = "BreakdownItem";
 
 export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = false }: ManagePaymentFormProps) {
   const router = useRouter();
@@ -182,7 +105,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
   const [garageValue, setGarageValue] = useState(0);
   const [lateFeePercentage, setLateFeePercentage] = useState(0);
   const [interestRatePercentage, setInterestRatePercentage] = useState(0);
-  const [waiveFees, setWaiveFees] = useState(false);
 
   const formatCurrency = useCallback((value: string | number): string => {
     const numericValue = typeof value === "string" ? value.replace(/\D/g, "") : String(value).replace(/\D/g, "");
@@ -240,8 +162,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       if (paymentError) throw paymentError;
 
       console.log("📦 Payment data loaded:", paymentData);
-      console.log("🏠 Property:", paymentData.rentals.properties);
-      console.log("👤 Tenant:", paymentData.rentals.tenants);
 
       setPayment(paymentData);
       setRental(paymentData.rentals);
@@ -254,9 +174,14 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
 
       if (paymentData.breakdown) {
         try {
-          const breakdownData = typeof paymentData.breakdown === 'string' 
-            ? JSON.parse(paymentData.breakdown) 
-            : (paymentData.breakdown || []);
+          let breakdownData = paymentData.breakdown;
+          if (typeof breakdownData === 'string') {
+            breakdownData = JSON.parse(breakdownData);
+          }
+          
+          if (!Array.isArray(breakdownData)) {
+            breakdownData = [];
+          }
           
           console.log("📊 Breakdown parsed:", breakdownData);
           
@@ -312,13 +237,18 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       
       if (paymentData.breakdown) {
         try {
-          const breakdownData = typeof paymentData.breakdown === 'string' 
-            ? JSON.parse(paymentData.breakdown) 
-            : (paymentData.breakdown || []);
+          let breakdownData = paymentData.breakdown;
+          if (typeof breakdownData === 'string') {
+            breakdownData = JSON.parse(breakdownData);
+          }
+          
+          if (!Array.isArray(breakdownData)) {
+            breakdownData = [];
+          }
           
           setOriginalBreakdown(breakdownData || []);
           
-          if (isTermination) {
+          if (isTermination && Array.isArray(breakdownData)) {
             const expensesItem = breakdownData.find((item: any) => 
               item.description?.includes("Despesas")
             );
@@ -409,118 +339,9 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     loadConfig();
   }, [loadPaymentData, loadConfig]);
 
-  const calculateValues = useMemo(() => {
-    let rentalBaseValue = rentalValue;
-    let garageBaseValue = garageValue;
-    
-    if (payment?.breakdown) {
-      try {
-        const breakdownData = typeof payment.breakdown === 'string' 
-          ? JSON.parse(payment.breakdown) 
-          : (payment.breakdown || []);
-          
-        if (Array.isArray(breakdownData) && breakdownData.length > 0) {
-           const totalBreakdown = breakdownData.reduce((sum: number, item: any) => {
-             return sum + (item.value || item.amount || 0);
-           }, 0);
-           if (totalBreakdown > 0) {
-             rentalBaseValue = totalBreakdown;
-             garageBaseValue = 0;
-           }
-        }
-      } catch (e) {
-        console.error("Erro parse breakdown calculateValues", e);
-      }
-    }
-
-    const valorAluguel = Math.round((rentalBaseValue + garageBaseValue) * 100) / 100;
-    
-    let isProportional = false;
-    let proportionalDays = 0;
-    
-    if (payment?.breakdown) {
-      try {
-        const breakdownData = typeof payment.breakdown === 'string' 
-          ? JSON.parse(payment.breakdown) 
-          : (payment.breakdown || []);
-        
-        const proportionalItem = breakdownData.find((item: any) => 
-          item.description?.includes("Aluguel Proporcional")
-        );
-        
-        if (proportionalItem) {
-          isProportional = true;
-          const match = proportionalItem.description.match(/\((\d+)\s+dias?\)/);
-          if (match) {
-            proportionalDays = parseInt(match[1]);
-          }
-        }
-      } catch (error) {
-        console.error("Erro ao verificar proporcional:", error);
-      }
-    }
-    
-    let multa = 0;
-    let juros = 0;
-    let diasAtraso = 0;
-
-    if (payment && formData.payment_date) {
-      const dueDateStr = payment.due_date;
-      const paymentDateStr = formData.payment_date;
-      
-      const dueDate = new Date(dueDateStr + "T12:00:00");
-      const paymentDate = new Date(paymentDateStr + "T12:00:00");
-
-      if (paymentDate > dueDate) {
-        const diffTime = paymentDate.getTime() - dueDate.getTime();
-        diasAtraso = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-        let baseCalculo = 0;
-        
-        if (isTerminationPayment && originalBreakdown.length > 0) {
-          baseCalculo = originalBreakdown
-            .filter(item => 
-              !item.description?.includes("Multa por Atraso") &&
-              !item.description?.includes("Juros por Atraso") &&
-              !item.description?.includes("Despesas")
-            )
-            .reduce((sum, item) => sum + item.amount, 0);
-          
-          baseCalculo = Math.abs(baseCalculo);
-        } else {
-          baseCalculo = Math.max(0, valorAluguel);
-        }
-
-        if (baseCalculo > 0) {
-          multa = Math.round((baseCalculo * lateFeePercentage / 100) * 100) / 100;
-          const jurosDiario = interestRatePercentage;
-          juros = Math.round((baseCalculo * jurosDiario / 100 * diasAtraso) * 100) / 100;
-        }
-      }
-    }
-
-    const valorTotalSemIsencao = Math.round((valorAluguel + multa + juros) * 100) / 100;
-    const valorAPagar = removeFees ? valorAluguel : valorTotalSemIsencao;
-    
-    const valorJaPago = payment?.paid_amount || 0;
-    const valorRestante = Math.max(0, Math.round((valorAPagar - valorJaPago) * 100) / 100);
-
-    return {
-      valorAluguel: Math.round(valorAluguel * 100) / 100,
-      multa: Math.round(multa * 100) / 100,
-      juros: Math.round(juros * 100) / 100,
-      valorTotal: Math.round(valorTotalSemIsencao * 100) / 100,
-      valorAPagar: Math.round(valorAPagar * 100) / 100,
-      valorJaPago: Math.round(valorJaPago * 100) / 100,
-      valorRestante: Math.round(valorRestante * 100) / 100,
-      diasAtraso,
-      jurosDiario: interestRatePercentage,
-      isProportional,
-      proportionalDays,
-    };
-  }, [
+  const calculateValues = usePaymentCalculations({
     payment,
-    formData.payment_date,
+    formData,
     rentalValue,
     garageValue,
     isTerminationPayment,
@@ -528,68 +349,13 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     removeFees,
     lateFeePercentage,
     interestRatePercentage,
-    waiveFees
-  ]);
+  });
 
-  const displayBreakdown = useMemo(() => {
-    if (!payment || !payment.breakdown) {
-      const hasGarage = garageValue > 0;
-      const total = rentalValue + garageValue;
-      
-      return {
-        items: [
-          { description: "Valor Aluguel", amount: rentalValue },
-          ...(hasGarage ? [{ description: "Valor Vaga", amount: garageValue }] : [])
-        ],
-        total: total,
-        hasMultipleItems: hasGarage
-      };
-    }
-
-    try {
-      const breakdownData = typeof payment.breakdown === 'string' 
-        ? JSON.parse(payment.breakdown) 
-        : (payment.breakdown || []);
-      
-      if (!Array.isArray(breakdownData) || breakdownData.length === 0) {
-        const hasGarage = garageValue > 0;
-        const total = rentalValue + garageValue;
-        
-        return {
-          items: [
-            { description: "Valor Aluguel", amount: rentalValue },
-            ...(hasGarage ? [{ description: "Valor Vaga", amount: garageValue }] : [])
-          ],
-          total: total,
-          hasMultipleItems: hasGarage
-        };
-      }
-
-      const hasMultipleItems = breakdownData.length > 1;
-      const total = breakdownData.reduce((sum: number, item: any) => {
-        return sum + (item.value || item.amount || 0);
-      }, 0);
-
-      return {
-        items: breakdownData,
-        total: total,
-        hasMultipleItems: hasMultipleItems
-      };
-    } catch (error) {
-      console.error("Erro ao processar breakdown:", error);
-      const hasGarage = garageValue > 0;
-      const total = rentalValue + garageValue;
-      
-      return {
-        items: [
-          { description: "Valor Aluguel", amount: rentalValue },
-          ...(hasGarage ? [{ description: "Valor Vaga", amount: garageValue }] : [])
-        ],
-        total: total,
-        hasMultipleItems: hasGarage
-      };
-    }
-  }, [payment, rentalValue, garageValue]);
+  const displayBreakdown = usePaymentBreakdown({
+    payment,
+    rentalValue,
+    garageValue,
+  });
 
   useEffect(() => {
     if (loading || !payment) return;
@@ -650,7 +416,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     payment,
     igpmCorrection,
     formatCurrency,
-    waiveFees,
     displayBreakdown
   ]);
 
@@ -663,8 +428,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
   }, []);
 
   const uploadToSupabase = async (file: File): Promise<string> => {
-    console.log("📤 Uploading to Supabase Storage:", file.name);
-    
     const fileExt = file.name.split('.').pop();
     const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
     const filePath = `payment-attachments/${fileName}`;
@@ -676,37 +439,21 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         upsert: false
       });
 
-    if (error) {
-      console.error("❌ Supabase upload error:", error);
-      throw error;
-    }
-
-    console.log("✅ File uploaded to Supabase:", data.path);
+    if (error) throw error;
 
     const { data: { publicUrl } } = supabase.storage
       .from('uploads')
       .getPublicUrl(filePath);
 
-    console.log("🔗 Public URL:", publicUrl);
     return publicUrl;
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
     const file = e.target.files?.[0];
-    if (!file) {
-      console.log("⚠️ No file selected");
-      return;
-    }
-
-    console.log("📎 File selected:", {
-      name: file.name,
-      type: file.type,
-      size: file.size,
-    });
+    if (!file) return;
 
     const maxSize = 15 * 1024 * 1024;
     if (file.size > maxSize) {
-      console.error("❌ File too large:", file.size, "bytes");
       toast({
         title: "Arquivo muito grande",
         description: `O arquivo tem ${(file.size / 1024 / 1024).toFixed(2)}MB. O tamanho máximo é 15MB`,
@@ -724,7 +471,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     ];
     
     if (!allowedTypes.includes(file.type)) {
-      console.error("❌ Invalid file type:", file.type);
       toast({
         title: "Tipo de arquivo não suportado",
         description: "Apenas imagens (JPG, PNG, WEBP) e PDF são permitidos",
@@ -733,20 +479,15 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       return;
     }
 
-    console.log("✅ File validation passed");
     setUploadingFile(true);
     setUploadProgress({ ...uploadProgress, [index]: 0 });
 
     try {
-      console.log("📤 Starting Supabase upload...");
-      
       setUploadProgress(prev => ({ ...prev, [index]: 30 }));
       
       const url = await uploadToSupabase(file);
       
       setUploadProgress(prev => ({ ...prev, [index]: 100 }));
-      
-      console.log("✅ Upload successful, URL:", url);
 
       setAttachments(prev => {
         const newAttachments = [...prev];
@@ -756,7 +497,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           name: file.name,
           uploadProgress: 100,
         };
-        console.log("📋 Attachments updated:", newAttachments);
         return newAttachments;
       });
 
@@ -789,7 +529,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         return newAttachments;
       });
     } finally {
-      console.log("🏁 Upload process finished");
       setUploadingFile(false);
       setUploadProgress(prev => {
         const newProgress = { ...prev };
@@ -851,9 +590,14 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
 
       if (isTerminationPayment) {
         try {
-          let breakdownData = typeof payment.breakdown === 'string' 
-            ? JSON.parse(payment.breakdown) 
-            : (payment.breakdown || []);
+          let breakdownData = payment.breakdown;
+          if (typeof breakdownData === 'string') {
+            breakdownData = JSON.parse(breakdownData);
+          }
+          
+          if (!Array.isArray(breakdownData)) {
+            breakdownData = [];
+          }
           
           if (igpmCorrection && igpmCorrection.correctedAmount > 0) {
             breakdownData = breakdownData.map((item: any) => {
@@ -936,8 +680,8 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         notes: formData.notes,
         status: paymentStatus,
         attachments: attachmentsToSave.length > 0 ? attachmentsToSave : null,
-        late_fee: isTerminationPayment ? (removeFees ? 0 : values.multa) : (removeFees ? 0 : values.multa),
-        interest: isTerminationPayment ? (removeFees ? 0 : values.juros) : (removeFees ? 0 : values.juros),
+        late_fee: removeFees ? 0 : values.multa,
+        interest: removeFees ? 0 : values.juros,
         updated_at: new Date().toISOString(),
         pix_code_type: formData.pix_code_type,
         breakdown: updatedBreakdown,
@@ -1011,261 +755,27 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         </h1>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Home className="h-4 w-4" />
-              Informações do Imóvel
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-1 text-sm">
-              <div className="flex gap-2">
-                <span className="font-medium text-muted-foreground min-w-[80px]">Local:</span>
-                <p className="text-foreground flex-1">{location?.name}</p>
-              </div>
-              <div className="flex gap-2">
-                <span className="font-medium text-muted-foreground min-w-[80px]">Compl:</span>
-                <p className="text-foreground flex-1">{property?.complement}</p>
-              </div>
-              <div className="flex gap-2">
-                <span className="font-medium text-muted-foreground min-w-[80px]">Cidade:</span>
-                <p className="text-foreground flex-1">{location?.city}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <User className="h-4 w-4" />
-              Informações do Locatário
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-1 text-sm">
-              <div className="flex gap-2">
-                <span className="font-medium text-muted-foreground min-w-[80px]">Nome:</span>
-                <p className="text-foreground flex-1">{tenant?.name}</p>
-              </div>
-              <div className="flex gap-2">
-                <span className="font-medium text-muted-foreground min-w-[80px]">CPF:</span>
-                <p className="text-foreground flex-1">{tenant?.cpf}</p>
-              </div>
-              <div className="flex gap-2">
-                <span className="font-medium text-muted-foreground min-w-[80px]">Tel:</span>
-                <p className="text-foreground flex-1">{tenant?.phone}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <PaymentInfoCards location={location} property={property} tenant={tenant} />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className={isTerminationPayment ? "border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950" : ""}>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <DollarSign className="h-5 w-5" />
-              Formação de Valores {isTerminationPayment && "- Rescisão"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {isTerminationPayment ? (
-                <>
-                  {originalBreakdown
-                    .filter(item => 
-                      !item.description?.includes("Despesas") && 
-                      !item.description?.includes("Multa por Atraso") &&
-                      !item.description?.includes("Juros por Atraso")
-                    )
-                    .map((item, index) => (
-                      <BreakdownItem 
-                        key={index} 
-                        item={item} 
-                        isDeduction={item.type === "deduction"}
-                        igpmCorrection={igpmCorrection}
-                      />
-                    ))}
-
-                  <div className="border-t border-dashed my-2"></div>
-
-                  <div className="space-y-2">
-                    <div className="grid grid-cols-2 gap-4 items-center text-sm">
-                      <span>Despesas Adicionais *</span>
-                      
-                      {isEditMode ? (
-                        <Input
-                          type="text"
-                          placeholder="R$ 0,00"
-                          value={repairExpensesInput}
-                          onChange={(e) => handleRepairExpensesChange(e.target.value)}
-                          className="text-right"
-                          disabled={isReadOnly}
-                        />
-                      ) : (
-                        <span className="font-medium text-right">
-                          {formatCurrency(repairExpenses.toFixed(2))}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {values.diasAtraso > 0 && (
-                    <>
-                      <div className="border-t border-dashed my-2"></div>
-                      <div className="bg-red-50 dark:bg-red-950 rounded-lg p-3 space-y-2">
-                        <p className="text-xs font-semibold text-red-800 dark:text-red-200 mb-2">
-                          🚨 ATRASO NO PAGAMENTO ({values.diasAtraso} {values.diasAtraso === 1 ? 'dia' : 'dias'})
-                        </p>
-                        
-                        <div className="flex justify-between text-sm">
-                          <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600"}>
-                            Multa por Atraso ({lateFeePercentage}%)
-                          </span>
-                          <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600 font-medium"}>
-                            + {formatCurrency(values.multa.toFixed(2))}
-                          </span>
-                        </div>
-
-                        {values.juros > 0 && (
-                          <div className="flex justify-between text-sm">
-                            <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600"}>
-                              Juros ({interestRatePercentage.toFixed(3)}% ao dia)
-                            </span>
-                            <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600 font-medium"}>
-                              + {formatCurrency(values.juros.toFixed(2))}
-                            </span>
-                          </div>
-                        )}
-
-                        {isEditMode && (
-                          <div className="flex items-center space-x-2 pt-2 border-t border-red-200 dark:border-red-800">
-                            <Checkbox
-                              id="remove-fees-termination"
-                              checked={removeFees}
-                              onCheckedChange={(checked) => setRemoveFees(checked as boolean)}
-                              disabled={isReadOnly}
-                            />
-                            <label
-                              htmlFor="remove-fees-termination"
-                              className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                            >
-                              Retirar multa/juros por atraso
-                            </label>
-                          </div>
-                        )}
-                      </div>
-                    </>
-                  )}
-
-                  <div className="flex justify-between pt-3 border-t-2 border-primary mt-2">
-                    <span className="font-bold text-base">VALOR TOTAL</span>
-                    <span className={`font-bold text-base ${calculatedTotal < 0 ? "text-red-600" : "text-primary"}`}>
-                      {calculatedTotal < 0 ? "- " : ""}
-                      {formatCurrency(Math.abs(calculatedTotal).toFixed(2))}
-                    </span>
-                  </div>
-
-                  <div className="text-xs text-muted-foreground pt-2 border-t mt-2">
-                    * Despesas Adicionais de Reforma/Limpeza/Pinturas ou reparos necessários após a saída do inquilino
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="bg-muted/30 p-4 rounded-lg space-y-2">
-                    {displayBreakdown.items.map((item: any, index: number) => {
-                      const itemValue = item.value || item.amount || 0;
-                      const isProportional = item.description?.toLowerCase().includes("proporcional");
-                      
-                      return (
-                        <div key={index} className="flex justify-between items-center">
-                          <span className="text-sm font-medium">
-                            {item.description?.replace(/\s*\(proporcional\)/i, '')}
-                            {isProportional && (
-                              <span className="text-blue-600 ml-2">(proporcional)</span>
-                            )}
-                          </span>
-                          <span className="text-lg font-semibold">
-                            {formatCurrency(itemValue.toFixed(2))}
-                          </span>
-                        </div>
-                      );
-                    })}
-                    
-                    {(displayBreakdown.hasMultipleItems || values.diasAtraso > 0) && (
-                      <div className="flex justify-between items-center pt-3 border-t border-gray-300 dark:border-gray-700 mt-2">
-                        <span className="text-sm font-semibold text-muted-foreground">
-                          {displayBreakdown.hasMultipleItems ? "Total dos Itens" : "Valor Base"}
-                        </span>
-                        <span className="text-base font-semibold text-muted-foreground">
-                          {formatCurrency(displayBreakdown.total.toFixed(2))}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  {values.diasAtraso > 0 && (
-                    <>
-                      <div className="border-t border-dashed my-2"></div>
-                      <div className="bg-red-50 dark:bg-red-950 rounded-lg p-3 space-y-2">
-                        <p className="text-xs font-semibold text-red-800 dark:text-red-200 mb-2">
-                          🚨 ATRASO NO PAGAMENTO ({values.diasAtraso} {values.diasAtraso === 1 ? 'dia' : 'dias'})
-                        </p>
-                        
-                        <div className="flex justify-between text-sm">
-                          <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600"}>
-                            Multa por Atraso ({lateFeePercentage}%)
-                          </span>
-                          <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600 font-medium"}>
-                            + {formatCurrency(values.multa.toFixed(2))}
-                          </span>
-                        </div>
-
-                        {values.juros > 0 && (
-                          <div className="flex justify-between text-sm">
-                            <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600"}>
-                              Juros ({interestRatePercentage.toFixed(3)}% ao dia)
-                            </span>
-                            <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600 font-medium"}>
-                              + {formatCurrency(values.juros.toFixed(2))}
-                            </span>
-                          </div>
-                        )}
-
-                        {isEditMode && (
-                          <div className="flex items-center space-x-2 pt-2 border-t border-red-200 dark:border-red-800">
-                            <Checkbox
-                              id="remove-fees"
-                              checked={removeFees}
-                              onCheckedChange={(checked) => setRemoveFees(checked as boolean)}
-                              disabled={isReadOnly}
-                            />
-                            <label
-                              htmlFor="remove-fees"
-                              className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                            >
-                              Retirar multa/juros por atraso
-                            </label>
-                          </div>
-                        )}
-                      </div>
-                    </>
-                  )}
-
-                  <div className="flex justify-between pt-3 border-t-2 border-primary mt-2">
-                    <span className="font-bold text-base">VALOR TOTAL</span>
-                    <span className="font-bold text-base text-primary">
-                      {formatCurrency((displayBreakdown.total + (removeFees ? 0 : (values.multa + values.juros))).toFixed(2))}
-                    </span>
-                  </div>
-                </>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+        <PaymentBreakdownCard
+          isTerminationPayment={isTerminationPayment}
+          originalBreakdown={originalBreakdown}
+          igpmCorrection={igpmCorrection}
+          repairExpenses={repairExpenses}
+          repairExpensesInput={repairExpensesInput}
+          removeFees={removeFees}
+          lateFeePercentage={lateFeePercentage}
+          interestRatePercentage={interestRatePercentage}
+          calculatedTotal={calculatedTotal}
+          displayBreakdown={displayBreakdown}
+          values={values}
+          isEditMode={isEditMode}
+          isReadOnly={isReadOnly}
+          formatCurrency={(val) => formatCurrency(val.toFixed(2))}
+          onRepairExpensesChange={handleRepairExpensesChange}
+          onRemoveFeesChange={setRemoveFees}
+        />
 
         <Card>
           <CardHeader>
