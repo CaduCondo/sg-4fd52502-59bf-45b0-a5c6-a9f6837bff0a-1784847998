@@ -219,6 +219,8 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
 
   const loadPaymentData = useCallback(async () => {
     try {
+      console.log("🔍 Loading payment data for ID:", paymentId);
+      
       const { data: paymentData, error: paymentError } = await supabase
         .from("payments")
         .select(`
@@ -237,6 +239,10 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
 
       if (paymentError) throw paymentError;
 
+      console.log("📦 Payment data loaded:", paymentData);
+      console.log("🏠 Property:", paymentData.rentals.properties);
+      console.log("👤 Tenant:", paymentData.rentals.tenants);
+
       setPayment(paymentData);
       setRental(paymentData.rentals);
       setProperty(paymentData.rentals.properties);
@@ -252,6 +258,8 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
             ? JSON.parse(paymentData.breakdown) 
             : (paymentData.breakdown || []);
           
+          console.log("📊 Breakdown parsed:", breakdownData);
+          
           const aluguelItem = breakdownData.find((item: any) => 
             item.description?.includes("Aluguel") && !item.description?.includes("Proporcional")
           );
@@ -261,7 +269,8 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           );
           
           const proporcionalItem = breakdownData.find((item: any) => 
-            item.description?.includes("Aluguel Proporcional")
+            item.description?.includes("Aluguel Proporcional") || 
+            item.description?.toLowerCase().includes("aluguel") && item.description?.toLowerCase().includes("proporcional")
           );
 
           if (proporcionalItem) {
@@ -271,8 +280,10 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
             effectiveRentalValue = aluguelItem?.amount || aluguelItem?.value || 0;
             effectiveGarageValue = garagemItem?.amount || garagemItem?.value || 0;
           }
+          
+          console.log("💰 Values - Rental:", effectiveRentalValue, "Garage:", effectiveGarageValue);
         } catch (error) {
-          console.error("Erro ao parsear breakdown:", error);
+          console.error("❌ Error parsing breakdown:", error);
           effectiveRentalValue = paymentData.rentals.monthly_rent || 0;
           effectiveGarageValue = paymentData.rentals.garage_value || 0;
           
@@ -368,7 +379,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         payment_method: paymentData.payment_method || "pix",
         payment_time: (paymentData as any).payment_time || "",
         amount_to_pay: paymentData.paid_amount 
-          ? formatCurrency(paymentData.paid_amount.toFixed(2)) 
+          ? formatCurrency((paymentData.paid_amount).toString().replace('.', ''))
           : "",
         notes: paymentData.notes || "",
         pix_code_type: (paymentData as any).pix_code_type || "CP",
@@ -382,7 +393,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       }
       
     } catch (error) {
-      console.error("Erro ao carregar dados do pagamento:", error);
+      console.error("❌ Error loading payment data:", error);
       toast({
         title: "Erro",
         description: "Erro ao carregar dados do pagamento",
@@ -391,7 +402,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     } finally {
       setLoading(false);
     }
-  }, [paymentId, toast, formatCurrency, isPaid]);
+  }, [paymentId, toast, formatCurrency]);
 
   useEffect(() => {
     loadPaymentData();
@@ -1077,37 +1088,38 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-medium">
                         Valor Aluguel
-                        {payment?.breakdown?.[0]?.description?.toLowerCase().includes("proporcional") && (
+                        {payment?.breakdown && typeof payment.breakdown === 'object' && 
+                         payment.breakdown[0]?.description?.toLowerCase().includes("proporcional") && (
                           <span className="text-blue-600 ml-2">(proporcional)</span>
                         )}
                       </span>
                       <span className="text-lg font-semibold">
-                        {formatCurrency(payment?.breakdown?.[0]?.value || 0)}
+                        {formatCurrency((rentalValue * 100).toString())}
                       </span>
                     </div>
 
-                    {payment?.breakdown && payment.breakdown.length > 1 && (
+                    {garageValue > 0 && (
                       <div className="flex justify-between items-center">
                         <span className="text-sm font-medium">
                           Valor Vaga
-                          {payment.breakdown[1]?.description?.toLowerCase().includes("proporcional") && (
+                          {payment?.breakdown && typeof payment.breakdown === 'object' && 
+                           payment.breakdown.length > 1 && 
+                           payment.breakdown[1]?.description?.toLowerCase().includes("proporcional") && (
                             <span className="text-blue-600 ml-2">(proporcional)</span>
                           )}
                         </span>
                         <span className="text-lg font-semibold">
-                          {formatCurrency(payment.breakdown[1]?.value || 0)}
+                          {formatCurrency((garageValue * 100).toString())}
                         </span>
                       </div>
                     )}
 
-                    {payment?.breakdown?.[0]?.description?.toLowerCase().includes("proporcional") && (
+                    {payment?.breakdown && typeof payment.breakdown === 'object' && 
+                     payment.breakdown[0]?.description?.toLowerCase().includes("proporcional") && (
                       <div className="flex justify-between items-center pt-2 border-t border-border">
                         <span className="text-base font-bold">Valor Total</span>
                         <span className="text-xl font-bold text-primary">
-                          {formatCurrency(
-                            (payment?.breakdown?.[0]?.value || 0) + 
-                            (payment?.breakdown?.[1]?.value || 0)
-                          )}
+                          {formatCurrency(((rentalValue + garageValue) * 100).toString())}
                         </span>
                       </div>
                     )}
