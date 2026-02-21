@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, Suspense } from "react";
 import { Layout } from "@/components/Layout";
 import { OverviewCards } from "@/components/dashboard/OverviewCards";
 import { FinancialCharts } from "@/components/dashboard/FinancialCharts";
@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { SEO } from "@/components/SEO";
 import { useAuth } from "@/contexts/AuthContext";
 import { WelcomeCard } from "@/components/dashboard/WelcomeCard";
+import { Card } from "@/components/ui/card";
 
 const generateLast6Months = (month: number, year: number) => {
   const months = [];
@@ -24,6 +25,24 @@ const generateLast6Months = (month: number, year: number) => {
   
   return months;
 };
+
+// Skeleton para os cards
+function DashboardSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+        {[...Array(15)].map((_, i) => (
+          <Skeleton key={i} className="h-28" />
+        ))}
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {[...Array(4)].map((_, i) => (
+          <Skeleton key={i} className="h-64" />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function Dashboard() {
   const now = new Date();
@@ -43,15 +62,18 @@ export default function Dashboard() {
     setSelectedYear(year);
   }, []);
   
+  // Memoizar dados dos últimos 6 meses
   const last6MonthsData = useMemo(
     () => generateLast6Months(selectedMonth, selectedYear),
     [selectedMonth, selectedYear]
   );
 
+  // Criar maps para lookup rápido
   const rentalMap = useMemo(() => new Map(rentals.map(r => [r.id, r])), [rentals]);
   const propertyMap = useMemo(() => new Map(properties.map(p => [p.id, p])), [properties]);
   const exemptSet = useMemo(() => new Set(exemptLocationIds), [exemptLocationIds]);
 
+  // Calcular dados dos gráficos de forma otimizada
   const chartData = useMemo(() => {
     const isCurrentMonth = (month: number, year: number) => 
       month === selectedMonth && year === selectedYear;
@@ -93,7 +115,6 @@ export default function Dashboard() {
       return { month: label, taxas, contas };
     });
 
-    const totalProps = properties.length;
     const occupiedProps = properties.filter(p => p.status === 'occupied').length;
     const availableProps = properties.filter(p => p.status === 'available').length;
     const unavailableProps = properties.filter(p => p.status === 'unavailable').length;
@@ -109,8 +130,9 @@ export default function Dashboard() {
       monthlyExpensesData,
       occupancyPieData
     };
-  }, [payments, properties, rentals, locationExpenses, exemptLocationIds, last6MonthsData, selectedMonth, selectedYear, rentalMap, propertyMap, exemptSet]);
+  }, [payments, properties, last6MonthsData, selectedMonth, selectedYear, rentalMap, propertyMap, exemptSet, locationExpenses]);
   
+  // Calcular dados dos cards de visão geral de forma otimizada
   const overviewData = useMemo(() => {
     const totalProperties = properties.length;
     const availableProperties = properties.filter(p => p.status === 'available').length;
@@ -201,18 +223,7 @@ export default function Dashboard() {
         <WelcomeCard userName={userName} />
 
         {loading ? (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
-              {[...Array(15)].map((_, i) => (
-                <Skeleton key={i} className="h-28" />
-              ))}
-            </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {[...Array(2)].map((_, i) => (
-                <Skeleton key={i} className="h-64" />
-              ))}
-            </div>
-          </div>
+          <DashboardSkeleton />
         ) : (
           <>
             <OverviewCards 
@@ -223,11 +234,19 @@ export default function Dashboard() {
               userRole={user?.role}
             />
 
-            <FinancialCharts
-              monthlyRevenueData={chartData.monthlyRevenueData} 
-              monthlyExpensesData={chartData.monthlyExpensesData} 
-              occupancyData={chartData.occupancyPieData} 
-            />
+            <Suspense fallback={
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {[...Array(4)].map((_, i) => (
+                  <Card key={i} className="h-64 animate-pulse bg-muted" />
+                ))}
+              </div>
+            }>
+              <FinancialCharts
+                monthlyRevenueData={chartData.monthlyRevenueData} 
+                monthlyExpensesData={chartData.monthlyExpensesData} 
+                occupancyData={chartData.occupancyPieData} 
+              />
+            </Suspense>
           </>
         )}
       </div>
