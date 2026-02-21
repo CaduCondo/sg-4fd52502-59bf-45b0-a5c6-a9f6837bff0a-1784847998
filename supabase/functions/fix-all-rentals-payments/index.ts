@@ -34,9 +34,9 @@ function generatePaymentsForRental(rental: Rental): any[] {
   const paymentDay = rental.payment_day;
   const monthlyValue = rental.rental_value + (rental.garage_value || 0);
 
-  console.log(`📅 Processando locação ${rental.id}:`);
+  console.log(`\n📅 Processando locação ${rental.id}:`);
   console.log(`   Início: ${rental.start_date}, Fim: ${rental.end_date}`);
-  console.log(`   Dia pagamento: ${paymentDay}, Valor mensal: ${monthlyValue}`);
+  console.log(`   Dia pagamento: ${paymentDay}, Valor mensal: R$ ${monthlyValue.toFixed(2)}`);
 
   // Parse first_payment_month (formato: "2026-02")
   const [firstYear, firstMonth] = rental.first_payment_month.split("-").map(Number);
@@ -45,9 +45,9 @@ function generatePaymentsForRental(rental: Rental): any[] {
   let firstDueDate = new Date(firstYear, firstMonth - 1, paymentDay);
   
   // Se o dia de pagamento for maior que os dias do mês, ajustar para último dia
-  const lastDayOfMonth = new Date(firstYear, firstMonth, 0).getDate();
-  if (paymentDay > lastDayOfMonth) {
-    firstDueDate.setDate(lastDayOfMonth);
+  const lastDayOfFirstMonth = new Date(firstYear, firstMonth, 0).getDate();
+  if (paymentDay > lastDayOfFirstMonth) {
+    firstDueDate.setDate(lastDayOfFirstMonth);
   }
 
   console.log(`   Primeiro vencimento: ${firstDueDate.toISOString().split('T')[0]}`);
@@ -56,7 +56,7 @@ function generatePaymentsForRental(rental: Rental): any[] {
   const firstPaymentDays = calculateProportionalDays(startDate, firstDueDate);
   const firstPaymentValue = calculateProportionalValue(monthlyValue, firstPaymentDays);
 
-  const rentalBreakdown = rental.garage_value > 0 ? [
+  const firstBreakdown = rental.garage_value > 0 ? [
     {
       type: "charge",
       description: "Aluguel (proporcional)",
@@ -83,36 +83,40 @@ function generatePaymentsForRental(rental: Rental): any[] {
     amount: firstPaymentValue,
     status: "pending",
     payment_type: "rental",
-    rental_breakdown: rentalBreakdown
+    rental_breakdown: firstBreakdown
   });
 
-  console.log(`   ✅ Primeiro pagamento: ${firstDueDate.toISOString().split('T')[0]} - R$ ${firstPaymentValue.toFixed(2)} (${firstPaymentDays} dias)`);
+  console.log(`   ✅ Primeiro pagamento: ${firstDueDate.toISOString().split('T')[0]} - R$ ${firstPaymentValue.toFixed(2)} (${firstPaymentDays} dias proporcionais)`);
 
-  // Recebimentos intermediários (100%)
-  let currentDate = new Date(firstDueDate);
-  currentDate.setMonth(currentDate.getMonth() + 1);
-
+  // Gerar recebimentos mensais intermediários
+  let currentDueDate = new Date(firstDueDate);
   let monthCount = 0;
-  while (currentDate < endDate) {
+
+  while (true) {
+    // Avançar para o próximo mês
+    currentDueDate.setMonth(currentDueDate.getMonth() + 1);
     monthCount++;
+
+    // Ajustar o dia se necessário (ex: 31 em fevereiro)
+    const year = currentDueDate.getFullYear();
+    const month = currentDueDate.getMonth();
+    const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
     
-    // Calcular data de vencimento para o mês atual
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    let dueDate = new Date(year, month, paymentDay);
-    
-    // Ajustar se o dia não existe no mês
-    const lastDay = new Date(year, month + 1, 0).getDate();
-    if (paymentDay > lastDay) {
-      dueDate.setDate(lastDay);
+    if (paymentDay > lastDayOfMonth) {
+      currentDueDate.setDate(lastDayOfMonth);
+    } else {
+      currentDueDate.setDate(paymentDay);
     }
 
-    // Verificar se ainda está dentro do período do contrato
-    if (dueDate >= endDate) {
-      console.log(`   ⏭️ Data ${dueDate.toISOString().split('T')[0]} >= fim do contrato, parando intermediários`);
+    const dueDateStr = currentDueDate.toISOString().split("T")[0];
+
+    // Se a data de vencimento ultrapassou a data fim, parar
+    if (currentDueDate >= endDate) {
+      console.log(`   ⏹️ Parou em ${dueDateStr} (>= data fim ${endDate.toISOString().split('T')[0]})`);
       break;
     }
 
+    // Criar recebimento intermediário (100% do valor)
     const intermediateBreakdown = rental.garage_value > 0 ? [
       {
         type: "charge",
@@ -136,181 +140,66 @@ function generatePaymentsForRental(rental: Rental): any[] {
       rental_id: rental.id,
       property_id: rental.property_id,
       tenant_id: rental.tenant_id,
-      due_date: dueDate.toISOString().split("T")[0],
+      due_date: dueDateStr,
       amount: monthlyValue,
       status: "pending",
       payment_type: "rental",
       rental_breakdown: intermediateBreakdown
     });
 
-    console.log(`   ✅ Pagamento intermediário #${monthCount}: ${dueDate.toISOString().split('T')[0]} - R$ ${monthlyValue.toFixed(2)}`);
-
-    // Avançar para o próximo mês
-    currentDate.setMonth(currentDate.getMonth() + 1);
+    console.log(`   ✅ Recebimento #${monthCount}: ${dueDateStr} - R$ ${monthlyValue.toFixed(2)} (100%)`);
   }
 
-  // Último recebimento (proporcional se necessário)
+  // Último recebimento proporcional (se necessário)
   if (payments.length > 0) {
-    const lastIntermediateDate = new Date(payments[payments.length - 1].due_date + "T00:00:00");
+    const lastPaymentDate = new Date(payments[payments.length - 1].due_date + "T00:00:00");
     
-    // Calcular próxima data de vencimento após o último intermediário
-    const nextMonth = new Date(lastIntermediateDate);
-    nextMonth.setMonth(nextMonth.getMonth() + 1);
+    // Calcular dias do último recebimento até o fim do contrato
+    const lastPaymentDays = calculateProportionalDays(lastPaymentDate, endDate);
     
-    const year = nextMonth.getFullYear();
-    const month = nextMonth.getMonth();
-    let nextDueDate = new Date(year, month, paymentDay);
-    
-    // Ajustar se o dia não existe no mês
-    const lastDay = new Date(year, month + 1, 0).getDate();
-    if (paymentDay > lastDay) {
-      nextDueDate.setDate(lastDay);
-    }
+    console.log(`   🔍 Último recebimento: ${lastPaymentDate.toISOString().split('T')[0]}`);
+    console.log(`   🔍 Data fim: ${endDate.toISOString().split('T')[0]}`);
+    console.log(`   🔍 Dias restantes: ${lastPaymentDays}`);
 
-    console.log(`   🔍 Último intermediário: ${lastIntermediateDate.toISOString().split('T')[0]}`);
-    console.log(`   🔍 Próximo vencimento: ${nextDueDate.toISOString().split('T')[0]}`);
-    console.log(`   🔍 Fim do contrato: ${endDate.toISOString().split('T')[0]}`);
+    // Se há dias restantes entre o último recebimento e o fim do contrato, criar proporcional
+    if (lastPaymentDays > 1 && lastPaymentDays < 30) {
+      const lastPaymentValue = calculateProportionalValue(monthlyValue, lastPaymentDays);
 
-    // Se a próxima data de vencimento é DEPOIS do fim do contrato,
-    // criar um pagamento proporcional do último vencimento até o fim
-    if (nextDueDate > endDate) {
-      const lastPaymentDays = calculateProportionalDays(lastIntermediateDate, endDate);
-      
-      // Só criar se houver pelo menos 1 dia
-      if (lastPaymentDays > 0) {
-        const lastPaymentValue = calculateProportionalValue(monthlyValue, lastPaymentDays);
-
-        const lastBreakdown = rental.garage_value > 0 ? [
-          {
-            type: "charge",
-            description: "Aluguel (proporcional)",
-            amount: calculateProportionalValue(rental.rental_value, lastPaymentDays)
-          },
-          {
-            type: "charge",
-            description: "Vaga (proporcional)",
-            amount: calculateProportionalValue(rental.garage_value, lastPaymentDays)
-          }
-        ] : [
-          {
-            type: "charge",
-            description: "Aluguel (proporcional)",
-            amount: lastPaymentValue
-          }
-        ];
-
-        payments.push({
-          rental_id: rental.id,
-          property_id: rental.property_id,
-          tenant_id: rental.tenant_id,
-          due_date: endDate.toISOString().split("T")[0],
-          amount: lastPaymentValue,
-          status: "pending",
-          payment_type: "rental",
-          rental_breakdown: lastBreakdown
-        });
-
-        console.log(`   ✅ Último pagamento proporcional: ${endDate.toISOString().split('T')[0]} - R$ ${lastPaymentValue.toFixed(2)} (${lastPaymentDays} dias)`);
-      }
-    } else {
-      // Se o próximo vencimento é ANTES do fim do contrato,
-      // ainda há meses inteiros para cobrir
-      console.log(`   ⚠️ Ainda há período descoberto entre ${nextDueDate.toISOString().split('T')[0]} e ${endDate.toISOString().split('T')[0]}`);
-      
-      // Adicionar pagamentos mensais faltantes
-      let coverDate = new Date(nextDueDate);
-      while (coverDate < endDate) {
-        const year = coverDate.getFullYear();
-        const month = coverDate.getMonth();
-        let dueDate = new Date(year, month, paymentDay);
-        
-        const lastDay = new Date(year, month + 1, 0).getDate();
-        if (paymentDay > lastDay) {
-          dueDate.setDate(lastDay);
+      const lastBreakdown = rental.garage_value > 0 ? [
+        {
+          type: "charge",
+          description: "Aluguel (proporcional)",
+          amount: calculateProportionalValue(rental.rental_value, lastPaymentDays)
+        },
+        {
+          type: "charge",
+          description: "Vaga (proporcional)",
+          amount: calculateProportionalValue(rental.garage_value, lastPaymentDays)
         }
-
-        if (dueDate >= endDate) break;
-
-        const intermediateBreakdown = rental.garage_value > 0 ? [
-          {
-            type: "charge",
-            description: "Aluguel",
-            amount: rental.rental_value
-          },
-          {
-            type: "charge",
-            description: "Vaga",
-            amount: rental.garage_value
-          }
-        ] : [
-          {
-            type: "charge",
-            description: "Aluguel",
-            amount: monthlyValue
-          }
-        ];
-
-        payments.push({
-          rental_id: rental.id,
-          property_id: rental.property_id,
-          tenant_id: rental.tenant_id,
-          due_date: dueDate.toISOString().split("T")[0],
-          amount: monthlyValue,
-          status: "pending",
-          payment_type: "rental",
-          rental_breakdown: intermediateBreakdown
-        });
-
-        console.log(`   ✅ Pagamento adicional: ${dueDate.toISOString().split('T')[0]} - R$ ${monthlyValue.toFixed(2)}`);
-
-        coverDate.setMonth(coverDate.getMonth() + 1);
-      }
-
-      // Criar último proporcional se necessário
-      if (payments.length > 0) {
-        const finalLastDate = new Date(payments[payments.length - 1].due_date + "T00:00:00");
-        const finalDays = calculateProportionalDays(finalLastDate, endDate);
-        
-        if (finalDays > 0 && finalDays < 30) {
-          const finalValue = calculateProportionalValue(monthlyValue, finalDays);
-
-          const finalBreakdown = rental.garage_value > 0 ? [
-            {
-              type: "charge",
-              description: "Aluguel (proporcional)",
-              amount: calculateProportionalValue(rental.rental_value, finalDays)
-            },
-            {
-              type: "charge",
-              description: "Vaga (proporcional)",
-              amount: calculateProportionalValue(rental.garage_value, finalDays)
-            }
-          ] : [
-            {
-              type: "charge",
-              description: "Aluguel (proporcional)",
-              amount: finalValue
-            }
-          ];
-
-          payments.push({
-            rental_id: rental.id,
-            property_id: rental.property_id,
-            tenant_id: rental.tenant_id,
-            due_date: endDate.toISOString().split("T")[0],
-            amount: finalValue,
-            status: "pending",
-            payment_type: "rental",
-            rental_breakdown: finalBreakdown
-          });
-
-          console.log(`   ✅ Último pagamento final proporcional: ${endDate.toISOString().split('T')[0]} - R$ ${finalValue.toFixed(2)} (${finalDays} dias)`);
+      ] : [
+        {
+          type: "charge",
+          description: "Aluguel (proporcional)",
+          amount: lastPaymentValue
         }
-      }
+      ];
+
+      payments.push({
+        rental_id: rental.id,
+        property_id: rental.property_id,
+        tenant_id: rental.tenant_id,
+        due_date: endDate.toISOString().split("T")[0],
+        amount: lastPaymentValue,
+        status: "pending",
+        payment_type: "rental",
+        rental_breakdown: lastBreakdown
+      });
+
+      console.log(`   ✅ Último pagamento proporcional: ${endDate.toISOString().split('T')[0]} - R$ ${lastPaymentValue.toFixed(2)} (${lastPaymentDays} dias)`);
     }
   }
 
-  console.log(`   📊 Total de pagamentos gerados: ${payments.length}`);
+  console.log(`   📊 Total de pagamentos gerados: ${payments.length}\n`);
   return payments;
 }
 
@@ -324,7 +213,7 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    console.log("🔧 Iniciando correção de todas as locações...");
+    console.log("🔧 Iniciando correção de todas as locações...\n");
 
     // 1. Buscar todas as locações ativas
     const { data: rentals, error: rentalsError } = await supabase
@@ -350,7 +239,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log(`📋 Encontradas ${rentals.length} locações ativas`);
+    console.log(`📋 Encontradas ${rentals.length} locações ativas\n`);
 
     let totalDeleted = 0;
     let totalCreated = 0;
@@ -359,7 +248,7 @@ Deno.serve(async (req) => {
     // 2. Processar cada locação
     for (const rental of rentals) {
       try {
-        console.log(`\n🏠 Processando locação ${rental.id}...`);
+        console.log(`🏠 Processando locação ${rental.id}...`);
 
         // Buscar recebimentos existentes
         const { data: existingPayments, error: paymentsError } = await supabase
@@ -411,7 +300,7 @@ Deno.serve(async (req) => {
           }
 
           totalCreated += newPayments.length;
-          console.log(`  ✅ ${newPayments.length} novos recebimentos criados com sucesso`);
+          console.log(`  ✅ ${newPayments.length} novos recebimentos criados com sucesso\n`);
         }
 
         results.push({
@@ -444,7 +333,7 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        message: `Correção concluída com sucesso!`,
+        message: `Correção concluída! ${successCount} locações processadas.`,
         rentalsProcessed: successCount,
         paymentsDeleted: totalDeleted,
         paymentsCreated: totalCreated,
