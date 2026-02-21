@@ -410,7 +410,31 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
   }, [loadPaymentData, loadConfig]);
 
   const calculateValues = useMemo(() => {
-    const valorAluguel = Math.round((rentalValue + garageValue) * 100) / 100;
+    let rentalBaseValue = rentalValue;
+    let garageBaseValue = garageValue;
+    
+    // Tenta usar o valor do breakdown se disponível
+    if (payment?.breakdown) {
+      try {
+        const breakdownData = typeof payment.breakdown === 'string' 
+          ? JSON.parse(payment.breakdown) 
+          : (payment.breakdown || []);
+          
+        if (Array.isArray(breakdownData) && breakdownData.length > 0) {
+           const totalBreakdown = breakdownData.reduce((sum: number, item: any) => {
+             return sum + (item.value || item.amount || 0);
+           }, 0);
+           if (totalBreakdown > 0) {
+             rentalBaseValue = totalBreakdown;
+             garageBaseValue = 0; // Já incluído no total
+           }
+        }
+      } catch (e) {
+        console.error("Erro parse breakdown calculateValues", e);
+      }
+    }
+
+    const valorAluguel = Math.round((rentalBaseValue + garageBaseValue) * 100) / 100;
     
     let isProportional = false;
     let proportionalDays = 0;
@@ -442,8 +466,12 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     let diasAtraso = 0;
 
     if (payment && formData.payment_date) {
-      const dueDate = new Date(payment.due_date + "T12:00:00");
-      const paymentDate = new Date(formData.payment_date + "T12:00:00");
+      const dueDateStr = payment.due_date; // YYYY-MM-DD
+      const paymentDateStr = formData.payment_date; // YYYY-MM-DD
+      
+      // Criar datas ignorando fuso horário (apenas data)
+      const dueDate = new Date(dueDateStr + "T12:00:00");
+      const paymentDate = new Date(paymentDateStr + "T12:00:00");
 
       if (paymentDate > dueDate) {
         const diffTime = paymentDate.getTime() - dueDate.getTime();
@@ -455,23 +483,16 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           baseCalculo = originalBreakdown
             .filter(item => 
               !item.description?.includes("Multa por Atraso") &&
-              !item.description?.includes("Juros por Atraso")
+              !item.description?.includes("Juros por Atraso") &&
+              !item.description?.includes("Despesas")
             )
             .reduce((sum, item) => sum + item.amount, 0);
           
           baseCalculo = Math.abs(baseCalculo);
         } else {
+          // Para não rescisão, usa o total do aluguel (que já pode vir do breakdown)
           baseCalculo = Math.max(0, valorAluguel);
         }
-
-        console.log("🔍 Calculando multa/juros:", {
-          dueDate: payment.due_date,
-          paymentDate: formData.payment_date,
-          diasAtraso,
-          baseCalculo,
-          lateFeePercentage,
-          interestRatePercentage
-        });
 
         if (baseCalculo > 0) {
           multa = Math.round((baseCalculo * lateFeePercentage / 100) * 100) / 100;
@@ -479,8 +500,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           const jurosDiario = interestRatePercentage;
           juros = Math.round((baseCalculo * jurosDiario / 100 * diasAtraso) * 100) / 100;
         }
-
-        console.log("💰 Resultado:", { multa, juros });
       }
     }
 
@@ -1169,9 +1188,9 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                     })}
                     
                     {displayBreakdown.hasMultipleItems && (
-                      <div className="flex justify-between items-center pt-3 border-t-2 border-primary mt-2">
-                        <span className="text-base font-bold">Valor Total</span>
-                        <span className="text-xl font-bold text-primary">
+                      <div className="flex justify-between items-center pt-3 border-t border-gray-300 dark:border-gray-700 mt-2">
+                        <span className="text-sm font-semibold text-muted-foreground">Subtotal</span>
+                        <span className="text-base font-semibold text-muted-foreground">
                           {formatCurrency(displayBreakdown.total.toFixed(2))}
                         </span>
                       </div>
@@ -1225,6 +1244,13 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                       </div>
                     </>
                   )}
+
+                  <div className="flex justify-between pt-3 border-t-2 border-primary mt-2">
+                    <span className="font-bold text-base">VALOR TOTAL</span>
+                    <span className="font-bold text-base text-primary">
+                      {formatCurrency((displayBreakdown.total + (removeFees ? 0 : (values.multa + values.juros))).toFixed(2))}
+                    </span>
+                  </div>
                 </>
               )}
             </div>
