@@ -1,17 +1,15 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { LucideIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { ReactNode, memo } from "react";
+import { memo } from "react";
 
-export interface MetricCardProps {
+interface MetricCardProps {
   title: string;
-  value: string | number | React.ReactNode;
-  subtitle?: string | ReactNode;
+  value: string | number;
+  subtitle: string;
   icon: LucideIcon;
-  iconColor: string;
-  iconBgClass: string;
-  borderColorClass: string;
-  valueClassName?: string;
+  iconColor?: string;
+  iconBgClass?: string;
+  borderColorClass?: string;
   clickable?: boolean;
 }
 
@@ -20,47 +18,25 @@ export const MetricCard = memo(function MetricCard({
   value,
   subtitle,
   icon: Icon,
-  iconColor,
-  iconBgClass,
-  borderColorClass,
-  valueClassName,
+  iconColor = "text-blue-600",
+  iconBgClass = "bg-blue-50",
+  borderColorClass = "border-l-blue-500",
   clickable = false,
 }: MetricCardProps) {
-  const displayValue = typeof value === "number" ? value.toLocaleString("pt-BR") : value;
-
   return (
-    <Card className={cn(
-      "border-l-4 transition-all duration-200 h-full",
-      clickable && "cursor-pointer hover:shadow-md active:scale-[0.98]",
-      borderColorClass
-    )}>
+    <Card 
+      className={`border-l-4 ${borderColorClass} ${clickable ? "hover:shadow-lg transition-shadow cursor-pointer" : ""}`}
+    >
       <CardContent className="p-4">
-        <div className="flex flex-col gap-2">
-          <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            {title}
+        <div className="flex items-start justify-between">
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-muted-foreground truncate mb-1">{title}</p>
+            <p className="text-2xl font-bold text-foreground truncate">{value}</p>
+            <p className="text-xs text-muted-foreground mt-1 truncate">{subtitle}</p>
           </div>
-          
-          <div className="flex items-center gap-3">
-            <div className={cn(
-              "p-2.5 rounded-lg flex-shrink-0 shadow-sm",
-              iconBgClass
-            )}>
-              <Icon className={cn("h-6 w-6", iconColor)} />
-            </div>
-            
-            <div className={cn(
-              "text-3xl font-bold text-foreground",
-              valueClassName
-            )}>
-              {displayValue}
-            </div>
+          <div className={`${iconBgClass} p-2.5 rounded-lg flex-shrink-0`}>
+            <Icon className={`h-5 w-5 ${iconColor}`} />
           </div>
-          
-          {subtitle && (
-            <div className="text-xs text-muted-foreground leading-snug">
-              {subtitle}
-            </div>
-          )}
         </div>
       </CardContent>
     </Card>
