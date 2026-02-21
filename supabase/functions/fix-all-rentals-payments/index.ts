@@ -232,8 +232,8 @@ Deno.serve(async (req) => {
           success: true, 
           message: "Nenhuma locação ativa encontrada",
           rentalsProcessed: 0,
-          paymentsDeleted: 0,
-          paymentsCreated: 0
+          paymentsCreated: 0,
+          duplicatesRemoved: 0
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
@@ -241,8 +241,8 @@ Deno.serve(async (req) => {
 
     console.log(`📋 Encontradas ${rentals.length} locações ativas\n`);
 
-    let totalDeleted = 0;
     let totalCreated = 0;
+    let totalDuplicatesRemoved = 0;
     const results = [];
 
     // 2. Processar cada locação
@@ -250,46 +250,11 @@ Deno.serve(async (req) => {
       try {
         console.log(`🏠 Processando locação ${rental.id}...`);
 
-        // Buscar recebimentos existentes
-        const { data: existingPayments, error: paymentsError } = await supabase
-          .from("payments")
-          .select("*")
-          .eq("rental_id", rental.id)
-          .order("due_date", { ascending: true });
-
-        if (paymentsError) {
-          throw new Error(`Erro ao buscar recebimentos: ${paymentsError.message}`);
-        }
-
-        // Separar pagos e pendentes
-        const paidPayments = existingPayments?.filter(p => p.status === "paid") || [];
-        const pendingPayments = existingPayments?.filter(p => p.status === "pending") || [];
-
-        console.log(`  💰 Recebimentos existentes: ${existingPayments?.length || 0}`);
-        console.log(`  ✅ Pagos: ${paidPayments.length}`);
-        console.log(`  ⏳ Pendentes: ${pendingPayments.length}`);
-
-        // Deletar apenas recebimentos pendentes
-        if (pendingPayments.length > 0) {
-          const pendingIds = pendingPayments.map(p => p.id);
-          const { error: deleteError } = await supabase
-            .from("payments")
-            .delete()
-            .in("id", pendingIds);
-
-          if (deleteError) {
-            throw new Error(`Erro ao deletar recebimentos pendentes: ${deleteError.message}`);
-          }
-
-          totalDeleted += pendingPayments.length;
-          console.log(`  🗑️ Deletados ${pendingPayments.length} recebimentos pendentes`);
-        }
-
-        // Gerar novos recebimentos
+        // Gerar TODOS os novos recebimentos (sem deletar nada antes)
         const newPayments = generatePaymentsForRental(rental);
         console.log(`  ➕ Gerando ${newPayments.length} novos recebimentos`);
 
-        // Inserir novos recebimentos
+        // Inserir TODOS os novos recebimentos
         if (newPayments.length > 0) {
           const { error: insertError } = await supabase
             .from("payments")
@@ -300,15 +265,64 @@ Deno.serve(async (req) => {
           }
 
           totalCreated += newPayments.length;
-          console.log(`  ✅ ${newPayments.length} novos recebimentos criados com sucesso\n`);
+          console.log(`  ✅ ${newPayments.length} novos recebimentos criados com sucesso`);
+        }
+
+        // Agora buscar TODOS os recebimentos dessa locação para limpar duplicatas
+        const { data: allPayments, error: paymentsError } = await supabase
+          .from("payments")
+          .select("*")
+          .eq("rental_id", rental.id)
+          .order("due_date", { ascending: true });
+
+        if (paymentsError) {
+          throw new Error(`Erro ao buscar recebimentos: ${paymentsError.message}`);
+        }
+
+        // Agrupar por data de vencimento
+        const paymentsByDate: Record<string, any[]> = {};
+        allPayments?.forEach(payment => {
+          if (!paymentsByDate[payment.due_date]) {
+            paymentsByDate[payment.due_date] = [];
+          }
+          paymentsByDate[payment.due_date].push(payment);
+        });
+
+        // Para cada data, se houver duplicata com "pago" + "pendente", deletar o "pendente"
+        const idsToDelete: string[] = [];
+        for (const [dueDate, payments] of Object.entries(paymentsByDate)) {
+          if (payments.length > 1) {
+            const hasPaid = payments.some(p => p.status === "paid");
+            const pendingPayments = payments.filter(p => p.status === "pending");
+            
+            if (hasPaid && pendingPayments.length > 0) {
+              // Deletar todos os pendentes dessa data (já que há um pago)
+              pendingPayments.forEach(p => idsToDelete.push(p.id));
+              console.log(`  🗑️ Duplicata encontrada em ${dueDate}: deletando ${pendingPayments.length} pendente(s)`);
+            }
+          }
+        }
+
+        // Deletar duplicatas pendentes
+        if (idsToDelete.length > 0) {
+          const { error: deleteError } = await supabase
+            .from("payments")
+            .delete()
+            .in("id", idsToDelete);
+
+          if (deleteError) {
+            throw new Error(`Erro ao deletar duplicatas: ${deleteError.message}`);
+          }
+
+          totalDuplicatesRemoved += idsToDelete.length;
+          console.log(`  ✅ ${idsToDelete.length} duplicata(s) removida(s)\n`);
         }
 
         results.push({
           rental_id: rental.id,
           success: true,
-          paid_kept: paidPayments.length,
-          pending_deleted: pendingPayments.length,
-          new_created: newPayments.length
+          new_created: newPayments.length,
+          duplicates_removed: idsToDelete.length
         });
 
       } catch (error) {
@@ -327,16 +341,16 @@ Deno.serve(async (req) => {
     console.log(`\n✨ Correção concluída!`);
     console.log(`   ✅ Sucesso: ${successCount}`);
     console.log(`   ❌ Erros: ${errorCount}`);
-    console.log(`   🗑️ Total deletados: ${totalDeleted}`);
     console.log(`   ✅ Total criados: ${totalCreated}`);
+    console.log(`   🗑️ Total duplicatas removidas: ${totalDuplicatesRemoved}`);
 
     return new Response(
       JSON.stringify({
         success: true,
         message: `Correção concluída! ${successCount} locações processadas.`,
         rentalsProcessed: successCount,
-        paymentsDeleted: totalDeleted,
         paymentsCreated: totalCreated,
+        duplicatesRemoved: totalDuplicatesRemoved,
         details: results
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
