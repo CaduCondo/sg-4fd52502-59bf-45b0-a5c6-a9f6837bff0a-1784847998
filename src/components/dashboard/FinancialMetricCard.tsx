@@ -1,15 +1,17 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { LucideIcon } from "lucide-react";
-import { memo } from "react";
+import { cn } from "@/lib/utils";
+import { ReactNode, memo } from "react";
 
-interface FinancialMetricCardProps {
+export interface FinancialMetricCardProps {
   title: string;
-  value: string;
-  subtitle: string;
+  value: string | number | React.ReactNode;
+  subtitle?: string | ReactNode;
   icon: LucideIcon;
-  iconColor?: string;
-  iconBgClass?: string;
-  borderColorClass?: string;
+  iconColor: string;
+  iconBgClass: string;
+  borderColorClass: string;
+  valueClassName?: string;
   clickable?: boolean;
 }
 
@@ -18,25 +20,47 @@ export const FinancialMetricCard = memo(function FinancialMetricCard({
   value,
   subtitle,
   icon: Icon,
-  iconColor = "text-blue-600",
-  iconBgClass = "bg-blue-50",
-  borderColorClass = "border-l-blue-500",
+  iconColor,
+  iconBgClass,
+  borderColorClass,
+  valueClassName,
   clickable = false,
 }: FinancialMetricCardProps) {
+  const displayValue = typeof value === "number" ? value.toLocaleString("pt-BR") : value;
+
   return (
-    <Card 
-      className={`border-l-4 ${borderColorClass} ${clickable ? "hover:shadow-lg transition-shadow cursor-pointer" : ""}`}
-    >
+    <Card className={cn(
+      "border-l-4 transition-all duration-200 h-full",
+      clickable && "cursor-pointer hover:shadow-md active:scale-[0.98]",
+      borderColorClass
+    )}>
       <CardContent className="p-4">
-        <div className="flex items-start justify-between">
-          <div className="flex-1 min-w-0">
-            <p className="text-xs text-muted-foreground truncate mb-1">{title}</p>
-            <p className="text-xl font-bold text-foreground truncate">{value}</p>
-            <p className="text-xs text-muted-foreground mt-1 truncate">{subtitle}</p>
+        <div className="space-y-3">
+          <div className="flex items-center gap-2.5">
+            <div className={cn(
+              "p-2 rounded-lg flex-shrink-0 shadow-sm",
+              iconBgClass
+            )}>
+              <Icon className={cn("h-5 w-5", iconColor)} />
+            </div>
+            <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+              {title}
+            </div>
           </div>
-          <div className={`${iconBgClass} p-2.5 rounded-lg flex-shrink-0`}>
-            <Icon className={`h-5 w-5 ${iconColor}`} />
+
+          <div className={cn(
+            "text-xl sm:text-2xl font-bold text-foreground leading-tight",
+            "whitespace-nowrap overflow-hidden text-ellipsis text-left",
+            valueClassName
+          )}>
+            {displayValue}
           </div>
+
+          {subtitle && (
+            <div className="text-xs text-muted-foreground leading-snug">
+              {subtitle}
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
