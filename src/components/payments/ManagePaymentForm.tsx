@@ -505,6 +505,66 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     waiveFees
   ]);
 
+  const displayBreakdown = useMemo(() => {
+    if (!payment || !payment.breakdown) {
+      const hasGarage = garageValue > 0;
+      const total = rentalValue + garageValue;
+      
+      return {
+        items: [
+          { description: "Valor Aluguel", amount: rentalValue },
+          ...(hasGarage ? [{ description: "Valor Vaga", amount: garageValue }] : [])
+        ],
+        total: total,
+        hasMultipleItems: hasGarage
+      };
+    }
+
+    try {
+      const breakdownData = typeof payment.breakdown === 'string' 
+        ? JSON.parse(payment.breakdown) 
+        : (payment.breakdown || []);
+      
+      if (!Array.isArray(breakdownData) || breakdownData.length === 0) {
+        const hasGarage = garageValue > 0;
+        const total = rentalValue + garageValue;
+        
+        return {
+          items: [
+            { description: "Valor Aluguel", amount: rentalValue },
+            ...(hasGarage ? [{ description: "Valor Vaga", amount: garageValue }] : [])
+          ],
+          total: total,
+          hasMultipleItems: hasGarage
+        };
+      }
+
+      const hasMultipleItems = breakdownData.length > 1;
+      const total = breakdownData.reduce((sum: number, item: any) => {
+        return sum + (item.value || item.amount || 0);
+      }, 0);
+
+      return {
+        items: breakdownData,
+        total: total,
+        hasMultipleItems: hasMultipleItems
+      };
+    } catch (error) {
+      console.error("Erro ao processar breakdown:", error);
+      const hasGarage = garageValue > 0;
+      const total = rentalValue + garageValue;
+      
+      return {
+        items: [
+          { description: "Valor Aluguel", amount: rentalValue },
+          ...(hasGarage ? [{ description: "Valor Vaga", amount: garageValue }] : [])
+        ],
+        total: total,
+        hasMultipleItems: hasGarage
+      };
+    }
+  }, [payment, rentalValue, garageValue]);
+
   useEffect(() => {
     if (loading || !payment) return;
     
@@ -544,9 +604,10 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         }));
       }
     } else if (!isTerminationPayment && isEditMode) {
+      const totalValue = displayBreakdown.total;
       setFormData(prev => ({
         ...prev,
-        amount_to_pay: formatCurrency((values.valorAPagar).toFixed(2))
+        amount_to_pay: formatCurrency(totalValue.toFixed(2))
       }));
     }
   }, [
@@ -560,7 +621,8 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     payment,
     igpmCorrection,
     formatCurrency,
-    waiveFees
+    waiveFees,
+    displayBreakdown
   ]);
 
   const addAttachment = useCallback(() => {
@@ -1085,127 +1147,33 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
               ) : (
                 <>
                   <div className="bg-muted/30 p-4 rounded-lg space-y-2">
-                    {(() => {
-                      try {
-                        if (!payment || !payment.breakdown) {
-                          return (
-                            <>
-                              <div className="flex justify-between items-center">
-                                <span className="text-sm font-medium">Valor Aluguel</span>
-                                <span className="text-lg font-semibold">
-                                  {formatCurrency((rentalValue * 100).toString())}
-                                </span>
-                              </div>
-
-                              {garageValue > 0 && (
-                                <div className="flex justify-between items-center">
-                                  <span className="text-sm font-medium">Valor Vaga</span>
-                                  <span className="text-lg font-semibold">
-                                    {formatCurrency((garageValue * 100).toString())}
-                                  </span>
-                                </div>
-                              )}
-                            </>
-                          );
-                        }
-
-                        const breakdownData = typeof payment.breakdown === 'string' 
-                          ? JSON.parse(payment.breakdown) 
-                          : (payment.breakdown || []);
-                        
-                        if (!Array.isArray(breakdownData) || breakdownData.length === 0) {
-                          return (
-                            <>
-                              <div className="flex justify-between items-center">
-                                <span className="text-sm font-medium">Valor Aluguel</span>
-                                <span className="text-lg font-semibold">
-                                  {formatCurrency((rentalValue * 100).toString())}
-                                </span>
-                              </div>
-
-                              {garageValue > 0 && (
-                                <div className="flex justify-between items-center">
-                                  <span className="text-sm font-medium">Valor Vaga</span>
-                                  <span className="text-lg font-semibold">
-                                    {formatCurrency((garageValue * 100).toString())}
-                                  </span>
-                                </div>
-                              )}
-                            </>
-                          );
-                        }
-
-                        const hasMultipleItems = breakdownData.length > 1;
-                        const total = breakdownData.reduce((sum: number, item: any) => {
-                          return sum + (item.value || item.amount || 0);
-                        }, 0);
-
-                        return (
-                          <>
-                            {breakdownData.map((item: any, index: number) => {
-                              const itemValue = item.value || item.amount || 0;
-                              const isProportional = item.description?.toLowerCase().includes("proporcional");
-                              
-                              return (
-                                <div key={index} className="flex justify-between items-center">
-                                  <span className="text-sm font-medium">
-                                    {item.description?.replace(/\s*\(proporcional\)/i, '')}
-                                    {isProportional && (
-                                      <span className="text-blue-600 ml-2">(proporcional)</span>
-                                    )}
-                                  </span>
-                                  <span className="text-lg font-semibold">
-                                    {formatCurrency((itemValue * 100).toString())}
-                                  </span>
-                                </div>
-                              );
-                            })}
-                            
-                            {hasMultipleItems && (
-                              <div className="flex justify-between items-center pt-2 border-t-2 border-primary mt-2">
-                                <span className="text-base font-bold">Valor Total</span>
-                                <span className="text-xl font-bold text-primary">
-                                  {formatCurrency((total * 100).toString())}
-                                </span>
-                              </div>
+                    {displayBreakdown.items.map((item: any, index: number) => {
+                      const itemValue = item.value || item.amount || 0;
+                      const isProportional = item.description?.toLowerCase().includes("proporcional");
+                      
+                      return (
+                        <div key={index} className="flex justify-between items-center">
+                          <span className="text-sm font-medium">
+                            {item.description?.replace(/\s*\(proporcional\)/i, '')}
+                            {isProportional && (
+                              <span className="text-blue-600 ml-2">(proporcional)</span>
                             )}
-                          </>
-                        );
-                      } catch (error) {
-                        console.error("Erro ao processar breakdown:", error);
-                        const totalValue = rentalValue + garageValue;
-                        const hasGarage = garageValue > 0;
-                        
-                        return (
-                          <>
-                            <div className="flex justify-between items-center">
-                              <span className="text-sm font-medium">Valor Aluguel</span>
-                              <span className="text-lg font-semibold">
-                                {formatCurrency((rentalValue * 100).toString())}
-                              </span>
-                            </div>
-
-                            {hasGarage && (
-                              <div className="flex justify-between items-center">
-                                <span className="text-sm font-medium">Valor Vaga</span>
-                                <span className="text-lg font-semibold">
-                                  {formatCurrency((garageValue * 100).toString())}
-                                </span>
-                              </div>
-                            )}
-
-                            {hasGarage && (
-                              <div className="flex justify-between items-center pt-2 border-t-2 border-primary mt-2">
-                                <span className="text-base font-bold">Valor Total</span>
-                                <span className="text-xl font-bold text-primary">
-                                  {formatCurrency((totalValue * 100).toString())}
-                                </span>
-                              </div>
-                            )}
-                          </>
-                        );
-                      }
-                    })()}
+                          </span>
+                          <span className="text-lg font-semibold">
+                            {formatCurrency(itemValue.toFixed(2))}
+                          </span>
+                        </div>
+                      );
+                    })}
+                    
+                    {displayBreakdown.hasMultipleItems && (
+                      <div className="flex justify-between items-center pt-3 border-t-2 border-primary mt-2">
+                        <span className="text-base font-bold">Valor Total</span>
+                        <span className="text-xl font-bold text-primary">
+                          {formatCurrency(displayBreakdown.total.toFixed(2))}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </>
               )}
