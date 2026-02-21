@@ -201,7 +201,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
               }
             });
           } else if (Array.isArray(breakdownData)) {
-            itemsArray = breakdownData;
+            itemsArray = breakdownData as unknown as BreakdownItem[];
           }
           
           console.log("📊 Breakdown parsed:", itemsArray);
