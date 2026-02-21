@@ -106,6 +106,7 @@ interface PaymentBreakdownCardProps {
   formatCurrency: (val: number) => string;
   onRepairExpensesChange: (value: string) => void;
   onRemoveFeesChange: (checked: boolean) => void;
+  discountAmount?: number;
 }
 
 export function PaymentBreakdownCard({
