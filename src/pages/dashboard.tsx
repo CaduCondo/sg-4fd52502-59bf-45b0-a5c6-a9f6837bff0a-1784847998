@@ -1,37 +1,43 @@
-import { useState, useMemo, useCallback } from "react";
-import dynamic from "next/dynamic";
+import { useState, useMemo, useCallback, Suspense } from "react";
 import { Layout } from "@/components/Layout";
 import { OverviewCards } from "@/components/dashboard/OverviewCards";
+import { FinancialCharts } from "@/components/dashboard/FinancialCharts";
 import { useDashboardData } from "@/hooks/useDashboardData";
-import { useChartData } from "@/hooks/useChartData";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SEO } from "@/components/SEO";
 import { useAuth } from "@/contexts/AuthContext";
 import { WelcomeCard } from "@/components/dashboard/WelcomeCard";
 import { Card } from "@/components/ui/card";
 
-// Lazy load dos gráficos para melhor performance inicial
-const FinancialCharts = dynamic(
-  () => import("@/components/dashboard/FinancialCharts").then(mod => ({ default: mod.FinancialCharts })),
-  {
-    loading: () => (
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {[...Array(4)].map((_, i) => (
-          <Card key={i} className="h-64 animate-pulse bg-muted" />
-        ))}
-      </div>
-    ),
-    ssr: false
+const generateLast6Months = (month: number, year: number) => {
+  const months = [];
+  const currentDate = new Date(year, month - 1, 1);
+  
+  for (let i = 5; i >= 0; i--) {
+    const date = new Date(currentDate);
+    date.setMonth(date.getMonth() - i);
+    months.push({
+      month: date.getMonth() + 1,
+      year: date.getFullYear(),
+      label: date.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')
+    });
   }
-);
+  
+  return months;
+};
 
-// Skeleton otimizado para os cards
+// Skeleton para os cards
 function DashboardSkeleton() {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
         {[...Array(15)].map((_, i) => (
           <Skeleton key={i} className="h-28" />
+        ))}
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {[...Array(4)].map((_, i) => (
+          <Skeleton key={i} className="h-64" />
         ))}
       </div>
     </div>
@@ -44,15 +50,7 @@ export default function Dashboard() {
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
   const { user } = useAuth();
 
-  const { 
-    loading, 
-    payments, 
-    properties, 
-    rentals, 
-    tenantsCount, 
-    locationExpenses, 
-    exemptLocationIds 
-  } = useDashboardData(
+  const { loading, payments, properties, rentals, tenantsCount, locationExpenses, exemptLocationIds } = useDashboardData(
     selectedMonth,
     selectedYear,
     user?.id,
@@ -63,12 +61,77 @@ export default function Dashboard() {
     setSelectedMonth(month);
     setSelectedYear(year);
   }, []);
+  
+  // Memoizar dados dos últimos 6 meses
+  const last6MonthsData = useMemo(
+    () => generateLast6Months(selectedMonth, selectedYear),
+    [selectedMonth, selectedYear]
+  );
 
-  // Criar maps para lookup rápido (memoizado)
+  // Criar maps para lookup rápido
   const rentalMap = useMemo(() => new Map(rentals.map(r => [r.id, r])), [rentals]);
   const propertyMap = useMemo(() => new Map(properties.map(p => [p.id, p])), [properties]);
   const exemptSet = useMemo(() => new Set(exemptLocationIds), [exemptLocationIds]);
 
+  // Calcular dados dos gráficos de forma otimizada
+  const chartData = useMemo(() => {
+    const isCurrentMonth = (month: number, year: number) => 
+      month === selectedMonth && year === selectedYear;
+
+    const getMonthPayments = (month: number, year: number) => 
+      payments.filter(p => {
+        if (p.status !== 'paid' || !p.paymentDate) return false;
+        const pDate = new Date(p.paymentDate);
+        return pDate.getMonth() + 1 === month && pDate.getFullYear() === year;
+      });
+
+    const calculateFees = (monthPayments: typeof payments) => 
+      monthPayments.reduce((sum, p) => {
+        const rental = rentalMap.get(p.rentalId);
+        if (!rental) return sum;
+        
+        const property = propertyMap.get(rental.propertyId);
+        const isExempt = property?.locationId && exemptSet.has(property.locationId);
+        const adminFee = isExempt ? 0 : (p.paidAmount || 0) * 0.05;
+        const managementFee = (p.paidAmount || 0) * 0.03;
+        return sum + adminFee + managementFee;
+      }, 0);
+
+    const monthlyRevenueData = last6MonthsData.map(({ month, year, label }) => {
+      const monthPayments = getMonthPayments(month, year);
+      const bruta = monthPayments.reduce((sum, p) => sum + (p.paidAmount || 0), 0);
+      const monthTaxas = calculateFees(monthPayments);
+      const monthExpenses = isCurrentMonth(month, year) ? locationExpenses : 0;
+      const liquida = bruta - monthTaxas - monthExpenses;
+      
+      return { month: label, bruta, liquida };
+    });
+
+    const monthlyExpensesData = last6MonthsData.map(({ month, year, label }) => {
+      const monthPayments = getMonthPayments(month, year);
+      const taxas = calculateFees(monthPayments);
+      const contas = isCurrentMonth(month, year) ? locationExpenses : 0;
+      
+      return { month: label, taxas, contas };
+    });
+
+    const occupiedProps = properties.filter(p => p.status === 'occupied').length;
+    const availableProps = properties.filter(p => p.status === 'available').length;
+    const unavailableProps = properties.filter(p => p.status === 'unavailable').length;
+
+    const occupancyPieData = [
+      { name: 'Ocupados', value: occupiedProps, color: '#10b981' },
+      { name: 'Disponíveis', value: availableProps, color: '#3b82f6' },
+      { name: 'Indisponíveis', value: unavailableProps, color: '#ef4444' }
+    ].filter(item => item.value > 0);
+
+    return {
+      monthlyRevenueData,
+      monthlyExpensesData,
+      occupancyPieData
+    };
+  }, [payments, properties, last6MonthsData, selectedMonth, selectedYear, rentalMap, propertyMap, exemptSet, locationExpenses]);
+  
   // Calcular dados dos cards de visão geral de forma otimizada
   const overviewData = useMemo(() => {
     const totalProperties = properties.length;
@@ -148,18 +211,6 @@ export default function Dashboard() {
     };
   }, [payments, properties, rentals, locationExpenses, tenantsCount, rentalMap, propertyMap, exemptSet]);
 
-  // Hook separado para dados dos gráficos (carrega depois)
-  const chartData = useChartData({
-    payments,
-    properties,
-    selectedMonth,
-    selectedYear,
-    locationExpenses,
-    exemptLocationIds,
-    rentalMap,
-    propertyMap
-  });
-
   const userName = useMemo(() => 
     user?.name || user?.email?.split('@')[0] || "Usuário",
     [user]
@@ -183,11 +234,19 @@ export default function Dashboard() {
               userRole={user?.role}
             />
 
-            <FinancialCharts
-              monthlyRevenueData={chartData.monthlyRevenueData} 
-              monthlyExpensesData={chartData.monthlyExpensesData} 
-              occupancyData={chartData.occupancyPieData} 
-            />
+            <Suspense fallback={
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {[...Array(4)].map((_, i) => (
+                  <Card key={i} className="h-64 animate-pulse bg-muted" />
+                ))}
+              </div>
+            }>
+              <FinancialCharts
+                monthlyRevenueData={chartData.monthlyRevenueData} 
+                monthlyExpensesData={chartData.monthlyExpensesData} 
+                occupancyData={chartData.occupancyPieData} 
+              />
+            </Suspense>
           </>
         )}
       </div>
