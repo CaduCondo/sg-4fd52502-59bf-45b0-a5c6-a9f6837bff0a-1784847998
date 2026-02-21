@@ -546,7 +546,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     } else if (!isTerminationPayment && isEditMode) {
       setFormData(prev => ({
         ...prev,
-        amount_to_pay: formatCurrency(values.valorAPagar.toFixed(2))
+        amount_to_pay: formatCurrency((values.valorAPagar).toFixed(2))
       }));
     }
   }, [
@@ -1173,13 +1173,36 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                         );
                       } catch (error) {
                         console.error("Erro ao processar breakdown:", error);
+                        const totalValue = rentalValue + garageValue;
+                        const hasGarage = garageValue > 0;
+                        
                         return (
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm font-medium">Valor Aluguel</span>
-                            <span className="text-lg font-semibold">
-                              {formatCurrency((rentalValue * 100).toString())}
-                            </span>
-                          </div>
+                          <>
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm font-medium">Valor Aluguel</span>
+                              <span className="text-lg font-semibold">
+                                {formatCurrency((rentalValue * 100).toString())}
+                              </span>
+                            </div>
+
+                            {hasGarage && (
+                              <div className="flex justify-between items-center">
+                                <span className="text-sm font-medium">Valor Vaga</span>
+                                <span className="text-lg font-semibold">
+                                  {formatCurrency((garageValue * 100).toString())}
+                                </span>
+                              </div>
+                            )}
+
+                            {hasGarage && (
+                              <div className="flex justify-between items-center pt-2 border-t-2 border-primary mt-2">
+                                <span className="text-base font-bold">Valor Total</span>
+                                <span className="text-xl font-bold text-primary">
+                                  {formatCurrency((totalValue * 100).toString())}
+                                </span>
+                              </div>
+                            )}
+                          </>
                         );
                       }
                     })()}

@@ -745,7 +745,7 @@ export const RentalFormDialog = memo(function RentalFormDialog({
 
           {proportionalRentInfo.isProportional && startDate && paymentDay && (
             <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <div className="flex items-center gap-2 mb-2">
                   <span className="font-semibold text-blue-900 dark:text-blue-100">
                     📅 Primeira Parcela Proporcional
@@ -762,14 +762,34 @@ export const RentalFormDialog = memo(function RentalFormDialog({
                     <strong>Dias a Cobrar:</strong> {proportionalRentInfo.days} dias
                   </p>
                 </div>
-                <div className="flex justify-between items-center pt-2 border-t border-blue-200 dark:border-blue-800">
-                  <span className="font-bold text-blue-900 dark:text-blue-100">Valor 1ª Parcela:</span>
-                  <span className="text-xl font-bold text-blue-600 dark:text-blue-400">
-                    {formatCurrency(proportionalRentInfo.firstRentValue)}
-                  </span>
+                
+                <div className="space-y-2 pt-2 border-t border-blue-200 dark:border-blue-800">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-blue-900 dark:text-blue-100">Aluguel Proporcional:</span>
+                    <span className="font-semibold text-blue-700 dark:text-blue-300">
+                      {formatCurrency(((selectedProperty?.value || 0) / 30 * proportionalRentInfo.days))}
+                    </span>
+                  </div>
+                  
+                  {hasGarage && garageValue && (
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-blue-900 dark:text-blue-100">Vaga Proporcional:</span>
+                      <span className="font-semibold text-blue-700 dark:text-blue-300">
+                        {formatCurrency((parseCurrencyToNumber(garageValue) / 30 * proportionalRentInfo.days))}
+                      </span>
+                    </div>
+                  )}
+                  
+                  <div className="flex justify-between items-center pt-2 border-t-2 border-blue-300 dark:border-blue-700">
+                    <span className="font-bold text-blue-900 dark:text-blue-100">Valor Total 1ª Parcela:</span>
+                    <span className="text-xl font-bold text-blue-600 dark:text-blue-400">
+                      {formatCurrency(proportionalRentInfo.firstRentValue)}
+                    </span>
+                  </div>
                 </div>
-                <p className="text-xs text-blue-600 dark:text-blue-400 italic mt-2">
-                  * Cálculo: (R$ {formatCurrency(calculateTotal())} ÷ 30 dias) × {proportionalRentInfo.days} dias
+                
+                <p className="text-xs text-blue-600 dark:text-blue-400 italic mt-2 pt-2 border-t border-blue-200 dark:border-blue-800">
+                  * Cálculo: (Valor Mensal ÷ 30 dias) × {proportionalRentInfo.days} dias
                 </p>
               </div>
             </div>
