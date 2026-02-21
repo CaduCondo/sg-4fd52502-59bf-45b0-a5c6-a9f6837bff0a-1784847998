@@ -235,6 +235,17 @@ export function useDashboardData(
           zipCode: prop.zip_code || prop.locations?.zip_code || "",
         }));
 
+        console.log("📊 Dashboard Data Debug:", {
+          propertiesCount: formattedProperties.length,
+          propertiesStatus: {
+            available: formattedProperties.filter(p => p.status === 'available').length,
+            occupied: formattedProperties.filter(p => p.status === 'occupied').length,
+            unavailable: formattedProperties.filter(p => p.status === 'unavailable').length,
+          },
+          rentalsCount: (rentalsResult.data || []).length,
+          paymentsCount: (paymentsResult.data || []).length,
+        });
+
         setProperties(formattedProperties);
 
         // Formatar locações

@@ -134,9 +134,16 @@ export default function Dashboard() {
   
   // Calcular dados dos cards de visão geral de forma otimizada
   const overviewData = useMemo(() => {
+    console.log("🔢 Calculating overview data:", {
+      propertiesLength: properties.length,
+      rentalsLength: rentals.length,
+      paymentsLength: payments.length,
+    });
+
     const totalProperties = properties.length;
     const availableProperties = properties.filter(p => p.status === 'available').length;
     const unavailableProperties = properties.filter(p => p.status === 'unavailable').length;
+    const occupiedProperties = properties.filter(p => p.status === 'occupied').length;
     
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -168,7 +175,8 @@ export default function Dashboard() {
     const completedPayments = payments.filter(p => p.status === 'paid').length;
     const expectedAmount = payments.reduce((acc, p) => acc + (p.expectedAmount || 0), 0);
 
-    const occupancyRate = totalProperties > 0 ? (activeContracts / totalProperties) * 100 : 0;
+    // CORREÇÃO: Usar propriedades ocupadas ao invés de contratos ativos
+    const occupancyRate = totalProperties > 0 ? (occupiedProperties / totalProperties) * 100 : 0;
 
     const grossRevenue = payments
       .filter(p => p.status === 'paid')
@@ -191,7 +199,7 @@ export default function Dashboard() {
     const totalFeesAndExpenses = totalFees + locationExpenses;
     const netRevenue = grossRevenue - totalFeesAndExpenses;
 
-    return {
+    const result = {
       totalProperties,
       availableProperties,
       unavailableProperties,
@@ -209,6 +217,10 @@ export default function Dashboard() {
       totalFeesAndExpenses,
       netRevenue,
     };
+
+    console.log("📊 Overview data calculated:", result);
+
+    return result;
   }, [payments, properties, rentals, locationExpenses, tenantsCount, rentalMap, propertyMap, exemptSet]);
 
   const userName = useMemo(() => 
