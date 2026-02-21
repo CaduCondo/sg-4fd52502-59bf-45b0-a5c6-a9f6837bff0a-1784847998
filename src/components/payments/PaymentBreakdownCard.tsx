@@ -226,6 +226,30 @@ export function PaymentBreakdownCard({
                 </>
               )}
 
+              <div className="border-t border-dashed my-2"></div>
+
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-4 items-center text-sm">
+                  <span>Valor de Desconto</span>
+                  
+                  {isEditMode ? (
+                    <Input
+                      type="text"
+                      placeholder="R$ 0,00"
+                      value={discountAmountInput}
+                      onChange={(e) => onDiscountAmountChange(e.target.value)}
+                      className="text-right"
+                      disabled={isReadOnly}
+                    />
+                  ) : (
+                    <span className="font-medium text-right text-green-600">
+                      {discountAmount > 0 ? "- " : ""}
+                      {formatCurrency(discountAmount)}
+                    </span>
+                  )}
+                </div>
+              </div>
+
               <div className="flex justify-between pt-3 border-t-2 border-primary mt-2">
                 <span className="font-bold text-base">VALOR TOTAL</span>
                 <span className={`font-bold text-base ${calculatedTotal < 0 ? "text-red-600" : "text-primary"}`}>
