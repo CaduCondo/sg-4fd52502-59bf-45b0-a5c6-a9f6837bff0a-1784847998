@@ -842,7 +842,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           onRemoveFeesChange={setRemoveFees}
           discountAmount={discountAmount}
           discountAmountInput={discountAmountInput}
-          onDiscountAmountChange={handleDiscountAmountChange}
+          onDiscountAmountChange={setDiscountAmountInput}
         />
 
         <Card>
