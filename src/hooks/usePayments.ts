@@ -62,7 +62,7 @@ export function usePayments() {
       // PASSO 1: Buscar apenas payments (query rápida)
       let query = supabase
         .from("payments")
-        .select("id, rental_id, due_date, expected_amount, paid_amount, payment_date, status, payment_method, notes, reference_month, reference_year, attachments, late_fee, interest, installment, total_installments, breakdown")
+        .select("id, rental_id, property_id, tenant_id, due_date, expected_amount, paid_amount, payment_date, status, payment_method, notes, reference_month, reference_year, attachments, late_fee, interest, installment, total_installments, breakdown")
         .order("due_date", { ascending: true });
 
       // Aplicar filtros de mês/ano SEMPRE
