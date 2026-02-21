@@ -62,7 +62,7 @@ export function usePayments() {
       // PASSO 1: Buscar apenas payments (query rápida)
       let query = supabase
         .from("payments")
-        .select("id, rental_id, due_date, expected_amount, paid_amount, payment_date, status, payment_method, notes, reference_month, reference_year, attachments, late_fee, interest, installment, total_installments")
+        .select("id, rental_id, due_date, expected_amount, paid_amount, payment_date, status, payment_method, notes, reference_month, reference_year, attachments, late_fee, interest, installment, total_installments, breakdown")
         .order("due_date", { ascending: true });
 
       // Aplicar filtros de mês/ano SEMPRE
@@ -92,7 +92,7 @@ export function usePayments() {
       const rentalsData = await fetchInBatches<any>(
         "rentals",
         rentalIds,
-        "id, property_id, tenant_id, monthly_rent, garage_value, status, start_date, end_date, payment_day, security_deposit",
+        "id, property_id, tenant_id, value, garage_value, status, start_date, end_date, payment_day, security_deposit",
         20
       );
 
@@ -180,7 +180,7 @@ export function usePayments() {
             startDate: r.start_date,
             endDate: r.end_date || "",
             paymentDay: r.payment_day,
-            value: r.monthly_rent,
+            value: r.value,
             depositAmount: r.security_deposit || 0,
             status: r.status as "active" | "inactive" | "terminated" | "pending",
             isActive: r.status === "active",
@@ -196,8 +196,8 @@ export function usePayments() {
         return {
           id: p.id,
           rentalId: p.rental_id,
-          propertyId: "", // Default, updated later via map or logic if needed, but here we construct basic payment
-          tenantId: "", // Default
+          propertyId: "",
+          tenantId: "",
           dueDate: p.due_date,
           expectedAmount: p.expected_amount,
           paidAmount: p.paid_amount || 0,
@@ -214,6 +214,7 @@ export function usePayments() {
           totalInstallments: p.total_installments || undefined,
           discount: 0,
           receiptUrl: "",
+          breakdown: p.breakdown || null,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
@@ -231,6 +232,7 @@ export function usePayments() {
       setTenants(Array.from(tenantsMap.values()));
 
     } catch (error) {
+      console.error("Erro ao carregar pagamentos:", error);
       toast({
         title: "Erro",
         description: "Erro ao carregar pagamentos. Tente novamente.",
