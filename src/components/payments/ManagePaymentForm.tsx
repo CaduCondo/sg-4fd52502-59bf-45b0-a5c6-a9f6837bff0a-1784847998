@@ -1187,9 +1187,11 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                       );
                     })}
                     
-                    {displayBreakdown.hasMultipleItems && (
+                    {(displayBreakdown.hasMultipleItems || values.diasAtraso > 0) && (
                       <div className="flex justify-between items-center pt-3 border-t border-gray-300 dark:border-gray-700 mt-2">
-                        <span className="text-sm font-semibold text-muted-foreground">Subtotal</span>
+                        <span className="text-sm font-semibold text-muted-foreground">
+                          {displayBreakdown.hasMultipleItems ? "Total dos Itens" : "Valor Base"}
+                        </span>
                         <span className="text-base font-semibold text-muted-foreground">
                           {formatCurrency(displayBreakdown.total.toFixed(2))}
                         </span>
