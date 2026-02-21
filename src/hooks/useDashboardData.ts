@@ -137,16 +137,12 @@ export function useDashboardData(
                 monthly_rent,
                 value,
                 is_active,
-                status
+                status,
+                properties!inner(location_id)
               `);
 
             if (isFinancialUser && allowedLocations && allowedLocations.length > 0) {
-              query = query.in("property_id", 
-                supabase
-                  .from("properties")
-                  .select("id")
-                  .in("location_id", allowedLocations)
-              );
+              query = query.in("properties.location_id", allowedLocations);
             }
 
             return query;
@@ -173,24 +169,16 @@ export function useDashboardData(
                 interest,
                 notes,
                 payment_method,
-                breakdown
+                breakdown,
+                rentals!inner(
+                  properties!inner(location_id)
+                )
               `)
               .eq("reference_month", month.toString())
               .eq("reference_year", year.toString());
 
             if (isFinancialUser && allowedLocations && allowedLocations.length > 0) {
-              query = query.in("rental_id",
-                supabase
-                  .from("rentals")
-                  .select("id")
-                  .eq("is_active", true)
-                  .in("property_id",
-                    supabase
-                      .from("properties")
-                      .select("id")
-                      .in("location_id", allowedLocations)
-                  )
-              );
+              query = query.in("rentals.properties.location_id", allowedLocations);
             }
 
             return query;
