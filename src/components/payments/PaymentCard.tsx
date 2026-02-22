@@ -1,6 +1,7 @@
 import { memo, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Home, User, Calendar, X, FileText, Paperclip, Download, ExternalLink } from "lucide-react";
 import { formatCurrency } from "@/lib/masks";
 import type { Payment, Property, Tenant } from "@/types";
@@ -145,14 +146,16 @@ export const PaymentCard = memo(function PaymentCard({
               </span>
               {getStatusBadge(payment.status)}
               {hasAttachments(payment) && (
-                <Paperclip 
-                  className="h-4 w-4 text-purple-600 cursor-pointer hover:text-purple-700 transition-colors" 
+                <div 
+                  className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full p-1 transition-colors"
                   onClick={(e) => {
                     e.stopPropagation();
                     setShowAttachmentsModal(true);
                   }}
                   title={`Ver ${Array.isArray(payment.attachments) ? payment.attachments.length : 0} anexo(s)`}
-                />
+                >
+                  <Paperclip className="h-4 w-4 text-purple-600" />
+                </div>
               )}
             </div>
           </div>
@@ -233,14 +236,16 @@ export const PaymentCard = memo(function PaymentCard({
                   </span>
                   {getStatusBadge(payment.status)}
                   {hasAttachments(payment) && (
-                    <Paperclip 
-                      className="h-4 w-4 text-purple-600 cursor-pointer hover:text-purple-700 transition-colors" 
+                    <div 
+                      className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full p-1 transition-colors"
                       onClick={(e) => {
                         e.stopPropagation();
                         setShowAttachmentsModal(true);
                       }}
                       title={`Ver ${Array.isArray(payment.attachments) ? payment.attachments.length : 0} anexo(s)`}
-                    />
+                    >
+                      <Paperclip className="h-4 w-4 text-purple-600" />
+                    </div>
                   )}
                   <span className="text-xs font-semibold text-muted-foreground">
                     Parcela {installment}
