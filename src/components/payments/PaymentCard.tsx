@@ -160,7 +160,7 @@ export const PaymentCard = memo(function PaymentCard({
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-3 p-4 pt-0">
+        <CardContent className="space-y-2 p-4 pt-0">
           <div className="flex items-center gap-2 text-sm">
             <User className="h-4 w-4 text-muted-foreground" />
             <div className="flex-1">
@@ -182,15 +182,31 @@ export const PaymentCard = memo(function PaymentCard({
                 }
               </p>
             </div>
-            <span className="text-xs font-semibold text-muted-foreground whitespace-nowrap">
-              Parcela {installment}
-            </span>
           </div>
 
           <div className="pt-3 border-t">
-            <p className="text-xs text-muted-foreground mb-1.5">
-              {isPaid ? "Valor Pago" : (isPartial ? "Valor Restante" : "Valor Esperado")}
-            </p>
+            <div className="flex items-center justify-between mb-1.5">
+              <p className="text-xs text-muted-foreground">
+                {isPaid ? "Valor Pago" : (isPartial ? "Valor Restante" : "Valor Esperado")}
+              </p>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-muted-foreground whitespace-nowrap">
+                  Parcela {installment}
+                </span>
+                {hasAttachments(payment) && (
+                  <div 
+                    className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full p-1 transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowAttachmentsModal(true);
+                    }}
+                    title={`Ver ${Array.isArray(payment.attachments) ? payment.attachments.length : 0} anexo(s)`}
+                  >
+                    <Paperclip className="h-4 w-4 text-purple-600" />
+                  </div>
+                )}
+              </div>
+            </div>
             <p className={`text-2xl sm:text-3xl font-bold ${colors.amount}`}>
               {formattedDisplayAmount}
             </p>
