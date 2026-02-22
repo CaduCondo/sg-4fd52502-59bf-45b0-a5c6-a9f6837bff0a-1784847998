@@ -537,7 +537,8 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     try {
       setUploadProgress(prev => ({ ...prev, [index]: 30 }));
       
-      const url = await uploadToSupabase(file);
+      // Upload direto para Supabase Storage
+      const publicUrl = await uploadToSupabase(file);
       
       setUploadProgress(prev => ({ ...prev, [index]: 100 }));
 
@@ -545,7 +546,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         const newAttachments = [...prev];
         newAttachments[index] = {
           ...newAttachments[index],
-          url,
+          url: publicUrl,
           name: file.name,
           uploadProgress: 100,
         };
