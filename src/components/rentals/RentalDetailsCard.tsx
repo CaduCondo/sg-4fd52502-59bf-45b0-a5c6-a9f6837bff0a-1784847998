@@ -6,6 +6,7 @@ import { MapPin, User, DollarSign, FileText, Car, Coins, Banknote } from "lucide
 import { formatCurrency } from "@/lib/masks";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { RentalAttachmentsDialog } from "./RentalAttachmentsDialog";
 
 interface RentalDetailsCardProps {
   rental: Rental;
@@ -273,6 +274,18 @@ export const RentalDetailsCard = memo(function RentalDetailsCard({ rental, prope
             </div>
           </InfoSection>
         )}
+
+        {/* Anexos */}
+        <div className="pt-4 border-t">
+          <RentalAttachmentsDialog
+            rentalId={rental.id}
+            attachments={rental.attachments || []}
+            onAttachmentsUpdate={() => {
+              // Força atualização da página de locações
+              window.location.reload();
+            }}
+          />
+        </div>
       </CardContent>
     </Card>
   );
