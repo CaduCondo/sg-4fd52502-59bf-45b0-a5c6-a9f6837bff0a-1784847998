@@ -145,22 +145,10 @@ export const PaymentCard = memo(function PaymentCard({
                 {getMonthName(payment.referenceMonth)}/{payment.referenceYear}
               </span>
               {getStatusBadge(payment.status)}
-              {hasAttachments(payment) && (
-                <div 
-                  className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full p-1 transition-colors"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowAttachmentsModal(true);
-                  }}
-                  title={`Ver ${Array.isArray(payment.attachments) ? payment.attachments.length : 0} anexo(s)`}
-                >
-                  <Paperclip className="h-4 w-4 text-purple-600" />
-                </div>
-              )}
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-2 p-4 pt-0">
+        <CardContent className="space-y-1 p-4 pt-0">
           <div className="flex items-center gap-2 text-sm">
             <User className="h-4 w-4 text-muted-foreground" />
             <div className="flex-1">
