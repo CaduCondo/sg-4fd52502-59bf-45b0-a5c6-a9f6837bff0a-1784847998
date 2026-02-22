@@ -592,6 +592,13 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
 
   const handleEnableEdit = useCallback(() => {
     setIsEditMode(true);
+    
+    // Zerar o campo "Valor a Pagar" para evitar soma indevida
+    setFormData(prev => ({
+      ...prev,
+      amount_to_pay: ""
+    }));
+    
     toast({
       title: "Modo de Edição",
       description: "Campos desbloqueados para edição.",
