@@ -131,7 +131,17 @@ export function PaymentBreakdownCard({
   discountAmount = 0,
   discountAmountInput = "",
   onDiscountAmountChange = () => {},
+  paymentStatus,
+  paidAmount = 0,
 }: PaymentBreakdownCardProps) {
+  console.log("🔍 PaymentBreakdownCard Debug:", {
+    paymentStatus,
+    paidAmount,
+    calculatedTotal,
+    displayBreakdown,
+    isTerminationPayment
+  });
+
   return (
     <Card className={isTerminationPayment ? "border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950" : ""}>
       <CardHeader>
