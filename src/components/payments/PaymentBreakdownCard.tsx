@@ -109,6 +109,8 @@ interface PaymentBreakdownCardProps {
   discountAmount?: number;
   discountAmountInput?: string;
   onDiscountAmountChange?: (value: string) => void;
+  paymentStatus?: string;
+  paidAmount?: number;
 }
 
 export function PaymentBreakdownCard({
@@ -141,6 +143,13 @@ export function PaymentBreakdownCard({
     displayBreakdown,
     isTerminationPayment
   });
+
+  const finalTotal = isTerminationPayment 
+    ? Math.abs(calculatedTotal)
+    : (displayBreakdown.total + (removeFees ? 0 : (values.multa + values.juros)));
+
+  const remainingDue = Math.max(0, finalTotal - (paidAmount || 0));
+  const showPartialInfo = paymentStatus === 'partial' && (paidAmount || 0) > 0;
 
   return (
     <Card className={isTerminationPayment ? "border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950" : ""}>
@@ -273,6 +282,27 @@ export function PaymentBreakdownCard({
                 </span>
               </div>
 
+              {showPartialInfo && (
+                <div className="mt-4 pt-4 border-t border-dashed bg-gray-50 dark:bg-gray-900/50 p-3 rounded-md">
+                  <div className="flex justify-between items-center text-sm mb-2">
+                    <span className="text-muted-foreground font-medium flex items-center gap-2">
+                      ✅ Valor Já Pago
+                    </span>
+                    <span className="font-bold text-green-600">
+                      {formatCurrency(paidAmount || 0)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-muted-foreground font-medium flex items-center gap-2">
+                      ⏳ Valor Ainda Devido
+                    </span>
+                    <span className="font-bold text-orange-600">
+                      {formatCurrency(remainingDue)}
+                    </span>
+                  </div>
+                </div>
+              )}
+
               <div className="text-xs text-muted-foreground pt-2 border-t mt-2">
                 * Despesas Adicionais de Reforma/Limpeza/Pinturas ou reparos necessários após a saída do inquilino
               </div>
@@ -355,6 +385,27 @@ export function PaymentBreakdownCard({
                   {formatCurrency(displayBreakdown.total + (removeFees ? 0 : (values.multa + values.juros)))}
                 </span>
               </div>
+
+              {showPartialInfo && (
+                <div className="mt-4 pt-4 border-t border-dashed bg-gray-50 dark:bg-gray-900/50 p-3 rounded-md">
+                  <div className="flex justify-between items-center text-sm mb-2">
+                    <span className="text-muted-foreground font-medium flex items-center gap-2">
+                      ✅ Valor Já Pago
+                    </span>
+                    <span className="font-bold text-green-600">
+                      {formatCurrency(paidAmount || 0)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-muted-foreground font-medium flex items-center gap-2">
+                      ⏳ Valor Ainda Devido
+                    </span>
+                    <span className="font-bold text-orange-600">
+                      {formatCurrency(remainingDue)}
+                    </span>
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>
