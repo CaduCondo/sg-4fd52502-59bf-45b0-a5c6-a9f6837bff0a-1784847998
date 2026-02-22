@@ -6,7 +6,8 @@
     "migrate": "tsx src/scripts/migrateAttachmentsToSupabase.ts"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.39.0"
+    "@supabase/supabase-js": "^2.39.0",
+    "dotenv": "^16.3.1"
   },
   "devDependencies": {
     "tsx": "^4.7.0",
