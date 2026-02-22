@@ -1,5 +1,5 @@
 import { useMemo, memo, useCallback } from "react";
-import { Rental, Property, Tenant } from "@/types";
+import { Rental, Property, Tenant, Attachment } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, User, DollarSign, FileText, Car, Coins, Banknote } from "lucide-react";
@@ -112,6 +112,26 @@ export const RentalDetailsCard = memo(function RentalDetailsCard({ rental, prope
     (rental.depositInstallment1 && rental.depositInstallment1 > 0),
     [rental.depositAmount, rental.depositInstallments, rental.depositInstallment1]
   );
+
+  // Normalizar anexos para garantir compatibilidade
+  const normalizedAttachments = useMemo((): Attachment[] => {
+    if (!rental.attachments) return [];
+    
+    return rental.attachments.map((att: string | Attachment) => {
+      if (typeof att === 'string') {
+        const name = att.split('/').pop() || 'Arquivo';
+        return {
+          id: att, // Usar URL como ID para strings antigas
+          name: name,
+          url: att,
+          type: 'application/octet-stream',
+          category: 'other',
+          uploadedAt: new Date().toISOString()
+        } as Attachment;
+      }
+      return att as Attachment;
+    });
+  }, [rental.attachments]);
 
   return (
     <Card className="w-full">
@@ -279,7 +299,7 @@ export const RentalDetailsCard = memo(function RentalDetailsCard({ rental, prope
         <div className="pt-4 border-t">
           <RentalAttachmentsDialog
             rentalId={rental.id}
-            attachments={rental.attachments || []}
+            attachments={normalizedAttachments}
             onAttachmentsUpdate={() => {
               // Força atualização da página de locações
               window.location.reload();

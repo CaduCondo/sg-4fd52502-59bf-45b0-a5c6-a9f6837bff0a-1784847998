@@ -7,15 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Paperclip, Upload, X, FileText, Image as ImageIcon, Download, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-
-interface Attachment {
-  id: string;
-  name: string;
-  url: string;
-  type: string;
-  category: "contract" | "deposit" | "other";
-  uploadedAt: string;
-}
+import { Attachment } from "@/types";
 
 interface RentalAttachmentsDialogProps {
   rentalId: string;
@@ -57,7 +49,7 @@ export function RentalAttachmentsDialog({ rentalId, attachments = [], onAttachme
           type: file.type,
           category,
           uploadedAt: new Date().toISOString(),
-        };
+        } as Attachment;
       });
 
       const newAttachments = await Promise.all(uploadPromises);
@@ -65,7 +57,7 @@ export function RentalAttachmentsDialog({ rentalId, attachments = [], onAttachme
 
       const { error } = await supabase
         .from("rentals")
-        .update({ attachments: updatedAttachments })
+        .update({ attachments: updatedAttachments as any })
         .eq("id", rentalId);
 
       if (error) throw error;
@@ -95,7 +87,7 @@ export function RentalAttachmentsDialog({ rentalId, attachments = [], onAttachme
 
       const { error } = await supabase
         .from("rentals")
-        .update({ attachments: updatedAttachments })
+        .update({ attachments: updatedAttachments as any })
         .eq("id", rentalId);
 
       if (error) throw error;

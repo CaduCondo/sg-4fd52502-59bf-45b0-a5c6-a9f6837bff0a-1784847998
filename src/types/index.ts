@@ -20,6 +20,15 @@ export interface UserLocationPermission {
   location_id: string;
 }
 
+export interface Attachment {
+  id: string;
+  name: string;
+  url: string;
+  type: string;
+  category: "contract" | "deposit" | "other";
+  uploadedAt: string;
+}
+
 export interface SystemUser {
   id: string;
   name: string;
@@ -167,7 +176,7 @@ export interface Rental {
   status: "active" | "ended" | "terminated";
   isActive: boolean;
   is_active?: boolean; // Compatibility
-  attachments: string[];
+  attachments: (Attachment | string)[] | any[]; // Updated to support object structure
   contractAttachments: string[];
   contract_attachments?: string[]; // Compatibility
   autoRenew: boolean;
