@@ -214,30 +214,32 @@ export const PaymentCard = memo(function PaymentCard({
             </div>
           )}
 
-          {isPaid && onCancelPayment && (
-            <div className="pt-3 space-y-2">
-              {hasAttachments(payment) && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full text-purple-600 hover:text-purple-700 hover:bg-purple-50 dark:hover:bg-purple-900/20 h-11 sm:h-9 touch-target"
-                  onClick={(e) => openAttachments(payment, e)}
-                >
-                  <Paperclip className="h-4 w-4 mr-2" />
-                  Ver Anexos ({Array.isArray(payment.attachments) ? payment.attachments.length : 0})
-                </Button>
-              )}
-              {onViewReceipt && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 h-11 sm:h-9 touch-target"
-                  onClick={(e) => onViewReceipt(payment.id, e)}
-                >
-                  <FileText className="h-4 w-4 mr-2" />
-                  Ver Recibo
-                </Button>
-              )}
+          <div className="pt-3 space-y-2">
+            {hasAttachments(payment) && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full text-purple-600 hover:text-purple-700 hover:bg-purple-50 dark:hover:bg-purple-900/20 h-11 sm:h-9 touch-target"
+                onClick={(e) => openAttachments(payment, e)}
+              >
+                <Paperclip className="h-4 w-4 mr-2" />
+                Ver Anexos ({Array.isArray(payment.attachments) ? payment.attachments.length : 0})
+              </Button>
+            )}
+            
+            {isPaid && onViewReceipt && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 h-11 sm:h-9 touch-target"
+                onClick={(e) => onViewReceipt(payment.id, e)}
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                Ver Recibo
+              </Button>
+            )}
+            
+            {isPaid && onCancelPayment && (
               <Button
                 variant="outline"
                 size="sm"
@@ -250,8 +252,8 @@ export const PaymentCard = memo(function PaymentCard({
                 <X className="h-4 w-4 mr-2" />
                 Cancelar Pagamento
               </Button>
-            </div>
-          )}
+            )}
+          </div>
         </CardContent>
       </Card>
     );
@@ -339,31 +341,33 @@ export const PaymentCard = memo(function PaymentCard({
               )}
             </div>
             
-            {isPaid && onCancelPayment && (
-              <div className="flex flex-col gap-2 sm:flex-shrink-0">
-                {hasAttachments(payment) && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-purple-600 hover:text-purple-700 hover:bg-purple-50 dark:hover:bg-purple-900/20 h-11 sm:h-9 touch-target"
-                    onClick={(e) => openAttachments(payment, e)}
-                  >
-                    <Paperclip className="h-4 w-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Anexos ({Array.isArray(payment.attachments) ? payment.attachments.length : 0})</span>
-                    <span className="sm:hidden">Anexos</span>
-                  </Button>
-                )}
-                {onViewReceipt && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 h-11 sm:h-9 touch-target"
-                    onClick={(e) => onViewReceipt(payment.id, e)}
-                  >
-                    <FileText className="h-4 w-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Ver Recibo</span>
-                  </Button>
-                )}
+            <div className="flex flex-col gap-2 sm:flex-shrink-0">
+              {hasAttachments(payment) && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-purple-600 hover:text-purple-700 hover:bg-purple-50 dark:hover:bg-purple-900/20 h-11 sm:h-9 touch-target"
+                  onClick={(e) => openAttachments(payment, e)}
+                >
+                  <Paperclip className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Anexos ({Array.isArray(payment.attachments) ? payment.attachments.length : 0})</span>
+                  <span className="sm:hidden">Anexos</span>
+                </Button>
+              )}
+              
+              {isPaid && onViewReceipt && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 h-11 sm:h-9 touch-target"
+                  onClick={(e) => onViewReceipt(payment.id, e)}
+                >
+                  <FileText className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Ver Recibo</span>
+                </Button>
+              )}
+              
+              {isPaid && onCancelPayment && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -376,8 +380,8 @@ export const PaymentCard = memo(function PaymentCard({
                   <X className="h-4 w-4 sm:mr-2" />
                   <span className="hidden sm:inline">Cancelar</span>
                 </Button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       </CardContent>
