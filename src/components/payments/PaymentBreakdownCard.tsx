@@ -312,15 +312,11 @@ export function PaymentBreakdownCard({
               <div className="bg-muted/30 p-4 rounded-lg space-y-2">
                 {displayBreakdown.items.map((item: any, index: number) => {
                   const itemValue = item.value || item.amount || 0;
-                  const isProportional = item.description?.toLowerCase().includes("proporcional");
                   
                   return (
                     <div key={index} className="flex justify-between items-center">
                       <span className="text-sm font-medium">
                         {item.description?.replace(/\s*\(proporcional\)/i, '')}
-                        {isProportional && (
-                          <span className="text-blue-600 ml-2">(proporcional)</span>
-                        )}
                       </span>
                       <span className="text-lg font-semibold">
                         {formatCurrency(itemValue)}
