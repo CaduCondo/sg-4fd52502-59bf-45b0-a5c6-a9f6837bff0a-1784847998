@@ -1,10 +1,17 @@
-import { memo, useMemo } from "react";
+import { memo, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Home, User, Calendar, X, FileText, Paperclip } from "lucide-react";
+import { Home, User, Calendar, X, FileText, Paperclip, Download, ExternalLink } from "lucide-react";
 import { formatCurrency } from "@/lib/masks";
 import type { Payment, Property, Tenant } from "@/types";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface PaymentCardProps {
   payment: Payment;
@@ -77,27 +84,6 @@ const hasAttachments = (payment: Payment): boolean => {
   return payment.attachments && Array.isArray(payment.attachments) && payment.attachments.length > 0;
 };
 
-// Helper para abrir anexos
-const openAttachments = (payment: Payment, e: React.MouseEvent) => {
-  e.stopPropagation();
-  
-  if (!payment.attachments || !Array.isArray(payment.attachments)) return;
-  
-  payment.attachments.forEach((attachment: any) => {
-    const url = typeof attachment === 'string' ? attachment : attachment.url;
-    if (url) {
-      // Se já é uma URL do Supabase Storage, usar diretamente
-      if (url.startsWith('http') || url.startsWith('https://')) {
-        window.open(url, '_blank', 'noopener,noreferrer');
-      } 
-      // Se é um caminho local, usar diretamente (já está no formato correto /uploads/file_...)
-      else {
-        window.open(url, '_blank', 'noopener,noreferrer');
-      }
-    }
-  });
-};
-
 export const PaymentCard = memo(function PaymentCard({
   payment,
   property,
@@ -112,6 +98,8 @@ export const PaymentCard = memo(function PaymentCard({
   getMonthName,
   onClick,
 }: PaymentCardProps) {
+  const [showAttachmentsModal, setShowAttachmentsModal] = useState(false);
+  
   const isPartial = payment.status === "partial";
   const remainingAmount = isPartial ? expectedAmount - payment.paidAmount : expectedAmount;
   const displayAmount = isPaid ? payment.paidAmount : remainingAmount;
@@ -220,7 +208,10 @@ export const PaymentCard = memo(function PaymentCard({
                 variant="outline"
                 size="sm"
                 className="w-full text-purple-600 hover:text-purple-700 hover:bg-purple-50 dark:hover:bg-purple-900/20 h-11 sm:h-9 touch-target"
-                onClick={(e) => openAttachments(payment, e)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowAttachmentsModal(true);
+                }}
               >
                 <Paperclip className="h-4 w-4 mr-2" />
                 Ver Anexos ({Array.isArray(payment.attachments) ? payment.attachments.length : 0})
@@ -261,130 +252,235 @@ export const PaymentCard = memo(function PaymentCard({
 
   // List view
   return (
-    <Card
-      className={`hover:shadow-lg transition-all duration-200 cursor-pointer border-l-4 ${colors.border} active:scale-[0.98]`}
-      onClick={onClick}
-    >
-      <CardContent className="py-3 px-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="flex items-start gap-3 flex-1 min-w-0">
-            <Home className={`h-6 w-6 ${colors.icon} flex-shrink-0 mt-1`} />
-            <div className="flex-1 min-w-0">
-              <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                <span className="text-xs text-muted-foreground">
-                  {getMonthName(payment.referenceMonth)}/{payment.referenceYear}
-                </span>
-                {getStatusBadge(payment.status)}
-                <span className="text-xs font-semibold text-muted-foreground">
-                  Parcela {installment}
-                </span>
-              </div>
-              {property ? (
-                <div className="space-y-0.5">
-                  <span className="text-base sm:text-lg font-bold text-blue-600 dark:text-blue-400 block">
-                    {property.location || "Local não informado"}
+    <>
+      <Card
+        className={`hover:shadow-lg transition-all duration-200 cursor-pointer border-l-4 ${colors.border} active:scale-[0.98]`}
+        onClick={onClick}
+      >
+        <CardContent className="py-3 px-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-start gap-3 flex-1 min-w-0">
+              <Home className={`h-6 w-6 ${colors.icon} flex-shrink-0 mt-1`} />
+              <div className="flex-1 min-w-0">
+                <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                  <span className="text-xs text-muted-foreground">
+                    {getMonthName(payment.referenceMonth)}/{payment.referenceYear}
                   </span>
-                  {property.complement && (
-                    <span className="text-sm text-muted-foreground block">
-                      {property.complement}
+                  {getStatusBadge(payment.status)}
+                  <span className="text-xs font-semibold text-muted-foreground">
+                    Parcela {installment}
+                  </span>
+                </div>
+                {property ? (
+                  <div className="space-y-0.5">
+                    <span className="text-base sm:text-lg font-bold text-blue-600 dark:text-blue-400 block">
+                      {property.location || "Local não informado"}
                     </span>
+                    {property.complement && (
+                      <span className="text-sm text-muted-foreground block">
+                        {property.complement}
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <span className="text-base sm:text-lg font-semibold">Imóvel não encontrado</span>
+                )}
+              </div>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
+              <div className="grid grid-cols-2 sm:flex sm:gap-4">
+                <div className="text-left sm:text-right">
+                  <p className="text-xs text-muted-foreground">Inquilino</p>
+                  <p className="text-sm font-medium truncate">{tenant?.name || "N/A"}</p>
+                  {tenant?.phone && (
+                    <p className="text-xs text-muted-foreground">{tenant.phone}</p>
                   )}
                 </div>
-              ) : (
-                <span className="text-base sm:text-lg font-semibold">Imóvel não encontrado</span>
-              )}
+                
+                <div className="text-right">
+                  <p className="text-xs text-muted-foreground">
+                    {isPaid ? "Pago em" : "Vencimento"}
+                  </p>
+                  <p className="text-sm font-medium">
+                    {isPaid 
+                      ? (payment.paymentDate ? new Date(payment.paymentDate + "T12:00:00").toLocaleDateString("pt-BR") : "N/A")
+                      : new Date(new Date(payment.dueDate).getTime() + 24 * 60 * 60 * 1000).toLocaleDateString("pt-BR")
+                    }
+                  </p>
+                  {isPaid && payment.paymentMethod && (
+                    <p className="text-xs text-muted-foreground capitalize">{payment.paymentMethod}</p>
+                  )}
+                </div>
+              </div>
+              
+              <div className="text-left sm:text-right sm:min-w-[120px]">
+                <p className="text-xs text-muted-foreground mb-1">
+                  {isPaid ? "Valor Pago" : (isPartial ? "Valor Restante" : "Valor Esperado")}
+                </p>
+                <p className={`text-xl sm:text-2xl font-bold ${colors.amount}`}>
+                  {formattedDisplayAmount}
+                </p>
+                {isPartial && payment.paidAmount > 0 && (
+                  <p className="text-xs text-green-600 font-semibold mt-1">
+                    Já pago: {formattedPaidAmount}
+                  </p>
+                )}
+                {!isPaid && !isPartial && payment.paidAmount > 0 && (
+                  <p className="text-xs text-yellow-600 font-semibold mt-1">
+                    Pago: {formattedPaidAmount}
+                  </p>
+                )}
+              </div>
+              
+              <div className="flex flex-col gap-2 sm:flex-shrink-0">
+                {hasAttachments(payment) && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-purple-600 hover:text-purple-700 hover:bg-purple-50 dark:hover:bg-purple-900/20 h-11 sm:h-9 touch-target"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowAttachmentsModal(true);
+                    }}
+                  >
+                    <Paperclip className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Anexos ({Array.isArray(payment.attachments) ? payment.attachments.length : 0})</span>
+                    <span className="sm:hidden">Anexos</span>
+                  </Button>
+                )}
+                
+                {isPaid && onViewReceipt && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 h-11 sm:h-9 touch-target"
+                    onClick={(e) => onViewReceipt(payment.id, e)}
+                  >
+                    <FileText className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Ver Recibo</span>
+                  </Button>
+                )}
+                
+                {isPaid && onCancelPayment && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 h-11 sm:h-9 touch-target"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onCancelPayment(payment.id, e);
+                    }}
+                  >
+                    <X className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Cancelar</span>
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Modal de Anexos */}
+      <Dialog open={showAttachmentsModal} onOpenChange={setShowAttachmentsModal}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Anexos do Pagamento</DialogTitle>
+            <DialogDescription>
+              {property?.location} - {getMonthName(payment.referenceMonth)}/{payment.referenceYear}
+            </DialogDescription>
+          </DialogHeader>
           
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
-            <div className="grid grid-cols-2 sm:flex sm:gap-4">
-              <div className="text-left sm:text-right">
-                <p className="text-xs text-muted-foreground">Inquilino</p>
-                <p className="text-sm font-medium truncate">{tenant?.name || "N/A"}</p>
-                {tenant?.phone && (
-                  <p className="text-xs text-muted-foreground">{tenant.phone}</p>
-                )}
-              </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+            {payment.attachments && Array.isArray(payment.attachments) && payment.attachments.map((attachment: any, index: number) => {
+              const url = typeof attachment === 'string' ? attachment : attachment.url;
+              const name = typeof attachment === 'string' 
+                ? `Anexo ${index + 1}` 
+                : (attachment.name || `Anexo ${index + 1}`);
+              const description = typeof attachment === 'string' ? '' : (attachment.description || '');
               
-              <div className="text-right">
-                <p className="text-xs text-muted-foreground">
-                  {isPaid ? "Pago em" : "Vencimento"}
-                </p>
-                <p className="text-sm font-medium">
-                  {isPaid 
-                    ? (payment.paymentDate ? new Date(payment.paymentDate + "T12:00:00").toLocaleDateString("pt-BR") : "N/A")
-                    : new Date(new Date(payment.dueDate).getTime() + 24 * 60 * 60 * 1000).toLocaleDateString("pt-BR")
-                  }
-                </p>
-                {isPaid && payment.paymentMethod && (
-                  <p className="text-xs text-muted-foreground capitalize">{payment.paymentMethod}</p>
-                )}
-              </div>
-            </div>
-            
-            <div className="text-left sm:text-right sm:min-w-[120px]">
-              <p className="text-xs text-muted-foreground mb-1">
-                {isPaid ? "Valor Pago" : (isPartial ? "Valor Restante" : "Valor Esperado")}
-              </p>
-              <p className={`text-xl sm:text-2xl font-bold ${colors.amount}`}>
-                {formattedDisplayAmount}
-              </p>
-              {isPartial && payment.paidAmount > 0 && (
-                <p className="text-xs text-green-600 font-semibold mt-1">
-                  Já pago: {formattedPaidAmount}
-                </p>
-              )}
-              {!isPaid && !isPartial && payment.paidAmount > 0 && (
-                <p className="text-xs text-yellow-600 font-semibold mt-1">
-                  Pago: {formattedPaidAmount}
-                </p>
-              )}
-            </div>
-            
-            <div className="flex flex-col gap-2 sm:flex-shrink-0">
-              {hasAttachments(payment) && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-purple-600 hover:text-purple-700 hover:bg-purple-50 dark:hover:bg-purple-900/20 h-11 sm:h-9 touch-target"
-                  onClick={(e) => openAttachments(payment, e)}
-                >
-                  <Paperclip className="h-4 w-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Anexos ({Array.isArray(payment.attachments) ? payment.attachments.length : 0})</span>
-                  <span className="sm:hidden">Anexos</span>
-                </Button>
-              )}
+              // Determinar se é imagem ou PDF
+              const isImage = url?.toLowerCase().match(/\.(jpg|jpeg|png|gif|webp)$/);
+              const isPDF = url?.toLowerCase().match(/\.pdf$/);
               
-              {isPaid && onViewReceipt && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 h-11 sm:h-9 touch-target"
-                  onClick={(e) => onViewReceipt(payment.id, e)}
-                >
-                  <FileText className="h-4 w-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Ver Recibo</span>
-                </Button>
-              )}
+              // Normalizar URL
+              let normalizedUrl = url;
+              if (url && !url.startsWith('http')) {
+                normalizedUrl = url.startsWith('/') ? url : `/${url}`;
+              }
               
-              {isPaid && onCancelPayment && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 h-11 sm:h-9 touch-target"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onCancelPayment(payment.id, e);
-                  }}
-                >
-                  <X className="h-4 w-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Cancelar</span>
-                </Button>
-              )}
-            </div>
+              return (
+                <Card key={index} className="overflow-hidden">
+                  <CardContent className="p-4">
+                    {/* Preview */}
+                    <div className="mb-3 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden h-48 flex items-center justify-center">
+                      {isImage ? (
+                        <img 
+                          src={normalizedUrl} 
+                          alt={name}
+                          className="max-w-full max-h-full object-contain cursor-pointer hover:scale-105 transition-transform"
+                          onClick={() => window.open(normalizedUrl, '_blank', 'noopener,noreferrer')}
+                        />
+                      ) : isPDF ? (
+                        <div className="text-center">
+                          <FileText className="h-16 w-16 text-red-500 mx-auto mb-2" />
+                          <p className="text-sm text-muted-foreground">PDF</p>
+                        </div>
+                      ) : (
+                        <div className="text-center">
+                          <Paperclip className="h-16 w-16 text-gray-400 mx-auto mb-2" />
+                          <p className="text-sm text-muted-foreground">Arquivo</p>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Info */}
+                    <div className="space-y-2">
+                      <p className="font-medium text-sm truncate" title={name}>{name}</p>
+                      {description && (
+                        <p className="text-xs text-muted-foreground truncate" title={description}>
+                          {description}
+                        </p>
+                      )}
+                      
+                      {/* Botões */}
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                          onClick={() => window.open(normalizedUrl, '_blank', 'noopener,noreferrer')}
+                        >
+                          <ExternalLink className="h-3 w-3 mr-1" />
+                          Abrir
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1 text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-900/20"
+                          onClick={() => {
+                            const link = document.createElement('a');
+                            link.href = normalizedUrl;
+                            link.download = name;
+                            link.target = '_blank';
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                          }}
+                        >
+                          <Download className="h-3 w-3 mr-1" />
+                          Baixar
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
-        </div>
-      </CardContent>
-    </Card>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 });
