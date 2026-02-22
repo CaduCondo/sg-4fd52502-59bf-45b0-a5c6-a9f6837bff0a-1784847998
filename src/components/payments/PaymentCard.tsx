@@ -213,6 +213,39 @@ export const PaymentCard = memo(function PaymentCard({
               </p>
             </div>
           )}
+
+          {/* Botões de ação */}
+          <div className="pt-3 border-t space-y-2">
+            {isPaid && onViewReceipt && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onViewReceipt(payment.id, e);
+                }}
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                Ver Recibo
+              </Button>
+            )}
+            
+            {isPaid && onCancelPayment && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onCancelPayment(payment.id, e);
+                }}
+              >
+                <X className="h-4 w-4 mr-2" />
+                Cancelar Pagamento
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
     );
@@ -313,6 +346,41 @@ export const PaymentCard = memo(function PaymentCard({
                 )}
               </div>
             </div>
+            
+            {/* Botões de ação no modo List */}
+            {isPaid && (onViewReceipt || onCancelPayment) && (
+              <div className="flex flex-col gap-2 sm:flex-shrink-0 pt-3 border-t sm:border-t-0 sm:pt-0">
+                {onViewReceipt && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onViewReceipt(payment.id, e);
+                    }}
+                  >
+                    <FileText className="h-4 w-4 mr-2" />
+                    <span className="text-xs sm:text-sm">Ver Recibo</span>
+                  </Button>
+                )}
+                
+                {onCancelPayment && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onCancelPayment(payment.id, e);
+                    }}
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    <span className="text-xs sm:text-sm">Cancelar Pagamento</span>
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
