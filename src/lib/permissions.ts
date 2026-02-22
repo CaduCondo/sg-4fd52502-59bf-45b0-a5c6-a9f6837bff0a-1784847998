@@ -168,7 +168,7 @@ export const PERMISSIONS: Record<Role, RolePermissions> = {
     // Operações de Pagamentos
     canCreatePayment: true,
     canEditPayment: true,
-    canDeletePayment: false,
+    canDeletePayment: true, // ← ATUALIZADO: Corretor pode cancelar pagamentos
     canMarkAsPaid: true,
 
     // Configurações Gerais
