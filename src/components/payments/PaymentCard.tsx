@@ -84,8 +84,14 @@ const openAttachments = (payment: Payment, e: React.MouseEvent) => {
   if (!payment.attachments || !Array.isArray(payment.attachments)) return;
   
   payment.attachments.forEach((attachment: any) => {
-    const url = typeof attachment === 'string' ? attachment : attachment.url;
+    let url = typeof attachment === 'string' ? attachment : attachment.url;
     if (url) {
+      // Extrair apenas o nome do arquivo da URL completa
+      // Se a URL contém "/uploads/", pegar apenas a parte depois disso
+      if (url.includes('/uploads/')) {
+        const fileName = url.split('/uploads/')[1];
+        url = `/uploads/${fileName}`;
+      }
       window.open(url, '_blank', 'noopener,noreferrer');
     }
   });
