@@ -316,7 +316,7 @@ export function PaymentBreakdownCard({
                   return (
                     <div key={index} className="flex justify-between items-center">
                       <span className="text-sm font-medium">
-                        {item.description?.replace(/\s*\(proporcional\)/i, '')}
+                        {item.description}
                       </span>
                       <span className="text-lg font-semibold">
                         {formatCurrency(itemValue)}
