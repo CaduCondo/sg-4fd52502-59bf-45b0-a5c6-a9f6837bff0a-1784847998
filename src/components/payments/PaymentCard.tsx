@@ -2,7 +2,7 @@ import { memo, useMemo } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Home, User, Calendar, X, FileText } from "lucide-react";
+import { Home, User, Calendar, X, FileText, Paperclip } from "lucide-react";
 import { formatCurrency } from "@/lib/masks";
 import type { Payment, Property, Tenant } from "@/types";
 
@@ -70,6 +70,25 @@ const getStatusBadge = (status: Payment["status"]) => {
     default:
       return <Badge className="bg-gray-500 text-white text-xs">Pendente</Badge>;
   }
+};
+
+// Helper para verificar se há anexos
+const hasAttachments = (payment: Payment): boolean => {
+  return payment.attachments && Array.isArray(payment.attachments) && payment.attachments.length > 0;
+};
+
+// Helper para abrir anexos
+const openAttachments = (payment: Payment, e: React.MouseEvent) => {
+  e.stopPropagation();
+  
+  if (!payment.attachments || !Array.isArray(payment.attachments)) return;
+  
+  payment.attachments.forEach((attachment: any) => {
+    const url = typeof attachment === 'string' ? attachment : attachment.url;
+    if (url) {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+  });
 };
 
 export const PaymentCard = memo(function PaymentCard({
@@ -190,6 +209,17 @@ export const PaymentCard = memo(function PaymentCard({
 
           {isPaid && onCancelPayment && (
             <div className="pt-3 space-y-2">
+              {hasAttachments(payment) && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full text-purple-600 hover:text-purple-700 hover:bg-purple-50 dark:hover:bg-purple-900/20 h-11 sm:h-9 touch-target"
+                  onClick={(e) => openAttachments(payment, e)}
+                >
+                  <Paperclip className="h-4 w-4 mr-2" />
+                  Ver Anexos ({Array.isArray(payment.attachments) ? payment.attachments.length : 0})
+                </Button>
+              )}
               {onViewReceipt && (
                 <Button
                   variant="outline"
@@ -304,6 +334,18 @@ export const PaymentCard = memo(function PaymentCard({
             
             {isPaid && onCancelPayment && (
               <div className="flex flex-col gap-2 sm:flex-shrink-0">
+                {hasAttachments(payment) && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-purple-600 hover:text-purple-700 hover:bg-purple-50 dark:hover:bg-purple-900/20 h-11 sm:h-9 touch-target"
+                    onClick={(e) => openAttachments(payment, e)}
+                  >
+                    <Paperclip className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Anexos ({Array.isArray(payment.attachments) ? payment.attachments.length : 0})</span>
+                    <span className="sm:hidden">Anexos</span>
+                  </Button>
+                )}
                 {onViewReceipt && (
                   <Button
                     variant="outline"
