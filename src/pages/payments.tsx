@@ -13,6 +13,7 @@ import { Payment } from "@/types";
 import { PeriodSelector } from "@/components/dashboard/PeriodSelector";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { hasPermission } from "@/lib/permissions";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ManagePaymentForm } from "@/components/payments/ManagePaymentForm";
 import {
@@ -37,11 +38,10 @@ export default function PaymentsPage() {
   const { user } = useAuth();
   const mountedRef = useRef(false);
   
-  // Permissões baseadas na role do usuário
+  // Permissões baseadas no sistema centralizado
   const permissions = useMemo(() => ({
-    isAdmin: user?.role === "admin",
-    canCreate: user?.role === "admin" || user?.role === "financial",
-    canDelete: user?.role === "admin",
+    canDeletePayment: hasPermission(user?.role, "canDeletePayment"),
+    canViewReceipt: true, // Todos podem ver recibos de pagamentos pagos
   }), [user?.role]);
 
   // Estados consolidados
@@ -160,7 +160,7 @@ export default function PaymentsPage() {
       e.preventDefault();
     }
 
-    if (!permissions.canDelete) {
+    if (!permissions.canDeletePayment) {
       toast({
         title: "Acesso negado",
         description: "Você não tem permissão para cancelar recebimentos",
@@ -170,7 +170,7 @@ export default function PaymentsPage() {
     }
 
     setUiState(prev => ({ ...prev, paymentToCancel: paymentId }));
-  }, [permissions.canDelete, toast]);
+  }, [permissions.canDeletePayment, toast]);
 
   const handleViewReceipt = useCallback((payment: Payment) => {
     setUiState(prev => ({
@@ -338,11 +338,11 @@ export default function PaymentsPage() {
                       onCardClick={(id) => setUiState(prev => ({ ...prev, selectedPaymentId: id }))}
                       onClick={() => setUiState(prev => ({ ...prev, selectedPaymentId: payment.id }))}
                       getMonthName={getMonthName}
-                      onCancelPayment={permissions.canDelete ? handleCancelPayment : undefined}
-                      onViewReceipt={(id, e) => {
+                      onCancelPayment={permissions.canDeletePayment ? handleCancelPayment : undefined}
+                      onViewReceipt={permissions.canViewReceipt ? (id, e) => {
                         e?.stopPropagation();
                         handleViewReceipt(payment);
-                      }}
+                      } : undefined}
                     />
                   ))}
                 </div>
@@ -376,11 +376,11 @@ export default function PaymentsPage() {
                       onCardClick={(id) => setUiState(prev => ({ ...prev, selectedPaymentId: id }))}
                       onClick={() => setUiState(prev => ({ ...prev, selectedPaymentId: payment.id }))}
                       getMonthName={getMonthName}
-                      onCancelPayment={permissions.canDelete ? handleCancelPayment : undefined}
-                      onViewReceipt={(id, e) => {
+                      onCancelPayment={permissions.canDeletePayment ? handleCancelPayment : undefined}
+                      onViewReceipt={permissions.canViewReceipt ? (id, e) => {
                         e?.stopPropagation();
                         handleViewReceipt(payment);
-                      }}
+                      } : undefined}
                     />
                   ))}
                 </div>
