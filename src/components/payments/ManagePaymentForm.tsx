@@ -843,6 +843,8 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           discountAmount={discountAmount}
           discountAmountInput={discountAmountInput}
           onDiscountAmountChange={setDiscountAmountInput}
+          paymentStatus={payment?.status}
+          paidAmount={payment?.paid_amount}
         />
 
         <Card>
