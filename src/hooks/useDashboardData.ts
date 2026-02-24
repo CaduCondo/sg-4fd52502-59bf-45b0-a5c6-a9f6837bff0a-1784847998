@@ -74,6 +74,7 @@ export function useDashboardData(
 
   useEffect(() => {
     let isMounted = true;
+    const abortController = new AbortController();
 
     const loadData = async () => {
       if (!userId) {
@@ -100,8 +101,12 @@ export function useDashboardData(
                 .from("user_location_permissions")
                 .select("location_id")
                 .eq("user_id", userId)
+                .abortSignal(abortController.signal)
             : Promise.resolve({ data: null }),
-          supabase.from("admin_fee_exempt_locations").select("location_id"),
+          supabase
+            .from("admin_fee_exempt_locations")
+            .select("location_id")
+            .abortSignal(abortController.signal),
         ]);
 
         const allowedLocations = permissionsResult.data?.map((p) => p.location_id) || null;
@@ -144,7 +149,7 @@ export function useDashboardData(
         
         // Query de propriedades (status)
         const fetchProperties = async () => {
-          let query = supabase.from("properties").select("status");
+          let query = supabase.from("properties").select("status").abortSignal(abortController.signal);
           if (isFinancialUser && allowedLocations) {
             query = query.in("location_id", allowedLocations);
           }
@@ -157,7 +162,8 @@ export function useDashboardData(
           const { count } = await supabase
             .from("tenants")
             .select("id", { count: "exact", head: true })
-            .neq("status", "inactive");
+            .neq("status", "inactive")
+            .abortSignal(abortController.signal);
           return count || 0;
         };
 
@@ -166,7 +172,8 @@ export function useDashboardData(
           let query = supabase
             .from("rentals")
             .select("id", { count: "exact", head: true })
-            .eq("is_active", true);
+            .eq("is_active", true)
+            .abortSignal(abortController.signal);
             
           if (isFinancialUser && allowedLocations) {
             query = query.in("property_id", allowedLocations);
@@ -183,7 +190,8 @@ export function useDashboardData(
             .select("id", { count: "exact", head: true })
             .eq("is_active", true)
             .gte("end_date", todayStr)
-            .lte("end_date", twoMonthsStr);
+            .lte("end_date", twoMonthsStr)
+            .abortSignal(abortController.signal);
             
           if (isFinancialUser && allowedLocations) {
             query = query.in("property_id", allowedLocations);
@@ -195,7 +203,6 @@ export function useDashboardData(
 
         // Query de pagamentos atrasados (amount + count)
         const fetchOverduePayments = async () => {
-          // Precisamos fazer o join para filtrar por localização se necessário
           let query = supabase
             .from("payments")
             .select(`
@@ -205,7 +212,8 @@ export function useDashboardData(
             .neq("status", "paid")
             .lt("due_date", todayStr)
             .eq("reference_month", month.toString())
-            .eq("reference_year", year.toString());
+            .eq("reference_year", year.toString())
+            .abortSignal(abortController.signal);
 
           if (isFinancialUser && allowedLocations) {
              query = query.in("rental.property_id", allowedLocations);
@@ -215,7 +223,6 @@ export function useDashboardData(
           
           const payments = data || [];
           const count = payments.length;
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const sum = payments.reduce((acc: number, p: any) => acc + (p.expected_amount || 0), 0);
           
           return { count, sum };
@@ -232,7 +239,8 @@ export function useDashboardData(
             .neq("status", "paid")
             .eq("due_date", todayStr)
             .eq("reference_month", month.toString())
-            .eq("reference_year", year.toString());
+            .eq("reference_year", year.toString())
+            .abortSignal(abortController.signal);
 
           if (isFinancialUser && allowedLocations) {
              query = query.in("rental.property_id", allowedLocations);
@@ -252,7 +260,8 @@ export function useDashboardData(
             `, { count: "exact", head: true })
             .eq("status", "paid")
             .eq("reference_month", month.toString())
-            .eq("reference_year", year.toString());
+            .eq("reference_year", year.toString())
+            .abortSignal(abortController.signal);
 
           if (isFinancialUser && allowedLocations) {
              query = query.in("rental.property_id", allowedLocations);
@@ -271,14 +280,14 @@ export function useDashboardData(
               rental:rentals!inner(property_id)
             `)
             .eq("reference_month", month.toString())
-            .eq("reference_year", year.toString());
+            .eq("reference_year", year.toString())
+            .abortSignal(abortController.signal);
 
           if (isFinancialUser && allowedLocations) {
              query = query.in("rental.property_id", allowedLocations);
           }
 
           const { data } = await query;
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           return (data || []).reduce((acc: number, p: any) => acc + (p.expected_amount || 0), 0);
         };
 
@@ -292,14 +301,14 @@ export function useDashboardData(
             `)
             .eq("status", "paid")
             .eq("reference_month", month.toString())
-            .eq("reference_year", year.toString());
+            .eq("reference_year", year.toString())
+            .abortSignal(abortController.signal);
 
           if (isFinancialUser && allowedLocations) {
              query = query.in("rental.property_id", allowedLocations);
           }
 
           const { data } = await query;
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           return (data || []).reduce((acc: number, p: any) => acc + (p.paid_amount || 0), 0);
         };
 
@@ -309,7 +318,8 @@ export function useDashboardData(
             .from("location_expenses")
             .select("amount")
             .eq("reference_month", month)
-            .eq("reference_year", year);
+            .eq("reference_year", year)
+            .abortSignal(abortController.signal);
 
           if (isFinancialUser && allowedLocations) {
             query = query.in("location_id", allowedLocations);
@@ -376,7 +386,12 @@ export function useDashboardData(
         // Salvar no cache
         setCache(cacheKey, newCounts);
         setCounts(newCounts);
-      } catch (error) {
+      } catch (error: any) {
+        // Ignorar erros de abort (quando componente desmonta)
+        if (error?.name === 'AbortError' || error?.message?.includes('aborted')) {
+          console.log("🚫 Dashboard request aborted (component unmounted)");
+          return;
+        }
         console.error("Error loading dashboard data:", error);
       } finally {
         if (isMounted) {
@@ -389,6 +404,7 @@ export function useDashboardData(
 
     return () => {
       isMounted = false;
+      abortController.abort();
     };
   }, [month, year, userId, userRole, isFinancialUser, cacheKey]);
 
