@@ -93,7 +93,7 @@ export function useDashboardData(
       try {
         setLoading(true);
 
-        // 1. Buscar permissões de localização (se financeiro) e locais isentos em paralelo
+        // 1. Buscar permissões e isenções em paralelo
         const [permissionsResult, exemptLocationsResult] = await Promise.all([
           isFinancialUser
             ? supabase
@@ -140,263 +140,251 @@ export function useDashboardData(
         twoMonthsFromNow.setMonth(twoMonthsFromNow.getMonth() + 2);
         const twoMonthsStr = twoMonthsFromNow.toISOString().split("T")[0];
 
-        // 2. Queries otimizadas em 3 grupos paralelos
-        // Grupo 1: Propriedades e Inquilinos (simples, sem JOINs)
-        const propertiesQueries = Promise.all([
-          // Total de propriedades
-          (async () => {
-            let query = supabase
-              .from("properties")
-              .select("status", { count: "exact" });
+        // 2. Queries Otimizadas e Paralelas
+        
+        // Query de propriedades (status)
+        const fetchProperties = async () => {
+          let query = supabase.from("properties").select("status");
+          if (isFinancialUser && allowedLocations) {
+            query = query.in("location_id", allowedLocations);
+          }
+          const { data } = await query;
+          return data || [];
+        };
 
-            if (isFinancialUser && allowedLocations) {
-              query = query.in("location_id", allowedLocations);
-            }
-
-            return query;
-          })(),
-
-          // Total de inquilinos
-          supabase
+        // Query de inquilinos (count)
+        const fetchTenants = async () => {
+          const { count } = await supabase
             .from("tenants")
             .select("id", { count: "exact", head: true })
-            .neq("status", "inactive"),
-        ]);
+            .neq("status", "inactive");
+          return count || 0;
+        };
 
-        // Grupo 2: Contratos (requer JOIN mas otimizado)
-        const contractsQueries = Promise.all([
-          // Contratos ativos
-          (async () => {
-            let query = supabase
-              .from("rentals")
-              .select("id", { count: "exact", head: true })
-              .eq("is_active", true);
-
-            if (isFinancialUser && allowedLocations) {
-              query = query.in("property_id", allowedLocations);
-            }
-
-            return query;
-          })(),
-
-          // Contratos a vencer (sem JOIN, usando property_id direto)
-          (async () => {
-            let query = supabase
-              .from("rentals")
-              .select("id", { count: "exact", head: true })
-              .eq("is_active", true)
-              .gte("end_date", todayStr)
-              .lte("end_date", twoMonthsStr);
-
-            if (isFinancialUser && allowedLocations) {
-              query = query.in("property_id", allowedLocations);
-            }
-
-            return query;
-          })(),
-        ]);
-
-        // Grupo 3: Pagamentos (agregação SQL ao invés de processar em JS)
-        const paymentsQueries = Promise.all([
-          // Pagamentos atrasados - COUNT e SUM em uma query
-          (async () => {
-            const query = supabase.rpc("get_overdue_payments_summary", {
-              p_month: month,
-              p_year: year,
-              p_today: todayStr,
-            });
-
-            // Se financeiro, filtrar depois (RPC não suporta location_id direto)
-            const result = await query;
+        // Query de contratos ativos (count)
+        const fetchActiveContracts = async () => {
+          let query = supabase
+            .from("rentals")
+            .select("id", { count: "exact", head: true })
+            .eq("is_active", true);
             
-            if (isFinancialUser && allowedLocations) {
-              // Buscar apenas pagamentos de propriedades permitidas
-              const { data: filteredData } = await supabase
-                .from("payments")
-                .select("expected_amount, rental:rentals!inner(property_id)")
-                .neq("status", "paid")
-                .lt("due_date", todayStr)
-                .eq("reference_month", month.toString())
-                .eq("reference_year", year.toString())
-                .in("rental.property_id", allowedLocations);
+          if (isFinancialUser && allowedLocations) {
+            query = query.in("property_id", allowedLocations);
+          }
+          
+          const { count } = await query;
+          return count || 0;
+        };
 
-              const count = filteredData?.length || 0;
-              const sum = filteredData?.reduce((acc, p) => acc + (p.expected_amount || 0), 0) || 0;
-              
-              return { data: { count, sum }, error: null };
-            }
+        // Query de contratos expirando (count)
+        const fetchExpiringContracts = async () => {
+          let query = supabase
+            .from("rentals")
+            .select("id", { count: "exact", head: true })
+            .eq("is_active", true)
+            .gte("end_date", todayStr)
+            .lte("end_date", twoMonthsStr);
+            
+          if (isFinancialUser && allowedLocations) {
+            query = query.in("property_id", allowedLocations);
+          }
+          
+          const { count } = await query;
+          return count || 0;
+        };
 
-            return result;
-          })(),
+        // Helper para aplicar filtro de localização em pagamentos
+        const applyPaymentLocationFilter = (query: any) => {
+          if (isFinancialUser && allowedLocations) {
+            // Infelizmente Supabase não suporta join em update/delete ou deep filters complexos facilmente
+            // A melhor estratégia aqui é filtrar via rental.property_id
+            // Mas precisamos fazer o join inner
+            return query.in("rental.property_id", allowedLocations);
+          }
+          return query;
+        };
 
-          // Pagamentos que vencem hoje
-          (async () => {
-            let query = supabase
-              .from("payments")
-              .select("id", { count: "exact", head: true })
-              .neq("status", "paid")
-              .eq("due_date", todayStr)
-              .eq("reference_month", month.toString())
-              .eq("reference_year", year.toString());
+        // Query de pagamentos atrasados (amount + count)
+        const fetchOverduePayments = async () => {
+          // Precisamos fazer o join para filtrar por localização se necessário
+          let query = supabase
+            .from("payments")
+            .select(`
+              expected_amount,
+              rental:rentals!inner(property_id)
+            `)
+            .neq("status", "paid")
+            .lt("due_date", todayStr)
+            .eq("reference_month", month.toString())
+            .eq("reference_year", year.toString());
 
-            if (isFinancialUser && allowedLocations) {
-              // Buscar rental_id das propriedades permitidas
-              const { data: rentals } = await supabase
-                .from("rentals")
-                .select("id")
-                .in("property_id", allowedLocations);
+          if (isFinancialUser && allowedLocations) {
+             // @ts-ignore - Supabase types complex
+             query = query.in("rental.property_id", allowedLocations);
+          }
 
-              const rentalIds = rentals?.map((r) => r.id) || [];
-              if (rentalIds.length === 0) return { count: 0 };
-              query = query.in("rental_id", rentalIds);
-            }
+          const { data } = await query;
+          
+          const payments = data || [];
+          const count = payments.length;
+          // @ts-ignore
+          const sum = payments.reduce((acc, p) => acc + (p.expected_amount || 0), 0);
+          
+          return { count, sum };
+        };
 
-            return query;
-          })(),
+        // Query de pagamentos hoje (count)
+        const fetchDueToday = async () => {
+          let query = supabase
+            .from("payments")
+            .select(`
+              id,
+              rental:rentals!inner(property_id)
+            `, { count: "exact", head: true })
+            .neq("status", "paid")
+            .eq("due_date", todayStr)
+            .eq("reference_month", month.toString())
+            .eq("reference_year", year.toString());
 
-          // Pagamentos concluídos
-          (async () => {
-            let query = supabase
-              .from("payments")
-              .select("id", { count: "exact", head: true })
-              .eq("status", "paid")
-              .eq("reference_month", month.toString())
-              .eq("reference_year", year.toString());
+          if (isFinancialUser && allowedLocations) {
+             // @ts-ignore
+             query = query.in("rental.property_id", allowedLocations);
+          }
 
-            if (isFinancialUser && allowedLocations) {
-              const { data: rentals } = await supabase
-                .from("rentals")
-                .select("id")
-                .in("property_id", allowedLocations);
+          const { count } = await query;
+          return count || 0;
+        };
 
-              const rentalIds = rentals?.map((r) => r.id) || [];
-              if (rentalIds.length === 0) return { count: 0 };
-              query = query.in("rental_id", rentalIds);
-            }
+        // Query de pagamentos pagos (count)
+        const fetchCompleted = async () => {
+          let query = supabase
+            .from("payments")
+            .select(`
+              id,
+              rental:rentals!inner(property_id)
+            `, { count: "exact", head: true })
+            .eq("status", "paid")
+            .eq("reference_month", month.toString())
+            .eq("reference_year", year.toString());
 
-            return query;
-          })(),
+          if (isFinancialUser && allowedLocations) {
+             // @ts-ignore
+             query = query.in("rental.property_id", allowedLocations);
+          }
 
-          // Valor esperado total - SUM via agregação
-          (async () => {
-            const query = supabase.rpc("get_expected_amount_summary", {
-              p_month: month,
-              p_year: year,
-            });
+          const { count } = await query;
+          return count || 0;
+        };
 
-            const result = await query;
+        // Query de receita esperada (sum)
+        const fetchExpectedAmount = async () => {
+          let query = supabase
+            .from("payments")
+            .select(`
+              expected_amount,
+              rental:rentals!inner(property_id)
+            `)
+            .eq("reference_month", month.toString())
+            .eq("reference_year", year.toString());
 
-            if (isFinancialUser && allowedLocations) {
-              const { data: filteredData } = await supabase
-                .from("payments")
-                .select("expected_amount, rental:rentals!inner(property_id)")
-                .eq("reference_month", month.toString())
-                .eq("reference_year", year.toString())
-                .in("rental.property_id", allowedLocations);
+          if (isFinancialUser && allowedLocations) {
+             // @ts-ignore
+             query = query.in("rental.property_id", allowedLocations);
+          }
 
-              const sum = filteredData?.reduce((acc, p) => acc + (p.expected_amount || 0), 0) || 0;
-              return { data: sum, error: null };
-            }
+          const { data } = await query;
+          // @ts-ignore
+          return (data || []).reduce((acc, p) => acc + (p.expected_amount || 0), 0);
+        };
 
-            return result;
-          })(),
+        // Query de receita bruta (sum)
+        const fetchGrossRevenue = async () => {
+          let query = supabase
+            .from("payments")
+            .select(`
+              paid_amount,
+              rental:rentals!inner(property_id)
+            `)
+            .eq("status", "paid")
+            .eq("reference_month", month.toString())
+            .eq("reference_year", year.toString());
 
-          // Receita bruta - SUM via agregação
-          (async () => {
-            const query = supabase.rpc("get_gross_revenue_summary", {
-              p_month: month,
-              p_year: year,
-            });
+          if (isFinancialUser && allowedLocations) {
+             // @ts-ignore
+             query = query.in("rental.property_id", allowedLocations);
+          }
 
-            const result = await query;
+          const { data } = await query;
+          // @ts-ignore
+          return (data || []).reduce((acc, p) => acc + (p.paid_amount || 0), 0);
+        };
 
-            if (isFinancialUser && allowedLocations) {
-              const { data: filteredData } = await supabase
-                .from("payments")
-                .select("paid_amount, rental:rentals!inner(property_id)")
-                .eq("status", "paid")
-                .eq("reference_month", month.toString())
-                .eq("reference_year", year.toString())
-                .in("rental.property_id", allowedLocations);
+        // Query de despesas (sum)
+        const fetchExpenses = async () => {
+          let query = supabase
+            .from("location_expenses")
+            .select("amount")
+            .eq("reference_month", month)
+            .eq("reference_year", year);
 
-              const sum = filteredData?.reduce((acc, p) => acc + (p.paid_amount || 0), 0) || 0;
-              return { data: sum, error: null };
-            }
+          if (isFinancialUser && allowedLocations) {
+            query = query.in("location_id", allowedLocations);
+          }
 
-            return result;
-          })(),
+          const { data } = await query;
+          return (data || []).reduce((acc, e) => acc + (e.amount || 0), 0);
+        };
 
-          // Despesas de locação - SUM via agregação
-          (async () => {
-            const query = supabase.rpc("get_location_expenses_summary", {
-              p_month: month,
-              p_year: year,
-            });
-
-            const result = await query;
-
-            if (isFinancialUser && allowedLocations) {
-              const { data: filteredData } = await supabase
-                .from("location_expenses")
-                .select("amount")
-                .eq("reference_month", month)
-                .eq("reference_year", year)
-                .in("location_id", allowedLocations);
-
-              const sum = filteredData?.reduce((acc, e) => acc + (e.amount || 0), 0) || 0;
-              return { data: sum, error: null };
-            }
-
-            return result;
-          })(),
-        ]);
-
-        // Executar os 3 grupos em paralelo
-        const [propertiesResults, contractsResults, paymentsResults] = await Promise.all([
-          propertiesQueries,
-          contractsQueries,
-          paymentsQueries,
+        // Executar todas em paralelo
+        const [
+          properties,
+          totalTenants,
+          activeContracts,
+          expiringContracts,
+          overdueData,
+          dueToday,
+          completed,
+          expectedAmount,
+          grossRevenue,
+          locationExpenses
+        ] = await Promise.all([
+          fetchProperties(),
+          fetchTenants(),
+          fetchActiveContracts(),
+          fetchExpiringContracts(),
+          fetchOverduePayments(),
+          fetchDueToday(),
+          fetchCompleted(),
+          fetchExpectedAmount(),
+          fetchGrossRevenue(),
+          fetchExpenses()
         ]);
 
         if (!isMounted) return;
 
-        // Processar resultados de propriedades
-        const [propertiesData, tenantsData] = propertiesResults;
-        
-        const properties = propertiesData.data || [];
         const totalProperties = properties.length;
-        const availableProperties = properties.filter((p: any) => p.status === "available").length;
-        const unavailableProperties = properties.filter((p: any) => p.status === "unavailable").length;
-        const occupiedProperties = properties.filter((p: any) => p.status === "occupied").length;
-
-        // Processar resultados de contratos
-        const [activeContractsData, expiringContractsData] = contractsResults;
-
-        // Processar resultados de pagamentos
-        const [
-          overdueData,
-          dueTodayData,
-          completedData,
-          expectedAmountData,
-          grossRevenueData,
-          expensesData,
-        ] = paymentsResults;
+        // @ts-ignore
+        const availableProperties = properties.filter((p) => p.status === "available").length;
+        // @ts-ignore
+        const unavailableProperties = properties.filter((p) => p.status === "unavailable").length;
+        // @ts-ignore
+        const occupiedProperties = properties.filter((p) => p.status === "occupied").length;
 
         const newCounts: DashboardCounts = {
           totalProperties,
           availableProperties,
           unavailableProperties,
           occupiedProperties,
-          totalTenants: tenantsData.count || 0,
-          activeContracts: activeContractsData.count || 0,
-          expiringContracts: expiringContractsData.count || 0,
-          overduePayments: overdueData.data?.count || 0,
-          overdueAmount: overdueData.data?.sum || 0,
-          dueTodayPayments: dueTodayData.count || 0,
-          completedPayments: completedData.count || 0,
-          expectedAmount: expectedAmountData.data || 0,
-          grossRevenue: grossRevenueData.data || 0,
-          locationExpenses: expensesData.data || 0,
+          totalTenants,
+          activeContracts,
+          expiringContracts,
+          overduePayments: overdueData.count,
+          overdueAmount: overdueData.sum,
+          dueTodayPayments: dueToday,
+          completedPayments: completed,
+          expectedAmount,
+          grossRevenue,
+          locationExpenses,
         };
 
         console.log("📊 Dashboard counts loaded:", newCounts);
@@ -406,12 +394,6 @@ export function useDashboardData(
         setCounts(newCounts);
       } catch (error) {
         console.error("Error loading dashboard data:", error);
-        
-        // Em caso de erro (ex: RPCs não existem), usar fallback
-        if (error && typeof error === 'object' && 'code' in error && error.code === '42883') {
-          console.log("⚠️ RPC functions not found, using fallback queries");
-          // Poderia implementar fallback aqui se necessário
-        }
       } finally {
         if (isMounted) {
           setLoading(false);
