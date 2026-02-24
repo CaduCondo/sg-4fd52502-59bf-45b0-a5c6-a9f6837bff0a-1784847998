@@ -164,6 +164,8 @@ export function usePayments() {
             // Propriedades adicionais para satisfazer a interface
             garageValue: rental.garage_value || 0,
             hasGarage: false, // Valor padrão
+            monthlyRent: rental.value, // Mesmo valor do aluguel
+            hasPartnerBroker: false,
           });
         }
 
@@ -189,10 +191,7 @@ export function usePayments() {
             description: "",
             hasGarage: false,
             hasFurniture: false,
-            hasCourt: false,
-            hasGym: false,
-            hasPool: false,
-            hasElevator: false,
+            acceptsPets: false,
             images: [],
           });
         }
