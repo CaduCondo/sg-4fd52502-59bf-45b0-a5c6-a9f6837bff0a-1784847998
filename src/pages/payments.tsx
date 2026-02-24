@@ -32,19 +32,36 @@ const MONTH_NAMES = [
   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
 ];
 
+// Debounce hook para otimizar a busca
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
 export default function PaymentsPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { user } = useAuth();
   const mountedRef = useRef(false);
   
-  // Permissões baseadas no sistema centralizado
+  // Permissões memoizadas
   const permissions = useMemo(() => ({
     canDeletePayment: hasPermission(user?.role, "canDeletePayment"),
-    canViewReceipt: true, // Todos podem ver recibos de pagamentos pagos
+    canViewReceipt: true,
   }), [user?.role]);
 
-  // Estados consolidados
+  // Estados consolidados (reduz re-renders)
   const [uiState, setUiState] = useState({
     viewMode: "grid" as "grid" | "list",
     searchQuery: "",
@@ -59,6 +76,9 @@ export default function PaymentsPage() {
     year: new Date().getFullYear(),
   });
 
+  // Debounce da busca para evitar re-renders excessivos
+  const debouncedSearchQuery = useDebounce(uiState.searchQuery, 300);
+
   const { 
     payments, 
     rentals, 
@@ -69,18 +89,34 @@ export default function PaymentsPage() {
     loadPayments
   } = usePayments();
 
-  // Helpers memoizados
+  // Criar Maps uma única vez para lookup O(1) (muito mais rápido que find())
+  const rentalsMap = useMemo(() => 
+    new Map(rentals.map(r => [r.id, r])),
+    [rentals]
+  );
+
+  const propertiesMap = useMemo(() => 
+    new Map(properties.map(p => [p.id, p])),
+    [properties]
+  );
+
+  const tenantsMap = useMemo(() => 
+    new Map(tenants.map(t => [t.id, t])),
+    [tenants]
+  );
+
+  // Helpers memoizados para acesso rápido
   const getPropertyForPayment = useCallback((payment: Payment) => {
-    const rental = rentals.find(r => r.id === payment.rentalId);
+    const rental = rentalsMap.get(payment.rentalId);
     if (!rental) return null;
-    return properties.find(p => p.id === rental.propertyId) || null;
-  }, [rentals, properties]);
+    return propertiesMap.get(rental.propertyId) || null;
+  }, [rentalsMap, propertiesMap]);
 
   const getTenantForPayment = useCallback((payment: Payment) => {
-    const rental = rentals.find(r => r.id === payment.rentalId);
+    const rental = rentalsMap.get(payment.rentalId);
     if (!rental) return null;
-    return tenants.find(t => t.id === rental.tenantId) || null;
-  }, [rentals, tenants]);
+    return tenantsMap.get(rental.tenantId) || null;
+  }, [rentalsMap, tenantsMap]);
 
   const getPaymentInstallment = useCallback((payment: Payment) => {
     if (!payment.installment || !payment.totalInstallments) return "Única";
@@ -105,12 +141,11 @@ export default function PaymentsPage() {
     loadPayments(filters.month.toString(), filters.year.toString());
   }, [filters.month, filters.year, loadPayments]);
 
-  // Effect simplificado
   useEffect(() => {
     loadPaymentsEffect();
   }, [loadPaymentsEffect]);
 
-  // Handlers otimizados
+  // Handlers otimizados e memoizados
   const handleMonthChange = useCallback((value: string | number) => {
     setFilters(prev => ({ ...prev, month: Number(value) }));
   }, []);
@@ -210,34 +245,45 @@ export default function PaymentsPage() {
     }, 500);
   }, [uiState.selectedPaymentId, loadPayments, filters.month, filters.year, payments, toast]);
 
-  // Pagamentos filtrados por busca e separados por status
+  // Função de filtro otimizada com memoização
+  const filterPaymentBySearch = useCallback((p: Payment) => {
+    if (!debouncedSearchQuery) return true;
+    
+    const query = debouncedSearchQuery.toLowerCase();
+    const rental = rentalsMap.get(p.rentalId);
+    const property = rental ? propertiesMap.get(rental.propertyId) : null;
+    const tenant = rental ? tenantsMap.get(rental.tenantId) : null;
+
+    const propertyAddress = property ? 
+      `${property.address} ${property.number} ${property.complement || ''}`.toLowerCase() : "";
+    const tenantName = tenant ? tenant.name.toLowerCase() : "";
+
+    return propertyAddress.includes(query) || tenantName.includes(query);
+  }, [debouncedSearchQuery, rentalsMap, propertiesMap, tenantsMap]);
+
+  // Pagamentos filtrados - OTIMIZADO com memoização pesada
   const { pendingPayments, paidPayments } = useMemo(() => {
-    const filterBySearch = (p: Payment) => {
-      if (!uiState.searchQuery) return true;
-      
-      const query = uiState.searchQuery.toLowerCase();
-      const rental = rentals.find(r => r.id === p.rentalId);
-      const property = rental ? properties.find(prop => prop.id === rental.propertyId) : null;
-      const tenant = rental ? tenants.find(t => t.id === rental.tenantId) : null;
-
-      const propertyAddress = property ? 
-        `${property.address} ${property.number} ${property.complement || ''}`.toLowerCase() : "";
-      const tenantName = tenant ? tenant.name.toLowerCase() : "";
-
-      return propertyAddress.includes(query) || tenantName.includes(query);
-    };
-
     const pending = payments.filter((p) => {
       const isStatusMatch = p.status === "pending" || p.status === "partial" || p.status === "overdue";
-      return isStatusMatch && filterBySearch(p);
+      return isStatusMatch && filterPaymentBySearch(p);
     });
 
     const paid = payments.filter((p) => {
-      return p.status === "paid" && filterBySearch(p);
+      return p.status === "paid" && filterPaymentBySearch(p);
     });
 
     return { pendingPayments: pending, paidPayments: paid };
-  }, [payments, uiState.searchQuery, rentals, properties, tenants]);
+  }, [payments, filterPaymentBySearch]);
+
+  // Handler otimizado para mudança de view mode
+  const handleViewModeChange = useCallback((mode: "grid" | "list") => {
+    setUiState(prev => ({ ...prev, viewMode: mode }));
+  }, []);
+
+  // Handler otimizado para mudança de busca
+  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setUiState(prev => ({ ...prev, searchQuery: e.target.value }));
+  }, []);
 
   return (
     <Layout>
@@ -254,7 +300,7 @@ export default function PaymentsPage() {
             <Button
               variant={uiState.viewMode === "grid" ? "default" : "ghost"}
               size="sm"
-              onClick={() => setUiState(prev => ({ ...prev, viewMode: "grid" }))}
+              onClick={() => handleViewModeChange("grid")}
               className="h-8 px-3"
             >
               <Grid3x3 className="h-4 w-4 mr-1.5" />
@@ -263,7 +309,7 @@ export default function PaymentsPage() {
             <Button
               variant={uiState.viewMode === "list" ? "default" : "ghost"}
               size="sm"
-              onClick={() => setUiState(prev => ({ ...prev, viewMode: "list" }))}
+              onClick={() => handleViewModeChange("list")}
               className="h-8 px-3"
             >
               <List className="h-4 w-4 mr-1.5" />
@@ -288,7 +334,7 @@ export default function PaymentsPage() {
                 placeholder="Buscar por inquilino, endereço..."
                 className="pl-8 w-full"
                 value={uiState.searchQuery}
-                onChange={(e) => setUiState(prev => ({ ...prev, searchQuery: e.target.value }))}
+                onChange={handleSearchChange}
               />
             </div>
           </div>
@@ -424,7 +470,7 @@ export default function PaymentsPage() {
       {uiState.showReceiptDialog && uiState.selectedPayment && (
         <PaymentReceipt
           payment={uiState.selectedPayment}
-          rental={rentals.find(r => r.id === uiState.selectedPayment!.rentalId) as any}
+          rental={rentalsMap.get(uiState.selectedPayment.rentalId) as any}
           property={getPropertyForPayment(uiState.selectedPayment) as any}
           tenant={getTenantForPayment(uiState.selectedPayment) as any}
           onClose={() => {
