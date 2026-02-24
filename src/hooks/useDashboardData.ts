@@ -160,8 +160,8 @@ export function useDashboardData(
             let query = supabase
               .from("mv_monthly_payments")
               .select("*")
-              .eq("reference_month", month)
-              .eq("reference_year", year)
+              .eq("reference_month", month.toString())
+              .eq("reference_year", year.toString())
               .abortSignal(abortController.signal);
             
             if (isFinancialUser && allowedLocations && allowedLocations.length > 0) {
@@ -176,8 +176,8 @@ export function useDashboardData(
             let query = supabase
               .from("mv_monthly_expenses")
               .select("total_expenses")
-              .eq("reference_month", month)
-              .eq("reference_year", year)
+              .eq("reference_month", month.toString())
+              .eq("reference_year", year.toString())
               .abortSignal(abortController.signal);
             
             if (isFinancialUser && allowedLocations && allowedLocations.length > 0) {
