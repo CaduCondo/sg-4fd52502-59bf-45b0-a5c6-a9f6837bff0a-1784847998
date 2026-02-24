@@ -24,9 +24,9 @@ interface DashboardData {
   exemptLocationIds: string[];
 }
 
-// Cache simples em memória
+// Cache em memória com TTL maior (views materializadas são atualizadas por triggers)
 const cache = new Map<string, { data: any; timestamp: number }>();
-const CACHE_TTL = 30000; // 30 segundos
+const CACHE_TTL = 10 * 60 * 1000; // 10 minutos (views são atualizadas automaticamente)
 
 function getCached<T>(key: string): T | null {
   const cached = cache.get(key);
@@ -74,6 +74,7 @@ export function useDashboardData(
 
   useEffect(() => {
     let isMounted = true;
+    const abortController = new AbortController();
 
     const loadData = async () => {
       if (!userId) {
@@ -99,7 +100,8 @@ export function useDashboardData(
           const { data: permData } = await supabase
             .from("user_location_permissions")
             .select("location_id")
-            .eq("user_id", userId);
+            .eq("user_id", userId)
+            .abortSignal(abortController.signal);
           
           allowedLocations = permData?.map(p => p.location_id) || [];
           
@@ -128,263 +130,141 @@ export function useDashboardData(
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const todayStr = today.toISOString().split('T')[0];
-        
-        const twoMonthsFromNow = new Date(today);
-        twoMonthsFromNow.setMonth(twoMonthsFromNow.getMonth() + 2);
-        const twoMonthsStr = twoMonthsFromNow.toISOString().split('T')[0];
 
-        // 2. Executar queries OTIMIZADAS em paralelo (apenas contagens)
+        // 2. USAR VIEWS MATERIALIZADAS - Queries ULTRA otimizadas
         const [
           exemptLocationsResult,
-          totalPropertiesResult,
-          availablePropertiesResult,
-          unavailablePropertiesResult,
-          occupiedPropertiesResult,
-          tenantsCountResult,
-          activeContractsResult,
-          expiringContractsResult,
-          overduePaymentsResult,
-          dueTodayPaymentsResult,
-          completedPaymentsResult,
-          expectedAmountResult,
-          grossRevenueResult,
-          expensesResult
+          dashboardStatsResult,
+          monthlyPaymentsResult,
+          monthlyExpensesResult,
         ] = await Promise.all([
-          // Locais isentos
+          // Locais isentos (query simples)
           supabase
             .from("admin_fee_exempt_locations")
-            .select("location_id"),
+            .select("location_id")
+            .abortSignal(abortController.signal),
 
-          // COUNT: Total de propriedades
+          // Estatísticas gerais (VIEW MATERIALIZADA - pré-calculada!)
           (async () => {
-            let query = supabase
-              .from("properties")
-              .select("id", { count: "exact", head: true });
-            
-            if (isFinancialUser && allowedLocations && allowedLocations.length > 0) {
-              query = query.in("location_id", allowedLocations);
-            }
+            const query = supabase
+              .from("mv_dashboard_stats")
+              .select("*")
+              .abortSignal(abortController.signal)
+              .single();
             
             return query;
           })(),
 
-          // COUNT: Propriedades disponíveis
+          // Pagamentos do mês (VIEW MATERIALIZADA - pré-calculada!)
           (async () => {
             let query = supabase
-              .from("properties")
-              .select("id", { count: "exact", head: true })
-              .eq("status", "available");
-            
-            if (isFinancialUser && allowedLocations && allowedLocations.length > 0) {
-              query = query.in("location_id", allowedLocations);
-            }
-            
-            return query;
-          })(),
-
-          // COUNT: Propriedades indisponíveis
-          (async () => {
-            let query = supabase
-              .from("properties")
-              .select("id", { count: "exact", head: true })
-              .eq("status", "unavailable");
-            
-            if (isFinancialUser && allowedLocations && allowedLocations.length > 0) {
-              query = query.in("location_id", allowedLocations);
-            }
-            
-            return query;
-          })(),
-
-          // COUNT: Propriedades ocupadas
-          (async () => {
-            let query = supabase
-              .from("properties")
-              .select("id", { count: "exact", head: true })
-              .eq("status", "occupied");
-            
-            if (isFinancialUser && allowedLocations && allowedLocations.length > 0) {
-              query = query.in("location_id", allowedLocations);
-            }
-            
-            return query;
-          })(),
-
-          // COUNT: Inquilinos ativos
-          supabase
-            .from("tenants")
-            .select("id", { count: "exact", head: true })
-            .neq("status", "inactive"),
-
-          // COUNT: Contratos ativos
-          (async () => {
-            let query = supabase
-              .from("rentals")
-              .select("id, properties!inner(location_id)", { count: "exact", head: true })
-              .eq("is_active", true);
-            
-            if (isFinancialUser && allowedLocations && allowedLocations.length > 0) {
-              query = query.in("properties.location_id", allowedLocations);
-            }
-            
-            return query;
-          })(),
-
-          // COUNT: Contratos a vencer
-          (async () => {
-            let query = supabase
-              .from("rentals")
-              .select("id, properties!inner(location_id)", { count: "exact", head: true })
-              .eq("is_active", true)
-              .gte("end_date", todayStr)
-              .lte("end_date", twoMonthsStr);
-            
-            if (isFinancialUser && allowedLocations && allowedLocations.length > 0) {
-              query = query.in("properties.location_id", allowedLocations);
-            }
-            
-            return query;
-          })(),
-
-          // Pagamentos atrasados (precisa do valor)
-          (async () => {
-            let query = supabase
-              .from("payments")
-              .select("expected_amount, rental:rentals!inner(properties!inner(location_id))")
-              .neq("status", "paid")
-              .lt("due_date", todayStr)
-              .eq("reference_month", month.toString())
-              .eq("reference_year", year.toString());
-            
-            if (isFinancialUser && allowedLocations && allowedLocations.length > 0) {
-              query = query.in("rental.properties.location_id", allowedLocations);
-            }
-            
-            return query;
-          })(),
-
-          // COUNT: Pagamentos que vencem hoje
-          (async () => {
-            let query = supabase
-              .from("payments")
-              .select("id, rental:rentals!inner(properties!inner(location_id))", { count: "exact", head: true })
-              .neq("status", "paid")
-              .eq("due_date", todayStr)
-              .eq("reference_month", month.toString())
-              .eq("reference_year", year.toString());
-            
-            if (isFinancialUser && allowedLocations && allowedLocations.length > 0) {
-              query = query.in("rental.properties.location_id", allowedLocations);
-            }
-            
-            return query;
-          })(),
-
-          // COUNT: Pagamentos concluídos
-          (async () => {
-            let query = supabase
-              .from("payments")
-              .select("id, rental:rentals!inner(properties!inner(location_id))", { count: "exact", head: true })
-              .eq("status", "paid")
-              .eq("reference_month", month.toString())
-              .eq("reference_year", year.toString());
-            
-            if (isFinancialUser && allowedLocations && allowedLocations.length > 0) {
-              query = query.in("rental.properties.location_id", allowedLocations);
-            }
-            
-            return query;
-          })(),
-
-          // Valor esperado total
-          (async () => {
-            let query = supabase
-              .from("payments")
-              .select("expected_amount, rental:rentals!inner(properties!inner(location_id))")
-              .eq("reference_month", month.toString())
-              .eq("reference_year", year.toString());
-            
-            if (isFinancialUser && allowedLocations && allowedLocations.length > 0) {
-              query = query.in("rental.properties.location_id", allowedLocations);
-            }
-            
-            return query;
-          })(),
-
-          // Receita bruta (pagamentos realizados)
-          (async () => {
-            let query = supabase
-              .from("payments")
-              .select("paid_amount, rental:rentals!inner(properties!inner(location_id))")
-              .eq("status", "paid")
-              .eq("reference_month", month.toString())
-              .eq("reference_year", year.toString());
-            
-            if (isFinancialUser && allowedLocations && allowedLocations.length > 0) {
-              query = query.in("rental.properties.location_id", allowedLocations);
-            }
-            
-            return query;
-          })(),
-
-          // Despesas de locação
-          (async () => {
-            let query = supabase
-              .from("location_expenses")
-              .select("amount")
+              .from("mv_monthly_payments")
+              .select("*")
               .eq("reference_month", month)
-              .eq("reference_year", year);
+              .eq("reference_year", year)
+              .abortSignal(abortController.signal);
             
             if (isFinancialUser && allowedLocations && allowedLocations.length > 0) {
               query = query.in("location_id", allowedLocations);
             }
             
             return query;
-          })()
+          })(),
+
+          // Despesas do mês (VIEW MATERIALIZADA - pré-calculada!)
+          (async () => {
+            let query = supabase
+              .from("mv_monthly_expenses")
+              .select("total_expenses")
+              .eq("reference_month", month)
+              .eq("reference_year", year)
+              .abortSignal(abortController.signal);
+            
+            if (isFinancialUser && allowedLocations && allowedLocations.length > 0) {
+              query = query.in("location_id", allowedLocations);
+            }
+            
+            return query;
+          })(),
         ]);
 
         if (!isMounted) return;
 
-        // Processar resultados
+        // 3. Processar resultados das VIEWS MATERIALIZADAS
         const exemptIds = exemptLocationsResult.data?.map(e => e.location_id) || [];
         setExemptLocationIds(exemptIds);
 
-        const overdueData = overduePaymentsResult.data || [];
-        const overdueAmount = overdueData.reduce((sum, p) => sum + (p.expected_amount || 0), 0);
+        // Stats gerais (dados pré-calculados!)
+        const stats = dashboardStatsResult.data || {
+          total_properties: 0,
+          available_properties: 0,
+          unavailable_properties: 0,
+          occupied_properties: 0,
+          total_tenants: 0,
+          active_contracts: 0,
+          expiring_contracts: 0,
+        };
 
-        const expectedData = expectedAmountResult.data || [];
-        const expectedAmount = expectedData.reduce((sum, p) => sum + (p.expected_amount || 0), 0);
+        // Pagamentos do mês (dados pré-calculados!)
+        const paymentsData = monthlyPaymentsResult.data || [];
+        
+        let overduePayments = 0;
+        let overdueAmount = 0;
+        let dueTodayPayments = 0;
+        let completedPayments = 0;
+        let expectedAmount = 0;
+        let grossRevenue = 0;
 
-        const grossData = grossRevenueResult.data || [];
-        const grossRevenue = grossData.reduce((sum, p) => sum + (p.paid_amount || 0), 0);
+        paymentsData.forEach((payment: any) => {
+          expectedAmount += payment.expected_amount || 0;
+          
+          if (payment.status === 'paid') {
+            completedPayments++;
+            grossRevenue += payment.paid_amount || 0;
+          } else if (payment.due_date < todayStr) {
+            overduePayments++;
+            overdueAmount += payment.expected_amount || 0;
+          } else if (payment.due_date === todayStr) {
+            dueTodayPayments++;
+          }
+        });
 
-        const expensesData = expensesResult.data || [];
-        const locationExpenses = expensesData.reduce((sum, e) => sum + (e.amount || 0), 0);
+        // Despesas do mês (dados pré-calculados!)
+        const expensesData = monthlyExpensesResult.data || [];
+        const locationExpenses = expensesData.reduce(
+          (sum: number, e: any) => sum + (e.total_expenses || 0), 
+          0
+        );
 
         const newCounts: DashboardCounts = {
-          totalProperties: totalPropertiesResult.count || 0,
-          availableProperties: availablePropertiesResult.count || 0,
-          unavailableProperties: unavailablePropertiesResult.count || 0,
-          occupiedProperties: occupiedPropertiesResult.count || 0,
-          totalTenants: tenantsCountResult.count || 0,
-          activeContracts: activeContractsResult.count || 0,
-          expiringContracts: expiringContractsResult.count || 0,
-          overduePayments: overdueData.length,
+          totalProperties: stats.total_properties,
+          availableProperties: stats.available_properties,
+          unavailableProperties: stats.unavailable_properties,
+          occupiedProperties: stats.occupied_properties,
+          totalTenants: stats.total_tenants,
+          activeContracts: stats.active_contracts,
+          expiringContracts: stats.expiring_contracts,
+          overduePayments,
           overdueAmount,
-          dueTodayPayments: dueTodayPaymentsResult.count || 0,
-          completedPayments: completedPaymentsResult.count || 0,
+          dueTodayPayments,
+          completedPayments,
           expectedAmount,
           grossRevenue,
           locationExpenses,
         };
 
-        console.log("📊 Dashboard counts loaded:", newCounts);
+        console.log("📊 Dashboard counts loaded (from materialized views):", newCounts);
 
         // Salvar no cache
         setCache(cacheKey, newCounts);
         setCounts(newCounts);
 
-      } catch (error) {
+      } catch (error: any) {
+        // Ignorar erros de abort (componente desmontado)
+        if (error?.name === 'AbortError' || error?.message?.includes('aborted')) {
+          console.log("🚫 Dashboard request aborted (component unmounted)");
+          return;
+        }
         console.error("Error loading dashboard data:", error);
       } finally {
         if (isMounted) {
@@ -397,12 +277,13 @@ export function useDashboardData(
 
     return () => {
       isMounted = false;
+      abortController.abort();
     };
   }, [month, year, userId, userRole, isFinancialUser, cacheKey]);
 
   return {
     loading,
     counts,
-    exemptLocationIds
+    exemptLocationIds,
   };
 }

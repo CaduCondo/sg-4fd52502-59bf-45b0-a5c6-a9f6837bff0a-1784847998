@@ -42,6 +42,20 @@ export type Database = {
             referencedRelation: "locations"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "admin_fee_exempt_locations_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: true
+            referencedRelation: "mv_monthly_expenses"
+            referencedColumns: ["location_id"]
+          },
+          {
+            foreignKeyName: "admin_fee_exempt_locations_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: true
+            referencedRelation: "mv_monthly_revenue"
+            referencedColumns: ["location_id"]
+          },
         ]
       }
       auth_user_mapping: {
@@ -105,6 +119,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "locations"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "broker_fee_exemptions_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "mv_monthly_expenses"
+            referencedColumns: ["location_id"]
+          },
+          {
+            foreignKeyName: "broker_fee_exemptions_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "mv_monthly_revenue"
+            referencedColumns: ["location_id"]
           },
           {
             foreignKeyName: "broker_fee_exemptions_user_id_fkey"
@@ -327,6 +355,20 @@ export type Database = {
             referencedRelation: "locations"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "location_expenses_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "mv_monthly_expenses"
+            referencedColumns: ["location_id"]
+          },
+          {
+            foreignKeyName: "location_expenses_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "mv_monthly_revenue"
+            referencedColumns: ["location_id"]
+          },
         ]
       }
       locations: {
@@ -540,6 +582,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "locations"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "properties_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "mv_monthly_expenses"
+            referencedColumns: ["location_id"]
+          },
+          {
+            foreignKeyName: "properties_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "mv_monthly_revenue"
+            referencedColumns: ["location_id"]
           },
         ]
       }
@@ -895,6 +951,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "user_fee_exemptions_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "mv_monthly_expenses"
+            referencedColumns: ["location_id"]
+          },
+          {
+            foreignKeyName: "user_fee_exemptions_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "mv_monthly_revenue"
+            referencedColumns: ["location_id"]
+          },
+          {
             foreignKeyName: "user_fee_exemptions_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
@@ -943,6 +1013,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "user_location_permissions_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "mv_monthly_expenses"
+            referencedColumns: ["location_id"]
+          },
+          {
+            foreignKeyName: "user_location_permissions_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "mv_monthly_revenue"
+            referencedColumns: ["location_id"]
+          },
+          {
             foreignKeyName: "user_location_permissions_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
@@ -962,6 +1046,48 @@ export type Database = {
           total_properties: number | null
           total_tenants: number | null
           unavailable_properties: number | null
+        }
+        Relationships: []
+      }
+      mv_dashboard_stats: {
+        Row: {
+          active_contracts: number | null
+          available_properties: number | null
+          due_today_amount: number | null
+          expiring_contracts: number | null
+          last_updated: string | null
+          maintenance_properties: number | null
+          overdue_amount: number | null
+          paid_this_month: number | null
+          rented_properties: number | null
+          total_tenants: number | null
+        }
+        Relationships: []
+      }
+      mv_monthly_expenses: {
+        Row: {
+          expense_count: number | null
+          last_updated: string | null
+          location_id: string | null
+          location_name: string | null
+          month: number | null
+          month_date: string | null
+          total_amount: number | null
+          year: number | null
+        }
+        Relationships: []
+      }
+      mv_monthly_revenue: {
+        Row: {
+          expected_amount: number | null
+          last_updated: string | null
+          location_id: string | null
+          location_name: string | null
+          month: number | null
+          month_date: string | null
+          paid_amount: number | null
+          payment_count: number | null
+          year: number | null
         }
         Relationships: []
       }
@@ -1096,6 +1222,7 @@ export type Database = {
         Args: { p_email: string; p_password: string; p_user_id?: string }
         Returns: string
       }
+      refresh_dashboard_views: { Args: never; Returns: undefined }
       sync_user_to_auth: {
         Args: {
           p_email: string
