@@ -1046,6 +1046,14 @@ export type Database = {
           value: number
         }[]
       }
+      get_expected_revenue: {
+        Args: { p_month?: number; p_user_id?: string; p_year?: number }
+        Returns: number
+      }
+      get_overdue_payments_count: {
+        Args: { p_user_id?: string }
+        Returns: number
+      }
       get_properties_with_locations: {
         Args: never
         Returns: {
@@ -1105,6 +1113,10 @@ export type Database = {
           status: string
           value: number
         }[]
+      }
+      user_has_location_access: {
+        Args: { p_location_id: string; p_user_id: string }
+        Returns: boolean
       }
       verify_password: {
         Args: { password_hash: string; plain_password: string }
