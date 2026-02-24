@@ -164,9 +164,6 @@ export function usePayments() {
             // Propriedades adicionais para satisfazer a interface
             garageValue: rental.garage_value || 0,
             hasGarage: false, // Valor padrão
-            notes: "",
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
           });
         }
 
@@ -192,14 +189,11 @@ export function usePayments() {
             description: "",
             hasGarage: false,
             hasFurniture: false,
-            hasPartyHall: false,
             hasCourt: false,
             hasGym: false,
             hasPool: false,
             hasElevator: false,
             images: [],
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
           });
         }
 
