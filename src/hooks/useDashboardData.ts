@@ -176,8 +176,8 @@ export function useDashboardData(
             let query = supabase
               .from("mv_monthly_expenses")
               .select("total_expenses")
-              .eq("reference_month", month.toString())
-              .eq("reference_year", year.toString())
+              .eq("reference_month", month) // Passando number (correto para esta tabela)
+              .eq("reference_year", year)   // Passando number (correto para esta tabela)
               .abortSignal(abortController.signal);
             
             if (isFinancialUser && allowedLocations && allowedLocations.length > 0) {
