@@ -33,21 +33,19 @@ export function PaymentReceipt({
   interest: propInterest,
 }: PaymentReceiptProps) {
   const printRef = useRef<HTMLDivElement>(null);
-  const [lateFeeFromDB, setLateFeeFromDB] = useState<number>(0);
-  const [interestFromDB, setInterestFromDB] = useState<number>(0);
-  const [breakdownFromDB, setBreakdownFromDB] = useState<any>(null);
+  const [paymentFromDB, setPaymentFromDB] = useState<any>(null);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
   useEffect(() => {
     const fetchPaymentDetails = async () => {
       if (!payment.id) return;
       
-      console.log("🔍 BUSCANDO VALORES DO BANCO para payment.id:", payment.id);
+      console.log("🔍 BUSCANDO DADOS COMPLETOS DO PAGAMENTO:", payment.id);
       
       try {
         const { data, error } = await supabase
           .from("payments")
-          .select("late_fee, interest, breakdown")
+          .select("*")
           .eq("id", payment.id)
           .maybeSingle();
 
@@ -56,26 +54,10 @@ export function PaymentReceipt({
           return;
         }
 
-        console.log("✅ VALORES RETORNADOS DO BANCO:", JSON.stringify(data, null, 2));
+        console.log("✅ DADOS DO PAGAMENTO:", JSON.stringify(data, null, 2));
 
         if (data) {
-          // Cast para any para evitar erros de tipagem com colunas novas
-          const paymentData = data as any;
-          
-          setLateFeeFromDB(Number(paymentData.late_fee) || 0);
-          setInterestFromDB(Number(paymentData.interest) || 0);
-          
-          if (paymentData.breakdown) {
-            console.log("📦 BREAKDOWN DO BANCO (RAW):", paymentData.breakdown);
-            
-            // Parse breakdown se for string
-            const parsedBreakdown = typeof paymentData.breakdown === "string" 
-              ? JSON.parse(paymentData.breakdown)
-              : paymentData.breakdown;
-            
-            setBreakdownFromDB(parsedBreakdown);
-            console.log("✅ BREAKDOWN SALVO NO ESTADO:", JSON.stringify(parsedBreakdown, null, 2));
-          }
+          setPaymentFromDB(data);
         }
       } catch (error) {
         console.error("❌ Erro ao buscar detalhes do pagamento:", error);
@@ -85,25 +67,25 @@ export function PaymentReceipt({
     fetchPaymentDetails();
   }, [payment.id]);
 
-  // Prioridade: 1. Banco de Dados (mais confiável/recente) -> 2. Props passadas -> 3. Objeto payment original
-  const lateFee = lateFeeFromDB || propLateFee || (payment.lateFee || (payment as any).late_fee || 0);
-  const interest = interestFromDB || propInterest || (payment.interest || 0);
+  // Usar dados do banco se disponíveis, senão usar props
+  const paymentData = paymentFromDB || payment;
   
-  console.log("Recibo Valores Finais:", { lateFee, interest });
-
-  // Usar breakdown do banco, com fallback para payment
-  const paymentBreakdown = breakdownFromDB || payment.breakdown;
+  // Valores seguros do pagamento
+  const lateFee = Number(paymentData.late_fee || propLateFee || 0);
+  const interest = Number(paymentData.interest || propInterest || 0);
+  const paidAmount = Number(paymentData.paid_amount || payment.paidAmount || 0);
+  const expectedAmount = Number(paymentData.expected_amount || payment.expectedAmount || 0);
   
-  console.log("🔍 FONTE DO BREAKDOWN:", breakdownFromDB ? "BANCO" : (payment.breakdown ? "PROP" : "NENHUM"));
+  console.log("💰 VALORES SEGUROS:", { lateFee, interest, paidAmount, expectedAmount });
 
+  // Usar breakdown do banco
+  const paymentBreakdown = paymentData.breakdown;
+  
   // Estrutura para armazenar os itens do breakdown
   const breakdownItems: BreakdownItem[] = [];
-  let totalAmount = 0;
   
   // Detectar rescisão baseada no conteúdo do breakdown
-  // Payment type does not exist, relying solely on breakdown content
-  let isTermination = false; 
-  let isTerminationDetectedFromBreakdown = false;
+  let isTermination = false;
 
   if (paymentBreakdown) {
     const breakdownStr = JSON.stringify(paymentBreakdown);
@@ -114,18 +96,14 @@ export function PaymentReceipt({
         breakdownStr.includes("depositRefund") ||
         breakdownStr.includes("proportionalRent")) {
       isTermination = true;
-      isTerminationDetectedFromBreakdown = true;
-      console.log("✅ DETECTADA RESCISÃO PELO CONTEÚDO DO BREAKDOWN!");
     }
   }
   
-  console.log("🔍 DIAGNÓSTICO DE TIPO:");
-  console.log("  isTerminationDetectedFromBreakdown:", isTerminationDetectedFromBreakdown);
-  console.log("  isTermination (FINAL):", isTermination);
+  console.log("🔍 TIPO DE PAGAMENTO:", isTermination ? "RESCISÃO" : "NORMAL");
   
   // Se é rescisão e tem breakdown, processar os valores específicos
   if (isTermination && paymentBreakdown) {
-    console.log("✅ ENTRANDO NO BLOCO DE RESCISÃO");
+    console.log("✅ PROCESSANDO BREAKDOWN DE RESCISÃO");
     try {
       let breakdownData = paymentBreakdown;
       
@@ -138,40 +116,33 @@ export function PaymentReceipt({
 
       // Se o breakdown já é um array (formato novo do banco)
       if (Array.isArray(breakdownData)) {
-        console.log("✅ BREAKDOWN É UM ARRAY - processando diretamente");
+        console.log("✅ BREAKDOWN É UM ARRAY");
         
         breakdownData.forEach((item: any) => {
-          const amount = Math.abs(Number(item.amount || 0));
-          const description = item.description || "";
+          const amount = Number(item.amount || 0);
+          const description = String(item.description || "");
           const type = item.type || "addition";
           
-          if (amount > 0) {
-            console.log(`  ✅ Adicionando item: ${description} = ${amount} (${type})`);
+          // Só adicionar se tiver valor válido e maior que zero
+          if (Number.isFinite(amount) && Math.abs(amount) > 0) {
+            console.log(`  ✅ Item: ${description} = ${amount} (${type})`);
             breakdownItems.push({
               description,
-              amount,
+              amount: Math.abs(amount),
               type: type as "addition" | "deduction"
             });
           }
         });
       } else {
         // Formato antigo (objeto com propriedades)
-        console.log("✅ BREAKDOWN É UM OBJETO - extraindo propriedades");
+        console.log("✅ BREAKDOWN É UM OBJETO");
         
         const proportionalRent = Number(breakdownData.proportionalRent || 0);
         const terminationFee = Number(breakdownData.terminationFee || 0);
         const depositRefund = Number(breakdownData.depositRefund || 0);
         const additionalExpenses = Number(breakdownData.additionalExpenses || 0);
 
-        console.log("📊 VALORES EXTRAÍDOS:", {
-          proportionalRent,
-          terminationFee,
-          depositRefund,
-          additionalExpenses
-        });
-
         if (proportionalRent > 0) {
-          console.log("  ✅ Adicionando Aluguel Proporcional:", proportionalRent);
           breakdownItems.push({
             description: "Aluguel Proporcional",
             amount: proportionalRent,
@@ -180,7 +151,6 @@ export function PaymentReceipt({
         }
 
         if (terminationFee > 0) {
-          console.log("  ✅ Adicionando Multa Rescisória:", terminationFee);
           breakdownItems.push({
             description: "Multa Rescisória",
             amount: terminationFee,
@@ -189,7 +159,6 @@ export function PaymentReceipt({
         }
 
         if (depositRefund !== 0) {
-          console.log("  ✅ Adicionando Devolução de Caução:", depositRefund);
           breakdownItems.push({
             description: "Devolução de Caução",
             amount: Math.abs(depositRefund),
@@ -198,7 +167,6 @@ export function PaymentReceipt({
         }
 
         if (additionalExpenses > 0) {
-          console.log("  ✅ Adicionando Despesas Adicionais:", additionalExpenses);
           breakdownItems.push({
             description: "Despesas Adicionais",
             amount: additionalExpenses,
@@ -210,19 +178,22 @@ export function PaymentReceipt({
       console.error("❌ ERRO ao processar breakdown de rescisão:", e);
     }
   } else {
-    console.log("⚠️ NÃO É RESCISÃO OU NÃO TEM BREAKDOWN");
-    // Se não tem itens, adicionar valor base
-    const baseAmount = payment.expectedAmount || 0;
-    if (baseAmount > 0) {
+    // PAGAMENTO NORMAL
+    console.log("✅ PROCESSANDO PAGAMENTO NORMAL");
+    
+    // 1. SEMPRE adicionar valor base do aluguel (se maior que zero)
+    if (expectedAmount > 0) {
+      console.log(`  ✅ Valor do Aluguel: ${expectedAmount}`);
       breakdownItems.push({
         description: "Valor do Aluguel",
-        amount: baseAmount,
+        amount: expectedAmount,
         type: "addition"
       });
     }
 
-    // SEMPRE ADICIONAR MULTA SE EXISTIR (priorizando a prop)
+    // 2. Adicionar MULTA se existir e for maior que zero
     if (lateFee > 0) {
+      console.log(`  ✅ Multa por Atraso: ${lateFee}`);
       breakdownItems.push({
         description: "Multa por Atraso",
         amount: lateFee,
@@ -230,8 +201,9 @@ export function PaymentReceipt({
       });
     }
 
-    // SEMPRE ADICIONAR JUROS SE EXISTIR (priorizando a prop)
+    // 3. Adicionar JUROS se existir e for maior que zero
     if (interest > 0) {
+      console.log(`  ✅ Juros por Atraso: ${interest}`);
       breakdownItems.push({
         description: "Juros por Atraso",
         amount: interest,
@@ -239,66 +211,86 @@ export function PaymentReceipt({
       });
     }
     
-    // Outros itens do breakdown original (excluindo aluguel, multa e juros já adicionados)
-    if (payment.breakdown) {
+    // 4. Processar outros itens do breakdown (se existir)
+    if (paymentBreakdown) {
       try {
-        const breakdownData = typeof payment.breakdown === "string" 
-          ? JSON.parse(payment.breakdown) 
-          : payment.breakdown;
+        let breakdownData = paymentBreakdown;
+        
+        if (typeof breakdownData === "string") {
+          breakdownData = JSON.parse(breakdownData);
+        }
 
         if (Array.isArray(breakdownData)) {
           breakdownData.forEach((item: any) => {
             const amount = Number(item.amount || 0);
-            const description = item.description || "";
-            const type = item.type || (amount >= 0 ? "addition" : "deduction");
+            const description = String(item.description || "");
+            const type = item.type || "addition";
 
-            if (amount !== 0 && 
-                !description.includes("Multa") && 
-                !description.includes("Juros") && 
-                !description.includes("Aluguel")) {
+            // Ignorar itens que já foram adicionados manualmente
+            const isAlreadyAdded = 
+              description.toLowerCase().includes("valor do aluguel") ||
+              description.toLowerCase().includes("multa por atraso") ||
+              description.toLowerCase().includes("juros por atraso") ||
+              description.toLowerCase().includes("aluguel:") ||
+              description.toLowerCase() === "aluguel";
+
+            // Só adicionar se for válido, maior que zero e não duplicado
+            if (Number.isFinite(amount) && Math.abs(amount) > 0 && !isAlreadyAdded) {
+              console.log(`  ✅ Item adicional: ${description} = ${amount}`);
               breakdownItems.push({
                 description,
                 amount: Math.abs(amount),
-                type
+                type: type as "addition" | "deduction"
               });
             }
           });
         } else if (typeof breakdownData === "object") {
-           Object.entries(breakdownData).forEach(([key, value]: [string, any]) => {
+          Object.entries(breakdownData).forEach(([key, value]: [string, any]) => {
             const amount = Number(value || 0);
-            let description = key;
+            
+            // Ignorar chaves já processadas
+            const ignoredKeys = [
+              "lateFee", "late_fee", "multa",
+              "interest", "juros", 
+              "rentAmount", "expectedAmount", "expected_amount",
+              "baseAmount", "valorAluguel"
+            ];
+            
+            if (ignoredKeys.includes(key)) {
+              return;
+            }
             
             // Traduzir chaves
             const translations: Record<string, string> = {
-              proportionalRent: "Aluguel Proporcional",
-              terminationFee: "Multa Rescisória",
-              depositRefund: "Devolução de Caução",
+              discount: "Desconto",
               additionalExpenses: "Despesas Adicionais",
-              baseAmount: "Valor Base",
-              discount: "Desconto"
+              repairExpenses: "Despesas de Reparo"
             };
             
-            if (translations[key]) description = translations[key];
+            const description = translations[key] || key;
             const type = amount >= 0 ? "addition" : "deduction";
 
-            if (amount !== 0 && 
-                key !== "lateFee" && 
-                key !== "interest" && 
-                key !== "rentAmount" &&
-                key !== "expectedAmount") {
-              breakdownItems.push({ description, amount: Math.abs(amount), type });
+            if (Number.isFinite(amount) && Math.abs(amount) > 0) {
+              console.log(`  ✅ Item do objeto: ${description} = ${amount}`);
+              breakdownItems.push({ 
+                description, 
+                amount: Math.abs(amount), 
+                type 
+              });
             }
           });
         }
       } catch (e) {
-        console.error("Erro breakdown", e);
+        console.error("❌ Erro ao processar breakdown:", e);
       }
     }
   }
 
   console.log("📋 BREAKDOWN ITEMS FINAIS:", JSON.stringify(breakdownItems, null, 2));
 
-  // Calcular total
+  // Calcular total baseado no breakdown
+  let totalAmount = 0;
+  
   if (breakdownItems.length > 0) {
     totalAmount = breakdownItems.reduce((sum, item) => {
       return item.type === "addition" 
@@ -306,10 +298,11 @@ export function PaymentReceipt({
         : sum - item.amount;
     }, 0);
   } else {
-    totalAmount = payment.paidAmount || payment.expectedAmount || 0;
+    // Se não tem breakdown, usar o valor pago ou esperado
+    totalAmount = paidAmount || expectedAmount;
   }
 
-  console.log("💰 TOTAL AMOUNT CALCULADO:", totalAmount);
+  console.log("💰 TOTAL CALCULADO:", totalAmount);
 
   const currentInstallment = payment.installment || 1;
   const totalInstallments = isTermination 
@@ -317,6 +310,11 @@ export function PaymentReceipt({
     : (payment.totalInstallments || rental.installments || rental.totalInstallments || 24);
 
   const formatCurrency = (value: number): string => {
+    if (!Number.isFinite(value)) {
+      console.error("❌ Tentando formatar valor inválido:", value);
+      return "R$ 0,00";
+    }
+    
     return new Intl.NumberFormat("pt-BR", {
       style: "currency",
       currency: "BRL",
@@ -333,7 +331,7 @@ export function PaymentReceipt({
   };
 
   const extenso = (num: number): string => {
-    if (num === 0) return "ZERO REAIS";
+    if (!Number.isFinite(num) || num === 0) return "ZERO REAIS";
     
     const unidades = ["", "UM", "DOIS", "TRÊS", "QUATRO", "CINCO", "SEIS", "SETE", "OITO", "NOVE"];
     const especiais = ["DEZ", "ONZE", "DOZE", "TREZE", "QUATORZE", "QUINZE", "DEZESSEIS", "DEZESSETE", "DEZOITO", "DEZENOVE"];
@@ -439,39 +437,27 @@ export function PaymentReceipt({
     
     const parts = [];
     
-    // 1. RUA (já vem com "Rua" no texto)
     if (property.address) {
-      console.log(`  ✓ RUA: ${property.address}`);
       parts.push(property.address.toUpperCase());
     }
     
-    // 2. NÚMERO
     if (property.number) {
-      console.log(`  ✓ NÚMERO: ${property.number}`);
       parts.push(`Nº ${property.number}`);
     }
     
-    // 3. COMPLEMENTO (APTO, CASA, etc) - do Property
     if (property.complement) {
-      console.log(`  ✓ COMPLEMENTO: ${property.complement}`);
       parts.push(property.complement.toUpperCase());
     }
     
-    // 4. BAIRRO
     if (property.neighborhood) {
-      console.log(`  ✓ BAIRRO: ${property.neighborhood}`);
       parts.push(property.neighborhood.toUpperCase());
     }
     
-    // 5. CIDADE
     if (property.city) {
-      console.log(`  ✓ CIDADE: ${property.city}`);
       parts.push(property.city.toUpperCase());
     }
     
-    // 6. ESTADO
     if (property.state) {
-      console.log(`  ✓ ESTADO: ${property.state}`);
       parts.push(property.state.toUpperCase());
     }
     
