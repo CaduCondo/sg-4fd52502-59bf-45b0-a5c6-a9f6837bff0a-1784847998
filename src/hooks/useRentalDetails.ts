@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/router";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,7 +15,7 @@ export function useRentalDetails(rentalId: string) {
   const router = useRouter();
   const { toast } = useToast();
 
-  const loadRentalData = async () => {
+  const loadRentalData = useCallback(async () => {
     try {
       setIsLoading(true);
 
@@ -203,9 +203,9 @@ export function useRentalDetails(rentalId: string) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const handleTerminateRental = async (data: {
+  const handleTerminateRental = useCallback(async (data: {
     terminationDate: string;
     applyPenalty: boolean;
     penaltyAmount: number;
@@ -261,16 +261,17 @@ export function useRentalDetails(rentalId: string) {
       });
       throw error;
     }
-  };
+  }, []);
 
-  const calculateTotals = () => {
+  const calculateTotals = useMemo(() => {
     const totalExpected = payments.reduce((sum, p) => sum + (p.expectedAmount || 0), 0);
     const totalPaid = payments.reduce((sum, p) => sum + (p.paidAmount || 0), 0);
     const totalPending = payments.filter(p => p.status === "pending").length;
+    const today = new Date();
     const totalOverdue = payments.filter(p => {
       if (p.status !== "pending") return false;
       const dueDate = new Date(p.dueDate);
-      return dueDate < new Date();
+      return dueDate < today;
     }).length;
 
     return {
@@ -279,7 +280,7 @@ export function useRentalDetails(rentalId: string) {
       totalPending,
       totalOverdue,
     };
-  };
+  }, [payments]);
 
   useEffect(() => {
     if (rentalId) {
