@@ -72,7 +72,8 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
   const [uploadingFile, setUploadingFile] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<{ [key: number]: number }>({});
   
-  const [removeFees, setRemoveFees] = useState(false);
+  const [removeLateFee, setRemoveLateFee] = useState(false);
+  const [removeInterest, setRemoveInterest] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [isPaid, setIsPaid] = useState(false);
   const [repairExpenses, setRepairExpenses] = useState<number>(0);
@@ -397,7 +398,8 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     garageValue,
     isTerminationPayment,
     originalBreakdown,
-    removeFees,
+    removeLateFee,
+    removeInterest,
     lateFeePercentage,
     interestRatePercentage,
   });
@@ -435,7 +437,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       );
       
       const breakdownTotal = cleanBreakdown.reduce((sum, item) => sum + item.amount, 0);
-      const lateFees = removeFees ? 0 : (values.multa + values.juros);
+      const lateFees = (removeLateFee ? 0 : values.multa) + (removeInterest ? 0 : values.juros);
       const newTotal = breakdownTotal + repairExpenses + lateFees - discountAmount;
       
       setCalculatedTotal(newTotal);
@@ -448,7 +450,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       }
     } else if (!isTerminationPayment && isEditMode) {
       const subtotal = displayBreakdown.total;
-      const lateFees = removeFees ? 0 : (values.multa + values.juros);
+      const lateFees = (removeLateFee ? 0 : values.multa) + (removeInterest ? 0 : values.juros);
       const totalValue = subtotal + lateFees;
       
       setFormData(prev => ({
@@ -461,7 +463,8 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     originalBreakdown,
     repairExpenses,
     discountAmount,
-    removeFees,
+    removeLateFee,
+    removeInterest,
     calculateValues,
     isEditMode,
     loading,
@@ -682,14 +685,14 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
             !item.description?.includes("Juros por Atraso")
           );
           
-          if (!removeFees && values.multa > 0) {
+          if (!removeLateFee && values.multa > 0) {
             breakdownData.push({
               description: "Multa por Atraso",
               amount: values.multa,
               type: "addition"
             });
           }
-          if (!removeFees && values.juros > 0) {
+          if (!removeInterest && values.juros > 0) {
             breakdownData.push({
               description: "Juros por Atraso",
               amount: values.juros,
@@ -753,8 +756,8 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         notes: formData.notes,
         status: paymentStatus,
         attachments: attachmentsToSave.length > 0 ? attachmentsToSave : null,
-        late_fee: removeFees ? 0 : values.multa,
-        interest: removeFees ? 0 : values.juros,
+        late_fee: removeLateFee ? 0 : values.multa,
+        interest: removeInterest ? 0 : values.juros,
         updated_at: new Date().toISOString(),
         pix_code_type: formData.pix_code_type,
         breakdown: updatedBreakdown,
@@ -837,7 +840,8 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           igpmCorrection={igpmCorrection}
           repairExpenses={repairExpenses}
           repairExpensesInput={repairExpensesInput}
-          removeFees={removeFees}
+          removeLateFee={removeLateFee}
+          removeInterest={removeInterest}
           lateFeePercentage={lateFeePercentage}
           interestRatePercentage={interestRatePercentage}
           calculatedTotal={calculatedTotal}
@@ -847,7 +851,8 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           isReadOnly={isReadOnly}
           formatCurrency={(val) => formatCurrency(val.toFixed(2))}
           onRepairExpensesChange={handleRepairExpensesChange}
-          onRemoveFeesChange={setRemoveFees}
+          onRemoveLateFeeChange={setRemoveLateFee}
+          onRemoveInterestChange={setRemoveInterest}
           discountAmount={discountAmount}
           discountAmountInput={discountAmountInput}
           onDiscountAmountChange={handleDiscountAmountChange}

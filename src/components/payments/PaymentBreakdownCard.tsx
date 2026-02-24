@@ -95,7 +95,8 @@ interface PaymentBreakdownCardProps {
   igpmCorrection: any;
   repairExpenses: number;
   repairExpensesInput: string;
-  removeFees: boolean;
+  removeLateFee: boolean;
+  removeInterest: boolean;
   lateFeePercentage: number;
   interestRatePercentage: number;
   calculatedTotal: number;
@@ -105,7 +106,8 @@ interface PaymentBreakdownCardProps {
   isReadOnly: boolean;
   formatCurrency: (val: number) => string;
   onRepairExpensesChange: (value: string) => void;
-  onRemoveFeesChange: (checked: boolean) => void;
+  onRemoveLateFeeChange: (checked: boolean) => void;
+  onRemoveInterestChange: (checked: boolean) => void;
   discountAmount?: number;
   discountAmountInput?: string;
   onDiscountAmountChange?: (value: string) => void;
@@ -119,7 +121,8 @@ export function PaymentBreakdownCard({
   igpmCorrection,
   repairExpenses,
   repairExpensesInput,
-  removeFees,
+  removeLateFee,
+  removeInterest,
   lateFeePercentage,
   interestRatePercentage,
   calculatedTotal,
@@ -129,7 +132,8 @@ export function PaymentBreakdownCard({
   isReadOnly,
   formatCurrency,
   onRepairExpensesChange,
-  onRemoveFeesChange,
+  onRemoveLateFeeChange,
+  onRemoveInterestChange,
   discountAmount = 0,
   discountAmountInput = "",
   onDiscountAmountChange = () => {},
@@ -146,7 +150,7 @@ export function PaymentBreakdownCard({
 
   const finalTotal = isTerminationPayment 
     ? Math.abs(calculatedTotal)
-    : (displayBreakdown.total + (removeFees ? 0 : (values.multa + values.juros)));
+    : (displayBreakdown.total + (removeLateFee ? 0 : (values.multa + values.juros)));
 
   const remainingDue = Math.max(0, finalTotal - (paidAmount || 0));
   const showPartialInfo = paymentStatus === 'partial' && (paidAmount || 0) > 0;
@@ -210,40 +214,45 @@ export function PaymentBreakdownCard({
                       🚨 ATRASO NO PAGAMENTO ({values.diasAtraso} {values.diasAtraso === 1 ? 'dia' : 'dias'})
                     </p>
                     
-                    <div className="flex justify-between text-sm">
-                      <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600"}>
-                        Multa por Atraso ({lateFeePercentage}%)
-                      </span>
-                      <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600 font-medium"}>
-                        + {formatCurrency(values.multa)}
-                      </span>
+                    <div className="flex items-center gap-2">
+                      {isEditMode && (
+                        <Checkbox
+                          id="remove-late-fee-termination"
+                          checked={removeLateFee}
+                          onCheckedChange={(checked) => onRemoveLateFeeChange(checked as boolean)}
+                          disabled={isReadOnly}
+                          className="mt-0.5"
+                        />
+                      )}
+                      <div className="flex justify-between flex-1 text-sm">
+                        <span className={removeLateFee ? "line-through text-muted-foreground" : "text-red-600"}>
+                          Multa por Atraso ({lateFeePercentage}%)
+                        </span>
+                        <span className={removeLateFee ? "line-through text-muted-foreground" : "text-red-600 font-medium"}>
+                          + {formatCurrency(values.multa)}
+                        </span>
+                      </div>
                     </div>
 
                     {values.juros > 0 && (
-                      <div className="flex justify-between text-sm">
-                        <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600"}>
-                          Juros ({interestRatePercentage.toFixed(3)}% ao dia)
-                        </span>
-                        <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600 font-medium"}>
-                          + {formatCurrency(values.juros)}
-                        </span>
-                      </div>
-                    )}
-
-                    {isEditMode && (
-                      <div className="flex items-center space-x-2 pt-2 border-t border-red-200 dark:border-red-800">
-                        <Checkbox
-                          id="remove-fees-termination"
-                          checked={removeFees}
-                          onCheckedChange={(checked) => onRemoveFeesChange(checked as boolean)}
-                          disabled={isReadOnly}
-                        />
-                        <label
-                          htmlFor="remove-fees-termination"
-                          className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                        >
-                          Retirar multa/juros por atraso
-                        </label>
+                      <div className="flex items-center gap-2">
+                        {isEditMode && (
+                          <Checkbox
+                            id="remove-interest-termination"
+                            checked={removeInterest}
+                            onCheckedChange={(checked) => onRemoveInterestChange(checked as boolean)}
+                            disabled={isReadOnly}
+                            className="mt-0.5"
+                          />
+                        )}
+                        <div className="flex justify-between flex-1 text-sm">
+                          <span className={removeInterest ? "line-through text-muted-foreground" : "text-red-600"}>
+                            Juros ({interestRatePercentage.toFixed(3)}% ao dia)
+                          </span>
+                          <span className={removeInterest ? "line-through text-muted-foreground" : "text-red-600 font-medium"}>
+                            + {formatCurrency(values.juros)}
+                          </span>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -335,40 +344,45 @@ export function PaymentBreakdownCard({
                       🚨 ATRASO NO PAGAMENTO ({values.diasAtraso} {values.diasAtraso === 1 ? 'dia' : 'dias'})
                     </p>
                     
-                    <div className="flex justify-between text-sm">
-                      <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600"}>
-                        Multa por Atraso ({lateFeePercentage}%)
-                      </span>
-                      <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600 font-medium"}>
-                        + {formatCurrency(values.multa)}
-                      </span>
+                    <div className="flex items-center gap-2">
+                      {isEditMode && (
+                        <Checkbox
+                          id="remove-late-fee"
+                          checked={removeLateFee}
+                          onCheckedChange={(checked) => onRemoveLateFeeChange(checked as boolean)}
+                          disabled={isReadOnly}
+                          className="mt-0.5"
+                        />
+                      )}
+                      <div className="flex justify-between flex-1 text-sm">
+                        <span className={removeLateFee ? "line-through text-muted-foreground" : "text-red-600"}>
+                          Multa por Atraso ({lateFeePercentage}%)
+                        </span>
+                        <span className={removeLateFee ? "line-through text-muted-foreground" : "text-red-600 font-medium"}>
+                          + {formatCurrency(values.multa)}
+                        </span>
+                      </div>
                     </div>
 
                     {values.juros > 0 && (
-                      <div className="flex justify-between text-sm">
-                        <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600"}>
-                          Juros ({interestRatePercentage.toFixed(3)}% ao dia)
-                        </span>
-                        <span className={removeFees ? "line-through text-muted-foreground" : "text-red-600 font-medium"}>
-                          + {formatCurrency(values.juros)}
-                        </span>
-                      </div>
-                    )}
-
-                    {isEditMode && (
-                      <div className="flex items-center space-x-2 pt-2 border-t border-red-200 dark:border-red-800">
-                        <Checkbox
-                          id="remove-fees"
-                          checked={removeFees}
-                          onCheckedChange={(checked) => onRemoveFeesChange(checked as boolean)}
-                          disabled={isReadOnly}
-                        />
-                        <label
-                          htmlFor="remove-fees"
-                          className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                        >
-                          Retirar multa/juros por atraso
-                        </label>
+                      <div className="flex items-center gap-2">
+                        {isEditMode && (
+                          <Checkbox
+                            id="remove-interest"
+                            checked={removeInterest}
+                            onCheckedChange={(checked) => onRemoveInterestChange(checked as boolean)}
+                            disabled={isReadOnly}
+                            className="mt-0.5"
+                          />
+                        )}
+                        <div className="flex justify-between flex-1 text-sm">
+                          <span className={removeInterest ? "line-through text-muted-foreground" : "text-red-600"}>
+                            Juros ({interestRatePercentage.toFixed(3)}% ao dia)
+                          </span>
+                          <span className={removeInterest ? "line-through text-muted-foreground" : "text-red-600 font-medium"}>
+                            + {formatCurrency(values.juros)}
+                          </span>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -378,7 +392,7 @@ export function PaymentBreakdownCard({
               <div className="flex justify-between pt-3 border-t-2 border-primary mt-2">
                 <span className="font-bold text-base">VALOR TOTAL</span>
                 <span className="font-bold text-base text-primary">
-                  {formatCurrency(displayBreakdown.total + (removeFees ? 0 : (values.multa + values.juros)))}
+                  {formatCurrency(displayBreakdown.total + ((removeLateFee ? 0 : values.multa) + (removeInterest ? 0 : values.juros)))}
                 </span>
               </div>
 

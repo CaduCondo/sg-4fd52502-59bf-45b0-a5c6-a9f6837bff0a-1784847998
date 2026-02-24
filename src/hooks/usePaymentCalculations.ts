@@ -17,6 +17,19 @@ interface CalculateValuesParams {
   interestRatePercentage: number;
 }
 
+interface UsePaymentCalculationsProps {
+  payment: any;
+  formData: any;
+  rentalValue: number;
+  garageValue: number;
+  isTerminationPayment: boolean;
+  originalBreakdown: any[];
+  removeLateFee: boolean;
+  removeInterest: boolean;
+  lateFeePercentage: number;
+  interestRatePercentage: number;
+}
+
 export function usePaymentCalculations({
   payment,
   formData,
@@ -24,10 +37,11 @@ export function usePaymentCalculations({
   garageValue,
   isTerminationPayment,
   originalBreakdown,
-  removeFees,
+  removeLateFee,
+  removeInterest,
   lateFeePercentage,
   interestRatePercentage,
-}: CalculateValuesParams) {
+}: UsePaymentCalculationsProps) {
   return useMemo(() => {
     let rentalBaseValue = rentalValue;
     let garageBaseValue = garageValue;
@@ -121,7 +135,7 @@ export function usePaymentCalculations({
     }
 
     const valorTotalSemIsencao = Math.round((valorAluguel + multa + juros) * 100) / 100;
-    const valorAPagar = removeFees ? valorAluguel : valorTotalSemIsencao;
+    const valorAPagar = removeLateFee && removeInterest ? valorAluguel : valorTotalSemIsencao;
     
     const valorJaPago = payment?.paid_amount || 0;
     const valorRestante = Math.max(0, Math.round((valorAPagar - valorJaPago) * 100) / 100);
@@ -146,7 +160,8 @@ export function usePaymentCalculations({
     garageValue,
     isTerminationPayment,
     originalBreakdown,
-    removeFees,
+    removeLateFee,
+    removeInterest,
     lateFeePercentage,
     interestRatePercentage,
   ]);
