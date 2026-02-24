@@ -156,11 +156,17 @@ export function usePayments() {
             paymentDay: rental.payment_day,
             value: rental.value,
             depositAmount: rental.security_deposit || 0,
-            status: rental.status as "active" | "inactive" | "terminated" | "pending",
+            status: (rental.status === "active" ? "active" : rental.status === "terminated" ? "terminated" : "ended"),
             isActive: rental.status === "active",
             attachments: [],
             contractAttachments: [],
             autoRenew: false,
+            // Propriedades adicionais para satisfazer a interface
+            garageValue: rental.garage_value || 0,
+            hasGarage: false, // Valor padrão
+            notes: "",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
           });
         }
 
@@ -181,6 +187,19 @@ export function usePayments() {
             area: property.area || 0,
             status: (property.status as "available" | "occupied" | "unavailable") || "available",
             value: property.value,
+            // Propriedades adicionais para satisfazer a interface
+            propertyIdentifier: property.id.substring(0, 8), // Valor derivado se não existir
+            description: "",
+            hasGarage: false,
+            hasFurniture: false,
+            hasPartyHall: false,
+            hasCourt: false,
+            hasGym: false,
+            hasPool: false,
+            hasElevator: false,
+            images: [],
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
           });
         }
 
