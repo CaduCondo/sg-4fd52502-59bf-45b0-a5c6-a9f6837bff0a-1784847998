@@ -850,7 +850,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           onRemoveFeesChange={setRemoveFees}
           discountAmount={discountAmount}
           discountAmountInput={discountAmountInput}
-          onDiscountAmountChange={setDiscountAmountInput}
           onDiscountAmountChange={handleDiscountAmountChange}
           paymentStatus={payment?.status}
           paidAmount={payment?.paid_amount}
