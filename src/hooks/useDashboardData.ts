@@ -219,7 +219,7 @@ export function useDashboardData(
             .eq("reference_year", year.toString());
 
           if (isFinancialUser && allowedLocations) {
-             // @ts-ignore - Supabase types complex
+             // @ts-expect-error - Supabase types complex
              query = query.in("rental.property_id", allowedLocations);
           }
 
@@ -227,7 +227,7 @@ export function useDashboardData(
           
           const payments = data || [];
           const count = payments.length;
-          // @ts-ignore
+          // @ts-expect-error
           const sum = payments.reduce((acc, p) => acc + (p.expected_amount || 0), 0);
           
           return { count, sum };
@@ -247,7 +247,7 @@ export function useDashboardData(
             .eq("reference_year", year.toString());
 
           if (isFinancialUser && allowedLocations) {
-             // @ts-ignore
+             // @ts-expect-error
              query = query.in("rental.property_id", allowedLocations);
           }
 
@@ -268,7 +268,7 @@ export function useDashboardData(
             .eq("reference_year", year.toString());
 
           if (isFinancialUser && allowedLocations) {
-             // @ts-ignore
+             // @ts-expect-error
              query = query.in("rental.property_id", allowedLocations);
           }
 
@@ -288,12 +288,12 @@ export function useDashboardData(
             .eq("reference_year", year.toString());
 
           if (isFinancialUser && allowedLocations) {
-             // @ts-ignore
+             // @ts-expect-error
              query = query.in("rental.property_id", allowedLocations);
           }
 
           const { data } = await query;
-          // @ts-ignore
+          // @ts-expect-error
           return (data || []).reduce((acc, p) => acc + (p.expected_amount || 0), 0);
         };
 
@@ -310,12 +310,12 @@ export function useDashboardData(
             .eq("reference_year", year.toString());
 
           if (isFinancialUser && allowedLocations) {
-             // @ts-ignore
+             // @ts-expect-error
              query = query.in("rental.property_id", allowedLocations);
           }
 
           const { data } = await query;
-          // @ts-ignore
+          // @ts-expect-error
           return (data || []).reduce((acc, p) => acc + (p.paid_amount || 0), 0);
         };
 
@@ -363,11 +363,11 @@ export function useDashboardData(
         if (!isMounted) return;
 
         const totalProperties = properties.length;
-        // @ts-ignore
+        // @ts-expect-error
         const availableProperties = properties.filter((p) => p.status === "available").length;
-        // @ts-ignore
+        // @ts-expect-error
         const unavailableProperties = properties.filter((p) => p.status === "unavailable").length;
-        // @ts-ignore
+        // @ts-expect-error
         const occupiedProperties = properties.filter((p) => p.status === "occupied").length;
 
         const newCounts: DashboardCounts = {
