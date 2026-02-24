@@ -217,12 +217,11 @@ export default function PropertiesPage() {
     if (!open) resetForm();
   }, [resetForm]);
 
-  // Memoizar as linhas da tabela para evitar re-render desnecessário
   const tableRows = useMemo(() => 
     filteredProperties.map((property) => (
       <TableRow 
         key={property.id}
-        className="cursor-pointer hover:bg-muted/50 transition-colors"
+        className="cursor-pointer"
         onClick={() => handleCardClick(property)}
       >
         <TableCell className="font-medium text-blue-600">
@@ -265,10 +264,7 @@ export default function PropertiesPage() {
     return (
       <Layout>
         <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center space-y-4">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-            <p className="text-muted-foreground">Carregando imóveis...</p>
-          </div>
+          <p>Carregando...</p>
         </div>
       </Layout>
     );
@@ -348,7 +344,7 @@ export default function PropertiesPage() {
 
         {viewMode === "table" && (
           <ScrollReveal>
-            <div className="rounded-md border bg-white dark:bg-card">
+            <div className="rounded-md border bg-white">
               <Table>
                 <TableHeader>
                   <TableRow>

@@ -150,7 +150,7 @@ export function PaymentBreakdownCard({
 
   const finalTotal = isTerminationPayment 
     ? Math.abs(calculatedTotal)
-    : (displayBreakdown.total + ((removeLateFee ? 0 : values.multa) + (removeInterest ? 0 : values.juros)));
+    : (displayBreakdown.total + (removeLateFee ? 0 : (values.multa + values.juros)));
 
   const remainingDue = Math.max(0, finalTotal - (paidAmount || 0));
   const showPartialInfo = paymentStatus === 'partial' && (paidAmount || 0) > 0;

@@ -48,11 +48,6 @@ const SORT_FUNCTIONS = {
   "price-desc": (a: Property, b: Property) => (b.value || 0) - (a.value || 0),
 };
 
-// Cache em memória com TTL de 2 minutos
-let propertiesCache: { data: Property[]; timestamp: number } | null = null;
-let locationsCache: { data: Location[]; timestamp: number } | null = null;
-const CACHE_TTL = 2 * 60 * 1000; // 2 minutos
-
 export function useProperties(): UsePropertiesReturn {
   const { toast } = useToast();
   const [properties, setProperties] = useState<Property[]>([]);
@@ -64,92 +59,40 @@ export function useProperties(): UsePropertiesReturn {
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
   const [loading, setLoading] = useState(true);
 
-  // Memoizar a criação do Map de locations para lookup O(1)
-  const locationsMap = useMemo(() => {
-    const map = new Map<string, string>();
-    locations.forEach(loc => {
-      map.set(loc.id, loc.name);
-    });
-    return map;
-  }, [locations]);
-
   const loadData = useCallback(async () => {
     try {
-      const now = Date.now();
-      
-      // Verificar cache de properties
-      const propertiesPromise = (propertiesCache && (now - propertiesCache.timestamp) < CACHE_TTL)
-        ? Promise.resolve(propertiesCache.data)
-        : propertyService.getAll().then(data => {
-            propertiesCache = { data, timestamp: now };
-            return data;
-          });
-
-      // Verificar cache de locations
-      const locationsPromise = (locationsCache && (now - locationsCache.timestamp) < CACHE_TTL)
-        ? Promise.resolve(locationsCache.data)
-        : locationService.getAll().then(data => {
-            locationsCache = { data, timestamp: now };
-            return data;
-          });
-
       const [propertiesData, locationsData] = await Promise.all([
-        propertiesPromise,
-        locationsPromise,
+        propertyService.getAll(),
+        locationService.getAll(),
       ]);
-
       setProperties(propertiesData);
       setLocations(locationsData);
     } catch (error) {
       console.error("Erro ao carregar dados:", error);
-      toast({
-        title: "Erro",
-        description: "Erro ao carregar dados dos imóveis",
-        variant: "destructive",
-      });
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, []);
 
-  // Otimizar filtros com memoização pesada
   const filteredProperties = useMemo(() => {
     const searchLower = searchTerm.toLowerCase();
     
-    let filtered = properties;
+    let filtered = properties.filter((property) => {
+      const matchesSearch = !searchTerm || 
+        property.location?.toLowerCase().includes(searchLower) ||
+        property.complement?.toLowerCase().includes(searchLower) ||
+        property.description?.toLowerCase().includes(searchLower) ||
+        property.propertyIdentifier?.toLowerCase().includes(searchLower);
+      
+      const matchesStatus = statusFilter === "all" || property.status === statusFilter;
+      
+      const propertyLocationId = property.location_id || property.locationId;
+      const matchesLocation = selectedLocations.length === 0 || 
+        (propertyLocationId && selectedLocations.includes(propertyLocationId));
 
-    // Aplicar filtros apenas se necessário
-    if (searchTerm || statusFilter !== "all" || selectedLocations.length > 0) {
-      filtered = properties.filter((property) => {
-        // Filtro de busca
-        if (searchTerm) {
-          const matchesSearch = 
-            property.location?.toLowerCase().includes(searchLower) ||
-            property.complement?.toLowerCase().includes(searchLower) ||
-            property.description?.toLowerCase().includes(searchLower) ||
-            property.propertyIdentifier?.toLowerCase().includes(searchLower);
-          
-          if (!matchesSearch) return false;
-        }
-        
-        // Filtro de status
-        if (statusFilter !== "all" && property.status !== statusFilter) {
-          return false;
-        }
-        
-        // Filtro de localização
-        if (selectedLocations.length > 0) {
-          const propertyLocationId = property.location_id || property.locationId;
-          if (!propertyLocationId || !selectedLocations.includes(propertyLocationId)) {
-            return false;
-          }
-        }
+      return matchesSearch && matchesStatus && matchesLocation;
+    });
 
-        return true;
-      });
-    }
-
-    // Aplicar ordenação
     const sortFn = SORT_FUNCTIONS[sortOrder];
     if (sortFn) {
       filtered = [...filtered].sort(sortFn);
@@ -191,15 +134,12 @@ export function useProperties(): UsePropertiesReturn {
       area: formData.area ? parseFloat(formData.area.replace(",", ".")) : 0,
       hasGarage: formData.hasGarage,
       status: formData.status as "available" | "occupied" | "unavailable",
-      address: "",
-      features: [],
+      address: "", // Added missing property
+      features: [], // Added missing property
     };
 
     const createdProperty = await propertyService.create(propertyData);
-    
-    // Atualizar estado local e invalidar cache
     setProperties(prev => [createdProperty, ...prev]);
-    propertiesCache = null;
   }, [locations]);
 
   const updateProperty = useCallback(async (id: string, formData: PropertyFormData) => {
@@ -230,28 +170,19 @@ export function useProperties(): UsePropertiesReturn {
     };
 
     await propertyService.update(id, propertyData);
-    
-    // Invalidar cache e recarregar
-    propertiesCache = null;
     await loadData();
   }, [locations, loadData]);
 
   const deleteProperty = useCallback(async (id: string) => {
     try {
-      // Atualizar estado local imediatamente (otimistic update)
       setProperties(prev => prev.filter(p => p.id !== id));
-      
       await propertyService.remove(id);
-      
-      // Invalidar cache
-      propertiesCache = null;
       
       toast({
         title: "Sucesso!",
         description: "Imóvel deletado com sucesso.",
       });
     } catch (error: any) {
-      // Reverter mudança otimista em caso de erro
       await loadData();
       
       toast({

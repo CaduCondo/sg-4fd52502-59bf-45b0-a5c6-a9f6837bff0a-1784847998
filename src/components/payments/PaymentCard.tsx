@@ -1,4 +1,4 @@
-import { memo, useMemo, useState, useCallback } from "react";
+import { memo, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -100,16 +100,9 @@ export const PaymentCard = memo(function PaymentCard({
 }: PaymentCardProps) {
   const [showAttachmentsModal, setShowAttachmentsModal] = useState(false);
   
-  // Memoizar valores calculados
-  const isPartial = useMemo(() => payment.status === "partial", [payment.status]);
-  const remainingAmount = useMemo(() => 
-    isPartial ? expectedAmount - payment.paidAmount : expectedAmount,
-    [isPartial, expectedAmount, payment.paidAmount]
-  );
-  const displayAmount = useMemo(() => 
-    isPaid ? payment.paidAmount : remainingAmount,
-    [isPaid, payment.paidAmount, remainingAmount]
-  );
+  const isPartial = payment.status === "partial";
+  const remainingAmount = isPartial ? expectedAmount - payment.paidAmount : expectedAmount;
+  const displayAmount = isPaid ? payment.paidAmount : remainingAmount;
 
   const colors = useMemo(() => 
     getDueDateColor(payment.dueDate, isPaid),
@@ -125,41 +118,6 @@ export const PaymentCard = memo(function PaymentCard({
     formatCurrency(payment.paidAmount),
     [payment.paidAmount]
   );
-
-  const hasAttachmentsValue = useMemo(() => 
-    hasAttachments(payment),
-    [payment.attachments]
-  );
-
-  const attachmentCount = useMemo(() => 
-    Array.isArray(payment.attachments) ? payment.attachments.length : 0,
-    [payment.attachments]
-  );
-
-  const formattedPaymentDate = useMemo(() => 
-    payment.paymentDate ? new Date(payment.paymentDate + "T12:00:00").toLocaleDateString("pt-BR") : "N/A",
-    [payment.paymentDate]
-  );
-
-  const formattedDueDate = useMemo(() => 
-    new Date(new Date(payment.dueDate).getTime() + 24 * 60 * 60 * 1000).toLocaleDateString("pt-BR"),
-    [payment.dueDate]
-  );
-
-  const monthYearText = useMemo(() => 
-    `${getMonthName(payment.referenceMonth)}/${payment.referenceYear}`,
-    [payment.referenceMonth, payment.referenceYear, getMonthName]
-  );
-
-  // Memoizar handlers
-  const handleAttachmentsClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    setShowAttachmentsModal(true);
-  }, []);
-
-  const handleCloseAttachments = useCallback(() => {
-    setShowAttachmentsModal(false);
-  }, []);
 
   if (viewMode === "grid") {
     return (
@@ -184,7 +142,7 @@ export const PaymentCard = memo(function PaymentCard({
             </div>
             <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
               <span className="text-xs text-muted-foreground whitespace-nowrap">
-                {monthYearText}
+                {getMonthName(payment.referenceMonth)}/{payment.referenceYear}
               </span>
               {getStatusBadge(payment.status)}
             </div>
@@ -206,7 +164,10 @@ export const PaymentCard = memo(function PaymentCard({
             <div className="flex-1 min-w-0">
               <p className="text-sm truncate">
                 {isPaid ? "Pago em: " : "Vencimento: "}
-                {isPaid ? formattedPaymentDate : formattedDueDate}
+                {isPaid 
+                  ? (payment.paymentDate ? new Date(payment.paymentDate + "T12:00:00").toLocaleDateString("pt-BR") : "N/A")
+                  : new Date(new Date(payment.dueDate).getTime() + 24 * 60 * 60 * 1000).toLocaleDateString("pt-BR")
+                }
               </p>
             </div>
           </div>
@@ -224,11 +185,14 @@ export const PaymentCard = memo(function PaymentCard({
               <p className={`text-2xl sm:text-3xl font-bold ${colors.amount}`}>
                 {formattedDisplayAmount}
               </p>
-              {hasAttachmentsValue && (
+              {hasAttachments(payment) && (
                 <div 
                   className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full p-1 transition-colors"
-                  onClick={handleAttachmentsClick}
-                  title={`Ver ${attachmentCount} anexo(s)`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowAttachmentsModal(true);
+                  }}
+                  title={`Ver ${Array.isArray(payment.attachments) ? payment.attachments.length : 0} anexo(s)`}
                 >
                   <Paperclip className="h-4 w-4 text-purple-600" />
                 </div>
@@ -426,12 +390,12 @@ export const PaymentCard = memo(function PaymentCard({
       </Card>
 
       {/* Modal de Anexos */}
-      <Dialog open={showAttachmentsModal} onOpenChange={handleCloseAttachments}>
+      <Dialog open={showAttachmentsModal} onOpenChange={setShowAttachmentsModal}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Anexos do Pagamento</DialogTitle>
             <DialogDescription>
-              {property?.location} - {monthYearText}
+              {property?.location} - {getMonthName(payment.referenceMonth)}/{payment.referenceYear}
             </DialogDescription>
           </DialogHeader>
           
