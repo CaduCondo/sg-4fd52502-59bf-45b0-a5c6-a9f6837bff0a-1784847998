@@ -193,17 +193,6 @@ export function useDashboardData(
           return count || 0;
         };
 
-        // Helper para aplicar filtro de localização em pagamentos
-        const applyPaymentLocationFilter = (query: any) => {
-          if (isFinancialUser && allowedLocations) {
-            // Infelizmente Supabase não suporta join em update/delete ou deep filters complexos facilmente
-            // A melhor estratégia aqui é filtrar via rental.property_id
-            // Mas precisamos fazer o join inner
-            return query.in("rental.property_id", allowedLocations);
-          }
-          return query;
-        };
-
         // Query de pagamentos atrasados (amount + count)
         const fetchOverduePayments = async () => {
           // Precisamos fazer o join para filtrar por localização se necessário
@@ -219,7 +208,6 @@ export function useDashboardData(
             .eq("reference_year", year.toString());
 
           if (isFinancialUser && allowedLocations) {
-             // @ts-expect-error - Supabase types complex
              query = query.in("rental.property_id", allowedLocations);
           }
 
@@ -227,8 +215,8 @@ export function useDashboardData(
           
           const payments = data || [];
           const count = payments.length;
-          // @ts-expect-error
-          const sum = payments.reduce((acc, p) => acc + (p.expected_amount || 0), 0);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const sum = payments.reduce((acc: number, p: any) => acc + (p.expected_amount || 0), 0);
           
           return { count, sum };
         };
@@ -247,7 +235,6 @@ export function useDashboardData(
             .eq("reference_year", year.toString());
 
           if (isFinancialUser && allowedLocations) {
-             // @ts-expect-error
              query = query.in("rental.property_id", allowedLocations);
           }
 
@@ -268,7 +255,6 @@ export function useDashboardData(
             .eq("reference_year", year.toString());
 
           if (isFinancialUser && allowedLocations) {
-             // @ts-expect-error
              query = query.in("rental.property_id", allowedLocations);
           }
 
@@ -288,13 +274,12 @@ export function useDashboardData(
             .eq("reference_year", year.toString());
 
           if (isFinancialUser && allowedLocations) {
-             // @ts-expect-error
              query = query.in("rental.property_id", allowedLocations);
           }
 
           const { data } = await query;
-          // @ts-expect-error
-          return (data || []).reduce((acc, p) => acc + (p.expected_amount || 0), 0);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          return (data || []).reduce((acc: number, p: any) => acc + (p.expected_amount || 0), 0);
         };
 
         // Query de receita bruta (sum)
@@ -310,13 +295,12 @@ export function useDashboardData(
             .eq("reference_year", year.toString());
 
           if (isFinancialUser && allowedLocations) {
-             // @ts-expect-error
              query = query.in("rental.property_id", allowedLocations);
           }
 
           const { data } = await query;
-          // @ts-expect-error
-          return (data || []).reduce((acc, p) => acc + (p.paid_amount || 0), 0);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          return (data || []).reduce((acc: number, p: any) => acc + (p.paid_amount || 0), 0);
         };
 
         // Query de despesas (sum)
@@ -363,12 +347,12 @@ export function useDashboardData(
         if (!isMounted) return;
 
         const totalProperties = properties.length;
-        // @ts-expect-error
-        const availableProperties = properties.filter((p) => p.status === "available").length;
-        // @ts-expect-error
-        const unavailableProperties = properties.filter((p) => p.status === "unavailable").length;
-        // @ts-expect-error
-        const occupiedProperties = properties.filter((p) => p.status === "occupied").length;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const availableProperties = properties.filter((p: any) => p.status === "available").length;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const unavailableProperties = properties.filter((p: any) => p.status === "unavailable").length;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const occupiedProperties = properties.filter((p: any) => p.status === "occupied").length;
 
         const newCounts: DashboardCounts = {
           totalProperties,
