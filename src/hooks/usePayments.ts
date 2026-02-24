@@ -193,6 +193,8 @@ export function usePayments() {
             hasFurniture: false,
             acceptsPets: false,
             images: [],
+            createdAt: new Date().toISOString(),
+            features: [],
           });
         }
 
