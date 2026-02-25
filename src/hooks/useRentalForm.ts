@@ -137,34 +137,55 @@ export function useRentalForm({
 
   // Função para inicializar campos com dados do rental
   const initializeFromRental = useCallback((rentalData: Rental) => {
+    console.log("🚀 [useRentalForm] Inicializando dados do rental:", rentalData);
+    
     setSelectedPropertyId(rentalData.propertyId || "");
     setSelectedTenantId(rentalData.tenantId || "");
-    setStartDate(rentalData.startDate || "");
-    setEndDate(rentalData.endDate || "");
+    
+    // Datas
+    setStartDate(rentalData.startDate ? rentalData.startDate.split('T')[0] : "");
+    setEndDate(rentalData.endDate ? rentalData.endDate.split('T')[0] : "");
     setPaymentDay(rentalData.paymentDay?.toString() || "");
+    
+    // Garagem e Corretor
     setHasGarage(rentalData.hasGarage || false);
-    setGarageValue(rentalData.garageValue?.toString() || "");
+    setGarageValue(rentalData.garageValue ? formatCurrency(rentalData.garageValue) : "");
     setHasPartnerBroker(rentalData.hasPartnerBroker || false);
-    setDepositAmount(
-      rentalData.depositAmount ? formatCurrency(rentalData.depositAmount) : ""
-    );
     
-    const hasInstallments = rentalData.depositInstallments ? rentalData.depositInstallments > 1 : false;
-    setIsDepositInstallment(hasInstallments);
-    setDepositInstallmentCount(rentalData.depositInstallments ? rentalData.depositInstallments.toString() : "");
+    // CAUÇÃO - Lógica robusta para recuperar valores
+    const depositValue1 = rentalData.depositInstallment1 || rentalData.depositAmount || 0;
+    console.log("💰 [useRentalForm] Valor Caução recuperado:", depositValue1);
     
-    setDepositPaymentDate(formatDate(rentalData.depositPaymentDate));
-    setDepositPixCode(rentalData.depositPixCode || "");
+    setDepositAmount(depositValue1 > 0 ? formatCurrency(depositValue1) : "");
     
-    setDepositInstallment2(rentalData.depositInstallment2 ? formatCurrency(rentalData.depositInstallment2) : "");
-    setDepositInstallment3(rentalData.depositInstallment3 ? formatCurrency(rentalData.depositInstallment3) : "");
+    // Parcelamento
+    const totalInstallments = rentalData.depositInstallments || 1;
+    if (totalInstallments > 1) {
+      setIsDepositInstallment(true);
+      setDepositInstallmentCount(totalInstallments.toString());
+      
+      if (rentalData.depositInstallment2) {
+        setDepositInstallment2(formatCurrency(rentalData.depositInstallment2));
+      }
+      if (rentalData.depositInstallment3) {
+        setDepositInstallment3(formatCurrency(rentalData.depositInstallment3));
+      }
+    } else {
+      setIsDepositInstallment(false);
+      setDepositInstallmentCount("");
+    }
+    
+    // Datas e PIX do Caução
+    setDepositPaymentDate(formatDate(rentalData.depositPaymentDate || rentalData.depositInstallment1PaymentDate));
+    setDepositPixCode(rentalData.depositPixCode || rentalData.depositInstallment1PixCode || "");
     
     setDepositInstallment2PaymentDate(formatDate(rentalData.depositInstallment2PaymentDate));
-    setDepositInstallment3PaymentDate(formatDate(rentalData.depositInstallment3PaymentDate));
-    
     setDepositInstallment2PixCode(rentalData.depositInstallment2PixCode || "");
+    
+    setDepositInstallment3PaymentDate(formatDate(rentalData.depositInstallment3PaymentDate));
     setDepositInstallment3PixCode(rentalData.depositInstallment3PixCode || "");
     
+    // Anexos
     setAttachments(rentalData.contractAttachments || rentalData.attachments || []);
   }, [formatDate]);
 
@@ -175,9 +196,11 @@ export function useRentalForm({
       setIsEditing(!isViewMode);
 
       if (rental) {
-        const hasRequiredData = properties.length > 0 && tenants.length > 0;
-        if (!hasRequiredData) return;
-
+        // REMOVIDO: const hasRequiredData = properties.length > 0 && tenants.length > 0;
+        // Não podemos bloquear a inicialização só porque as listas não carregaram ainda.
+        // Os valores devem ser preenchidos de qualquer forma.
+        
+        console.log("🔄 [useRentalForm] Rental detectado, inicializando...");
         initializedRef.current = true;
         prevRentalIdRef.current = rental.id;
         initializeFromRental(rental);
@@ -191,7 +214,7 @@ export function useRentalForm({
       resetForm();
       setIsEditing(false);
     }
-  }, [open, rental?.id, isViewMode, initializeFromRental, resetForm, properties.length, tenants.length]);
+  }, [open, rental, isViewMode, initializeFromRental, resetForm]);
 
   // Handler de upload de arquivo
   const handleFileUpload = useCallback(async (file: File) => {
