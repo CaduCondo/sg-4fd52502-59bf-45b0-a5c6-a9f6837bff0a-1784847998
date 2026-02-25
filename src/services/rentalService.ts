@@ -78,6 +78,14 @@ export const rentalService = {
         garage_value,
         has_partner_broker,
         deposit_installments,
+        deposit_installments!inner (
+          installment_number,
+          value,
+          due_date,
+          payment_date,
+          status,
+          pix_code
+        ),
         tenants!rentals_tenant_id_fkey (
           id,
           name,
@@ -98,7 +106,26 @@ export const rentalService = {
       .order("created_at", { ascending: false });
 
     if (error) throw error;
-    return (data || []).map(mapRentalData);
+    
+    return (data || []).map((rental: any) => {
+      const depositInstallmentsData = rental.deposit_installments || [];
+      const installment1 = depositInstallmentsData.find((d: any) => d.installment_number === 1);
+      const installment2 = depositInstallmentsData.find((d: any) => d.installment_number === 2);
+      const installment3 = depositInstallmentsData.find((d: any) => d.installment_number === 3);
+
+      return mapRentalData({
+        ...rental,
+        depositInstallment1: installment1?.value || 0,
+        depositPaymentDate: installment1?.due_date || null,
+        depositPixCode: installment1?.pix_code || "",
+        depositInstallment2: installment2?.value || 0,
+        depositInstallment2PaymentDate: installment2?.due_date || null,
+        depositInstallment2PixCode: installment2?.pix_code || "",
+        depositInstallment3: installment3?.value || 0,
+        depositInstallment3PaymentDate: installment3?.due_date || null,
+        depositInstallment3PixCode: installment3?.pix_code || "",
+      });
+    });
   },
 
   async getById(id: string): Promise<Rental> {
@@ -106,6 +133,14 @@ export const rentalService = {
       .from("rentals")
       .select(`
         *,
+        deposit_installments (
+          installment_number,
+          value,
+          due_date,
+          payment_date,
+          status,
+          pix_code
+        ),
         tenants!rentals_tenant_id_fkey (
           id,
           name,
@@ -142,7 +177,24 @@ export const rentalService = {
       .single();
 
     if (error) throw error;
-    return mapRentalData(data);
+    
+    const depositInstallmentsData = data.deposit_installments || [];
+    const installment1 = depositInstallmentsData.find((d: any) => d.installment_number === 1);
+    const installment2 = depositInstallmentsData.find((d: any) => d.installment_number === 2);
+    const installment3 = depositInstallmentsData.find((d: any) => d.installment_number === 3);
+
+    return mapRentalData({
+      ...data,
+      depositInstallment1: installment1?.value || 0,
+      depositPaymentDate: installment1?.due_date || null,
+      depositPixCode: installment1?.pix_code || "",
+      depositInstallment2: installment2?.value || 0,
+      depositInstallment2PaymentDate: installment2?.due_date || null,
+      depositInstallment2PixCode: installment2?.pix_code || "",
+      depositInstallment3: installment3?.value || 0,
+      depositInstallment3PaymentDate: installment3?.due_date || null,
+      depositInstallment3PixCode: installment3?.pix_code || "",
+    });
   },
 
   async create(rental: Partial<Rental>): Promise<Rental> {
