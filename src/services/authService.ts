@@ -157,7 +157,17 @@ export async function login(credentials: LoginCredentials): Promise<LoginResult>
     localStorage.setItem("auth_session", JSON.stringify(session));
     localStorage.setItem("auth_user", JSON.stringify(session.user));
 
-    return { success: true, user: session.user };
+    // 6. Return success with properly typed user
+    const userResult: LoginResult["user"] = {
+      id: session.user.id,
+      email: session.user.email,
+      name: session.user.name,
+      username: session.user.username,
+      role: session.user.role as "admin" | "financial" | "broker",
+      photo: session.user.photo,
+    };
+
+    return { success: true, user: userResult };
 
   } catch (error) {
     console.error("❌ Error during login:", error);
