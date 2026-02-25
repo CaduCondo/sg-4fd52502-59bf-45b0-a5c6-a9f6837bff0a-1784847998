@@ -66,10 +66,10 @@ export const rentalService = {
       .select(`
         id, property_id, tenant_id, start_date, end_date, rent_due_day,
         rent_value, deposit_value, status, is_active, has_garage, garage_value,
-        has_partner_broker, deposit_installments,
-        tenants!rentals_tenant_id_fkey(id, name, phone),
+        has_partner_broker, deposit_installments, attachments, contract_attachments, pix_code,
+        tenants!rentals_tenant_id_fkey(id, name, phone, email, cpf, cnpj),
         properties!rentals_property_id_fkey(
-          id, location_id, property_identifier, complement, value,
+          id, location_id, property_identifier, complement, value, description, rooms, bathrooms, area, has_garage, has_furniture, accepts_pets, status, images, created_at,
           locations!properties_location_id_fkey(id, name)
         )
       `)
@@ -82,20 +82,22 @@ export const rentalService = {
 
     // Buscar as parcelas do caução separadamente
     const rentalIds = data?.map(r => r.id) || [];
-    const { data: installmentsData } = await supabase
-      .from("deposit_installments")
-      .select("*")
-      .in("rental_id", rentalIds)
-      .order("installment_number");
-
-    // Mapear as parcelas por rental_id
     const installmentsMap = new Map<string, any[]>();
-    installmentsData?.forEach(inst => {
-      if (!installmentsMap.has(inst.rental_id)) {
-        installmentsMap.set(inst.rental_id, []);
-      }
-      installmentsMap.get(inst.rental_id)?.push(inst);
-    });
+    
+    if (rentalIds.length > 0) {
+      const { data: installmentsData } = await supabase
+        .from("deposit_installments")
+        .select("*")
+        .in("rental_id", rentalIds)
+        .order("installment_number");
+
+      installmentsData?.forEach(inst => {
+        if (!installmentsMap.has(inst.rental_id)) {
+          installmentsMap.set(inst.rental_id, []);
+        }
+        installmentsMap.get(inst.rental_id)?.push(inst);
+      });
+    }
 
     return data?.map((r: any) => {
       const installments = installmentsMap.get(r.id) || [];
@@ -110,39 +112,63 @@ export const rentalService = {
         startDate: r.start_date,
         endDate: r.end_date,
         paymentDay: r.rent_due_day,
-        value: r.rent_value,
-        monthlyRent: r.rent_value,
-        depositAmount: r.deposit_value || 0,
-        depositValue: r.deposit_value || 0,
-        status: r.status,
+        value: Number(r.rent_value || 0),
+        monthlyRent: Number(r.rent_value || 0),
+        depositAmount: Number(r.deposit_value || 0),
+        depositValue: Number(r.deposit_value || 0),
+        status: r.status as "active" | "ended" | "terminated",
         isActive: r.is_active,
         hasGarage: r.has_garage || false,
-        garageValue: r.garage_value || 0,
+        garageValue: Number(r.garage_value || 0),
         hasPartnerBroker: r.has_partner_broker || false,
         depositInstallments: r.deposit_installments || 0,
+        attachments: r.attachments || [],
+        contractAttachments: r.contract_attachments || [],
+        pixCode: r.pix_code || "",
+        
         tenant: r.tenants ? {
           id: r.tenants.id,
           name: r.tenants.name,
           phone: r.tenants.phone,
+          email: r.tenants.email || "",
+          document: r.tenants.cpf || r.tenants.cnpj || "",
+          cpf: r.tenants.cpf || "",
+          status: "active", // Default status for display
         } : undefined,
+        
         property: r.properties ? {
           id: r.properties.id,
           locationId: r.properties.location_id,
           propertyIdentifier: r.properties.property_identifier,
           location: r.properties.locations?.name || "",
           complement: r.properties.complement,
-          value: r.properties.value,
-          monthlyRent: r.properties.value,
+          value: Number(r.properties.value || 0),
+          monthlyRent: Number(r.properties.value || 0),
+          description: r.properties.description || "",
+          rooms: r.properties.rooms || 0,
+          bathrooms: r.properties.bathrooms || 0,
+          area: r.properties.area || 0,
+          hasGarage: r.properties.has_garage || false,
+          hasFurniture: r.properties.has_furniture || false,
+          acceptsPets: r.properties.accepts_pets || false,
+          status: r.properties.status || "available",
+          images: r.properties.images || [],
+          createdAt: r.properties.created_at || new Date().toISOString(),
+          address: "", 
+          features: [],
         } : undefined,
-        depositInstallment1: installment1?.value || 0,
+
+        depositInstallment1: Number(installment1?.amount || 0),
         depositInstallment1DueDate: installment1?.due_date || null,
         depositInstallment1PaymentDate: installment1?.payment_date || null,
         depositInstallment1PixCode: installment1?.pix_code || "",
-        depositInstallment2: installment2?.value || 0,
+        
+        depositInstallment2: Number(installment2?.amount || 0),
         depositInstallment2DueDate: installment2?.due_date || null,
         depositInstallment2PaymentDate: installment2?.payment_date || null,
         depositInstallment2PixCode: installment2?.pix_code || "",
-        depositInstallment3: installment3?.value || 0,
+        
+        depositInstallment3: Number(installment3?.amount || 0),
         depositInstallment3DueDate: installment3?.due_date || null,
         depositInstallment3PaymentDate: installment3?.payment_date || null,
         depositInstallment3PixCode: installment3?.pix_code || "",
@@ -156,10 +182,10 @@ export const rentalService = {
       .select(`
         id, property_id, tenant_id, start_date, end_date, rent_due_day,
         rent_value, deposit_value, status, is_active, has_garage, garage_value,
-        has_partner_broker, deposit_installments,
-        tenants!rentals_tenant_id_fkey(id, name, phone),
+        has_partner_broker, deposit_installments, attachments, contract_attachments, pix_code,
+        tenants!rentals_tenant_id_fkey(id, name, phone, email, cpf, cnpj),
         properties!rentals_property_id_fkey(
-          id, location_id, property_identifier, complement, value,
+          id, location_id, property_identifier, complement, value, description, rooms, bathrooms, area, has_garage, has_furniture, accepts_pets, status, images, created_at,
           locations!properties_location_id_fkey(id, name)
         )
       `)
@@ -189,39 +215,63 @@ export const rentalService = {
       startDate: data.start_date,
       endDate: data.end_date,
       paymentDay: data.rent_due_day,
-      value: data.rent_value,
-      monthlyRent: data.rent_value,
-      depositAmount: data.deposit_value || 0,
-      depositValue: data.deposit_value || 0,
-      status: data.status,
+      value: Number(data.rent_value || 0),
+      monthlyRent: Number(data.rent_value || 0),
+      depositAmount: Number(data.deposit_value || 0),
+      depositValue: Number(data.deposit_value || 0),
+      status: data.status as "active" | "ended" | "terminated",
       isActive: data.is_active,
       hasGarage: data.has_garage || false,
-      garageValue: data.garage_value || 0,
+      garageValue: Number(data.garage_value || 0),
       hasPartnerBroker: data.has_partner_broker || false,
       depositInstallments: data.deposit_installments || 0,
+      attachments: data.attachments || [],
+      contractAttachments: data.contract_attachments || [],
+      pixCode: data.pix_code || "",
+
       tenant: data.tenants ? {
         id: data.tenants.id,
         name: data.tenants.name,
         phone: data.tenants.phone,
+        email: data.tenants.email || "",
+        document: data.tenants.cpf || data.tenants.cnpj || "",
+        cpf: data.tenants.cpf || "",
+        status: "active",
       } : undefined,
+
       property: data.properties ? {
         id: data.properties.id,
         locationId: data.properties.location_id,
         propertyIdentifier: data.properties.property_identifier,
         location: data.properties.locations?.name || "",
         complement: data.properties.complement,
-        value: data.properties.value,
-        monthlyRent: data.properties.value,
+        value: Number(data.properties.value || 0),
+        monthlyRent: Number(data.properties.value || 0),
+        description: data.properties.description || "",
+        rooms: data.properties.rooms || 0,
+        bathrooms: data.properties.bathrooms || 0,
+        area: data.properties.area || 0,
+        hasGarage: data.properties.has_garage || false,
+        hasFurniture: data.properties.has_furniture || false,
+        acceptsPets: data.properties.accepts_pets || false,
+        status: data.properties.status || "available",
+        images: data.properties.images || [],
+        createdAt: data.properties.created_at || new Date().toISOString(),
+        address: "",
+        features: [],
       } : undefined,
-      depositInstallment1: installment1?.value || 0,
+
+      depositInstallment1: Number(installment1?.amount || 0),
       depositInstallment1DueDate: installment1?.due_date || null,
       depositInstallment1PaymentDate: installment1?.payment_date || null,
       depositInstallment1PixCode: installment1?.pix_code || "",
-      depositInstallment2: installment2?.value || 0,
+      
+      depositInstallment2: Number(installment2?.amount || 0),
       depositInstallment2DueDate: installment2?.due_date || null,
       depositInstallment2PaymentDate: installment2?.payment_date || null,
       depositInstallment2PixCode: installment2?.pix_code || "",
-      depositInstallment3: installment3?.value || 0,
+      
+      depositInstallment3: Number(installment3?.amount || 0),
       depositInstallment3DueDate: installment3?.due_date || null,
       depositInstallment3PaymentDate: installment3?.payment_date || null,
       depositInstallment3PixCode: installment3?.pix_code || "",
