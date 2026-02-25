@@ -432,9 +432,16 @@ export default function RentalsPage() {
                         >
                           <div className="flex items-center gap-2 flex-1 min-w-0">
                             <Home className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                            <span className="text-sm font-medium truncate">
-                              {location?.name || property.location || "Local não encontrado"}
-                            </span>
+                            <div className="flex flex-col">
+                              <span className="text-sm font-medium">
+                                {location?.name || property.location || "Local não encontrado"}
+                              </span>
+                              {property.complement && (
+                                <span className="text-xs text-muted-foreground">
+                                  {property.complement}
+                                </span>
+                              )}
+                            </div>
                           </div>
                           <span className="text-sm font-semibold text-emerald-600 whitespace-nowrap ml-2">
                             {formatCurrency(property.value || property.monthlyRent || 0)}
