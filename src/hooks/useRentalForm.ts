@@ -330,8 +330,17 @@ export function useRentalForm({
 
   // Obter propriedade selecionada
   const getSelectedProperty = useCallback((): Property | undefined => {
-    return properties.find((p) => p.id === selectedPropertyId);
-  }, [properties, selectedPropertyId]);
+    // Primeiro tenta encontrar na lista de properties
+    const found = properties.find((p) => p.id === selectedPropertyId);
+    
+    // Se não encontrou e estamos visualizando um rental existente
+    if (!found && rental?.property && rental.propertyId === selectedPropertyId) {
+      console.log("🏠 [getSelectedProperty] Usando property do rental como fallback");
+      return rental.property as Property;
+    }
+    
+    return found;
+  }, [properties, selectedPropertyId, rental]);
 
   // Calcular total
   const calculateTotal = useCallback((): number => {
