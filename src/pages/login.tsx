@@ -11,11 +11,7 @@ import { SEO } from "@/components/SEO";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { login } from "@/lib/auth";
-import Head from "next/head";
 import { checkSupabaseHealth } from "@/integrations/supabase/client";
-
-const MAX_LOGIN_ATTEMPTS = 5;
-const LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
 
 export default function Login() {
   const router = useRouter();
@@ -25,7 +21,6 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [isLocked, setIsLocked] = useState(false);
   const [supabaseStatus, setSupabaseStatus] = useState<'checking' | 'healthy' | 'unhealthy'>('checking');
   
   // Forgot Password State
@@ -37,7 +32,6 @@ export default function Login() {
 
   useEffect(() => {
     initializeStorage();
-    checkLockout();
     
     // Verificar saúde do Supabase
     const checkHealth = async () => {
@@ -65,48 +59,27 @@ export default function Login() {
     }
   }, [router, toast]);
 
-  const checkLockout = () => {
-    const lockoutTime = parseInt(localStorage.getItem("lockoutTime") || "0");
-    if (lockoutTime > Date.now()) {
-      setIsLocked(true);
-      const remainingTime = Math.ceil((lockoutTime - Date.now()) / 1000 / 60);
-      setError(`Conta bloqueada. Tente novamente em ${remainingTime} minutos.`);
-      return true;
-    } else {
-      setIsLocked(false);
-      localStorage.removeItem("lockoutTime");
-      return false;
-    }
-  };
-
-  const handleLoginAttempt = () => {
-    const attempts = parseInt(localStorage.getItem("loginAttempts") || "0") + 1;
-    localStorage.setItem("loginAttempts", attempts.toString());
-
-    if (attempts >= MAX_LOGIN_ATTEMPTS) {
-      const lockoutTime = Date.now() + LOCKOUT_DURATION;
-      localStorage.setItem("lockoutTime", lockoutTime.toString());
-      setIsLocked(true);
-      setError(`Muitas tentativas falhas. Conta bloqueada por 15 minutos.`);
-    } else {
-      setError(`Credenciais inválidas. Tentativa ${attempts} de ${MAX_LOGIN_ATTEMPTS}.`);
-    }
+  const handleEmergencyUnlock = () => {
+    // Limpar TODOS os dados de bloqueio
+    localStorage.removeItem('loginAttempts');
+    localStorage.removeItem('lockoutTime');
+    localStorage.removeItem('login_attempts');
+    localStorage.removeItem('locked_until');
+    localStorage.clear();
+    sessionStorage.clear();
+    
+    toast({
+      title: "🔓 Conta Desbloqueada",
+      description: "Você pode tentar fazer login novamente.",
+      duration: 3000,
+    });
+    
+    // Recarregar a página
+    window.location.reload();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isLocked) return;
-    
-    // Verificar saúde do Supabase antes de tentar login
-    if (supabaseStatus === 'unhealthy') {
-      toast({
-        title: "❌ Não foi possível conectar",
-        description: "O serviço está temporariamente indisponível. Tente novamente em alguns minutos.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
     setError("");
     setLoading(true);
 
@@ -123,9 +96,6 @@ export default function Login() {
       
       if (result.success && result.user) {
         // Login successful
-        localStorage.removeItem("loginAttempts");
-        localStorage.removeItem("lockoutTime");
-        
         console.log("✅ Login successful!");
         console.log("✅ Logged in as:", result.user.username);
         console.log("✅ Name:", result.user.name);
@@ -140,7 +110,7 @@ export default function Login() {
       }
 
       // Login failed - invalid credentials
-      handleLoginAttempt();
+      setError("Credenciais inválidas. Verifique seu usuário e senha.");
       
     } catch (error) {
       console.error("❌ Error during login:", error);
@@ -208,9 +178,9 @@ export default function Login() {
                 <Input
                   id="username"
                   type="text"
+                  placeholder="Digite seu usuário ou email"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Digite seu usuário ou email"
                   required
                   className="h-11 border-slate-300"
                 />
@@ -222,18 +192,16 @@ export default function Login() {
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
+                    placeholder="Digite sua senha"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Digite sua senha"
                     required
                     className="h-11 border-slate-300 pr-10"
-                    disabled={isLocked}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700"
-                    disabled={isLocked}
                   >
                     {showPassword ? (
                       <EyeOff className="h-4 w-4" />
@@ -253,16 +221,14 @@ export default function Login() {
               
               <Button 
                 type="submit" 
-                className="w-full h-11 text-base bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg"
-                disabled={loading || isLocked || supabaseStatus === 'unhealthy'}
+                className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-medium"
+                disabled={loading || supabaseStatus === 'unhealthy'}
               >
                 {loading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Entrando...
                   </>
-                ) : isLocked ? (
-                  "Conta Bloqueada"
                 ) : supabaseStatus === 'unhealthy' ? (
                   "Serviço Indisponível"
                 ) : supabaseStatus === 'checking' ? (
@@ -279,9 +245,21 @@ export default function Login() {
                 <button
                   type="button"
                   onClick={() => setShowForgotPassword(true)}
-                  className="text-sm text-blue-600 hover:text-blue-700 hover:underline font-medium"
+                  className="text-sm text-blue-600 hover:text-blue-700 hover:underline"
                 >
                   Esqueci minha senha
+                </button>
+              </div>
+
+              {/* Botão de Emergência para Desbloquear */}
+              <div className="text-center mt-2 pt-2 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={handleEmergencyUnlock}
+                  className="text-xs text-red-600 hover:text-red-700 hover:underline font-medium flex items-center justify-center gap-1 mx-auto"
+                >
+                  <AlertCircle className="h-3 w-3" />
+                  🆘 EMERGÊNCIA: Desbloquear Conta
                 </button>
               </div>
               
