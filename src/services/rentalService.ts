@@ -155,7 +155,7 @@ export const rentalService = {
       end_date: rental.endDate,
       rent_value: rental.value,
       rent_due_day: rental.paymentDay,
-      deposit_value: rental.depositAmount ? String(rental.depositAmount) : null,
+      deposit_value: rental.depositAmount ? rental.depositAmount : null,
       status: rental.status,
       attachments: rental.attachments as any,
       contract_attachments: rental.contractAttachments,
@@ -214,7 +214,7 @@ export const rentalService = {
       dbData.rent_value = rental.value;
     }
     if (rental.paymentDay !== undefined) dbData.rent_due_day = rental.paymentDay;
-    if (rental.depositAmount !== undefined) dbData.deposit_value = String(rental.depositAmount);
+    if (rental.depositAmount !== undefined) dbData.deposit_value = rental.depositAmount;
     if (rental.status !== undefined) dbData.status = rental.status;
     if (rental.attachments !== undefined) dbData.attachments = rental.attachments as any;
     if (rental.contractAttachments !== undefined) dbData.contract_attachments = rental.contractAttachments;

@@ -318,16 +318,11 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       }
 
       if (isTermination && paymentData.rentals) {
-        const depositText = paymentData.rentals.deposit_value;
+        const depositValue = paymentData.rentals.deposit_value;
         let originalDeposit = 0;
         
-        if (depositText) {
-          const parsed = typeof depositText === 'string' 
-            ? parseFloat(depositText.replace(/[^\d,]/g, '').replace(',', '.'))
-            : Number(depositText);
-          if (!isNaN(parsed)) {
-            originalDeposit = parsed;
-          }
+        if (depositValue !== null && depositValue !== undefined) {
+          originalDeposit = Number(depositValue);
         }
         
         const startDate = paymentData.rentals.start_date;
@@ -363,7 +358,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         payment_method: paymentData.payment_method || "pix",
         payment_time: (paymentData as any).payment_time || "",
         amount_to_pay: paymentData.paid_amount 
-          ? formatCurrency((paymentData.paid_amount).toString().replace('.', ''))
+          ? formatCurrency(paymentData.paid_amount.toFixed(2))
           : "",
         notes: paymentData.notes || "",
         pix_code_type: (paymentData as any).pix_code_type || "CP",

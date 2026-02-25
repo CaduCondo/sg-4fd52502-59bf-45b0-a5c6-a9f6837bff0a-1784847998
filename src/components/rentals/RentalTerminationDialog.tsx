@@ -156,37 +156,7 @@ export function RentalTerminationDialog({
         }
 
         if (totalDeposit === 0) {
-          console.log("\n🔍 FONTE 2: Campos antigos (deposit_installment_1/2/3)");
-          console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-          
-          const { data: rentalData, error: rentalError } = await supabase
-            .from("rentals")
-            .select("deposit_installment_1, deposit_installment_2, deposit_installment_3")
-            .eq("id", rental.id)
-            .single();
-
-          if (rentalError) {
-            console.error("❌ Erro ao buscar rental:", rentalError);
-          } else if (rentalData) {
-            const inst1 = Number(rentalData.deposit_installment_1) || 0;
-            const inst2 = Number(rentalData.deposit_installment_2) || 0;
-            const inst3 = Number(rentalData.deposit_installment_3) || 0;
-
-            console.log(`   Parcela 1: R$ ${inst1.toFixed(2)}`);
-            console.log(`   Parcela 2: R$ ${inst2.toFixed(2)}`);
-            console.log(`   Parcela 3: R$ ${inst3.toFixed(2)}`);
-
-            totalDeposit = inst1 + inst2 + inst3;
-            if (totalDeposit > 0) {
-              source = "campos deposit_installment_X";
-              lastPaidDate = rental.startDate;
-              console.log(`✅ Total: R$ ${totalDeposit.toFixed(2)}`);
-            }
-          }
-        }
-
-        if (totalDeposit === 0) {
-          console.log("\n🔍 FONTE 3: Campo security_deposit");
+          console.log("\n🔍 FONTE 2: Campo security_deposit");
           const securityDepositValue = Number(rental.security_deposit) || 0;
           if (securityDepositValue > 0) {
             totalDeposit = securityDepositValue;
@@ -197,7 +167,7 @@ export function RentalTerminationDialog({
         }
 
         if (totalDeposit === 0) {
-          console.log("\n🔍 FONTE 4: Campo deposit_value");
+          console.log("\n🔍 FONTE 3: Campo deposit_value");
           const { data: rentalData } = await supabase
             .from("rentals")
             .select("deposit_value")

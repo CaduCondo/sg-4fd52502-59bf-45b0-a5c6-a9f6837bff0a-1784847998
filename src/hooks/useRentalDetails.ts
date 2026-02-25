@@ -28,37 +28,11 @@ export function useRentalDetails(rentalId: string) {
         .from("rentals")
         .select(`
           *,
-          tenants (
-            id,
-            name,
-            email,
-            phone,
-            cpf,
-            rg
+          properties!rentals_property_id_fkey (
+            *,
+            locations!properties_location_id_fkey (*)
           ),
-          properties (
-            id,
-            property_identifier,
-            complement,
-            description,
-            rooms,
-            bathrooms,
-            area,
-            value,
-            garage_value,
-            has_garage,
-            has_furniture,
-            accepts_pets,
-            images,
-            locations!properties_location_id_fkey (
-              id,
-              name,
-              city,
-              state,
-              neighborhood,
-              street
-            )
-          )
+          tenants!rentals_tenant_id_fkey (*)
         `)
         .eq("id", rentalId)
         .single();
@@ -130,15 +104,6 @@ export function useRentalDetails(rentalId: string) {
         attachments: (r.attachments as string[]) || [],
         contractAttachments: (r.contract_attachments as string[]) || [],
         depositInstallments: r.deposit_installments,
-        depositPaymentDate: r.deposit_payment_date,
-        depositPixCode: r.deposit_pix_code,
-        depositInstallment1: r.deposit_installment_1,
-        depositInstallment2: r.deposit_installment_2,
-        depositInstallment3: r.deposit_installment_3,
-        depositInstallment2PaymentDate: r.deposit_installment_2_payment_date,
-        depositInstallment2PixCode: r.deposit_installment_2_pix_code,
-        depositInstallment3PaymentDate: r.deposit_installment_3_payment_date,
-        depositInstallment3PixCode: r.deposit_installment_3_pix_code,
       };
 
       console.log("=".repeat(80));
