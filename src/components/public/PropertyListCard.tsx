@@ -26,7 +26,7 @@ export function PropertyListCard({ property }: PropertyListCardProps) {
   
   const images = property.images || [];
   const hasImages = images.length > 0;
-  const totalAmount = property.value + (property.hasGarage ? property.garageValue : 0);
+  const totalAmount = property.value;
 
   return (
     <>
@@ -112,18 +112,32 @@ export function PropertyListCard({ property }: PropertyListCardProps) {
                 )}
               </div>
 
-              <div className="flex gap-2">
-                <Button
-                  onClick={() => setShowInterest(true)}
-                  className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
-                >
-                  <Heart className="h-4 w-4 mr-2" />
-                  Tenho Interesse
-                </Button>
-                <ShareButtons
-                  propertyName={property.propertyIdentifier || "Imóvel"}
-                  propertyUrl={`/?property=${property.id}`}
-                />
+              <div className="pt-4 mt-auto">
+                <div className="flex items-end justify-between mb-4">
+                  <div>
+                    <p className="text-sm text-slate-500">Valor Mensal</p>
+                    <p className="text-2xl font-bold text-blue-600">
+                      {totalAmount.toLocaleString("pt-BR", {
+                        style: "currency",
+                        currency: "BRL",
+                      })}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => setShowInterest(true)}
+                    className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
+                  >
+                    <Heart className="h-4 w-4 mr-2" />
+                    Tenho Interesse
+                  </Button>
+                  <ShareButtons
+                    propertyName={property.propertyIdentifier || "Imóvel"}
+                    propertyUrl={`/?property=${property.id}`}
+                  />
+                </div>
               </div>
             </div>
           </div>

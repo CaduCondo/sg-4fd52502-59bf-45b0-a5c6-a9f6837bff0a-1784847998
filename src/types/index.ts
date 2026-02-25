@@ -182,8 +182,12 @@ export interface Rental {
   auto_renew?: boolean; // Compatibility
   hasGarage: boolean;
   has_garage?: boolean; // Compatibility
+  garageValue?: number; // Added
+  garage_value?: number; // Compatibility
   hasPartnerBroker: boolean;
   has_partner_broker?: boolean; // Compatibility
+  partnerBrokerName?: string; // Added if needed
+  partner_broker_name?: string; // Compatibility
   pixCode?: string;
   
   // Deposit Installments

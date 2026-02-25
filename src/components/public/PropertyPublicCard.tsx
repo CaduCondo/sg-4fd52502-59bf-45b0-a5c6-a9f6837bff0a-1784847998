@@ -40,7 +40,7 @@ export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
   const [lightboxIndex, setLightboxIndex] = useState(0);
 
   const images = property.images || [];
-  const totalMonthly = property.value + (property.hasGarage ? property.garageValue : 0);
+  const totalMonthly = property.value;
 
   const handleImageClick = () => {
     setShowDetails(true);
@@ -133,12 +133,6 @@ export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
                 })}
                 <span className="text-sm font-normal text-slate-500">/mês</span>
               </p>
-              {property.hasGarage && property.garageValue > 0 && (
-                <p className="text-xs text-slate-500 mt-1">
-                  Aluguel: R$ {property.value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} + 
-                  Garagem: R$ {property.garageValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                </p>
-              )}
             </div>
           </div>
         </CardContent>
@@ -238,49 +232,15 @@ export function PropertyPublicCard({ property }: PropertyPublicCardProps) {
               <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded-lg">
                 <h3 className="font-semibold text-base mb-2">💰 Valores</h3>
                 <div className="space-y-1.5">
-                  {property.hasGarage && property.garageValue > 0 ? (
-                    <>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-slate-700">Aluguel:</span>
-                        <span className="text-base font-semibold">
-                          {property.value.toLocaleString("pt-BR", {
-                            style: "currency",
-                            currency: "BRL",
-                          })}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-slate-700">Garagem:</span>
-                        <span className="text-base font-semibold">
-                          {property.garageValue.toLocaleString("pt-BR", {
-                            style: "currency",
-                            currency: "BRL",
-                          })}
-                        </span>
-                      </div>
-                      <div className="border-t pt-1.5 mt-1.5">
-                        <div className="flex justify-between items-center">
-                          <span className="text-base font-semibold">Total Mensal:</span>
-                          <span className="text-xl font-bold text-blue-600">
-                            {(property.value + property.garageValue).toLocaleString("pt-BR", {
-                              style: "currency",
-                              currency: "BRL",
-                            })}
-                          </span>
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="flex justify-between items-center">
-                      <span className="text-base font-semibold">Valor Mensal:</span>
-                      <span className="text-xl font-bold text-blue-600">
-                        {property.value.toLocaleString("pt-BR", {
-                          style: "currency",
-                          currency: "BRL",
-                        })}
-                      </span>
-                    </div>
-                  )}
+                  <div className="flex justify-between items-center">
+                    <span className="text-base font-semibold">Valor Mensal:</span>
+                    <span className="text-xl font-bold text-blue-600">
+                      {property.value.toLocaleString("pt-BR", {
+                        style: "currency",
+                        currency: "BRL",
+                      })}
+                    </span>
+                  </div>
                 </div>
               </div>
 

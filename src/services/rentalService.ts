@@ -50,7 +50,6 @@ const mapRentalData = (data: any): Rental => {
       bathrooms: data.properties.bathrooms,
       area: data.properties.area,
       value: data.properties.value,
-      garageValue: data.properties.garage_value,
       hasGarage: data.properties.has_garage,
       hasFurniture: data.properties.has_furniture,
       acceptsPets: data.properties.accepts_pets,
