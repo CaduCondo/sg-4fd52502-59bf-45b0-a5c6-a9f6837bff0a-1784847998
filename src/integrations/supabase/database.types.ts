@@ -1,4 +1,4 @@
- 
+/* eslint-disable @typescript-eslint/no-empty-object-type */
 export type Json =
   | string
   | number
@@ -735,10 +735,12 @@ export type Database = {
         Row: {
           active: boolean
           auth_user_id: string | null
+          blocked_until: string | null
           cpf: string | null
           created_at: string | null
           email: string
           id: string
+          login_attempts: number | null
           name: string
           password_hash: string | null
           phone: string | null
@@ -751,10 +753,12 @@ export type Database = {
         Insert: {
           active?: boolean
           auth_user_id?: string | null
+          blocked_until?: string | null
           cpf?: string | null
           created_at?: string | null
           email: string
           id?: string
+          login_attempts?: number | null
           name: string
           password_hash?: string | null
           phone?: string | null
@@ -767,10 +771,12 @@ export type Database = {
         Update: {
           active?: boolean
           auth_user_id?: string | null
+          blocked_until?: string | null
           cpf?: string | null
           created_at?: string | null
           email?: string
           id?: string
+          login_attempts?: number | null
           name?: string
           password_hash?: string | null
           phone?: string | null
