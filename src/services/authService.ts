@@ -140,7 +140,7 @@ export async function login(credentials: LoginCredentials): Promise<LoginResult>
         email: user.email,
         name: user.name,
         username: user.username,
-        role: user.role,
+        role: user.role as "admin" | "financial" | "broker",
         photo: user.photo,
       },
       expiresAt: Date.now() + (24 * 60 * 60 * 1000), // 24 hours
