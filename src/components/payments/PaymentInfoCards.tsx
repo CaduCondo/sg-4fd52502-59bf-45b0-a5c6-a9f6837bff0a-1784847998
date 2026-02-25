@@ -127,7 +127,7 @@ export function PaymentInfoCards({ tenant, property, rental }: PaymentInfoCardsP
             <p className="text-xs text-muted-foreground">Período Contrato</p>
             <p className="text-sm font-medium">
               {rental?.start_date && rental?.end_date
-                ? `${new Date(rental.start_date).toLocaleDateString('pt-BR')} - ${new Date(rental.end_date).toLocaleDateString('pt-BR')}`
+                ? `${new Date(rental.start_date).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })} - ${new Date(rental.end_date).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`
                 : "Não informado"}
             </p>
           </div>
