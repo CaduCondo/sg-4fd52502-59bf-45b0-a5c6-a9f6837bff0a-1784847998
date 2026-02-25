@@ -64,135 +64,166 @@ export const rentalService = {
     const { data, error } = await supabase
       .from("rentals")
       .select(`
-        id,
-        property_id,
-        tenant_id,
-        start_date,
-        end_date,
-        rent_due_day,
-        rent_value,
-        deposit_value,
-        status,
-        is_active,
-        has_garage,
-        garage_value,
-        has_partner_broker,
-        deposit_installments,
-        deposit_installments!inner (
-          installment_number,
-          value,
-          due_date,
-          payment_date,
-          status,
-          pix_code
-        ),
-        tenants!rentals_tenant_id_fkey (
-          id,
-          name,
-          phone
-        ),
-        properties!rentals_property_id_fkey (
-          id,
-          location_id,
-          property_identifier,
-          complement,
-          value,
-          locations!properties_location_id_fkey (
-            id,
-            name
-          )
+        id, property_id, tenant_id, start_date, end_date, rent_due_day,
+        rent_value, deposit_value, status, is_active, has_garage, garage_value,
+        has_partner_broker, deposit_installments,
+        tenants!rentals_tenant_id_fkey(id, name, phone),
+        properties!rentals_property_id_fkey(
+          id, location_id, property_identifier, complement, value,
+          locations!properties_location_id_fkey(id, name)
         )
       `)
       .order("created_at", { ascending: false });
 
-    if (error) throw error;
-    
-    return (data || []).map((rental: any) => {
-      const depositInstallmentsData = rental.deposit_installments || [];
-      const installment1 = depositInstallmentsData.find((d: any) => d.installment_number === 1);
-      const installment2 = depositInstallmentsData.find((d: any) => d.installment_number === 2);
-      const installment3 = depositInstallmentsData.find((d: any) => d.installment_number === 3);
+    if (error) {
+      console.error("❌ Erro ao buscar locações:", error);
+      throw error;
+    }
 
-      return mapRentalData({
-        ...rental,
+    // Buscar as parcelas do caução separadamente
+    const rentalIds = data?.map(r => r.id) || [];
+    const { data: installmentsData } = await supabase
+      .from("deposit_installments")
+      .select("*")
+      .in("rental_id", rentalIds)
+      .order("installment_number");
+
+    // Mapear as parcelas por rental_id
+    const installmentsMap = new Map<string, any[]>();
+    installmentsData?.forEach(inst => {
+      if (!installmentsMap.has(inst.rental_id)) {
+        installmentsMap.set(inst.rental_id, []);
+      }
+      installmentsMap.get(inst.rental_id)?.push(inst);
+    });
+
+    return data?.map((r: any) => {
+      const installments = installmentsMap.get(r.id) || [];
+      const installment1 = installments.find((i: any) => i.installment_number === 1);
+      const installment2 = installments.find((i: any) => i.installment_number === 2);
+      const installment3 = installments.find((i: any) => i.installment_number === 3);
+
+      return ({
+        id: r.id,
+        propertyId: r.property_id,
+        tenantId: r.tenant_id,
+        startDate: r.start_date,
+        endDate: r.end_date,
+        paymentDay: r.rent_due_day,
+        value: r.rent_value,
+        monthlyRent: r.rent_value,
+        depositAmount: r.deposit_value || 0,
+        depositValue: r.deposit_value || 0,
+        status: r.status,
+        isActive: r.is_active,
+        hasGarage: r.has_garage || false,
+        garageValue: r.garage_value || 0,
+        hasPartnerBroker: r.has_partner_broker || false,
+        depositInstallments: r.deposit_installments || 0,
+        tenant: r.tenants ? {
+          id: r.tenants.id,
+          name: r.tenants.name,
+          phone: r.tenants.phone,
+        } : undefined,
+        property: r.properties ? {
+          id: r.properties.id,
+          locationId: r.properties.location_id,
+          propertyIdentifier: r.properties.property_identifier,
+          location: r.properties.locations?.name || "",
+          complement: r.properties.complement,
+          value: r.properties.value,
+          monthlyRent: r.properties.value,
+        } : undefined,
         depositInstallment1: installment1?.value || 0,
-        depositPaymentDate: installment1?.due_date || null,
-        depositPixCode: installment1?.pix_code || "",
+        depositInstallment1DueDate: installment1?.due_date || null,
+        depositInstallment1PaymentDate: installment1?.payment_date || null,
+        depositInstallment1PixCode: installment1?.pix_code || "",
         depositInstallment2: installment2?.value || 0,
-        depositInstallment2PaymentDate: installment2?.due_date || null,
+        depositInstallment2DueDate: installment2?.due_date || null,
+        depositInstallment2PaymentDate: installment2?.payment_date || null,
         depositInstallment2PixCode: installment2?.pix_code || "",
         depositInstallment3: installment3?.value || 0,
-        depositInstallment3PaymentDate: installment3?.due_date || null,
+        depositInstallment3DueDate: installment3?.due_date || null,
+        depositInstallment3PaymentDate: installment3?.payment_date || null,
         depositInstallment3PixCode: installment3?.pix_code || "",
       });
-    });
+    }) || [];
   },
 
   async getById(id: string): Promise<Rental> {
     const { data, error } = await supabase
       .from("rentals")
       .select(`
-        *,
-        deposit_installments (
-          installment_number,
-          value,
-          due_date,
-          payment_date,
-          status,
-          pix_code
-        ),
-        tenants!rentals_tenant_id_fkey (
-          id,
-          name,
-          email,
-          phone,
-          cpf,
-          rg
-        ),
-        properties!rentals_property_id_fkey (
-          id,
-          property_identifier,
-          complement,
-          description,
-          rooms,
-          bathrooms,
-          area,
-          value,
-          garage_value,
-          has_garage,
-          has_furniture,
-          accepts_pets,
-          images,
-          locations!properties_location_id_fkey (
-            id,
-            name,
-            city,
-            state,
-            neighborhood,
-            street
-          )
+        id, property_id, tenant_id, start_date, end_date, rent_due_day,
+        rent_value, deposit_value, status, is_active, has_garage, garage_value,
+        has_partner_broker, deposit_installments,
+        tenants!rentals_tenant_id_fkey(id, name, phone),
+        properties!rentals_property_id_fkey(
+          id, location_id, property_identifier, complement, value,
+          locations!properties_location_id_fkey(id, name)
         )
       `)
       .eq("id", id)
       .single();
 
-    if (error) throw error;
-    
-    const depositInstallmentsData = data.deposit_installments || [];
-    const installment1 = depositInstallmentsData.find((d: any) => d.installment_number === 1);
-    const installment2 = depositInstallmentsData.find((d: any) => d.installment_number === 2);
-    const installment3 = depositInstallmentsData.find((d: any) => d.installment_number === 3);
+    if (error) {
+      console.error("❌ Erro ao buscar locação:", error);
+      throw error;
+    }
 
-    return mapRentalData({
-      ...data,
+    // Buscar as parcelas do caução
+    const { data: installmentsData } = await supabase
+      .from("deposit_installments")
+      .select("*")
+      .eq("rental_id", id)
+      .order("installment_number");
+
+    const installment1 = installmentsData?.find(i => i.installment_number === 1);
+    const installment2 = installmentsData?.find(i => i.installment_number === 2);
+    const installment3 = installmentsData?.find(i => i.installment_number === 3);
+
+    return ({
+      id: data.id,
+      propertyId: data.property_id,
+      tenantId: data.tenant_id,
+      startDate: data.start_date,
+      endDate: data.end_date,
+      paymentDay: data.rent_due_day,
+      value: data.rent_value,
+      monthlyRent: data.rent_value,
+      depositAmount: data.deposit_value || 0,
+      depositValue: data.deposit_value || 0,
+      status: data.status,
+      isActive: data.is_active,
+      hasGarage: data.has_garage || false,
+      garageValue: data.garage_value || 0,
+      hasPartnerBroker: data.has_partner_broker || false,
+      depositInstallments: data.deposit_installments || 0,
+      tenant: data.tenants ? {
+        id: data.tenants.id,
+        name: data.tenants.name,
+        phone: data.tenants.phone,
+      } : undefined,
+      property: data.properties ? {
+        id: data.properties.id,
+        locationId: data.properties.location_id,
+        propertyIdentifier: data.properties.property_identifier,
+        location: data.properties.locations?.name || "",
+        complement: data.properties.complement,
+        value: data.properties.value,
+        monthlyRent: data.properties.value,
+      } : undefined,
       depositInstallment1: installment1?.value || 0,
-      depositPaymentDate: installment1?.due_date || null,
-      depositPixCode: installment1?.pix_code || "",
+      depositInstallment1DueDate: installment1?.due_date || null,
+      depositInstallment1PaymentDate: installment1?.payment_date || null,
+      depositInstallment1PixCode: installment1?.pix_code || "",
       depositInstallment2: installment2?.value || 0,
-      depositInstallment2PaymentDate: installment2?.due_date || null,
+      depositInstallment2DueDate: installment2?.due_date || null,
+      depositInstallment2PaymentDate: installment2?.payment_date || null,
       depositInstallment2PixCode: installment2?.pix_code || "",
       depositInstallment3: installment3?.value || 0,
-      depositInstallment3PaymentDate: installment3?.due_date || null,
+      depositInstallment3DueDate: installment3?.due_date || null,
+      depositInstallment3PaymentDate: installment3?.payment_date || null,
       depositInstallment3PixCode: installment3?.pix_code || "",
     });
   },
