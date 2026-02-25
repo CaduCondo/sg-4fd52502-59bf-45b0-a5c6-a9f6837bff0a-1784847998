@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
+import type { LoginCredentials, LoginResult } from "@/types"; // Importar tipos globais
 
 type SystemUser = Tables<"system_users">;
 
@@ -18,17 +19,6 @@ interface UserSession {
     photo?: string | null;
   };
   expiresAt: number;
-}
-
-interface LoginCredentials {
-  email: string;
-  password: string;
-}
-
-interface LoginResult {
-  success: boolean;
-  user?: UserSession["user"];
-  error?: string;
 }
 
 /**
@@ -50,8 +40,10 @@ export async function login(credentials: LoginCredentials): Promise<LoginResult>
     console.log("🔐 Starting login for:", credentials.email);
 
     // 1. Search for user by username OR email
-    const table: any = supabase.from("system_users");
+    const table = supabase.from("system_users");
     
+    // Buscar usuário (username ou email)
+    // Precisamos buscar login_attempts e blocked_until também
     let { data: users, error: queryError } = await table
       .select("*")
       .eq("username", credentials.email)
@@ -81,23 +73,65 @@ export async function login(credentials: LoginCredentials): Promise<LoginResult>
     }
 
     const user = foundUsers[0];
-    console.log("✅ User found:", user.username, "| Name:", user.name);
+    console.log("✅ User found:", user.username, "| ID:", user.id);
+
+    // 1.5 VERIFICAR SE ESTÁ BLOQUEADO
+    if (user.blocked_until && new Date(user.blocked_until) > new Date()) {
+      const blockedDate = new Date(user.blocked_until);
+      const timeLeft = Math.ceil((blockedDate.getTime() - Date.now()) / 60000);
+      console.warn(`⛔ User blocked until ${blockedDate.toLocaleString()}`);
+      return { 
+        success: false, 
+        error: `Conta bloqueada temporariamente por muitas tentativas falhas. Tente novamente em ${timeLeft} minutos.` 
+      };
+    }
 
     // 2. Validate password using password_hash
-    console.log("🔐 Validating password for user:", user.username);
-    console.log("🔑 Input password:", credentials.password);
-    console.log("💾 Stored password_hash:", user.password_hash);
+    console.log("🔐 Validating password...");
     
     const isPasswordValid = validatePassword(credentials.password, user.password_hash);
 
     if (!isPasswordValid) {
-      console.warn("⚠️ Invalid password - comparison failed");
-      console.log("Input:", credentials.password);
-      console.log("Stored:", user.password_hash);
-      return { success: false, error: "Senha incorreta" };
+      console.warn("⚠️ Invalid password");
+      
+      // INCREMENTAR TENTATIVAS FALHAS
+      const newAttempts = (user.login_attempts || 0) + 1;
+      const updates: any = { login_attempts: newAttempts };
+      
+      let errorMsg = "Senha incorreta";
+      
+      // SE ATINGIU 5 TENTATIVAS -> BLOQUEAR POR 30 MINUTOS
+      if (newAttempts >= 5) {
+        const blockUntil = new Date(Date.now() + 30 * 60000); // +30 minutos
+        updates.blocked_until = blockUntil.toISOString();
+        console.warn(`⛔ BLOCKING USER until ${blockUntil.toLocaleString()}`);
+        errorMsg = "Muitas tentativas falhas. Conta bloqueada por 30 minutos.";
+      } else {
+        const remaining = 5 - newAttempts;
+        errorMsg = `Senha incorreta. Você tem mais ${remaining} tentativa(s) antes do bloqueio.`;
+      }
+      
+      // Atualizar no banco
+      await supabase
+        .from("system_users")
+        .update(updates)
+        .eq("id", user.id);
+        
+      return { success: false, error: errorMsg };
     }
 
     console.log("✅ Password validated successfully");
+
+    // 2.5 RESETAR TENTATIVAS EM CASO DE SUCESSO
+    if ((user.login_attempts || 0) > 0 || user.blocked_until) {
+      await supabase
+        .from("system_users")
+        .update({ 
+          login_attempts: 0, 
+          blocked_until: null 
+        })
+        .eq("id", user.id);
+    }
 
     // 3. Create local session with ALL user data
     const session: UserSession = {
@@ -112,22 +146,16 @@ export async function login(credentials: LoginCredentials): Promise<LoginResult>
       expiresAt: Date.now() + (24 * 60 * 60 * 1000), // 24 hours
     };
 
-    // 4. CLEAR ALL OLD SESSIONS AND LOGIN ATTEMPTS
-    console.log("🧹 Clearing all old sessions and login attempts...");
+    // 4. CLEAR ALL OLD SESSIONS
+    console.log("🧹 Clearing old sessions...");
     localStorage.removeItem("auth_session");
     localStorage.removeItem("auth_user");
     localStorage.removeItem("rental_auth_user");
     localStorage.removeItem("currentUser");
-    localStorage.removeItem("login_attempts");
-    localStorage.removeItem("locked_until");
 
     // 5. Save NEW session
     localStorage.setItem("auth_session", JSON.stringify(session));
     localStorage.setItem("auth_user", JSON.stringify(session.user));
-
-    console.log("✅ Session created successfully for:", session.user.name);
-    console.log("✅ Username:", session.user.username);
-    console.log("✅ Role:", session.user.role);
 
     return { success: true, user: session.user };
 

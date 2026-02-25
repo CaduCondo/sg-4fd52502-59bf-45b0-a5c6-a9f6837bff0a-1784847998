@@ -59,25 +59,6 @@ export default function Login() {
     }
   }, [router, toast]);
 
-  const handleEmergencyUnlock = () => {
-    // Limpar TODOS os dados de bloqueio
-    localStorage.removeItem('loginAttempts');
-    localStorage.removeItem('lockoutTime');
-    localStorage.removeItem('login_attempts');
-    localStorage.removeItem('locked_until');
-    localStorage.clear();
-    sessionStorage.clear();
-    
-    toast({
-      title: "🔓 Conta Desbloqueada",
-      description: "Você pode tentar fazer login novamente.",
-      duration: 3000,
-    });
-    
-    // Recarregar a página
-    window.location.reload();
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -248,18 +229,6 @@ export default function Login() {
                   className="text-sm text-blue-600 hover:text-blue-700 hover:underline"
                 >
                   Esqueci minha senha
-                </button>
-              </div>
-
-              {/* Botão de Emergência para Desbloquear */}
-              <div className="text-center mt-2 pt-2 border-t border-slate-200">
-                <button
-                  type="button"
-                  onClick={handleEmergencyUnlock}
-                  className="text-xs text-red-600 hover:text-red-700 hover:underline font-medium flex items-center justify-center gap-1 mx-auto"
-                >
-                  <AlertCircle className="h-3 w-3" />
-                  🆘 EMERGÊNCIA: Desbloquear Conta
                 </button>
               </div>
               

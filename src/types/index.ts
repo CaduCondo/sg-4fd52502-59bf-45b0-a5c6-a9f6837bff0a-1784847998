@@ -316,3 +316,21 @@ export interface User {
   name: string;
   role: "admin" | "financial" | "broker";
 }
+
+export interface LoginCredentials {
+  email: string;
+  password: string;
+}
+
+export interface LoginResult {
+  success: boolean;
+  user?: {
+    id: string;
+    email: string;
+    name: string;
+    username: string;
+    role: "admin" | "financial" | "broker";
+    photo?: string | null;
+  };
+  error?: string;
+}
