@@ -120,19 +120,19 @@ export function PaymentInfoCards({ tenant, property, rental }: PaymentInfoCardsP
           <div>
             <p className="text-xs text-muted-foreground">Aluguel Mensal</p>
             <p className="text-sm font-medium">
-              R$ {(rental?.monthly_rent || rental?.rent_value || 0).toFixed(2)}
+              R$ {(rental?.rent_value || 0).toFixed(2).replace('.', ',')}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Valor da Caução</p>
+            <p className="text-sm font-medium">
+              R$ {(rental?.deposit_value || 0).toFixed(2).replace('.', ',')}
             </p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Dia de Vencimento</p>
             <p className="text-sm font-medium">
-              Dia {rental?.payment_day || rental?.rent_due_day || "Não informado"}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Status do Contrato</p>
-            <p className="text-sm font-medium">
-              {rental?.is_active ? "Ativo" : "Inativo"}
+              Dia {rental?.rent_due_day || "Não informado"}
             </p>
           </div>
         </CardContent>
