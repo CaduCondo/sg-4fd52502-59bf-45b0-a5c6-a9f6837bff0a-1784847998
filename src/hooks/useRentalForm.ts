@@ -107,6 +107,7 @@ export function useRentalForm({
 
   // Função para resetar formulário
   const resetForm = useCallback(() => {
+    console.log("🔄 [useRentalForm] Resetando formulário");
     setSelectedPropertyId("");
     setSelectedTenantId("");
     setStartDate("");
@@ -191,39 +192,6 @@ export function useRentalForm({
       setIsEditing(false);
     }
   }, [open, rental?.id, isViewMode, initializeFromRental, resetForm, properties.length, tenants.length]);
-
-  // Effect para reinicializar quando dados completos chegarem
-  useEffect(() => {
-    if (open && rental && !initializedRef.current) {
-      const hasRequiredData = properties.length > 0 && tenants.length > 0;
-      
-      if (hasRequiredData) {
-        initializedRef.current = true;
-        prevRentalIdRef.current = rental.id;
-        initializeFromRental(rental);
-      }
-    }
-  }, [open, rental, properties.length, tenants.length, initializeFromRental]);
-
-  // Effect para garantir que propertyId e tenantId estejam sempre corretos
-  useEffect(() => {
-    if (open && rental && initializedRef.current) {
-      if (!selectedPropertyId && rental.propertyId) {
-        setSelectedPropertyId(rental.propertyId);
-      }
-      if (!selectedTenantId && rental.tenantId) {
-        setSelectedTenantId(rental.tenantId);
-      }
-    }
-  }, [open, rental?.id, selectedPropertyId, selectedTenantId, properties.length, tenants.length, rental]);
-
-  // Effect adicional para forçar atualização quando rental mudar
-  useEffect(() => {
-    if (rental && open) {
-      setSelectedPropertyId(rental.propertyId || "");
-      setSelectedTenantId(rental.tenantId || "");
-    }
-  }, [rental?.id, open, rental]);
 
   // Handler de upload de arquivo
   const handleFileUpload = useCallback(async (file: File) => {
