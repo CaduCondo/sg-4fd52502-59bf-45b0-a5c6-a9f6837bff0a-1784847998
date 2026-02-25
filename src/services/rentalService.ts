@@ -104,7 +104,6 @@ export const rentalService = {
       .order("created_at", { ascending: false });
 
     if (error) {
-      console.error("❌ Erro ao buscar locações:", error);
       throw error;
     }
 
@@ -120,7 +119,6 @@ export const rentalService = {
         .order("installment_number");
 
       if (instError) {
-        console.error("❌ Erro ao buscar parcelas:", instError);
       } else {
         // Agrupar parcelas por rental_id
         installmentsData?.forEach(inst => {
@@ -157,7 +155,6 @@ export const rentalService = {
       .single();
 
     if (error) {
-      console.error("❌ Erro ao buscar locação:", error);
       throw error;
     }
 
