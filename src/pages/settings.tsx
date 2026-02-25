@@ -753,6 +753,7 @@ export default function Settings() {
               users={users}
               isLoading={usersLoading}
               onCreateUser={handleCreateUser}
+              onUpdateUser={handleUpdateUser}
               onDeleteUser={handleDeleteUser}
               onToggleStatus={handleToggleUserStatus}
               onResetPassword={handleResetPassword}

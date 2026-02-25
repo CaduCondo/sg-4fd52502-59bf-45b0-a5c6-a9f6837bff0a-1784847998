@@ -45,6 +45,7 @@ export interface SystemUser {
   auth_user_id: string | null;
   created_at: string;
   usuario?: string;
+  password_hash?: string; // Senha hasheada (bcrypt) - usado para autenticação
   password?: string; // Optional for updates
 }
 

@@ -129,7 +129,7 @@ export function useUsers() {
   return {
     users,
     isLoading,
-    error: null, // Basic implementation
+    error: null,
     refresh: fetchUsers,
     fetchUsers,
     handleCreateUser,
