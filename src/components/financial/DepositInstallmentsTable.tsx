@@ -231,7 +231,7 @@ export function DepositInstallmentsTable({
       Local: inst.rental?.property?.location?.name || "-",
       Complemento: inst.rental?.property?.complement || "-",
       Inquilino: inst.rental?.tenant?.name || "-",
-      "Valor Aluguel": (inst.rental?.rent_value || 0) + (inst.rental?.garage_value || 0),
+      "Valor Aluguel": inst.rental?.rent_value || 0,
       "Valor Total Caução": inst.rental?.security_deposit || 0,
       "Corretor Parceiro": inst.rental?.has_partner_broker ? "Sim" : "Não",
       "Valor Pg Corretor Parceiro": inst.partner_commission || 0,
@@ -638,10 +638,7 @@ export function DepositInstallmentsTable({
                             </div>
                           </TableCell>
                           <TableCell className="text-right" rowSpan={group.length}>
-                            {formatCurrency(
-                              (inst.rental?.rent_value || 0) +
-                                (inst.rental?.garage_value || 0)
-                            )}
+                            {formatCurrency(inst.rental?.rent_value || 0)}
                           </TableCell>
                           <TableCell className="text-right font-semibold" rowSpan={group.length}>
                             {formatCurrency(groupTotalDeposit)}
