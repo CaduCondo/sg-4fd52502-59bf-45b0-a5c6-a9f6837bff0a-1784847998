@@ -38,6 +38,7 @@ interface LoginResult {
 function validatePassword(inputPassword: string, storedPasswordHash: string): boolean {
   // TEMPORÁRIO: Comparação direta até bcrypt ser implementado
   // Em produção, usar: bcrypt.compare(inputPassword, storedPasswordHash)
+  console.log("Comparando senha:", inputPassword, "com hash armazenada:", storedPasswordHash);
   return inputPassword === storedPasswordHash;
 }
 

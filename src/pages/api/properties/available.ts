@@ -29,7 +29,6 @@ export default async function handler(
         bathrooms,
         area,
         value,
-        garage_value,
         has_garage,
         has_furniture,
         accepts_pets,
