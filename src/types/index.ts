@@ -190,15 +190,20 @@ export interface Rental {
   
   // Deposit Installments
   depositInstallments?: number;
-  depositInstallment1?: number;
-  depositPaymentDate?: string;
-  depositPixCode?: string;
+  depositInstallment1?: number; // Added alias for consistency
+  depositInstallment1PaymentDate?: string; // Added alias
+  depositInstallment1PixCode?: string; // Added alias
+  depositInstallment1DueDate?: string; // Added property
+  
   depositInstallment2?: number;
   depositInstallment2PaymentDate?: string;
   depositInstallment2PixCode?: string;
+  depositInstallment2DueDate?: string; // Added property
+  
   depositInstallment3?: number;
   depositInstallment3PaymentDate?: string;
   depositInstallment3PixCode?: string;
+  depositInstallment3DueDate?: string; // Added property
   
   // Compatibility snake_case
   deposit_installments?: number;

@@ -23,7 +23,6 @@ const mapRentalData = (data: any, installments: any[] = []): Rental => {
     value: Number(data.rent_value || 0),
     monthlyRent: Number(data.rent_value || 0),
     depositAmount: data.deposit_value ? Number(data.deposit_value) : 0,
-    depositValue: data.deposit_value ? Number(data.deposit_value) : 0,
     status: data.status as "active" | "ended" | "terminated",
     isActive: data.is_active,
     attachments: (data.attachments as unknown as (string | Attachment)[]) || [],
