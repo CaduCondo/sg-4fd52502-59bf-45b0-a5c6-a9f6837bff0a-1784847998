@@ -19,12 +19,10 @@ const mapRentalData = (data: any): Rental => {
     isActive: data.is_active,
     attachments: (data.attachments as string[]) || [],
     contractAttachments: (data.contract_attachments as string[]) || [],
-    autoRenew: data.auto_renew,
-    pixCode: data.pix_code,
-    
-    hasGarage: Boolean(data.has_garage),
-    garageValue: data.garage_value ? Number(data.garage_value) : undefined,
+    hasGarage: data.has_garage || false,
+    garageValue: data.garage_value || 0,
     hasPartnerBroker: data.has_partner_broker || false,
+    pixCode: data.pix_code || "",
     
     depositInstallments: data.deposit_installments,
 

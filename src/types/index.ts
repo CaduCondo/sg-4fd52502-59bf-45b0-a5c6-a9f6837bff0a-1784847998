@@ -178,8 +178,6 @@ export interface Rental {
   attachments: (Attachment | string)[] | any[]; // Updated to support object structure
   contractAttachments: string[];
   contract_attachments?: string[]; // Compatibility
-  autoRenew: boolean;
-  auto_renew?: boolean; // Compatibility
   hasGarage: boolean;
   has_garage?: boolean; // Compatibility
   garageValue?: number; // Added

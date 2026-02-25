@@ -92,7 +92,7 @@ export function usePayments() {
       const rentalsData = await fetchInBatches<any>(
         "rentals",
         rentalIds,
-        "id, property_id, tenant_id, value, garage_value, status, start_date, end_date, payment_day, security_deposit",
+        "id, property_id, tenant_id, rent_value, garage_value, status, start_date, end_date, rent_due_day, deposit_value, is_active, attachments, contract_attachments, has_garage, has_partner_broker, pix_code",
         20
       );
 
@@ -171,22 +171,26 @@ export function usePayments() {
       );
 
       const rentalsMap = new Map(
-        rentalsData.map(r => [
+        rentalsData?.map((r: any) => [
           r.id,
           {
             id: r.id,
             propertyId: r.property_id,
             tenantId: r.tenant_id,
+            value: r.rent_value,
+            monthlyRent: r.rent_value,
+            garageValue: r.garage_value || 0,
+            status: r.status,
             startDate: r.start_date,
-            endDate: r.end_date || "",
-            paymentDay: r.payment_day,
-            value: r.value,
-            depositAmount: r.security_deposit || 0,
-            status: r.status as "active" | "inactive" | "terminated" | "pending",
-            isActive: r.status === "active",
-            attachments: [],
-            contractAttachments: [],
-            autoRenew: false,
+            endDate: r.end_date,
+            paymentDay: r.rent_due_day,
+            depositAmount: r.deposit_value || 0,
+            isActive: r.is_active || false,
+            attachments: r.attachments || [],
+            contractAttachments: r.contract_attachments || [],
+            hasGarage: r.has_garage || false,
+            hasPartnerBroker: r.has_partner_broker || false,
+            pixCode: r.pix_code || "",
           } as Rental,
         ])
       );

@@ -91,7 +91,7 @@ export function useRentalDetails(rentalId: string) {
         tenantId: r.tenant_id,
         startDate: r.start_date,
         endDate: r.end_date,
-        rentAmount: r.monthly_rent || r.value || 0,
+        rentAmount: r.rent_value || 0,
         condominiumFee: r.condominium_fee || 0,
         iptuFee: r.iptu_fee || 0,
         depositAmount: r.deposit_amount || r.deposit || 0,

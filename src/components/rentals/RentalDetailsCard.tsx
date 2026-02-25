@@ -206,12 +206,6 @@ export const RentalDetailsCard = memo(function RentalDetailsCard({ rental, prope
                 {rental.endDate ? safeDate(rental.endDate) : "Indeterminado"}
               </p>
             </div>
-            <div>
-              <p className="text-muted-foreground">Renovação Automática</p>
-              <p className="font-medium text-slate-900">
-                {rental.autoRenew ? "Sim" : "Não"}
-              </p>
-            </div>
           </div>
         </InfoSection>
 
