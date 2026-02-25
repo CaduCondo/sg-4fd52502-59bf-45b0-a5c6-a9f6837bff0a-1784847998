@@ -79,8 +79,9 @@ export function useUsers() {
         role: userData.role,
       };
 
-      if (userData.password && userData.password.trim() !== "") {
-        updateData.password = userData.password;
+      // Se uma nova senha foi fornecida, atualizar password_hash
+      if (userData.password_hash && userData.password_hash.trim() !== "") {
+        updateData.password_hash = userData.password_hash;
       }
 
       await updateUser(id, updateData);

@@ -148,7 +148,6 @@ export default function Settings() {
     error: usersError, 
     refresh: refreshUsers,
     handleCreateUser,
-    handleUpdateUser,
     handleDeleteUser,
     handleToggleUserStatus
   } = useUsers();
@@ -449,33 +448,6 @@ export default function Settings() {
     } catch (error) {
       console.error("Erro ao resetar senha:", error);
       toast({ title: "Erro ao resetar senha", variant: "destructive" });
-    }
-  };
-
-  const handleUpdateUser = async (id: string, userData: Partial<SystemUser>) => {
-    try {
-      const updateData: any = {
-        name: userData.name,
-        email: userData.email,
-        phone: userData.phone,
-        username: userData.username,
-        role: userData.role,
-      };
-
-      // Se uma nova senha foi fornecida, atualizar password_hash
-      // NOTA: Em produção, isso deve usar bcrypt antes de salvar
-      if (userData.password_hash && userData.password_hash.trim() !== "") {
-        updateData.password_hash = userData.password_hash;
-      }
-
-      await updateUser(id, updateData);
-      toast({ title: "Usuário atualizado com sucesso!" });
-      await fetchUsers();
-      return true;
-    } catch (error) {
-      console.error("Erro ao atualizar usuário:", error);
-      toast({ title: "Erro ao atualizar usuário", variant: "destructive" });
-      return false;
     }
   };
 
@@ -781,7 +753,6 @@ export default function Settings() {
               users={users}
               isLoading={usersLoading}
               onCreateUser={handleCreateUser}
-              onUpdateUser={handleUpdateUser}
               onDeleteUser={handleDeleteUser}
               onToggleStatus={handleToggleUserStatus}
               onResetPassword={handleResetPassword}
