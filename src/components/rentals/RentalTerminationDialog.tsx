@@ -151,6 +151,14 @@ export function RentalTerminationDialog({
           totalDeposit = installments.reduce((sum, inst) => sum + (inst.amount || 0), 0);
           source = "deposit_installments (tabela de parcelas)";
           console.log(`\n💰 SOMA TOTAL DAS PARCELAS: R$ ${totalDeposit.toFixed(2)}`);
+          
+          // 🚨 LOG DE ALERTA para facilitar identificação do problema
+          console.warn(
+            `🚨 ATENÇÃO - CAUÇÃO CALCULADO:\n` +
+            `   • Parcelas encontradas: ${installments.length}\n` +
+            `   • Total calculado: R$ ${totalDeposit.toFixed(2)}\n` +
+            `   • Detalhes: ${installments.map(i => `Parcela ${i.installment_number} = R$ ${(i.amount || 0).toFixed(2)}`).join(', ')}`
+          );
         } else {
           console.log("⚠️ Nenhuma parcela encontrada");
         }
