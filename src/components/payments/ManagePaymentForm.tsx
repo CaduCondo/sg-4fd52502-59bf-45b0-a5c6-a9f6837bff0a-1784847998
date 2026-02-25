@@ -320,24 +320,44 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       }
 
       if (isTermination && paymentData.rentals) {
-        const depositValue = paymentData.rentals.deposit_value;
-        let originalDeposit = 0;
+        console.log("🚨🚨🚨 BUSCANDO PARCELAS DO CAUÇÃO NA TABELA deposit_installments");
         
-        if (depositValue !== null && depositValue !== undefined) {
-          originalDeposit = Number(depositValue);
-        }
-        
-        const startDate = paymentData.rentals.start_date;
-        const endDate = paymentData.rentals.end_date;
-        
-        if (originalDeposit > 0 && startDate && endDate) {
-          const igpmCorrectionValue = calculateCorrectedDeposit(
-            originalDeposit,
-            startDate,
-            endDate
-          );
+        // Fix for TS2589: Type instantiation is excessively deep
+        // Extract rental ID safely to avoid complex type inference in the query
+        const rentalId = (paymentData.rentals as any).id;
+
+        const { data: installments, error: installmentsError } = await supabase
+          .from("deposit_installments")
+          .select("amount, payment_date, installment_number")
+          .eq("rental_id", rentalId)
+          .order("payment_date", { ascending: true });
+
+        if (installmentsError) {
+          console.error("Erro ao buscar parcelas do caução:", installmentsError);
+        } else {
+          console.log("✅✅✅ PARCELAS DO CAUÇÃO CARREGADAS:", installments);
           
-          setIgpmCorrection(igpmCorrectionValue);
+          if (installments && installments.length > 0) {
+            // Calculate total from ALL installments found
+            const totalDeposit = installments.reduce((sum, inst) => sum + (inst.amount || 0), 0);
+            
+            console.log(`💰 SOMA TOTAL (2 parcelas?): R$ ${totalDeposit.toFixed(2)}`);
+            
+            const startDate = paymentData.rentals.start_date;
+            const endDate = paymentData.rentals.end_date;
+            
+            if (totalDeposit > 0 && startDate && endDate) {
+              const igpmCorrectionValue = calculateCorrectedDeposit(
+                totalDeposit,
+                startDate,
+                endDate
+              );
+              
+              setIgpmCorrection(igpmCorrectionValue);
+            }
+          } else {
+            console.log("⚠️⚠️⚠️ Nenhuma parcela de caução encontrada para esta locação");
+          }
         }
       }
 
