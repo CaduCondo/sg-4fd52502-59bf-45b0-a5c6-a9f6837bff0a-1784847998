@@ -142,6 +142,9 @@ export function useRentalForm({
     setSelectedPropertyId(rentalData.propertyId || "");
     setSelectedTenantId(rentalData.tenantId || "");
     
+    console.log("🏠 [useRentalForm] PropertyId:", rentalData.propertyId);
+    console.log("👤 [useRentalForm] TenantId:", rentalData.tenantId);
+    
     // Datas
     setStartDate(rentalData.startDate ? rentalData.startDate.split('T')[0] : "");
     setEndDate(rentalData.endDate ? rentalData.endDate.split('T')[0] : "");
@@ -154,61 +157,78 @@ export function useRentalForm({
     
     // CAUÇÃO - Lógica robusta para recuperar valores
     const depositValue1 = rentalData.depositInstallment1 || rentalData.depositAmount || 0;
-    console.log("💰 [useRentalForm] Valor Caução recuperado:", depositValue1);
+    console.log("💰 [useRentalForm] Valor Caução (1ª parcela):", depositValue1);
+    console.log("💰 [useRentalForm] depositInstallments:", rentalData.depositInstallments);
     
     setDepositAmount(depositValue1 > 0 ? formatCurrency(depositValue1) : "");
     
     // Parcelamento
     const totalInstallments = rentalData.depositInstallments || 1;
+    console.log("📊 [useRentalForm] Total de parcelas:", totalInstallments);
+    
     if (totalInstallments > 1) {
+      console.log("✅ [useRentalForm] Marcando checkbox de parcelamento");
       setIsDepositInstallment(true);
       setDepositInstallmentCount(totalInstallments.toString());
       
-      if (rentalData.depositInstallment2) {
-        setDepositInstallment2(formatCurrency(rentalData.depositInstallment2));
+      // 2ª PARCELA - Aceitar até valor 0
+      const depositValue2 = rentalData.depositInstallment2 ?? 0;
+      console.log("💰 [useRentalForm] Valor 2ª parcela:", depositValue2);
+      if (depositValue2 !== undefined && depositValue2 !== null) {
+        setDepositInstallment2(formatCurrency(depositValue2));
+        setDepositInstallment2PaymentDate(formatDate(rentalData.depositInstallment2PaymentDate));
+        setDepositInstallment2PixCode(rentalData.depositInstallment2PixCode || "");
       }
-      if (rentalData.depositInstallment3) {
-        setDepositInstallment3(formatCurrency(rentalData.depositInstallment3));
+      
+      // 3ª PARCELA - Aceitar até valor 0
+      if (totalInstallments === 3) {
+        const depositValue3 = rentalData.depositInstallment3 ?? 0;
+        console.log("💰 [useRentalForm] Valor 3ª parcela:", depositValue3);
+        if (depositValue3 !== undefined && depositValue3 !== null) {
+          setDepositInstallment3(formatCurrency(depositValue3));
+          setDepositInstallment3PaymentDate(formatDate(rentalData.depositInstallment3PaymentDate));
+          setDepositInstallment3PixCode(rentalData.depositInstallment3PixCode || "");
+        }
       }
     } else {
+      console.log("ℹ️ [useRentalForm] Caução à vista (1 parcela)");
       setIsDepositInstallment(false);
       setDepositInstallmentCount("");
     }
     
-    // Datas e PIX do Caução
+    // Datas e PIX do Caução (1ª parcela)
     setDepositPaymentDate(formatDate(rentalData.depositPaymentDate || rentalData.depositInstallment1PaymentDate));
     setDepositPixCode(rentalData.depositPixCode || rentalData.depositInstallment1PixCode || "");
     
-    setDepositInstallment2PaymentDate(formatDate(rentalData.depositInstallment2PaymentDate));
-    setDepositInstallment2PixCode(rentalData.depositInstallment2PixCode || "");
-    
-    setDepositInstallment3PaymentDate(formatDate(rentalData.depositInstallment3PaymentDate));
-    setDepositInstallment3PixCode(rentalData.depositInstallment3PixCode || "");
-    
     // Anexos
     setAttachments(rentalData.contractAttachments || rentalData.attachments || []);
+    
+    console.log("✅ [useRentalForm] Inicialização completa!");
   }, [formatDate]);
 
   // Inicializar formulário quando o modal abrir
   useEffect(() => {
+    console.log("🔄 [useRentalForm] useEffect disparado - open:", open, "rental:", rental?.id);
+    
     if (open) {
       initializedRef.current = false;
       setIsEditing(!isViewMode);
 
       if (rental) {
-        // REMOVIDO: const hasRequiredData = properties.length > 0 && tenants.length > 0;
-        // Não podemos bloquear a inicialização só porque as listas não carregaram ainda.
-        // Os valores devem ser preenchidos de qualquer forma.
-        
         console.log("🔄 [useRentalForm] Rental detectado, inicializando...");
+        console.log("📊 [useRentalForm] Properties disponíveis:", properties.length);
+        console.log("📊 [useRentalForm] Tenants disponíveis:", tenants.length);
+        
         initializedRef.current = true;
         prevRentalIdRef.current = rental.id;
         initializeFromRental(rental);
       } else {
+        console.log("🆕 [useRentalForm] Novo rental, resetando formulário");
         initializedRef.current = true;
         resetForm();
       }
     } else {
+      console.log("❌ [useRentalForm] Modal fechado, limpando dados");
       initializedRef.current = false;
       prevRentalIdRef.current = null;
       resetForm();
