@@ -13,7 +13,12 @@ const mapRentalData = (data: any, installments: any[] = []): Rental => {
   const tenantData = Array.isArray(data.tenants) ? data.tenants[0] : data.tenants;
   const propertyData = Array.isArray(data.properties) ? data.properties[0] : data.properties;
 
-  return {
+  console.log("Dados do banco:", data);
+  console.log("Parcelas de caução:", installments);
+  console.log("Tenant Data:", tenantData);
+  console.log("Property Data:", propertyData);
+
+  const rental = {
     id: data.id,
     propertyId: data.property_id,
     tenantId: data.tenant_id,
@@ -85,6 +90,10 @@ const mapRentalData = (data: any, installments: any[] = []): Rental => {
     depositInstallment3PaymentDate: installment3?.payment_date || null,
     depositInstallment3PixCode: installment3?.pix_code || "",
   };
+
+  console.log("Objeto Rental final:", rental);
+
+  return rental;
 };
 
 export const rentalService = {
@@ -134,6 +143,9 @@ export const rentalService = {
       const installments = installmentsMap.get(r.id) || [];
       return mapRentalData(r, installments);
     }) || [];
+
+    console.log("Quantidade de locações retornadas:", mappedRentals.length);
+    console.log("Locações retornadas:", mappedRentals);
 
     return mappedRentals;
   },
