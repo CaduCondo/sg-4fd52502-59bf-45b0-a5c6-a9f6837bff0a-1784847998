@@ -163,7 +163,7 @@ export function useRentalForm({
     setDepositAmount(depositValue1 > 0 ? formatCurrency(depositValue1) : "");
     
     // Parcelamento - CORRIGIDO para lidar com array de objetos
-    const installmentsData = rentalData.depositInstallments;
+    const installmentsData = rentalData.depositInstallments as any;
     let totalInstallments = 1;
     
     // Se for um array, pega o length

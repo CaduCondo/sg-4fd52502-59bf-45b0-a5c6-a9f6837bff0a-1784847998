@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, memo } from "react";
+import { useState, useEffect, useCallback, memo, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -368,10 +368,26 @@ export const RentalFormDialog = memo(function RentalFormDialog({
     return total;
   }, [depositAmount, isDepositInstallment, depositInstallmentCount, depositInstallment2, depositInstallment3]);
 
-  // ✅ DEPOIS DOS HOOKS, AGORA PODEMOS TER RETURNS CONDICIONAIS
-  const propertiesToDisplay = rental ? properties : availableProperties;
-  const tenantsToDisplay = rental ? tenants : availableTenants;
-  const selectedProperty = getSelectedProperty();
+  // ✅ GARANTIR QUE O IMÓVEL E INQUILINO ATUAIS ESTEJAM NAS LISTAS
+  const propertiesToDisplay = useMemo(() => {
+    const baseList = rental ? properties : availableProperties;
+    if (rental && rental.property && !baseList.find(p => p.id === rental.propertyId)) {
+      console.log("➕ Adicionando imóvel atual à lista:", rental.property);
+      return [...baseList, rental.property as Property];
+    }
+    return baseList;
+  }, [rental, properties, availableProperties]);
+
+  const tenantsToDisplay = useMemo(() => {
+    const baseList = rental ? tenants : availableTenants;
+    if (rental && rental.tenant && !baseList.find(t => t.id === rental.tenantId)) {
+      console.log("➕ Adicionando inquilino atual à lista:", rental.tenant);
+      return [...baseList, rental.tenant as Tenant];
+    }
+    return baseList;
+  }, [rental, tenants, availableTenants]);
+
+  const selectedProperty = getSelectedProperty() || (rental?.property as Property);
   const isFieldDisabled = isViewMode && !isEditing;
 
   if (!open) return null;
