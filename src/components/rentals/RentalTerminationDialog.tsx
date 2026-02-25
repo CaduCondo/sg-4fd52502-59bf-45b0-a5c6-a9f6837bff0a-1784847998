@@ -281,7 +281,7 @@ export function RentalTerminationDialog({
         const threeTimesRent = 3 * monthlyRent;
         const perMonthPenalty = threeTimesRent / totalMonths;
         const penalty = perMonthPenalty * remaining;
-        setPenaltyAmount(penalty);
+        setPenaltyAmount(Math.round(penalty * 100) / 100);
       } 
       else if (apply12MonthsPenalty) {
         if (currentMonthFromDate < 12) {
@@ -289,7 +289,7 @@ export function RentalTerminationDialog({
           const threeTimesRent = 3 * monthlyRent;
           const perMonthPenalty = threeTimesRent / 12;
           const penalty = perMonthPenalty * monthsTo12th;
-          setPenaltyAmount(penalty);
+          setPenaltyAmount(Math.round(penalty * 100) / 100);
         } else {
           setPenaltyAmount(0);
         }
@@ -566,7 +566,7 @@ export function RentalTerminationDialog({
                   <div className="flex justify-between items-center bg-red-50 dark:bg-red-950 p-2 rounded">
                     <span className="text-sm text-red-700 dark:text-red-300 font-medium">Valor da Multa:</span>
                     <span className="font-bold text-red-700 dark:text-red-300">
-                      R$ {penaltyAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      R$ {penaltyAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                   </div>
                 )}
