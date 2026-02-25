@@ -18,15 +18,14 @@ const mapDatabaseProperty = (item: any): Property => {
     bathrooms: item.bathrooms || 0,
     area: item.area || 0,
     value: item.value || 0,
-    garageValue: item.garage_value || 0,
     hasGarage: item.has_garage || false,
     hasFurniture: item.has_furniture || false,
     acceptsPets: item.accepts_pets || false,
     status: item.status as "available" | "occupied" | "unavailable",
     images: Array.isArray(item.images) ? (item.images as string[]) : [],
     createdAt: item.created_at,
-    address: "", // Add default address
-    features: [], // Add default features
+    address: "",
+    features: [],
   };
 };
 
@@ -41,7 +40,6 @@ const mapPropertyFromDb = (data: any): Property => {
     bathrooms: data.bathrooms,
     area: data.area,
     value: data.value,
-    garageValue: data.garage_value,
     hasGarage: data.has_garage,
     hasFurniture: data.has_furniture,
     acceptsPets: data.accepts_pets,
@@ -49,7 +47,6 @@ const mapPropertyFromDb = (data: any): Property => {
     status: data.status,
     images: data.images || [],
     createdAt: data.created_at,
-    // updatedAt: data.updated_at, // Remove updatedAt
     address: data.locations?.address || "",
     features: data.features || [],
     locationDetails: data.locations,
@@ -113,7 +110,6 @@ export const getById = async (id: string): Promise<Property | null> => {
         area,
         has_garage,
         value,
-        garage_value,
         status,
         images,
         has_furniture,
@@ -154,7 +150,6 @@ export const create = async (property: Omit<Property, "id" | "createdAt" | "upda
       property_identifier: property.propertyIdentifier || null,
       complement: property.complement || null,
       value: property.value || 0,
-      garage_value: property.garageValue || 0,
       status: property.status || "available",
       rooms: property.rooms || 0,
       bathrooms: property.bathrooms || 0,
@@ -176,7 +171,6 @@ export const create = async (property: Omit<Property, "id" | "createdAt" | "upda
       area,
       has_garage,
       value,
-      garage_value,
       status,
       images,
       has_furniture,
@@ -215,7 +209,6 @@ export const update = async (id: string, property: Partial<Property>): Promise<P
   if (property.area !== undefined) propertyData.area = property.area;
   if (property.hasGarage !== undefined) propertyData.has_garage = property.hasGarage;
   if (property.value !== undefined) propertyData.value = property.value;
-  if (property.garageValue !== undefined) propertyData.garage_value = property.garageValue;
   if (property.status !== undefined) propertyData.status = property.status;
   if (property.images !== undefined) propertyData.images = property.images;
   if (property.hasFurniture !== undefined) propertyData.has_furniture = property.hasFurniture;

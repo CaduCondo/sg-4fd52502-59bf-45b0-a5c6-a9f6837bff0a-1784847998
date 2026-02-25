@@ -791,7 +791,6 @@ export type Database = {
           email: string
           id: string
           name: string
-          password: string
           password_hash: string | null
           phone: string | null
           photo: string | null
@@ -799,7 +798,6 @@ export type Database = {
           role: string
           updated_at: string | null
           username: string | null
-          usuario: string | null
         }
         Insert: {
           active?: boolean
@@ -809,7 +807,6 @@ export type Database = {
           email: string
           id?: string
           name: string
-          password: string
           password_hash?: string | null
           phone?: string | null
           photo?: string | null
@@ -817,7 +814,6 @@ export type Database = {
           role?: string
           updated_at?: string | null
           username?: string | null
-          usuario?: string | null
         }
         Update: {
           active?: boolean
@@ -827,7 +823,6 @@ export type Database = {
           email?: string
           id?: string
           name?: string
-          password?: string
           password_hash?: string | null
           phone?: string | null
           photo?: string | null
@@ -835,7 +830,6 @@ export type Database = {
           role?: string
           updated_at?: string | null
           username?: string | null
-          usuario?: string | null
         }
         Relationships: []
       }
