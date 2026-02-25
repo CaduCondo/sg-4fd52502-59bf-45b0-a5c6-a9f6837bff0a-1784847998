@@ -333,19 +333,10 @@ export default function RentalsPage() {
 
   // Handler para visualizar locação
   const handleViewRental = useCallback(async (rental: Rental) => {
-    console.log("🔍 DEBUG handleViewRental - Opening rental:", {
-      id: rental.id,
-      value: rental.value,
-      depositInstallments: rental.depositInstallments,
-      depositInstallment1: rental.depositInstallment1,
-    });
-    
     try {
       setSelectedRental(rental);
       setIsViewMode(true);
       setIsRentalDialogOpen(true);
-      
-      console.log("🔍 DEBUG handleViewRental - Dialog opened successfully");
     } catch (error) {
       console.error("❌ Erro ao abrir diálogo:", error);
       toast({
@@ -583,18 +574,6 @@ export default function RentalsPage() {
                                 <h3 className="text-lg font-semibold text-blue-600 truncate">
                                   {(() => {
                                     const foundLocation = locations.find(loc => loc.id === rental.property?.locationId);
-                                    console.log("🔍 DEBUG Card Render:", {
-                                      rentalId: rental.id,
-                                      propertyId: rental.property?.id,
-                                      locationId: rental.property?.locationId,
-                                      foundLocation: foundLocation?.name,
-                                      propertyLocation: rental.property?.location,
-                                      rentalValue: rental.value,
-                                      rentalMonthlyRent: rental.monthlyRent,
-                                      depositInstallments: rental.depositInstallments,
-                                      depositInstallment1: rental.depositInstallment1,
-                                      locationsArrayLength: locations.length
-                                    });
                                     return foundLocation?.name || rental.property?.location || "Local não encontrado";
                                   })()}
                                 </h3>
