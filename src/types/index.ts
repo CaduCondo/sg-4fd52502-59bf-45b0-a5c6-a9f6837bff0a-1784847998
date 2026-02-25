@@ -195,6 +195,9 @@ export interface Rental {
   depositInstallment1PixCode?: string; // Added alias
   depositInstallment1DueDate?: string; // Added property
   
+  depositPaymentDate?: string; // Added for first installment compatibility
+  depositPixCode?: string; // Added for first installment compatibility
+  
   depositInstallment2?: number;
   depositInstallment2PaymentDate?: string;
   depositInstallment2PixCode?: string;

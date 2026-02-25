@@ -71,6 +71,10 @@ const mapRentalData = (data: any, installments: any[] = []): Rental => {
     depositInstallment1PaymentDate: installment1?.payment_date || null,
     depositInstallment1PixCode: installment1?.pix_code || "",
     
+    // Aliases para primeira parcela (compatibilidade)
+    depositPaymentDate: installment1?.payment_date || null,
+    depositPixCode: installment1?.pix_code || "",
+    
     depositInstallment2: Number(installment2?.amount || 0),
     depositInstallment2DueDate: installment2?.due_date || null,
     depositInstallment2PaymentDate: installment2?.payment_date || null,

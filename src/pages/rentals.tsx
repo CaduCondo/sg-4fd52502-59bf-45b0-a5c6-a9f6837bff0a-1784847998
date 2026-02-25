@@ -337,7 +337,9 @@ export default function RentalsPage() {
       setSelectedRental(rental);
       setIsViewMode(true);
       setIsRentalDialogOpen(true);
-      await loadAdditionalData();
+      if (!isViewMode) {
+        await loadAdditionalData();
+      }
     } catch (error) {
       console.error("⚠️ Erro ao carregar dados adicionais, mas o diálogo será aberto:", error);
     }
