@@ -43,8 +43,6 @@ export function useRentalDetails(rentalId: string) {
       console.log("📦 DADOS RECEBIDOS DO SUPABASE (RAW):");
       console.log("=".repeat(80));
       console.log("🔍 rentalData completo:", rentalData);
-      console.log("🔍 deposit_payment_date:", rentalData.deposit_payment_date);
-      console.log("🔍 deposit_pix_code:", rentalData.deposit_pix_code);
       console.log("🔍 deposit_installments:", rentalData.deposit_installments);
       console.log("=".repeat(80));
 
@@ -110,8 +108,6 @@ export function useRentalDetails(rentalId: string) {
       console.log("✅ OBJETO mappedRental CRIADO:");
       console.log("=".repeat(80));
       console.log("📋 mappedRental:", mappedRental);
-      console.log("📋 depositPaymentDate:", mappedRental.depositPaymentDate);
-      console.log("📋 depositPixCode:", mappedRental.depositPixCode);
       console.log("📋 depositInstallments:", mappedRental.depositInstallments);
       console.log("=".repeat(80));
 
