@@ -201,6 +201,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       let effectiveRentalValue = 0;
       let effectiveGarageValue = 0;
 
+      // Primeiro tenta extrair do breakdown
       if (paymentData.breakdown) {
         try {
           let breakdownData = paymentData.breakdown;
@@ -243,28 +244,29 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           if (proporcionalItem) {
             effectiveRentalValue = proporcionalItem.amount || proporcionalItem.value || 0;
             effectiveGarageValue = 0;
-          } else {
+          } else if (aluguelItem || garagemItem) {
             effectiveRentalValue = aluguelItem?.amount || aluguelItem?.value || 0;
             effectiveGarageValue = garagemItem?.amount || garagemItem?.value || 0;
           }
           
-          console.log("💰 Values - Rental:", effectiveRentalValue, "Garage:", effectiveGarageValue);
+          console.log("💰 Values from breakdown - Rental:", effectiveRentalValue, "Garage:", effectiveGarageValue);
         } catch (error) {
           console.error("❌ Error parsing breakdown:", error);
-          effectiveRentalValue = paymentData.rentals.rent_value || 0;
-          effectiveGarageValue = paymentData.rentals.garage_value || 0;
-          
-          if (paymentData.rentals.has_garage && effectiveGarageValue > 0) {
-            effectiveRentalValue = effectiveRentalValue - effectiveGarageValue;
-          }
         }
-      } else {
+      }
+      
+      // Se não conseguiu extrair do breakdown OU valores zerados, usar valores da locação como fallback
+      if (effectiveRentalValue === 0 && effectiveGarageValue === 0) {
+        console.log("⚠️ Breakdown empty or invalid, using rental values as fallback");
         effectiveRentalValue = paymentData.rentals.rent_value || 0;
         effectiveGarageValue = paymentData.rentals.garage_value || 0;
         
+        // Se tem garagem, subtrair o valor da garagem do aluguel
         if (paymentData.rentals.has_garage && effectiveGarageValue > 0) {
           effectiveRentalValue = effectiveRentalValue - effectiveGarageValue;
         }
+        
+        console.log("💰 Values from rental - Rental:", effectiveRentalValue, "Garage:", effectiveGarageValue);
       }
 
       setRentalValue(effectiveRentalValue);

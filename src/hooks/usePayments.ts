@@ -92,7 +92,7 @@ export function usePayments() {
       const rentalsData = await fetchInBatches<any>(
         "rentals",
         rentalIds,
-        "id, property_id, tenant_id, rent_value, garage_value, status, start_date, end_date, rent_due_day, deposit_value, is_active, attachments, contract_attachments, has_garage, has_partner_broker, pix_code",
+        "id, property_id, tenant_id, rent_value, garage_value, status, start_date, end_date, rent_due_day, deposit_value, is_active, attachments, contract_attachments, has_garage, has_partner_broker, pix_code, deposit_installments",
         20
       );
 
@@ -185,6 +185,7 @@ export function usePayments() {
             endDate: r.end_date,
             paymentDay: r.rent_due_day,
             depositAmount: r.deposit_value || 0,
+            depositInstallments: r.deposit_installments || null,
             isActive: r.is_active || false,
             attachments: r.attachments || [],
             contractAttachments: r.contract_attachments || [],
