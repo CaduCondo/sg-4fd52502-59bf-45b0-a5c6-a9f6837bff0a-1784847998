@@ -34,8 +34,17 @@ export async function createUser(userData: {
   password: string;
   active: boolean;
 }): Promise<SystemUser> {
-  // NÃO remover o password - enviar todos os dados incluindo password
-  return createSingle<SystemUser>(TABLE, userData as any);
+  // Converter password para password_hash
+  // TODO: Em produção, usar bcrypt.hash antes de salvar
+  const dbData = {
+    ...userData,
+    password_hash: userData.password, // TEMPORÁRIO: até bcrypt ser implementado
+  };
+  
+  // Remover password do objeto (não existe mais no banco)
+  delete (dbData as any).password;
+  
+  return createSingle<SystemUser>(TABLE, dbData as any);
 }
 
 export async function updateUser(id: string, user: Partial<SystemUser>): Promise<SystemUser> {
@@ -80,9 +89,10 @@ export async function unlockUser(userId: string, active: boolean): Promise<void>
 
 export async function resetPassword(userId: string): Promise<void> {
   // Resetar senha para "mudar123"
+  // TODO: Em produção, usar bcrypt.hash antes de salvar
   const { error } = await supabase
     .from("system_users")
-    .update({ password: "mudar123" })
+    .update({ password_hash: "mudar123" })
     .eq("id", userId)
     .select("*")
     .maybeSingle();

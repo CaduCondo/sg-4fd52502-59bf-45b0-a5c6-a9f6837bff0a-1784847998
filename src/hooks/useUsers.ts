@@ -28,7 +28,6 @@ export function useUsers() {
         cpf: user.cpf || "",
         auth_user_id: user.auth_user_id || "",
         created_at: user.created_at || new Date().toISOString(),
-        usuario: user.usuario || user.email,
       }));
       
       setUsers(typedUsers);

@@ -438,16 +438,44 @@ export default function Settings() {
   const handleResetPassword = async (userId: string) => {
     if (!confirm("Deseja resetar a senha deste usuário para 'mudar123'?")) return;
     try {
+      // NOTA: Em produção, isso deve usar bcrypt antes de salvar
       const { error } = await supabase
         .from("system_users")
-        .update({ password: "mudar123" })
+        .update({ password_hash: "mudar123" })
         .eq("id", userId);
 
       if (error) throw error;
-      toast({ title: "Senha resetada com sucesso!" });
+      toast({ title: "Senha resetada com sucesso! Nova senha: mudar123" });
     } catch (error) {
       console.error("Erro ao resetar senha:", error);
       toast({ title: "Erro ao resetar senha", variant: "destructive" });
+    }
+  };
+
+  const handleUpdateUser = async (id: string, userData: Partial<SystemUser>) => {
+    try {
+      const updateData: any = {
+        name: userData.name,
+        email: userData.email,
+        phone: userData.phone,
+        username: userData.username,
+        role: userData.role,
+      };
+
+      // Se uma nova senha foi fornecida, atualizar password_hash
+      // NOTA: Em produção, isso deve usar bcrypt antes de salvar
+      if (userData.password_hash && userData.password_hash.trim() !== "") {
+        updateData.password_hash = userData.password_hash;
+      }
+
+      await updateUser(id, updateData);
+      toast({ title: "Usuário atualizado com sucesso!" });
+      await fetchUsers();
+      return true;
+    } catch (error) {
+      console.error("Erro ao atualizar usuário:", error);
+      toast({ title: "Erro ao atualizar usuário", variant: "destructive" });
+      return false;
     }
   };
 

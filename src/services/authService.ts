@@ -33,10 +33,12 @@ interface LoginResult {
 
 /**
  * Simple password validation (direct comparison)
- * For production, implement proper bcrypt comparison
+ * TODO: For production, implement proper bcrypt comparison
  */
-function validatePassword(inputPassword: string, storedPassword: string): boolean {
-  return inputPassword === storedPassword;
+function validatePassword(inputPassword: string, storedPasswordHash: string): boolean {
+  // TEMPORÁRIO: Comparação direta até bcrypt ser implementado
+  // Em produção, usar: bcrypt.compare(inputPassword, storedPasswordHash)
+  return inputPassword === storedPasswordHash;
 }
 
 /**
@@ -80,8 +82,8 @@ export async function login(credentials: LoginCredentials): Promise<LoginResult>
     const user = foundUsers[0];
     console.log("✅ User found:", user.username, "| Name:", user.name);
 
-    // 2. Validate password
-    const isPasswordValid = validatePassword(credentials.password, user.password);
+    // 2. Validate password using password_hash
+    const isPasswordValid = validatePassword(credentials.password, user.password_hash);
 
     if (!isPasswordValid) {
       console.warn("⚠️ Invalid password");
