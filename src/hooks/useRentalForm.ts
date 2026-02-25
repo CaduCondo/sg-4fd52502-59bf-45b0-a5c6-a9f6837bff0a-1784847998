@@ -336,11 +336,23 @@ export function useRentalForm({
   // Calcular total
   const calculateTotal = useCallback((): number => {
     const property = getSelectedProperty();
+    console.log("💰 [calculateTotal] Property:", property);
+    console.log("💰 [calculateTotal] Property value:", property?.value);
+    
     const propertyValue = property?.value || 0;
+    console.log("💰 [calculateTotal] propertyValue:", propertyValue);
+    
     const garage = hasGarage
       ? parseFloat(garageValue.replace(/[^\d,]/g, "").replace(",", ".") || "0")
       : 0;
-    return propertyValue + garage;
+    console.log("💰 [calculateTotal] hasGarage:", hasGarage);
+    console.log("💰 [calculateTotal] garageValue:", garageValue);
+    console.log("💰 [calculateTotal] garage (parsed):", garage);
+    
+    const total = propertyValue + garage;
+    console.log("💰 [calculateTotal] TOTAL:", total);
+    
+    return total;
   }, [getSelectedProperty, hasGarage, garageValue]);
 
   return {
