@@ -148,6 +148,7 @@ export default function Settings() {
     error: usersError, 
     refresh: refreshUsers,
     handleCreateUser,
+    handleUpdateUser,
     handleDeleteUser,
     handleToggleUserStatus
   } = useUsers();
