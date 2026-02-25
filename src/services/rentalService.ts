@@ -1,10 +1,18 @@
 import { supabase } from "@/integrations/supabase/client";
-import { Rental } from "@/types";
+import { Rental, Attachment } from "@/types";
 import { depositInstallmentService } from "./depositInstallmentService";
 import { updatePendingPaymentsOnRentalEdit } from "./paymentService";
 
 // Helper para mapear dados do banco para o tipo Rental
-const mapRentalData = (data: any): Rental => {
+const mapRentalData = (data: any, installments: any[] = []): Rental => {
+  const installment1 = installments.find((i: any) => i.installment_number === 1);
+  const installment2 = installments.find((i: any) => i.installment_number === 2);
+  const installment3 = installments.find((i: any) => i.installment_number === 3);
+
+  // Tratamento seguro para tenants e properties que podem vir como array ou objeto
+  const tenantData = Array.isArray(data.tenants) ? data.tenants[0] : data.tenants;
+  const propertyData = Array.isArray(data.properties) ? data.properties[0] : data.properties;
+
   return {
     id: data.id,
     propertyId: data.property_id,
@@ -15,47 +23,64 @@ const mapRentalData = (data: any): Rental => {
     value: Number(data.rent_value || 0),
     monthlyRent: Number(data.rent_value || 0),
     depositAmount: data.deposit_value ? Number(data.deposit_value) : 0,
-    status: data.status,
+    depositValue: data.deposit_value ? Number(data.deposit_value) : 0,
+    status: data.status as "active" | "ended" | "terminated",
     isActive: data.is_active,
-    attachments: (data.attachments as string[]) || [],
-    contractAttachments: (data.contract_attachments as string[]) || [],
+    attachments: (data.attachments as unknown as (string | Attachment)[]) || [],
+    contractAttachments: (data.contract_attachments as unknown as string[]) || [],
     hasGarage: data.has_garage || false,
-    garageValue: data.garage_value || 0,
+    garageValue: Number(data.garage_value || 0),
     hasPartnerBroker: data.has_partner_broker || false,
     pixCode: data.pix_code || "",
     
-    depositInstallments: data.deposit_installments,
+    depositInstallments: data.deposit_installments || 0,
 
-    property: data.properties ? {
-      id: data.properties.id,
-      locationId: data.properties.location_id,
-      location: data.properties.locations?.name || "",
-      propertyIdentifier: data.properties.property_identifier,
-      complement: data.properties.complement,
-      description: data.properties.description,
-      rooms: data.properties.rooms,
-      bathrooms: data.properties.bathrooms,
-      area: data.properties.area,
-      value: data.properties.value,
-      hasGarage: data.properties.has_garage,
-      hasFurniture: data.properties.has_furniture,
-      acceptsPets: data.properties.accepts_pets,
-      status: data.properties.status,
-      images: data.properties.images || [],
-      createdAt: data.properties.created_at,
+    property: propertyData ? {
+      id: propertyData.id,
+      locationId: propertyData.location_id,
+      location: propertyData.locations?.name || "",
+      propertyIdentifier: propertyData.property_identifier,
+      complement: propertyData.complement,
+      description: propertyData.description || "",
+      rooms: propertyData.rooms || 0,
+      bathrooms: propertyData.bathrooms || 0,
+      area: propertyData.area || 0,
+      value: Number(propertyData.value || 0),
+      monthlyRent: Number(propertyData.value || 0),
+      hasGarage: propertyData.has_garage || false,
+      hasFurniture: propertyData.has_furniture || false,
+      acceptsPets: propertyData.accepts_pets || false,
+      status: (propertyData.status as "available" | "occupied" | "unavailable") || "available",
+      images: propertyData.images || [],
+      createdAt: propertyData.created_at || new Date().toISOString(),
       address: "",
       features: [],
     } : undefined,
     
-    tenant: data.tenants ? {
-      id: data.tenants.id,
-      name: data.tenants.name,
-      phone: data.tenants.phone,
-      email: data.tenants.email || "",
-      document: data.tenants.cpf || data.tenants.cnpj || "",
-      cpf: data.tenants.cpf || "",
+    tenant: tenantData ? {
+      id: tenantData.id,
+      name: tenantData.name,
+      phone: tenantData.phone,
+      email: tenantData.email || "",
+      document: tenantData.cpf || tenantData.cnpj || "",
+      cpf: tenantData.cpf || "",
       status: "active",
     } : undefined,
+
+    depositInstallment1: Number(installment1?.amount || 0),
+    depositInstallment1DueDate: installment1?.due_date || null,
+    depositInstallment1PaymentDate: installment1?.payment_date || null,
+    depositInstallment1PixCode: installment1?.pix_code || "",
+    
+    depositInstallment2: Number(installment2?.amount || 0),
+    depositInstallment2DueDate: installment2?.due_date || null,
+    depositInstallment2PaymentDate: installment2?.payment_date || null,
+    depositInstallment2PixCode: installment2?.pix_code || "",
+    
+    depositInstallment3: Number(installment3?.amount || 0),
+    depositInstallment3DueDate: installment3?.due_date || null,
+    depositInstallment3PaymentDate: installment3?.payment_date || null,
+    depositInstallment3PixCode: installment3?.pix_code || "",
   };
 };
 
@@ -99,81 +124,7 @@ export const rentalService = {
       });
     }
 
-    return data?.map((r: any) => {
-      const installments = installmentsMap.get(r.id) || [];
-      const installment1 = installments.find((i: any) => i.installment_number === 1);
-      const installment2 = installments.find((i: any) => i.installment_number === 2);
-      const installment3 = installments.find((i: any) => i.installment_number === 3);
-
-      return ({
-        id: r.id,
-        propertyId: r.property_id,
-        tenantId: r.tenant_id,
-        startDate: r.start_date,
-        endDate: r.end_date,
-        paymentDay: r.rent_due_day,
-        value: Number(r.rent_value || 0),
-        monthlyRent: Number(r.rent_value || 0),
-        depositAmount: Number(r.deposit_value || 0),
-        depositValue: Number(r.deposit_value || 0),
-        status: r.status as "active" | "ended" | "terminated",
-        isActive: r.is_active,
-        hasGarage: r.has_garage || false,
-        garageValue: Number(r.garage_value || 0),
-        hasPartnerBroker: r.has_partner_broker || false,
-        depositInstallments: r.deposit_installments || 0,
-        attachments: r.attachments || [],
-        contractAttachments: r.contract_attachments || [],
-        pixCode: r.pix_code || "",
-        
-        tenant: r.tenants ? {
-          id: r.tenants.id,
-          name: r.tenants.name,
-          phone: r.tenants.phone,
-          email: r.tenants.email || "",
-          document: r.tenants.cpf || r.tenants.cnpj || "",
-          cpf: r.tenants.cpf || "",
-          status: "active", // Default status for display
-        } : undefined,
-        
-        property: r.properties ? {
-          id: r.properties.id,
-          locationId: r.properties.location_id,
-          propertyIdentifier: r.properties.property_identifier,
-          location: r.properties.locations?.name || "",
-          complement: r.properties.complement,
-          value: Number(r.properties.value || 0),
-          monthlyRent: Number(r.properties.value || 0),
-          description: r.properties.description || "",
-          rooms: r.properties.rooms || 0,
-          bathrooms: r.properties.bathrooms || 0,
-          area: r.properties.area || 0,
-          hasGarage: r.properties.has_garage || false,
-          hasFurniture: r.properties.has_furniture || false,
-          acceptsPets: r.properties.accepts_pets || false,
-          status: r.properties.status || "available",
-          images: r.properties.images || [],
-          createdAt: r.properties.created_at || new Date().toISOString(),
-          address: "", 
-          features: [],
-        } : undefined,
-
-        depositInstallment1: Number(installment1?.amount || 0),
-        depositInstallment1DueDate: installment1?.due_date || null,
-        depositInstallment1PaymentDate: installment1?.payment_date || null,
-        depositInstallment1PixCode: installment1?.pix_code || "",
-        
-        depositInstallment2: Number(installment2?.amount || 0),
-        depositInstallment2DueDate: installment2?.due_date || null,
-        depositInstallment2PaymentDate: installment2?.payment_date || null,
-        depositInstallment2PixCode: installment2?.pix_code || "",
-        
-        depositInstallment3: Number(installment3?.amount || 0),
-        depositInstallment3DueDate: installment3?.due_date || null,
-        depositInstallment3PaymentDate: installment3?.payment_date || null,
-        depositInstallment3PixCode: installment3?.pix_code || "",
-      });
-    }) || [];
+    return data?.map((r: any) => mapRentalData(r, installmentsMap.get(r.id) || [])) || [];
   },
 
   async getById(id: string): Promise<Rental> {
@@ -204,78 +155,7 @@ export const rentalService = {
       .eq("rental_id", id)
       .order("installment_number");
 
-    const installment1 = installmentsData?.find(i => i.installment_number === 1);
-    const installment2 = installmentsData?.find(i => i.installment_number === 2);
-    const installment3 = installmentsData?.find(i => i.installment_number === 3);
-
-    return ({
-      id: data.id,
-      propertyId: data.property_id,
-      tenantId: data.tenant_id,
-      startDate: data.start_date,
-      endDate: data.end_date,
-      paymentDay: data.rent_due_day,
-      value: Number(data.rent_value || 0),
-      monthlyRent: Number(data.rent_value || 0),
-      depositAmount: Number(data.deposit_value || 0),
-      depositValue: Number(data.deposit_value || 0),
-      status: data.status as "active" | "ended" | "terminated",
-      isActive: data.is_active,
-      hasGarage: data.has_garage || false,
-      garageValue: Number(data.garage_value || 0),
-      hasPartnerBroker: data.has_partner_broker || false,
-      depositInstallments: data.deposit_installments || 0,
-      attachments: data.attachments || [],
-      contractAttachments: data.contract_attachments || [],
-      pixCode: data.pix_code || "",
-
-      tenant: data.tenants ? {
-        id: data.tenants.id,
-        name: data.tenants.name,
-        phone: data.tenants.phone,
-        email: data.tenants.email || "",
-        document: data.tenants.cpf || data.tenants.cnpj || "",
-        cpf: data.tenants.cpf || "",
-        status: "active",
-      } : undefined,
-
-      property: data.properties ? {
-        id: data.properties.id,
-        locationId: data.properties.location_id,
-        propertyIdentifier: data.properties.property_identifier,
-        location: data.properties.locations?.name || "",
-        complement: data.properties.complement,
-        value: Number(data.properties.value || 0),
-        monthlyRent: Number(data.properties.value || 0),
-        description: data.properties.description || "",
-        rooms: data.properties.rooms || 0,
-        bathrooms: data.properties.bathrooms || 0,
-        area: data.properties.area || 0,
-        hasGarage: data.properties.has_garage || false,
-        hasFurniture: data.properties.has_furniture || false,
-        acceptsPets: data.properties.accepts_pets || false,
-        status: data.properties.status || "available",
-        images: data.properties.images || [],
-        createdAt: data.properties.created_at || new Date().toISOString(),
-        address: "",
-        features: [],
-      } : undefined,
-
-      depositInstallment1: Number(installment1?.amount || 0),
-      depositInstallment1DueDate: installment1?.due_date || null,
-      depositInstallment1PaymentDate: installment1?.payment_date || null,
-      depositInstallment1PixCode: installment1?.pix_code || "",
-      
-      depositInstallment2: Number(installment2?.amount || 0),
-      depositInstallment2DueDate: installment2?.due_date || null,
-      depositInstallment2PaymentDate: installment2?.payment_date || null,
-      depositInstallment2PixCode: installment2?.pix_code || "",
-      
-      depositInstallment3: Number(installment3?.amount || 0),
-      depositInstallment3DueDate: installment3?.due_date || null,
-      depositInstallment3PaymentDate: installment3?.payment_date || null,
-      depositInstallment3PixCode: installment3?.pix_code || "",
-    });
+    return mapRentalData(data, installmentsData || []);
   },
 
   async create(rental: Partial<Rental>): Promise<Rental> {
@@ -332,7 +212,8 @@ export const rentalService = {
         .eq("id", rental.tenantId);
     }
 
-    return mapRentalData(data);
+    // Buscar dados completos para retornar
+    return this.getById(data.id);
   },
 
   async update(id: string, rental: Partial<Rental>): Promise<Rental> {
@@ -399,7 +280,7 @@ export const rentalService = {
 
     // Atualizar pagamentos pendentes se necessário
     if (rental.monthlyRent || rental.paymentDay) {
-      const fullRental = { ...data, ...rental } as Rental;
+      const fullRental = await this.getById(id);
       await updatePendingPaymentsOnRentalEdit(
         id, 
         {
@@ -412,7 +293,8 @@ export const rentalService = {
       );
     }
 
-    return mapRentalData(data);
+    // Buscar dados completos para retornar
+    return this.getById(id);
   },
 
   async remove(id: string): Promise<void> {
@@ -456,30 +338,3 @@ export const remove = rentalService.remove;
 export const terminateContract = rentalService.terminateContract;
 export const create = async (rental: Omit<Rental, "id">) => rentalService.create(rental);
 export const update = async (id: string, rental: Partial<Rental>) => rentalService.update(id, rental);
-
-export const createPaymentsForRental = async (
-  params: {
-    rental: Rental;
-    startDate: Date;
-    endDate: Date;
-    monthlyRent: number;
-    paymentDay: number;
-    hasGarage: boolean;
-    garageValue: number;
-  },
-  existingRental?: Rental // This was likely the second argument
-): Promise<void> => {
-  // Implementation...
-  // Wait, if TS says expected 3 got 2, then there must be a 3rd argument.
-  // I will check the file content first in next step before modifying blindly if I can't recall.
-  // Actually I have the file open. Let me read it.
-  
-  // Checking file content from context...
-  // The file is 381 lines. I'll read it via tool output or just assume standard signature.
-  // Ah, I can see the file content in the context if I opened it?
-  // I opened it in this turn.
-  // I will assume I need to fix the call site in RentalFormDialog to match the definition or fix the definition.
-  // Let's assume the definition is: (params, rental, somethingElse?)
-  
-  // Let's read the file first to be safe.
-}
