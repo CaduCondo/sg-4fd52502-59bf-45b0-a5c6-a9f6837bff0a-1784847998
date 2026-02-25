@@ -100,7 +100,7 @@ export function PaymentInfoCards({ tenant, property, rental }: PaymentInfoCardsP
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Complemento</p>
-            <p className="text-sm font-medium">{property?.property_identifier || property?.complement || "Não informado"}</p>
+            <p className="text-sm font-medium">{property?.complement || "Não informado"}</p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Cidade</p>
@@ -124,9 +124,11 @@ export function PaymentInfoCards({ tenant, property, rental }: PaymentInfoCardsP
             </p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">Valor da Caução</p>
+            <p className="text-xs text-muted-foreground">Período Contrato</p>
             <p className="text-sm font-medium">
-              R$ {(rental?.deposit_value || 0).toFixed(2).replace('.', ',')}
+              {rental?.start_date && rental?.end_date
+                ? `${new Date(rental.start_date).toLocaleDateString('pt-BR')} - ${new Date(rental.end_date).toLocaleDateString('pt-BR')}`
+                : "Não informado"}
             </p>
           </div>
           <div>
