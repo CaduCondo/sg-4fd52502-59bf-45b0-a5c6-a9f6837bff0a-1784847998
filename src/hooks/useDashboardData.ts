@@ -74,25 +74,29 @@ export function useDashboardData(
 
   useEffect(() => {
     let isMounted = true;
-    const abortController = new AbortController();
 
     const loadData = async () => {
       if (!userId) {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
         return;
       }
 
       // Tentar cache primeiro
       const cached = getCached<DashboardCounts>(cacheKey);
       if (cached) {
-        console.log("📦 Using cached dashboard data");
-        setCounts(cached);
-        setLoading(false);
+        if (isMounted) {
+          setCounts(cached);
+          setLoading(false);
+        }
         return;
       }
 
       try {
-        setLoading(true);
+        if (isMounted) {
+          setLoading(true);
+        }
 
         // 1. Buscar permissões de localização (se financeiro)
         let allowedLocations: string[] | null = null;
@@ -100,29 +104,32 @@ export function useDashboardData(
           const { data: permData } = await supabase
             .from("user_location_permissions")
             .select("location_id")
-            .eq("user_id", userId)
-            .abortSignal(abortController.signal);
+            .eq("user_id", userId);
+          
+          if (!isMounted) return;
           
           allowedLocations = permData?.map(p => p.location_id) || [];
           
           if (allowedLocations.length === 0) {
-            setCounts({
-              totalProperties: 0,
-              availableProperties: 0,
-              unavailableProperties: 0,
-              occupiedProperties: 0,
-              totalTenants: 0,
-              activeContracts: 0,
-              expiringContracts: 0,
-              overduePayments: 0,
-              overdueAmount: 0,
-              dueTodayPayments: 0,
-              completedPayments: 0,
-              expectedAmount: 0,
-              grossRevenue: 0,
-              locationExpenses: 0,
-            });
-            setLoading(false);
+            if (isMounted) {
+              setCounts({
+                totalProperties: 0,
+                availableProperties: 0,
+                unavailableProperties: 0,
+                occupiedProperties: 0,
+                totalTenants: 0,
+                activeContracts: 0,
+                expiringContracts: 0,
+                overduePayments: 0,
+                overdueAmount: 0,
+                dueTodayPayments: 0,
+                completedPayments: 0,
+                expectedAmount: 0,
+                grossRevenue: 0,
+                locationExpenses: 0,
+              });
+              setLoading(false);
+            }
             return;
           }
         }
@@ -141,19 +148,13 @@ export function useDashboardData(
           // Locais isentos (query simples)
           supabase
             .from("admin_fee_exempt_locations")
-            .select("location_id")
-            .abortSignal(abortController.signal),
+            .select("location_id"),
 
           // Estatísticas gerais (VIEW MATERIALIZADA - pré-calculada!)
-          (async () => {
-            const query = supabase
-              .from("mv_dashboard_stats")
-              .select("*")
-              .abortSignal(abortController.signal)
-              .single();
-            
-            return query;
-          })(),
+          supabase
+            .from("mv_dashboard_stats")
+            .select("*")
+            .single(),
 
           // Pagamentos do mês (VIEW MATERIALIZADA - pré-calculada!)
           (async () => {
@@ -161,8 +162,7 @@ export function useDashboardData(
               .from("mv_monthly_payments")
               .select("*")
               .eq("reference_month", month.toString())
-              .eq("reference_year", year.toString())
-              .abortSignal(abortController.signal);
+              .eq("reference_year", year.toString());
             
             if (isFinancialUser && allowedLocations && allowedLocations.length > 0) {
               query = query.in("location_id", allowedLocations);
@@ -176,9 +176,8 @@ export function useDashboardData(
             let query = supabase
               .from("mv_monthly_expenses")
               .select("total_expenses")
-              .eq("reference_month", month) // Passando number (correto para esta tabela)
-              .eq("reference_year", year)   // Passando number (correto para esta tabela)
-              .abortSignal(abortController.signal);
+              .eq("reference_month", month)
+              .eq("reference_year", year);
             
             if (isFinancialUser && allowedLocations && allowedLocations.length > 0) {
               query = query.in("location_id", allowedLocations);
@@ -253,18 +252,16 @@ export function useDashboardData(
           locationExpenses,
         };
 
-        console.log("📊 Dashboard counts loaded (from materialized views):", newCounts);
+        if (!isMounted) return;
 
         // Salvar no cache
         setCache(cacheKey, newCounts);
         setCounts(newCounts);
 
       } catch (error: any) {
-        // Ignorar erros de abort (componente desmontado)
-        if (error?.name === 'AbortError' || error?.message?.includes('aborted')) {
-          console.log("🚫 Dashboard request aborted (component unmounted)");
-          return;
-        }
+        if (!isMounted) return;
+        
+        // Log apenas erros reais (não relacionados a cancelamento)
         console.error("Error loading dashboard data:", error);
       } finally {
         if (isMounted) {
@@ -277,7 +274,6 @@ export function useDashboardData(
 
     return () => {
       isMounted = false;
-      abortController.abort();
     };
   }, [month, year, userId, userRole, isFinancialUser, cacheKey]);
 
