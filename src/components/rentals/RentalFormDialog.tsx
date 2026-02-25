@@ -119,8 +119,8 @@ export const RentalFormDialog = memo(function RentalFormDialog({
     open,
     rental,
     isViewMode,
-    properties: rental ? properties : availableProperties,
-    tenants: rental ? tenants : availableTenants,
+    properties: properties.length > 0 ? properties : availableProperties,
+    tenants: tenants.length > 0 ? tenants : availableTenants,
     locations,
   });
 

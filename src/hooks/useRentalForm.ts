@@ -162,32 +162,81 @@ export function useRentalForm({
     
     setDepositAmount(depositValue1 > 0 ? formatCurrency(depositValue1) : "");
     
-    // Parcelamento
-    const totalInstallments = rentalData.depositInstallments || 1;
-    console.log("📊 [useRentalForm] Total de parcelas:", totalInstallments);
+    // Parcelamento - CORRIGIDO para lidar com array de objetos
+    const installmentsData = rentalData.depositInstallments;
+    let totalInstallments = 1;
+    
+    // Se for um array, pega o length
+    if (Array.isArray(installmentsData)) {
+      totalInstallments = installmentsData.length;
+      console.log("📊 [useRentalForm] Total de parcelas (array):", totalInstallments);
+    } 
+    // Se for um número, usa direto
+    else if (typeof installmentsData === 'number') {
+      totalInstallments = installmentsData;
+      console.log("📊 [useRentalForm] Total de parcelas (número):", totalInstallments);
+    }
+    // Se não existir, tenta pegar do total_installments da primeira parcela
+    else if (installmentsData && installmentsData.length > 0 && installmentsData[0].total_installments) {
+      totalInstallments = installmentsData[0].total_installments;
+      console.log("📊 [useRentalForm] Total de parcelas (total_installments):", totalInstallments);
+    }
+    
+    console.log("📊 [useRentalForm] Total FINAL de parcelas:", totalInstallments);
     
     if (totalInstallments > 1) {
       console.log("✅ [useRentalForm] Marcando checkbox de parcelamento");
       setIsDepositInstallment(true);
+      console.log("✅ [useRentalForm] Setando depositInstallmentCount:", totalInstallments.toString());
       setDepositInstallmentCount(totalInstallments.toString());
       
-      // 2ª PARCELA - Aceitar até valor 0
-      const depositValue2 = rentalData.depositInstallment2 ?? 0;
-      console.log("💰 [useRentalForm] Valor 2ª parcela:", depositValue2);
-      if (depositValue2 !== undefined && depositValue2 !== null) {
-        setDepositInstallment2(formatCurrency(depositValue2));
-        setDepositInstallment2PaymentDate(formatDate(rentalData.depositInstallment2PaymentDate));
-        setDepositInstallment2PixCode(rentalData.depositInstallment2PixCode || "");
+      // 2ª PARCELA - Extrair do array ou do objeto
+      let depositValue2 = 0;
+      if (Array.isArray(installmentsData) && installmentsData.length >= 2) {
+        depositValue2 = installmentsData[1]?.amount || 0;
+        console.log("💰 [useRentalForm] Valor 2ª parcela (do array):", depositValue2);
+        
+        if (depositValue2 !== undefined && depositValue2 !== null) {
+          setDepositInstallment2(formatCurrency(depositValue2));
+          setDepositInstallment2PaymentDate(formatDate(installmentsData[1]?.payment_date));
+          setDepositInstallment2PixCode(installmentsData[1]?.pix_code || "");
+          console.log("✅ [useRentalForm] 2ª parcela configurada");
+        }
+      } else {
+        depositValue2 = rentalData.depositInstallment2 ?? 0;
+        console.log("💰 [useRentalForm] Valor 2ª parcela (do objeto):", depositValue2);
+        
+        if (depositValue2 !== undefined && depositValue2 !== null) {
+          setDepositInstallment2(formatCurrency(depositValue2));
+          setDepositInstallment2PaymentDate(formatDate(rentalData.depositInstallment2PaymentDate));
+          setDepositInstallment2PixCode(rentalData.depositInstallment2PixCode || "");
+          console.log("✅ [useRentalForm] 2ª parcela configurada");
+        }
       }
       
-      // 3ª PARCELA - Aceitar até valor 0
+      // 3ª PARCELA - Extrair do array ou do objeto
       if (totalInstallments === 3) {
-        const depositValue3 = rentalData.depositInstallment3 ?? 0;
-        console.log("💰 [useRentalForm] Valor 3ª parcela:", depositValue3);
-        if (depositValue3 !== undefined && depositValue3 !== null) {
-          setDepositInstallment3(formatCurrency(depositValue3));
-          setDepositInstallment3PaymentDate(formatDate(rentalData.depositInstallment3PaymentDate));
-          setDepositInstallment3PixCode(rentalData.depositInstallment3PixCode || "");
+        let depositValue3 = 0;
+        if (Array.isArray(installmentsData) && installmentsData.length >= 3) {
+          depositValue3 = installmentsData[2]?.amount || 0;
+          console.log("💰 [useRentalForm] Valor 3ª parcela (do array):", depositValue3);
+          
+          if (depositValue3 !== undefined && depositValue3 !== null) {
+            setDepositInstallment3(formatCurrency(depositValue3));
+            setDepositInstallment3PaymentDate(formatDate(installmentsData[2]?.payment_date));
+            setDepositInstallment3PixCode(installmentsData[2]?.pix_code || "");
+            console.log("✅ [useRentalForm] 3ª parcela configurada");
+          }
+        } else {
+          depositValue3 = rentalData.depositInstallment3 ?? 0;
+          console.log("💰 [useRentalForm] Valor 3ª parcela (do objeto):", depositValue3);
+          
+          if (depositValue3 !== undefined && depositValue3 !== null) {
+            setDepositInstallment3(formatCurrency(depositValue3));
+            setDepositInstallment3PaymentDate(formatDate(rentalData.depositInstallment3PaymentDate));
+            setDepositInstallment3PixCode(rentalData.depositInstallment3PixCode || "");
+            console.log("✅ [useRentalForm] 3ª parcela configurada");
+          }
         }
       }
     } else {
