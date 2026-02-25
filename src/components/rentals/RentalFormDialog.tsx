@@ -108,7 +108,6 @@ export const RentalFormDialog = memo(function RentalFormDialog({
     setDepositInstallment3PixCode,
     
     attachments,
-    // setAttachments, 
     proportionalRentInfo,
     resetForm,
     handleFileUpload,
@@ -144,48 +143,6 @@ export const RentalFormDialog = memo(function RentalFormDialog({
     
     fetchLocations();
   }, [open, locations.length]);
-
-  // Efeito para carregar dados quando um rental é passado (Edição ou Visualização)
-  useEffect(() => {
-    if (rental && open) {
-      console.log("📝 Carregando dados da locação para o formulário:", rental);
-      
-      // Preencher estados com dados da locação
-      setSelectedPropertyId(rental.propertyId);
-      setSelectedTenantId(rental.tenantId);
-      setStartDate(rental.startDate ? rental.startDate.split('T')[0] : '');
-      setEndDate(rental.endDate ? rental.endDate.split('T')[0] : '');
-      setPaymentDay(rental.paymentDay?.toString() || '');
-      setHasGarage(rental.hasGarage || false);
-      setGarageValue(rental.garageValue ? formatCurrency(rental.garageValue) : '');
-      setHasPartnerBroker(rental.hasPartnerBroker || false);
-      
-      // Caução
-      setDepositAmount(rental.depositAmount ? formatCurrency(rental.depositAmount) : '');
-      setDepositPaymentDate(rental.depositPaymentDate ? rental.depositPaymentDate.split('T')[0] : '');
-      setDepositPixCode(rental.depositPixCode || '');
-      
-      // Parcelamento Caução
-      if (rental.depositInstallments && rental.depositInstallments > 1) {
-        setIsDepositInstallment(true);
-        setDepositInstallmentCount(rental.depositInstallments.toString());
-        
-        if (rental.depositInstallment2) {
-          setDepositInstallment2(formatCurrency(rental.depositInstallment2));
-          setDepositInstallment2PaymentDate(rental.depositInstallment2PaymentDate ? rental.depositInstallment2PaymentDate.split('T')[0] : '');
-          setDepositInstallment2PixCode(rental.depositInstallment2PixCode || '');
-        }
-        
-        if (rental.depositInstallment3) {
-          setDepositInstallment3(formatCurrency(rental.depositInstallment3));
-          setDepositInstallment3PaymentDate(rental.depositInstallment3PaymentDate ? rental.depositInstallment3PaymentDate.split('T')[0] : '');
-          setDepositInstallment3PixCode(rental.depositInstallment3PixCode || '');
-        }
-      } else {
-        setIsDepositInstallment(false);
-      }
-    }
-  }, [rental, open, setSelectedPropertyId, setSelectedTenantId, setStartDate, setEndDate, setPaymentDay, setHasGarage, setGarageValue, setHasPartnerBroker, setDepositAmount, setDepositPaymentDate, setDepositPixCode, setIsDepositInstallment, setDepositInstallmentCount, setDepositInstallment2, setDepositInstallment2PaymentDate, setDepositInstallment2PixCode, setDepositInstallment3, setDepositInstallment3PaymentDate, setDepositInstallment3PixCode]);
 
   const onFileInputChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -295,7 +252,6 @@ export const RentalFormDialog = memo(function RentalFormDialog({
       if (rental) {
         const updatedRental = await updateRentalService(rental.id, fullUpdateData);
         
-        // Passar o objeto rental atualizado como terceiro argumento
         const rentalForUpdate = { ...rental, ...updatedRental };
         await updateFuturePayments(rental.id, totalValue, rentalForUpdate);
 
@@ -357,7 +313,7 @@ export const RentalFormDialog = memo(function RentalFormDialog({
         await createPaymentsForRental({
           rental: mappedRental,
           startDate: new Date(mappedRental.startDate),
-          endDate: mappedRental.endDate ? new Date(mappedRental.endDate) : new Date(new Date(mappedRental.startDate).setFullYear(new Date(mappedRental.startDate).getFullYear() + 1)), // Default 1 year if null
+          endDate: mappedRental.endDate ? new Date(mappedRental.endDate) : new Date(new Date(mappedRental.startDate).setFullYear(new Date(mappedRental.startDate).getFullYear() + 1)),
           monthlyRent: Number(mappedRental.monthlyRent),
           paymentDay: Number(mappedRental.paymentDay),
           hasGarage: mappedRental.hasGarage,
@@ -715,6 +671,17 @@ export const RentalFormDialog = memo(function RentalFormDialog({
                       disabled={isFieldDisabled}
                     />
                   </div>
+
+                  <div className="space-y-2 md:col-span-3">
+                    <Label htmlFor="depositInstallment2PixCode">Código PIX</Label>
+                    <Input
+                      id="depositInstallment2PixCode"
+                      value={depositInstallment2PixCode}
+                      onChange={(e) => setDepositInstallment2PixCode(e.target.value)}
+                      placeholder="Código PIX"
+                      disabled={isFieldDisabled}
+                    />
+                  </div>
                 </div>
 
                 {depositInstallmentCount === "3" && (
@@ -737,6 +704,17 @@ export const RentalFormDialog = memo(function RentalFormDialog({
                         type="date"
                         value={depositInstallment3PaymentDate}
                         onChange={(e) => setDepositInstallment3PaymentDate(e.target.value)}
+                        disabled={isFieldDisabled}
+                      />
+                    </div>
+
+                    <div className="space-y-2 md:col-span-3">
+                      <Label htmlFor="depositInstallment3PixCode">Código PIX</Label>
+                      <Input
+                        id="depositInstallment3PixCode"
+                        value={depositInstallment3PixCode}
+                        onChange={(e) => setDepositInstallment3PixCode(e.target.value)}
+                        placeholder="Código PIX"
                         disabled={isFieldDisabled}
                       />
                     </div>
