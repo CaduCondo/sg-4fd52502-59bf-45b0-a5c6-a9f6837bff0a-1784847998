@@ -116,14 +116,6 @@ export default function RentalsPage() {
       setRentals(rentalsData);
       setLocations(locationsData);
       
-      // DEBUG: Log rental and location data
-      console.log("🔍 DEBUG Rentals - Sample rental:", rentalsData[0]);
-      console.log("🔍 DEBUG Rentals - Property data:", rentalsData[0]?.property);
-      console.log("🔍 DEBUG Rentals - LocationId:", rentalsData[0]?.property?.locationId);
-      console.log("🔍 DEBUG Rentals - Location name:", rentalsData[0]?.property?.location);
-      console.log("🔍 DEBUG Locations - Total:", locationsData.length);
-      console.log("🔍 DEBUG Locations - Sample:", locationsData[0]);
-      
       await loadTerminationInfo(rentalsData.filter(r => r.isActive));
     } catch (error) {
       console.error("Erro ao carregar locações:", error);
@@ -425,6 +417,9 @@ export default function RentalsPage() {
                   <div className="space-y-2 max-h-[300px] overflow-y-auto">
                     {availableProperties.map((property) => {
                       const location = locations.find(loc => loc.id === property.locationId);
+                      const displayName = location?.name || property.location || "Local não encontrado";
+                      const fullText = property.complement ? `${displayName} - ${property.complement}` : displayName;
+                      
                       return (
                         <div
                           key={property.id}
@@ -432,16 +427,9 @@ export default function RentalsPage() {
                         >
                           <div className="flex items-center gap-2 flex-1 min-w-0">
                             <Home className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate">
-                                {location?.name || property.location || "Local não encontrado"}
-                              </p>
-                              {property.complement && (
-                                <p className="text-xs text-muted-foreground truncate mt-0.5">
-                                  {property.complement}
-                                </p>
-                              )}
-                            </div>
+                            <p className="text-sm font-medium truncate flex-1">
+                              {fullText}
+                            </p>
                           </div>
                           <span className="text-sm font-semibold text-emerald-600 whitespace-nowrap ml-2">
                             {formatCurrency(property.value || property.monthlyRent || 0)}
