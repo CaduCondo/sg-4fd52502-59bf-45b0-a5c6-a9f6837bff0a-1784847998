@@ -4,21 +4,18 @@ import { depositInstallmentService } from "./depositInstallmentService";
 import { updatePendingPaymentsOnRentalEdit } from "./paymentService";
 
 // Helper para mapear dados do banco para o tipo Rental
-const mapRentalData = (data: any, installments: any[] = []): Rental => {
+const mapRentalData = (data: any): Rental => {
+  // Extrair parcelas do caução da resposta
+  const installments = data.deposit_installments || [];
   const installment1 = installments.find((i: any) => i.installment_number === 1);
   const installment2 = installments.find((i: any) => i.installment_number === 2);
   const installment3 = installments.find((i: any) => i.installment_number === 3);
 
-  // Tratamento seguro para tenants e properties que podem vir como array ou objeto
+  // Tratamento seguro para tenants e properties
   const tenantData = Array.isArray(data.tenants) ? data.tenants[0] : data.tenants;
   const propertyData = Array.isArray(data.properties) ? data.properties[0] : data.properties;
 
-  console.log("Dados do banco:", data);
-  console.log("Parcelas de caução:", installments);
-  console.log("Tenant Data:", tenantData);
-  console.log("Property Data:", propertyData);
-
-  const rental = {
+  const rental: Rental = {
     id: data.id,
     propertyId: data.property_id,
     tenantId: data.tenant_id,
@@ -71,113 +68,101 @@ const mapRentalData = (data: any, installments: any[] = []): Rental => {
       status: "active" as const,
     } : undefined,
 
+    // 1ª Parcela (ou À Vista)
     depositInstallment1: Number(installment1?.amount || 0),
     depositInstallment1DueDate: installment1?.due_date || null,
     depositInstallment1PaymentDate: installment1?.payment_date || null,
     depositInstallment1PixCode: installment1?.pix_code || "",
     
+    // Aliases para compatibilidade
     depositPaymentDate: installment1?.payment_date || null,
     depositPixCode: installment1?.pix_code || "",
     depositDueDate: installment1?.due_date || null,
     
+    // 2ª Parcela
     depositInstallment2: Number(installment2?.amount || 0),
     depositInstallment2DueDate: installment2?.due_date || null,
     depositInstallment2PaymentDate: installment2?.payment_date || null,
     depositInstallment2PixCode: installment2?.pix_code || "",
     
+    // 3ª Parcela
     depositInstallment3: Number(installment3?.amount || 0),
     depositInstallment3DueDate: installment3?.due_date || null,
     depositInstallment3PaymentDate: installment3?.payment_date || null,
     depositInstallment3PixCode: installment3?.pix_code || "",
   };
 
-  console.log("Objeto Rental final:", rental);
-
   return rental;
 };
 
 export const rentalService = {
   async getAll(): Promise<Rental[]> {
+    console.log("🔄 [rentalService.getAll] Buscando todas as locações...");
+    
     const { data, error } = await supabase
       .from("rentals")
       .select(`
-        id, property_id, tenant_id, start_date, end_date, rent_due_day,
-        rent_value, deposit_value, status, is_active, has_garage, garage_value,
-        has_partner_broker, deposit_installments, attachments, contract_attachments, pix_code,
-        tenants!rentals_tenant_id_fkey(id, name, phone, cpf),
+        *,
+        tenants!rentals_tenant_id_fkey(
+          id, name, phone, cpf
+        ),
         properties!rentals_property_id_fkey(
-          id, location_id, property_identifier, complement, value, description, rooms, bathrooms, area, has_garage, has_furniture, accepts_pets, status, images, created_at,
+          id, location_id, property_identifier, complement, value, description, 
+          rooms, bathrooms, area, has_garage, has_furniture, accepts_pets, status, 
+          images, created_at,
           locations!properties_location_id_fkey(id, name)
+        ),
+        deposit_installments(
+          id, installment_number, amount, pix_code, payment_date, due_date, 
+          status, total_installments
         )
       `)
       .order("created_at", { ascending: false });
 
     if (error) {
+      console.error("❌ [rentalService.getAll] Erro:", error);
       throw error;
     }
 
-    // Buscar todas as parcelas de caução de uma vez (otimizado)
-    const rentalIds = data?.map(r => r.id) || [];
-    const installmentsMap = new Map<string, any[]>();
+    console.log(`✅ [rentalService.getAll] ${data?.length || 0} locações retornadas`);
     
-    if (rentalIds.length > 0) {
-      const { data: installmentsData, error: instError } = await supabase
-        .from("deposit_installments")
-        .select("*")
-        .in("rental_id", rentalIds)
-        .order("installment_number");
-
-      if (instError) {
-      } else {
-        // Agrupar parcelas por rental_id
-        installmentsData?.forEach(inst => {
-          if (!installmentsMap.has(inst.rental_id)) {
-            installmentsMap.set(inst.rental_id, []);
-          }
-          installmentsMap.get(inst.rental_id)?.push(inst);
-        });
-      }
-    }
-
-    const mappedRentals = data?.map((r: any) => {
-      const installments = installmentsMap.get(r.id) || [];
-      return mapRentalData(r, installments);
-    }) || [];
-
-    console.log("Quantidade de locações retornadas:", mappedRentals.length);
-    console.log("Locações retornadas:", mappedRentals);
-
+    const mappedRentals = data?.map((rental: any) => mapRentalData(rental)) || [];
+    
     return mappedRentals;
   },
 
   async getById(id: string): Promise<Rental> {
+    console.log(`🔄 [rentalService.getById] Buscando locação ${id}...`);
+    
     const { data, error } = await supabase
       .from("rentals")
       .select(`
-        id, property_id, tenant_id, start_date, end_date, rent_due_day,
-        rent_value, deposit_value, status, is_active, has_garage, garage_value,
-        has_partner_broker, deposit_installments, attachments, contract_attachments, pix_code,
-        tenants!rentals_tenant_id_fkey(id, name, phone, cpf),
+        *,
+        tenants!rentals_tenant_id_fkey(
+          id, name, phone, cpf
+        ),
         properties!rentals_property_id_fkey(
-          id, location_id, property_identifier, complement, value, description, rooms, bathrooms, area, has_garage, has_furniture, accepts_pets, status, images, created_at,
+          id, location_id, property_identifier, complement, value, description, 
+          rooms, bathrooms, area, has_garage, has_furniture, accepts_pets, status, 
+          images, created_at,
           locations!properties_location_id_fkey(id, name)
+        ),
+        deposit_installments(
+          id, installment_number, amount, pix_code, payment_date, due_date, 
+          status, total_installments
         )
       `)
       .eq("id", id)
       .single();
 
     if (error) {
+      console.error("❌ [rentalService.getById] Erro:", error);
       throw error;
     }
 
-    // Buscar as parcelas do caução
-    const { data: installmentsData } = await supabase
-      .from("deposit_installments")
-      .select("*")
-      .eq("rental_id", id)
-      .order("installment_number");
-
-    return mapRentalData(data, installmentsData || []);
+    console.log("✅ [rentalService.getById] Locação encontrada");
+    
+    return mapRentalData(data);
   },
 
   async create(rental: Partial<Rental>): Promise<Rental> {
