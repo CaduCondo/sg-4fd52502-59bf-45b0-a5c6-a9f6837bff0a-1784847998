@@ -251,7 +251,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           console.log("💰 Values - Rental:", effectiveRentalValue, "Garage:", effectiveGarageValue);
         } catch (error) {
           console.error("❌ Error parsing breakdown:", error);
-          effectiveRentalValue = paymentData.rentals.monthly_rent || 0;
+          effectiveRentalValue = paymentData.rentals.rent_value || 0;
           effectiveGarageValue = paymentData.rentals.garage_value || 0;
           
           if (paymentData.rentals.has_garage && effectiveGarageValue > 0) {
@@ -259,7 +259,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           }
         }
       } else {
-        effectiveRentalValue = paymentData.rentals.monthly_rent || 0;
+        effectiveRentalValue = paymentData.rentals.rent_value || 0;
         effectiveGarageValue = paymentData.rentals.garage_value || 0;
         
         if (paymentData.rentals.has_garage && effectiveGarageValue > 0) {
@@ -318,11 +318,13 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       }
 
       if (isTermination && paymentData.rentals) {
-        const depositText = paymentData.rentals.deposit;
+        const depositText = paymentData.rentals.deposit_value;
         let originalDeposit = 0;
         
-        if (depositText && typeof depositText === 'string') {
-          const parsed = parseFloat(depositText.replace(/[^\d,]/g, '').replace(',', '.'));
+        if (depositText) {
+          const parsed = typeof depositText === 'string' 
+            ? parseFloat(depositText.replace(/[^\d,]/g, '').replace(',', '.'))
+            : Number(depositText);
           if (!isNaN(parsed)) {
             originalDeposit = parsed;
           }

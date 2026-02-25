@@ -290,14 +290,12 @@ export type Database = {
           expense_type: string
           id: string
           location_id: string
-          month: number | null
           paid: boolean | null
           payment_date: string | null
           reference_month: number
           reference_year: number
           status: string
           updated_at: string | null
-          year: number | null
         }
         Insert: {
           amount: number
@@ -307,14 +305,12 @@ export type Database = {
           expense_type?: string
           id?: string
           location_id: string
-          month?: number | null
           paid?: boolean | null
           payment_date?: string | null
           reference_month: number
           reference_year: number
           status?: string
           updated_at?: string | null
-          year?: number | null
         }
         Update: {
           amount?: number
@@ -324,14 +320,12 @@ export type Database = {
           expense_type?: string
           id?: string
           location_id?: string
-          month?: number | null
           paid?: boolean | null
           payment_date?: string | null
           reference_month?: number
           reference_year?: number
           status?: string
           updated_at?: string | null
-          year?: number | null
         }
         Relationships: [
           {
@@ -628,17 +622,7 @@ export type Database = {
           attachments: Json | null
           contract_attachments: Json | null
           created_at: string | null
-          deposit: string | null
-          deposit_installment_1: number | null
-          deposit_installment_2: number | null
-          deposit_installment_2_payment_date: string | null
-          deposit_installment_2_pix_code: string | null
-          deposit_installment_3: number | null
-          deposit_installment_3_payment_date: string | null
-          deposit_installment_3_pix_code: string | null
           deposit_installments: number | null
-          deposit_payment_date: string | null
-          deposit_pix_code: string | null
           deposit_value: number | null
           end_date: string | null
           garage_value: number | null
@@ -646,9 +630,7 @@ export type Database = {
           has_partner_broker: boolean | null
           id: string
           is_active: boolean | null
-          monthly_rent: number
           partner_broker_value: number | null
-          payment_day: number
           pix_code: string | null
           property_id: string
           rent_due_day: number | null
@@ -658,23 +640,12 @@ export type Database = {
           status: string | null
           tenant_id: string
           updated_at: string | null
-          value: number
         }
         Insert: {
           attachments?: Json | null
           contract_attachments?: Json | null
           created_at?: string | null
-          deposit?: string | null
-          deposit_installment_1?: number | null
-          deposit_installment_2?: number | null
-          deposit_installment_2_payment_date?: string | null
-          deposit_installment_2_pix_code?: string | null
-          deposit_installment_3?: number | null
-          deposit_installment_3_payment_date?: string | null
-          deposit_installment_3_pix_code?: string | null
           deposit_installments?: number | null
-          deposit_payment_date?: string | null
-          deposit_pix_code?: string | null
           deposit_value?: number | null
           end_date?: string | null
           garage_value?: number | null
@@ -682,9 +653,7 @@ export type Database = {
           has_partner_broker?: boolean | null
           id?: string
           is_active?: boolean | null
-          monthly_rent: number
           partner_broker_value?: number | null
-          payment_day: number
           pix_code?: string | null
           property_id: string
           rent_due_day?: number | null
@@ -694,23 +663,12 @@ export type Database = {
           status?: string | null
           tenant_id: string
           updated_at?: string | null
-          value: number
         }
         Update: {
           attachments?: Json | null
           contract_attachments?: Json | null
           created_at?: string | null
-          deposit?: string | null
-          deposit_installment_1?: number | null
-          deposit_installment_2?: number | null
-          deposit_installment_2_payment_date?: string | null
-          deposit_installment_2_pix_code?: string | null
-          deposit_installment_3?: number | null
-          deposit_installment_3_payment_date?: string | null
-          deposit_installment_3_pix_code?: string | null
           deposit_installments?: number | null
-          deposit_payment_date?: string | null
-          deposit_pix_code?: string | null
           deposit_value?: number | null
           end_date?: string | null
           garage_value?: number | null
@@ -718,9 +676,7 @@ export type Database = {
           has_partner_broker?: boolean | null
           id?: string
           is_active?: boolean | null
-          monthly_rent?: number
           partner_broker_value?: number | null
-          payment_day?: number
           pix_code?: string | null
           property_id?: string
           rent_due_day?: number | null
@@ -730,7 +686,6 @@ export type Database = {
           status?: string | null
           tenant_id?: string
           updated_at?: string | null
-          value?: number
         }
         Relationships: [
           {

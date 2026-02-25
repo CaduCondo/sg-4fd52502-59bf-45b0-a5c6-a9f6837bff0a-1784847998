@@ -11,10 +11,10 @@ const mapRentalData = (data: any): Rental => {
     tenantId: data.tenant_id,
     startDate: data.start_date,
     endDate: data.end_date,
-    paymentDay: data.payment_day,
-    value: Number(data.value || data.monthly_rent || 0),
-    monthlyRent: Number(data.value || data.monthly_rent || 0),
-    depositAmount: data.deposit ? Number(data.deposit) : 0,
+    paymentDay: data.rent_due_day,
+    value: Number(data.rent_value || 0),
+    monthlyRent: Number(data.rent_value || 0),
+    depositAmount: data.deposit_value ? Number(data.deposit_value) : 0,
     status: data.status,
     isActive: data.is_active,
     attachments: (data.attachments as string[]) || [],
@@ -27,17 +27,6 @@ const mapRentalData = (data: any): Rental => {
     hasPartnerBroker: data.has_partner_broker || false,
     
     depositInstallments: data.deposit_installments,
-    depositInstallment1: data.deposit_installment_1 ? Number(data.deposit_installment_1) : undefined,
-    depositPaymentDate: data.deposit_payment_date,
-    depositPixCode: data.deposit_pix_code,
-    
-    depositInstallment2: data.deposit_installment_2 ? Number(data.deposit_installment_2) : undefined,
-    depositInstallment2PaymentDate: data.deposit_installment_2_payment_date,
-    depositInstallment2PixCode: data.deposit_installment_2_pix_code,
-    
-    depositInstallment3: data.deposit_installment_3 ? Number(data.deposit_installment_3) : undefined,
-    depositInstallment3PaymentDate: data.deposit_installment_3_payment_date,
-    depositInstallment3PixCode: data.deposit_installment_3_pix_code,
 
     property: data.properties ? {
       id: data.properties.id,
@@ -82,24 +71,15 @@ export const rentalService = {
         tenant_id,
         start_date,
         end_date,
-        payment_day,
-        value,
-        deposit,
+        rent_due_day,
+        rent_value,
+        deposit_value,
         status,
         is_active,
         has_garage,
         garage_value,
         has_partner_broker,
         deposit_installments,
-        deposit_installment_1,
-        deposit_payment_date,
-        deposit_pix_code,
-        deposit_installment_2,
-        deposit_installment_2_payment_date,
-        deposit_installment_2_pix_code,
-        deposit_installment_3,
-        deposit_installment_3_payment_date,
-        deposit_installment_3_pix_code,
         tenants!rentals_tenant_id_fkey (
           id,
           name,
@@ -173,10 +153,9 @@ export const rentalService = {
       tenant_id: rental.tenantId,
       start_date: rental.startDate,
       end_date: rental.endDate,
-      monthly_rent: rental.value,
-      value: rental.value,
-      payment_day: rental.paymentDay,
-      deposit: rental.depositAmount ? String(rental.depositAmount) : null,
+      rent_value: rental.value,
+      rent_due_day: rental.paymentDay,
+      deposit_value: rental.depositAmount ? String(rental.depositAmount) : null,
       status: rental.status,
       attachments: rental.attachments as any,
       contract_attachments: rental.contractAttachments,
@@ -184,15 +163,6 @@ export const rentalService = {
       garage_value: rental.garageValue,
       has_partner_broker: rental.hasPartnerBroker,
       deposit_installments: rental.depositInstallments,
-      deposit_installment_1: rental.depositInstallment1,
-      deposit_payment_date: rental.depositPaymentDate,
-      deposit_pix_code: rental.depositPixCode,
-      deposit_installment_2: rental.depositInstallment2,
-      deposit_installment_2_payment_date: rental.depositInstallment2PaymentDate,
-      deposit_installment_2_pix_code: rental.depositInstallment2PixCode,
-      deposit_installment_3: rental.depositInstallment3,
-      deposit_installment_3_payment_date: rental.depositInstallment3PaymentDate,
-      deposit_installment_3_pix_code: rental.depositInstallment3PixCode
     };
 
     const { data, error } = await supabase
@@ -241,11 +211,10 @@ export const rentalService = {
     if (rental.startDate !== undefined) dbData.start_date = rental.startDate;
     if (rental.endDate !== undefined) dbData.end_date = rental.endDate;
     if (rental.value !== undefined) {
-      dbData.monthly_rent = rental.value;
-      dbData.value = rental.value;
+      dbData.rent_value = rental.value;
     }
-    if (rental.paymentDay !== undefined) dbData.payment_day = rental.paymentDay;
-    if (rental.depositAmount !== undefined) dbData.deposit = String(rental.depositAmount);
+    if (rental.paymentDay !== undefined) dbData.rent_due_day = rental.paymentDay;
+    if (rental.depositAmount !== undefined) dbData.deposit_value = String(rental.depositAmount);
     if (rental.status !== undefined) dbData.status = rental.status;
     if (rental.attachments !== undefined) dbData.attachments = rental.attachments as any;
     if (rental.contractAttachments !== undefined) dbData.contract_attachments = rental.contractAttachments;
@@ -255,15 +224,6 @@ export const rentalService = {
 
     // Campos do caução
     if (rental.depositInstallments !== undefined) dbData.deposit_installments = rental.depositInstallments;
-    if (rental.depositInstallment1 !== undefined) dbData.deposit_installment_1 = rental.depositInstallment1;
-    if (rental.depositPaymentDate !== undefined) dbData.deposit_payment_date = rental.depositPaymentDate;
-    if (rental.depositPixCode !== undefined) dbData.deposit_pix_code = rental.depositPixCode;
-    if (rental.depositInstallment2 !== undefined) dbData.deposit_installment_2 = rental.depositInstallment2;
-    if (rental.depositInstallment2PaymentDate !== undefined) dbData.deposit_installment_2_payment_date = rental.depositInstallment2PaymentDate;
-    if (rental.depositInstallment2PixCode !== undefined) dbData.deposit_installment_2_pix_code = rental.depositInstallment2PixCode;
-    if (rental.depositInstallment3 !== undefined) dbData.deposit_installment_3 = rental.depositInstallment3;
-    if (rental.depositInstallment3PaymentDate !== undefined) dbData.deposit_installment_3_payment_date = rental.depositInstallment3PaymentDate;
-    if (rental.depositInstallment3PixCode !== undefined) dbData.deposit_installment_3_pix_code = rental.depositInstallment3PixCode;
 
     const { data, error } = await supabase
       .from("rentals")

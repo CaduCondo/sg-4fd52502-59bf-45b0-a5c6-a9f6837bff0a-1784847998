@@ -132,10 +132,10 @@ export default function Financial() {
           total_installments,
           rentals!inner(
             id,
-            monthly_rent,
+            rent_value,
             garage_value,
             has_garage,
-            payment_day,
+            rent_due_day,
             start_date,
             end_date,
             pix_code,
@@ -188,17 +188,17 @@ export default function Financial() {
           updatedAt: payment.updated_at,
           rental: rental ? {
             id: rental.id,
-            monthlyRent: rental.monthly_rent,
+            monthlyRent: rental.rent_value,
             garageValue: rental.garage_value,
             hasGarage: rental.has_garage,
-            paymentDay: rental.payment_day,
+            paymentDay: rental.rent_due_day,
             startDate: rental.start_date,
             endDate: rental.end_date,
             propertyId: property?.id || "",
             tenantId: tenant?.id || "",
             
             // Campos obrigatórios para satisfazer o tipo Rental
-            value: rental.monthly_rent || 0,
+            value: rental.rent_value || 0,
             depositAmount: 0,
             status: "active",
             isActive: true,
