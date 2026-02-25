@@ -388,6 +388,166 @@ export const RentalFormDialog = memo(function RentalFormDialog({
     );
   }
 
+  // Preencher campos quando rental mudar
+  useEffect(() => {
+    if (!rental) {
+      // Limpar campos quando não há rental
+      setSelectedPropertyId("");
+      setSelectedTenantId("");
+      setStartDate("");
+      setEndDate("");
+      setPaymentDay("");
+      setHasGarage(false);
+      setGarageValue("");
+      setHasPartnerBroker(false);
+      setDepositAmount("");
+      setDepositPaymentDate("");
+      setDepositPixCode("");
+      setIsDepositInstallment(false);
+      setDepositInstallmentCount("");
+      setDepositInstallment2("");
+      setDepositInstallment3("");
+      setDepositInstallment2PaymentDate("");
+      setDepositInstallment3PaymentDate("");
+      setDepositInstallment2PixCode("");
+      setDepositInstallment3PixCode("");
+      setAttachments([]);
+      return;
+    }
+
+    console.log("🔄 [RentalFormDialog] Preenchendo campos com rental:", rental);
+    
+    // Preencher combos
+    if (rental.propertyId) {
+      console.log("📍 [RentalFormDialog] PropertyId:", rental.propertyId);
+      setSelectedPropertyId(rental.propertyId);
+    }
+    if (rental.tenantId) {
+      console.log("👤 [RentalFormDialog] TenantId:", rental.tenantId);
+      setSelectedTenantId(rental.tenantId);
+    }
+    
+    // Preencher datas
+    if (rental.startDate) {
+      const startDateFormatted = rental.startDate.includes("T") 
+        ? rental.startDate.split("T")[0] 
+        : rental.startDate;
+      console.log("📅 [RentalFormDialog] StartDate:", startDateFormatted);
+      setStartDate(startDateFormatted);
+    }
+    
+    if (rental.endDate) {
+      const endDateFormatted = rental.endDate.includes("T") 
+        ? rental.endDate.split("T")[0] 
+        : rental.endDate;
+      console.log("📅 [RentalFormDialog] EndDate:", endDateFormatted);
+      setEndDate(endDateFormatted);
+    }
+    
+    // Dia de pagamento
+    if (rental.paymentDay) {
+      console.log("💰 [RentalFormDialog] PaymentDay:", rental.paymentDay);
+      setPaymentDay(rental.paymentDay.toString());
+    }
+    
+    // Vaga garagem
+    console.log("🚗 [RentalFormDialog] HasGarage:", rental.hasGarage, "GarageValue:", rental.garageValue);
+    setHasGarage(rental.hasGarage || false);
+    if (rental.garageValue) {
+      setGarageValue(formatCurrency(rental.garageValue));
+    }
+    
+    // Corretor parceiro
+    console.log("🤝 [RentalFormDialog] HasPartnerBroker:", rental.hasPartnerBroker);
+    setHasPartnerBroker(rental.hasPartnerBroker || false);
+    
+    // CAUÇÃO - Verificar múltiplas fontes de dados
+    console.log("💵 [RentalFormDialog] Dados do Caução:", {
+      depositInstallment1: rental.depositInstallment1,
+      depositAmount: rental.depositAmount,
+      depositPaymentDate: rental.depositPaymentDate,
+      depositInstallment1PaymentDate: rental.depositInstallment1PaymentDate,
+      depositPixCode: rental.depositPixCode,
+      depositInstallment1PixCode: rental.depositInstallment1PixCode,
+      depositInstallments: rental.depositInstallments,
+    });
+    
+    // Valor do caução (1ª parcela ou à vista)
+    const depositValue = rental.depositInstallment1 || rental.depositAmount || 0;
+    if (depositValue > 0) {
+      console.log("✅ [RentalFormDialog] Setando DepositAmount:", depositValue);
+      setDepositAmount(formatCurrency(depositValue));
+    }
+    
+    // Data de pagamento (tentar múltiplas fontes)
+    const paymentDate = rental.depositPaymentDate || rental.depositInstallment1PaymentDate || "";
+    if (paymentDate) {
+      const dateFormatted = paymentDate.includes("T") ? paymentDate.split("T")[0] : paymentDate;
+      console.log("✅ [RentalFormDialog] Setando DepositPaymentDate:", dateFormatted);
+      setDepositPaymentDate(dateFormatted);
+    }
+    
+    // Código PIX (tentar múltiplas fontes)
+    const pixCode = rental.depositPixCode || rental.depositInstallment1PixCode || "";
+    if (pixCode) {
+      console.log("✅ [RentalFormDialog] Setando DepositPixCode:", pixCode);
+      setDepositPixCode(pixCode);
+    }
+    
+    // Parcelamento do caução
+    const totalInstallments = rental.depositInstallments || 1;
+    console.log("📊 [RentalFormDialog] Total de parcelas:", totalInstallments);
+    
+    if (totalInstallments > 1) {
+      console.log("✅ [RentalFormDialog] Caução parcelado detectado!");
+      setIsDepositInstallment(true);
+      setDepositInstallmentCount(totalInstallments.toString());
+      
+      // 2ª Parcela
+      if (rental.depositInstallment2) {
+        console.log("✅ [RentalFormDialog] 2ª Parcela:", rental.depositInstallment2);
+        setDepositInstallment2(formatCurrency(rental.depositInstallment2));
+        
+        if (rental.depositInstallment2PaymentDate) {
+          const date2 = rental.depositInstallment2PaymentDate.includes("T") 
+            ? rental.depositInstallment2PaymentDate.split("T")[0] 
+            : rental.depositInstallment2PaymentDate;
+          setDepositInstallment2PaymentDate(date2);
+        }
+        
+        if (rental.depositInstallment2PixCode) {
+          setDepositInstallment2PixCode(rental.depositInstallment2PixCode);
+        }
+      }
+      
+      // 3ª Parcela
+      if (totalInstallments === 3 && rental.depositInstallment3) {
+        console.log("✅ [RentalFormDialog] 3ª Parcela:", rental.depositInstallment3);
+        setDepositInstallment3(formatCurrency(rental.depositInstallment3));
+        
+        if (rental.depositInstallment3PaymentDate) {
+          const date3 = rental.depositInstallment3PaymentDate.includes("T") 
+            ? rental.depositInstallment3PaymentDate.split("T")[0] 
+            : rental.depositInstallment3PaymentDate;
+          setDepositInstallment3PaymentDate(date3);
+        }
+        
+        if (rental.depositInstallment3PixCode) {
+          setDepositInstallment3PixCode(rental.depositInstallment3PixCode);
+        }
+      }
+    }
+    
+    // Anexos
+    if (rental.contractAttachments || rental.attachments) {
+      const files = rental.contractAttachments || rental.attachments || [];
+      console.log("📎 [RentalFormDialog] Anexos:", files);
+      setAttachments(files);
+    }
+    
+    console.log("✅ [RentalFormDialog] Preenchimento completo!");
+  }, [rental]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
