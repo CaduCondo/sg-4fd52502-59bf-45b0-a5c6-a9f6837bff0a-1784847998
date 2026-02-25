@@ -104,8 +104,6 @@ export interface Property {
   bathrooms: number;
   area: number;
   value: number;
-  garageValue?: number;
-  garage_value?: number; // Compatibility
   hasGarage: boolean;
   has_garage?: boolean; // Compatibility
   hasFurniture: boolean;
@@ -184,8 +182,6 @@ export interface Rental {
   auto_renew?: boolean; // Compatibility
   hasGarage: boolean;
   has_garage?: boolean; // Compatibility
-  garageValue?: number;
-  garage_value?: number; // Compatibility
   hasPartnerBroker: boolean;
   has_partner_broker?: boolean; // Compatibility
   pixCode?: string;

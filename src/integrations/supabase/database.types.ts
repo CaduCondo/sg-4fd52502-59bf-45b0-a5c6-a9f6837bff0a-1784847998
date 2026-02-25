@@ -501,10 +501,8 @@ export type Database = {
           complement: string | null
           created_at: string | null
           description: string | null
-          garage_value: number | null
           has_furniture: boolean | null
           has_garage: boolean | null
-          has_partner_broker: boolean | null
           id: string
           images: Json | null
           location_id: string
@@ -521,10 +519,8 @@ export type Database = {
           complement?: string | null
           created_at?: string | null
           description?: string | null
-          garage_value?: number | null
           has_furniture?: boolean | null
           has_garage?: boolean | null
-          has_partner_broker?: boolean | null
           id?: string
           images?: Json | null
           location_id: string
@@ -541,10 +537,8 @@ export type Database = {
           complement?: string | null
           created_at?: string | null
           description?: string | null
-          garage_value?: number | null
           has_furniture?: boolean | null
           has_garage?: boolean | null
-          has_partner_broker?: boolean | null
           id?: string
           images?: Json | null
           location_id?: string

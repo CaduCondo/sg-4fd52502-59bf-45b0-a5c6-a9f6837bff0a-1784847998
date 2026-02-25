@@ -35,7 +35,6 @@ export const getAll = async (): Promise<Payment[]> => {
       rental:rentals(
         id,
         monthly_rent,
-        garage_value,
         has_garage,
         payment_day,
         start_date,
@@ -81,7 +80,7 @@ export const getById = async (id: string): Promise<Payment> => {
       *,
       rental:rentals(
         *,
-        properties(id, property_identifier, location_id, complement, value, has_garage, garage_value),
+        properties(id, property_identifier, location_id, complement, value, has_garage),
         tenants(id, name, cpf, email, phone)
       )
     `
