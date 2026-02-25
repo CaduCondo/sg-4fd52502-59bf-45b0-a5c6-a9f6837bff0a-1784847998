@@ -213,7 +213,6 @@ export default function Login() {
                   placeholder="Digite seu usuário ou email"
                   required
                   className="h-11 border-slate-300"
-                  disabled={isLocked}
                 />
               </div>
               
@@ -281,7 +280,6 @@ export default function Login() {
                   type="button"
                   onClick={() => setShowForgotPassword(true)}
                   className="text-sm text-blue-600 hover:text-blue-700 hover:underline font-medium"
-                  disabled={isLocked}
                 >
                   Esqueci minha senha
                 </button>

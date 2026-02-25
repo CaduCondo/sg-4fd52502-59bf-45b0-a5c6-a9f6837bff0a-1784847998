@@ -84,10 +84,16 @@ export async function login(credentials: LoginCredentials): Promise<LoginResult>
     console.log("✅ User found:", user.username, "| Name:", user.name);
 
     // 2. Validate password using password_hash
+    console.log("🔐 Validating password for user:", user.username);
+    console.log("🔑 Input password:", credentials.password);
+    console.log("💾 Stored password_hash:", user.password_hash);
+    
     const isPasswordValid = validatePassword(credentials.password, user.password_hash);
 
     if (!isPasswordValid) {
-      console.warn("⚠️ Invalid password");
+      console.warn("⚠️ Invalid password - comparison failed");
+      console.log("Input:", credentials.password);
+      console.log("Stored:", user.password_hash);
       return { success: false, error: "Senha incorreta" };
     }
 
@@ -106,12 +112,14 @@ export async function login(credentials: LoginCredentials): Promise<LoginResult>
       expiresAt: Date.now() + (24 * 60 * 60 * 1000), // 24 hours
     };
 
-    // 4. CLEAR ALL OLD SESSIONS FIRST
-    console.log("🧹 Clearing all old sessions...");
+    // 4. CLEAR ALL OLD SESSIONS AND LOGIN ATTEMPTS
+    console.log("🧹 Clearing all old sessions and login attempts...");
     localStorage.removeItem("auth_session");
     localStorage.removeItem("auth_user");
     localStorage.removeItem("rental_auth_user");
     localStorage.removeItem("currentUser");
+    localStorage.removeItem("login_attempts");
+    localStorage.removeItem("locked_until");
 
     // 5. Save NEW session
     localStorage.setItem("auth_session", JSON.stringify(session));
@@ -137,6 +145,8 @@ export function logout(): void {
   localStorage.removeItem("auth_user");
   localStorage.removeItem("rental_auth_user");
   localStorage.removeItem("currentUser");
+  localStorage.removeItem("login_attempts");
+  localStorage.removeItem("locked_until");
   console.log("✅ Logout completed");
 }
 

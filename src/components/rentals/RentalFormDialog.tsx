@@ -145,6 +145,48 @@ export const RentalFormDialog = memo(function RentalFormDialog({
     fetchLocations();
   }, [open, locations.length]);
 
+  // Efeito para carregar dados quando um rental é passado (Edição ou Visualização)
+  useEffect(() => {
+    if (rental && open) {
+      console.log("📝 Carregando dados da locação para o formulário:", rental);
+      
+      // Preencher estados com dados da locação
+      setSelectedPropertyId(rental.propertyId);
+      setSelectedTenantId(rental.tenantId);
+      setStartDate(rental.startDate ? rental.startDate.split('T')[0] : '');
+      setEndDate(rental.endDate ? rental.endDate.split('T')[0] : '');
+      setPaymentDay(rental.paymentDay?.toString() || '');
+      setHasGarage(rental.hasGarage || false);
+      setGarageValue(rental.garageValue ? formatCurrency(rental.garageValue) : '');
+      setHasPartnerBroker(rental.hasPartnerBroker || false);
+      
+      // Caução
+      setDepositAmount(rental.depositAmount ? formatCurrency(rental.depositAmount) : '');
+      setDepositPaymentDate(rental.depositPaymentDate ? rental.depositPaymentDate.split('T')[0] : '');
+      setDepositPixCode(rental.depositPixCode || '');
+      
+      // Parcelamento Caução
+      if (rental.depositInstallments && rental.depositInstallments > 1) {
+        setIsDepositInstallment(true);
+        setDepositInstallmentCount(rental.depositInstallments.toString());
+        
+        if (rental.depositInstallment2) {
+          setDepositInstallment2(formatCurrency(rental.depositInstallment2));
+          setDepositInstallment2PaymentDate(rental.depositInstallment2PaymentDate ? rental.depositInstallment2PaymentDate.split('T')[0] : '');
+          setDepositInstallment2PixCode(rental.depositInstallment2PixCode || '');
+        }
+        
+        if (rental.depositInstallment3) {
+          setDepositInstallment3(formatCurrency(rental.depositInstallment3));
+          setDepositInstallment3PaymentDate(rental.depositInstallment3PaymentDate ? rental.depositInstallment3PaymentDate.split('T')[0] : '');
+          setDepositInstallment3PixCode(rental.depositInstallment3PixCode || '');
+        }
+      } else {
+        setIsDepositInstallment(false);
+      }
+    }
+  }, [rental, open, setSelectedPropertyId, setSelectedTenantId, setStartDate, setEndDate, setPaymentDay, setHasGarage, setGarageValue, setHasPartnerBroker, setDepositAmount, setDepositPaymentDate, setDepositPixCode, setIsDepositInstallment, setDepositInstallmentCount, setDepositInstallment2, setDepositInstallment2PaymentDate, setDepositInstallment2PixCode, setDepositInstallment3, setDepositInstallment3PaymentDate, setDepositInstallment3PixCode]);
+
   const onFileInputChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;

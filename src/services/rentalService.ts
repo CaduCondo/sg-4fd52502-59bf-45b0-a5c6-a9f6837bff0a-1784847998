@@ -68,7 +68,7 @@ const mapRentalData = (data: any, installments: any[] = []): Rental => {
       email: "",
       document: tenantData.cpf || "",
       cpf: tenantData.cpf || "",
-      status: "active",
+      status: "active" as const,
     } : undefined,
 
     depositInstallment1: Number(installment1?.amount || 0),
