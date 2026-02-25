@@ -60,7 +60,7 @@ const mapRentalData = (data: any, installments: any[] = []): Rental => {
       id: tenantData.id,
       name: tenantData.name,
       phone: tenantData.phone,
-      email: "", // Email não vem da query, usar string vazia
+      email: "",
       document: tenantData.cpf || "",
       cpf: tenantData.cpf || "",
       status: "active",
@@ -71,9 +71,9 @@ const mapRentalData = (data: any, installments: any[] = []): Rental => {
     depositInstallment1PaymentDate: installment1?.payment_date || null,
     depositInstallment1PixCode: installment1?.pix_code || "",
     
-    // Aliases para primeira parcela (compatibilidade)
     depositPaymentDate: installment1?.payment_date || null,
     depositPixCode: installment1?.pix_code || "",
+    depositDueDate: installment1?.due_date || null,
     
     depositInstallment2: Number(installment2?.amount || 0),
     depositInstallment2DueDate: installment2?.due_date || null,
@@ -108,26 +108,36 @@ export const rentalService = {
       throw error;
     }
 
-    // Buscar as parcelas do caução separadamente
+    // Buscar todas as parcelas de caução de uma vez (otimizado)
     const rentalIds = data?.map(r => r.id) || [];
     const installmentsMap = new Map<string, any[]>();
     
     if (rentalIds.length > 0) {
-      const { data: installmentsData } = await supabase
+      const { data: installmentsData, error: instError } = await supabase
         .from("deposit_installments")
         .select("*")
         .in("rental_id", rentalIds)
         .order("installment_number");
 
-      installmentsData?.forEach(inst => {
-        if (!installmentsMap.has(inst.rental_id)) {
-          installmentsMap.set(inst.rental_id, []);
-        }
-        installmentsMap.get(inst.rental_id)?.push(inst);
-      });
+      if (instError) {
+        console.error("❌ Erro ao buscar parcelas:", instError);
+      } else {
+        // Agrupar parcelas por rental_id
+        installmentsData?.forEach(inst => {
+          if (!installmentsMap.has(inst.rental_id)) {
+            installmentsMap.set(inst.rental_id, []);
+          }
+          installmentsMap.get(inst.rental_id)?.push(inst);
+        });
+      }
     }
 
-    return data?.map((r: any) => mapRentalData(r, installmentsMap.get(r.id) || [])) || [];
+    const mappedRentals = data?.map((r: any) => {
+      const installments = installmentsMap.get(r.id) || [];
+      return mapRentalData(r, installments);
+    }) || [];
+
+    return mappedRentals;
   },
 
   async getById(id: string): Promise<Rental> {
@@ -194,12 +204,15 @@ export const rentalService = {
         rental.depositInstallments,
         {
           installment1: rental.depositInstallment1,
+          dueDate1: rental.depositDueDate,
           paymentDate1: rental.depositPaymentDate,
           pixCode1: rental.depositPixCode,
           installment2: rental.depositInstallment2,
+          dueDate2: rental.depositInstallment2DueDate,
           paymentDate2: rental.depositInstallment2PaymentDate,
           pixCode2: rental.depositInstallment2PixCode,
           installment3: rental.depositInstallment3,
+          dueDate3: rental.depositInstallment3DueDate,
           paymentDate3: rental.depositInstallment3PaymentDate,
           pixCode3: rental.depositInstallment3PixCode,
         },
@@ -256,12 +269,15 @@ export const rentalService = {
         rental.depositInstallments || null,
         {
           installment1: rental.depositInstallment1,
+          dueDate1: rental.depositDueDate,
           paymentDate1: rental.depositPaymentDate,
           pixCode1: rental.depositPixCode,
           installment2: rental.depositInstallment2,
+          dueDate2: rental.depositInstallment2DueDate,
           paymentDate2: rental.depositInstallment2PaymentDate,
           pixCode2: rental.depositInstallment2PixCode,
           installment3: rental.depositInstallment3,
+          dueDate3: rental.depositInstallment3DueDate,
           paymentDate3: rental.depositInstallment3PaymentDate,
           pixCode3: rental.depositInstallment3PixCode,
         },

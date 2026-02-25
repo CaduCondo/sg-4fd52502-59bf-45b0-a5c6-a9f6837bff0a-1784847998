@@ -333,17 +333,28 @@ export default function RentalsPage() {
 
   // Handler para visualizar locação
   const handleViewRental = useCallback(async (rental: Rental) => {
+    console.log("🔍 DEBUG handleViewRental - Opening rental:", {
+      id: rental.id,
+      value: rental.value,
+      depositInstallments: rental.depositInstallments,
+      depositInstallment1: rental.depositInstallment1,
+    });
+    
     try {
       setSelectedRental(rental);
       setIsViewMode(true);
       setIsRentalDialogOpen(true);
-      if (!isViewMode) {
-        await loadAdditionalData();
-      }
+      
+      console.log("🔍 DEBUG handleViewRental - Dialog opened successfully");
     } catch (error) {
-      console.error("⚠️ Erro ao carregar dados adicionais, mas o diálogo será aberto:", error);
+      console.error("❌ Erro ao abrir diálogo:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível abrir os detalhes da locação.",
+        variant: "destructive",
+      });
     }
-  }, [loadAdditionalData]);
+  }, [toast]);
 
   // Handler para criar nova locação
   const handleCreateNew = useCallback(async () => {
@@ -578,6 +589,10 @@ export default function RentalsPage() {
                                       locationId: rental.property?.locationId,
                                       foundLocation: foundLocation?.name,
                                       propertyLocation: rental.property?.location,
+                                      rentalValue: rental.value,
+                                      rentalMonthlyRent: rental.monthlyRent,
+                                      depositInstallments: rental.depositInstallments,
+                                      depositInstallment1: rental.depositInstallment1,
                                       locationsArrayLength: locations.length
                                     });
                                     return foundLocation?.name || rental.property?.location || "Local não encontrado";

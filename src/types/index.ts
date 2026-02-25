@@ -197,16 +197,17 @@ export interface Rental {
   
   depositPaymentDate?: string; // Added for first installment compatibility
   depositPixCode?: string; // Added for first installment compatibility
-  
+  depositDueDate?: string; // Data de vencimento da 1ª parcela
+
   depositInstallment2?: number;
   depositInstallment2PaymentDate?: string;
   depositInstallment2PixCode?: string;
-  depositInstallment2DueDate?: string; // Added property
+  depositInstallment2DueDate?: string; // Data de vencimento da 2ª parcela
   
   depositInstallment3?: number;
   depositInstallment3PaymentDate?: string;
   depositInstallment3PixCode?: string;
-  depositInstallment3DueDate?: string; // Added property
+  depositInstallment3DueDate?: string; // Data de vencimento da 3ª parcela
   
   // Compatibility snake_case
   deposit_installments?: number;

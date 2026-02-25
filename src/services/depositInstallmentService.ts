@@ -51,12 +51,15 @@ export const depositInstallmentService = {
     depositData: {
       installment1?: number;
       paymentDate1?: string;
+      dueDate1?: string;
       pixCode1?: string;
       installment2?: number;
       paymentDate2?: string;
+      dueDate2?: string;
       pixCode2?: string;
       installment3?: number;
       paymentDate3?: string;
+      dueDate3?: string;
       pixCode3?: string;
     },
     hasPartnerBroker: boolean = false
@@ -115,41 +118,45 @@ export const depositInstallmentService = {
         installment_number: number;
         amount: number;
         payment_date: string | null;
+        due_date: string | null;
         pix_code: string | null;
       }> = [];
 
       if (depositData.installment1) {
         const normalizedDate = normalizeDate(depositData.paymentDate1 || null);
-        console.log("📅 Parcela 1 - Data original:", depositData.paymentDate1, "→ Normalizada:", normalizedDate);
+        const normalizedDueDate = normalizeDate(depositData.dueDate1 || null);
         
         installmentsData.push({
           installment_number: 1,
           amount: depositData.installment1,
           payment_date: normalizedDate,
+          due_date: normalizedDueDate,
           pix_code: depositData.pixCode1 || null,
         });
       }
 
       if (depositData.installment2) {
         const normalizedDate = normalizeDate(depositData.paymentDate2 || null);
-        console.log("📅 Parcela 2 - Data original:", depositData.paymentDate2, "→ Normalizada:", normalizedDate);
+        const normalizedDueDate = normalizeDate(depositData.dueDate2 || null);
         
         installmentsData.push({
           installment_number: 2,
           amount: depositData.installment2,
           payment_date: normalizedDate,
+          due_date: normalizedDueDate,
           pix_code: depositData.pixCode2 || null,
         });
       }
 
       if (depositData.installment3) {
         const normalizedDate = normalizeDate(depositData.paymentDate3 || null);
-        console.log("📅 Parcela 3 - Data original:", depositData.paymentDate3, "→ Normalizada:", normalizedDate);
+        const normalizedDueDate = normalizeDate(depositData.dueDate3 || null);
         
         installmentsData.push({
           installment_number: 3,
           amount: depositData.installment3,
           payment_date: normalizedDate,
+          due_date: normalizedDueDate,
           pix_code: depositData.pixCode3 || null,
         });
       }
@@ -165,10 +172,11 @@ export const depositInstallmentService = {
           rental_id: rentalId,
           installment_number: installmentData.installment_number,
           total_installments: depositInstallments,
-          installment_total: depositInstallments, // CORRIGIDO: quantidade de parcelas, não valor total
+          installment_total: depositInstallments, 
           amount: installmentData.amount,
           pix_code: installmentData.pix_code,
           payment_date: installmentData.payment_date,
+          due_date: installmentData.due_date,
           partner_commission: commissions.partner_commission,
           internal_commission: commissions.internal_commission,
         };
