@@ -60,8 +60,8 @@ const mapRentalData = (data: any, installments: any[] = []): Rental => {
       id: tenantData.id,
       name: tenantData.name,
       phone: tenantData.phone,
-      email: tenantData.email || "",
-      document: tenantData.cpf || tenantData.cnpj || "",
+      email: "", // Email não vem da query, usar string vazia
+      document: tenantData.cpf || "",
       cpf: tenantData.cpf || "",
       status: "active",
     } : undefined,
@@ -95,7 +95,7 @@ export const rentalService = {
         id, property_id, tenant_id, start_date, end_date, rent_due_day,
         rent_value, deposit_value, status, is_active, has_garage, garage_value,
         has_partner_broker, deposit_installments, attachments, contract_attachments, pix_code,
-        tenants!rentals_tenant_id_fkey(id, name, phone, email, cpf, cnpj),
+        tenants!rentals_tenant_id_fkey(id, name, phone, cpf),
         properties!rentals_property_id_fkey(
           id, location_id, property_identifier, complement, value, description, rooms, bathrooms, area, has_garage, has_furniture, accepts_pets, status, images, created_at,
           locations!properties_location_id_fkey(id, name)
@@ -137,7 +137,7 @@ export const rentalService = {
         id, property_id, tenant_id, start_date, end_date, rent_due_day,
         rent_value, deposit_value, status, is_active, has_garage, garage_value,
         has_partner_broker, deposit_installments, attachments, contract_attachments, pix_code,
-        tenants!rentals_tenant_id_fkey(id, name, phone, email, cpf, cnpj),
+        tenants!rentals_tenant_id_fkey(id, name, phone, cpf),
         properties!rentals_property_id_fkey(
           id, location_id, property_identifier, complement, value, description, rooms, bathrooms, area, has_garage, has_furniture, accepts_pets, status, images, created_at,
           locations!properties_location_id_fkey(id, name)
