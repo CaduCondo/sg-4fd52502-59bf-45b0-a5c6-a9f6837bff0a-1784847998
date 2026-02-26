@@ -266,10 +266,10 @@ export const rentalService = {
     }
 
     // ✅ OTIMIZAÇÃO: Invalidar cache
-    this.invalidateCache();
+    rentalService.invalidateCache();
 
     // Buscar dados completos para retornar
-    return this.getById(data.id);
+    return rentalService.getById(data.id);
   },
 
   async update(id: string, rental: Partial<Rental>): Promise<Rental> {
@@ -339,7 +339,7 @@ export const rentalService = {
 
     // Atualizar pagamentos pendentes se necessário
     if (rental.monthlyRent || rental.paymentDay) {
-      const fullRental = await this.getById(id);
+      const fullRental = await rentalService.getById(id);
       await updatePendingPaymentsOnRentalEdit(
         id, 
         {
@@ -353,10 +353,10 @@ export const rentalService = {
     }
 
     // ✅ OTIMIZAÇÃO: Invalidar cache
-    this.invalidateCache();
+    rentalService.invalidateCache();
 
     // Buscar dados completos para retornar
-    return this.getById(id);
+    return rentalService.getById(id);
   },
 
   async remove(id: string): Promise<void> {
@@ -364,7 +364,7 @@ export const rentalService = {
     if (error) throw error;
     
     // ✅ OTIMIZAÇÃO: Invalidar cache
-    this.invalidateCache();
+    rentalService.invalidateCache();
   },
 
   async terminateContract(id: string): Promise<void> {
@@ -395,7 +395,7 @@ export const rentalService = {
     }
     
     // ✅ OTIMIZAÇÃO: Invalidar cache
-    this.invalidateCache();
+    rentalService.invalidateCache();
   }
 };
 
