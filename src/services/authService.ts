@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 import type { LoginCredentials, LoginResult } from "@/types"; // Importar tipos globais
+import bcrypt from "bcryptjs";
 
 type SystemUser = Tables<"system_users">;
 
@@ -22,14 +23,18 @@ interface UserSession {
 }
 
 /**
- * Simple password validation (direct comparison)
- * TODO: For production, implement proper bcrypt comparison
+ * Password validation using bcrypt
  */
-function validatePassword(inputPassword: string, storedPasswordHash: string): boolean {
-  // TEMPORÁRIO: Comparação direta até bcrypt ser implementado
-  // Em produção, usar: bcrypt.compare(inputPassword, storedPasswordHash)
-  console.log("Comparando senha:", inputPassword, "com hash armazenada:", storedPasswordHash);
-  return inputPassword === storedPasswordHash;
+async function validatePassword(inputPassword: string, storedPasswordHash: string): Promise<boolean> {
+  try {
+    // Use bcrypt to compare password with hash
+    const isValid = await bcrypt.compare(inputPassword, storedPasswordHash);
+    console.log("🔐 Password validation result:", isValid);
+    return isValid;
+  } catch (error) {
+    console.error("❌ Error validating password:", error);
+    return false;
+  }
 }
 
 /**
@@ -89,7 +94,7 @@ export async function login(credentials: LoginCredentials): Promise<LoginResult>
     // 2. Validate password using password_hash
     console.log("🔐 Validating password...");
     
-    const isPasswordValid = validatePassword(credentials.password, user.password_hash);
+    const isPasswordValid = await validatePassword(credentials.password, user.password_hash);
 
     if (!isPasswordValid) {
       console.warn("⚠️ Invalid password");
