@@ -830,7 +830,8 @@ export default function Financial() {
                             </div>
                           </div>
                         </CardContent>
-                    </Card>
+                      </Card>
+                    </ScrollReveal>
                   )}
 
                   <ScrollReveal delay={0.5}>
