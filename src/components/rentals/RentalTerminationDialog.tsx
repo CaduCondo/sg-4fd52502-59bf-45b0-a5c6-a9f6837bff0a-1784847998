@@ -274,11 +274,24 @@ export function RentalTerminationDialog({
       const paymentDay = rental.paymentDay || 1;
       const terminationDay = termDate.getDate();
       
+      // NOVA LÓGICA: Verificar se rescisão é APÓS vencimento do mês
+      const terminationMonth = termDate.getMonth();
+      const terminationYear = termDate.getFullYear();
+      
+      // Data de vencimento do mês da rescisão
+      const dueDateOfTerminationMonth = new Date(terminationYear, terminationMonth, paymentDay);
+      
       let daysUsed = 0;
-      if (terminationDay >= paymentDay) {
-        daysUsed = terminationDay - paymentDay + 1;
+      const isAfterDueDate = termDate >= dueDateOfTerminationMonth;
+      
+      if (isAfterDueDate) {
+        // Rescisão APÓS vencimento: cobra mês cheio + proporcional do próximo
+        // Dias usados no PRÓXIMO mês (do dia 1 até dia da rescisão)
+        daysUsed = terminationDay;
       } else {
-        daysUsed = 30;
+        // Rescisão ANTES do vencimento: cobra apenas proporcional do mês corrente
+        // Dias usados no mês corrente (do dia 1 até dia da rescisão)
+        daysUsed = terminationDay;
       }
       
       setProportionalDays(daysUsed);
@@ -512,11 +525,42 @@ export function RentalTerminationDialog({
                 onChange={(e) => setTerminationDate(e.target.value)}
                 required
               />
-              {proportionalDays > 0 && (
-                <p className="text-xs text-muted-foreground flex items-center gap-1">
-                  <Info className="h-3 w-3" />
-                  Aluguel proporcional: {proportionalDays} dias × R$ {(monthlyRent / 30).toFixed(2)}/dia = R$ {proportionalRent.toFixed(2)}
-                </p>
+              {proportionalDays > 0 && terminationDate && rental && (
+                <div className="text-xs text-muted-foreground space-y-1">
+                  <div className="flex items-start gap-1">
+                    <Info className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                    <div>
+                      {(() => {
+                        const termDate = parseISO(terminationDate);
+                        const paymentDay = rental.paymentDay || 1;
+                        const terminationMonth = termDate.getMonth();
+                        const terminationYear = termDate.getFullYear();
+                        const dueDateOfTerminationMonth = new Date(terminationYear, terminationMonth, paymentDay);
+                        const isAfterDueDate = termDate >= dueDateOfTerminationMonth;
+                        const monthlyRent = rental.value || 0;
+                        
+                        if (isAfterDueDate) {
+                          return (
+                            <>
+                              <p className="font-medium">Rescisão APÓS vencimento (dia {paymentDay}):</p>
+                              <ul className="list-disc list-inside ml-2 space-y-0.5">
+                                <li>Mês cheio: R$ {monthlyRent.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</li>
+                                <li>Proporcional próximo mês: {proportionalDays} dias × R$ {(monthlyRent / 30).toFixed(2)}/dia = R$ {proportionalRent.toFixed(2)}</li>
+                              </ul>
+                            </>
+                          );
+                        } else {
+                          return (
+                            <>
+                              <p className="font-medium">Rescisão ANTES do vencimento (dia {paymentDay}):</p>
+                              <p className="ml-2">Proporcional: {proportionalDays} dias × R$ {(monthlyRent / 30).toFixed(2)}/dia = R$ {proportionalRent.toFixed(2)}</p>
+                            </>
+                          );
+                        }
+                      })()}
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
 
@@ -585,7 +629,9 @@ export function RentalTerminationDialog({
               <AlertDescription className="text-xs space-y-1">
                 <p className="font-medium">O que vai acontecer:</p>
                 <ul className="list-disc list-inside space-y-0.5 ml-2">
-                  <li>Recebimento do mês será atualizado com aluguel proporcional</li>
+                  <li>Se rescisão for APÓS vencimento: cobra mês cheio + proporcional próximo mês</li>
+                  <li>Se rescisão for ANTES do vencimento: cobra apenas proporcional do mês</li>
+                  <li>Recebimento do mês será atualizado com valores corretos</li>
                   <li>Recebimentos futuros serão excluídos</li>
                   <li>Multa e caução serão adicionados ao recebimento</li>
                   <li>Despesas de reforma podem ser adicionadas depois na tela de Recebimentos</li>
