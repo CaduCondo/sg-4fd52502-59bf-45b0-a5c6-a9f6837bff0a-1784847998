@@ -74,6 +74,15 @@ export default function RentalsPage() {
   const [rentalTerminations, setRentalTerminations] = useState<Record<string, boolean>>({});
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "terminated">("active");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
+
+  // Debounce search term
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   // Helper para formatar data
   const formatDate = useCallback((dateString: string) => {
@@ -84,24 +93,31 @@ export default function RentalsPage() {
 
   // Carregar informações de rescisão
   const loadTerminationInfo = useCallback(async (activeRentals: Rental[]) => {
+    if (activeRentals.length === 0) {
+      setRentalTerminations({});
+      return;
+    }
+
     try {
-      const terminationMap: Record<string, boolean> = {};
+      // ✅ OTIMIZAÇÃO: 1 única query para todos os rentals
+      const rentalIds = activeRentals.map(r => r.id);
       
-      await Promise.all(
-        activeRentals.map(async (rental) => {
-          const { data: payments } = await supabase
-            .from("payments")
-            .select("notes")
-            .eq("rental_id", rental.id);
-          
-          const hasTermination = payments?.some(p => p.notes?.includes("Rescisão de Contrato"));
-          terminationMap[rental.id] = hasTermination || false;
-        })
-      );
+      const { data: payments } = await supabase
+        .from("payments")
+        .select("rental_id, notes")
+        .in("rental_id", rentalIds)
+        .ilike("notes", "%Rescisão de Contrato%");
+      
+      // Mapear resultados
+      const terminationMap: Record<string, boolean> = {};
+      activeRentals.forEach(rental => {
+        terminationMap[rental.id] = payments?.some(p => p.rental_id === rental.id) || false;
+      });
       
       setRentalTerminations(terminationMap);
     } catch (error) {
       console.error("Erro ao carregar informações de rescisão:", error);
+      setRentalTerminations({});
     }
   }, []);
 
@@ -109,21 +125,31 @@ export default function RentalsPage() {
   const loadRentalsData = useCallback(async () => {
     try {
       setLoading(true);
+      
+      // ✅ OTIMIZAÇÃO: Carregar em paralelo
       const [rentalsData, locationsData] = await Promise.all([
         getAllRentals(),
         getAllLocations(),
       ]);
+      
       setRentals(rentalsData);
       setLocations(locationsData);
       
-      await loadTerminationInfo(rentalsData.filter(r => r.isActive));
+      // ✅ OTIMIZAÇÃO: Carregar rescisões apenas para ativos
+      const activeOnly = rentalsData.filter(r => r.isActive);
+      if (activeOnly.length > 0) {
+        loadTerminationInfo(activeOnly); // Não espera - carrega em background
+      }
     } catch (error) {
       console.error("Erro ao carregar locações:", error);
       toast({
         title: "Erro",
-        description: "Não foi possível carregar as locações.",
+        description: "Não foi possível carregar as locações. Tente recarregar a página.",
         variant: "destructive",
       });
+      // Define arrays vazios em caso de erro
+      setRentals([]);
+      setLocations([]);
     } finally {
       setLoading(false);
     }
@@ -150,13 +176,16 @@ export default function RentalsPage() {
   const loadAdditionalData = useCallback(async () => {
     const now = Date.now();
     
+    // ✅ OTIMIZAÇÃO: Cache de 10 minutos
     if (dataCache.loaded && (now - dataCache.timestamp) < CACHE_DURATION) {
+      console.log("✅ Usando dados em cache");
       return;
     }
 
     try {
       setLoadingAdditionalData(true);
       
+      console.log("🔄 Carregando dados adicionais...");
       const [allPropertiesData, allTenantsData] = await Promise.all([
         getAllProperties(),
         getAllTenants(),
@@ -165,14 +194,14 @@ export default function RentalsPage() {
       setAllProperties(allPropertiesData);
       setAllTenants(allTenantsData);
       setDataCache({ loaded: true, timestamp: now });
+      console.log("✅ Dados adicionais carregados e em cache");
     } catch (error) {
       console.error("❌ Erro ao carregar dados adicionais:", error);
       toast({
-        title: "Erro",
-        description: "Não foi possível carregar dados completos. Tente novamente.",
-        variant: "destructive",
+        title: "Aviso",
+        description: "Alguns dados não puderam ser carregados. A funcionalidade pode estar limitada.",
+        variant: "default",
       });
-      throw error;
     } finally {
       setLoadingAdditionalData(false);
     }
@@ -186,9 +215,9 @@ export default function RentalsPage() {
   // Filtrar locações
   const filteredRentals = useMemo(() => {
     return rentals.filter((rental) => {
-      const searchLower = searchTerm.toLowerCase();
+      const searchLower = debouncedSearchTerm.toLowerCase();
       const matchesSearch =
-        !searchTerm ||
+        !debouncedSearchTerm ||
         rental.tenant?.name?.toLowerCase().includes(searchLower) ||
         rental.property?.location?.toLowerCase().includes(searchLower) ||
         rental.property?.complement?.toLowerCase().includes(searchLower);
@@ -202,13 +231,16 @@ export default function RentalsPage() {
 
       return matchesSearch && statusFilter === effectiveStatus;
     });
-  }, [rentals, searchTerm, statusFilter]);
+  }, [rentals, debouncedSearchTerm, statusFilter]);
 
   const activeRentals = useMemo(() => rentals.filter((r) => r.isActive), [rentals]);
   const canCreateRental = useMemo(() => 
     availableProperties.length > 0 && availableTenants.length > 0, 
     [availableProperties.length, availableTenants.length]
   );
+
+  // ✅ OTIMIZAÇÃO: Memoizar lista de IDs de locações para evitar recálculos
+  const rentalIds = useMemo(() => rentals.map(r => r.id), [rentals]);
 
   // Handler para rescisão
   const handleTerminateRental = useCallback(async (data: {

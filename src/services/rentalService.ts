@@ -3,6 +3,14 @@ import { Rental, Attachment } from "@/types";
 import { depositInstallmentService } from "./depositInstallmentService";
 import { updatePendingPaymentsOnRentalEdit } from "./paymentService";
 
+// ✅ CACHE: Cache simples em memória
+let rentalsCache: { data: Rental[] | null; timestamp: number } = {
+  data: null,
+  timestamp: 0,
+};
+
+const CACHE_DURATION = 2 * 60 * 1000; // 2 minutos
+
 // Helper para mapear dados do banco para o tipo Rental
 const mapRentalData = (data: any): Rental => {
   // Extrair parcelas do caução da resposta
@@ -96,20 +104,43 @@ const mapRentalData = (data: any): Rental => {
 };
 
 export const rentalService = {
-  async getAll(): Promise<Rental[]> {
-    console.log("🔄 [rentalService.getAll] Buscando todas as locações...");
+  async getAll(forceRefresh = false): Promise<Rental[]> {
+    const now = Date.now();
+    
+    // ✅ OTIMIZAÇÃO: Usar cache se disponível e não expirado
+    if (!forceRefresh && rentalsCache.data && (now - rentalsCache.timestamp) < CACHE_DURATION) {
+      console.log("✅ [rentalService.getAll] Usando cache");
+      return rentalsCache.data;
+    }
+
+    console.log("🔄 [rentalService.getAll] Buscando do banco...");
     
     const { data, error } = await supabase
       .from("rentals")
       .select(`
-        *,
+        id,
+        property_id,
+        tenant_id,
+        start_date,
+        end_date,
+        rent_value,
+        rent_due_day,
+        deposit_value,
+        status,
+        is_active,
+        attachments,
+        contract_attachments,
+        has_garage,
+        garage_value,
+        has_partner_broker,
+        pix_code,
+        deposit_installments,
+        created_at,
         tenants!rentals_tenant_id_fkey(
           id, name, phone, cpf
         ),
         properties!rentals_property_id_fkey(
-          id, location_id, property_identifier, complement, value, description, 
-          rooms, bathrooms, area, has_garage, has_furniture, accepts_pets, status, 
-          images, created_at,
+          id, location_id, property_identifier, complement, value,
           locations!properties_location_id_fkey(id, name)
         ),
         deposit_installments(
@@ -128,7 +159,19 @@ export const rentalService = {
     
     const mappedRentals = data?.map((rental: any) => mapRentalData(rental)) || [];
     
+    // ✅ OTIMIZAÇÃO: Atualizar cache
+    rentalsCache = {
+      data: mappedRentals,
+      timestamp: now,
+    };
+    
     return mappedRentals;
+  },
+
+  // ✅ OTIMIZAÇÃO: Função para invalidar cache
+  invalidateCache() {
+    console.log("🗑️ [rentalService] Cache invalidado");
+    rentalsCache = { data: null, timestamp: 0 };
   },
 
   async getById(id: string): Promise<Rental> {
@@ -222,6 +265,9 @@ export const rentalService = {
         .eq("id", rental.tenantId);
     }
 
+    // ✅ OTIMIZAÇÃO: Invalidar cache
+    this.invalidateCache();
+
     // Buscar dados completos para retornar
     return this.getById(data.id);
   },
@@ -306,6 +352,9 @@ export const rentalService = {
       );
     }
 
+    // ✅ OTIMIZAÇÃO: Invalidar cache
+    this.invalidateCache();
+
     // Buscar dados completos para retornar
     return this.getById(id);
   },
@@ -313,6 +362,9 @@ export const rentalService = {
   async remove(id: string): Promise<void> {
     const { error } = await supabase.from("rentals").delete().eq("id", id);
     if (error) throw error;
+    
+    // ✅ OTIMIZAÇÃO: Invalidar cache
+    this.invalidateCache();
   },
 
   async terminateContract(id: string): Promise<void> {
@@ -341,6 +393,9 @@ export const rentalService = {
         .update({ status: "active" })
         .eq("id", rentalData.tenant_id);
     }
+    
+    // ✅ OTIMIZAÇÃO: Invalidar cache
+    this.invalidateCache();
   }
 };
 
