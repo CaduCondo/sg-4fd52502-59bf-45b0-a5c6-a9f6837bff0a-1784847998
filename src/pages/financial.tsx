@@ -309,11 +309,10 @@ export default function Financial() {
         .eq("month", filterMonth)
         .eq("year", filterYear);
 
-      const [exemptionsResult, configResult, expensesResult] = await Promise.all([
-        exemptionsQuery,
-        configQuery,
-        expensesQuery
-      ]) as any;
+      // Executar queries sequencialmente para evitar erro TS2589
+      const exemptionsResult = await exemptionsQuery;
+      const configResult = await configQuery;
+      const expensesResult = await expensesQuery;
 
       // Buscar permissões separadamente para evitar erro de tipo profundo
       let allowedLocations: string[] = [];
