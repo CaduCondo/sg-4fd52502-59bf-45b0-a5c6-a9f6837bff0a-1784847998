@@ -214,7 +214,7 @@ export default function Financial() {
 
       // Processar dados e extrair locations
       const locationsMapTemp = new Map<string, string>();
-      const formattedPayments: Payment[] = (paymentsData || []).map((payment: any) => {
+      const formattedPayments = (paymentsData || []).map((payment: any) => {
         const rental = payment.rentals;
         const property = rental?.properties;
         const tenant = rental?.tenants;
@@ -298,7 +298,7 @@ export default function Financial() {
           propertyId: property?.id || "",
           tenantId: tenant?.id || "",
         };
-      });
+      }) as Payment[];
 
       // Buscar configurações e isenções em paralelo
       const exemptionsQuery: any = supabase.from("admin_fee_exempt_locations").select("location_id");
