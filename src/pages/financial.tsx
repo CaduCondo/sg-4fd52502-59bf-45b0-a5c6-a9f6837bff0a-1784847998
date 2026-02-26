@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Layout } from "@/components/Layout";
 import { PeriodSelector } from "@/components/dashboard/PeriodSelector";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
@@ -38,17 +38,24 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
-
-// Importações diretas dos serviços
-import { getAll as getAllPayments } from "@/services/paymentService";
-import { getAll as getAllProperties } from "@/services/propertyService";
-import { getAll as getAllTenants } from "@/services/tenantService";
-import { getAll as getAllRentals } from "@/services/rentalService";
-import { getConfig } from "@/services/configService";
 import { Payment, Property, Rental, Tenant } from "@/types";
 
 type SortField = "paymentNumber" | "local" | "complement" | "status" | "dueDate" | "paymentDate" | "expectedAmount" | "paidAmount";
 type SortDirection = "asc" | "desc" | null;
+
+// Cache em memória para financial data
+let financialCache: {
+  data: {
+    payments: Payment[];
+    locations: Map<string, string>;
+    exemptLocationIds: string[];
+    config: any;
+  } | null;
+  key: string;
+  timestamp: number;
+} = { data: null, key: "", timestamp: 0 };
+
+const CACHE_DURATION = 2 * 60 * 1000; // 2 minutos
 
 export default function Financial() {
   const { user } = useAuth();
@@ -58,14 +65,12 @@ export default function Financial() {
   
   // Data fetching state
   const [payments, setPayments] = useState<Payment[]>([]);
-  const [properties, setProperties] = useState<Property[]>([]);
-  const [rentals, setRentals] = useState<Rental[]>([]);
-  const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
   const [allowedLocationIds, setAllowedLocationIds] = useState<string[]>([]);
   const [exemptLocationIds, setExemptLocationIds] = useState<string[]>([]);
   const [config, setConfig] = useState<any>(null);
   const [mounted, setMounted] = useState(false);
+  const [locationsMap, setLocationsMap] = useState<Map<string, string>>(new Map());
 
   // Date State
   const now = new Date();
@@ -99,16 +104,48 @@ export default function Financial() {
   }, [user, filterMonth, filterYear]);
 
   const loadData = async () => {
+    // Prevenir execuções simultâneas
+    if (loadingRef.current) {
+      console.log("⏸️ [Financial] Carregamento já em andamento, ignorando...");
+      return;
+    }
+
+    // Cancelar requisição anterior se existir
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    // Verificar cache
+    const cacheKey = `${filterMonth}-${filterYear}-${user?.id}`;
+    const now = Date.now();
+    
+    if (
+      financialCache.data &&
+      financialCache.key === cacheKey &&
+      (now - financialCache.timestamp) < CACHE_DURATION
+    ) {
+      console.log("✅ [Financial] Usando cache em memória");
+      setPayments(financialCache.data.payments);
+      setLocationsMap(financialCache.data.locations);
+      setExemptLocationIds(financialCache.data.exemptLocationIds);
+      setConfig(financialCache.data.config);
+      setLoading(false);
+      return;
+    }
+
     try {
+      loadingRef.current = true;
       setLoading(true);
+      abortControllerRef.current = new AbortController();
       
-      console.log("🔍 DEBUG Financial - Loading data for period:", {
+      console.log("🔄 [Financial] Buscando do banco...", {
         filterMonth,
         filterYear,
         userId: user?.id,
         userRole: user?.role
       });
-      
+
+      // QUERY OTIMIZADA: 1 única query com JOIN completo
       const { data: paymentsData, error: paymentsError } = await supabase
         .from("payments")
         .select(`
@@ -125,12 +162,10 @@ export default function Financial() {
           discount_amount,
           late_fee,
           interest,
-          notes,
           payment_method,
-          breakdown,
           installment,
           total_installments,
-          rentals!inner(
+          rentals!payments_rental_id_fkey (
             id,
             rent_value,
             garage_value,
@@ -139,31 +174,50 @@ export default function Financial() {
             start_date,
             end_date,
             pix_code,
-            properties!inner(id, property_identifier, location_id, complement),
-            tenants!inner(id, name, cpf, email, phone)
+            properties!rentals_property_id_fkey (
+              id,
+              property_identifier,
+              location_id,
+              complement,
+              locations!properties_location_id_fkey (
+                id,
+                name
+              )
+            ),
+            tenants!rentals_tenant_id_fkey (
+              id,
+              name,
+              cpf,
+              email,
+              phone
+            )
           )
         `)
         .eq("reference_month", String(filterMonth))
         .eq("reference_year", String(filterYear))
-        .order("due_date", { ascending: true });
+        .order("due_date", { ascending: true })
+        .abortSignal(abortControllerRef.current.signal);
 
       if (paymentsError) throw paymentsError;
 
-      console.log("🔍 DEBUG Financial - Dados brutos do banco:", {
+      console.log("✅ [Financial] Dados retornados:", {
         totalPayments: paymentsData?.length || 0,
-        firstPayment: paymentsData?.[0],
-        firstPaidAmount: paymentsData?.[0]?.paid_amount,
-        hasRentals: !!paymentsData?.[0]?.rentals,
-        hasProperty: !!paymentsData?.[0]?.rentals?.properties,
-        hasTenant: !!paymentsData?.[0]?.rentals?.tenants,
         filterMonth,
         filterYear
       });
 
+      // Processar dados e extrair locations
+      const locationsMapTemp = new Map<string, string>();
       const formattedPayments: Payment[] = (paymentsData || []).map((payment: any) => {
         const rental = payment.rentals;
         const property = rental?.properties;
         const tenant = rental?.tenants;
+        const location = property?.locations;
+
+        // Adicionar location ao map
+        if (location && !locationsMapTemp.has(location.id)) {
+          locationsMapTemp.set(location.id, location.name);
+        }
 
         return {
           id: payment.id,
@@ -179,9 +233,7 @@ export default function Financial() {
           discount: payment.discount_amount,
           lateFee: payment.late_fee,
           interest: payment.interest,
-          notes: payment.notes,
           paymentMethod: payment.payment_method,
-          breakdown: payment.breakdown,
           installment: payment.installment,
           totalInstallments: payment.total_installments,
           createdAt: payment.created_at,
@@ -196,8 +248,6 @@ export default function Financial() {
             endDate: rental.end_date,
             propertyId: property?.id || "",
             tenantId: tenant?.id || "",
-            
-            // Campos obrigatórios para satisfazer o tipo Rental
             value: rental.rent_value || 0,
             depositAmount: 0,
             status: "active",
@@ -208,16 +258,14 @@ export default function Financial() {
             hasPartnerBroker: false,
             installments: 1,
             totalInstallments: 1,
-            pixCode: rental.pix_code // Importante para exibir o código PIX
+            pixCode: rental.pix_code
           } : undefined,
           property: property ? {
             id: property.id,
             propertyIdentifier: property.property_identifier,
             locationId: property.location_id,
             complement: property.complement,
-            
-            // Campos obrigatórios para satisfazer o tipo Property
-            location: "Carregando...", // Será atualizado depois
+            location: location?.name || "Carregando...",
             description: "",
             rooms: 0,
             bathrooms: 0,
@@ -238,7 +286,6 @@ export default function Financial() {
             cpf: tenant.cpf,
             email: tenant.email,
             phone: tenant.phone,
-            // Campos obrigatórios para satisfazer o tipo Tenant
             document: tenant.cpf || "",
             status: "active"
           } : undefined,
@@ -247,101 +294,56 @@ export default function Financial() {
         };
       });
 
-      console.log("🔍 DEBUG Financial - Dados formatados:", {
-        totalFormatted: formattedPayments.length,
-        firstFormatted: formattedPayments[0],
-        firstProperty: formattedPayments[0]?.property,
-        firstTenant: formattedPayments[0]?.tenant,
-        firstRental: formattedPayments[0]?.rental,
-        sampleReferenceMonth: formattedPayments[0]?.referenceMonth,
-        sampleReferenceYear: formattedPayments[0]?.referenceYear
+      // Buscar configurações e isenções em paralelo
+      const [exemptionsResult, configResult, expensesResult, permissionsResult] = await Promise.all([
+        supabase.from("admin_fee_exempt_locations").select("location_id"),
+        supabase.from("config").select("*").single(),
+        supabase
+          .from("location_expenses")
+          .select("amount")
+          .eq("month", filterMonth)
+          .eq("year", filterYear),
+        user?.role === "financial" 
+          ? supabase.from("user_location_permissions").select("location_id").eq("user_id", user.id)
+          : Promise.resolve({ data: null })
+      ]);
+
+      const exemptIds = exemptionsResult.data?.map(e => e.location_id) || [];
+      const configData = configResult.data;
+      const totalExpenses = expensesResult.data?.reduce((sum, e) => sum + (e.amount || 0), 0) || 0;
+      const allowedLocations = permissionsResult.data?.map(p => p.location_id) || [];
+
+      setExemptLocationIds(exemptIds);
+      setConfig(configData);
+      setLocationExpenses(totalExpenses);
+      setAllowedLocationIds(allowedLocations);
+      setLocationsMap(locationsMapTemp);
+
+      console.log("✅ [Financial] Processamento concluído:", {
+        totalPayments: formattedPayments.length,
+        totalLocations: locationsMapTemp.size,
+        exemptLocations: exemptIds.length,
+        locationExpenses: totalExpenses
       });
 
-      // Busca todas as locations para mapear os nomes
-      const { data: locationsData } = await supabase
-        .from("locations")
-        .select("id, name");
-      
-      const locationsMap = new Map(
-        (locationsData || []).map(loc => [loc.id, loc.name])
-      );
+      // Atualizar cache
+      financialCache = {
+        data: {
+          payments: formattedPayments,
+          locations: locationsMapTemp,
+          exemptLocationIds: exemptIds,
+          config: configData,
+        },
+        key: cacheKey,
+        timestamp: now,
+      };
 
-      // Atualizar propriedades com nomes de locations
-      const paymentsWithLocations = formattedPayments.map(payment => {
-        if (payment.property && payment.property.locationId) {
-          return {
-            ...payment,
-            property: {
-              ...payment.property,
-              location: locationsMap.get(payment.property.locationId) || payment.property.location || "Local não encontrado"
-            }
-          };
-        }
-        return payment;
-      });
-
-      // FILTRO DE SEGURANÇA (CLIENT-SIDE)
-      // Garante que apenas os dados do período selecionado sejam exibidos
-      const finalFilteredPayments = paymentsWithLocations.filter(p => 
-        p.referenceMonth === filterMonth && 
-        p.referenceYear === filterYear
-      );
-
-      console.log("✅ DEBUG Financial - Dados finais filtrados:", {
-        antes: paymentsWithLocations.length,
-        depois: finalFilteredPayments.length,
-        periodo: `${filterMonth}/${filterYear}`
-      });
-
-      // Removed erroneous totalExpenses calculation from paymentsData
-      // If expenses need to be calculated, they should be fetched from location_expenses table
-      setLocationExpenses(0);
-
-      // Buscar permissões de locais do usuário logado
-      let allowedLocations: string[] = [];
-      
-      if (user) {
-        // Buscar isenções de taxa de administração (GLOBAL - por local, não por usuário)
-        const { data: exemptions, error: exemptError } = await supabase
-          .from("admin_fee_exempt_locations")
-          .select("location_id");
-        
-        if (exemptError) {
-          console.error("❌ Erro ao buscar locais isentos:", exemptError);
-        } else {
-          const exemptIds = exemptions?.map(e => e.location_id) || [];
-          setExemptLocationIds(exemptIds);
-          console.log("✅ Locais isentos de taxa de administração:", exemptIds);
-        }
-
-        // Buscar configurações globais
-        const configData = await getConfig();
-        setConfig(configData);
-        console.log("✅ Configurações carregadas:", {
-          adminFeePercentage: configData?.admin_fee_percentage,
-          managementFeePercentage: configData?.management_fee_percentage
-        });
-
-        // Buscar permissões de local (para usuários financeiros)
-        if (user.role === "financial") {
-          const { data: permissions } = await supabase
-            .from("user_location_permissions")
-            .select("location_id")
-            .eq("user_id", user.id);
-          
-          allowedLocations = permissions?.map(p => p.location_id) || [];
-          setAllowedLocationIds(allowedLocations);
-        } else {
-          setAllowedLocationIds([]);
-        }
-      }
-
-      // Set payments filtered by period
-      setPayments(finalFilteredPayments);
+      setPayments(formattedPayments);
 
     } catch (error: any) {
       // Ignorar erros de abort
       if (error?.name === 'AbortError') {
+        console.log("⏸️ [Financial] Requisição cancelada");
         return;
       }
       
@@ -352,24 +354,17 @@ export default function Financial() {
         variant: "destructive",
       });
     } finally {
+      loadingRef.current = false;
       setLoading(false);
+      abortControllerRef.current = null;
     }
   };
 
-  const getPaymentDetails = (payment: Payment) => {
+  // Memoizar função de obter detalhes do pagamento
+  const getPaymentDetails = useCallback((payment: Payment) => {
     const property = payment.property;
     const tenant = payment.tenant;
     const rental = payment.rental;
-
-    console.log("🔍 DEBUG getPaymentDetails:", {
-      paymentId: payment.id,
-      hasProperty: !!property,
-      propertyLocation: property?.location,
-      propertyLocationId: property?.locationId,
-      hasRental: !!rental,
-      hasTenant: !!tenant,
-      paymentTime: payment.paymentTime
-    });
 
     return {
       local: property?.location || "N/A",
@@ -379,23 +374,13 @@ export default function Financial() {
       pixCode: rental?.pixCode || "",
       paymentTime: payment.paymentTime || "",
     };
-  };
+  }, []);
 
-  const calculatePaymentNumber = (payment: Payment, rental: Rental | undefined) => {
-    // Usa o rental do payment se não for passado
+  // Memoizar cálculo de número de parcela
+  const calculatePaymentNumber = useCallback((payment: Payment, rental: Rental | undefined) => {
     const rentalData = rental || payment.rental;
     
-    console.log("🔍 DEBUG calculatePaymentNumber:", {
-      paymentId: payment.id,
-      hasRental: !!rentalData,
-      rentalStartDate: rentalData?.startDate,
-      rentalEndDate: rentalData?.endDate,
-      referenceMonth: payment.referenceMonth,
-      referenceYear: payment.referenceYear
-    });
-    
     if (!rentalData || !rentalData.startDate || !rentalData.endDate) {
-      console.warn("⚠️ Rental data missing for payment:", payment.id);
       return "N/A";
     }
     
@@ -408,18 +393,16 @@ export default function Financial() {
       const currentPaymentNumber = differenceInMonths(referenceDate, contractStartDate) + 1;
       
       if (isNaN(currentPaymentNumber) || isNaN(totalMonths)) {
-        console.warn("⚠️ Invalid date calculation for payment:", payment.id, { rental });
         return "N/A";
       }
       
       return `${currentPaymentNumber}/${totalMonths}`;
     } catch (error) {
-      console.error("❌ Error calculating payment number:", error);
       return "N/A";
     }
-  };
+  }, []);
 
-  const handleSort = (field: SortField) => {
+  const handleSort = useCallback((field: SortField) => {
     if (sortField === field) {
       if (sortDirection === "asc") {
         setSortDirection("desc");
@@ -433,16 +416,10 @@ export default function Financial() {
       setSortField(field);
       setSortDirection("asc");
     }
-  };
+  }, [sortField, sortDirection]);
 
-  const getSortedPayments = () => {
-    // Remove period filter - show ALL payments
-    console.log("🔍 DEBUG Financial - Todos os pagamentos:", {
-      totalPayments: payments.length,
-      samplePayment: payments[0]
-    });
-
-    // Apply sorting if specified
+  // Memoizar pagamentos ordenados
+  const getSortedPayments = useMemo(() => {
     if (!sortField || !sortDirection) return payments;
 
     return [...payments].sort((a, b) => {
@@ -451,10 +428,8 @@ export default function Financial() {
 
       switch (sortField) {
         case "paymentNumber":
-          const rentalA = rentals.find(r => r.id === a.rentalId);
-          const rentalB = rentals.find(r => r.id === b.rentalId);
-          aValue = calculatePaymentNumber(a, rentalA);
-          bValue = calculatePaymentNumber(b, rentalB);
+          aValue = calculatePaymentNumber(a, a.rental);
+          bValue = calculatePaymentNumber(b, b.rental);
           break;
         case "local":
           aValue = getPaymentDetails(a).local;
@@ -492,7 +467,7 @@ export default function Financial() {
       if (aValue > bValue) return sortDirection === "asc" ? 1 : -1;
       return 0;
     });
-  };
+  }, [payments, sortField, sortDirection, calculatePaymentNumber, getPaymentDetails]);
 
   const SortIcon = ({ field }: { field: SortField }) => {
     if (sortField !== field) return <ArrowUpDown className="h-4 w-4 ml-1 text-slate-400" />;
@@ -500,9 +475,9 @@ export default function Financial() {
     return <ArrowDown className="h-4 w-4 ml-1 text-blue-600" />;
   };
 
-  const handlePrint = () => {
+  const handlePrint = useCallback(() => {
     window.print();
-  };
+  }, []);
   
   const handleEditPixCode = async (paymentId: string, pixCode: string) => {
     try {
@@ -524,6 +499,9 @@ export default function Financial() {
         )
       );
       setEditingPixCode(null);
+      
+      // Invalidar cache
+      financialCache = { data: null, key: "", timestamp: 0 };
     } catch (error) {
       console.error("Erro ao atualizar código PIX:", error);
       toast({
@@ -534,8 +512,8 @@ export default function Financial() {
     }
   };
 
-  const handleExport = () => {
-    const sortedPayments = getSortedPayments();
+  const handleExport = useCallback(() => {
+    const sortedPayments = getSortedPayments;
     const monthName = format(new Date(filterYear, filterMonth - 1), "MMMM", { locale: ptBR });
 
     const excelData = sortedPayments.map(payment => {
@@ -577,77 +555,55 @@ export default function Financial() {
       title: "Sucesso!",
       description: "Planilha exportada com sucesso.",
     });
-  };
+  }, [getSortedPayments, filterMonth, filterYear, getPaymentDetails, calculatePaymentNumber, toast]);
 
-  // KPI Calculations
-  const totalExpected = payments.reduce((sum, p) => sum + p.expectedAmount, 0);
-  
-  const totalReceived = payments
-    .filter((p) => p.status === "paid" || p.status === "partial")
-    .reduce((sum, p) => sum + (p.paidAmount || 0), 0);
-  
-  console.log("💰 DEBUG Financial - KPI Calculations Start:", {
-    totalPayments: payments.length,
-    totalExpected,
-    totalReceived,
-    configLoaded: !!config,
-    configAdminFee: config?.admin_fee_percentage,
-    configManagementFee: config?.management_fee_percentage,
-    exemptLocationIds
-  });
-
-  const adminFee = payments
-    .filter((p) => p.status === "paid" || p.status === "partial")
-    .reduce((sum, p) => {
-      const property = p.property;
-      const isExempt = property && exemptLocationIds.includes(property.locationId);
-      
-      const feePercentage = config?.admin_fee_percentage ?? 5;
-      const feeRate = feePercentage / 100;
-      
-      const fee = isExempt ? 0 : ((p.paidAmount || 0) * feeRate);
-      
-      // DEBUG LOG APENAS PARA O PRIMEIRO PAGAMENTO PAGO PARA NÃO POLUIR O CONSOLE
-      if (sum === 0 && fee > 0) {
-        console.log("💰 DEBUG Admin Fee Sample:", {
-          paymentId: p.id,
-          paidAmount: p.paidAmount,
-          feePercentage,
-          feeRate,
-          isExempt,
-          locationId: property?.locationId,
-          calculatedFee: fee
-        });
-      }
-      
-      return sum + fee;
-    }, 0);
-
-  console.log("💰 DEBUG Financial - Admin Fee Total:", adminFee);
+  // KPI Calculations (MEMOIZADOS!)
+  const kpiCalculations = useMemo(() => {
+    const totalExpected = payments.reduce((sum, p) => sum + p.expectedAmount, 0);
     
-  const managementFee = payments
-    .filter((p) => p.status === "paid" || p.status === "partial")
-    .reduce((sum, p) => {
-       const mgmtPercentage = config?.management_fee_percentage ?? 3;
-       const mgmtRate = mgmtPercentage / 100;
-       
-       const fee = (p.paidAmount || 0) * mgmtRate;
-       
-       return sum + fee;
-  }, 0);
+    const totalReceived = payments
+      .filter((p) => p.status === "paid" || p.status === "partial")
+      .reduce((sum, p) => sum + (p.paidAmount || 0), 0);
+    
+    const feePercentage = config?.admin_fee_percentage ?? 5;
+    const feeRate = feePercentage / 100;
+    
+    const adminFee = payments
+      .filter((p) => p.status === "paid" || p.status === "partial")
+      .reduce((sum, p) => {
+        const property = p.property;
+        const isExempt = property && exemptLocationIds.includes(property.locationId);
+        const fee = isExempt ? 0 : ((p.paidAmount || 0) * feeRate);
+        return sum + fee;
+      }, 0);
 
-  console.log("💰 DEBUG Financial - Management Fee Total:", {
-     total: managementFee,
-     percentage: config?.management_fee_percentage ?? 3
-  });
+    const mgmtPercentage = config?.management_fee_percentage ?? 3;
+    const mgmtRate = mgmtPercentage / 100;
+    
+    const managementFee = payments
+      .filter((p) => p.status === "paid" || p.status === "partial")
+      .reduce((sum, p) => {
+        const fee = (p.paidAmount || 0) * mgmtRate;
+        return sum + fee;
+      }, 0);
 
-  const netRevenue = totalReceived - adminFee - managementFee - locationExpenses;
-  
-  const totalPaid = payments
-    .filter(p => p.status === "paid" || p.status === "partial")
-    .reduce((sum, p) => sum + (p.paidAmount || 0), 0);
+    const netRevenue = totalReceived - adminFee - managementFee - locationExpenses;
+    
+    const totalPaid = payments
+      .filter(p => p.status === "paid" || p.status === "partial")
+      .reduce((sum, p) => sum + (p.paidAmount || 0), 0);
 
-  const filteredPayments = getSortedPayments();
+    return {
+      totalExpected,
+      totalReceived,
+      adminFee,
+      managementFee,
+      netRevenue,
+      totalPaid,
+    };
+  }, [payments, config, exemptLocationIds, locationExpenses]);
+
+  const filteredPayments = getSortedPayments;
 
   if (!mounted) return null;
 
@@ -702,7 +658,7 @@ export default function Financial() {
                               {new Intl.NumberFormat("pt-BR", {
                                 style: "currency",
                                 currency: "BRL",
-                              }).format(totalExpected)}
+                              }).format(kpiCalculations.totalExpected)}
                             </p>
                             <p className="text-xs text-muted-foreground">
                               Total de aluguéis esperados no período
@@ -726,7 +682,7 @@ export default function Financial() {
                               {new Intl.NumberFormat("pt-BR", {
                                 style: "currency",
                                 currency: "BRL",
-                              }).format(totalReceived)}
+                              }).format(kpiCalculations.totalReceived)}
                             </p>
                             <p className="text-xs text-muted-foreground">
                               Total recebido no período
@@ -750,7 +706,7 @@ export default function Financial() {
                               {new Intl.NumberFormat("pt-BR", {
                                 style: "currency",
                                 currency: "BRL",
-                              }).format(adminFee + managementFee + locationExpenses)}
+                              }).format(kpiCalculations.adminFee + kpiCalculations.managementFee + locationExpenses)}
                             </p>
                             <p className="text-xs text-muted-foreground">
                               Taxas e contas a pagar do mês
@@ -774,7 +730,7 @@ export default function Financial() {
                               {new Intl.NumberFormat("pt-BR", {
                                 style: "currency",
                                 currency: "BRL",
-                              }).format(netRevenue)}
+                              }).format(kpiCalculations.netRevenue)}
                             </p>
                             <p className="text-xs text-muted-foreground">
                               Valor após subtração das taxas e contas
@@ -800,7 +756,7 @@ export default function Financial() {
                               {new Intl.NumberFormat("pt-BR", {
                                 style: "currency",
                                 currency: "BRL",
-                              }).format(totalReceived)}
+                              }).format(kpiCalculations.totalReceived)}
                             </p>
                             <p className="text-xs text-muted-foreground">
                               Total recebido no período
@@ -824,7 +780,7 @@ export default function Financial() {
                               {new Intl.NumberFormat("pt-BR", {
                                 style: "currency",
                                 currency: "BRL",
-                              }).format(adminFee)}
+                              }).format(kpiCalculations.adminFee)}
                             </p>
                             <p className="text-xs text-muted-foreground">
                               {config ? config.admin_fee_percentage : 5}% sobre a receita bruta
@@ -849,7 +805,7 @@ export default function Financial() {
                                 {new Intl.NumberFormat("pt-BR", {
                                   style: "currency",
                                   currency: "BRL",
-                                }).format(managementFee)}
+                                }).format(kpiCalculations.managementFee)}
                               </p>
                               <p className="text-xs text-muted-foreground">
                                 {config ? config.management_fee_percentage : 3}% sobre a receita bruta
@@ -874,7 +830,7 @@ export default function Financial() {
                               {new Intl.NumberFormat("pt-BR", {
                                 style: "currency",
                                 currency: "BRL",
-                              }).format(user?.role === "broker" ? locationExpenses + managementFee : locationExpenses)}
+                              }).format(user?.role === "broker" ? locationExpenses + kpiCalculations.managementFee : locationExpenses)}
                             </p>
                             <p className="text-xs text-muted-foreground">
                               {user?.role === "broker" 
@@ -900,7 +856,7 @@ export default function Financial() {
                               {new Intl.NumberFormat("pt-BR", {
                                 style: "currency",
                                 currency: "BRL",
-                              }).format(netRevenue)}
+                              }).format(kpiCalculations.netRevenue)}
                             </p>
                             <p className="text-xs text-muted-foreground">
                               Valor após subtração das taxas e contas
@@ -1160,13 +1116,13 @@ export default function Financial() {
                               {new Intl.NumberFormat("pt-BR", {
                                 style: "currency",
                                 currency: "BRL",
-                              }).format(totalExpected)}
+                              }).format(kpiCalculations.totalExpected)}
                             </TableCell>
                             <TableCell className="text-right text-green-600">
                               {new Intl.NumberFormat("pt-BR", {
                                 style: "currency",
                                 currency: "BRL",
-                              }).format(totalPaid)}
+                              }).format(kpiCalculations.totalPaid)}
                             </TableCell>
                             <TableCell></TableCell>
                           </TableRow>

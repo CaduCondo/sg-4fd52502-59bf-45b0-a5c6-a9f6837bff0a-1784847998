@@ -26,11 +26,12 @@ interface DashboardData {
 
 // Cache em memória com TTL maior (views materializadas são atualizadas por triggers)
 const cache = new Map<string, { data: any; timestamp: number }>();
-const CACHE_TTL = 10 * 60 * 1000; // 10 minutos (views são atualizadas automaticamente)
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutos (aumentado para melhor performance)
 
 function getCached<T>(key: string): T | null {
   const cached = cache.get(key);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    console.log(`✅ [useDashboardData] Cache hit para ${key}`);
     return cached.data as T;
   }
   cache.delete(key);
@@ -39,6 +40,7 @@ function getCached<T>(key: string): T | null {
 
 function setCache(key: string, data: any): void {
   cache.set(key, { data, timestamp: Date.now() });
+  console.log(`💾 [useDashboardData] Cache atualizado para ${key}`);
 }
 
 export function useDashboardData(
