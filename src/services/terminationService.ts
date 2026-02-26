@@ -63,18 +63,18 @@ export async function processContractTermination(data: TerminationData): Promise
   let daysUsed = 0;
 
   if (terminationDay >= paymentDay) {
-    // ✅ Rescisão APÓS vencimento: mês cheio + proporcional próximo mês
-    console.log("  🔍 Rescisão APÓS vencimento - cobra mês cheio + proporcional próximo mês");
+    // ✅ Rescisão APÓS vencimento: mês cheio + proporcional entre vencimento e rescisão
+    console.log("  🔍 Rescisão APÓS vencimento - cobra mês cheio + proporcional dos dias extras");
     
-    fullMonthRent = monthlyRent; // Mês cheio
-    daysUsed = terminationDay;   // Dias do próximo mês (1 até dia da rescisão)
+    fullMonthRent = monthlyRent; // Mês cheio (já vencido)
+    daysUsed = terminationDay - paymentDay + 1; // Dias entre vencimento e rescisão (incluindo ambos)
     proportionalRent = (monthlyRent / 30) * daysUsed;
     
     console.log(`  Mês cheio: R$ ${fullMonthRent.toFixed(2)}`);
-    console.log(`  Dias proporcionais (próximo mês): ${daysUsed}`);
+    console.log(`  Dias extras (${paymentDay} a ${terminationDay}): ${daysUsed}`);
     console.log(`  Valor proporcional: R$ ${proportionalRent.toFixed(2)}`);
   } else {
-    // ✅ Rescisão ANTES do vencimento: apenas proporcional do mês corrente
+    // ✅ Rescisão ANTES do vencimento: apenas proporcional
     console.log("  🔍 Rescisão ANTES do vencimento - cobra apenas proporcional");
     
     daysUsed = terminationDay;   // Dias do mês corrente (1 até dia da rescisão)
@@ -178,10 +178,10 @@ export async function processContractTermination(data: TerminationData): Promise
   const breakdown = [];
 
   if (terminationDay >= paymentDay) {
-    // ✅ Rescisão APÓS vencimento: mês cheio + proporcional próximo mês
+    // ✅ Rescisão APÓS vencimento: mês cheio + proporcional dias extras
     console.log("  📊 Rescisão APÓS vencimento - criando 2 itens no breakdown");
     console.log(`  - Mês cheio: R$ ${fullMonthRent.toFixed(2)}`);
-    console.log(`  - Proporcional (${daysUsed} dias): R$ ${proportionalRent.toFixed(2)}`);
+    console.log(`  - Proporcional (${daysUsed} dias extras): R$ ${proportionalRent.toFixed(2)}`);
     
     breakdown.push({
       description: `Aluguel Cheio (mês ${terminationMonth})`,
@@ -190,7 +190,7 @@ export async function processContractTermination(data: TerminationData): Promise
     });
     
     breakdown.push({
-      description: `Aluguel Proporcional próximo mês (${daysUsed} dias)`,
+      description: `Aluguel Proporcional - Dias Extras (${daysUsed} dias - ${paymentDay} a ${terminationDay})`,
       amount: proportionalRent,
       type: "addition"
     });
