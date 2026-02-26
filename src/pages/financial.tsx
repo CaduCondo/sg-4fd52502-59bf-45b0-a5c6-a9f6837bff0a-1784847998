@@ -295,11 +295,7 @@ export default function Financial() {
       });
 
       // Buscar configurações e isenções em paralelo
-      const permissionsPromise = user?.role === "financial" 
-          ? supabase.from("user_location_permissions").select("location_id").eq("user_id", user.id)
-          : Promise.resolve({ data: null, error: null });
-
-      const [exemptionsResult, configResult, expensesResult, permissionsResult] = await Promise.all([
+      const [exemptionsResult, configResult, expensesResult] = await Promise.all([
         supabase.from("admin_fee_exempt_locations").select("location_id"),
         supabase.from("configs").select("*").single(),
         supabase
@@ -307,13 +303,21 @@ export default function Financial() {
           .select("amount")
           .eq("month", filterMonth)
           .eq("year", filterYear),
-        permissionsPromise
       ]) as any;
+
+      // Buscar permissões separadamente para evitar erro de tipo profundo
+      let allowedLocations: string[] = [];
+      if (user?.role === "financial") {
+        const { data: permData } = await supabase
+          .from("user_location_permissions")
+          .select("location_id")
+          .eq("user_id", user.id);
+        allowedLocations = permData?.map(p => p.location_id) || [];
+      }
 
       const exemptIds = exemptionsResult.data?.map((e: any) => e.location_id) || [];
       const configData = configResult.data;
       const totalExpenses = expensesResult.data?.reduce((sum, e) => sum + (e.amount || 0), 0) || 0;
-      const allowedLocations = permissionsResult.data?.map(p => p.location_id) || [];
 
       setExemptLocationIds(exemptIds);
       setConfig(configData);
