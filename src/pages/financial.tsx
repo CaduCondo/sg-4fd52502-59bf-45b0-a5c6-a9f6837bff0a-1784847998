@@ -317,16 +317,16 @@ export default function Financial() {
       // Buscar permissões separadamente para evitar erro de tipo profundo
       let allowedLocations: string[] = [];
       if (user?.role === "financial") {
-        const { data: permData } = await supabase
+        const permResult: any = await supabase
           .from("user_location_permissions")
           .select("location_id")
           .eq("user_id", user.id);
-        allowedLocations = permData?.map(p => p.location_id) || [];
+        allowedLocations = permResult.data?.map((p: any) => p.location_id) || [];
       }
 
       const exemptIds = exemptionsResult.data?.map((e: any) => e.location_id) || [];
       const configData = configResult.data;
-      const totalExpenses = expensesResult.data?.reduce((sum, e) => sum + (e.amount || 0), 0) || 0;
+      const totalExpenses = expensesResult.data?.reduce((sum: number, e: any) => sum + (e.amount || 0), 0) || 0;
 
       setExemptLocationIds(exemptIds);
       setConfig(configData);
