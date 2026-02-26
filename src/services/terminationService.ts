@@ -165,11 +165,34 @@ export async function processContractTermination(data: TerminationData): Promise
   
   const breakdown = [];
 
-  breakdown.push({
-    description: `Aluguel Proporcional (${daysUsed} dias)`,
-    amount: proportionalRent,
-    type: "addition"
-  });
+  if (terminationDay >= paymentDay) {
+    // ✅ Rescisão APÓS vencimento: mês cheio + proporcional próximo mês
+    console.log("  📊 Rescisão APÓS vencimento - criando 2 itens no breakdown");
+    console.log(`  - Mês cheio: R$ ${fullMonthRent.toFixed(2)}`);
+    console.log(`  - Proporcional (${daysUsed} dias): R$ ${proportionalRent.toFixed(2)}`);
+    
+    breakdown.push({
+      description: `Aluguel Cheio (mês ${terminationMonth})`,
+      amount: fullMonthRent,
+      type: "addition"
+    });
+    
+    breakdown.push({
+      description: `Aluguel Proporcional próximo mês (${daysUsed} dias)`,
+      amount: proportionalRent,
+      type: "addition"
+    });
+  } else {
+    // ✅ Rescisão ANTES do vencimento: apenas proporcional
+    console.log("  📊 Rescisão ANTES do vencimento - criando 1 item no breakdown");
+    console.log(`  - Proporcional (${daysUsed} dias): R$ ${proportionalRent.toFixed(2)}`);
+    
+    breakdown.push({
+      description: `Aluguel Proporcional (${daysUsed} dias)`,
+      amount: proportionalRent,
+      type: "addition"
+    });
+  }
 
   if (penaltyAmount > 0) {
     breakdown.push({
@@ -187,7 +210,7 @@ export async function processContractTermination(data: TerminationData): Promise
     });
   }
 
-  const totalAmount = proportionalRent + penaltyAmount - correctedDeposit;
+  const totalAmount = fullMonthRent + proportionalRent + penaltyAmount - correctedDeposit;
 
   console.log("  Breakdown criado:");
   breakdown.forEach(item => {
