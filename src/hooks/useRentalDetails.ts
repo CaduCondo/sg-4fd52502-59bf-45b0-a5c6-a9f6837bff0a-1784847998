@@ -23,7 +23,7 @@ export function useRentalDetails(rentalId: string) {
       console.log("🚀 useRentalDetails.loadRentalData INICIADO - rentalId:", rentalId);
       console.log("=".repeat(80));
 
-      // Buscar dados da locação
+      // ✅ OTIMIZAÇÃO: 1 única query com todos os dados relacionados
       const { data: rentalData, error: rentalError } = await supabase
         .from("rentals")
         .select(`
@@ -32,7 +32,10 @@ export function useRentalDetails(rentalId: string) {
             *,
             locations!properties_location_id_fkey (*)
           ),
-          tenants!rentals_tenant_id_fkey (*)
+          tenants!rentals_tenant_id_fkey (*),
+          payments!payments_rental_id_fkey (
+            *
+          )
         `)
         .eq("id", rentalId)
         .single();
@@ -56,29 +59,12 @@ export function useRentalDetails(rentalId: string) {
         return;
       }
 
-      // Buscar propriedade
-      const { data: propertyData } = await supabase
-        .from("properties")
-        .select("*")
-        .eq("id", rentalData.property_id)
-        .single();
-
-      // Buscar inquilino
-      const { data: tenantData } = await supabase
-        .from("tenants")
-        .select("*")
-        .eq("id", rentalData.tenant_id)
-        .single();
-
-      // Buscar pagamentos
-      const { data: paymentsData } = await supabase
-        .from("payments")
-        .select("*")
-        .eq("rental_id", rentalId)
-        .order("due_date", { ascending: true });
+      // ✅ OTIMIZAÇÃO: Dados já vêm da query principal - sem queries extras!
+      const propertyData = rentalData.properties;
+      const tenantData = rentalData.tenants;
+      const paymentsData = rentalData.payments || [];
 
       // Dados brutos com type casting para any para facilitar o mapeamento
-      // Isso resolve os erros de propriedades que o TS acha que não existem
       const r: any = rentalData;
       const p: any = propertyData;
       const t: any = tenantData;
@@ -112,11 +98,11 @@ export function useRentalDetails(rentalId: string) {
       console.log("=".repeat(80));
 
       // Mapear Property
-      const mappedProperty: Property = {
+      const mappedProperty: Property = p ? {
         ...p,
         id: p.id,
         locationId: p.location_id,
-        address: p.street || p.address || "", // Fallback
+        address: p.street || p.address || "",
         hasGarage: p.has_garage,
         monthlyRent: p.monthly_rent || p.value || 0,
         garageValue: p.garage_value || 0,
@@ -124,17 +110,17 @@ export function useRentalDetails(rentalId: string) {
         acceptsPets: p.accepts_pets,
         status: p.status as Property["status"],
         images: (p.images as string[]) || [],
-      };
+      } : null;
 
       // Mapear Tenant
-      const mappedTenant: Tenant = {
+      const mappedTenant: Tenant = t ? {
         ...t,
         id: t.id,
         documentType: (t.document_type as "cpf" | "cnpj") || "cpf",
         document: t.document || t.cpf || t.cnpj || "",
         status: t.status as Tenant["status"],
         active: t.is_active !== undefined ? t.is_active : (t.status === 'active'),
-      };
+      } : null;
 
       // Mapear Payments
       const mappedPayments: Payment[] = (paymentsData || []).map((pay: any) => ({
