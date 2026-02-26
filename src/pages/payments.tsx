@@ -54,6 +54,16 @@ export default function PaymentsPage() {
     selectedPayment: null as Payment | null,
   });
 
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+
+  // Debounce do search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(uiState.searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [uiState.searchQuery]);
+
   const [filters, setFilters] = useState({
     month: new Date().getMonth() + 1,
     year: new Date().getFullYear(),
@@ -213,9 +223,9 @@ export default function PaymentsPage() {
   // Pagamentos filtrados por busca e separados por status
   const { pendingPayments, paidPayments } = useMemo(() => {
     const filterBySearch = (p: Payment) => {
-      if (!uiState.searchQuery) return true;
+      if (!debouncedSearchQuery) return true;
       
-      const query = uiState.searchQuery.toLowerCase();
+      const query = debouncedSearchQuery.toLowerCase();
       const rental = rentals.find(r => r.id === p.rentalId);
       const property = rental ? properties.find(prop => prop.id === rental.propertyId) : null;
       const tenant = rental ? tenants.find(t => t.id === rental.tenantId) : null;
@@ -237,7 +247,7 @@ export default function PaymentsPage() {
     });
 
     return { pendingPayments: pending, paidPayments: paid };
-  }, [payments, uiState.searchQuery, rentals, properties, tenants]);
+  }, [payments, debouncedSearchQuery, rentals, properties, tenants]);
 
   return (
     <Layout>

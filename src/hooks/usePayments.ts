@@ -1,49 +1,30 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import type { Payment, Rental, Property, Tenant } from "@/types";
 
-// Cache em memória para evitar buscas repetidas
-const cache = {
-  rentals: new Map<string, Rental>(),
-  properties: new Map<string, Property>(),
-  tenants: new Map<string, Tenant>(),
-  lastFetch: 0,
-  TTL: 30000, // 30 segundos
+// Cache em memória global
+let paymentsCache: {
+  data: {
+    payments: Payment[];
+    rentals: Rental[];
+    properties: Property[];
+    tenants: Tenant[];
+  } | null;
+  key: string;
+  timestamp: number;
+} = {
+  data: null,
+  key: "",
+  timestamp: 0,
 };
 
-// Limpar cache se expirado
-const clearCacheIfExpired = () => {
-  const now = Date.now();
-  if (now - cache.lastFetch > cache.TTL) {
-    cache.rentals.clear();
-    cache.properties.clear();
-    cache.tenants.clear();
-  }
-  cache.lastFetch = now;
-};
+const CACHE_DURATION = 2 * 60 * 1000; // 2 minutos
 
-// Buscar dados em lotes (batch)
-const fetchInBatches = async <T,>(
-  table: string,
-  ids: string[],
-  select: string,
-  batchSize: number = 20
-): Promise<T[]> => {
-  const results: T[] = [];
-  
-  for (let i = 0; i < ids.length; i += batchSize) {
-    const batch = ids.slice(i, i + batchSize);
-    const { data, error } = await supabase
-      .from(table as any)
-      .select(select)
-      .in("id", batch);
-
-    if (error) throw error;
-    if (data) results.push(...(data as T[]));
-  }
-
-  return results;
+// Invalidar cache
+const invalidateCache = () => {
+  paymentsCache = { data: null, key: "", timestamp: 0 };
+  console.log("🗑️ [usePayments] Cache invalidado");
 };
 
 export function usePayments() {
@@ -57,15 +38,88 @@ export function usePayments() {
   const loadPayments = useCallback(async (month?: string, year?: string) => {
     try {
       setLoading(true);
-      clearCacheIfExpired();
 
-      // PASSO 1: Buscar apenas payments (query rápida)
+      // Verificar cache
+      const cacheKey = `${month || "all"}-${year || "all"}`;
+      const now = Date.now();
+      
+      if (
+        paymentsCache.data &&
+        paymentsCache.key === cacheKey &&
+        (now - paymentsCache.timestamp) < CACHE_DURATION
+      ) {
+        console.log("✅ [usePayments] Usando cache em memória");
+        setPayments(paymentsCache.data.payments);
+        setRentals(paymentsCache.data.rentals);
+        setProperties(paymentsCache.data.properties);
+        setTenants(paymentsCache.data.tenants);
+        setLoading(false);
+        return;
+      }
+
+      console.log("🔄 [usePayments] Buscando do banco...");
+
+      // QUERY ÚNICA COM TODOS OS JOINS (SUPER OTIMIZADO!)
       let query = supabase
         .from("payments")
-        .select("id, rental_id, due_date, expected_amount, paid_amount, payment_date, status, payment_method, notes, reference_month, reference_year, attachments, late_fee, interest, installment, total_installments, breakdown")
+        .select(`
+          id,
+          rental_id,
+          due_date,
+          expected_amount,
+          paid_amount,
+          payment_date,
+          status,
+          payment_method,
+          reference_month,
+          reference_year,
+          late_fee,
+          interest,
+          installment,
+          total_installments,
+          breakdown,
+          rentals!payments_rental_id_fkey (
+            id,
+            property_id,
+            tenant_id,
+            rent_value,
+            garage_value,
+            has_garage,
+            rent_due_day,
+            deposit_value,
+            properties!rentals_property_id_fkey (
+              id,
+              complement,
+              rooms,
+              bathrooms,
+              area,
+              status,
+              value,
+              locations!properties_location_id_fkey (
+                id,
+                name,
+                street,
+                number,
+                neighborhood,
+                city,
+                state,
+                zip_code
+              )
+            ),
+            tenants!rentals_tenant_id_fkey (
+              id,
+              name,
+              email,
+              phone,
+              document_type,
+              document,
+              cpf
+            )
+          )
+        `)
         .order("due_date", { ascending: true });
 
-      // Aplicar filtros de mês/ano SEMPRE
+      // Aplicar filtros de mês/ano
       if (month && month !== "all") {
         query = query.eq("reference_month", month);
       }
@@ -75,146 +129,108 @@ export function usePayments() {
 
       const { data: paymentsData, error: paymentsError } = await query;
 
-      if (paymentsError) throw paymentsError;
+      if (paymentsError) {
+        console.error("❌ [usePayments] Erro ao buscar:", paymentsError);
+        throw paymentsError;
+      }
 
       if (!paymentsData || paymentsData.length === 0) {
+        console.log("ℹ️ [usePayments] Nenhum pagamento encontrado");
         setPayments([]);
         setRentals([]);
         setProperties([]);
         setTenants([]);
+        setLoading(false);
         return;
       }
 
-      // PASSO 2: Extrair rental IDs únicos
-      const rentalIds = [...new Set(paymentsData.map(p => p.rental_id))];
+      console.log(`✅ [usePayments] ${paymentsData.length} pagamentos retornados`);
 
-      // PASSO 3: Buscar rentals em lotes
-      const rentalsData = await fetchInBatches<any>(
-        "rentals",
-        rentalIds,
-        "id, property_id, tenant_id, rent_value, garage_value, status, start_date, end_date, rent_due_day, deposit_value, is_active, attachments, contract_attachments, has_garage, has_partner_broker, pix_code, deposit_installments",
-        20
-      );
+      // Processar dados (SUPER RÁPIDO - tudo já veio junto!)
+      const rentalsMap = new Map<string, Rental>();
+      const propertiesMap = new Map<string, Property>();
+      const tenantsMap = new Map<string, Tenant>();
 
-      // PASSO 4: Extrair property_ids e tenant_ids únicos
-      const propertyIds = [...new Set(rentalsData.map(r => r.property_id))];
-      const tenantIds = [...new Set(rentalsData.map(r => r.tenant_id))];
+      const processedPayments: Payment[] = paymentsData.map((p: any) => {
+        const rental = p.rentals;
+        const property = rental?.properties;
+        const location = property?.locations;
+        const tenant = rental?.tenants;
 
-      // PASSO 5: Buscar properties e locations em lotes
-      const propertiesData = await fetchInBatches<any>(
-        "properties",
-        propertyIds,
-        "id, location_id, complement, rooms, bathrooms, area, status, value",
-        30
-      );
+        // Adicionar ao map de rentals
+        if (rental && !rentalsMap.has(rental.id)) {
+          rentalsMap.set(rental.id, {
+            id: rental.id,
+            propertyId: rental.property_id,
+            tenantId: rental.tenant_id,
+            value: rental.rent_value,
+            monthlyRent: rental.rent_value,
+            garageValue: rental.garage_value || 0,
+            hasGarage: rental.has_garage || false,
+            paymentDay: rental.rent_due_day,
+            depositAmount: rental.deposit_value || 0,
+            status: "active",
+            startDate: "",
+            endDate: "",
+            isActive: true,
+            attachments: [],
+            contractAttachments: [],
+            hasPartnerBroker: false,
+            pixCode: "",
+          } as Rental);
+        }
 
-      // PASSO 6: Buscar locations
-      const locationIds = [...new Set(propertiesData.map(p => p.location_id))];
-      const locationsData = await fetchInBatches<any>(
-        "locations",
-        locationIds,
-        "id, name, street, number, neighborhood, city, state, zip_code",
-        30
-      );
+        // Adicionar ao map de properties
+        if (property && !propertiesMap.has(property.id)) {
+          propertiesMap.set(property.id, {
+            id: property.id,
+            locationId: location?.id || "",
+            location: location?.name || "",
+            address: location?.street || "",
+            number: location?.number || "",
+            complement: property.complement || "",
+            neighborhood: location?.neighborhood || "",
+            city: location?.city || "",
+            state: location?.state || "",
+            zipCode: location?.zip_code || "",
+            rooms: property.rooms || 0,
+            bathrooms: property.bathrooms || 0,
+            area: property.area || 0,
+            status: property.status || "available",
+            value: property.value || 0,
+          } as Property);
+        }
 
-      // PASSO 7: Buscar tenants em lotes
-      const tenantsData = await fetchInBatches<any>(
-        "tenants",
-        tenantIds,
-        "id, name, email, phone, document_type, document, cpf, rg, status",
-        30
-      );
+        // Adicionar ao map de tenants
+        if (tenant && !tenantsMap.has(tenant.id)) {
+          tenantsMap.set(tenant.id, {
+            id: tenant.id,
+            name: tenant.name || "",
+            email: tenant.email || "",
+            phone: tenant.phone || "",
+            documentType: tenant.document_type || "cpf",
+            document: tenant.document || "",
+            cpf: tenant.cpf || "",
+            rg: "",
+            status: "active",
+          } as Tenant);
+        }
 
-      // PASSO 8: Criar maps para lookup rápido
-      const locationsMap = new Map(locationsData.map(l => [l.id, l]));
-      const propertiesMap = new Map(
-        propertiesData.map(p => {
-          const loc = locationsMap.get(p.location_id);
-          return [
-            p.id,
-            {
-              id: p.id,
-              locationId: p.location_id,
-              location: loc?.name || "",
-              address: loc?.street || "",
-              number: loc?.number || "",
-              complement: p.complement || "",
-              neighborhood: loc?.neighborhood || "",
-              city: loc?.city || "",
-              state: loc?.state || "",
-              zipCode: loc?.zip_code || "",
-              rooms: p.rooms || 0,
-              bathrooms: p.bathrooms || 0,
-              area: p.area || 0,
-              status: (p.status as "available" | "occupied" | "unavailable") || "available",
-              value: p.value,
-            } as Property,
-          ];
-        })
-      );
-
-      const tenantsMap = new Map(
-        tenantsData.map(t => [
-          t.id,
-          {
-            id: t.id,
-            name: t.name,
-            email: t.email || "",
-            phone: t.phone || "",
-            documentType: (t.document_type as "cpf" | "cnpj") || "cpf",
-            document: t.document || "",
-            cpf: t.cpf || "",
-            rg: t.rg || "",
-            status: (t.status as "active" | "inactive" | "rented") || "active",
-          } as Tenant,
-        ])
-      );
-
-      const rentalsMap = new Map(
-        rentalsData?.map((r: any) => [
-          r.id,
-          {
-            id: r.id,
-            propertyId: r.property_id,
-            tenantId: r.tenant_id,
-            value: r.rent_value,
-            monthlyRent: r.rent_value,
-            garageValue: r.garage_value || 0,
-            status: r.status,
-            startDate: r.start_date,
-            endDate: r.end_date,
-            paymentDay: r.rent_due_day,
-            depositAmount: r.deposit_value || 0,
-            depositInstallments: r.deposit_installments || null,
-            isActive: r.is_active || false,
-            attachments: r.attachments || [],
-            contractAttachments: r.contract_attachments || [],
-            hasGarage: r.has_garage || false,
-            hasPartnerBroker: r.has_partner_broker || false,
-            pixCode: r.pix_code || "",
-          } as Rental,
-        ])
-      );
-
-      // PASSO 9: Mapear payments
-      const paymentsMap: Payment[] = paymentsData.map(p => {
-        const rental = rentalsMap.get(p.rental_id);
-        
         return {
           id: p.id,
           rentalId: p.rental_id,
-          propertyId: rental?.propertyId || "",
-          tenantId: rental?.tenantId || "",
+          propertyId: rental?.property_id || "",
+          tenantId: rental?.tenant_id || "",
           dueDate: p.due_date,
           expectedAmount: p.expected_amount,
           paidAmount: p.paid_amount || 0,
           paymentDate: p.payment_date || undefined,
           status: p.status as "paid" | "pending" | "overdue" | "partial",
           paymentMethod: p.payment_method || "",
-          notes: p.notes || "",
+          notes: "",
           referenceMonth: parseInt(p.reference_month),
           referenceYear: parseInt(p.reference_year),
-          attachments: (p.attachments as unknown as string[]) || [],
+          attachments: [],
           lateFee: p.late_fee || 0,
           interest: p.interest || 0,
           installment: p.installment || undefined,
@@ -227,19 +243,32 @@ export function usePayments() {
         };
       });
 
+      const rentalsArray = Array.from(rentalsMap.values());
+      const propertiesArray = Array.from(propertiesMap.values());
+      const tenantsArray = Array.from(tenantsMap.values());
+
       // Atualizar cache
-      rentalsMap.forEach((v, k) => cache.rentals.set(k, v));
-      propertiesMap.forEach((v, k) => cache.properties.set(k, v));
-      tenantsMap.forEach((v, k) => cache.tenants.set(k, v));
+      paymentsCache = {
+        data: {
+          payments: processedPayments,
+          rentals: rentalsArray,
+          properties: propertiesArray,
+          tenants: tenantsArray,
+        },
+        key: cacheKey,
+        timestamp: now,
+      };
 
       // Atualizar estados
-      setPayments(paymentsMap);
-      setRentals(Array.from(rentalsMap.values()));
-      setProperties(Array.from(propertiesMap.values()));
-      setTenants(Array.from(tenantsMap.values()));
+      setPayments(processedPayments);
+      setRentals(rentalsArray);
+      setProperties(propertiesArray);
+      setTenants(tenantsArray);
+
+      console.log(`✅ [usePayments] Cache atualizado para ${cacheKey}`);
 
     } catch (error) {
-      console.error("Erro ao carregar pagamentos:", error);
+      console.error("❌ [usePayments] Erro ao carregar pagamentos:", error);
       toast({
         title: "Erro",
         description: "Erro ao carregar pagamentos. Tente novamente.",
@@ -267,6 +296,9 @@ export function usePayments() {
 
       if (error) throw error;
 
+      // Invalidar cache
+      invalidateCache();
+
       toast({
         title: "Sucesso",
         description: "Pagamento cancelado com sucesso",
@@ -282,6 +314,7 @@ export function usePayments() {
     }
   }, [toast]);
 
+  // Helpers memoizados
   const getPropertyInfo = useCallback((rentalId: string) => {
     const rental = rentals.find(r => r.id === rentalId);
     if (!rental) return null;
@@ -295,96 +328,13 @@ export function usePayments() {
   }, [rentals, tenants]);
 
   const getExpectedAmount = useCallback((payment: Payment) => {
-    const rental = rentals.find(r => r.id === payment.rentalId);
-    if (!rental) return payment.expectedAmount;
-    return rental.value + (rental.depositAmount || 0);
-  }, [rentals]);
+    return payment.expectedAmount;
+  }, []);
 
   const getPaymentInstallment = useCallback((payment: Payment) => {
     if (!payment.installment || !payment.totalInstallments) return null;
     return `${payment.installment}/${payment.totalInstallments}`;
   }, []);
-
-  const fetchPayments = useCallback(async () => {
-    try {
-      setLoading(true);
-      
-      const { data, error } = await supabase
-        .from("payments")
-        .select(`
-          id,
-          rental_id,
-          expected_amount,
-          paid_amount,
-          due_date,
-          payment_date,
-          status,
-          reference_month,
-          reference_year,
-          discount_amount,
-          late_fee,
-          interest,
-          notes,
-          payment_method,
-          breakdown,
-          installment,
-          total_installments,
-          rental:rentals(
-            id,
-            monthly_rent,
-            garage_value,
-            has_garage,
-            payment_day,
-            start_date,
-            end_date,
-            properties(id, property_identifier, location_id, complement),
-            tenants(id, name, cpf, email, phone)
-          )
-        `)
-        .order("reference_year", { ascending: false })
-        .order("reference_month", { ascending: false })
-        .limit(500);
-
-      if (error) throw error;
-
-      const formattedPayments: Payment[] = (data || []).map((payment: any) => ({
-        id: payment.id,
-        rentalId: payment.rental_id,
-        expectedAmount: payment.expected_amount,
-        paidAmount: payment.paid_amount,
-        dueDate: payment.due_date,
-        paymentDate: payment.payment_date,
-        status: payment.status,
-        referenceMonth: Number(payment.reference_month),
-        referenceYear: Number(payment.reference_year),
-        discount: payment.discount_amount,
-        lateFee: payment.late_fee,
-        interest: payment.interest,
-        notes: payment.notes,
-        paymentMethod: payment.payment_method,
-        breakdown: payment.breakdown,
-        installment: payment.installment,
-        totalInstallments: payment.total_installments,
-        createdAt: payment.created_at,
-        updatedAt: payment.updated_at,
-        rental: payment.rental,
-        property: payment.rental?.properties,
-        tenant: payment.rental?.tenants,
-        propertyId: payment.rental?.properties?.id || "",
-        tenantId: payment.rental?.tenants?.id || "",
-      }));
-
-      setPayments(formattedPayments);
-    } catch (error) {
-      toast({
-        title: "Erro",
-        description: "Erro ao carregar pagamentos. Tente novamente.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [toast]);
 
   return {
     payments,
@@ -398,6 +348,6 @@ export function usePayments() {
     getTenantInfo,
     getExpectedAmount,
     getPaymentInstallment,
-    fetchPayments,
+    fetchPayments: loadPayments, // Alias para compatibilidade
   };
 }
