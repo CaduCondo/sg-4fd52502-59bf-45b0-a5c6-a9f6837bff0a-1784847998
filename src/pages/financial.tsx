@@ -302,12 +302,12 @@ export default function Financial() {
 
       // Buscar configurações e isenções sequencialmente para evitar erro de tipo profundo
       const exemptionsQuery: any = supabase.from("admin_fee_exempt_locations").select("location_id");
-      const configQuery: any = supabase.from("configs").select("*").single();
+      const configQuery: any = supabase.from("configs").select("*").maybeSingle();
       const expensesQuery: any = supabase
         .from("location_expenses")
         .select("amount")
-        .eq("month", filterMonth)
-        .eq("year", filterYear);
+        .eq("reference_month", filterMonth)
+        .eq("reference_year", filterYear);
 
       // @ts-ignore - Suprime erro TS2589 de inferência de tipo profunda
       const exemptionsResult: any = await exemptionsQuery;
@@ -830,8 +830,7 @@ export default function Financial() {
                             </div>
                           </div>
                         </CardContent>
-                      </Card>
-                    </ScrollReveal>
+                    </Card>
                   )}
 
                   <ScrollReveal delay={0.5}>
