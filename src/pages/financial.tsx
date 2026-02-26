@@ -296,14 +296,14 @@ export default function Financial() {
 
       // Buscar configurações e isenções em paralelo
       const [exemptionsResult, configResult, expensesResult] = await Promise.all([
-        supabase.from("admin_fee_exempt_locations").select("location_id"),
-        supabase.from("configs").select("*").single(),
+        supabase.from("admin_fee_exempt_locations").select("location_id") as Promise<any>,
+        supabase.from("configs").select("*").single() as Promise<any>,
         supabase
           .from("location_expenses")
           .select("amount")
           .eq("month", filterMonth)
-          .eq("year", filterYear),
-      ]) as any;
+          .eq("year", filterYear) as Promise<any>,
+      ]);
 
       // Buscar permissões separadamente para evitar erro de tipo profundo
       let allowedLocations: string[] = [];
