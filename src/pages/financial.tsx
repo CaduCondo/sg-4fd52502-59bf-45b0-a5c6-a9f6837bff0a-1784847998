@@ -146,7 +146,8 @@ export default function Financial() {
       });
 
       // QUERY OTIMIZADA: 1 única query com JOIN completo
-      const { data: paymentsData, error: paymentsError } = await supabase
+      // Usando 'any' para evitar erro TS2589 (excessively deep type instantiation) devido à complexidade dos JOINs
+      const paymentsQuery: any = supabase
         .from("payments")
         .select(`
           id,
@@ -195,8 +196,13 @@ export default function Financial() {
         `)
         .eq("reference_month", String(filterMonth))
         .eq("reference_year", String(filterYear))
-        .order("due_date", { ascending: true })
-        .abortSignal(abortControllerRef.current.signal);
+        .order("due_date", { ascending: true });
+        
+      if (abortControllerRef.current) {
+        paymentsQuery.abortSignal(abortControllerRef.current.signal);
+      }
+
+      const { data: paymentsData, error: paymentsError } = await paymentsQuery;
 
       if (paymentsError) throw paymentsError;
 
