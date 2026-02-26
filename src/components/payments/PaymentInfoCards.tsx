@@ -60,6 +60,18 @@ const formatPhone = (phone: string | null | undefined): string => {
   return phone;
 };
 
+// Função auxiliar para formatar data sem problema de fuso horário
+const formatDateWithoutTimezone = (dateString: string | null | undefined): string => {
+  if (!dateString) return "Não informado";
+  
+  // Extrai apenas a parte da data (YYYY-MM-DD) ignorando hora/timezone
+  const datePart = dateString.split('T')[0];
+  const [year, month, day] = datePart.split('-');
+  
+  // Retorna no formato DD/MM/YYYY
+  return `${day}/${month}/${year}`;
+};
+
 export function PaymentInfoCards({ tenant, property, rental }: PaymentInfoCardsProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -127,7 +139,7 @@ export function PaymentInfoCards({ tenant, property, rental }: PaymentInfoCardsP
             <p className="text-xs text-muted-foreground">Período Contrato</p>
             <p className="text-sm font-medium">
               {rental?.start_date && rental?.end_date
-                ? `${new Date(rental.start_date).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })} - ${new Date(rental.end_date).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`
+                ? `${formatDateWithoutTimezone(rental.start_date)} - ${formatDateWithoutTimezone(rental.end_date)}`
                 : "Não informado"}
             </p>
           </div>
