@@ -295,18 +295,18 @@ export default function Financial() {
       });
 
       // Buscar configurações e isenções em paralelo
-      const exemptionsQuery = supabase.from("admin_fee_exempt_locations").select("location_id");
-      const configQuery = supabase.from("configs").select("*").single();
-      const expensesQuery = supabase
+      const exemptionsQuery: any = supabase.from("admin_fee_exempt_locations").select("location_id");
+      const configQuery: any = supabase.from("configs").select("*").single();
+      const expensesQuery: any = supabase
         .from("location_expenses")
         .select("amount")
         .eq("month", filterMonth)
         .eq("year", filterYear);
 
       const [exemptionsResult, configResult, expensesResult] = await Promise.all([
-        exemptionsQuery as unknown as Promise<any>,
-        configQuery as unknown as Promise<any>,
-        expensesQuery as unknown as Promise<any>
+        exemptionsQuery,
+        configQuery,
+        expensesQuery
       ]);
 
       // Buscar permissões separadamente para evitar erro de tipo profundo
