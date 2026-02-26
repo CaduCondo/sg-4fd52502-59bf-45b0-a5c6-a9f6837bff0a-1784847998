@@ -58,19 +58,31 @@ export async function processContractTermination(data: TerminationData): Promise
   // ==========================================
   console.log("\n💰 PASSO 2: Calcular aluguel proporcional");
   
+  let fullMonthRent = 0;
+  let proportionalRent = 0;
   let daysUsed = 0;
+
   if (terminationDay >= paymentDay) {
-    daysUsed = terminationDay - paymentDay + 1;
+    // ✅ Rescisão APÓS vencimento: mês cheio + proporcional próximo mês
+    console.log("  🔍 Rescisão APÓS vencimento - cobra mês cheio + proporcional próximo mês");
+    
+    fullMonthRent = monthlyRent; // Mês cheio
+    daysUsed = terminationDay;   // Dias do próximo mês (1 até dia da rescisão)
+    proportionalRent = (monthlyRent / 30) * daysUsed;
+    
+    console.log(`  Mês cheio: R$ ${fullMonthRent.toFixed(2)}`);
+    console.log(`  Dias proporcionais (próximo mês): ${daysUsed}`);
+    console.log(`  Valor proporcional: R$ ${proportionalRent.toFixed(2)}`);
   } else {
-    daysUsed = 30;
+    // ✅ Rescisão ANTES do vencimento: apenas proporcional do mês corrente
+    console.log("  🔍 Rescisão ANTES do vencimento - cobra apenas proporcional");
+    
+    daysUsed = terminationDay;   // Dias do mês corrente (1 até dia da rescisão)
+    proportionalRent = (monthlyRent / 30) * daysUsed;
+    
+    console.log(`  Dias usados: ${daysUsed}`);
+    console.log(`  Valor proporcional: R$ ${proportionalRent.toFixed(2)}`);
   }
-  
-  const proportionalRent = (monthlyRent / 30) * daysUsed;
-  
-  console.log(`  Dia vencimento: ${paymentDay}`);
-  console.log(`  Dia rescisão: ${terminationDay}`);
-  console.log(`  Dias usados: ${daysUsed}`);
-  console.log(`  Valor proporcional: R$ ${proportionalRent.toFixed(2)}`);
 
   // ==========================================
   // PASSO 3: Buscar/criar recebimento do mês
