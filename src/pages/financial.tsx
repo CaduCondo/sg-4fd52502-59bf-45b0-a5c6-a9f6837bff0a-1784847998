@@ -297,7 +297,7 @@ export default function Financial() {
       // Buscar configurações e isenções em paralelo
       const [exemptionsResult, configResult, expensesResult, permissionsResult] = await Promise.all([
         supabase.from("admin_fee_exempt_locations").select("location_id"),
-        supabase.from("config").select("*").single(),
+        supabase.from("configs").select("*").single(),
         supabase
           .from("location_expenses")
           .select("amount")
@@ -813,8 +813,7 @@ export default function Financial() {
                             </div>
                           </div>
                         </CardContent>
-                      </Card>
-                    </ScrollReveal>
+                    </Card>
                   )}
 
                   <ScrollReveal delay={0.5}>
