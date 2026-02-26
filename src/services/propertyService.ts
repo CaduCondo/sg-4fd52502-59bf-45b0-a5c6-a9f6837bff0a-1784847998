@@ -2,8 +2,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { Property } from "@/types";
 import { cacheService } from "./cacheService";
 
+// Cache em memória para properties
+let propertiesCache: { data: Property[] | null; timestamp: number } = {
+  data: null,
+  timestamp: 0,
+};
+
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
+
 /**
- * Helper optimizado para mapear dados do banco para interface Property
+ * Helper otimizado para mapear dados do banco para interface Property
  * Busca APENAS campos essenciais
  */
 const mapDatabaseProperty = (item: any): Property => {
@@ -54,19 +62,48 @@ const mapPropertyFromDb = (data: any): Property => {
 };
 
 /**
- * Buscar todos os imóveis - QUERY ULTRA-OTIMIZADA
+ * Invalidar cache quando houver mudanças
+ */
+const invalidateCache = () => {
+  propertiesCache = { data: null, timestamp: 0 };
+  cacheService.remove("properties_all");
+  console.log("🗑️ [propertyService] Cache invalidado");
+};
+
+/**
+ * Buscar todos os imóveis - QUERY ULTRA-OTIMIZADA COM CACHE
  */
 export const getAll = async (): Promise<Property[]> => {
-  const CACHE_KEY = "properties_all";
-  const CACHE_TTL = 1000 * 60 * 30; // 30 minutos
+  const now = Date.now();
+
+  // Verificar cache em memória primeiro
+  if (propertiesCache.data && (now - propertiesCache.timestamp) < CACHE_DURATION) {
+    console.log("✅ [propertyService.getAll] Usando cache em memória");
+    return propertiesCache.data;
+  }
 
   try {
-    // Query otimizada - apenas campos essenciais
+    console.log("🔄 [propertyService.getAll] Buscando do banco...");
+
+    // Query otimizada - apenas campos essenciais para listagem
     const { data, error } = await supabase
       .from("properties")
       .select(`
-        *,
-        locations(id, name, street, number, neighborhood, city, state, zip_code)
+        id,
+        location_id,
+        property_identifier,
+        complement,
+        rooms,
+        bathrooms,
+        value,
+        status,
+        images,
+        has_furniture,
+        accepts_pets,
+        area,
+        has_garage,
+        created_at,
+        locations!properties_location_id_fkey(id, name)
       `)
       .order("created_at", { ascending: false });
 
@@ -79,12 +116,31 @@ export const getAll = async (): Promise<Property[]> => {
       })
     );
 
-    cacheService.set(CACHE_KEY, properties, CACHE_TTL);
+    console.log(`✅ [propertyService.getAll] ${properties.length} imóveis retornados`);
+
+    // Atualizar cache em memória
+    propertiesCache = { data: properties, timestamp: now };
+
+    // Cache no localStorage (fallback)
+    cacheService.set("properties_all", properties, CACHE_DURATION);
+
     return properties;
   } catch (error) {
-    console.error("Error fetching properties:", error);
-    const cachedData = cacheService.get<Property[]>(CACHE_KEY);
-    if (cachedData) return cachedData;
+    console.error("❌ Error fetching properties:", error);
+    
+    // Tentar usar cache expirado como fallback
+    if (propertiesCache.data) {
+      console.log("⚠️ Usando cache expirado como fallback");
+      return propertiesCache.data;
+    }
+
+    // Último recurso: cache do localStorage
+    const cachedData = cacheService.get<Property[]>("properties_all");
+    if (cachedData) {
+      console.log("⚠️ Usando cache do localStorage como fallback");
+      return cachedData;
+    }
+
     throw error;
   }
 };
@@ -184,7 +240,7 @@ export const create = async (property: Omit<Property, "id" | "createdAt" | "upda
   if (error) throw error;
 
   // Invalidate cache
-  cacheService.remove("properties_all");
+  invalidateCache();
 
   return mapDatabaseProperty({
     ...data,
@@ -224,7 +280,7 @@ export const update = async (id: string, property: Partial<Property>): Promise<P
   if (error) throw error;
 
   // Invalidate cache
-  cacheService.remove("properties_all");
+  invalidateCache();
   cacheService.remove(`property_${id}`);
 
   return mapDatabaseProperty(data);
@@ -238,7 +294,7 @@ export const remove = async (id: string): Promise<void> => {
   if (error) throw error;
 
   // Invalidate cache
-  cacheService.remove("properties_all");
+  invalidateCache();
   cacheService.remove(`property_${id}`);
 };
 

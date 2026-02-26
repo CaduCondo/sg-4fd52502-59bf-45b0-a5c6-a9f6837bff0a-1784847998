@@ -53,32 +53,53 @@ export function useProperties(): UsePropertiesReturn {
   const [properties, setProperties] = useState<Property[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
   const [sortOrder, setSortOrder] = useState<"alphabetical" | "price-asc" | "price-desc">("alphabetical");
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
   const [loading, setLoading] = useState(true);
 
+  // Debounce search term para evitar filtros excessivos
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
   const loadData = useCallback(async () => {
     try {
-      const [propertiesData, locationsData] = await Promise.all([
-        propertyService.getAll(),
-        locationService.getAll(),
-      ]);
+      setLoading(true);
+      console.log("🔄 Carregando imóveis e localizações...");
+
+      // Buscar properties (que já inclui locations na query)
+      const propertiesData = await propertyService.getAll();
+      
+      // Buscar locations separadamente apenas se necessário para dropdown
+      const locationsData = await locationService.getAll();
+      
       setProperties(propertiesData);
       setLocations(locationsData);
+      
+      console.log(`✅ ${propertiesData.length} imóveis carregados`);
     } catch (error) {
-      console.error("Erro ao carregar dados:", error);
+      console.error("❌ Erro ao carregar dados:", error);
+      toast({
+        title: "Erro ao carregar",
+        description: "Não foi possível carregar os imóveis. Tente novamente.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [toast]);
 
   const filteredProperties = useMemo(() => {
-    const searchLower = searchTerm.toLowerCase();
+    const searchLower = debouncedSearchTerm.toLowerCase();
     
     let filtered = properties.filter((property) => {
-      const matchesSearch = !searchTerm || 
+      const matchesSearch = !debouncedSearchTerm || 
         property.location?.toLowerCase().includes(searchLower) ||
         property.complement?.toLowerCase().includes(searchLower) ||
         property.description?.toLowerCase().includes(searchLower) ||
@@ -99,7 +120,7 @@ export function useProperties(): UsePropertiesReturn {
     }
 
     return filtered;
-  }, [properties, searchTerm, statusFilter, selectedLocations, sortOrder]);
+  }, [properties, debouncedSearchTerm, statusFilter, selectedLocations, sortOrder]);
 
   const handleLocationToggle = useCallback((locationId: string) => {
     setSelectedLocations((prev) =>
@@ -134,8 +155,8 @@ export function useProperties(): UsePropertiesReturn {
       area: formData.area ? parseFloat(formData.area.replace(",", ".")) : 0,
       hasGarage: formData.hasGarage,
       status: formData.status as "available" | "occupied" | "unavailable",
-      address: "", // Added missing property
-      features: [], // Added missing property
+      address: "",
+      features: [],
     };
 
     const createdProperty = await propertyService.create(propertyData);
@@ -175,7 +196,9 @@ export function useProperties(): UsePropertiesReturn {
 
   const deleteProperty = useCallback(async (id: string) => {
     try {
+      // Atualiza UI otimisticamente
       setProperties(prev => prev.filter(p => p.id !== id));
+      
       await propertyService.remove(id);
       
       toast({
@@ -183,6 +206,7 @@ export function useProperties(): UsePropertiesReturn {
         description: "Imóvel deletado com sucesso.",
       });
     } catch (error: any) {
+      // Reverte se falhar
       await loadData();
       
       toast({

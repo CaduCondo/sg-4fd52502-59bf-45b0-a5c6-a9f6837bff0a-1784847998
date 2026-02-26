@@ -221,7 +221,7 @@ export default function PropertiesPage() {
     filteredProperties.map((property) => (
       <TableRow 
         key={property.id}
-        className="cursor-pointer"
+        className="cursor-pointer hover:bg-muted/50 transition-colors"
         onClick={() => handleCardClick(property)}
       >
         <TableCell className="font-medium text-blue-600">
