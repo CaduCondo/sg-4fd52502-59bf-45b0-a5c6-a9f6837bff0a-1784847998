@@ -308,9 +308,9 @@ export default function Financial() {
           .eq("month", filterMonth)
           .eq("year", filterYear),
         permissionsPromise
-      ]);
+      ]) as any;
 
-      const exemptIds = exemptionsResult.data?.map(e => e.location_id) || [];
+      const exemptIds = exemptionsResult.data?.map((e: any) => e.location_id) || [];
       const configData = configResult.data;
       const totalExpenses = expensesResult.data?.reduce((sum, e) => sum + (e.amount || 0), 0) || 0;
       const allowedLocations = permissionsResult.data?.map(p => p.location_id) || [];
