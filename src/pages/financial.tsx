@@ -300,7 +300,7 @@ export default function Financial() {
         };
       }) as Payment[];
 
-      // Buscar configurações e isenções em paralelo
+      // Buscar configurações e isenções sequencialmente para evitar erro de tipo profundo
       const exemptionsQuery: any = supabase.from("admin_fee_exempt_locations").select("location_id");
       const configQuery: any = supabase.from("configs").select("*").single();
       const expensesQuery: any = supabase
@@ -309,10 +309,9 @@ export default function Financial() {
         .eq("month", filterMonth)
         .eq("year", filterYear);
 
-      // Executar queries sequencialmente para evitar erro TS2589
-      const exemptionsResult = await exemptionsQuery;
-      const configResult = await configQuery;
-      const expensesResult = await expensesQuery;
+      const exemptionsResult: any = await exemptionsQuery;
+      const configResult: any = await configQuery;
+      const expensesResult: any = await expensesQuery;
 
       // Buscar permissões separadamente para evitar erro de tipo profundo
       let allowedLocations: string[] = [];
@@ -324,9 +323,9 @@ export default function Financial() {
         allowedLocations = permResult.data?.map((p: any) => p.location_id) || [];
       }
 
-      const exemptIds = exemptionsResult.data?.map((e: any) => e.location_id) || [];
-      const configData = configResult.data;
-      const totalExpenses = expensesResult.data?.reduce((sum: number, e: any) => sum + (e.amount || 0), 0) || 0;
+      const exemptIds: string[] = exemptionsResult.data?.map((e: any) => e.location_id) || [];
+      const configData: any = configResult.data;
+      const totalExpenses: number = expensesResult.data?.reduce((sum: number, e: any) => sum + (e.amount || 0), 0) || 0;
 
       setExemptLocationIds(exemptIds);
       setConfig(configData);
