@@ -304,10 +304,10 @@ export default function Financial() {
         .eq("year", filterYear);
 
       const [exemptionsResult, configResult, expensesResult] = await Promise.all([
-        exemptionsQuery,
-        configQuery,
-        expensesQuery
-      ] as Promise<any>[]);
+        exemptionsQuery as unknown as Promise<any>,
+        configQuery as unknown as Promise<any>,
+        expensesQuery as unknown as Promise<any>
+      ]);
 
       // Buscar permissões separadamente para evitar erro de tipo profundo
       let allowedLocations: string[] = [];
