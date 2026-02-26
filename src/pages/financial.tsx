@@ -309,11 +309,8 @@ export default function Financial() {
         .eq("reference_month", filterMonth)
         .eq("reference_year", filterYear);
 
-      // @ts-ignore - Suprime erro TS2589 de inferência de tipo profunda
       const exemptionsResult: any = await exemptionsQuery;
-      // @ts-ignore - Suprime erro TS2589 de inferência de tipo profunda
       const configResult: any = await configQuery;
-      // @ts-ignore - Suprime erro TS2589 de inferência de tipo profunda
       const expensesResult: any = await expensesQuery;
 
       // Buscar permissões separadamente para evitar erro de tipo profundo
