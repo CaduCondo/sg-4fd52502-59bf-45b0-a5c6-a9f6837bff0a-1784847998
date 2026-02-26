@@ -313,7 +313,7 @@ export default function Financial() {
         exemptionsQuery,
         configQuery,
         expensesQuery
-      ]);
+      ]) as any;
 
       // Buscar permissões separadamente para evitar erro de tipo profundo
       let allowedLocations: string[] = [];
