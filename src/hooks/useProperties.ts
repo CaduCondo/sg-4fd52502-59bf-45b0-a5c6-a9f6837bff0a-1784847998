@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { propertyService, locationService } from "@/services";
 import type { Property, Location } from "@/types";
 import { parseCurrencyToFloat } from "@/lib/masks";
@@ -60,6 +60,9 @@ export function useProperties(): UsePropertiesReturn {
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
   const [loading, setLoading] = useState(true);
 
+  // Ref para prevenir carregamentos duplicados
+  const loadingRef = useRef(false);
+
   // Debounce search term para evitar filtros excessivos
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -69,20 +72,27 @@ export function useProperties(): UsePropertiesReturn {
   }, [searchTerm]);
 
   const loadData = useCallback(async () => {
-    try {
-      setLoading(true);
-      console.log("🔄 Carregando imóveis e localizações...");
+    // Prevenir execuções simultâneas
+    if (loadingRef.current) {
+      console.log("⏸️ [useProperties] Carregamento já em andamento, ignorando...");
+      return;
+    }
 
-      // Buscar properties (que já inclui locations na query)
-      const propertiesData = await propertyService.getAll();
-      
-      // Buscar locations separadamente apenas se necessário para dropdown
-      const locationsData = await locationService.getAll();
+    try {
+      loadingRef.current = true;
+      setLoading(true);
+      console.log("🔄 [useProperties] Carregando imóveis e localizações...");
+
+      // Buscar properties (SEM IMAGES - rápido!) e locations em paralelo
+      const [propertiesData, locationsData] = await Promise.all([
+        propertyService.getAll(),
+        locationService.getAll(),
+      ]);
       
       setProperties(propertiesData);
       setLocations(locationsData);
       
-      console.log(`✅ ${propertiesData.length} imóveis carregados`);
+      console.log(`✅ [useProperties] ${propertiesData.length} imóveis carregados (sem imagens)`);
     } catch (error) {
       console.error("❌ Erro ao carregar dados:", error);
       toast({
@@ -91,10 +101,12 @@ export function useProperties(): UsePropertiesReturn {
         variant: "destructive",
       });
     } finally {
+      loadingRef.current = false;
       setLoading(false);
     }
   }, [toast]);
 
+  // Memoizar filtro + sort para evitar recalcular a cada render
   const filteredProperties = useMemo(() => {
     const searchLower = debouncedSearchTerm.toLowerCase();
     
@@ -118,6 +130,8 @@ export function useProperties(): UsePropertiesReturn {
     if (sortFn) {
       filtered = [...filtered].sort(sortFn);
     }
+
+    console.log(`🔍 [useProperties] Filtrados: ${filtered.length} de ${properties.length}`);
 
     return filtered;
   }, [properties, debouncedSearchTerm, statusFilter, selectedLocations, sortOrder]);
@@ -160,7 +174,11 @@ export function useProperties(): UsePropertiesReturn {
     };
 
     const createdProperty = await propertyService.create(propertyData);
+    
+    // Atualizar lista localmente (otimista)
     setProperties(prev => [createdProperty, ...prev]);
+    
+    console.log("✅ [useProperties] Imóvel criado:", createdProperty.id);
   }, [locations]);
 
   const updateProperty = useCallback(async (id: string, formData: PropertyFormData) => {
@@ -191,7 +209,11 @@ export function useProperties(): UsePropertiesReturn {
     };
 
     await propertyService.update(id, propertyData);
+    
+    // Recarregar dados para pegar a versão atualizada
     await loadData();
+    
+    console.log("✅ [useProperties] Imóvel atualizado:", id);
   }, [locations, loadData]);
 
   const deleteProperty = useCallback(async (id: string) => {
@@ -205,6 +227,8 @@ export function useProperties(): UsePropertiesReturn {
         title: "Sucesso!",
         description: "Imóvel deletado com sucesso.",
       });
+      
+      console.log("✅ [useProperties] Imóvel deletado:", id);
     } catch (error: any) {
       // Reverte se falhar
       await loadData();

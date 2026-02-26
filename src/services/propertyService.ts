@@ -2,19 +2,47 @@ import { supabase } from "@/integrations/supabase/client";
 import { Property } from "@/types";
 import { cacheService } from "./cacheService";
 
-// Cache em memória para properties
-let propertiesCache: { data: Property[] | null; timestamp: number } = {
+// Cache em memória otimizado com chaves diferentes para listagem vs detalhes
+let propertiesListCache: { data: Property[] | null; timestamp: number } = {
   data: null,
   timestamp: 0,
 };
 
+const propertyDetailsCache: Map<string, { data: Property; timestamp: number }> = new Map();
+
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
+const DETAILS_CACHE_DURATION = 15 * 60 * 1000; // 15 minutos (detalhes mudam menos)
 
 /**
- * Helper otimizado para mapear dados do banco para interface Property
- * Busca APENAS campos essenciais
+ * Helper otimizado para mapear dados do banco (LISTAGEM - SEM IMAGES)
  */
-const mapDatabaseProperty = (item: any): Property => {
+const mapDatabasePropertyLight = (item: any): Property => {
+  return {
+    id: item.id,
+    locationId: item.location_id,
+    location: item.location_name || "",
+    propertyIdentifier: item.property_identifier || "",
+    complement: item.complement || "",
+    description: item.description || "",
+    rooms: item.rooms || 0,
+    bathrooms: item.bathrooms || 0,
+    area: item.area || 0,
+    value: item.value || 0,
+    hasGarage: item.has_garage || false,
+    hasFurniture: item.has_furniture || false,
+    acceptsPets: item.accepts_pets || false,
+    status: item.status as "available" | "occupied" | "unavailable",
+    images: [], // VAZIO para listagem! Carrega só no detalhe
+    createdAt: item.created_at,
+    address: "",
+    features: [],
+  };
+};
+
+/**
+ * Helper para mapear dados completos (DETALHES - COM IMAGES)
+ */
+const mapDatabasePropertyFull = (item: any): Property => {
   return {
     id: item.id,
     locationId: item.location_id,
@@ -37,55 +65,32 @@ const mapDatabaseProperty = (item: any): Property => {
   };
 };
 
-const mapPropertyFromDb = (data: any): Property => {
-  return {
-    id: data.id,
-    locationId: data.location_id,
-    location: data.locations?.name || "",
-    propertyIdentifier: data.property_identifier,
-    complement: data.complement,
-    rooms: data.rooms,
-    bathrooms: data.bathrooms,
-    area: data.area,
-    value: data.value,
-    hasGarage: data.has_garage,
-    hasFurniture: data.has_furniture,
-    acceptsPets: data.accepts_pets,
-    description: data.description,
-    status: data.status,
-    images: data.images || [],
-    createdAt: data.created_at,
-    address: data.locations?.address || "",
-    features: data.features || [],
-    locationDetails: data.locations,
-  };
-};
-
 /**
  * Invalidar cache quando houver mudanças
  */
 const invalidateCache = () => {
-  propertiesCache = { data: null, timestamp: 0 };
-  cacheService.remove("properties_all");
+  propertiesListCache = { data: null, timestamp: 0 };
+  propertyDetailsCache.clear();
+  cacheService.remove("properties_list");
   console.log("🗑️ [propertyService] Cache invalidado");
 };
 
 /**
- * Buscar todos os imóveis - QUERY ULTRA-OTIMIZADA COM CACHE
+ * Buscar todos os imóveis - QUERY ULTRA-OTIMIZADA (SEM IMAGES!)
  */
 export const getAll = async (): Promise<Property[]> => {
   const now = Date.now();
 
   // Verificar cache em memória primeiro
-  if (propertiesCache.data && (now - propertiesCache.timestamp) < CACHE_DURATION) {
+  if (propertiesListCache.data && (now - propertiesListCache.timestamp) < CACHE_DURATION) {
     console.log("✅ [propertyService.getAll] Usando cache em memória");
-    return propertiesCache.data;
+    return propertiesListCache.data;
   }
 
   try {
     console.log("🔄 [propertyService.getAll] Buscando do banco...");
 
-    // Query otimizada - apenas campos essenciais para listagem
+    // Query otimizada - SEM IMAGES para listagem rápida!
     const { data, error } = await supabase
       .from("properties")
       .select(`
@@ -97,7 +102,6 @@ export const getAll = async (): Promise<Property[]> => {
         bathrooms,
         value,
         status,
-        images,
         has_furniture,
         accepts_pets,
         area,
@@ -110,32 +114,32 @@ export const getAll = async (): Promise<Property[]> => {
     if (error) throw error;
 
     const properties = (data || []).map((item) =>
-      mapDatabaseProperty({
+      mapDatabasePropertyLight({
         ...item,
         location_name: item.locations?.name,
       })
     );
 
-    console.log(`✅ [propertyService.getAll] ${properties.length} imóveis retornados`);
+    console.log(`✅ [propertyService.getAll] ${properties.length} imóveis retornados (sem imagens)`);
 
     // Atualizar cache em memória
-    propertiesCache = { data: properties, timestamp: now };
+    propertiesListCache = { data: properties, timestamp: now };
 
     // Cache no localStorage (fallback)
-    cacheService.set("properties_all", properties, CACHE_DURATION);
+    cacheService.set("properties_list", properties, CACHE_DURATION);
 
     return properties;
   } catch (error) {
     console.error("❌ Error fetching properties:", error);
     
     // Tentar usar cache expirado como fallback
-    if (propertiesCache.data) {
+    if (propertiesListCache.data) {
       console.log("⚠️ Usando cache expirado como fallback");
-      return propertiesCache.data;
+      return propertiesListCache.data;
     }
 
     // Último recurso: cache do localStorage
-    const cachedData = cacheService.get<Property[]>("properties_all");
+    const cachedData = cacheService.get<Property[]>("properties_list");
     if (cachedData) {
       console.log("⚠️ Usando cache do localStorage como fallback");
       return cachedData;
@@ -146,13 +150,21 @@ export const getAll = async (): Promise<Property[]> => {
 };
 
 /**
- * Buscar imóvel por ID - QUERY OTIMIZADA
+ * Buscar imóvel por ID - QUERY COMPLETA COM IMAGES
  */
 export const getById = async (id: string): Promise<Property | null> => {
-  const CACHE_KEY = `property_${id}`;
-  const CACHE_TTL = 1000 * 60 * 15; // 15 minutos
+  const now = Date.now();
+
+  // Verificar cache em memória primeiro
+  const cached = propertyDetailsCache.get(id);
+  if (cached && (now - cached.timestamp) < DETAILS_CACHE_DURATION) {
+    console.log(`✅ [propertyService.getById] Usando cache para ${id}`);
+    return cached.data;
+  }
 
   try {
+    console.log(`🔄 [propertyService.getById] Buscando ${id} do banco...`);
+
     const { data, error } = await supabase
       .from("properties")
       .select(`
@@ -180,17 +192,27 @@ export const getById = async (id: string): Promise<Property | null> => {
     if (error) throw error;
     if (!data) return null;
 
-    const property = mapDatabaseProperty({
+    const property = mapDatabasePropertyFull({
       ...data,
       location_name: data.locations?.name,
     });
 
-    cacheService.set(CACHE_KEY, property, CACHE_TTL);
+    // Atualizar cache em memória
+    propertyDetailsCache.set(id, { data: property, timestamp: now });
+
+    console.log(`✅ [propertyService.getById] Imóvel ${id} retornado (com imagens)`);
+
     return property;
   } catch (error) {
     console.error("Error fetching property:", error);
-    const cachedData = cacheService.get<Property>(CACHE_KEY);
-    if (cachedData) return cachedData;
+    
+    // Tentar usar cache expirado
+    const cached = propertyDetailsCache.get(id);
+    if (cached) {
+      console.log("⚠️ Usando cache expirado como fallback");
+      return cached.data;
+    }
+
     return null;
   }
 };
@@ -233,7 +255,7 @@ export const create = async (property: Omit<Property, "id" | "createdAt" | "upda
       accepts_pets,
       created_at,
       updated_at,
-      locations!properties_location_id_fkey(name, street, number)
+      locations!properties_location_id_fkey(name)
     `)
     .single();
 
@@ -242,11 +264,9 @@ export const create = async (property: Omit<Property, "id" | "createdAt" | "upda
   // Invalidate cache
   invalidateCache();
 
-  return mapDatabaseProperty({
+  return mapDatabasePropertyFull({
     ...data,
     location_name: data.locations?.name,
-    location_street: data.locations?.street,
-    location_number: data.locations?.number,
   });
 };
 
@@ -274,16 +294,36 @@ export const update = async (id: string, property: Partial<Property>): Promise<P
     .from("properties")
     .update(propertyData)
     .eq("id", id)
-    .select()
+    .select(`
+      id,
+      location_id,
+      property_identifier,
+      complement,
+      description,
+      rooms,
+      bathrooms,
+      area,
+      has_garage,
+      value,
+      status,
+      images,
+      has_furniture,
+      accepts_pets,
+      created_at,
+      updated_at,
+      locations!properties_location_id_fkey(name)
+    `)
     .single();
 
   if (error) throw error;
 
   // Invalidate cache
   invalidateCache();
-  cacheService.remove(`property_${id}`);
 
-  return mapDatabaseProperty(data);
+  return mapDatabasePropertyFull({
+    ...data,
+    location_name: data.locations?.name,
+  });
 };
 
 /**
@@ -295,11 +335,10 @@ export const remove = async (id: string): Promise<void> => {
 
   // Invalidate cache
   invalidateCache();
-  cacheService.remove(`property_${id}`);
 };
 
 /**
- * Buscar imóveis disponíveis - QUERY OTIMIZADA
+ * Buscar imóveis disponíveis - QUERY OTIMIZADA (SEM IMAGES)
  */
 export async function getAvailable(): Promise<Property[]> {
   const { data, error } = await supabase
@@ -326,5 +365,6 @@ export async function getAvailable(): Promise<Property[]> {
     complement: property.complement || "",
     value: property.value || 0,
     status: property.status,
+    images: [], // SEM IMAGES para listagem rápida
   })) as Property[];
 }
