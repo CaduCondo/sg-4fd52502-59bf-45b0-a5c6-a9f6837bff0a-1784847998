@@ -780,6 +780,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         updated_at: new Date().toISOString(),
         pix_code_type: formData.pix_code_type,
         breakdown: updatedBreakdown,
+        expected_amount: Math.abs(expectedTotal),
       };
 
       const { error: updateError } = await supabase
