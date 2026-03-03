@@ -701,7 +701,8 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           breakdownData = breakdownData.filter((item: any) => 
             !item.description?.includes("Despesas") &&
             !item.description?.includes("Multa por Atraso") &&
-            !item.description?.includes("Juros por Atraso")
+            !item.description?.includes("Juros por Atraso") &&
+            !item.description?.includes("Desconto")
           );
           
           if (!removeLateFee && values.multa > 0) {
@@ -736,9 +737,13 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           }
           
           updatedBreakdown = JSON.stringify(breakdownData);
+          
+          // CORREÇÃO: Calcular expectedTotal com TODOS os itens do breakdown incluindo despesas e descontos
           expectedTotal = breakdownData.reduce((sum: number, item: any) => sum + item.amount, 0);
+          
         } catch (error) {
           console.error("Erro ao atualizar breakdown:", error);
+          // Se houver erro, usar o valor calculado anteriormente
           expectedTotal = calculatedTotal;
         }
       } else {
@@ -780,7 +785,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         updated_at: new Date().toISOString(),
         pix_code_type: formData.pix_code_type,
         breakdown: updatedBreakdown,
-        expected_amount: Math.abs(expectedTotal),
+        expected_amount: Math.abs(expectedTotal), // CORREÇÃO: Agora inclui despesas e descontos
       };
 
       const { error: updateError } = await supabase
