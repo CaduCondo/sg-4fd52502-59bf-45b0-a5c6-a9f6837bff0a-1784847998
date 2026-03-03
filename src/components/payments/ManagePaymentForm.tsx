@@ -738,7 +738,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           
           updatedBreakdown = JSON.stringify(breakdownData);
           
-          // CORREÇÃO: Calcular expectedTotal com TODOS os itens do breakdown incluindo despesas e descontos
+          // CORREÇÃO: Calcular expectedTotal AQUI, DEPOIS de adicionar todos os itens
           expectedTotal = breakdownData.reduce((sum: number, item: any) => sum + item.amount, 0);
           
         } catch (error) {
