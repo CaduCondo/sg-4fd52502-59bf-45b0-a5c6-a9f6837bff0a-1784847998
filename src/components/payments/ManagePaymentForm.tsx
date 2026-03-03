@@ -686,6 +686,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
             breakdownData = [];
           }
           
+          // Atualizar caução com correção IGPM se houver
           if (igpmCorrection && igpmCorrection.correctedAmount > 0) {
             breakdownData = breakdownData.map((item: any) => {
               if (item.description?.includes("Devolução de Caução")) {
@@ -698,6 +699,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
             });
           }
           
+          // Remover itens antigos que serão recalculados
           breakdownData = breakdownData.filter((item: any) => 
             !item.description?.includes("Despesas") &&
             !item.description?.includes("Multa por Atraso") &&
@@ -705,6 +707,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
             !item.description?.includes("Desconto")
           );
           
+          // Adicionar multa por atraso se não foi removida
           if (!removeLateFee && values.multa > 0) {
             breakdownData.push({
               description: "Multa por Atraso",
@@ -712,6 +715,8 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
               type: "addition"
             });
           }
+          
+          // Adicionar juros por atraso se não foram removidos
           if (!removeInterest && values.juros > 0) {
             breakdownData.push({
               description: "Juros por Atraso",
@@ -720,6 +725,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
             });
           }
           
+          // Adicionar despesas adicionais se houver
           if (repairExpenses > 0) {
             breakdownData.push({
               description: "Despesas Adicionais*",
@@ -728,6 +734,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
             });
           }
 
+          // Adicionar desconto se houver
           if (discountAmount > 0) {
             breakdownData.push({
               description: "Desconto",
@@ -736,9 +743,10 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
             });
           }
           
+          // Salvar breakdown atualizado
           updatedBreakdown = JSON.stringify(breakdownData);
           
-          // CALCULAR expectedTotal AQUI com TODOS os itens incluídos
+          // CALCULAR expectedTotal DEPOIS de montar o breakdown completo
           expectedTotal = breakdownData.reduce((sum: number, item: any) => sum + item.amount, 0);
           
           console.log("🔥 RESCISÃO - Breakdown completo:", breakdownData);
@@ -746,7 +754,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           
         } catch (error) {
           console.error("❌ Erro ao atualizar breakdown:", error);
-          // Se houver erro, usar o valor calculado anteriormente
           expectedTotal = calculatedTotal;
           console.log("⚠️ RESCISÃO - Usando calculatedTotal como fallback:", expectedTotal);
         }
