@@ -394,6 +394,12 @@ export default function Financial() {
   const calculatePaymentNumber = useCallback((payment: Payment, rental: Rental | undefined) => {
     const rentalData = rental || payment.rental;
     
+    // PRIORIDADE 1: Usar valores do banco se existirem
+    if (payment.installment && payment.totalInstallments) {
+      return `${payment.installment}/${payment.totalInstallments}`;
+    }
+    
+    // PRIORIDADE 2: Calcular apenas se não existir no banco
     if (!rentalData || !rentalData.startDate || !rentalData.endDate) {
       return "N/A";
     }
