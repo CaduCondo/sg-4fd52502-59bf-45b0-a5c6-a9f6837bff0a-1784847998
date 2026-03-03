@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { DollarSign } from "lucide-react";
+import { DollarSign, Button, Loader2, Save } from "lucide-react";
 import { memo } from "react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -423,6 +423,14 @@ export function PaymentBreakdownCard({
             </>
           )}
         </div>
+        {isTerminationPayment && isEditMode && (
+          <div className="flex justify-end">
+            <Button size="sm" onClick={onSaveExpensesAndDiscount}>
+              <Save className="h-4 w-4 mr-2" />
+              Salvar
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
