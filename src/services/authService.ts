@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
-import type { LoginCredentials, LoginResult } from "@/types"; // Importar tipos globais
+import type { LoginCredentials, LoginResult } from "@/types";
 import bcrypt from "bcryptjs";
 
 type SystemUser = Tables<"system_users">;
@@ -27,12 +27,24 @@ interface UserSession {
  */
 async function validatePassword(inputPassword: string, storedPasswordHash: string): Promise<boolean> {
   try {
+    console.log("🔐 ========== PASSWORD VALIDATION DEBUG ==========");
+    console.log("📝 Input password:", inputPassword);
+    console.log("📝 Input password length:", inputPassword.length);
+    console.log("🔑 Stored hash:", storedPasswordHash);
+    console.log("🔑 Hash length:", storedPasswordHash.length);
+    console.log("🔑 Hash starts with:", storedPasswordHash.substring(0, 7));
+    
     // Use bcrypt to compare password with hash
     const isValid = await bcrypt.compare(inputPassword, storedPasswordHash);
-    console.log("🔐 Password validation result:", isValid);
+    
+    console.log("✅ Bcrypt compare result:", isValid);
+    console.log("🔐 ========== END PASSWORD VALIDATION ==========");
+    
     return isValid;
   } catch (error) {
+    console.error("❌ ========== PASSWORD VALIDATION ERROR ==========");
     console.error("❌ Error validating password:", error);
+    console.error("❌ ========== END ERROR ==========");
     return false;
   }
 }
@@ -42,33 +54,42 @@ async function validatePassword(inputPassword: string, storedPasswordHash: strin
  */
 export async function login(credentials: LoginCredentials): Promise<LoginResult> {
   try {
-    console.log("🔐 Starting login for:", credentials.email);
+    console.log("🔐 ========== LOGIN PROCESS START ==========");
+    console.log("📧 Login attempt with:", credentials.email);
+    console.log("🔑 Password provided:", credentials.password ? "YES" : "NO");
+    console.log("🔑 Password length:", credentials.password?.length || 0);
 
     // 1. Search for user by username OR email
     const table = supabase.from("system_users");
     
+    console.log("🔍 Searching user by username:", credentials.email);
+    
     // Buscar usuário (username ou email)
-    // Precisamos buscar login_attempts e blocked_until também
     let { data: users, error: queryError } = await table
       .select("*")
       .eq("username", credentials.email)
       .eq("active", true);
 
+    console.log("📊 Query result (by username):", { found: users?.length || 0, error: queryError });
+
     // If not found by username, try email
     if (!users || users.length === 0) {
-       const result = await table
+      console.log("🔍 Not found by username, trying email...");
+      const result = await table
         .select("*")
         .eq("email", credentials.email)
         .eq("active", true);
         
-       users = result.data;
-       queryError = result.error;
+      users = result.data;
+      queryError = result.error;
+      
+      console.log("📊 Query result (by email):", { found: users?.length || 0, error: queryError });
     }
     
     const foundUsers = users as SystemUser[];
 
     if (queryError) {
-      console.error("❌ Error fetching user:", queryError);
+      console.error("❌ Database error:", queryError);
       return { success: false, error: "Erro ao buscar usuário" };
     }
 
@@ -78,7 +99,15 @@ export async function login(credentials: LoginCredentials): Promise<LoginResult>
     }
 
     const user = foundUsers[0];
-    console.log("✅ User found:", user.username, "| ID:", user.id);
+    console.log("✅ User found!");
+    console.log("👤 User ID:", user.id);
+    console.log("👤 Username:", user.username);
+    console.log("👤 Email:", user.email);
+    console.log("👤 Name:", user.name);
+    console.log("👤 Role:", user.role);
+    console.log("👤 Active:", user.active);
+    console.log("🔐 Password hash exists:", !!user.password_hash);
+    console.log("🔐 Password hash preview:", user.password_hash?.substring(0, 20) + "...");
 
     // 1.5 VERIFICAR SE ESTÁ BLOQUEADO
     if (user.blocked_until && new Date(user.blocked_until) > new Date()) {
@@ -92,12 +121,14 @@ export async function login(credentials: LoginCredentials): Promise<LoginResult>
     }
 
     // 2. Validate password using password_hash
-    console.log("🔐 Validating password...");
+    console.log("🔐 Starting password validation...");
     
     const isPasswordValid = await validatePassword(credentials.password, user.password_hash);
 
+    console.log("🎯 Password validation final result:", isPasswordValid);
+
     if (!isPasswordValid) {
-      console.warn("⚠️ Invalid password");
+      console.warn("⚠️ ========== PASSWORD VALIDATION FAILED ==========");
       
       // INCREMENTAR TENTATIVAS FALHAS
       const newAttempts = (user.login_attempts || 0) + 1;
@@ -105,9 +136,11 @@ export async function login(credentials: LoginCredentials): Promise<LoginResult>
       
       let errorMsg = "Senha incorreta";
       
+      console.log("📊 Login attempts:", newAttempts);
+      
       // SE ATINGIU 5 TENTATIVAS -> BLOQUEAR POR 30 MINUTOS
       if (newAttempts >= 5) {
-        const blockUntil = new Date(Date.now() + 30 * 60000); // +30 minutos
+        const blockUntil = new Date(Date.now() + 30 * 60000);
         updates.blocked_until = blockUntil.toISOString();
         console.warn(`⛔ BLOCKING USER until ${blockUntil.toLocaleString()}`);
         errorMsg = "Muitas tentativas falhas. Conta bloqueada por 30 minutos.";
@@ -122,13 +155,15 @@ export async function login(credentials: LoginCredentials): Promise<LoginResult>
         .update(updates)
         .eq("id", user.id);
         
+      console.log("🔐 ========== LOGIN PROCESS END (FAILED) ==========");
       return { success: false, error: errorMsg };
     }
 
-    console.log("✅ Password validated successfully");
+    console.log("✅ Password validated successfully!");
 
     // 2.5 RESETAR TENTATIVAS EM CASO DE SUCESSO
     if ((user.login_attempts || 0) > 0 || user.blocked_until) {
+      console.log("🔄 Resetting login attempts...");
       await supabase
         .from("system_users")
         .update({ 
@@ -159,6 +194,7 @@ export async function login(credentials: LoginCredentials): Promise<LoginResult>
     localStorage.removeItem("currentUser");
 
     // 5. Save NEW session
+    console.log("💾 Saving new session...");
     localStorage.setItem("auth_session", JSON.stringify(session));
     localStorage.setItem("auth_user", JSON.stringify(session.user));
 
@@ -172,10 +208,15 @@ export async function login(credentials: LoginCredentials): Promise<LoginResult>
       photo: session.user.photo,
     };
 
+    console.log("✅ Login successful!");
+    console.log("🔐 ========== LOGIN PROCESS END (SUCCESS) ==========");
+
     return { success: true, user: userResult };
 
   } catch (error) {
+    console.error("❌ ========== LOGIN PROCESS ERROR ==========");
     console.error("❌ Error during login:", error);
+    console.error("❌ ========== END ERROR ==========");
     return { success: false, error: "Erro ao processar login" };
   }
 }
