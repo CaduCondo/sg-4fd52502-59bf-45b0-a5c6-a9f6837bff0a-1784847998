@@ -1,7 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { DollarSign, Button, Loader2, Save } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { DollarSign, Loader2, Save } from "lucide-react";
 import { memo } from "react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -423,11 +424,26 @@ export function PaymentBreakdownCard({
             </>
           )}
         </div>
+        
         {isTerminationPayment && isEditMode && (
-          <div className="flex justify-end">
-            <Button size="sm" onClick={onSaveExpensesAndDiscount}>
-              <Save className="h-4 w-4 mr-2" />
-              Salvar
+          <div className="flex justify-end pt-4 mt-2 border-t border-dashed">
+            <Button 
+              size="sm" 
+              onClick={onSaveExpensesAndDiscount}
+              disabled={isSaving}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  Salvar
+                </>
+              )}
             </Button>
           </div>
         )}
