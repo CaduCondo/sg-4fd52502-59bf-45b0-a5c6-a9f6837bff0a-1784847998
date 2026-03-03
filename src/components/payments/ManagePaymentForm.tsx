@@ -15,6 +15,7 @@ import { PaymentInfoCards } from "./PaymentInfoCards";
 import { PaymentBreakdownCard } from "./PaymentBreakdownCard";
 import { usePaymentCalculations } from "@/hooks/usePaymentCalculations";
 import { usePaymentBreakdown } from "@/hooks/usePaymentBreakdown";
+import { invalidateCache } from "@/services/cacheService";
 
 interface BreakdownItem {
   description?: string;
@@ -745,6 +746,9 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       
       console.log("✅ AUTO-SAVE - Valores salvos com sucesso!");
       
+      // Invalidar cache para forçar recarregamento dos dados atualizados
+      invalidateCache('payments');
+      
     } catch (error) {
       console.error("❌ Erro ao salvar despesas/descontos:", error);
     } finally {
@@ -772,7 +776,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     }, 1500); // Save after 1.5 seconds of no changes
     
     return () => clearTimeout(timeoutId);
-  }, [repairExpenses, discountAmount, saveExpensesAndDiscounts, isTerminationPayment, loading, payment]);
+  }, [repairExpenses, discountAmount, saveExpensesAndDiscounts, isTerminationPayment, loading, payment, igpmCorrection]);
 
   const handleSubmit = async () => {
     if (!formData.payment_date || !formData.payment_method || !formData.amount_to_pay) {
