@@ -652,7 +652,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
   const [isSavingExpenses, setIsSavingExpenses] = useState(false);
 
   // Auto-save function for expenses and discounts
-  const saveExpensesAndDiscounts = useCallback(async () => {
+  const handleSaveExpensesAndDiscount = useCallback(async () => {
     if (!payment || !isTerminationPayment || loading) return;
     
     try {
@@ -765,11 +765,11 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     if (!isTerminationPayment || loading || !payment) return;
     
     const timeoutId = setTimeout(() => {
-      saveExpensesAndDiscounts();
+      handleSaveExpensesAndDiscount();
     }, 1500); // Save after 1.5 seconds of no changes
     
     return () => clearTimeout(timeoutId);
-  }, [repairExpenses, discountAmount, saveExpensesAndDiscounts, isTerminationPayment, loading, payment, igpmCorrection]);
+  }, [repairExpenses, discountAmount, handleSaveExpensesAndDiscount, isTerminationPayment, loading, payment, igpmCorrection]);
 
   const handleSubmit = async () => {
     if (!formData.payment_date || !formData.payment_method || !formData.amount_to_pay) {
@@ -1015,6 +1015,8 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           onDiscountAmountChange={handleDiscountAmountChange}
           paymentStatus={payment?.status}
           paidAmount={payment?.paid_amount}
+          onSaveExpensesAndDiscount={handleSaveExpensesAndDiscount}
+          isSaving={isSavingExpenses}
         />
 
         <Card>
