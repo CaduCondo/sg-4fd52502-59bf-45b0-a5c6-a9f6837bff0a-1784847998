@@ -715,21 +715,14 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           type: "addition"
         });
       }
-
-      // Add discount if any
-      if (discountAmount > 0) {
-        breakdownData.push({
-          description: "Desconto",
-          amount: -discountAmount,
-          type: "deduction"
-        });
-      }
       
-      // Calculate new expected total
-      const newExpectedTotal = breakdownData.reduce((sum: number, item: any) => sum + item.amount, 0);
+      // Calculate new expected total (breakdown sum - discount)
+      const breakdownTotal = breakdownData.reduce((sum: number, item: any) => sum + item.amount, 0);
+      const newExpectedTotal = breakdownTotal - discountAmount;
       
       console.log("💾 AUTO-SAVE - Despesas:", repairExpenses, "Desconto:", discountAmount);
-      console.log("💾 AUTO-SAVE - Novo Expected Total:", newExpectedTotal);
+      console.log("💾 AUTO-SAVE - Breakdown Total:", breakdownTotal);
+      console.log("💾 AUTO-SAVE - Novo Expected Total (com desconto):", newExpectedTotal);
       
       // Update database
       const { error: updateError } = await supabase
@@ -864,23 +857,17 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
               type: "addition"
             });
           }
-
-          // Adicionar desconto se houver
-          if (discountAmount > 0) {
-            breakdownData.push({
-              description: "Desconto",
-              amount: -discountAmount,
-              type: "deduction"
-            });
-          }
           
           // Salvar breakdown atualizado
           updatedBreakdown = JSON.stringify(breakdownData);
           
-          // CALCULAR expectedTotal DEPOIS de montar o breakdown completo
-          expectedTotal = breakdownData.reduce((sum: number, item: any) => sum + item.amount, 0);
+          // CALCULAR expectedTotal: soma do breakdown MENOS o desconto
+          const breakdownTotal = breakdownData.reduce((sum: number, item: any) => sum + item.amount, 0);
+          expectedTotal = breakdownTotal - discountAmount;
           
           console.log("🔥 RESCISÃO - Breakdown completo:", breakdownData);
+          console.log("💰 RESCISÃO - Breakdown Total:", breakdownTotal);
+          console.log("💰 RESCISÃO - Desconto:", discountAmount);
           console.log("💰 RESCISÃO - Expected Total calculado:", expectedTotal);
           
         } catch (error) {
