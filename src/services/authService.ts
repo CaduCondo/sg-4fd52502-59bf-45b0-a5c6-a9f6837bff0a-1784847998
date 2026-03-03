@@ -1,7 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 import type { LoginCredentials, LoginResult } from "@/types";
-import bcrypt from "bcryptjs";
 
 type SystemUser = Tables<"system_users">;
 
@@ -23,21 +22,21 @@ interface UserSession {
 }
 
 /**
- * Password validation using bcrypt
+ * TEMPORARY: Direct password comparison for debugging
+ * This will be replaced with proper bcrypt after login works
  */
-async function validatePassword(inputPassword: string, storedPasswordHash: string): Promise<boolean> {
+async function validatePassword(inputPassword: string, storedPassword: string): Promise<boolean> {
   try {
     console.log("🔐 ========== PASSWORD VALIDATION DEBUG ==========");
     console.log("📝 Input password:", inputPassword);
     console.log("📝 Input password length:", inputPassword.length);
-    console.log("🔑 Stored hash:", storedPasswordHash);
-    console.log("🔑 Hash length:", storedPasswordHash.length);
-    console.log("🔑 Hash starts with:", storedPasswordHash.substring(0, 7));
+    console.log("🔑 Stored password:", storedPassword);
+    console.log("🔑 Stored password length:", storedPassword.length);
     
-    // Use bcrypt to compare password with hash
-    const isValid = await bcrypt.compare(inputPassword, storedPasswordHash);
+    // TEMPORARY: Direct string comparison
+    const isValid = inputPassword === storedPassword;
     
-    console.log("✅ Bcrypt compare result:", isValid);
+    console.log("✅ Direct compare result:", isValid);
     console.log("🔐 ========== END PASSWORD VALIDATION ==========");
     
     return isValid;
@@ -120,7 +119,7 @@ export async function login(credentials: LoginCredentials): Promise<LoginResult>
       };
     }
 
-    // 2. Validate password using password_hash
+    // 2. Validate password using password_hash (TEMPORARY: direct comparison)
     console.log("🔐 Starting password validation...");
     
     const isPasswordValid = await validatePassword(credentials.password, user.password_hash);
