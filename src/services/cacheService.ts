@@ -133,5 +133,18 @@ class CacheService {
 // Export singleton instance
 export const cacheService = new CacheService();
 
+/**
+ * Helper to invalidate cache keys containing a prefix
+ * Useful for clearing lists when an item is updated
+ */
+export const invalidateCache = (prefix: string): void => {
+  const keys = cacheService.keys();
+  keys.forEach(key => {
+    if (key.includes(prefix)) {
+      cacheService.remove(key);
+    }
+  });
+};
+
 // NO AUTO-CLEANUP - Prevents server crashes
 // Call manually if needed: cacheService.cleanup()
