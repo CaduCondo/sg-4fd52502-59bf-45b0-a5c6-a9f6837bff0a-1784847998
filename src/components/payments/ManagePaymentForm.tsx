@@ -647,6 +647,133 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     setDiscountAmount(parseCurrency(formatCurrency(value)));
   }, [formatCurrency, parseCurrency]);
 
+  // Add saving state for auto-save feedback
+  const [isSavingExpenses, setIsSavingExpenses] = useState(false);
+
+  // Auto-save function for expenses and discounts
+  const saveExpensesAndDiscounts = useCallback(async () => {
+    if (!payment || !isTerminationPayment || loading) return;
+    
+    try {
+      setIsSavingExpenses(true);
+      
+      // Reconstruct the breakdown with updated values
+      let breakdownData = payment.breakdown;
+      if (typeof breakdownData === 'string') {
+        breakdownData = JSON.parse(breakdownData);
+      }
+      
+      if (!Array.isArray(breakdownData)) {
+        breakdownData = [];
+      }
+      
+      // Update IGPM correction if available
+      if (igpmCorrection && igpmCorrection.correctedAmount > 0) {
+        breakdownData = breakdownData.map((item: any) => {
+          if (item.description?.includes("Devolução de Caução")) {
+            return {
+              ...item,
+              amount: -igpmCorrection.correctedAmount,
+            };
+          }
+          return item;
+        });
+      }
+      
+      // Remove old expenses, late fees, interest, and discounts
+      breakdownData = breakdownData.filter((item: any) => 
+        !item.description?.includes("Despesas") &&
+        !item.description?.includes("Multa por Atraso") &&
+        !item.description?.includes("Juros por Atraso") &&
+        !item.description?.includes("Desconto")
+      );
+      
+      // Add late fee if not removed
+      if (!removeLateFee && calculateValues.multa > 0) {
+        breakdownData.push({
+          description: "Multa por Atraso",
+          amount: calculateValues.multa,
+          type: "addition"
+        });
+      }
+      
+      // Add interest if not removed
+      if (!removeInterest && calculateValues.juros > 0) {
+        breakdownData.push({
+          description: "Juros por Atraso",
+          amount: calculateValues.juros,
+          type: "addition"
+        });
+      }
+      
+      // Add repair expenses if any
+      if (repairExpenses > 0) {
+        breakdownData.push({
+          description: "Despesas Adicionais*",
+          amount: repairExpenses,
+          type: "addition"
+        });
+      }
+
+      // Add discount if any
+      if (discountAmount > 0) {
+        breakdownData.push({
+          description: "Desconto",
+          amount: -discountAmount,
+          type: "deduction"
+        });
+      }
+      
+      // Calculate new expected total
+      const newExpectedTotal = breakdownData.reduce((sum: number, item: any) => sum + item.amount, 0);
+      
+      console.log("💾 AUTO-SAVE - Despesas:", repairExpenses, "Desconto:", discountAmount);
+      console.log("💾 AUTO-SAVE - Novo Expected Total:", newExpectedTotal);
+      
+      // Update database
+      const { error: updateError } = await supabase
+        .from("payments")
+        .update({
+          breakdown: JSON.stringify(breakdownData),
+          expected_amount: Math.abs(newExpectedTotal),
+          discount_amount: discountAmount,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", paymentId);
+
+      if (updateError) throw updateError;
+      
+      console.log("✅ AUTO-SAVE - Valores salvos com sucesso!");
+      
+    } catch (error) {
+      console.error("❌ Erro ao salvar despesas/descontos:", error);
+    } finally {
+      setIsSavingExpenses(false);
+    }
+  }, [
+    payment,
+    isTerminationPayment,
+    loading,
+    repairExpenses,
+    discountAmount,
+    removeLateFee,
+    removeInterest,
+    calculateValues,
+    igpmCorrection,
+    paymentId
+  ]);
+
+  // Debounced auto-save effect
+  useEffect(() => {
+    if (!isTerminationPayment || loading || !payment) return;
+    
+    const timeoutId = setTimeout(() => {
+      saveExpensesAndDiscounts();
+    }, 1500); // Save after 1.5 seconds of no changes
+    
+    return () => clearTimeout(timeoutId);
+  }, [repairExpenses, discountAmount, saveExpensesAndDiscounts, isTerminationPayment, loading, payment]);
+
   const handleSubmit = async () => {
     if (!formData.payment_date || !formData.payment_method || !formData.amount_to_pay) {
       toast({
