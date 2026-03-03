@@ -113,6 +113,8 @@ interface PaymentBreakdownCardProps {
   onDiscountAmountChange?: (value: string) => void;
   paymentStatus?: string;
   paidAmount?: number;
+  onSaveExpensesAndDiscount?: (e: any) => void;
+  isSaving?: boolean;
 }
 
 export function PaymentBreakdownCard({
@@ -139,6 +141,8 @@ export function PaymentBreakdownCard({
   onDiscountAmountChange = () => {},
   paymentStatus,
   paidAmount = 0,
+  onSaveExpensesAndDiscount,
+  isSaving,
 }: PaymentBreakdownCardProps) {
   console.log("🔍 PaymentBreakdownCard Debug:", {
     paymentStatus,
