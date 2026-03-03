@@ -738,17 +738,24 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           
           updatedBreakdown = JSON.stringify(breakdownData);
           
-          // CORREÇÃO: Calcular expectedTotal AQUI, DEPOIS de adicionar todos os itens
+          // CALCULAR expectedTotal AQUI com TODOS os itens incluídos
           expectedTotal = breakdownData.reduce((sum: number, item: any) => sum + item.amount, 0);
           
+          console.log("🔥 RESCISÃO - Breakdown completo:", breakdownData);
+          console.log("💰 RESCISÃO - Expected Total calculado:", expectedTotal);
+          
         } catch (error) {
-          console.error("Erro ao atualizar breakdown:", error);
+          console.error("❌ Erro ao atualizar breakdown:", error);
           // Se houver erro, usar o valor calculado anteriormente
           expectedTotal = calculatedTotal;
+          console.log("⚠️ RESCISÃO - Usando calculatedTotal como fallback:", expectedTotal);
         }
       } else {
         expectedTotal = values.valorAPagar;
+        console.log("💰 PAGAMENTO NORMAL - Expected Total:", expectedTotal);
       }
+      
+      console.log("📊 VALOR FINAL A SER SALVO - expected_amount:", Math.abs(expectedTotal));
       
       let paymentStatus: "paid" | "partial";
       let finalPaidAmount: number;
