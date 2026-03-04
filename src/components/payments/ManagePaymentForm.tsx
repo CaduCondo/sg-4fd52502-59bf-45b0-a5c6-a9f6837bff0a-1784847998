@@ -202,6 +202,13 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       let effectiveRentalValue = 0;
       let effectiveGarageValue = 0;
 
+      // CARREGAR discount_amount do banco de dados (prioridade sobre breakdown)
+      if (paymentData.discount_amount && paymentData.discount_amount > 0) {
+        setDiscountAmount(paymentData.discount_amount);
+        setDiscountAmountInput(formatCurrency(paymentData.discount_amount.toFixed(2)));
+        console.log('✅ Desconto carregado do campo discount_amount do banco:', paymentData.discount_amount);
+      }
+
       // Primeiro tenta extrair do breakdown
       if (paymentData.breakdown) {
         try {
