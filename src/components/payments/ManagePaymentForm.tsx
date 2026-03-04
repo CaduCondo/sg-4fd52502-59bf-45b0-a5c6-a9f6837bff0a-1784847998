@@ -266,12 +266,16 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       // Se não conseguiu extrair do breakdown OU valores zerados, usar valores da locação como fallback
       if (effectiveRentalValue === 0 && effectiveGarageValue === 0) {
         console.log("⚠️ Breakdown empty or invalid, using rental values as fallback");
-        effectiveRentalValue = paymentData.rentals.rent_value || 0;
-        effectiveGarageValue = paymentData.rentals.garage_value || 0;
         
-        // Se tem garagem, subtrair o valor da garagem do aluguel
-        if (paymentData.rentals.has_garage && effectiveGarageValue > 0) {
-          effectiveRentalValue = effectiveRentalValue - effectiveGarageValue;
+        // CORREÇÃO CRÍTICA: Se tem garagem, o rent_value JÁ INCLUI a garagem
+        // Então precisamos SUBTRAIR o valor da garagem para ter o aluguel base
+        if (paymentData.rentals.has_garage && paymentData.rentals.garage_value > 0) {
+          effectiveGarageValue = paymentData.rentals.garage_value;
+          effectiveRentalValue = paymentData.rentals.rent_value - effectiveGarageValue;
+          console.log("🔧 CORREÇÃO: rent_value inclui garagem. Calculado aluguel base:", effectiveRentalValue);
+        } else {
+          effectiveRentalValue = paymentData.rentals.rent_value || 0;
+          effectiveGarageValue = 0;
         }
         
         console.log("💰 Values from rental - Rental:", effectiveRentalValue, "Garage:", effectiveGarageValue);
