@@ -209,77 +209,16 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         console.log('✅ Desconto carregado do campo discount_amount do banco:', paymentData.discount_amount);
       }
 
-      // Primeiro tenta extrair do breakdown
-      if (paymentData.breakdown) {
-        try {
-          let breakdownData = paymentData.breakdown;
-          if (typeof breakdownData === 'string') {
-            breakdownData = JSON.parse(breakdownData);
-          }
-          
-          // Se for um objeto (novo formato), converter para array para processamento
-          let itemsArray: BreakdownItem[] = [];
-          
-          if (!Array.isArray(breakdownData) && typeof breakdownData === 'object') {
-            Object.entries(breakdownData).forEach(([key, value]: [string, any]) => {
-              if (value && typeof value === 'object') {
-                itemsArray.push({
-                  description: value.label ? `${key} (${value.label})` : key,
-                  amount: value.value || value.amount || 0,
-                  value: value.value || value.amount || 0,
-                  type: value.type || "addition"
-                });
-              }
-            });
-          } else if (Array.isArray(breakdownData)) {
-            itemsArray = breakdownData as unknown as BreakdownItem[];
-          }
-          
-          console.log("📊 Breakdown parsed:", itemsArray);
-          
-          const aluguelItem = itemsArray.find((item) => 
-            item.description?.includes("Aluguel") && !item.description?.includes("Proporcional")
-          );
-          
-          const garagemItem = itemsArray.find((item) => 
-            item.description?.includes("Garagem") || item.description?.includes("Vaga")
-          );
-          
-          const proporcionalItem = itemsArray.find((item) => 
-            item.description?.includes("Aluguel") && item.description?.includes("PROPORCIONAL")
-          );
-
-          if (proporcionalItem) {
-            effectiveRentalValue = proporcionalItem.amount || proporcionalItem.value || 0;
-            effectiveGarageValue = 0;
-          } else if (aluguelItem || garagemItem) {
-            effectiveRentalValue = aluguelItem?.amount || aluguelItem?.value || 0;
-            effectiveGarageValue = garagemItem?.amount || garagemItem?.value || 0;
-          }
-          
-          console.log("💰 Values from breakdown - Rental:", effectiveRentalValue, "Garage:", effectiveGarageValue);
-        } catch (error) {
-          console.error("❌ Error parsing breakdown:", error);
-        }
+      // LÓGICA CORRETA: rent_value JÁ É O ALUGUEL, garage_value JÁ É A GARAGEM
+      effectiveRentalValue = paymentData.rentals.rent_value || 0;
+      
+      if (paymentData.rentals.has_garage && paymentData.rentals.garage_value > 0) {
+        effectiveGarageValue = paymentData.rentals.garage_value;
+      } else {
+        effectiveGarageValue = 0;
       }
       
-      // Se não conseguiu extrair do breakdown OU valores zerados, usar valores da locação como fallback
-      if (effectiveRentalValue === 0 && effectiveGarageValue === 0) {
-        console.log("⚠️ Breakdown empty or invalid, using rental values as fallback");
-        
-        // CORREÇÃO CRÍTICA: Se tem garagem, o rent_value JÁ INCLUI a garagem
-        // Então precisamos SUBTRAIR o valor da garagem para ter o aluguel base
-        if (paymentData.rentals.has_garage && paymentData.rentals.garage_value > 0) {
-          effectiveGarageValue = paymentData.rentals.garage_value;
-          effectiveRentalValue = paymentData.rentals.rent_value - effectiveGarageValue;
-          console.log("🔧 CORREÇÃO: rent_value inclui garagem. Calculado aluguel base:", effectiveRentalValue);
-        } else {
-          effectiveRentalValue = paymentData.rentals.rent_value || 0;
-          effectiveGarageValue = 0;
-        }
-        
-        console.log("💰 Values from rental - Rental:", effectiveRentalValue, "Garage:", effectiveGarageValue);
-      }
+      console.log("💰 Valores CORRETOS - Aluguel:", effectiveRentalValue, "Garagem:", effectiveGarageValue);
 
       setRentalValue(effectiveRentalValue);
       setGarageValue(effectiveGarageValue);
