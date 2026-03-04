@@ -737,7 +737,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
 
       if (updateError) throw updateError;
       
-      console.log("✅ AUTO-SAVE - Valores salvos com sucesso!");
+      console.log("✅ Valores salvos com sucesso!");
       
       // Invalidar cache para forçar recarregamento dos dados atualizados
       invalidateCache('payments');
