@@ -43,9 +43,13 @@ export function usePaymentCalculations({
   interestRatePercentage,
 }: UsePaymentCalculationsProps) {
   return useMemo(() => {
-    let rentalBaseValue = rentalValue;
-    let garageBaseValue = garageValue;
+    // CORREÇÃO: Usar sempre os valores separados de aluguel e garagem
+    // rentalValue = valor do aluguel do imóvel
+    // garageValue = valor da garagem (se houver)
+    let calculatedRentalValue = rentalValue;
+    let calculatedGarageValue = garageValue;
     
+    // Se houver breakdown, extrair os valores SEPARADOS de aluguel e garagem
     if (payment?.breakdown) {
       try {
         const breakdownData = typeof payment.breakdown === 'string' 
@@ -53,20 +57,46 @@ export function usePaymentCalculations({
           : (payment.breakdown || []);
           
         if (Array.isArray(breakdownData) && breakdownData.length > 0) {
-           const totalBreakdown = breakdownData.reduce((sum: number, item: any) => {
-             return sum + (item.value || item.amount || 0);
-           }, 0);
-           if (totalBreakdown > 0) {
-             rentalBaseValue = totalBreakdown;
-             garageBaseValue = 0;
-           }
+          // Resetar valores
+          calculatedRentalValue = 0;
+          calculatedGarageValue = 0;
+          
+          // Processar cada item do breakdown
+          breakdownData.forEach((item: any) => {
+            const description = item.description || '';
+            const amount = item.value || item.amount || 0;
+            
+            // Identificar aluguel (incluindo proporcional)
+            if (description.includes('Aluguel') && !description.includes('Garagem')) {
+              calculatedRentalValue += amount;
+            }
+            // Identificar garagem (incluindo proporcional)
+            else if (description.includes('Garagem') || description.includes('Vaga')) {
+              calculatedGarageValue += amount;
+            }
+          });
+          
+          // Se não encontrou valores no breakdown, usar os valores originais
+          if (calculatedRentalValue === 0 && calculatedGarageValue === 0) {
+            calculatedRentalValue = rentalValue;
+            calculatedGarageValue = garageValue;
+          }
         }
       } catch (e) {
         console.error("Erro parse breakdown calculateValues", e);
+        // Em caso de erro, usar valores originais
+        calculatedRentalValue = rentalValue;
+        calculatedGarageValue = garageValue;
       }
     }
 
-    const valorAluguel = Math.round((rentalBaseValue + garageBaseValue) * 100) / 100;
+    // VALOR TOTAL DO ALUGUEL = Aluguel do Imóvel + Garagem (quando aplicável)
+    const valorAluguel = Math.round((calculatedRentalValue + calculatedGarageValue) * 100) / 100;
+    
+    console.log("📊 CÁLCULO DE VALORES:");
+    console.log("  - Aluguel Imóvel:", calculatedRentalValue);
+    console.log("  - Garagem:", calculatedGarageValue);
+    console.log("  - Total Aluguel:", valorAluguel);
     
     let isProportional = false;
     let proportionalDays = 0;
@@ -79,12 +109,12 @@ export function usePaymentCalculations({
         
         if (Array.isArray(breakdownData)) {
           const proportionalItem = breakdownData.find((item: any) => 
-            item.description?.includes("Aluguel Proporcional")
+            item.description?.includes("proporcional")
           );
           
           if (proportionalItem) {
             isProportional = true;
-            const match = proportionalItem.description.match(/\((\d+)\s+dias?\)/);
+            const match = proportionalItem.description.match(/\(.*?(\d+)\s+dias?\)/);
             if (match) {
               proportionalDays = parseInt(match[1]);
             }
@@ -113,6 +143,7 @@ export function usePaymentCalculations({
         let baseCalculo = 0;
         
         if (isTerminationPayment && originalBreakdown.length > 0) {
+          // Para rescisão, calcular base sem multas, juros e despesas
           baseCalculo = originalBreakdown
             .filter(item => 
               !item.description?.includes("Multa por Atraso") &&
@@ -123,6 +154,7 @@ export function usePaymentCalculations({
           
           baseCalculo = Math.abs(baseCalculo);
         } else {
+          // Para pagamentos normais, usar o valor total do aluguel (imóvel + garagem)
           baseCalculo = Math.max(0, valorAluguel);
         }
 
