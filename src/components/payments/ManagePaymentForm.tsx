@@ -202,13 +202,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       let effectiveRentalValue = 0;
       let effectiveGarageValue = 0;
 
-      // CARREGAR discount_amount do banco de dados (prioridade sobre breakdown)
-      if (paymentData.discount_amount && paymentData.discount_amount > 0) {
-        setDiscountAmount(paymentData.discount_amount);
-        setDiscountAmountInput(formatCurrency(paymentData.discount_amount.toFixed(2)));
-        console.log('✅ Desconto carregado do campo discount_amount do banco:', paymentData.discount_amount);
-      }
-
       // LÓGICA CORRETA: rent_value JÁ É O ALUGUEL, garage_value JÁ É A GARAGEM
       effectiveRentalValue = paymentData.rentals.rent_value || 0;
       
