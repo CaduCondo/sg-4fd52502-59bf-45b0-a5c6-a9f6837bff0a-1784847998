@@ -48,7 +48,6 @@ export function usePayments() {
         paymentsCache.key === cacheKey &&
         (now - paymentsCache.timestamp) < CACHE_DURATION
       ) {
-        console.log("✅ [usePayments] Usando cache em memória");
         setPayments(paymentsCache.data.payments);
         setRentals(paymentsCache.data.rentals);
         setProperties(paymentsCache.data.properties);
@@ -56,8 +55,6 @@ export function usePayments() {
         setLoading(false);
         return;
       }
-
-      console.log("🔄 [usePayments] Buscando do banco...");
 
       // QUERY ÚNICA COM TODOS OS JOINS (SUPER OTIMIZADO!)
       let query = supabase
@@ -144,8 +141,6 @@ export function usePayments() {
         setLoading(false);
         return;
       }
-
-      console.log(`✅ [usePayments] ${paymentsData.length} pagamentos retornados`);
 
       // Processar dados (SUPER RÁPIDO - tudo já veio junto!)
       const rentalsMap = new Map<string, Rental>();
@@ -273,8 +268,6 @@ export function usePayments() {
       setRentals(rentalsArray);
       setProperties(propertiesArray);
       setTenants(tenantsArray);
-
-      console.log(`✅ [usePayments] Cache atualizado para ${cacheKey}`);
 
     } catch (error) {
       console.error("❌ [usePayments] Erro ao carregar pagamentos:", error);

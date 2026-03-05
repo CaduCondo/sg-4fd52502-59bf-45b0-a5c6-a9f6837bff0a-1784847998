@@ -121,6 +121,7 @@ export const PaymentCard = memo(function PaymentCard({
 
   // Debug: verificar attachments
   console.log('Payment ID:', payment.id);
+  console.log('Attachments Type:', typeof payment.attachments);
   console.log('Attachments:', payment.attachments);
   console.log('Has Attachments:', hasAttachments(payment));
 
