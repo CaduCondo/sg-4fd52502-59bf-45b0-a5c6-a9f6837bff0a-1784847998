@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { format, differenceInMonths, parseISO } from "date-fns";
+import { format, differenceInMonths, parseISO, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   Dialog,
@@ -51,6 +51,9 @@ export function RentalTerminationDialog({
   const [depositAmount, setDepositAmount] = useState<number>(0);
   const [proportionalDays, setProportionalDays] = useState<number>(0);
   const [proportionalRent, setProportionalRent] = useState<number>(0);
+  const [fullMonthRent, setFullMonthRent] = useState<number>(0);
+  const [isAfterDueDate, setIsAfterDueDate] = useState<boolean>(false);
+  const [lastPaymentDateStr, setLastPaymentDateStr] = useState<string>("");
 
   const [currentMonth, setCurrentMonth] = useState<number>(0);
   const [totalMonths, setTotalMonths] = useState<number>(0);
@@ -72,6 +75,11 @@ export function RentalTerminationDialog({
       setCorrectedDepositAmount(0);
       setPoupancaPercentage(0);
       setLastInstallmentDate("");
+      setProportionalDays(0);
+      setProportionalRent(0);
+      setFullMonthRent(0);
+      setIsAfterDueDate(false);
+      setLastPaymentDateStr("");
       return;
     }
 
@@ -255,6 +263,9 @@ export function RentalTerminationDialog({
       setPenaltyAmount(0);
       setProportionalDays(0);
       setProportionalRent(0);
+      setFullMonthRent(0);
+      setIsAfterDueDate(false);
+      setLastPaymentDateStr("");
       return;
     }
 
@@ -267,43 +278,73 @@ export function RentalTerminationDialog({
       const remaining = Math.max(0, differenceInMonths(endDate, termDate));
 
       const monthlyRent = rental.value || 0;
-
       const paymentDay = rental.paymentDay || 1;
-      const terminationDay = termDate.getDate();
       
       const terminationMonth = termDate.getMonth();
       const terminationYear = termDate.getFullYear();
       
+      // Data de vencimento do mês atual
       const dueDateOfTerminationMonth = new Date(terminationYear, terminationMonth, paymentDay);
       
-      let daysUsed = 0;
-      const isAfterDueDate = termDate >= dueDateOfTerminationMonth;
-      
       console.log("\n🔍 ========================================");
-      console.log("🔍   CÁLCULO DE DIAS PROPORCIONAIS");
+      console.log("🔍   CÁLCULO DE DIAS PROPORCIONAIS (FRONTEND)");
       console.log("🔍 ========================================");
       console.log("📅 Data de rescisão:", format(termDate, "dd/MM/yyyy"));
       console.log("📅 Dia de vencimento:", paymentDay);
-      console.log("📅 Dia da rescisão:", terminationDay);
-      console.log("📅 Data de vencimento do mês:", format(dueDateOfTerminationMonth, "dd/MM/yyyy"));
-      console.log("🔍 Rescisão após vencimento?", isAfterDueDate);
+      console.log("📅 Data de vencimento do mês atual:", format(dueDateOfTerminationMonth, "dd/MM/yyyy"));
       
-      if (isAfterDueDate) {
-        daysUsed = terminationDay - paymentDay + 1;
-        console.log("✅ APÓS VENCIMENTO:");
-        console.log(`   • Dias: ${terminationDay} - ${paymentDay} + 1 = ${daysUsed} dias`);
-        console.log(`   • Período: dia ${paymentDay} a ${terminationDay}`);
+      let daysUsed = 0;
+      let lastPaymentDate: Date;
+      let fullMonth = 0;
+      let proportional = 0;
+      let afterDue = false;
+
+      if (termDate >= dueDateOfTerminationMonth) {
+        // Rescisão APÓS o vencimento do mês atual
+        afterDue = true;
+        lastPaymentDate = dueDateOfTerminationMonth;
+        
+        console.log("✅ RESCISÃO APÓS VENCIMENTO:");
+        console.log(`  Último vencimento: ${format(lastPaymentDate, "dd/MM/yyyy")}`);
+        
+        // Mês cheio + dias extras
+        fullMonth = monthlyRent;
+        daysUsed = differenceInDays(termDate, lastPaymentDate) + 1;
+        proportional = (monthlyRent / 30) * daysUsed;
+        
+        console.log(`  Mês cheio: R$ ${fullMonth.toFixed(2)}`);
+        console.log(`  Dias extras (${format(lastPaymentDate, "dd/MM/yyyy")} até ${format(termDate, "dd/MM/yyyy")}): ${daysUsed} dias`);
+        console.log(`  Valor proporcional dias extras: R$ ${proportional.toFixed(2)}`);
       } else {
-        daysUsed = terminationDay;
-        console.log("✅ ANTES DO VENCIMENTO:");
-        console.log(`   • Dias: ${daysUsed} dias (do dia 1 ao ${terminationDay})`);
+        // Rescisão ANTES do vencimento do mês atual
+        afterDue = false;
+        
+        // Calcular último vencimento (mês anterior)
+        const previousMonth = terminationMonth === 0 ? 11 : terminationMonth - 1;
+        const previousYear = terminationMonth === 0 ? terminationYear - 1 : terminationYear;
+        lastPaymentDate = new Date(previousYear, previousMonth, paymentDay);
+        
+        console.log("✅ RESCISÃO ANTES DO VENCIMENTO:");
+        console.log(`  Último vencimento: ${format(lastPaymentDate, "dd/MM/yyyy")}`);
+        
+        // Apenas proporcional desde o último vencimento
+        daysUsed = differenceInDays(termDate, lastPaymentDate) + 1;
+        proportional = (monthlyRent / 30) * daysUsed;
+        
+        console.log(`  Período: ${format(lastPaymentDate, "dd/MM/yyyy")} até ${format(termDate, "dd/MM/yyyy")}`);
+        console.log(`  Total de dias: ${daysUsed}`);
+        console.log(`  Valor proporcional: R$ ${proportional.toFixed(2)}`);
       }
+      
       console.log("🔍 ========================================\n");
       
       setProportionalDays(daysUsed);
-      const proportionalValue = (monthlyRent / 30) * daysUsed;
-      setProportionalRent(proportionalValue);
+      setProportionalRent(proportional);
+      setFullMonthRent(fullMonth);
+      setIsAfterDueDate(afterDue);
+      setLastPaymentDateStr(format(lastPaymentDate, "dd/MM/yyyy"));
 
+      // Cálculo de multas
       if (applyFullContractPenalty && remaining > 0) {
         const threeTimesRent = 3 * monthlyRent;
         const perMonthPenalty = threeTimesRent / totalMonths;
@@ -329,6 +370,9 @@ export function RentalTerminationDialog({
       setPenaltyAmount(0);
       setProportionalDays(0);
       setProportionalRent(0);
+      setFullMonthRent(0);
+      setIsAfterDueDate(false);
+      setLastPaymentDateStr("");
     }
   }, [rental, terminationDate, applyFullContractPenalty, apply12MonthsPenalty, totalMonths]);
 
@@ -536,35 +580,20 @@ export function RentalTerminationDialog({
                   <div className="flex items-start gap-1">
                     <Info className="h-3 w-3 mt-0.5 flex-shrink-0" />
                     <div>
-                      {(() => {
-                        const termDate = parseISO(terminationDate);
-                        const paymentDay = rental.paymentDay || 1;
-                        const terminationMonth = termDate.getMonth();
-                        const terminationYear = termDate.getFullYear();
-                        const dueDateOfTerminationMonth = new Date(terminationYear, terminationMonth, paymentDay);
-                        const isAfterDueDate = termDate >= dueDateOfTerminationMonth;
-                        const monthlyRent = rental.value || 0;
-                        const terminationDay = termDate.getDate();
-                        
-                        if (isAfterDueDate) {
-                          return (
-                            <>
-                              <p className="font-medium">Rescisão APÓS vencimento (dia {paymentDay}):</p>
-                              <ul className="list-disc list-inside ml-2 space-y-0.5">
-                                <li>Mês cheio: R$ {monthlyRent.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</li>
-                                <li>Dias extras ({paymentDay} a {terminationDay}): {proportionalDays} dias × R$ {(monthlyRent / 30).toFixed(2)}/dia = R$ {proportionalRent.toFixed(2)}</li>
-                              </ul>
-                            </>
-                          );
-                        } else {
-                          return (
-                            <>
-                              <p className="font-medium">Rescisão ANTES do vencimento (dia {paymentDay}):</p>
-                              <p className="ml-2">Proporcional: {proportionalDays} dias × R$ {(monthlyRent / 30).toFixed(2)}/dia = R$ {proportionalRent.toFixed(2)}</p>
-                            </>
-                          );
-                        }
-                      })()}
+                      {isAfterDueDate ? (
+                        <>
+                          <p className="font-medium">Rescisão APÓS vencimento (dia {rental.paymentDay}):</p>
+                          <ul className="list-disc list-inside ml-2 space-y-0.5">
+                            <li>Mês cheio: R$ {fullMonthRent.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</li>
+                            <li>Dias extras ({lastPaymentDateStr} até {format(parseISO(terminationDate), "dd/MM/yyyy")}): {proportionalDays} dias × R$ {(monthlyRent / 30).toFixed(2)}/dia = R$ {proportionalRent.toFixed(2)}</li>
+                          </ul>
+                        </>
+                      ) : (
+                        <>
+                          <p className="font-medium">Rescisão ANTES do vencimento (dia {rental.paymentDay}):</p>
+                          <p className="ml-2">Proporcional ({lastPaymentDateStr} até {format(parseISO(terminationDate), "dd/MM/yyyy")}): {proportionalDays} dias × R$ {(monthlyRent / 30).toFixed(2)}/dia = R$ {proportionalRent.toFixed(2)}</p>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -636,9 +665,9 @@ export function RentalTerminationDialog({
               <AlertDescription className="text-xs space-y-1">
                 <p className="font-medium">O que vai acontecer:</p>
                 <ul className="list-disc list-inside space-y-0.5 ml-2">
-                  <li>Se rescisão for APÓS vencimento: cobra mês cheio + dias extras (vencimento até rescisão)</li>
-                  <li>Se rescisão for ANTES do vencimento: cobra apenas proporcional do mês</li>
-                  <li>Recebimento do mês será atualizado com valores corretos</li>
+                  <li>Recebimento do mês será atualizado com valores proporcionais corretos</li>
+                  <li>Se rescisão APÓS vencimento: mês cheio + dias extras desde vencimento</li>
+                  <li>Se rescisão ANTES do vencimento: proporcional desde último vencimento</li>
                   <li>Recebimentos futuros serão excluídos</li>
                   <li>Multa e caução serão adicionados ao recebimento</li>
                   <li>Despesas de reforma podem ser adicionadas depois na tela de Recebimentos</li>
