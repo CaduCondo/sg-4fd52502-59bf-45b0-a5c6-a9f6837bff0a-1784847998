@@ -116,13 +116,6 @@ export function usePayments() {
               document,
               cpf
             )
-          ),
-          payment_attachments (
-            id,
-            file_url,
-            file_name,
-            description,
-            created_at
           )
         `)
         .order("due_date", { ascending: true });
