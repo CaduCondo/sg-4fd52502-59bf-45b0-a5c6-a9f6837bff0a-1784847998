@@ -501,10 +501,17 @@ export default function Financial() {
   
   const handleEditPixCode = async (paymentId: string, pixCode: string) => {
     try {
+      // Encontrar o payment para pegar o rental_id
+      const payment = payments.find(p => p.id === paymentId);
+      if (!payment || !payment.rentalId) {
+        throw new Error("Locação não encontrada");
+      }
+
+      // Atualizar na tabela rentals (onde o campo pix_code existe)
       const { error } = await supabase
-        .from("payments")
-        .update({ payment_code: pixCode })
-        .eq("id", paymentId);
+        .from("rentals")
+        .update({ pix_code: pixCode })
+        .eq("id", payment.rentalId);
 
       if (error) throw error;
 
@@ -513,20 +520,32 @@ export default function Financial() {
         description: "Código PIX atualizado com sucesso!",
       });
 
+      // Atualizar estado local corretamente
       setPayments(prevPayments =>
-        prevPayments.map(p =>
-          p.id === paymentId ? { ...p, paymentCode: pixCode } : p
-        )
+        prevPayments.map(p => {
+          if (p.id === paymentId && p.rental) {
+            return {
+              ...p,
+              rental: {
+                ...p.rental,
+                pixCode: pixCode
+              }
+            };
+          }
+          return p;
+        })
       );
+      
       setEditingPixCode(null);
       
-      // Invalidar cache
+      // Invalidar cache para garantir dados atualizados
       financialCache = { data: null, key: "", timestamp: 0 };
+      
     } catch (error) {
       console.error("Erro ao atualizar código PIX:", error);
       toast({
         title: "Erro",
-        description: "Não foi possível atualizar o código PIX.",
+        description: error instanceof Error ? error.message : "Não foi possível atualizar o código PIX.",
         variant: "destructive",
       });
     }
