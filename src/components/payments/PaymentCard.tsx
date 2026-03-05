@@ -119,6 +119,11 @@ export const PaymentCard = memo(function PaymentCard({
     [payment.paidAmount]
   );
 
+  // Debug: verificar attachments
+  console.log('Payment ID:', payment.id);
+  console.log('Attachments:', payment.attachments);
+  console.log('Has Attachments:', hasAttachments(payment));
+
   if (viewMode === "grid") {
     return (
       <Card
@@ -185,18 +190,19 @@ export const PaymentCard = memo(function PaymentCard({
               <p className={`text-2xl sm:text-3xl font-bold ${colors.amount}`}>
                 {formattedDisplayAmount}
               </p>
-              {hasAttachments(payment) && (
-                <div 
-                  className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full p-1.5 transition-colors flex-shrink-0"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowAttachmentsModal(true);
-                  }}
-                  title={`Ver ${Array.isArray(payment.attachments) ? payment.attachments.length : 0} anexo(s)`}
-                >
-                  <Paperclip className="h-5 w-5 text-purple-600" />
-                </div>
-              )}
+              {/* DEBUG: Mostrar sempre para testar */}
+              <div 
+                className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full p-1.5 transition-colors flex-shrink-0 border-2 border-purple-600"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  console.log('Clipe clicado!');
+                  console.log('Payment attachments:', payment.attachments);
+                  setShowAttachmentsModal(true);
+                }}
+                title={`DEBUG: Ver attachments - Has: ${hasAttachments(payment)}`}
+              >
+                <Paperclip className="h-5 w-5 text-purple-600" />
+              </div>
             </div>
           </div>
 
