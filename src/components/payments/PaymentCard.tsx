@@ -140,7 +140,7 @@ export const PaymentCard = memo(function PaymentCard({
                 )}
               </div>
             </div>
-            <div className="flex flex-col items-end gap-1 flex-shrink-0">
+            <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
               <span className="text-xs text-muted-foreground whitespace-nowrap">
                 {getMonthName(payment.referenceMonth)}/{payment.referenceYear}
               </span>
@@ -275,19 +275,19 @@ export const PaymentCard = memo(function PaymentCard({
                   <span className="text-xs font-semibold text-muted-foreground">
                     Parcela {installment}
                   </span>
+                  {hasAttachments(payment) && (
+                    <div 
+                      className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full p-1 transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowAttachmentsModal(true);
+                      }}
+                      title={`Ver ${Array.isArray(payment.attachments) ? payment.attachments.length : 0} anexo(s)`}
+                    >
+                      <Paperclip className="h-4 w-4 text-purple-600" />
+                    </div>
+                  )}
                 </div>
-                {hasAttachments(payment) && (
-                  <div 
-                    className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full p-1 transition-colors inline-flex"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowAttachmentsModal(true);
-                    }}
-                    title={`Ver ${Array.isArray(payment.attachments) ? payment.attachments.length : 0} anexo(s)`}
-                  >
-                    <Paperclip className="h-4 w-4 text-purple-600" />
-                  </div>
-                )}
                 {property ? (
                   <div className="space-y-0.5">
                     <span className="text-base sm:text-lg font-bold text-blue-600 dark:text-blue-400 block">
