@@ -78,6 +78,7 @@ export function usePayments() {
           installment,
           total_installments,
           breakdown,
+          attachments,
           rentals!payments_rental_id_fkey (
             id,
             property_id,
@@ -115,6 +116,13 @@ export function usePayments() {
               document,
               cpf
             )
+          ),
+          payment_attachments (
+            id,
+            file_url,
+            file_name,
+            description,
+            created_at
           )
         `)
         .order("due_date", { ascending: true });
@@ -216,6 +224,14 @@ export function usePayments() {
           } as Tenant);
         }
 
+        // Processar attachments da tabela relacionada
+        const attachmentsFromTable = p.payment_attachments || [];
+        const processedAttachments = attachmentsFromTable.map((att: any) => ({
+          url: att.file_url,
+          name: att.file_name,
+          description: att.description || "",
+        }));
+
         return {
           id: p.id,
           rentalId: p.rental_id,
@@ -230,7 +246,7 @@ export function usePayments() {
           notes: "",
           referenceMonth: parseInt(p.reference_month),
           referenceYear: parseInt(p.reference_year),
-          attachments: [],
+          attachments: processedAttachments.length > 0 ? processedAttachments : (p.attachments || []),
           lateFee: p.late_fee || 0,
           interest: p.interest || 0,
           installment: p.installment || undefined,
