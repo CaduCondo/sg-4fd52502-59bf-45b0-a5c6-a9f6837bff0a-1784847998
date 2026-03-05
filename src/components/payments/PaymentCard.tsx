@@ -140,7 +140,7 @@ export const PaymentCard = memo(function PaymentCard({
                 )}
               </div>
             </div>
-            <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+            <div className="flex flex-col items-end gap-1 flex-shrink-0">
               <span className="text-xs text-muted-foreground whitespace-nowrap">
                 {getMonthName(payment.referenceMonth)}/{payment.referenceYear}
               </span>
