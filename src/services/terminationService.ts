@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { parseISO, getMonth, getYear } from "date-fns";
+import { parseISO, getMonth, getYear, differenceInDays, addMonths } from "date-fns";
 import { calculateCorrectedDeposit } from "./igpmService";
 
 export interface TerminationData {
@@ -12,7 +12,7 @@ export interface TerminationData {
 }
 
 /**
- * Processa a rescisão de contrato - VERSÃO CORRIGIDA COM CÁLCULO PROPORCIONAL CORRETO
+ * Processa a rescisão de contrato - VERSÃO CORRIGIDA COM CÁLCULO PROPORCIONAL BASEADO EM DATAS REAIS
  * 
  * FLUXO CORRETO:
  * 1. Calcula valores (proporcional + multa - caução)
@@ -26,7 +26,7 @@ export interface TerminationData {
 export async function processContractTermination(data: TerminationData): Promise<void> {
   console.log("\n".repeat(3));
   console.log("═".repeat(80));
-  console.log("🚀 INICIO processContractTermination - VERSÃO CORRIGIDA");
+  console.log("🚀 INICIO processContractTermination - VERSÃO COM DIFERENÇA DE DIAS REAL");
   console.log("═".repeat(80));
   console.log("Dados recebidos:", JSON.stringify(data, null, 2));
 
@@ -55,37 +55,51 @@ export async function processContractTermination(data: TerminationData): Promise
   console.log(`  Dia de vencimento: ${paymentDay}`);
 
   // ==========================================
-  // PASSO 2: Calcular aluguel proporcional - LÓGICA CORRIGIDA
+  // PASSO 2: Calcular data do último vencimento e aluguel proporcional - LÓGICA CORRIGIDA
   // ==========================================
-  console.log("\n💰 PASSO 2: Calcular aluguel proporcional (CORRIGIDO)");
+  console.log("\n💰 PASSO 2: Calcular aluguel proporcional (BASEADO EM DATAS REAIS)");
   
+  // Determinar a data do último vencimento
+  let lastPaymentDate: Date;
   let fullMonthRent = 0;
   let proportionalRent = 0;
   let daysUsed = 0;
 
   if (terminationDay >= paymentDay) {
-    // ✅ Rescisão APÓS vencimento: mês cheio + proporcional entre vencimento e rescisão
-    console.log("  🔍 Rescisão APÓS vencimento - cobra mês cheio + proporcional dos dias extras");
+    // Rescisão APÓS o vencimento do mês atual
+    // Exemplo: vencimento dia 10, rescisão dia 15
+    // Último vencimento: 10 do mês atual
+    lastPaymentDate = new Date(terminationYear, terminationMonth - 1, paymentDay);
     
-    fullMonthRent = monthlyRent; // Mês cheio (já vencido)
-    daysUsed = terminationDay - paymentDay + 1; // Dias entre vencimento e rescisão (incluindo ambos)
+    console.log("  🔍 Rescisão APÓS vencimento do mês atual");
+    console.log(`  Último vencimento: ${lastPaymentDate.toISOString().split("T")[0]}`);
+    
+    // Cobra mês cheio (já venceu) + proporcional dos dias extras
+    fullMonthRent = monthlyRent;
+    daysUsed = differenceInDays(terminationDateObj, lastPaymentDate) + 1; // +1 para incluir o dia da rescisão
     proportionalRent = (monthlyRent / 30) * daysUsed;
     
-    console.log(`  Mês cheio: R$ ${fullMonthRent.toFixed(2)}`);
-    console.log(`  Dias extras (${paymentDay} a ${terminationDay}): ${daysUsed}`);
-    console.log(`  Valor proporcional: R$ ${proportionalRent.toFixed(2)}`);
+    console.log(`  Mês cheio (já vencido): R$ ${fullMonthRent.toFixed(2)}`);
+    console.log(`  Dias extras (${lastPaymentDate.toISOString().split("T")[0]} a ${terminationDate}): ${daysUsed}`);
+    console.log(`  Valor proporcional dias extras: R$ ${proportionalRent.toFixed(2)}`);
   } else {
-    // ✅ CORREÇÃO: Rescisão ANTES do vencimento
-    // Período cobrado: do último vencimento até a rescisão
-    // Exemplo: vencimento dia 10, rescisão dia 4
-    // Cobra: 10/02 até 04/03 = (30-10) + 4 = 24 dias
-    console.log("  🔍 Rescisão ANTES do vencimento - cobra desde o último vencimento");
+    // Rescisão ANTES do vencimento do mês atual
+    // Exemplo: vencimento dia 10, rescisão dia 5
+    // Último vencimento: 10 do mês ANTERIOR
     
-    daysUsed = (30 - paymentDay) + terminationDay;
+    // Calcular a data do vencimento do mês anterior
+    const previousMonth = terminationMonth === 1 ? 12 : terminationMonth - 1;
+    const previousYear = terminationMonth === 1 ? terminationYear - 1 : terminationYear;
+    lastPaymentDate = new Date(previousYear, previousMonth - 1, paymentDay);
+    
+    console.log("  🔍 Rescisão ANTES do vencimento do mês atual");
+    console.log(`  Último vencimento: ${lastPaymentDate.toISOString().split("T")[0]}`);
+    
+    // Calcula dias desde o último vencimento até a rescisão
+    daysUsed = differenceInDays(terminationDateObj, lastPaymentDate) + 1; // +1 para incluir o dia da rescisão
     proportionalRent = (monthlyRent / 30) * daysUsed;
     
-    console.log(`  Dias do mês anterior (${paymentDay} a 30): ${30 - paymentDay}`);
-    console.log(`  Dias do mês atual (1 a ${terminationDay}): ${terminationDay}`);
+    console.log(`  Período: ${lastPaymentDate.toISOString().split("T")[0]} até ${terminationDate}`);
     console.log(`  Total de dias: ${daysUsed}`);
     console.log(`  Valor proporcional: R$ ${proportionalRent.toFixed(2)}`);
   }
@@ -131,7 +145,7 @@ export async function processContractTermination(data: TerminationData): Promise
       .insert({
         rental_id: rentalId,
         due_date: dueDate.toISOString().split("T")[0],
-        expected_amount: proportionalRent,
+        expected_amount: fullMonthRent + proportionalRent,
         reference_month: String(terminationMonth),
         reference_year: String(terminationYear),
         status: "pending"
@@ -184,7 +198,7 @@ export async function processContractTermination(data: TerminationData): Promise
   const breakdown = [];
 
   if (terminationDay >= paymentDay) {
-    // ✅ Rescisão APÓS vencimento: mês cheio + proporcional dias extras
+    // Rescisão APÓS vencimento: mês cheio + proporcional dias extras
     console.log("  📊 Rescisão APÓS vencimento - criando 2 itens no breakdown");
     console.log(`  - Mês cheio: R$ ${fullMonthRent.toFixed(2)}`);
     console.log(`  - Proporcional (${daysUsed} dias extras): R$ ${proportionalRent.toFixed(2)}`);
@@ -196,18 +210,18 @@ export async function processContractTermination(data: TerminationData): Promise
     });
     
     breakdown.push({
-      description: `Aluguel Proporcional - Dias Extras (${daysUsed} dias - ${paymentDay} a ${terminationDay})`,
+      description: `Aluguel Proporcional - Dias Extras (${daysUsed} dias - ${lastPaymentDate.toISOString().split("T")[0]} a ${terminationDate})`,
       amount: proportionalRent,
       type: "addition"
     });
   } else {
-    // ✅ CORREÇÃO: Rescisão ANTES do vencimento - proporcional desde último vencimento
+    // Rescisão ANTES do vencimento - proporcional desde último vencimento
     console.log("  📊 Rescisão ANTES do vencimento - criando 1 item no breakdown");
     console.log(`  - Proporcional (${daysUsed} dias): R$ ${proportionalRent.toFixed(2)}`);
-    console.log(`  - Período: último vencimento (dia ${paymentDay}) até rescisão (dia ${terminationDay})`);
+    console.log(`  - Período: ${lastPaymentDate.toISOString().split("T")[0]} até ${terminationDate}`);
     
     breakdown.push({
-      description: `Aluguel Proporcional (${daysUsed} dias - desde último vencimento)`,
+      description: `Aluguel Proporcional (${daysUsed} dias - ${lastPaymentDate.toISOString().split("T")[0]} até ${terminationDate})`,
       amount: proportionalRent,
       type: "addition"
     });
@@ -282,7 +296,7 @@ export async function processContractTermination(data: TerminationData): Promise
   // ==========================================
   // PASSO 8: DELETAR pagamentos futuros
   // ==========================================
-  console.log("\n🗑️ PASSO 8: DELETAR pagamentos futuros (versão CORRIGIDA)");
+  console.log("\n🗑️ PASSO 8: DELETAR pagamentos futuros");
   
   // ANTES DE DELETAR: Buscar TODOS os pagamentos para ver o estado atual
   console.log("\n  📊 ESTADO ATUAL (ANTES DA DELEÇÃO):");
@@ -305,7 +319,7 @@ export async function processContractTermination(data: TerminationData): Promise
 
   console.log(`\n  🎯 CRITÉRIO DE DELEÇÃO: Pagamentos a partir de ${nextMonth}/${nextYear}`);
 
-  // NOVA ABORDAGEM: Buscar pela data de vencimento (mais confiável que reference_month/year)
+  // Buscar pela data de vencimento (mais confiável)
   const cutoffDate = new Date(terminationYear, terminationMonth, 1); // Primeiro dia do mês seguinte
   const cutoffDateStr = cutoffDate.toISOString().split("T")[0];
 
@@ -315,7 +329,7 @@ export async function processContractTermination(data: TerminationData): Promise
     .from("payments")
     .select("id, due_date, reference_month, reference_year, status")
     .eq("rental_id", rentalId)
-    .gte("due_date", cutoffDateStr); // Pagamentos com vencimento >= primeiro dia do próximo mês
+    .gte("due_date", cutoffDateStr);
 
   if (fetchDeleteError) {
     console.error("❌ Erro ao buscar pagamentos para deletar:", fetchDeleteError);
@@ -366,7 +380,7 @@ export async function processContractTermination(data: TerminationData): Promise
   // ==========================================
   // PASSO 9: RECALCULAR números de parcelas
   // ==========================================
-  console.log("\n🔢 PASSO 9: RECALCULAR números de parcelas (DEFINITIVO)");
+  console.log("\n🔢 PASSO 9: RECALCULAR números de parcelas");
   console.log(`  Rental ID: ${rentalId}`);
 
   // Buscar TODOS os pagamentos restantes
@@ -394,7 +408,7 @@ export async function processContractTermination(data: TerminationData): Promise
     console.log(`    ${idx + 1}. ID: ${p.id.substring(0, 8)}... | Due: ${p.due_date} | installment=${p.installment || 'null'} | total_installments=${p.total_installments || 'null'}`);
   });
 
-  // ATUALIZAR TODOS DE UMA VEZ (mais eficiente)
+  // ATUALIZAR TODOS
   console.log(`\n  🔄 ATUALIZANDO ${newTotalInstallments} pagamentos...`);
   
   for (let i = 0; i < remainingPayments.length; i++) {
@@ -465,7 +479,7 @@ export async function processContractTermination(data: TerminationData): Promise
   console.log("🎉 RESUMO DA RESCISÃO");
   console.log("═".repeat(80));
   console.log(`✅ Recebimento de ${terminationMonth}/${terminationYear} atualizado: R$ ${totalAmount.toFixed(2)}`);
-  console.log(`✅ Dias proporcionais cobrados: ${daysUsed} dias`);
+  console.log(`✅ Dias proporcionais cobrados: ${daysUsed} dias (desde ${lastPaymentDate.toISOString().split("T")[0]})`);
   console.log(`✅ Pagamentos deletados: ${paymentsToDelete?.length || 0} (a partir de ${nextMonth}/${nextYear})`);
   console.log(`✅ Total de parcelas recalculado: ${newTotalInstallments}`);
   console.log(`✅ Data fim do contrato: ${terminationDate}`);
