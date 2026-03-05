@@ -12,7 +12,7 @@ export interface TerminationData {
 }
 
 /**
- * Processa a rescisão de contrato - VERSÃO CORRIGIDA DEFINITIVAMENTE
+ * Processa a rescisão de contrato - VERSÃO CORRIGIDA COM CÁLCULO PROPORCIONAL CORRETO
  * 
  * FLUXO CORRETO:
  * 1. Calcula valores (proporcional + multa - caução)
@@ -52,11 +52,12 @@ export async function processContractTermination(data: TerminationData): Promise
   console.log(`  Data de rescisão: ${terminationDate}`);
   console.log(`  Mês/Ano: ${terminationMonth}/${terminationYear}`);
   console.log(`  Dia: ${terminationDay}`);
+  console.log(`  Dia de vencimento: ${paymentDay}`);
 
   // ==========================================
-  // PASSO 2: Calcular aluguel proporcional
+  // PASSO 2: Calcular aluguel proporcional - LÓGICA CORRIGIDA
   // ==========================================
-  console.log("\n💰 PASSO 2: Calcular aluguel proporcional");
+  console.log("\n💰 PASSO 2: Calcular aluguel proporcional (CORRIGIDO)");
   
   let fullMonthRent = 0;
   let proportionalRent = 0;
@@ -74,13 +75,18 @@ export async function processContractTermination(data: TerminationData): Promise
     console.log(`  Dias extras (${paymentDay} a ${terminationDay}): ${daysUsed}`);
     console.log(`  Valor proporcional: R$ ${proportionalRent.toFixed(2)}`);
   } else {
-    // ✅ Rescisão ANTES do vencimento: apenas proporcional
-    console.log("  🔍 Rescisão ANTES do vencimento - cobra apenas proporcional");
+    // ✅ CORREÇÃO: Rescisão ANTES do vencimento
+    // Período cobrado: do último vencimento até a rescisão
+    // Exemplo: vencimento dia 10, rescisão dia 4
+    // Cobra: 10/02 até 04/03 = (30-10) + 4 = 24 dias
+    console.log("  🔍 Rescisão ANTES do vencimento - cobra desde o último vencimento");
     
-    daysUsed = terminationDay;   // Dias do mês corrente (1 até dia da rescisão)
+    daysUsed = (30 - paymentDay) + terminationDay;
     proportionalRent = (monthlyRent / 30) * daysUsed;
     
-    console.log(`  Dias usados: ${daysUsed}`);
+    console.log(`  Dias do mês anterior (${paymentDay} a 30): ${30 - paymentDay}`);
+    console.log(`  Dias do mês atual (1 a ${terminationDay}): ${terminationDay}`);
+    console.log(`  Total de dias: ${daysUsed}`);
     console.log(`  Valor proporcional: R$ ${proportionalRent.toFixed(2)}`);
   }
 
@@ -195,12 +201,13 @@ export async function processContractTermination(data: TerminationData): Promise
       type: "addition"
     });
   } else {
-    // ✅ Rescisão ANTES do vencimento: apenas proporcional
+    // ✅ CORREÇÃO: Rescisão ANTES do vencimento - proporcional desde último vencimento
     console.log("  📊 Rescisão ANTES do vencimento - criando 1 item no breakdown");
     console.log(`  - Proporcional (${daysUsed} dias): R$ ${proportionalRent.toFixed(2)}`);
+    console.log(`  - Período: último vencimento (dia ${paymentDay}) até rescisão (dia ${terminationDay})`);
     
     breakdown.push({
-      description: `Aluguel Proporcional (${daysUsed} dias)`,
+      description: `Aluguel Proporcional (${daysUsed} dias - desde último vencimento)`,
       amount: proportionalRent,
       type: "addition"
     });
@@ -458,6 +465,7 @@ export async function processContractTermination(data: TerminationData): Promise
   console.log("🎉 RESUMO DA RESCISÃO");
   console.log("═".repeat(80));
   console.log(`✅ Recebimento de ${terminationMonth}/${terminationYear} atualizado: R$ ${totalAmount.toFixed(2)}`);
+  console.log(`✅ Dias proporcionais cobrados: ${daysUsed} dias`);
   console.log(`✅ Pagamentos deletados: ${paymentsToDelete?.length || 0} (a partir de ${nextMonth}/${nextYear})`);
   console.log(`✅ Total de parcelas recalculado: ${newTotalInstallments}`);
   console.log(`✅ Data fim do contrato: ${terminationDate}`);
