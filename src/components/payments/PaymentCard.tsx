@@ -181,20 +181,20 @@ export const PaymentCard = memo(function PaymentCard({
                 Parcela {installment}
               </span>
             </div>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <p className={`text-2xl sm:text-3xl font-bold ${colors.amount}`}>
                 {formattedDisplayAmount}
               </p>
               {hasAttachments(payment) && (
                 <div 
-                  className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full p-1 transition-colors"
+                  className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full p-1.5 transition-colors flex-shrink-0"
                   onClick={(e) => {
                     e.stopPropagation();
                     setShowAttachmentsModal(true);
                   }}
                   title={`Ver ${Array.isArray(payment.attachments) ? payment.attachments.length : 0} anexo(s)`}
                 >
-                  <Paperclip className="h-4 w-4 text-purple-600" />
+                  <Paperclip className="h-5 w-5 text-purple-600" />
                 </div>
               )}
             </div>
