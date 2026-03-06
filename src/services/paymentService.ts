@@ -365,7 +365,7 @@ export const createPaymentsForRental = async (params: {
       late_fee: 0,
       interest: 0,
       notes: isProporcional ? "Pagamento proporcional" : null,
-      installment: installmentNumber,
+      installment: isProporcional ? null : installmentNumber,
       total_installments: totalInstallments,
     });
 
