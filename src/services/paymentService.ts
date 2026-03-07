@@ -286,6 +286,7 @@ export const createPaymentsForRental = async (params: {
     let rentAmount = monthlyRent;
     let garageAmount = hasGarage ? garageValue : 0;
     let isProporcional = false;
+    let proportionalDays = 0;
 
     const breakdown = [
       {
@@ -301,7 +302,7 @@ export const createPaymentsForRental = async (params: {
       });
     }
 
-    // ✅ CORREÇÃO: Primeira parcela proporcional
+    // ✅ NOVA REGRA: Primeira parcela
     if (isFirstPayment) {
       const startDay = startDate.getDate();
       const monthEndDate = endOfMonth(paymentMonth);
@@ -309,55 +310,82 @@ export const createPaymentsForRental = async (params: {
       
       // Se começou depois do dia 1, calcular proporcional
       if (startDay > 1) {
-        const daysToCharge = daysInMonth - startDay + 1; // +1 para incluir o dia inicial
+        proportionalDays = daysInMonth - startDay + 1; // +1 para incluir o dia inicial
         
-        if (daysToCharge < daysInMonth) {
+        if (proportionalDays < daysInMonth) {
           isProporcional = true;
-          rentAmount = parseFloat(((monthlyRent * daysToCharge) / daysInMonth).toFixed(2));
-          garageAmount = hasGarage ? parseFloat(((garageValue * daysToCharge) / daysInMonth).toFixed(2)) : 0;
+          rentAmount = parseFloat(((monthlyRent * proportionalDays) / daysInMonth).toFixed(2));
+          garageAmount = hasGarage ? parseFloat(((garageValue * proportionalDays) / daysInMonth).toFixed(2)) : 0;
           expectedAmount = rentAmount + garageAmount;
 
           breakdown[0] = {
-            description: `Aluguel (proporcional ${daysToCharge} dias)`,
+            description: `Aluguel (proporcional ${proportionalDays} dias)`,
             value: rentAmount,
           };
 
           if (hasGarage && garageValue > 0) {
             breakdown[1] = {
-              description: `Garagem (proporcional ${daysToCharge} dias)`,
+              description: `Garagem (proporcional ${proportionalDays} dias)`,
               value: garageAmount,
             };
           }
         }
       }
     } 
-    // ✅ CORREÇÃO: Última parcela proporcional
+    // ✅ NOVA REGRA: Última parcela (SEMPRE proporcional)
     else if (isLastPayment) {
       const endDay = endDate.getDate();
       const monthEndDate = endOfMonth(paymentMonth);
       const daysInMonth = monthEndDate.getDate();
       
-      // Se termina antes do último dia do mês, calcular proporcional
+      // Última parcela é SEMPRE proporcional (não importa quantos dias)
+      proportionalDays = endDay;
+      
       if (endDay < daysInMonth) {
-        const daysToCharge = endDay; // Dias do início do mês até o dia final
-        
         isProporcional = true;
-        rentAmount = parseFloat(((monthlyRent * daysToCharge) / daysInMonth).toFixed(2));
-        garageAmount = hasGarage ? parseFloat(((garageValue * daysToCharge) / daysInMonth).toFixed(2)) : 0;
+        rentAmount = parseFloat(((monthlyRent * proportionalDays) / daysInMonth).toFixed(2));
+        garageAmount = hasGarage ? parseFloat(((garageValue * proportionalDays) / daysInMonth).toFixed(2)) : 0;
         expectedAmount = rentAmount + garageAmount;
 
         breakdown[0] = {
-          description: `Aluguel (proporcional ${daysToCharge} dias)`,
+          description: `Aluguel (proporcional ${proportionalDays} dias)`,
           value: rentAmount,
         };
 
         if (hasGarage && garageValue > 0) {
           breakdown[1] = {
-            description: `Garagem (proporcional ${daysToCharge} dias)`,
+            description: `Garagem (proporcional ${proportionalDays} dias)`,
             value: garageAmount,
           };
         }
       }
+    }
+
+    // ✅ NOVA REGRA DE NUMERAÇÃO:
+    // - Primeira parcela ≤15 dias: installment = NULL (não conta)
+    // - Primeira parcela ≥16 dias: installment = 1 (conta)
+    // - Última parcela: installment = totalInstallments (sempre)
+    // - Demais: incrementa normalmente
+    
+    let currentInstallment = null;
+    
+    if (isFirstPayment && isProporcional) {
+      // Primeira parcela proporcional
+      if (proportionalDays >= 16) {
+        // ≥16 dias: conta como parcela 1
+        currentInstallment = installmentNumber;
+        installmentNumber++;
+      } else {
+        // ≤15 dias: não conta (installment = NULL)
+        currentInstallment = null;
+      }
+    } else if (isLastPayment) {
+      // Última parcela: usa o número total de installments
+      currentInstallment = totalInstallments;
+    } else {
+      // Parcelas intermediárias
+      currentInstallment = installmentNumber;
+      installmentNumber++;
     }
 
     payments.push({
@@ -372,14 +400,10 @@ export const createPaymentsForRental = async (params: {
       discount_amount: 0,
       late_fee: 0,
       interest: 0,
-      notes: isProporcional ? "Pagamento proporcional" : null,
-      installment: isProporcional ? null : installmentNumber,
+      notes: isProporcional ? `Pagamento proporcional (${proportionalDays} dias)` : null,
+      installment: currentInstallment,
       total_installments: totalInstallments,
     });
-
-    if (!isProporcional) {
-      installmentNumber++;
-    }
   }
 
   const { error } = await supabase.from("payments").insert(payments);
