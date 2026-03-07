@@ -181,37 +181,11 @@ export function PaymentReceipt({
     // PAGAMENTO NORMAL
     console.log("✅ PROCESSANDO PAGAMENTO NORMAL");
     
-    // 1. SEMPRE adicionar valor base do aluguel (se maior que zero)
-    if (expectedAmount > 0) {
-      console.log(`  ✅ Valor do Aluguel: ${expectedAmount}`);
-      breakdownItems.push({
-        description: "Valor do Aluguel",
-        amount: expectedAmount,
-        type: "addition"
-      });
-    }
-
-    // 2. Adicionar MULTA se existir e for maior que zero
-    if (lateFee > 0) {
-      console.log(`  ✅ Multa por Atraso: ${lateFee}`);
-      breakdownItems.push({
-        description: "Multa por Atraso",
-        amount: lateFee,
-        type: "addition"
-      });
-    }
-
-    // 3. Adicionar JUROS se existir e for maior que zero
-    if (interest > 0) {
-      console.log(`  ✅ Juros por Atraso: ${interest}`);
-      breakdownItems.push({
-        description: "Juros por Atraso",
-        amount: interest,
-        type: "addition"
-      });
-    }
+    // CRÍTICO: Usar valores do breakdown do banco para separar Aluguel e Garagem
+    let rentAmount = 0;
+    let garageAmount = 0;
+    const otherItems: BreakdownItem[] = [];
     
-    // 4. Processar outros itens do breakdown (se existir)
     if (paymentBreakdown) {
       try {
         let breakdownData = paymentBreakdown;
@@ -223,59 +197,25 @@ export function PaymentReceipt({
         if (Array.isArray(breakdownData)) {
           breakdownData.forEach((item: any) => {
             const amount = Number(item.amount || 0);
-            const description = String(item.description || "");
-            const type = item.type || "addition";
-
-            // Ignorar itens que já foram adicionados manualmente
-            const isAlreadyAdded = 
-              description.toLowerCase().includes("valor do aluguel") ||
-              description.toLowerCase().includes("multa por atraso") ||
-              description.toLowerCase().includes("juros por atraso") ||
-              description.toLowerCase().includes("aluguel:") ||
-              description.toLowerCase() === "aluguel";
-
-            // Só adicionar se for válido, maior que zero e não duplicado
-            if (Number.isFinite(amount) && Math.abs(amount) > 0 && !isAlreadyAdded) {
-              console.log(`  ✅ Item adicional: ${description} = ${amount}`);
-              breakdownItems.push({
-                description,
+            const description = String(item.description || "").toLowerCase();
+            
+            if (!Number.isFinite(amount) || amount === 0) return;
+            
+            // Identificar Aluguel (SEM garagem no nome)
+            if (description.includes("aluguel") && !description.includes("garagem") && !description.includes("vaga")) {
+              rentAmount += Math.abs(amount);
+            }
+            // Identificar Garagem
+            else if (description.includes("garagem") || description.includes("vaga")) {
+              garageAmount += Math.abs(amount);
+            }
+            // Outros itens (multa, juros, etc)
+            else {
+              const type = item.type || "addition";
+              otherItems.push({
+                description: item.description,
                 amount: Math.abs(amount),
                 type: type as "addition" | "deduction"
-              });
-            }
-          });
-        } else if (typeof breakdownData === "object") {
-          Object.entries(breakdownData).forEach(([key, value]: [string, any]) => {
-            const amount = Number(value || 0);
-            
-            // Ignorar chaves já processadas
-            const ignoredKeys = [
-              "lateFee", "late_fee", "multa",
-              "interest", "juros", 
-              "rentAmount", "expectedAmount", "expected_amount",
-              "baseAmount", "valorAluguel"
-            ];
-            
-            if (ignoredKeys.includes(key)) {
-              return;
-            }
-            
-            // Traduzir chaves
-            const translations: Record<string, string> = {
-              discount: "Desconto",
-              additionalExpenses: "Despesas Adicionais",
-              repairExpenses: "Despesas de Reparo"
-            };
-            
-            const description = translations[key] || key;
-            const type = amount >= 0 ? "addition" : "deduction";
-
-            if (Number.isFinite(amount) && Math.abs(amount) > 0) {
-              console.log(`  ✅ Item do objeto: ${description} = ${amount}`);
-              breakdownItems.push({ 
-                description, 
-                amount: Math.abs(amount), 
-                type 
               });
             }
           });
@@ -284,6 +224,58 @@ export function PaymentReceipt({
         console.error("❌ Erro ao processar breakdown:", e);
       }
     }
+    
+    // Se não encontrou no breakdown, usar valores da rental
+    if (rentAmount === 0 && rental) {
+      rentAmount = Number(rental.monthlyRent || rental.value || 0);
+      garageAmount = rental.hasGarage ? Number(rental.garageValue || 0) : 0;
+    }
+    
+    // Adicionar Aluguel ao breakdown
+    if (rentAmount > 0) {
+      console.log(`  ✅ Aluguel: ${rentAmount}`);
+      breakdownItems.push({
+        description: "Aluguel",
+        amount: rentAmount,
+        type: "addition"
+      });
+    }
+
+    // Adicionar Garagem ao breakdown (se houver)
+    if (garageAmount > 0) {
+      console.log(`  ✅ Garagem: ${garageAmount}`);
+      breakdownItems.push({
+        description: "Garagem",
+        amount: garageAmount,
+        type: "addition"
+      });
+    }
+    
+    // Adicionar MULTA se existir e for maior que zero
+    if (lateFee > 0) {
+      console.log(`  ✅ Multa por Atraso: ${lateFee}`);
+      breakdownItems.push({
+        description: "Multa por Atraso",
+        amount: lateFee,
+        type: "addition"
+      });
+    }
+
+    // Adicionar JUROS se existir e for maior que zero
+    if (interest > 0) {
+      console.log(`  ✅ Juros por Atraso: ${interest}`);
+      breakdownItems.push({
+        description: "Juros por Atraso",
+        amount: interest,
+        type: "addition"
+      });
+    }
+    
+    // Adicionar outros itens do breakdown
+    otherItems.forEach(item => {
+      console.log(`  ✅ Item adicional: ${item.description} = ${item.amount}`);
+      breakdownItems.push(item);
+    });
   }
 
   console.log("📋 BREAKDOWN ITEMS FINAIS:", JSON.stringify(breakdownItems, null, 2));
