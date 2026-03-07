@@ -955,8 +955,8 @@ export default function Financial() {
                       Nenhum pagamento encontrado para o período selecionado
                     </div>
                   ) : (
-                    <div className="overflow-x-auto">
-                      <Table>
+                    <div className="overflow-x-auto max-w-full">
+                      <Table className="min-w-[1200px]">
                         <TableHeader>
                           <TableRow>
                             <TableHead className="cursor-pointer" onClick={() => handleSort("paymentNumber")}>
@@ -1176,7 +1176,7 @@ export default function Financial() {
 
           {isAdmin && (
             <TabsContent value="deposits" className="space-y-6">
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto max-w-full">
                 <DepositInstallmentsTable 
                   userRole={user?.role || "user"}
                   allowedLocationIds={allowedLocationIds}
