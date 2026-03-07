@@ -1109,6 +1109,27 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                 </div>
               </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="installment_info">
+                    Parcela
+                  </Label>
+                  <Input
+                    id="installment_info"
+                    type="text"
+                    value={
+                      payment?.installment === null || payment?.installment === undefined
+                        ? "Proporcional"
+                        : payment?.totalInstallments
+                        ? `${payment.installment}/${payment.totalInstallments}`
+                        : "Única"
+                    }
+                    disabled
+                    className="bg-muted"
+                  />
+                </div>
+              </div>
+
               <div>
                 <Label htmlFor="notes">Observações</Label>
                 <Textarea
