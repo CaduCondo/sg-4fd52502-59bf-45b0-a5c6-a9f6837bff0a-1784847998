@@ -49,6 +49,8 @@ interface PaymentFormData {
   breakdown?: any;
   due_date?: string;
   status?: string;
+  installment?: number | null;
+  total_installments?: number | null;
 }
 
 interface ManagePaymentFormProps {
@@ -1120,8 +1122,8 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                     value={
                       payment?.installment === null || payment?.installment === undefined
                         ? "Proporcional"
-                        : payment?.totalInstallments
-                        ? `${payment.installment}/${payment.totalInstallments}`
+                        : payment?.total_installments
+                        ? `${payment.installment}/${payment.total_installments}`
                         : "Única"
                     }
                     disabled
