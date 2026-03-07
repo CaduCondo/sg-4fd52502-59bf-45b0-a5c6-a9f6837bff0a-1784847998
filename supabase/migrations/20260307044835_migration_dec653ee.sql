@@ -1,0 +1,2 @@
+-- REMOVER FUNÇÃO TEMPORÁRIA
+DROP FUNCTION IF EXISTS create_missing_payments_v2;

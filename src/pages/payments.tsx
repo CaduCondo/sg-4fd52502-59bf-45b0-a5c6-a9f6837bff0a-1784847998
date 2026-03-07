@@ -93,7 +93,11 @@ export default function PaymentsPage() {
   }, [rentals, tenants]);
 
   const getPaymentInstallment = useCallback((payment: Payment) => {
-    if (!payment.installment || !payment.totalInstallments) return "Única";
+    // Se tem a nota "Pagamento proporcional", é uma parcela proporcional
+    if (payment.notes?.includes("proporcional") || !payment.installment) {
+      return "Proporcional";
+    }
+    if (!payment.totalInstallments) return "Única";
     return `${payment.installment}/${payment.totalInstallments}`;
   }, []);
 
