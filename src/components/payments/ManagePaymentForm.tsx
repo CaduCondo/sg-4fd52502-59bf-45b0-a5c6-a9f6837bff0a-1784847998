@@ -102,7 +102,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
     payment_time: "",
     amount_to_pay: "",
     notes: "",
-    pix_code_type: "CP",
+    pix_code_type: "",
   });
   
   const [paymentHour, setPaymentHour] = useState<string>("");
@@ -329,7 +329,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
           ? formatCurrency(paymentData.paid_amount.toFixed(2))
           : "",
         notes: paymentData.notes || "",
-        pix_code_type: (paymentData as any).pix_code_type || "CP",
+        pix_code_type: (paymentData as any).pix_code_type || "",
       });
 
       if ((paymentData as any).payment_time) {
@@ -726,15 +726,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
       return;
     }
 
-    if (formData.payment_method === "pix" && (!paymentHour || !paymentMinute)) {
-      toast({
-        title: "Atenção",
-        description: "Informe o horário do recebimento para pagamentos via PIX",
-        variant: "destructive",
-      });
-      return;
-    }
-
     try {
       setIsSubmitting(true);
 
@@ -1013,7 +1004,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                 {formData.payment_method !== "dinheiro" && formData.payment_method !== "boleto" && (
                   <div>
                     <Label htmlFor="payment_code_type">
-                      C/C Recebimento <span className="text-red-500">*</span>
+                      C/C Recebimento
                     </Label>
                     <Select
                       value={formData.pix_code_type}
@@ -1021,7 +1012,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                       disabled={isReadOnly}
                     >
                       <SelectTrigger>
-                        <SelectValue />
+                        <SelectValue placeholder="Selecione..." />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="CP">CP</SelectItem>
@@ -1035,7 +1026,7 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                 {formData.payment_method === "pix" && (
                   <div>
                     <Label htmlFor="payment_time">
-                      Horário do Recebimento <span className="text-red-500">*</span>
+                      Horário do Recebimento
                     </Label>
                     <div className="grid grid-cols-[1fr_auto_1fr_auto_1fr] gap-2 items-center">
                       <Input
@@ -1051,7 +1042,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                             setPaymentHour(value);
                           }
                         }}
-                        required
                         disabled={isReadOnly}
                       />
                       <span className="text-2xl font-bold">:</span>
@@ -1068,7 +1058,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                             setPaymentMinute(value);
                           }
                         }}
-                        required
                         disabled={isReadOnly}
                       />
                       <span className="text-2xl font-bold">:</span>
@@ -1085,7 +1074,6 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
                             setPaymentSecond(value);
                           }
                         }}
-                        required
                         disabled={isReadOnly}
                       />
                     </div>
