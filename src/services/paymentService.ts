@@ -260,21 +260,15 @@ export const createPaymentsForRental = async (params: {
   const payments: any[] = [];
   const fullMonthlyAmount = monthlyRent + (hasGarage ? garageValue : 0);
   
-  const startDay = startDate.getDate();
-  let firstPaymentDate: Date;
-  
-  if (paymentDay > startDay) {
-    firstPaymentDate = startOfMonth(startDate);
-  } else {
-    firstPaymentDate = addMonths(startOfMonth(startDate), 1);
-  }
-
+  // ✅ CORREÇÃO: Sempre começar do mês de início do contrato
+  const firstPaymentMonth = startOfMonth(startDate);
   const contractEndMonth = startOfMonth(endDate);
   
-  let currentPaymentMonth = firstPaymentDate;
+  let currentPaymentMonth = firstPaymentMonth;
   let installmentNumber = 1;
   const allPaymentMonths: Date[] = [];
 
+  // ✅ CORREÇÃO: Loop inclui explicitamente o mês final
   while (currentPaymentMonth <= contractEndMonth) {
     allPaymentMonths.push(new Date(currentPaymentMonth));
     currentPaymentMonth = addMonths(currentPaymentMonth, 1);
@@ -307,45 +301,59 @@ export const createPaymentsForRental = async (params: {
       });
     }
 
+    // ✅ CORREÇÃO: Primeira parcela proporcional
     if (isFirstPayment) {
-      const daysToCharge = differenceInDays(dueDate, startDate);
+      const startDay = startDate.getDate();
+      const monthEndDate = endOfMonth(paymentMonth);
+      const daysInMonth = monthEndDate.getDate();
       
-      if (daysToCharge < 30 && daysToCharge > 0) {
-        isProporcional = true;
-        rentAmount = parseFloat(((monthlyRent * daysToCharge) / 30).toFixed(2));
-        garageAmount = hasGarage ? parseFloat(((garageValue * daysToCharge) / 30).toFixed(2)) : 0;
-        expectedAmount = rentAmount + garageAmount;
+      // Se começou depois do dia 1, calcular proporcional
+      if (startDay > 1) {
+        const daysToCharge = daysInMonth - startDay + 1; // +1 para incluir o dia inicial
+        
+        if (daysToCharge < daysInMonth) {
+          isProporcional = true;
+          rentAmount = parseFloat(((monthlyRent * daysToCharge) / daysInMonth).toFixed(2));
+          garageAmount = hasGarage ? parseFloat(((garageValue * daysToCharge) / daysInMonth).toFixed(2)) : 0;
+          expectedAmount = rentAmount + garageAmount;
 
-        breakdown[0] = {
-          description: "Aluguel (proporcional)",
-          value: rentAmount,
-        };
-
-        if (hasGarage && garageValue > 0) {
-          breakdown[1] = {
-            description: "Garagem (proporcional)",
-            value: garageAmount,
+          breakdown[0] = {
+            description: `Aluguel (proporcional ${daysToCharge} dias)`,
+            value: rentAmount,
           };
+
+          if (hasGarage && garageValue > 0) {
+            breakdown[1] = {
+              description: `Garagem (proporcional ${daysToCharge} dias)`,
+              value: garageAmount,
+            };
+          }
         }
       }
-    } else if (isLastPayment) {
-      const monthStart = startOfMonth(paymentMonth);
-      const daysToCharge = differenceInDays(endDate, monthStart) + 1;
+    } 
+    // ✅ CORREÇÃO: Última parcela proporcional
+    else if (isLastPayment) {
+      const endDay = endDate.getDate();
+      const monthEndDate = endOfMonth(paymentMonth);
+      const daysInMonth = monthEndDate.getDate();
       
-      if (daysToCharge < 30) {
+      // Se termina antes do último dia do mês, calcular proporcional
+      if (endDay < daysInMonth) {
+        const daysToCharge = endDay; // Dias do início do mês até o dia final
+        
         isProporcional = true;
-        rentAmount = parseFloat(((monthlyRent * daysToCharge) / 30).toFixed(2));
-        garageAmount = hasGarage ? parseFloat(((garageValue * daysToCharge) / 30).toFixed(2)) : 0;
+        rentAmount = parseFloat(((monthlyRent * daysToCharge) / daysInMonth).toFixed(2));
+        garageAmount = hasGarage ? parseFloat(((garageValue * daysToCharge) / daysInMonth).toFixed(2)) : 0;
         expectedAmount = rentAmount + garageAmount;
 
         breakdown[0] = {
-          description: "Aluguel (proporcional)",
+          description: `Aluguel (proporcional ${daysToCharge} dias)`,
           value: rentAmount,
         };
 
         if (hasGarage && garageValue > 0) {
           breakdown[1] = {
-            description: "Garagem (proporcional)",
+            description: `Garagem (proporcional ${daysToCharge} dias)`,
             value: garageAmount,
           };
         }
@@ -369,7 +377,9 @@ export const createPaymentsForRental = async (params: {
       total_installments: totalInstallments,
     });
 
-    installmentNumber++;
+    if (!isProporcional) {
+      installmentNumber++;
+    }
   }
 
   const { error } = await supabase.from("payments").insert(payments);
