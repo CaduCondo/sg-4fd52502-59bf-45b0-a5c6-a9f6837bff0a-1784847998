@@ -172,6 +172,19 @@ export function usePaymentCalculations({
     const valorJaPago = payment?.paid_amount || 0;
     const valorRestante = Math.max(0, Math.round((valorAPagar - valorJaPago) * 100) / 100);
 
+    const getPaymentInstallmentLabel = (paymentItem: any): string => {
+      if (!paymentItem.installment && paymentItem.notes?.includes("proporcional")) {
+        return "Proporcional";
+      }
+
+      if (!paymentItem.installment) {
+        return "Única";
+      }
+
+      const total = paymentItem.totalInstallments || paymentItem.rental?.installments || 24;
+      return `${paymentItem.installment}/${total}`;
+    };
+
     return {
       valorAluguel: Math.round(valorAluguel * 100) / 100,
       multa: Math.round(multa * 100) / 100,
@@ -184,6 +197,7 @@ export function usePaymentCalculations({
       jurosDiario: interestRatePercentage,
       isProportional,
       proportionalDays,
+      getPaymentInstallmentLabel,
     };
   }, [
     payment,
