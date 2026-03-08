@@ -325,11 +325,13 @@ export function ManagePaymentForm({ paymentId, onSuccess, onClose, embedded = fa
         payment_date: paymentData.payment_date || new Date().toISOString().split("T")[0],
         payment_method: paymentData.payment_method || "pix",
         payment_time: (paymentData as any).payment_time || "",
-        amount_to_pay: paymentData.paid_amount 
-          ? formatCurrency(paymentData.paid_amount.toFixed(2))
-          : "",
+        amount_to_pay: alreadyPaid 
+          ? "" // ✅ BUG #2: Campo zerado se pagamento já está pago
+          : (paymentData.paid_amount 
+              ? formatCurrency(paymentData.paid_amount.toFixed(2))
+              : ""),
         notes: paymentData.notes || "",
-        pix_code_type: (paymentData as any).pix_code_type || "",
+        pix_code_type: "", // ✅ BUG #1: Campo sempre vazio para preenchimento manual
       });
 
       if ((paymentData as any).payment_time) {
